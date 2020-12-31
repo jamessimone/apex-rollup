@@ -354,7 +354,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     @InvocableVariable(label='Rollup target\'s SObject Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
     public String rollupSObjectName;
 
-    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG' required=true)
+    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT' required=true)
     public String rollupOperation;
 
     @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, or DELETE' required=true)
