@@ -40,6 +40,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Calc Item` - in this case, Oppportunity
 - `Rollup Field On Calc Item` - the API Name of the field you’d like to aggregate (let's say Amount)
 - `Lookup Field On Calc Item`- the API Name of the field storing the Id or String referencing a unique value on another object (In the example, Id)
+- `Lookup Field On Lookup Object` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Field On Lookup Object` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
 - `Lookup Object` - the name of the SObject you’d like to roll the values up to (in this case, Account)
 - `Rollup Type` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT
@@ -74,6 +75,20 @@ Invoking the `Rollup` process from a Flow, in particular, is a joy; with a Recor
 ![Example flow](./media/joys-of-apex-rollup-flow.png "Fun and easy rollups from Flows")
 
 This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups -- be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow. As long as you can manipulate data to correspond to the shape of an existing SObject's fields, they don't even have to exist; you could have an Autolaunched flow rolling up records when invoked from a REST API so long as the data you're consuming contains a String/Id matching something on the "parent" rollup object.
+
+Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builder:
+
+- `Object for "Records To Rollup" (input)` - comes from your calculation items, and their SObject type should be selected accordingly. If you are rolling up from Opportunity to Account, you would select Opportunity as the type
+- `Records To Rollup` - a collection of SObjects. These need to be stored in a collection variable
+- `Calc Item Rollup Field` - the API Name of the field you’d like to aggregate (let's say Amount)
+- `Lookup Field On Calc Item`- the API Name of the field storing the Id or String referencing a unique value on another object (In the example, Id)
+- `Lookup Field On Lookup Object` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
+- `Rollup Field On Lookup Object` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
+- `Rollup Context` - INSERT / UPDATE / DELETE
+- `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT
+- `Calc item changed fields` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
+
+Unfortunately, the "Description" section for Invocable fields does not show up as help text within the Flow Builder, but hopefully it's clear how each property should be configured!
 
 ### Scheduled Job
 
