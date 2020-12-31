@@ -103,6 +103,9 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     CONCAT,
     UPDATE_CONCAT,
     DELETE_CONCAT,
+    CONCAT_DISTINCT,
+    UPDATE_CONCAT_DISTINCT,
+    DELETE_CONCAT_DISTINCT,
     AVERAGE,
     UPDATE_AVERAGE,
     DELETE_AVERAGE
@@ -410,7 +413,8 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
   )
   public static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputReturns = new List<FlowOutput>();
-    List<Rollup__mdt> rollups = new List<Rollup__mdt>();
+    List<Rollup__mdt> rollupMetadata = new List<Rollup__mdt>();
+    List<Rollup> rollups = new List<Rollup>();
 
     try {
       Map<Id, SObject> oldRecords = new Map<Id, SObject>();
@@ -439,7 +443,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
           oldRecords.put(record.Id, record);
         }
 
-        Rollup__mdt rollupMetadata = new Rollup__mdt(
+        Rollup__mdt rollupMeta = new Rollup__mdt(
           RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
           LookupObject__c = flowInput.rollupSObjectName,
           LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
@@ -448,10 +452,11 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
           RollupType__c = rollupContext + flowInput.rollupOperation,
           ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields
         );
-        rollups.add(rollupMetadata);
+        rollupMetadata.add(rollupMeta);
       }
       oldRecords = getOldFlowRecords(oldRecords.keySet(), fieldNames, recordSObjectType);
-      getRollup(rollups, recordSObjectType, calcItems, oldRecords, null, RollupInvocationPoint.FROM_INVOCABLE).runCalc();
+      rollups.add(getRollup(rollupMetadata, recordSObjectType, calcItems, oldRecords, null, RollupInvocationPoint.FROM_INVOCABLE));
+      batch(rollups);
     } catch (Exception ex) {
       for (FlowOutput flowOutput : flowOutputReturns) {
         flowOutput.IsSuccess = false;
@@ -551,6 +556,42 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
       countDistinctFieldOnOperationObject,
       lookupSobjectType,
       Op.COUNT_DISTINCT,
+      eval
+    );
+  }
+
+  public static Rollup concatDistinctFromTrigger(
+    SObjectField concatFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField concatFieldOnOperationObject,
+    SObjectType lookupSobjectType
+  ) {
+    return concatDistinctFromTrigger(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSobjectType,
+      null
+    );
+  }
+
+  public static Rollup concatDistinctFromTrigger(
+    SObjectField concatFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField concatFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Evaluator eval
+  ) {
+    return operateFromTrigger(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSobjectType,
+      Op.CONCAT_DISTINCT,
       eval
     );
   }
@@ -1619,6 +1660,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public override void performRollup(Op operation, Object priorVal, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
       String stringVal = (String) this.returnVal;
+      Boolean isConcatDistinct = operation.name().contains(Op.CONCAT_DISTINCT.name());
       for (SObject calcItem : calcItems) {
         if (this.shouldShortCircuit) {
           String newVal = (String) calcItem.get(operationField);
@@ -1632,17 +1674,26 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         }
         switch on operation {
-          when CONCAT {
-            stringVal += (String) calcItem.get(operationField);
+          when CONCAT, CONCAT_DISTINCT {
+            String newVal = (String) calcItem.get(operationField);
+            if (isConcatDistinct && stringVal.contains(newVal)) {
+              // skip
+              continue;
+            }
+            stringVal += ',' + newVal + ',';
           }
-          when UPDATE_CONCAT {
+          when UPDATE_CONCAT, UPDATE_CONCAT_DISTINCT {
             String newVal = (String) calcItem.get(operationField);
             String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
-            stringVal = stringVal.replace(priorString, newVal);
+            if (isConcatDistinct && stringVal.contains(newVal)) {
+              // skip
+              continue;
+            }
+            stringVal = stringVal.replace(priorString, newVal) + ',';
           }
-          when DELETE_CONCAT {
+          when DELETE_CONCAT, DELETE_CONCAT_DISTINCT {
             String existingVal = (String) calcItem.get(operationField);
-            stringVal = stringVal.replace(existingVal, '');
+            stringVal = stringVal.replace(existingVal, '') + ',';
           }
           when MAX, MIN {
             String newVal = (String) calcItem.get(operationField);
@@ -1670,7 +1721,9 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
 
-      this.returnVal = stringVal.normalizeSpace();
+      String possibleReturnValue = stringVal.normalizeSpace();
+      String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substring(0, possibleReturnValue.length() - 1) : possibleReturnValue;
+      this.returnVal = withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma;
     }
 
     protected virtual Boolean isTrueFor(Op operation, String newVal, String priorVal) {

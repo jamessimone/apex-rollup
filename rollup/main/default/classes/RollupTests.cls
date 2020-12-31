@@ -702,6 +702,33 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldConcatDistinctOnInsert() {
+    Account acc = [SELECT Id, AccountNumber FROM Account];
+    acc.AccountNumber = 'beginning test string something';
+    update acc;
+
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
+    Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'hello another string');
+    Opportunity thirdOpp = opp.clone(true, true);
+    DMLMock mock = getMock(new List<Opportunity>{ opp, secondOpp, thirdOpp });
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatDistinctFromTrigger(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(
+      'beginning test string something,hello another string',
+      updatedAcc.AccountNumber,
+      'CONCAT_DISTINCT AFTER_INSERT should only add unique values'
+    );
+  }
+
+  // TODO: concat distinct update/delete tests
+
+  @isTest
   static void shouldMaxOnStringsOnInsert() {
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
 
