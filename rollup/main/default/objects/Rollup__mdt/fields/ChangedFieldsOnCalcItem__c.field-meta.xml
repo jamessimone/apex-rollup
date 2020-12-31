@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ChangedFieldsOnCalcItem__c</fullName>
+    <description>Provide a comma-separated list of field API Names to consider prior to using records in the rollup</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Provide a comma-separated list of field API Names to consider prior to using records in the rollup</inlineHelpText>
+    <label>Changed Fields On Calc Item</label>
+    <length>1000</length>
+    <type>LongTextArea</type>
+    <visibleLines>2</visibleLines>
+</CustomField>

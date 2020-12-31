@@ -1,0 +1,9 @@
+.env
+node_modules/
+fflib*
+.vim-force.com/
+dmc_config.json
+yarn.lock
+.sfdx/
+.vscode/
+.localdevserver/

@@ -1,0 +1,10 @@
+{
+  "packageDirectories": [
+    {
+      "path": "rollup",
+      "default": true
+    }
+  ],
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com"
+}

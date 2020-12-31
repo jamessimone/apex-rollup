@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>MaxLookupRowsBeforeBatching__c</fullName>
+    <description>If a Rollup Limit is not supplied, this defaults to 3333</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>If a Rollup Limit is not supplied, this defaults to 3333</inlineHelpText>
+    <label>Max Lookup Rows Before Batching</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

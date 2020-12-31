@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LookupObject__c</fullName>
+    <description>The object where the rollup will be written to</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The object where the rollup will be written to</inlineHelpText>
+    <label>Lookup Object</label>
+    <referenceTo>EntityDefinition</referenceTo>
+    <relationshipLabel>Rollups</relationshipLabel>
+    <relationshipName>Rollups</relationshipName>
+    <required>false</required>
+    <type>MetadataRelationship</type>
+    <unique>false</unique>
+</CustomField>
