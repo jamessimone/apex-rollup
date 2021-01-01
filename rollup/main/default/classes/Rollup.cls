@@ -360,7 +360,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT' required=true)
     public String rollupOperation;
 
-    @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, or DELETE' required=true)
+    @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
     public String rollupContext;
 
     @InvocableVariable(label='Calc Item Rollup Field' description='The API Name of the field on each of the records passed in to consider.' required=true)
@@ -387,11 +387,23 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     )
     public String lookupFieldOnOpObject;
 
+    // optional fields
     @InvocableVariable(
       label='Calc Item Changed Fields'
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     public String calcItemChangedFields;
+
+    @InvocableVariable(
+      label='Full Recalculation Default Number Value'
+      description='If provided, used in place of the existing value on the rollup field for the lookup object for number-based rollups'
+    )
+    public Decimal fullRecalculationDefaultNumberValue;
+    @InvocableVariable(
+      label='Full Recalculation Default String Value'
+      description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
+    )
+    public String fullRecalculationDefaultStringValue;
   }
 
   public class FlowOutput {
@@ -413,17 +425,12 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
   )
   public static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputReturns = new List<FlowOutput>();
-    List<Rollup__mdt> rollupMetadata = new List<Rollup__mdt>();
     List<Rollup> rollups = new List<Rollup>();
 
     try {
-      Map<Id, SObject> oldRecords = new Map<Id, SObject>();
-      List<SObject> calcItems = new List<SObject>();
+      Map<Id, SObject> calcItems = new Map<Id, SObject>();
       FlowInput firstInput = flowInputs.isEmpty() == false ? flowInputs[0] : new FlowInput();
       String rollupContext = getFlowRollupContext(firstInput);
-      Boolean isFirstSObject = true;
-      SObjectType recordSObjectType;
-      Set<String> fieldNames;
 
       for (FlowInput flowInput : flowInputs) {
         FlowOutput flowOutput = new FlowOutput();
@@ -433,15 +440,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         }
 
-        for (SObject record : flowInput.recordsToRollup) {
-          if (isFirstSObject) {
-            isFirstSObject = false;
-            recordSObjectType = record.getSObjectType();
-            fieldNames = record.getPopulatedFieldsAsMap().keySet();
-          }
-          calcItems.add(record);
-          oldRecords.put(record.Id, record);
-        }
+        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
 
         Rollup__mdt rollupMeta = new Rollup__mdt(
           RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
@@ -450,12 +449,13 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
           LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
           RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
           RollupType__c = rollupContext + flowInput.rollupOperation,
-          ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields
+          ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+          FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+          FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue
         );
-        rollupMetadata.add(rollupMeta);
+        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType);
+        rollups.add(getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, RollupInvocationPoint.FROM_INVOCABLE));
       }
-      oldRecords = getOldFlowRecords(oldRecords.keySet(), fieldNames, recordSObjectType);
-      rollups.add(getRollup(rollupMetadata, recordSObjectType, calcItems, oldRecords, null, RollupInvocationPoint.FROM_INVOCABLE));
       batch(rollups);
     } catch (Exception ex) {
       for (FlowOutput flowOutput : flowOutputReturns) {
@@ -804,15 +804,37 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
-  private static Map<Id, SObject> getOldFlowRecords(Set<Id> currentRecords, Set<String> fieldNames, SObjectType sObjectType) {
+  private static Map<Id, SObject> getOldFlowRecords(List<SObject> currentRecords, SObjectType sObjectType) {
     if (currentRecords.isEmpty()) {
       return new Map<Id, SObject>();
+    } else if (oldRecordsMap != null) {
+      return oldRecordsMap;
     }
-    return oldRecordsMap != null
-      ? oldRecordsMap
-      : new Map<Id, SObject>(
-          Database.query('SELECT ' + String.join(new List<String>(fieldNames), ',') + '\nFROM ' + String.valueOf(sObjectType) + '\nWHERE Id = :currentRecords')
-        );
+
+    Set<String> fieldNames = currentRecords[0].getPopulatedFieldsAsMap().keySet();
+    Set<Id> currentRecordIds = new Set<Id>();
+    for(SObject currentRecord : currentRecords) {
+      if(currentRecord.Id != null) {
+        currentRecordIds.add(currentRecord.Id);
+      }
+    }
+    // we need to do two things: get the old records, and initialize default values for both existing records and the ones that don't have matches in the db
+    Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(
+      Database.query('SELECT ' + String.join(new List<String>(fieldNames), ',') + '\nFROM ' + String.valueOf(sObjectType) + '\nWHERE Id = :currentRecordIds')
+    );
+    for (SObject currentRecord : currentRecords) {
+      DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
+      SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
+        ? existingOldRecordsMap.get(currentRecord.Id)
+        : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
+      Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
+      for (String fieldName : fieldNames) {
+        if (existingRecordOrDefault.get(fieldName) == null) {
+          existingRecordOrDefault.put(fieldName, FieldInitializer.getDefaultValue(fieldTokensForObject.get(fieldName)));
+        }
+      }
+    }
+    return existingOldRecordsMap;
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
@@ -1224,7 +1246,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
         when TIME {
           initializedDefault = this.defaultDateTime.timeGmt();
         }
-        when STRING, ID, TEXTAREA, URL, PHONE, EMAIL {
+        when STRING, ID, TEXTAREA, URL, PHONE, EMAIL, REFERENCE {
           initializedDefault = '';
         }
         when PICKLIST, MULTIPICKLIST {
