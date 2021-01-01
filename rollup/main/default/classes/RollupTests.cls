@@ -222,6 +222,56 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldOverrideNumberBasedDefaultBasedOnMetadata() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupType__c = 'SUM',
+        FullRecalculationDefaultNumberValue__c = 100000
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(100100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount to the default override based on CMDT');
+  }
+
+  @isTest
+  static void shouldOverrideStringBasedDefaultBasedOnMetadata() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'A') });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        FullRecalculationDefaultStringValue__c = 'Z'
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on override metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('Z', updatedAcc.Name, 'MAX AFTER_INSERT should add the default override based on CMDT if there is no greater value');
+  }
+
+  @isTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1593,6 +1643,83 @@ private class RollupTests {
 
     System.assertEquals(1, flowOutputs.size());
     System.assertEquals(true, flowOutputs[0].isSuccess);
+  }
+
+  @isTest
+  static void shouldOverrideNumberBasedDefaultBasedOnMetadataForFlow() {
+    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
+    DMLMock mock = getMock(opps);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'INSERT', 'SUM');
+    flowInputs[0].fullRecalculationDefaultNumberValue = -1001;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(-1, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount + number override');
+  }
+
+  @isTest
+  static void shouldOverrideDateUsingNumberBasedDefaultForFlow() {
+    Contract con = [SELECT Id FROM Contract];
+
+    Datetime nowish = System.now();
+
+    // it only matters that the amount below is LESS than the above value, and that "nowish" is assigned to the fullRecalculationDefaultNumberValue flow input value
+    List<Event> events = new List<Event>{ new Event(ActivityDateTime = nowish.addDays(-2), WhatId = con.Id) };
+    DMLMock mock = loadMock(events);
+    Rollup.records = null;
+
+    Rollup.FlowInput flowInput = new Rollup.FlowInput();
+    flowInput.recordsToRollup = events;
+    flowInput.lookupFieldOnCalcItem = 'WhatId';
+    flowInput.lookupFieldOnOpObject = 'Id';
+    flowInput.rollupContext = 'INSERT';
+    flowInput.rollupFieldOnCalcItem = 'ActivityDateTime';
+    flowInput.rollupFieldOnOpObject = 'ActivatedDate';
+    flowInput.rollupSObjectName = 'Contract';
+    flowInput.rollupOperation = 'MAX';
+    flowInput.fullRecalculationDefaultNumberValue = nowish.getTime();
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput });
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'MAX AFTER_INSERT from flow with override date did not update accounts');
+    Contract updatedContract = (Contract) mock.Records[0];
+    System.assertEquals(nowish, updatedContract.ActivatedDate, 'MAX AFTER_INSERT from flow should match override date');
+  }
+
+  @isTest
+  static void shouldOverrideStringBasedDefaultForFlow() {
+    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Name = 'A') };
+    DMLMock mock = getMock(opps);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'INSERT', 'SUM');
+    flowInputs[0].fullRecalculationDefaultStringValue = 'Z';
+    flowInputs[0].rollupFieldOnOpObject = 'Name';
+    flowInputs[0].rollupFieldOnCalcItem = 'Name';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('Z', updatedAcc.Name, 'SUM AFTER_INSERT from flow should match string override when it is greater than supplied calc values');
   }
 
   /** Batch test */
