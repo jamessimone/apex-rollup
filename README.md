@@ -45,6 +45,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Lookup Object` - the name of the SObject you’d like to roll the values up to (in this case, Account)
 - `Rollup Type` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
+- `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
+- `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 
 You can perform have as many rollups as you'd like per object/trigger -- all operations are batched.
 
@@ -87,12 +89,16 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Rollup Context` - INSERT / UPDATE / DELETE
 - `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas
 - `Calc item changed fields` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
+- `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
+- `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 
 Unfortunately, the "Description" section for Invocable fields does not show up as help text within the Flow Builder, but hopefully it's clear how each property should be configured!
 
 ### Scheduled Job
 
-You can use the following Anonymous Apex script to schedule rollups:
+I would _highly_ recommend scheduling through Scheduled Flows.
+
+That being said, `Rollup` has options to use Scheduled Jobs if that's more your style. You can use the following Anonymous Apex script to schedule rollups:
 
 ```java
 // Method signature: (String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval)
