@@ -1737,20 +1737,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               // skip
               continue;
             }
-            stringVal += ',' + newVal + ',';
+            stringVal += this.concatWithDelimiter(newVal);
           }
           when UPDATE_CONCAT, UPDATE_CONCAT_DISTINCT {
             String newVal = (String) calcItem.get(operationField);
             String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
-            if (isConcatDistinct && stringVal.contains(newVal)) {
-              // skip
+            if (isConcatDistinct && stringVal.contains(newVal) == false) {
+              stringVal += this.concatWithDelimiter(newVal);
               continue;
             }
-            stringVal = stringVal.replace(priorString, newVal) + ',';
+            stringVal = this.replaceWithDelimiter(stringVal, priorString, newVal);
           }
           when DELETE_CONCAT, DELETE_CONCAT_DISTINCT {
             String existingVal = (String) calcItem.get(operationField);
-            stringVal = stringVal.replace(existingVal, '') + ',';
+            stringVal = this.replaceWithDelimiter(stringVal, existingVal, '');
           }
           when MAX, MIN {
             String newVal = (String) calcItem.get(operationField);
@@ -1780,7 +1780,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       String possibleReturnValue = stringVal.normalizeSpace();
       String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substring(0, possibleReturnValue.length() - 1) : possibleReturnValue;
-      this.returnVal = withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma;
+      this.returnVal = (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
     }
 
     protected virtual Boolean isTrueFor(Op operation, String newVal, String priorVal) {
@@ -1790,6 +1790,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         return newVal < priorVal || String.isBlank(priorVal);
       }
       return false;
+    }
+
+    private String concatWithDelimiter(String newVal) {
+      // for now, hard-coding to comma here. We may update this to allow for CMDT-based overrides of the delimiter
+      return ', ' + newVal + ', ';
+    }
+
+    private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {
+      return existingVal.replace(matchingVal, replacementVal) + ', ';
     }
   }
 
