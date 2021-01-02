@@ -815,9 +815,9 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static String getFlowRollupContext(FlowInput firstInput) {
     String flowContext = firstInput.rollupContext;
-    if(String.isBlank(flowContext)) {
+    if (String.isBlank(flowContext)) {
       flowContext = 'INSERT';
-    } else if(flowContext == 'UPSERT') {
+    } else if (flowContext == 'UPSERT') {
       flowContext = 'UPDATE';
     }
 
@@ -849,6 +849,10 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
         : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
       Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
       for (String fieldName : fieldNames) {
+        SObjectField fieldToken = fieldTokensForObject.get(fieldName);
+        if (fieldToken.getDescribe().isUpdateable() == false) {
+          continue;
+        }
         if (existingRecordOrDefault.get(fieldName) == null) {
           existingRecordOrDefault.put(fieldName, FieldInitializer.getDefaultValue(fieldTokensForObject.get(fieldName)));
         }

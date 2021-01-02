@@ -1722,6 +1722,42 @@ private class RollupTests {
     System.assertEquals('Z', updatedAcc.Name, 'SUM AFTER_INSERT from flow should match string override when it is greater than supplied calc values');
   }
 
+  @isTest
+  static void shouldNotWriteToNonUpdateableFieldsForOldFlowRecords() {
+    Account acc = [SELECT Id FROM Account];
+
+    Event ev = new Event(ActivityDateTime = System.now().addDays(-2), WhatId = acc.Id, DurationInMinutes = 5);
+    insert ev;
+
+    ev = [SELECT AccountId, ActivityDateTime, WhatId FROM Event];
+
+    List<Event> events = new List<Event>{ ev };
+    DMLMock mock = loadMock(events);
+    Rollup.records = null;
+
+    Rollup.FlowInput flowInput = new Rollup.FlowInput();
+    flowInput.recordsToRollup = events;
+    flowInput.lookupFieldOnCalcItem = 'WhatId';
+    flowInput.lookupFieldOnOpObject = 'Id';
+    flowInput.rollupContext = 'INSERT';
+    flowInput.rollupFieldOnCalcItem = 'ActivityDateTime';
+    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
+    flowInput.rollupSObjectName = 'Account';
+    flowInput.rollupOperation = 'COUNT';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput });
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'COUNT AFTER_INSERT from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_INSERT from flow should not fail when non-writeable fields are present');
+  }
+
   /** Batch test */
 
   @isTest
