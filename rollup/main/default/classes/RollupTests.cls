@@ -770,13 +770,40 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      'beginning test string something,hello another string',
+      'beginning test string something, hello another string',
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_INSERT should only add unique values'
     );
   }
 
-  // TODO: concat distinct update/delete tests
+  @isTest
+  static void shouldConcatDistinctOnUpdate() {
+    Account acc = [SELECT Id, AccountNumber FROM Account];
+    acc.AccountNumber = 'first test string';
+    update acc;
+
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'second test string', Id = generateId(Opportunity.SObjectType));
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.Name = acc.AccountNumber;
+
+    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp };
+    Rollup.triggerContext = TriggerOperation.AFTER_UPDATE;
+
+    Test.startTest();
+    Rollup.concatDistinctFromTrigger(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_UPDATE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(
+      acc.AccountNumber +
+      ', ' +
+      opp.Name,
+      updatedAcc.AccountNumber,
+      'CONCAT_DISTINCT AFTER_UPDATE should be the distinct combo of the old and new strings'
+    );
+  }
 
   @isTest
   static void shouldMaxOnStringsOnInsert() {
@@ -1726,10 +1753,12 @@ private class RollupTests {
   static void shouldNotWriteToNonUpdateableFieldsForOldFlowRecords() {
     Account acc = [SELECT Id FROM Account];
 
-    Event ev = new Event(ActivityDateTime = System.now().addDays(-2), WhatId = acc.Id, DurationInMinutes = 5);
-    insert ev;
+    Event ev = new Event(ActivityDateTime = System.now().addDays(-2), WhatId = acc.Id);
 
-    ev = [SELECT AccountId, ActivityDateTime, WhatId FROM Event];
+    // a useful hack for assigning values to unwriteable fields ...
+    Map<String, Object> deserializedEvent = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(ev));
+    deserializedEvent.put('AccountId', null);
+    ev = (Event) JSON.deserialize(JSON.serialize(deserializedEvent), Event.class);
 
     List<Event> events = new List<Event>{ ev };
     DMLMock mock = loadMock(events);
