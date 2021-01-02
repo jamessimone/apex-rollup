@@ -1,4 +1,4 @@
-public without sharing virtual class Rollup implements Database.Batchable<SObject> {
+global without sharing virtual class Rollup implements Database.Batchable<SObject> {
   /**
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
    * but this keeps things much simpler
@@ -465,7 +465,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
           FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
           FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue
         );
-        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType);
+        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, flowInput.rollupFieldOnCalcItem);
         rollups.add(
           getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, RollupInvocationPoint.FROM_INVOCABLE)
         );
@@ -824,14 +824,13 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
-  private static Map<Id, SObject> getOldFlowRecords(List<SObject> currentRecords, SObjectType sObjectType) {
+  private static Map<Id, SObject> getOldFlowRecords(List<SObject> currentRecords, SObjectType sObjectType, String rollupFieldOnCalcItem) {
     if (currentRecords.isEmpty()) {
       return new Map<Id, SObject>();
     } else if (oldRecordsMap != null) {
       return oldRecordsMap;
     }
 
-    Set<String> fieldNames = currentRecords[0].getPopulatedFieldsAsMap().keySet();
     Set<Id> currentRecordIds = new Set<Id>();
     for (SObject currentRecord : currentRecords) {
       if (currentRecord.Id != null) {
@@ -840,7 +839,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     // we need to do two things: get the old records, and initialize default values for both existing records and the ones that don't have matches in the db
     Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(
-      Database.query('SELECT ' + String.join(new List<String>(fieldNames), ',') + '\nFROM ' + String.valueOf(sObjectType) + '\nWHERE Id = :currentRecordIds')
+      Database.query('SELECT ' + rollupFieldOnCalcItem + '\nFROM ' + String.valueOf(sObjectType) + '\nWHERE Id = :currentRecordIds')
     );
     for (SObject currentRecord : currentRecords) {
       DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
@@ -848,14 +847,14 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
         ? existingOldRecordsMap.get(currentRecord.Id)
         : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
       Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
-      for (String fieldName : fieldNames) {
-        SObjectField fieldToken = fieldTokensForObject.get(fieldName);
-        if (fieldToken.getDescribe().isUpdateable() == false) {
-          continue;
-        }
-        if (existingRecordOrDefault.get(fieldName) == null) {
-          existingRecordOrDefault.put(fieldName, FieldInitializer.getDefaultValue(fieldTokensForObject.get(fieldName)));
-        }
+      SObjectField fieldToken = fieldTokensForObject.get(rollupFieldOnCalcItem);
+      if (fieldToken.getDescribe().isUpdateable() == false) {
+        continue;
+      } else if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null) {
+        // the field has already been initialized! perfect
+        continue;
+      } else {
+        existingRecordOrDefault.put(rollupFieldOnCalcItem, FieldInitializer.getDefaultValue(fieldToken));
       }
     }
     return existingOldRecordsMap;
@@ -1259,7 +1258,7 @@ public without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public virtual Object getDefaultValue(SObjectField field) {
       DescribeFieldResult fieldDescribe = field.getDescribe();
-      if (fieldDescribe.isDefaultedOnCreate()) {
+      if (fieldDescribe.isDefaultedOnCreate() && fieldDescribe.getDefaultValue() != null) {
         return fieldDescribe.getDefaultValue();
       }
       // not surprisingly, "getDefaultValue" on the DescribeFieldResult returns null for fields without default values

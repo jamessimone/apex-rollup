@@ -1726,10 +1726,12 @@ private class RollupTests {
   static void shouldNotWriteToNonUpdateableFieldsForOldFlowRecords() {
     Account acc = [SELECT Id FROM Account];
 
-    Event ev = new Event(ActivityDateTime = System.now().addDays(-2), WhatId = acc.Id, DurationInMinutes = 5);
-    insert ev;
+    Event ev = new Event(ActivityDateTime = System.now().addDays(-2), WhatId = acc.Id);
 
-    ev = [SELECT AccountId, ActivityDateTime, WhatId FROM Event];
+    // a useful hack for assigning values to unwriteable fields ...
+    Map<String, Object> deserializedEvent = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(ev));
+    deserializedEvent.put('AccountId', null);
+    ev = (Event) JSON.deserialize(JSON.serialize(deserializedEvent), Event.class);
 
     List<Event> events = new List<Event>{ ev };
     DMLMock mock = loadMock(events);
