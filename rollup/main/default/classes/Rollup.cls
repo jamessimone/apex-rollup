@@ -848,10 +848,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
       Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
       SObjectField fieldToken = fieldTokensForObject.get(rollupFieldOnCalcItem);
-      if (fieldToken.getDescribe().isUpdateable() == false) {
-        continue;
-      } else if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null) {
-        // the field has already been initialized! perfect
+      if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null || fieldToken.getDescribe().isUpdateable() == false) {
         continue;
       } else {
         existingRecordOrDefault.put(rollupFieldOnCalcItem, FieldInitializer.getDefaultValue(fieldToken));
@@ -1213,7 +1210,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private Object getRollupVal(Rollup rollup, List<SObject> calcItems, Object priorVal) {
     RollupCalculator rollupCalc = this.getRollupType(priorVal, rollup);
-    rollupCalc.performRollup(rollup.op, priorVal, calcItems, rollup.oldCalcItems, rollup.opFieldOnCalcItem);
+    rollupCalc.performRollup(rollup.op, calcItems, rollup.oldCalcItems, rollup.opFieldOnCalcItem);
     return rollupCalc.getReturnValue();
   }
 
@@ -1386,6 +1383,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private abstract class RollupCalculator {
+    private Boolean isFirstTimeThrough = true;
     protected Boolean shouldShortCircuit = false;
     protected Object returnVal;
     public RollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
@@ -1398,7 +1396,90 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public virtual Object getReturnValue() {
       return this.returnVal;
     }
-    public abstract void performRollup(Op op, Object priorVal, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField);
+
+    public virtual void performRollup(Op op, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
+      for (Integer index = calcItems.size() - 1; index >= 0; index--) {
+        SObject calcItem = calcItems[index];
+        if (this.shouldShortCircuit) {
+          this.handleShortCircuit(op, calcItem, operationField);
+          continue;
+        } else {
+          switch on op {
+            when COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
+              this.handleCountDistinct(op, calcItem, operationField);
+            }
+            when UPDATE_COUNT_DISTINCT {
+              this.handleUpdateCountDistinct(op, calcItem, operationField, oldCalcItems);
+            }
+            when SUM, COUNT {
+              this.handleSumOrCount(op, calcItem, operationField);
+            }
+            when UPDATE_SUM, UPDATE_COUNT {
+              this.handleUpdateSumOrCount(op, calcItem, operationField, oldCalcItems);
+            }
+            when DELETE_SUM, DELETE_COUNT {
+              this.handleDeleteSumOrCount(op, calcItem, operationField);
+            }
+            when MIN {
+              this.handleMin(op, calcItem, operationField);
+            }
+            when MAX {
+              this.handleMax(op, calcItem, operationField);
+            }
+            when UPDATE_MAX, UPDATE_MIN, DELETE_MAX, DELETE_MIN {
+              this.handleUpdateMinOrMax(op, calcItem, operationField, oldCalcItems);
+            }
+            when CONCAT, CONCAT_DISTINCT {
+              this.handleConcat(op, calcItem, operationField);
+            }
+            when UPDATE_CONCAT, UPDATE_CONCAT_DISTINCT {
+              this.handleUpdateConcat(op, calcItem, operationField, oldCalcItems);
+            }
+            when DELETE_CONCAT, DELETE_CONCAT_DISTINCT {
+              this.handleDeleteConcat(op, calcItem, operationField);
+            }
+          }
+        }
+
+        if (this.shouldShortCircuit && this.isFirstTimeThrough) {
+          // if, at any point, short circuiting is enabled, we need to loop back around
+          // one last time to ensure no other items in memory will contribute to the final rollup
+          this.isFirstTimeThrough = false;
+          index = calcItems.size();
+        }
+      }
+      this.returnVal = this.setReturnValue();
+    }
+
+    // all of these are no-ops by default
+    public virtual void handleCountDistinct(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    public virtual void handleUpdateCountDistinct(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+    }
+    public virtual void handleSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    public virtual void handleUpdateSumOrCount(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+    }
+    public virtual void handleDeleteSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    public virtual void handleMin(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    public virtual void handleMax(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    public virtual void handleUpdateMinOrMax(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+    }
+    public virtual void handleConcat(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    public virtual void handleUpdateConcat(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+    }
+    public virtual void handleDeleteConcat(Op op, SObject calcItem, SObjectField operationField) {
+    }
+    protected virtual void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
+    }
+
+    protected virtual Object setReturnValue() {
+      return this.returnVal;
+    }
 
     protected virtual Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
       String operationName = operation.name().contains('_') ? operation.name().substringAfter('_') : operation.name();
@@ -1419,37 +1500,33 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    public override void performRollup(Op operation, Object priorVal, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
-      Integer returnInt = (Integer) this.returnVal;
-      for (SObject calcItem : calcItems) {
-        if (this.shouldShortCircuit) {
-          Object currentVal = calcItem.get(operationField);
-          if (currentVal != null) {
-            this.distinctValues.add(currentVal);
-          }
-          continue;
-        }
+    protected override Object setReturnValue() {
+      return this.distinctValues.size();
+    }
 
-        switch on operation {
-          when COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
-            if (operation != Op.DELETE_COUNT_DISTINCT && calcItem.get(operationField) != null) {
-              this.distinctValues.add(calcItem.get(operationField));
-            }
-            this.shouldShortCircuit = true;
-            this.calculateNewAggregateValue(new Set<Id>{ calcItem.Id }, operation, operationField, calcItem.getSObjectType());
-          }
-          when UPDATE_COUNT_DISTINCT {
-            Object currentVal = calcItem.get(operationField);
-            Object priorCalcVal = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : currentVal;
-            if (currentVal != priorCalcVal) {
-              this.distinctValues.add(currentVal);
-              this.shouldShortCircuit = true;
-              this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
-            }
-          }
-        }
+    protected override void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
+      Object currentVal = calcItem.get(operationField);
+      if (currentVal != null) {
+        this.distinctValues.add(currentVal);
       }
-      this.returnVal = this.distinctValues.size();
+    }
+
+    public override void handleCountDistinct(Op operation, SObject calcItem, SObjectField operationField) {
+      if (operation != Op.DELETE_COUNT_DISTINCT && calcItem.get(operationField) != null) {
+        this.distinctValues.add(calcItem.get(operationField));
+      }
+      this.shouldShortCircuit = true;
+      this.calculateNewAggregateValue(new Set<Id>{ calcItem.Id }, operation, operationField, calcItem.getSObjectType());
+    }
+
+    public override void handleUpdateCountDistinct(Op operation, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      Object currentVal = calcItem.get(operationField);
+      Object priorCalcVal = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : currentVal;
+      if (currentVal != priorCalcVal) {
+        this.distinctValues.add(currentVal);
+        this.shouldShortCircuit = true;
+        this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
+      }
     }
 
     protected override Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
@@ -1476,8 +1553,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private virtual class DecimalRollupCalculator extends RollupCalculator {
+    private Decimal returnDecimal;
     public DecimalRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
       super(priorVal, operationField, defaultVal);
+      this.returnDecimal = (Decimal) this.returnVal;
     }
 
     protected virtual Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
@@ -1503,82 +1582,77 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return this.returnVal;
     }
 
-    public override void performRollup(Op operation, Object priorVal, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
-      Decimal returnDecimal = (Decimal) this.returnVal;
-      for (SObject calcItem : calcItems) {
-        if (this.shouldShortCircuit) {
-          switch on operation {
-            when UPDATE_MAX {
-              // re-maxing by way of query has occurred, but is it **correct**?
-              // if one of the other updated calcItems is numerically superior, assign the new max
-              Decimal newVal = this.getNumericValue(calcItem, operationField);
-              if (newVal > returnDecimal) {
-                returnDecimal = newVal;
-              }
-            }
-            when UPDATE_MIN {
-              // re-"min"-ing has occurred by way of query, but is an in-memory calcItem even less?
-              Decimal newVal = this.getNumericValue(calcItem, operationField);
-              if (newVal < returnDecimal) {
-                returnDecimal = newVal;
-              }
-            }
+    protected override void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
+      switch on op {
+        when UPDATE_MAX {
+          // re-maxing by way of query has occurred, but is it **correct**?
+          // if one of the other updated calcItems is numerically superior, assign the new max
+          Decimal newVal = this.getNumericValue(calcItem, operationField);
+          if (newVal > returnDecimal) {
+            this.returnDecimal = newVal;
           }
-          continue;
         }
-
-        switch on operation {
-          when SUM, COUNT {
-            returnDecimal += this.getNumericValue(calcItem, operationField);
-          }
-          when DELETE_SUM, DELETE_COUNT {
-            returnDecimal -= this.getNumericValue(calcItem, operationField);
-          }
-          when UPDATE_SUM, UPDATE_COUNT {
-            returnDecimal += this.getNumericChangedValue(calcItem, operationField, oldCalcItems);
-          }
-          when MAX {
-            Decimal numericValue = this.getNumericValue(calcItem, operationField);
-            if (numericValue > returnDecimal || returnDecimal == 0) {
-              returnDecimal = numericValue;
-            }
-          }
-          when MIN {
-            Decimal numericValue = this.getNumericValue(calcItem, operationField);
-            if (numericValue < returnDecimal || returnDecimal == 0) {
-              returnDecimal = numericValue;
-            }
-          }
-          when UPDATE_MAX, UPDATE_MIN, DELETE_MAX, DELETE_MIN {
-            Decimal newVal = this.getNumericValue(calcItem, operationField);
-            Decimal thisPriorVal = this.getNumericValue((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem), operationField);
-            if (
-              (operation.name().contains(Op.MAX.name()) && thisPriorVal != 0 && thisPriorVal == returnDecimal && newVal <= thisPriorVal) ||
-              (operation.name().contains(Op.MIN.name()) &&
-              thisPriorVal != 0 &&
-              thisPriorVal == returnDecimal &&
-              newVal >= thisPriorVal)
-            ) {
-              this.shouldShortCircuit = true;
-              Object potentialReturnValue = (Decimal) this.calculateNewAggregateValue(
-                oldCalcItems.keySet(),
-                operation,
-                operationField,
-                calcItem.getSObjectType()
-              );
-              returnDecimal = this.getDecimalOrDefault(potentialReturnValue);
-              if (returnDecimal == 0) {
-                returnDecimal = operation == Op.UPDATE_MAX ? FieldInitializer.minimumLongValue : FieldInitializer.maximumLongValue;
-              }
-            } else if (operation == Op.UPDATE_MAX && newVal > returnDecimal) {
-              returnDecimal = newVal;
-            } else if (operation == Op.UPDATE_MIN && newVal < returnDecimal || returnDecimal == 0) {
-              returnDecimal = newVal;
-            }
+        when UPDATE_MIN {
+          // re-"min"-ing has occurred by way of query, but is an in-memory calcItem even less?
+          Decimal newVal = this.getNumericValue(calcItem, operationField);
+          if (newVal < returnDecimal) {
+            this.returnDecimal = newVal;
           }
         }
       }
-      this.returnVal = returnDecimal;
+    }
+
+    public override void handleSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
+      this.returnDecimal += this.getNumericValue(calcItem, operationField);
+    }
+
+    public override void handleUpdateSumOrCount(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      this.returnDecimal += this.getNumericChangedValue(calcItem, operationField, oldCalcItems);
+    }
+
+    public override void handleDeleteSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
+      this.returnDecimal -= this.getNumericValue(calcItem, operationField);
+    }
+
+    public override void handleMax(Op op, SObject calcItem, SObjectField operationField) {
+      Decimal numericValue = this.getNumericValue(calcItem, operationField);
+      if (numericValue > this.returnDecimal || this.returnDecimal == 0) {
+        this.returnDecimal = numericValue;
+      }
+    }
+
+    public override void handleMin(Op op, SObject calcItem, SObjectField operationField) {
+      Decimal numericValue = this.getNumericValue(calcItem, operationField);
+      if (numericValue < this.returnDecimal || this.returnDecimal == 0) {
+        this.returnDecimal = numericValue;
+      }
+    }
+
+    public override void handleUpdateMinOrMax(Op operation, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      Decimal newVal = this.getNumericValue(calcItem, operationField);
+      Decimal thisPriorVal = this.getNumericValue((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem), operationField);
+      if (
+        (operation.name().contains(Op.MAX.name()) && thisPriorVal != 0 && thisPriorVal == this.returnDecimal && newVal <= thisPriorVal) ||
+        (operation.name().contains(Op.MIN.name()) &&
+        thisPriorVal != 0 &&
+        thisPriorVal == this.returnDecimal &&
+        newVal >= thisPriorVal)
+      ) {
+        this.shouldShortCircuit = true;
+        Object potentialReturnValue = (Decimal) this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
+        this.returnDecimal = this.getDecimalOrDefault(potentialReturnValue);
+        if (this.returnDecimal == 0) {
+          this.returnDecimal = operation == Op.UPDATE_MAX ? FieldInitializer.minimumLongValue : FieldInitializer.maximumLongValue;
+        }
+      } else if (operation == Op.UPDATE_MAX && newVal > this.returnDecimal) {
+        this.returnDecimal = newVal;
+      } else if (operation == Op.UPDATE_MIN && newVal < this.returnDecimal || this.returnDecimal == 0) {
+        this.returnDecimal = newVal;
+      }
+    }
+
+    protected override Object setReturnValue() {
+      return this.returnDecimal;
     }
 
     protected virtual override Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
@@ -1711,76 +1785,80 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private virtual class StringRollupCalculator extends RollupCalculator {
+    private String stringVal;
     public StringRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
       super(priorVal, operationField, defaultVal);
+      this.stringVal = (String) this.returnVal;
     }
 
-    public override void performRollup(Op operation, Object priorVal, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
-      String stringVal = (String) this.returnVal;
-      Boolean isConcatDistinct = operation.name().contains(Op.CONCAT_DISTINCT.name());
-      for (SObject calcItem : calcItems) {
-        if (this.shouldShortCircuit) {
-          String newVal = (String) calcItem.get(operationField);
-          switch on operation {
-            when UPDATE_MAX, UPDATE_MIN {
-              if (this.isTrueFor(operation, newVal, stringVal)) {
-                stringVal = newVal;
-              }
-            }
-          }
-          continue;
-        }
-        switch on operation {
-          when CONCAT, CONCAT_DISTINCT {
-            String newVal = (String) calcItem.get(operationField);
-            if (isConcatDistinct && stringVal.contains(newVal)) {
-              // skip
-              continue;
-            }
-            stringVal += this.concatWithDelimiter(newVal);
-          }
-          when UPDATE_CONCAT, UPDATE_CONCAT_DISTINCT {
-            String newVal = (String) calcItem.get(operationField);
-            String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
-            if (isConcatDistinct && stringVal.contains(newVal) == false) {
-              stringVal += this.concatWithDelimiter(newVal);
-              continue;
-            }
-            stringVal = this.replaceWithDelimiter(stringVal, priorString, newVal);
-          }
-          when DELETE_CONCAT, DELETE_CONCAT_DISTINCT {
-            String existingVal = (String) calcItem.get(operationField);
-            stringVal = this.replaceWithDelimiter(stringVal, existingVal, '');
-          }
-          when MAX, MIN {
-            String newVal = (String) calcItem.get(operationField);
-            if (this.isTrueFor(operation, newVal, stringVal)) {
-              stringVal = newVal;
-            }
-          }
-          when UPDATE_MAX, UPDATE_MIN, DELETE_MAX, DELETE_MIN {
-            String newVal = (String) calcItem.get(operationField);
-            String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
+    protected override Object setReturnValue() {
+      String possibleReturnValue = this.stringVal.normalizeSpace();
+      String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substring(0, possibleReturnValue.length() - 1) : possibleReturnValue;
+      return (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
+    }
 
-            if (
-              (operation.name().contains(Op.MAX.name()) && priorString == stringVal && newVal <= stringVal) ||
-              (operation.name().contains(Op.MIN.name()) &&
-              priorString == stringVal &&
-              newVal >= stringVal)
-            ) {
-              this.shouldShortCircuit = true;
-              Object potentialReturnValue = this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
-              stringVal = potentialReturnValue == null ? '' : (String) potentialReturnValue;
-            } else if (this.isTrueFor(operation, newVal, stringVal)) {
-              stringVal = newVal;
-            }
+    protected override void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
+      String newVal = (String) calcItem.get(operationField);
+      switch on op {
+        when UPDATE_MAX, UPDATE_MIN {
+          if (this.isTrueFor(op, newVal, this.stringVal)) {
+            this.stringVal = newVal;
           }
         }
       }
+    }
 
-      String possibleReturnValue = stringVal.normalizeSpace();
-      String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substring(0, possibleReturnValue.length() - 1) : possibleReturnValue;
-      this.returnVal = (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
+    public override void handleConcat(Op operation, SObject calcItem, SObjectField operationField) {
+      Boolean isConcatDistinct = operation.name().contains(Op.CONCAT_DISTINCT.name());
+      String newVal = (String) calcItem.get(operationField);
+      if (isConcatDistinct && this.stringVal.contains(newVal)) {
+        // skip
+      } else {
+        this.stringVal += this.concatWithDelimiter(newVal);
+      }
+    }
+
+    public override void handleUpdateConcat(Op operation, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      Boolean isConcatDistinct = operation.name().contains(Op.CONCAT_DISTINCT.name());
+      String newVal = (String) calcItem.get(operationField);
+      String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
+      if (isConcatDistinct && this.stringVal.contains(newVal) == false) {
+        this.stringVal += this.concatWithDelimiter(newVal);
+      } else {
+        this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
+      }
+    }
+
+    public override void handleDeleteConcat(Op operation, SObject calcItem, SObjectField operationField) {
+      String existingVal = (String) calcItem.get(operationField);
+      this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
+    }
+
+    public override void handleMin(Op operation, SObject calcItem, SObjectField operationField) {
+      String newVal = (String) calcItem.get(operationField);
+      if (this.isTrueFor(operation, newVal, this.stringVal)) {
+        this.stringVal = newVal;
+      }
+    }
+    public override void handleMax(Op operation, SObject calcItem, SObjectField operationField) {
+      this.handleMin(operation, calcItem, operationField);
+    }
+    public override void handleUpdateMinOrMax(Op operation, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      String newVal = (String) calcItem.get(operationField);
+      String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
+
+      if (
+        (operation.name().contains(Op.MAX.name()) && priorString == this.stringVal && newVal <= this.stringVal) ||
+        (operation.name().contains(Op.MIN.name()) &&
+        priorString == this.stringVal &&
+        newVal >= this.stringVal)
+      ) {
+        this.shouldShortCircuit = true;
+        Object potentialReturnValue = this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
+        this.stringVal = potentialReturnValue == null ? '' : (String) potentialReturnValue;
+      } else if (this.isTrueFor(operation, newVal, this.stringVal)) {
+        this.stringVal = newVal;
+      }
     }
 
     protected virtual Boolean isTrueFor(Op operation, String newVal, String priorVal) {
@@ -1832,7 +1910,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public AverageRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
       super(priorVal, operationField, defaultVal);
     }
-    public override void performRollup(Op operation, Object priorVal, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
+    public override void performRollup(Op operation, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
       Decimal average = (Decimal) this.returnVal;
       if (calcItems.isEmpty()) {
         return;
