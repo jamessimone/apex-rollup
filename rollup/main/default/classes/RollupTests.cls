@@ -1585,6 +1585,28 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldCorrectlyInitializeDefaultsWhenOldRecordsDontExistFromFlow() {
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType)),
+      new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType))
+    };
+    DMLMock mock = getMock(opps);
+    opps[1].AccountId = null;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'UPDATE', 'SUM'));
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for Amount');
+  }
+
+  @isTest
   static void shouldBeInvokedSuccessfullyBeforeDeleteFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
     DMLMock mock = getMock(opps);
