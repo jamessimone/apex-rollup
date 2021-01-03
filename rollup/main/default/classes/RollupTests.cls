@@ -5,7 +5,8 @@ private class RollupTests {
     Account acc = new Account(Name = 'RollupTests');
     insert acc;
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
-    insert con;
+    Opportunity opp = new Opportunity(StageName = 'testsetup', Name = 'testsetup', CloseDate = System.today(), Amount = 500);
+    insert new List<SObject>{ con, opp };
   }
 
   private class DMLMock extends Rollup.DMLHelper {
@@ -1077,7 +1078,7 @@ private class RollupTests {
 
     DMLMock mock = getMock(opps);
     Rollup.triggerContext = TriggerOperation.BEFORE_DELETE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => opps[0] };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ testOppOne.Id => testOppOne };
 
     Test.startTest();
     Rollup.averageFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -1097,7 +1098,7 @@ private class RollupTests {
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = opp.Id);
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = opp.Id);
 
-    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo });
+    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo }, opp.Id);
     Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -1117,7 +1118,7 @@ private class RollupTests {
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50));
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50));
 
-    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo });
+    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo }, opp.Id);
     Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -1155,12 +1156,12 @@ private class RollupTests {
     Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Min date on insert test');
     insert opp;
 
-    Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50));
+    Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = opp.Id);
     insert taskOne;
 
-    Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = opp.CloseDate.addDays(5), Id = generateId(Task.SObjectType));
+    Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = opp.CloseDate.addDays(5), Id = generateId(Task.SObjectType), WhatId = opp.Id);
 
-    DMLMock mock = getTaskMock(new List<Task>{ taskTwo });
+    DMLMock mock = getTaskMock(new List<Task>{ taskTwo }, opp.Id);
     Rollup.triggerContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Task>(new List<Task>{ new Task(Id = taskTwo.Id, ActivityDate = opp.CloseDate) });
 
@@ -1913,10 +1914,9 @@ private class RollupTests {
     return loadMock(records);
   }
 
-  private static DMLMock getTaskMock(List<SObject> records) {
-    Opportunity opp = [SELECT Id FROM Opportunity];
+  private static DMLMock getTaskMock(List<SObject> records, Id oppId) {
     for (SObject task : records) {
-      task.put('WhatId', opp.Id);
+      task.put('WhatId', oppId);
     }
     return loadMock(records);
   }

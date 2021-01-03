@@ -1197,7 +1197,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> calcItems = calcItemsByLookupField.get(key);
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.getRollupVal(rollup, calcItems, priorVal);
+        Object newVal = this.getRollupVal(rollup, calcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
         if (priorVal != newVal) {
           recordsToUpdate.add(lookupRecord);
@@ -1208,32 +1208,32 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return recordsToUpdate;
   }
 
-  private Object getRollupVal(Rollup rollup, List<SObject> calcItems, Object priorVal) {
-    RollupCalculator rollupCalc = this.getRollupType(priorVal, rollup);
+  private Object getRollupVal(Rollup rollup, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
+    RollupCalculator rollupCalc = this.getRollupType(priorVal, rollup, lookupRecordKey, lookupKeyField);
     rollupCalc.performRollup(rollup.op, calcItems, rollup.oldCalcItems, rollup.opFieldOnCalcItem);
     return rollupCalc.getReturnValue();
   }
 
-  private RollupCalculator getRollupType(Object priorVal, Rollup roll) {
+  private RollupCalculator getRollupType(Object priorVal, Rollup roll, String lookupRecordKey, SObjectField lookupKeyField) {
     if (roll.op.name().contains(Rollup.Op.COUNT_DISTINCT.name())) {
-      return new CountDistinctRollupCalculator(0, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new CountDistinctRollupCalculator(0, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else if (roll.op.name().contains(Rollup.Op.COUNT.name())) {
-      return new CountRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new CountRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else if (roll.op.name().contains(Rollup.Op.AVERAGE.name())) {
-      return new AverageRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new AverageRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else if (priorVal instanceof Decimal) {
-      return new DecimalRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new DecimalRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else if (priorVal instanceof String) {
-      return new PicklistRollupCalculator(priorVal, roll.opFieldOnCalcItem, roll.overrideForStringRollups);
+      return new PicklistRollupCalculator(priorVal, roll.opFieldOnCalcItem, roll.overrideForStringRollups, lookupRecordKey, lookupKeyField);
     } else if (priorVal instanceof Date) {
       // not obvious: the order of these else if's is of supreme importance
       // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
       // all Dates test true as Datetimes ...
-      return new DateRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new DateRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else if (priorVal instanceof Time) {
-      return new TimeRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new TimeRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else if (priorval instanceof Datetime) {
-      return new DatetimeRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups);
+      return new DatetimeRollupCalculator(priorVal, roll.opFieldOnLookupObject, roll.overrideForNumberRollups, lookupRecordKey, lookupKeyField);
     } else {
       throw new IllegalArgumentException('Calculation not defined for: ' + JSON.serialize(priorVal));
     }
@@ -1314,12 +1314,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           this.activeVals.add('');
           return;
         }
-        /**
-         * typically, you iterate through a list in reverse in order to remove something from it
-         * here, we don't want to iterate in reverse, we want to take the inverted index of the list so
-         * the logic in "isTrueFor" more compelling; an item at the end of the reversed list has GREATER
-         * "importance" (in rank) than an item at the start.
-         */
 
         for (Integer index = 0; index < picklistVals.size(); index++) {
           PicklistEntry picklist = picklistVals[index];
@@ -1384,14 +1378,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private abstract class RollupCalculator {
     private Boolean isFirstTimeThrough = true;
+
+    protected final String lookupKeyQuery;
+
     protected Boolean shouldShortCircuit = false;
     protected Object returnVal;
-    public RollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
+    public RollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
       if (defaultVal != null) {
         this.returnVal = defaultVal;
       } else {
         this.returnVal = priorVal == null ? FieldInitializer.getDefaultValue(operationField) : priorVal;
       }
+      this.lookupKeyQuery = ' AND ' + lookupKeyField + ' = \'' + lookupRecordKey + '\'';
     }
     public virtual Object getReturnValue() {
       return this.returnVal;
@@ -1484,7 +1482,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     protected virtual Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
       String operationName = operation.name().contains('_') ? operation.name().substringAfter('_') : operation.name();
       String alias = operationName.toLowerCase() + 'field';
-      String query = 'SELECT ' + operationName + '(' + operationField + ')' + alias + ' FROM ' + sObjectType + ' WHERE Id != :excludedItems';
+      String query =
+        'SELECT ' +
+        operationName +
+        '(' +
+        operationField +
+        ')' +
+        alias +
+        ' FROM ' +
+        sObjectType +
+        ' WHERE Id != :excludedItems ' +
+        this.lookupKeyQuery;
+
       List<SObject> aggregate = Database.query(query);
       return aggregate.isEmpty() == false ? aggregate[0].get(alias) : null;
     }
@@ -1492,8 +1501,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class CountDistinctRollupCalculator extends RollupCalculator {
     private final Set<Object> distinctValues;
-    public CountDistinctRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(priorVal, operationField, defaultVal);
+    public CountDistinctRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
       this.distinctValues = new Set<Object>();
       if (this.returnVal != FieldInitializer.getDefaultValue(operationfield)) {
         this.distinctValues.add(this.returnVal);
@@ -1537,7 +1546,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         (isGroupable ? ', COUNT(Id)' : '') +
         ' FROM ' +
         sObjectType +
-        ' WHERE Id != :excludedItems AND ' +
+        ' WHERE Id != :excludedItems ' +
+        this.lookupKeyQuery +
+        ' AND ' +
         operationField +
         ' != null' +
         // not every field supports grouping for counts. unlucky.
@@ -1554,8 +1565,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private virtual class DecimalRollupCalculator extends RollupCalculator {
     private Decimal returnDecimal;
-    public DecimalRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(priorVal, operationField, defaultVal);
+    public DecimalRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
       this.returnDecimal = (Decimal) this.returnVal;
     }
 
@@ -1661,7 +1672,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         aggregate = super.calculateNewAggregateValue(excludedItems, operation, operationField, sObjectType);
       } catch (Exception ex) {
         Decimal minOrMax;
-        List<SObject> allOtherItems = Database.query('SELECT ' + operationField + ' FROM ' + sObjectType + ' WHERE Id != :excludedItems');
+        List<SObject> allOtherItems = Database.query('SELECT ' + operationField + ' FROM ' + sObjectType + ' WHERE Id != :excludedItems' + this.lookupKeyQuery);
         for (SObject otherItem : allOtherItems) {
           Decimal otherItemDate = this.getDecimalOrDefault(otherItem.get(operationField));
           if (otherItemDate != null && operation.name().contains(Op.MAX.name()) && (minOrMax == null || otherItemDate > minOrMax)) {
@@ -1682,8 +1693,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private virtual class DatetimeRollupCalculator extends DecimalRollupCalculator {
-    public DatetimeRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(((Datetime) priorVal).getTime(), operationField, defaultVal);
+    public DatetimeRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(((Datetime) priorVal).getTime(), operationField, defaultVal, lookupRecordKey, lookupKeyField);
     }
 
     public virtual override Object getReturnValue() {
@@ -1726,8 +1737,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private class DateRollupCalculator extends DatetimeRollupCalculator {
     // for Date, it's not necessary to override the "getDecimalOrDefault" method in DatetimeRollupCalculator
     // because the conversion only happens in "getReturnValue"
-    public DateRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(Datetime.newInstanceGmt((Date) priorVal, Time.newInstance(0, 0, 0, 0)), operationField, defaultVal);
+    public DateRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(Datetime.newInstanceGmt((Date) priorVal, Time.newInstance(0, 0, 0, 0)), operationField, defaultVal, lookupRecordKey, lookupKeyField);
     }
 
     public override Object getReturnValue() {
@@ -1736,8 +1747,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private class TimeRollupCalculator extends DatetimeRollupCalculator {
-    public TimeRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(Datetime.newInstanceGmt(FieldInitializer.defaultDateTime.dateGmt(), (Time) priorVal), operationField, defaultVal);
+    public TimeRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(Datetime.newInstanceGmt(FieldInitializer.defaultDateTime.dateGmt(), (Time) priorVal), operationField, defaultVal, lookupRecordKey, lookupKeyField);
     }
 
     public override Object getReturnValue() {
@@ -1759,8 +1770,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class CountRollupCalculator extends DecimalRollupCalculator {
     private final Integer existingValue;
-    public CountRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(priorVal, operationField, defaultVal);
+    public CountRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
       // cache existing value to ensure we don't dip below 0 in "getReturnValue"
       this.existingValue = Integer.valueOf(this.returnVal);
     }
@@ -1788,8 +1799,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // for now, hard-coding to comma here. We may update this to allow for CMDT-based overrides of the delimiter
     private final String concatDelimiter = ', ';
     private String stringVal;
-    public StringRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(priorVal, operationField, defaultVal);
+    public StringRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
       this.stringVal = (String) this.returnVal;
     }
 
@@ -1884,8 +1895,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class PicklistRollupCalculator extends StringRollupCalculator {
     private final PicklistController picklistController;
-    public PicklistRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(priorVal, operationField, defaultVal);
+    public PicklistRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
       this.picklistController = new PicklistController(operationField.getDescribe());
     }
 
@@ -1909,8 +1920,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private class AverageRollupCalculator extends RollupCalculator {
-    public AverageRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
-      super(priorVal, operationField, defaultVal);
+    public AverageRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
     }
     public override void performRollup(Op operation, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
       Decimal average = (Decimal) this.returnVal;
@@ -1921,7 +1932,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // the List isn't strongly typed at this point, otherwise we could avoid this shameful statement
       SObjectType sObjectType = calcItems[0].getSobjectType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Integer countOfPreExistingItems = Database.countQuery(getCountQueryString(sObjectType, '!='));
+      Integer countOfPreExistingItems = Database.countQuery(getCountQueryString(sObjectType, '!=') + this.lookupKeyQuery);
       Decimal oldSum = (Decimal) this.calculateNewAggregateValue(objIds, Op.SUM, operationField, sObjectType);
 
       List<SObject> applicableCalcItems = operation == Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
