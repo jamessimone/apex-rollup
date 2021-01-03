@@ -1398,7 +1398,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public virtual void performRollup(Op op, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
-      for (Integer index = calcItems.size() - 1; index >= 0; index--) {
+      for (Integer index = 0; index < calcItems.size(); index++) {
         SObject calcItem = calcItems[index];
         if (this.shouldShortCircuit) {
           this.handleShortCircuit(op, calcItem, operationField);
@@ -1445,7 +1445,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           // if, at any point, short circuiting is enabled, we need to loop back around
           // one last time to ensure no other items in memory will contribute to the final rollup
           this.isFirstTimeThrough = false;
-          index = calcItems.size();
+          index = 0;
         }
       }
       this.returnVal = this.setReturnValue();
@@ -1785,6 +1785,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private virtual class StringRollupCalculator extends RollupCalculator {
+    // for now, hard-coding to comma here. We may update this to allow for CMDT-based overrides of the delimiter
+    private final String concatDelimiter = ', ';
     private String stringVal;
     public StringRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal) {
       super(priorVal, operationField, defaultVal);
@@ -1822,9 +1824,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Boolean isConcatDistinct = operation.name().contains(Op.CONCAT_DISTINCT.name());
       String newVal = (String) calcItem.get(operationField);
       String priorString = (String) (oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal);
-      if (isConcatDistinct && this.stringVal.contains(newVal) == false) {
-        this.stringVal += this.concatWithDelimiter(newVal);
-      } else {
+      if (isConcatDistinct && this.stringVal.contains(newVal) == false || !isConcatDistinct) {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
       }
     }
@@ -1871,12 +1871,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     private String concatWithDelimiter(String newVal) {
-      // for now, hard-coding to comma here. We may update this to allow for CMDT-based overrides of the delimiter
-      return ', ' + newVal + ', ';
+      return this.concatDelimiter + newVal + this.concatDelimiter;
     }
 
     private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {
-      return existingVal.replace(matchingVal, replacementVal) + ', ';
+      if (existingVal.contains(matchingVal)) {
+        return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
+      }
+      return existingVal += replacementVal + this.concatDelimiter;
     }
   }
 

@@ -783,11 +783,14 @@ private class RollupTests {
     update acc;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'second test string', Id = generateId(Opportunity.SObjectType));
+    Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'third test string', Id = generateId(Opportunity.SObjectType));
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.Name = acc.AccountNumber;
+    Opportunity secondOldOpp = secondOpp.clone(true, true);
+    secondOldOpp.Name = acc.AccountNumber;
 
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp };
+    DMLMock mock = getMock(new List<Opportunity>{ opp, secondOpp });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOldOpp.Id => secondOldOpp };
     Rollup.triggerContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
@@ -797,9 +800,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      acc.AccountNumber +
-      ', ' +
-      opp.Name,
+      'second test string, third test string',
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_UPDATE should be the distinct combo of the old and new strings'
     );
