@@ -203,7 +203,7 @@ public static Rollup sumFromTrigger(
   SObjectType lookupSobjectType
 )
 
-//for using as the "one line of code" and CMDT-driven rollups
+// for using as the "one line of code" and CMDT-driven rollups
 public static void runFromTrigger()
 ```
 
@@ -243,7 +243,37 @@ Rollup.sumFromTrigger(
 ).runCalc();
 ```
 
-It's that simple. Note that in order for custom apex solutions that don't use the `batch` static method on `Rollup` to properly start, the `runCalc()` method must also be called. That is, if you only have one rollup operation per object, you'll _always_ need to call `runCalc()` when invoking `Rollup` from a trigger.
+It's that simple. Note that in order for custom Apex solutions that don't use the `batch` static method on `Rollup` to properly start, the `runCalc()` method must also be called. That is, if you only have one rollup operation per object, you'll _always_ need to call `runCalc()` when invoking `Rollup` from a trigger.
+
+Another note for when the use of an `Evaluator` class might be necessary -- let's say that you have some slight lookup skew caused by a fallback object in a lookup relationship. This fallback object has thousands of objects tied to it, and updates to it are frequently painful / slow. If you didn't need the rollup for the fallback, you could implement an `Evaluator` to exclude it from being processed:
+
+```java
+// again using the example of Opportunities
+trigger OpportunityTrigger on Opportunity(before update, after update, before insert, after insert, before delete) {
+
+  Rollup.sumFromTrigger(
+    Opportunity.Amount
+    Opportunity.AccountId,
+    Account.Id,
+    Account.AnnualRevenue,
+    Account.SObjectType,
+    new FallbackAccountExcluder()
+  ).runCalc();
+
+  public class FallbackAccountExcluder implements Rollup.Evaluator {
+    public Boolean matches(Object calcItem) {
+      if((calcItem instanceof Opportunity) == false) {
+        return false;
+      }
+
+      Opportunity opp = (Opportunity) calcItem;
+      // there are so many ways you could avoid hard-coding the Id here:
+      // custom settings, custom metadata, labels, and platform cache, to name a few
+      return opp.AccountId == 'your fallback Account Id' ? false : true;
+    }
+  }
+}
+```
 
 ## Special Considerations
 
@@ -252,6 +282,16 @@ While pains have been taken to create a solution that's truly one-sized-fits-all
 ### Picklists
 
 Picklists are a loaded topic in Salesforce. They're not only dropdowns, but the order is supposed to matter! MIN/MAXING on a picklist is supposed to return the deepest possible entry in the picklist (for MAX), or the closest to the top of the picklist (for MIN). If you've studied the aggregate function documentation thoroughly in the Salesforce Developer Docs, this will comes as no surprise - but because the ranking system for picklist differs from the ranking system for other pieces of text, I thought to call it out specifically.
+
+### Recalculations
+
+One of the reasons that `Rollup` can boast of superior performance is that, for many operations, it can perform all of the rolling-up necessary without performing much in the way of queries. There are, as always, exceptions to that rule. "Recalculations" are triggered when certain rollup operations encounter something of interest:
+
+- a MIN operation might find that one of the calculation items supplied to it previously _was_ the minimum value, but is no longer the minimum on an update
+- a MAX operation might find that one of the calculation items supplied to it previously _was_ the _maxmimum_ value, but is no longer the max on an update
+- ... pretty much any operation involving AVERAGE
+
+In these instances, `Rollup` _does_ requery the calculation object; it also does another loop through the calculation items supplied to it in search of _all_ the values necessary to find the true rollup value. This provides context, more than anything -- the rollup operation should still be lightning fast.
 
 ## Commit History & Contributions
 

@@ -762,9 +762,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER);
     }
 
-    List<SObject> calcItems = getTriggerRecords();
-    SObjectType sObjectType = calcItems.getSObjectType();
-
     String rollupContext;
     Boolean shouldReturn = false;
     Map<Id, SObject> oldCalcItems;
@@ -791,9 +788,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       rollupInfo.RollupType__c = rollupContext + rollupInfo.RollupType__c;
     }
 
+    List<SObject> calcItems = getTriggerRecords();
     return shouldReturn
       ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER)
-      : getRollup(rollupMetadata, sObjectType, calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_TRIGGER);
+      : getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_TRIGGER);
   }
 
   /** end public-facing section, begin private static helpers */
@@ -831,6 +829,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return oldRecordsMap;
     }
 
+    // normally, you could use a shortcut to initialize a Set<Id> like this
+    // by calling new Map<Id, SObject>(currentRecords).keyset() -
+    // but that code path fails if there are null Ids in the list
     Set<Id> currentRecordIds = new Set<Id>();
     for (SObject currentRecord : currentRecords) {
       if (currentRecord.Id != null) {
@@ -846,6 +847,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
         ? existingOldRecordsMap.get(currentRecord.Id)
         : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
+      existingRecordOrDefault.Id = currentRecord.Id;
       Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
       SObjectField fieldToken = fieldTokensForObject.get(rollupFieldOnCalcItem);
       if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null || fieldToken.getDescribe().isUpdateable() == false) {
@@ -853,6 +855,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       } else {
         existingRecordOrDefault.put(rollupFieldOnCalcItem, FieldInitializer.getDefaultValue(fieldToken));
       }
+      existingOldRecordsMap.put(currentRecord.Id, existingRecordOrDefault);
     }
     return existingOldRecordsMap;
   }
@@ -1440,16 +1443,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
 
         if (this.shouldShortCircuit && this.isFirstTimeThrough) {
-          // if, at any point, short circuiting is enabled, we need to loop back around
-          // one last time to ensure no other items in memory will contribute to the final rollup
+          /**
+           * an example of short circuiting - halfway through the list during a MIN operation,
+           * Rollup encounters a calcItem whose previous value equals the current min, but the new value
+           * is greater than the min. This triggers a full recalc, since it is at once both possible
+           * for items outside the list of calcItems to contain the new min, as WELL as for an item
+           * WITHIN the existing calcItems to be the new min. This means we have to go back and re-process
+           * the records that were already iterated on to ensure that the current operation successfully accounts
+           * for everything in-memory and in the database
+           */
           this.isFirstTimeThrough = false;
-          index = 0;
+          index = 0; // resets the for-loop
         }
       }
-      this.returnVal = this.setReturnValue();
+      this.setReturnValue();
     }
 
-    // all of these are no-ops by default
+    // all of these are no-ops by default; child classes opt-in to the rollup types applicable
     public virtual void handleCountDistinct(Op op, SObject calcItem, SObjectField operationField) {
     }
     public virtual void handleUpdateCountDistinct(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
@@ -1474,9 +1484,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     protected virtual void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
     }
-
-    protected virtual Object setReturnValue() {
-      return this.returnVal;
+    protected virtual void setReturnValue() {
     }
 
     protected virtual Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
@@ -1509,8 +1517,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    protected override Object setReturnValue() {
-      return this.distinctValues.size();
+    protected override void setReturnValue() {
+      this.returnVal = this.distinctValues.size();
     }
 
     protected override void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
@@ -1662,8 +1670,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    protected override Object setReturnValue() {
-      return this.returnDecimal;
+    protected override void setReturnValue() {
+      this.returnVal = this.returnDecimal;
     }
 
     protected virtual override Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
@@ -1804,10 +1812,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.stringVal = (String) this.returnVal;
     }
 
-    protected override Object setReturnValue() {
+    protected override void setReturnValue() {
       String possibleReturnValue = this.stringVal.normalizeSpace();
       String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substring(0, possibleReturnValue.length() - 1) : possibleReturnValue;
-      return (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
+      this.returnVal = (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
     }
 
     protected override void handleShortCircuit(Op op, SObject calcItem, SObjectField operationField) {
