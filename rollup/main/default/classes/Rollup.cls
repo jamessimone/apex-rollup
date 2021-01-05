@@ -20,7 +20,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private static RollupLimit__mdt specificRollupLimit;
 
-  public static final String LIMIT_ORG_DEFAULTS = 'Org_Defaults';
+  private static final String LIMIT_ORG_DEFAULTS = 'Org_Defaults';
   private static final String LIMIT_INITIALIZED_HERE = 'Sensible_Defaults';
 
   private final List<SObject> calcItems;
@@ -178,7 +178,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.overrideForStringRollups = overrideForStringRollups;
   }
 
-  public interface Evaluator {
+  global interface Evaluator {
     Boolean matches(Object calcItem);
   }
 
@@ -362,72 +362,72 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * - Invocable
    */
 
-  public class FlowInput {
+  global class FlowInput {
     @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)' required=true)
-    public List<SObject> recordsToRollup;
+    global List<SObject> recordsToRollup;
 
     @InvocableVariable(label='Rollup target\'s SObject Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
-    public String rollupSObjectName;
+    global String rollupSObjectName;
 
     @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT' required=true)
-    public String rollupOperation;
+    global String rollupOperation;
 
     @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
-    public String rollupContext;
+    global String rollupContext;
 
     @InvocableVariable(label='Calc Item Rollup Field' description='The API Name of the field on each of the records passed in to consider.' required=true)
-    public String rollupFieldOnCalcItem;
+    global String rollupFieldOnCalcItem;
 
     @InvocableVariable(
       label='Rollup Object Field'
       description='The API Name of the field on the target object where the rollup value will be stored'
       required=true
     )
-    public String rollupFieldOnOpObject;
+    global String rollupFieldOnOpObject;
 
     @InvocableVariable(
       label='Lookup Field On Calc Item'
       description='The API Name of the field on the record to rollup that matches a field on the object where the rollup will be stored'
       required=true
     )
-    public String lookupFieldOnCalcItem;
+    global String lookupFieldOnCalcItem;
 
     @InvocableVariable(
       label='Lookup Field On Rollup Object'
       description='The API Name of the field on the SObject matching the value found in "lookupFieldOnCalcItem" where the rollup will be stored'
       required=true
     )
-    public String lookupFieldOnOpObject;
+    global String lookupFieldOnOpObject;
 
     // optional fields
     @InvocableVariable(
       label='Calc Item Changed Fields'
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
-    public String calcItemChangedFields;
+    global String calcItemChangedFields;
 
     @InvocableVariable(
       label='Full Recalculation Default Number Value'
       description='If provided, used in place of the existing value on the rollup field for the lookup object for number-based rollups'
     )
-    public Decimal fullRecalculationDefaultNumberValue;
+    global Decimal fullRecalculationDefaultNumberValue;
     @InvocableVariable(
       label='Full Recalculation Default String Value'
       description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
     )
-    public String fullRecalculationDefaultStringValue;
+    global String fullRecalculationDefaultStringValue;
   }
 
-  public class FlowOutput {
-    public FlowOutput() {
+  global class FlowOutput {
+    global FlowOutput() {
       this.isSuccess = true;
       this.Message = 'SUCCESS';
     }
 
     @InvocableVariable(label='Is Success' description='Was rollup enqueued successfully?')
-    public Boolean isSuccess;
+    global Boolean isSuccess;
     @InvocableVariable(label='Status Message' description='"SUCCESS" when isSuccess is true, otherwise the encountered error message')
-    public String message;
+    global String message;
   }
 
   @InvocableMethod(
@@ -435,7 +435,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     label='Perform rollup on records'
     description='Returns a single FlowOutput record with "SUCCESS" as the message if async rollup operation is enqueued successfully, and the encountered error otherwise'
   )
-  public static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
+  global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputReturns = new List<FlowOutput>();
     List<Rollup> rollups = new List<Rollup>();
 
@@ -483,26 +483,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   /** Static public methods and helper methods */
 
-  public static Id schedule(String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval) {
+  global static Id schedule(String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval) {
     RollupSchedulable scheduledRollup = new RollupSchedulable(query, rollupMetadataIds, eval);
     return System.schedule(jobName, cronExp, scheduledRollup);
   }
 
-  public static void batch(Rollup rollup, Rollup secondRollup) {
+  global static void batch(Rollup rollup, Rollup secondRollup) {
     batch(new List<Rollup>{ rollup, secondRollup });
   }
 
-  public static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup) {
+  global static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup) {
     batch(new List<Rollup>{ rollup, secondRollup, thirdRollup });
   }
 
-  public static void batch(List<Rollup> rollups) {
+  global static void batch(List<Rollup> rollups) {
     Rollup batchRollup = new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER);
     flattenBatches(batchRollup, rollups);
     batchRollup.runCalc();
   }
 
-  public static Rollup averageFromTrigger(
+  global static Rollup averageFromTrigger(
     SObjectField averageFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -519,7 +519,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup averageFromTrigger(
+  global static Rollup averageFromTrigger(
     SObjectField averageFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -538,7 +538,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup countDistinctFromTrigger(
+  global static Rollup countDistinctFromTrigger(
     SObjectField countDistinctFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -555,7 +555,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup countDistinctFromTrigger(
+  global static Rollup countDistinctFromTrigger(
     SObjectField countDistinctFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -574,7 +574,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup concatDistinctFromTrigger(
+  global static Rollup concatDistinctFromTrigger(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -591,7 +591,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup concatDistinctFromTrigger(
+  global static Rollup concatDistinctFromTrigger(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -610,7 +610,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup concatFromTrigger(
+  global static Rollup concatFromTrigger(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -620,7 +620,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return concatFromTrigger(concatFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, concatFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  public static Rollup concatFromTrigger(
+  global static Rollup concatFromTrigger(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -639,7 +639,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup countFromTrigger(
+  global static Rollup countFromTrigger(
     SObjectField countFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -649,7 +649,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return countFromTrigger(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, countFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  public static Rollup countFromTrigger(
+  global static Rollup countFromTrigger(
     SObjectField countFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -660,7 +660,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return operateFromTrigger(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.COUNT, eval);
   }
 
-  public static Rollup maxFromTrigger(
+  global static Rollup maxFromTrigger(
     SObjectField maxFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -670,7 +670,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return maxFromTrigger(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  public static Rollup maxFromTrigger(
+  global static Rollup maxFromTrigger(
     SObjectField maxFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -689,7 +689,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  public static Rollup minFromTrigger(
+  global static Rollup minFromTrigger(
     SObjectField minFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -699,7 +699,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return minFromTrigger(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  public static Rollup minFromTrigger(
+  global static Rollup minFromTrigger(
     SObjectField minFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -710,7 +710,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return operateFromTrigger(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOpOject, lookupSobjectType, Op.MIN, eval);
   }
 
-  public static Rollup sumFromTrigger(
+  global static Rollup sumFromTrigger(
     SObjectField sumFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -721,7 +721,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return operateFromTrigger(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.SUM, eval);
   }
 
-  public static Rollup sumFromTrigger(
+  global static Rollup sumFromTrigger(
     SObjectField sumFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -751,7 +751,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return runFromTrigger(new List<Rollup__mdt>{ rollupMetadata }, eval);
   }
 
-  public static void runFromTrigger() {
+  global static void runFromTrigger() {
     SObjectType sObjectType = getTriggerRecords().getSObjectType();
     List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
     runFromTrigger(rollupMetadata, null).runCalc();
