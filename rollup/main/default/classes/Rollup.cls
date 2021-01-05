@@ -861,7 +861,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
-    // Even after Spring '21, can't call .getAll here because the ApiName restriction would disallow multiple rules per SObject
+    // Even after Spring '21, can't call .getAll here because the Developer Name restriction would disallow multiple rules per SObject
     return rollupMetadata != null
       ? rollupMetadata
       : [
@@ -877,6 +877,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             FullRecalculationDefaultStringValue__c
           FROM Rollup__mdt
           WHERE CalcItem__c = :String.valueOf(sObjectType)
+          ORDER BY LookupObject__c
         ];
   }
 
@@ -1984,6 +1985,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           FullRecalculationDefaultStringValue__c
         FROM Rollup__mdt
         WHERE Id = :this.rollupMetadataIds
+        ORDER BY LookupObject__c
       ];
       List<SObject> calcItems = Database.query(this.query);
       getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, RollupInvocationPoint.FROM_SCHEDULED)

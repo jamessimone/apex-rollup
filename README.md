@@ -34,22 +34,22 @@ trigger ExampleTrigger on Opportunity(after insert, after update, before delete)
 }
 ```
 
-That's it! Now you're ready to configure your rollups using Custom Metadata:
+That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
 
 Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 
-- `Calc Item` - in this case, Oppportunity
-- `Rollup Field On Calc Item` - the API Name of the field you’d like to aggregate (let's say Amount)
-- `Lookup Field On Calc Item`- the API Name of the field storing the Id or String referencing a unique value on another object (In the example, Id)
-- `Lookup Field On Lookup Object` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
-- `Rollup Field On Lookup Object` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
-- `Lookup Object` - the name of the SObject you’d like to roll the values up to (in this case, Account)
+- `Calc Item` - the SObject the calculation is derived from -- in this case, Oppportunity
+- `Lookup Object` - the SObject you’d like to roll the values up to (in this case, Account)
+- `Rollup Field On Calc Item` - the field you’d like to aggregate (let's say Amount)
+- `Lookup Field On Calc Item`- the field storing the Id or String referencing a unique value on another object (In the example, Id)
+- `Lookup Field On Lookup Object` - the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
+- `Rollup Field On Lookup Object` - the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
 - `Rollup Type` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 
-You can perform have as many rollups as you'd like per object/trigger -- all operations are batched.
+You can perform have as many rollups as you'd like per object/trigger -- all operations are boxcarred together for optimal efficiency.
 
 #### Establishing Org Limits For Rollup Operations
 
@@ -292,6 +292,34 @@ One of the reasons that `Rollup` can boast of superior performance is that, for 
 - ... pretty much any operation involving AVERAGE
 
 In these instances, `Rollup` _does_ requery the calculation object; it also does another loop through the calculation items supplied to it in search of _all_ the values necessary to find the true rollup value. This provides context, more than anything -- the rollup operation should still be lightning fast.
+
+### Custom Apex
+
+If you are implementing `Rollup` through the use of the static Apex methods instead of CMDT, one thing to be aware of -- if you need to perform 6+ rollup operations _and_ you are rolling up to more than one target object, you should absolutely keep your rollups ordered by the target object when invoking the `batch` method:
+
+```java
+// this is perfectly valid
+Rollup.batch(
+  // repeated just for lack of having better examples, but let's say five separate rollups ....
+  // the important part is that they're ordered by the last argument; the SObjectType in question
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+)
+
+// this should be avoided. It ** could ** potentially lead to a chunking error when updating all of the rollup fields
+Rollup.batch(
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+);
+```
 
 ## Commit History & Contributions
 
