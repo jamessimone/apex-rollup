@@ -229,7 +229,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       Set<String> uniqueLookupFields = new Set<String>();
       for (SObject calcItem : rollup.calcItems) {
-        uniqueLookupFields.add((String) calcItem.get(rollup.lookupFieldOnCalcItem));
+        String lookupKey = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
+        if (String.isNotBlank(lookupKey)) {
+          uniqueLookupFields.add(lookupKey);
+        }
       }
 
       String countQuery = getCountQueryString(rollup.lookupObj, '=');
@@ -889,7 +892,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Evaluator eval,
     RollupInvocationPoint rollupInvokePoint
   ) {
-    if (rollupOperations.isEmpty()) {
+    if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return new RollupAsyncProcessor(rollupInvokePoint);
     }
 
