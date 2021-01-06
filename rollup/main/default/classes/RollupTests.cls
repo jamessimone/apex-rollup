@@ -1,7 +1,11 @@
 @isTest
 private class RollupTests {
+  // NB - tests that perform DML should wrap the DML by setting Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+  // and then Rollup.defaultRollupLimit = null after DML has been performed. This is to prevent side-effects caused by having implemented Rollup in your org
   @TestSetup
   static void setup() {
+    // in the event that rollups are running in the org, we want to avoid triggering any operations while performing setup DML
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupTests');
     insert acc;
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
@@ -81,8 +85,10 @@ private class RollupTests {
 
   @isTest
   static void shouldCountDistinctFromTriggerOnInsert() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     insert new Opportunity(Name = 'Test Count Distinct Insert', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
+    Rollup.defaultRollupLimit = null;
 
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'Test Count Distinct Insert Two') });
     Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
@@ -98,8 +104,10 @@ private class RollupTests {
 
   @isTest
   static void shouldCountDistinctFromTriggerOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     insert new Opportunity(Name = 'Test Count Distinct Insert', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Name = 'Test Count Distinct Insert', Id = generateId(Opportunity.SObjectType));
     DMLMock mock = getMock(new List<Opportunity>{ opp });
@@ -118,9 +126,11 @@ private class RollupTests {
 
   @isTest
   static void shouldCountDistinctFromTriggerOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc; // we want to ensure that the AnnualRevenue is reset because there are no other matching values
+    Rollup.defaultRollupLimit = null;
 
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity() });
     Rollup.triggerContext = TriggerOperation.BEFORE_DELETE;
@@ -150,9 +160,11 @@ private class RollupTests {
 
   @isTest
   static void shouldDecrementCountFromTriggerAfterUpdateIfValueIsRemoved() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType));
     DMLMock mock = getMock(new List<Opportunity>{ opp });
@@ -170,9 +182,11 @@ private class RollupTests {
 
   @isTest
   static void shouldKeepCountUnchangedFromTriggerAfterUpdateEvenIfValueChanges() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
     DMLMock mock = getMock(new List<Opportunity>{ opp });
@@ -409,6 +423,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMax() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -417,6 +432,7 @@ private class RollupTests {
     Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
     List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
     insert originalOpps;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity updatedOpp = opp.clone(true, true);
     updatedOpp.Amount = 150;
@@ -439,6 +455,7 @@ private class RollupTests {
 
   @isTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMax() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -447,6 +464,7 @@ private class RollupTests {
     Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
     List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
     insert originalOpps;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity updatedOpp = opp.clone(true, true);
     updatedOpp.Amount = 150;
@@ -471,9 +489,11 @@ private class RollupTests {
 
   @isTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMaxAndNoOtherSObjectsExist() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(
       Amount = acc.AnnualRevenue,
@@ -516,6 +536,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -524,6 +545,7 @@ private class RollupTests {
     Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
     List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
     insert originalOpps;
+    Rollup.defaultRollupLimit = null;
 
     Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
     DMLMock mock = getMock(originalOpps);
@@ -577,6 +599,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMinNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMin() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
@@ -585,6 +608,7 @@ private class RollupTests {
     Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
     List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
     insert originalOpps;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity updatedOpp = opp.clone(true, true);
     updatedOpp.Amount = 200;
@@ -607,6 +631,7 @@ private class RollupTests {
 
   @isTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMin() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
@@ -615,6 +640,7 @@ private class RollupTests {
     Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
     List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
     insert originalOpps;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity updatedOpp = opp.clone(true, true);
     updatedOpp.Amount = secondOpp.Amount + 50; // the amount isn't important - that it's now more than the second Opp amount is
@@ -639,9 +665,11 @@ private class RollupTests {
 
   @isTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMinAndNoOtherSObjectsExist() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(
       Amount = acc.AnnualRevenue,
@@ -684,6 +712,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMinNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
@@ -692,6 +721,7 @@ private class RollupTests {
     Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
     List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
     insert originalOpps;
+    Rollup.defaultRollupLimit = null;
 
     Rollup.records = new List<Opportunity>{ opp };
     Rollup.oldRecordsMap = new Map<Id, SObject>(Rollup.records);
@@ -712,9 +742,11 @@ private class RollupTests {
   @isTest
   static void shouldConcatOnUpdate() {
     // AFTER_INSERT test is handled in the "shouldBatchThreeOperations" method
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'first test string';
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'second test string', Id = generateId(Opportunity.SObjectType));
     Opportunity oldOpp = opp.clone(true, true);
@@ -735,9 +767,11 @@ private class RollupTests {
 
   @isTest
   static void shouldConcatOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'beginning test string something';
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
     DMLMock mock = getMock(new List<Opportunity>{ opp });
@@ -754,9 +788,11 @@ private class RollupTests {
 
   @isTest
   static void shouldConcatDistinctOnInsert() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'beginning test string something';
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
     Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'hello another string');
@@ -779,9 +815,11 @@ private class RollupTests {
 
   @isTest
   static void shouldConcatDistinctOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'first test string';
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'second test string', Id = generateId(Opportunity.SObjectType));
     Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'third test string', Id = generateId(Opportunity.SObjectType));
@@ -884,9 +922,11 @@ private class RollupTests {
 
   @isTest
   static void shouldMinOnStringsBeforeDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'A';
     update acc;
+    Rollup.defaultRollupLimit = null;
 
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
 
@@ -905,12 +945,14 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxOnStringsBeforeDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'A';
     update acc;
 
     Opportunity opp = new Opportunity(StageName = 'test max on delete', CloseDate = System.today(), Name = 'Z', AccountId = acc.Id);
     insert opp;
+    Rollup.defaultRollupLimit = null;
 
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
 
@@ -937,11 +979,13 @@ private class RollupTests {
 
     Account acc = [SELECT Id FROM Account];
 
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     List<Lead> leads = new List<Lead>{
       new Lead(Company = acc.Id, LeadSource = picklistVals[0].getValue(), LastName = 'Max Picklist on insert one'),
       new Lead(Company = acc.Id, LeadSource = picklistVals[1].getValue(), LastName = 'Max Picklist on insert two')
     };
     insert leads; // not the best, either, but we need to be able to use SOQL below
+    Rollup.defaultRollupLimit = null;
 
     DMLMock mock = loadMock(leads);
     Rollup.TriggerContext = TriggerOperation.AFTER_INSERT;
@@ -968,11 +1012,13 @@ private class RollupTests {
 
     Account acc = [SELECT Id FROM Account];
 
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     List<Lead> leads = new List<Lead>{
       new Lead(Company = acc.Id, LeadSource = picklistVals[0].getValue(), LastName = 'Min Picklist on insert one'),
       new Lead(Company = acc.Id, LeadSource = picklistVals[1].getValue(), LastName = 'Min Picklist on insert two')
     };
     insert leads;
+    Rollup.defaultRollupLimit = null;
 
     DMLMock mock = loadMock(leads);
     Rollup.TriggerContext = TriggerOperation.AFTER_INSERT;
@@ -992,6 +1038,7 @@ private class RollupTests {
   @isTest
   static void shouldAverageOnInsert() {
     // average is a special case; even on insert, we have to also check for pre-existing records existing
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 100;
     update acc;
@@ -1004,6 +1051,7 @@ private class RollupTests {
       AccountId = acc.Id
     );
     insert testOpp;
+    Rollup.defaultRollupLimit = null;
 
     List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType)),
@@ -1027,6 +1075,7 @@ private class RollupTests {
 
   @isTest
   static void shouldAverageOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 100;
     update acc;
@@ -1039,6 +1088,7 @@ private class RollupTests {
       AccountId = acc.Id
     );
     insert testOpp;
+    Rollup.defaultRollupLimit = null;
 
     List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType)),
@@ -1066,6 +1116,7 @@ private class RollupTests {
 
   @isTest
   static void shouldAverageOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 200;
     update acc;
@@ -1073,6 +1124,7 @@ private class RollupTests {
     Opportunity testOppOne = new Opportunity(Amount = 100, Name = 'Pre-existing one', StageName = 'random', CloseDate = System.today(), AccountId = acc.Id);
     Opportunity testOppTwo = new Opportunity(Amount = 300, Name = 'Pre-existing one', StageName = 'random', CloseDate = System.today(), AccountId = acc.Id);
     insert new List<Opportunity>{ testOppOne, testOppTwo };
+    Rollup.defaultRollupLimit = null;
 
     List<Opportunity> opps = new List<Opportunity>{ testOppTwo };
 
@@ -1092,8 +1144,10 @@ private class RollupTests {
   // Now we test different field types for success: time, datetime, date. Here be dragons.
   @isTest
   static void shouldMaxDateOnInsert() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Max date on insert test');
     insert opp;
+    Rollup.defaultRollupLimit = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = opp.Id);
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = opp.Id);
@@ -1112,8 +1166,10 @@ private class RollupTests {
 
   @isTest
   static void shouldMinDateOnInsert() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Min date on insert test');
     insert opp;
+    Rollup.defaultRollupLimit = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50));
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50));
@@ -1132,9 +1188,11 @@ private class RollupTests {
 
   @isTest
   static void shouldMinDateOnInsertWhereParentDateIsNull() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     //using campaign for this test because EndDate is not required when inserting a Campaign
     Campaign camp = new Campaign(Name = 'Test Date with no initialized value');
     insert camp;
+    Rollup.defaultRollupLimit = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = camp.Id);
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = camp.Id);
@@ -1153,11 +1211,13 @@ private class RollupTests {
 
   @isTest
   static void shouldMinDateOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Min date on insert test');
     insert opp;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = opp.Id);
     insert taskOne;
+    Rollup.defaultRollupLimit = null;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = opp.CloseDate.addDays(5), Id = generateId(Task.SObjectType), WhatId = opp.Id);
 
@@ -1214,9 +1274,11 @@ private class RollupTests {
 
   @isTest
   static void shouldMinDatetimeOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
+    Rollup.defaultRollupLimit = null;
 
     // now the "new" version of eventOne is no longer the min
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate.addDays(50), WhatId = con.Id, Id = generateId(Event.SObjectType));
@@ -1238,9 +1300,11 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxDatetimeOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
+    Rollup.defaultRollupLimit = null;
 
     // now the "new" version of eventOne is no longer the max
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate.addDays(-25), WhatId = con.Id, Id = generateId(Event.SObjectType));
@@ -1262,6 +1326,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxDatetimeOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
@@ -1269,6 +1334,7 @@ private class RollupTests {
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate, WhatId = con.Id, Id = generateId(Event.SObjectType));
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(50), WhatId = con.Id, DurationInMinutes = 50);
     insert eventTwo;
+    Rollup.defaultRollupLimit = null;
 
     DMLMock mock = loadMock(new List<Event>{ eventOne });
     Rollup.triggerContext = TriggerOperation.BEFORE_DELETE;
@@ -1285,6 +1351,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMinDatetimeOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
@@ -1292,6 +1359,7 @@ private class RollupTests {
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate, WhatId = con.Id, Id = generateId(Event.SObjectType));
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(-50), WhatId = con.Id, DurationInMinutes = 50);
     insert eventTwo;
+    Rollup.defaultRollupLimit = null;
 
     DMLMock mock = loadMock(new List<Event>{ eventOne });
     Rollup.triggerContext = TriggerOperation.BEFORE_DELETE;
@@ -1314,8 +1382,10 @@ private class RollupTests {
 
   @isTest
   static void shouldMinTimeOnInsert() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(EmailDomain = 'Lookupfield', EmailAddress = 'testrollup' + System.now().getTime() + '@email.com');
     insert cpe;
+    Rollup.defaultRollupLimit = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(11, 11, 11, 11), Name = cpe.EmailDomain);
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Name = cpe.EmailDomain);
@@ -1341,8 +1411,10 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxTimeOnInsert() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(EmailDomain = 'Lookupfield', EmailAddress = 'testrollup' + System.now().getTime() + '@email.com');
     insert cpe;
+    Rollup.defaultRollupLimit = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(11, 11, 11, 11), Name = cpe.EmailDomain);
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Name = cpe.EmailDomain);
@@ -1368,12 +1440,14 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxTimeOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0),
       EmailDomain = 'Lookupfield',
       EmailAddress = 'testrollup' + System.now().getTime() + '@email.com'
     );
     insert cpe;
+    Rollup.defaultRollupLimit = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
@@ -1409,12 +1483,14 @@ private class RollupTests {
 
   @isTest
   static void shouldMinTimeOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0),
       EmailDomain = 'Lookupfield',
       EmailAddress = 'testrollup' + System.now().getTime() + '@email.com'
     );
     insert cpe;
+    Rollup.defaultRollupLimit = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
@@ -1450,6 +1526,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMinTimeOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
       EmailDomain = 'Lookupfield',
@@ -1464,6 +1541,7 @@ private class RollupTests {
     );
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(6, 6, 6, 6), Name = cpe.EmailDomain);
     insert cp2;
+    Rollup.defaultRollupLimit = null;
 
     List<ContactPointAddress> addresses = new List<ContactPointAddress>{ cp1 };
     DMLMock mock = loadMock(new List<ContactPointAddress>{ cp1 });
@@ -1489,6 +1567,7 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxTimeOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
       EmailDomain = 'Lookupfield',
@@ -1503,6 +1582,7 @@ private class RollupTests {
     );
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(4, 4, 4, 4), Name = cpe.EmailDomain);
     insert cp2;
+    Rollup.defaultRollupLimit = null;
 
     List<ContactPointAddress> addresses = new List<ContactPointAddress>{ cp1 };
     DMLMock mock = loadMock(new List<ContactPointAddress>{ cp1 });
@@ -1545,24 +1625,59 @@ private class RollupTests {
     System.assertEquals('Field: BillingAddress of type: ADDRESS specified invalid for rollup operation', ex.getMessage());
   }
 
-  private class Attributes {
-    public Attributes(String type, String url) {
-      this.type = type;
-      this.url = url;
-    }
-    public String type;
-    public String url;
-  }
+  /** CDC trigger tests */
 
   @isTest
-  static void shouldWorkForChangeDataEventCaptureTriggers() {
+  static void shouldWorkForChangeDataEventCaptureTriggersOnCreate() {
     // CDC functions ** nearly ** the same as regular triggers, yet the SObjects supplied to ChangeEventTriggers
     // differ in two subtle ways: not all the fields are populated (just the changed ones), and the reference info
     // is supplied on a separate object, the ChangeEventHeader
     // Unfortunately, these two "tiny" differences means a lot of other code needs to be tested
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc', Amount = 500, Name = 'test cdc', AccountId = acc.Id);
     insert opp;
+    Rollup.defaultRollupLimit = null;
+
+    EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
+    header.changeType = 'CREATE';
+    header.changedFields = new List<String>{ 'Amount', 'LastModifiedDate' };
+    header.recordIds = new List<Id>{ opp.Id };
+    header.entityName = 'Opportunity';
+
+    OpportunityChangeEvent ev = new OpportunityChangeEvent();
+    ev.ChangeEventHeader = header;
+    ev.Amount = 500;
+
+    DMLMock mock = loadMock(new List<SObject>{ ev });
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupType__c = 'SUM'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromCDCTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CDC AFTER_INSERT');
+    acc = (Account) mock.Records[0];
+    System.assertEquals(500, acc.AnnualRevenue);
+  }
+
+  @isTest
+  static void shouldWorkForChangeDataEventCaptureTriggersOnUpdate() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc update', Amount = 500, Name = 'test cdc update', AccountId = acc.Id);
+    insert opp;
+    Rollup.defaultRollupLimit = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'UPDATE';
@@ -1574,19 +1689,69 @@ private class RollupTests {
     ev.ChangeEventHeader = header;
     ev.Amount = 500;
 
-    Rollup.cdcRecords = new List<SObject>{ ev };
-
     DMLMock mock = loadMock(new List<SObject>{ ev });
-    Rollup.records = null;
-    Rollup.triggerContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupType__c = 'SUM'
+      )
+    };
 
     Test.startTest();
-    Rollup.maxFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.runFromCDCTrigger();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CDC AFTER_UPDATE');
     acc = (Account) mock.Records[0];
     System.assertEquals(500, acc.AnnualRevenue);
+  }
+
+  @isTest
+  static void shouldWorkForChangeDataCaptureTriggersOnDelete() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 10000;
+    update acc;
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc update', Amount = 500, Name = 'test cdc update', AccountId = acc.Id);
+    insert opp;
+    Rollup.defaultRollupLimit = null;
+
+    EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
+    header.changeType = 'DELETE';
+    header.changedFields = new List<String>{ 'Amount', 'LastModifiedDate' };
+    header.recordIds = new List<Id>{ opp.Id };
+    header.entityName = 'Opportunity';
+
+    OpportunityChangeEvent ev = new OpportunityChangeEvent();
+    ev.ChangeEventHeader = header;
+    ev.Amount = 500;
+
+    DMLMock mock = loadMock(new List<SObject>{ ev });
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupType__c = 'SUM'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromCDCTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CDC BEFORE_DELETE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(acc.AnnualRevenue - ev.Amount, updatedAcc.AnnualRevenue);
   }
 
   /** Invocable tests */
@@ -2012,6 +2177,7 @@ private class RollupTests {
     return new List<Rollup.FlowInput>{ flowInput };
   }
 
+  // from https://salesforce.stackexchange.com/questions/21137/creating-unit-tests-without-interacting-with-the-database-creating-fake-ids
   private static Integer startingNumber = 1;
   private static String generateId(Schema.SObjectType sObjectType) {
     String result = String.valueOf(startingNumber++);
