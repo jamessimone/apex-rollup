@@ -8,7 +8,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private static Boolean shouldRunAsBatch = false;
   @testVisible
-  private static TriggerOperation triggerContext = Trigger.operationType;
+  private static TriggerOperation triggerContext;
   @testVisible
   private static List<SObject> cdcRecords;
   @testVisible
@@ -756,8 +756,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return runFromTrigger(new List<Rollup__mdt>{ rollupMetadata }, eval);
   }
 
+  global static void runFromCDCTrigger() {
+    // header.changeType - CREATE / UPDATE / DELETE
+    //getCDCRecordsMap(cdcRecords, uniqueLookupFields)
+  }
+
   global static void runFromTrigger() {
-    SObjectType sObjectType = getTriggerRecords(new Set<String>()).getSObjectType();
+    SObjectType sObjectType = getTriggerRecords().getSObjectType();
     List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
     runFromTrigger(rollupMetadata, null).runCalc();
   }
@@ -769,13 +774,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     String rollupContext;
     Boolean shouldReturn = false;
+    Map<Id, SObject> oldCalcItems;
 
     switch on triggerContext {
       when AFTER_UPDATE {
         rollupContext = 'UPDATE_';
+        oldCalcItems = getOldTriggerRecordsMap();
       }
       when BEFORE_DELETE {
         rollupContext = 'DELETE_';
+        oldCalcItems = getOldTriggerRecordsMap();
       }
       when AFTER_INSERT {
         /** for AFTER_INSERT, the base operation name will always be used */
@@ -786,21 +794,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    Set<String> uniqueLookupFields = new Set<String>();
+    List<SObject> calcItems = getTriggerRecords();
     for (Rollup__mdt rollupInfo : rollupMetadata) {
-      uniqueLookupFields.add(rollupInfo.LookupFieldOnCalcItem__c);
       rollupInfo.RollupType__c = rollupContext + rollupInfo.RollupType__c;
     }
 
     // TODO: expose new static Rollup method for opting into CDC. Rework this method so it takes in the list of SObjects/Map<Id,SObject>
-    // and potentially context too, since that will always be insert for CDC. that will eliminate having to pass around the unique lookup fields
-    // and this other jankiness. Also, we need to filter the records here - if there aren't any records with the fields we're looking for in ANY of the metadata,
-    // return
-    List<SObject> calcItems = getTriggerRecords(uniqueLookupFields);
-    Map<Id, SObject> oldCalcItems;
-    if (triggerContext == TriggerOperation.AFTER_UPDATE || triggerContext == TriggerOperation.BEFORE_DELETE) {
-      oldCalcItems = getOldTriggerRecordsMap(uniqueLookupFields);
-    }
+    // and set triggerContext too, since that will always be insert for CDC. that will eliminate having to pass around the unique lookup fields
+    // and this other jankiness. For update routes, winnow the list down if the field is null and the old version of the item is not null
+
     return shouldReturn
       ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER)
       : getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_TRIGGER);
@@ -983,8 +985,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static Boolean shouldRunFromTrigger() {
-    if (shouldRun == null) {
-      shouldRun = Trigger.isExecuting;
+    shouldRun = (shouldRun != null && shouldRun) || Trigger.isExecuting;
+    if (Trigger.operationType != null && Trigger.operationType != triggerContext) {
+      triggerContext = Trigger.operationType;
     }
     // there are only three allowed trigger operations that qualify
     if (
@@ -998,54 +1001,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return shouldRun;
   }
 
-  private static List<SObject> getTriggerRecords(Set<String> uniqueLookupFields) {
-    if (records != null && cdcRecords == null) {
+  private static List<SObject> getTriggerRecords() {
+    if (records != null) {
       return records;
     }
 
-    List<SObject> potentialTriggerRecords = getNewRecords();
-    Boolean isCDC = isTriggeredFromCDC(potentialTriggerRecords);
-
-    if (isCDC) {
-      return getOldTriggerRecordsMap(uniqueLookupFields).values();
-    }
-    return Trigger.isDelete ? Trigger.old : potentialTriggerRecords;
+    return Trigger.isDelete ? Trigger.old : Trigger.new;
   }
 
-  private static Map<Id, SObject> getOldTriggerRecordsMap(Set<String> uniqueLookupFields) {
+  private static Map<Id, SObject> getOldTriggerRecordsMap() {
     if (oldRecordsMap != null) {
       return oldRecordsMap;
     } else if (Trigger.oldMap != null) {
       return Trigger.oldMap;
     }
 
-    List<SObject> potentialCDCRecords = getNewRecords();
-    Boolean isCDC = isTriggeredFromCDC(potentialCDCRecords);
-    if (isCDC) {
-      return getCDCRecordsMap(potentialCDCRecords, uniqueLookupFields);
-    }
-
     return new Map<Id, SObject>();
   }
 
-  private static List<SObject> getNewRecords() {
-    return cdcRecords != null ? cdcRecords : Trigger.new;
-  }
-
-  private static Boolean isTriggeredFromCDC(List<SObject> records) {
-    if (records == null || records.isEmpty()) {
-      return false;
-    }
-    // we can't use .get on the record because "System.SObjectException: Invalid field ChangeEventHeader" gets thrown if we're wrong ...
-    Map<String, Object> firstRecordMap = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(records[0]));
-    return firstRecordMap.containsKey('ChangeEventHeader');
-  }
-
-  private static Map<Id, SObject> backingCDCRecordsMap;
+  //TODO: return here
   private static Map<Id, SObject> getCDCRecordsMap(List<SObject> cdcRecords, Set<String> uniqueLookupFields) {
-    if (backingCDCRecordsMap != null && uniqueLookupFields.isEmpty() == false) {
-      return backingCDCRecordsMap;
-    }
     // because CDC is async, the DB will always be updated by the time we get there
     // for UPDATE routes, that will have to be OK
     List<Id> recordIds = new List<Id>();
@@ -1061,10 +1036,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     uniqueFieldNames.addAll(uniqueLookupFields);
-    backingCDCRecordsMap = new Map<Id, SObject>(
+    return new Map<Id, SObject>(
       Database.query('SELECT Id, ' + String.join(new List<String>(uniqueFieldNames), ',') + ' FROM ' + nameOfObject + ' WHERE Id = :recordIds')
     );
-    return backingCDCRecordsMap;
   }
 
   private static SObjectType getSObjectTypeFromName(String sobjectName) {

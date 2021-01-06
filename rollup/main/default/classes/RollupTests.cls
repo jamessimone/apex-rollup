@@ -1927,7 +1927,7 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable']?.Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
   @isTest
@@ -1941,7 +1941,7 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable']?.Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
   /** Schedulable tests */
