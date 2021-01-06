@@ -321,6 +321,10 @@ Rollup.batch(
 );
 ```
 
+### Change Data Capture (CDC)
+
+As of [v1.0.4](https://github.com/jamessimone/apex-rollup/tree/v1.0.4), CDC _is_ supported, either through the use of the exposed custom Apex hooks into `Rollup`, or through the use of CMDT and the one-liner Apex install. However, use of CDC with `Rollup` should be considered carefully - it can be a more expensive operation than the typical rollup, when the operation is an update, because of the way data is transmitted in ChangeDataEvent triggers.
+
 ## Commit History & Contributions
 
 This repository comes after the result of [dozens of commits](https://github.com/jamessimone/apex-mocks-stress-test/commits/rollup) on my working repository. You can view the full history of the evolution of `Rollup` there.

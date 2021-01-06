@@ -1545,6 +1545,50 @@ private class RollupTests {
     System.assertEquals('Field: BillingAddress of type: ADDRESS specified invalid for rollup operation', ex.getMessage());
   }
 
+  private class Attributes {
+    public Attributes(String type, String url) {
+      this.type = type;
+      this.url = url;
+    }
+    public String type;
+    public String url;
+  }
+
+  @isTest
+  static void shouldWorkForChangeDataEventCaptureTriggers() {
+    // CDC functions ** nearly ** the same as regular triggers, yet the SObjects supplied to ChangeEventTriggers
+    // differ in two subtle ways: not all the fields are populated (just the changed ones), and the reference info
+    // is supplied on a separate object, the ChangeEventHeader
+    // Unfortunately, these two "tiny" differences means a lot of other code needs to be tested
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc', Amount = 500, Name = 'test cdc', AccountId = acc.Id);
+    insert opp;
+
+    EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
+    header.changeType = 'UPDATE';
+    header.changedFields = new List<String>{ 'Amount', 'LastModifiedDate' };
+    header.recordIds = new List<Id>{ opp.Id };
+    header.entityName = 'Opportunity';
+
+    OpportunityChangeEvent ev = new OpportunityChangeEvent();
+    ev.ChangeEventHeader = header;
+    ev.Amount = 500;
+
+    Rollup.cdcRecords = new List<SObject>{ ev };
+
+    DMLMock mock = loadMock(new List<SObject>{ ev });
+    Rollup.records = null;
+    Rollup.triggerContext = TriggerOperation.AFTER_UPDATE;
+
+    Test.startTest();
+    Rollup.maxFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CDC AFTER_UPDATE');
+    acc = (Account) mock.Records[0];
+    System.assertEquals(500, acc.AnnualRevenue);
+  }
+
   /** Invocable tests */
 
   @isTest

@@ -10,6 +10,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private static TriggerOperation triggerContext = Trigger.operationType;
   @testVisible
+  private static List<SObject> cdcRecords;
+  @testVisible
   private static List<SObject> records;
   @testVisible
   private static Map<Id, SObject> oldRecordsMap;
@@ -755,7 +757,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global static void runFromTrigger() {
-    SObjectType sObjectType = getTriggerRecords().getSObjectType();
+    SObjectType sObjectType = getTriggerRecords(new Set<String>()).getSObjectType();
     List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
     runFromTrigger(rollupMetadata, null).runCalc();
   }
@@ -767,16 +769,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     String rollupContext;
     Boolean shouldReturn = false;
-    Map<Id, SObject> oldCalcItems;
 
     switch on triggerContext {
       when AFTER_UPDATE {
         rollupContext = 'UPDATE_';
-        oldCalcItems = getOldTriggerRecordsMap();
       }
       when BEFORE_DELETE {
         rollupContext = 'DELETE_';
-        oldCalcItems = getOldTriggerRecordsMap();
       }
       when AFTER_INSERT {
         /** for AFTER_INSERT, the base operation name will always be used */
@@ -787,11 +786,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
+    Set<String> uniqueLookupFields = new Set<String>();
     for (Rollup__mdt rollupInfo : rollupMetadata) {
+      uniqueLookupFields.add(rollupInfo.LookupFieldOnCalcItem__c);
       rollupInfo.RollupType__c = rollupContext + rollupInfo.RollupType__c;
     }
 
-    List<SObject> calcItems = getTriggerRecords();
+    // TODO: expose new static Rollup method for opting into CDC. Rework this method so it takes in the list of SObjects/Map<Id,SObject>
+    // and potentially context too, since that will always be insert for CDC. that will eliminate having to pass around the unique lookup fields
+    // and this other jankiness. Also, we need to filter the records here - if there aren't any records with the fields we're looking for in ANY of the metadata,
+    // return
+    List<SObject> calcItems = getTriggerRecords(uniqueLookupFields);
+    Map<Id, SObject> oldCalcItems;
+    if (triggerContext == TriggerOperation.AFTER_UPDATE || triggerContext == TriggerOperation.BEFORE_DELETE) {
+      oldCalcItems = getOldTriggerRecordsMap(uniqueLookupFields);
+    }
     return shouldReturn
       ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER)
       : getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_TRIGGER);
@@ -895,7 +904,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return new RollupAsyncProcessor(rollupInvokePoint);
     }
-
+    if (sObjectType == null) {
+      sObjectType = calcItems[0].getSObjectType();
+    }
     /**
      * We have rollup operations to perform. That's great!
      * BUT Field Definition CMDT records are stored like such: `Account.NumberOfEmployees`
@@ -987,15 +998,73 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return shouldRun;
   }
 
-  private static List<SObject> getTriggerRecords() {
-    if (records != null) {
+  private static List<SObject> getTriggerRecords(Set<String> uniqueLookupFields) {
+    if (records != null && cdcRecords == null) {
       return records;
     }
-    return Trigger.isDelete ? Trigger.old : Trigger.new;
+
+    List<SObject> potentialTriggerRecords = getNewRecords();
+    Boolean isCDC = isTriggeredFromCDC(potentialTriggerRecords);
+
+    if (isCDC) {
+      return getOldTriggerRecordsMap(uniqueLookupFields).values();
+    }
+    return Trigger.isDelete ? Trigger.old : potentialTriggerRecords;
   }
 
-  private static Map<Id, SObject> getOldTriggerRecordsMap() {
-    return oldRecordsMap != null ? oldRecordsMap : Trigger.oldMap;
+  private static Map<Id, SObject> getOldTriggerRecordsMap(Set<String> uniqueLookupFields) {
+    if (oldRecordsMap != null) {
+      return oldRecordsMap;
+    } else if (Trigger.oldMap != null) {
+      return Trigger.oldMap;
+    }
+
+    List<SObject> potentialCDCRecords = getNewRecords();
+    Boolean isCDC = isTriggeredFromCDC(potentialCDCRecords);
+    if (isCDC) {
+      return getCDCRecordsMap(potentialCDCRecords, uniqueLookupFields);
+    }
+
+    return new Map<Id, SObject>();
+  }
+
+  private static List<SObject> getNewRecords() {
+    return cdcRecords != null ? cdcRecords : Trigger.new;
+  }
+
+  private static Boolean isTriggeredFromCDC(List<SObject> records) {
+    if (records == null || records.isEmpty()) {
+      return false;
+    }
+    // we can't use .get on the record because "System.SObjectException: Invalid field ChangeEventHeader" gets thrown if we're wrong ...
+    Map<String, Object> firstRecordMap = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(records[0]));
+    return firstRecordMap.containsKey('ChangeEventHeader');
+  }
+
+  private static Map<Id, SObject> backingCDCRecordsMap;
+  private static Map<Id, SObject> getCDCRecordsMap(List<SObject> cdcRecords, Set<String> uniqueLookupFields) {
+    if (backingCDCRecordsMap != null && uniqueLookupFields.isEmpty() == false) {
+      return backingCDCRecordsMap;
+    }
+    // because CDC is async, the DB will always be updated by the time we get there
+    // for UPDATE routes, that will have to be OK
+    List<Id> recordIds = new List<Id>();
+    Set<String> uniqueFieldNames = new Set<String>();
+    String nameOfObject;
+    for (SObject cdcRecord : cdcRecords) {
+      EventBus.ChangeEventHeader header = (EventBus.ChangeEventHeader) cdcRecord.get('ChangeEventHeader');
+      if (nameOfObject == null) {
+        nameOfObject = header.getEntityName();
+      }
+      uniqueFieldNames.addAll(header.changedfields);
+      recordIds.add(header.getRecordIds()[0]);
+    }
+
+    uniqueFieldNames.addAll(uniqueLookupFields);
+    backingCDCRecordsMap = new Map<Id, SObject>(
+      Database.query('SELECT Id, ' + String.join(new List<String>(uniqueFieldNames), ',') + ' FROM ' + nameOfObject + ' WHERE Id = :recordIds')
+    );
+    return backingCDCRecordsMap;
   }
 
   private static SObjectType getSObjectTypeFromName(String sobjectName) {
