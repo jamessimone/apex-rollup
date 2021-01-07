@@ -147,6 +147,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
     this.rollups = innerRollup.rollups;
     this.isNoOp = this.rollups.isEmpty() == false;
+    this.isFullRecalc = innerRollup.isFullRecalc;
   }
 
   private Rollup(
@@ -255,9 +256,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean shouldRunAsBatch = shouldRunAsBatch || (orgDefaults.ShouldRunAsBatchable__c && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
     if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
-      Rollup rollupToRun = new Rollup(this);
-      rollupToRun.isFullRecalc = this.isFullRecalc;
-      Database.executeBatch(rollupToRun);
+      Database.executeBatch(new Rollup(this));
     } else if (
       shouldRunAsBatch == false && (orgDefaults.MaxLookupRowsForQueueable__c == null || totalCountOfRecords <= orgDefaults.MaxLookupRowsForQueueable__c)
     ) {
@@ -363,10 +362,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   /**
-   * public facing Rollup calculation section
+   * global facing Rollup calculation section
    * - Trigger operations
    * - Batch (multiple Rollup operations chained into one job)
    * - Invocable
+   * - Schedulable
    */
 
   global class FlowInput {
@@ -487,8 +487,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     return flowOutputReturns;
   }
-
-  /** Static public methods and helper methods */
 
   global static Id schedule(String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval) {
     RollupSchedulable scheduledRollup = new RollupSchedulable(query, rollupMetadataIds, eval);
@@ -762,7 +760,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     isCDC = true;
     // CDC always uses Trigger.new
     List<SObject> cdcRecords = records != null ? records : Trigger.new;
-    if(cdcRecords.isEmpty()) {
+    if (cdcRecords.isEmpty()) {
       return;
     }
     SObject firstRecord = cdcRecords[0];
@@ -770,19 +768,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType sObjectType = getSObjectTypeFromName(header.getEntityName());
 
     List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
-    if(rollupMetadata.isEmpty()) {
+    if (rollupMetadata.isEmpty()) {
       return;
     }
 
     DescribeSObjectResult objectDescribe = sObjectType.getDescribe();
     Set<String> uniqueFieldNames = new Set<String>();
-    for(Rollup__mdt rollupInfo : rollupMetadata) {
+    for (Rollup__mdt rollupInfo : rollupMetadata) {
       uniqueFieldNames.add(getParedFieldName(rollupInfo.LookupFieldOnCalcItem__c, objectDescribe));
       uniqueFieldNames.add(getParedFieldName(rollupInfo.ROllupFieldOnCalcItem__c, objectDescribe));
     }
 
+    // it would have been nice if this was an enum!
     switch on header.changeType {
-      WHEN 'CREATE' {
+      when 'CREATE' {
         triggerContext = TriggerOperation.AFTER_INSERT;
       }
       when 'UPDATE' {
@@ -850,7 +849,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       : getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_TRIGGER);
   }
 
-  /** end public-facing section, begin private static helpers */
+  /** end global-facing section, begin private static helpers */
 
   private static String getCountQueryString(SObjectType sObjectType, String equalityOperatorForIds) {
     return 'SELECT Count() FROM ' + sObjectType + ' WHERE Id ' + equalityOperatorForIds + ' :objIds';
@@ -970,12 +969,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectType lookupSObjectType = getSObjectTypeFromName(rollupMetadata.LookupObject__c);
       DescribeSObjectResult lookupObjectDescribe = lookupSObjectType.getDescribe();
       Map<String, SObjectField> lookupFieldNameToLookupFields = lookupObjectDescribe.fields.getMap();
-      SObjectField lookupFieldOnOpObject = getSObjectFieldByName(
-        lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c
-      );
-      SObjectField rollupFieldOnOpObject = getSObjectFieldByName(
-        lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c
-      );
+      SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
+      SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
       if (eval == null && String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)) {
         eval = new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
@@ -1014,26 +1009,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
     Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
     String paredFieldName = getParedFieldName(desiredField, objectDescribe);
-    if(fieldNameToField.containsKey(paredFieldName)) {
+    if (fieldNameToField.containsKey(paredFieldName)) {
       return fieldNameToField.get(paredFieldName);
-    }
-    // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
-    else if(fieldNameToField.containsKey(paredFieldName + 'Id')) {
+    } else if (fieldNameToField.containsKey(paredFieldName + 'Id')) {
+      // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
       return fieldNameToField.get(paredFieldName + 'Id');
     }
 
     try {
       Id testCustomField = Id.valueOf(paredFieldName);
-      if(durableIdToFieldName == null) {
+      if (durableIdToFieldName == null) {
         durableIdToFieldName = new Map<String, String>();
-        List<FieldDefinition> fieldDefinitions = [SELECT QualifiedApiName, DurableId FROM FieldDefinition WHERE EntityDefinitionId = : objectDescribe.getName()];
-        for(FieldDefinition fieldDef : fieldDefinitions) {
+        List<FieldDefinition> fieldDefinitions = [SELECT QualifiedApiName, DurableId FROM FieldDefinition WHERE EntityDefinitionId = :objectDescribe.getName()];
+        for (FieldDefinition fieldDef : fieldDefinitions) {
           durableIdToFieldName.put(fieldDef.DurableId, fieldDef.QualifiedApiName);
         }
       }
       String actualFieldName = durableIdToFieldName.get(desiredField);
       return fieldNameToField.get(actualFieldName);
-    } catch(Exception ex) {
+    } catch (Exception ex) {
       // do nothing, it didn't work
     }
 
@@ -1510,7 +1504,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (this.shouldShortCircuit) {
           this.handleShortCircuit(op, calcItem, operationField);
           continue;
-        } else if(this.isFullRecalc) {
+        } else if (this.isFullRecalc) {
           // here we don't exclude items because the calc items have already been updated
           this.returnVal = this.calculateNewAggregateValue(new Set<Id>(), op, operationField, calcItem.getSObjectType());
           // not just a break, a return. We don't want to pass go - we don't want to call "setReturnValue" below
