@@ -36,6 +36,12 @@ trigger ExampleTrigger on Opportunity(after insert, after update, before delete)
 
 That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
 
+#### Special Considerations For Use Of Custom Fields As Rollup/Lookup Fields
+
+One **special** thing to note on the subject of Field Definitions — custom fields referenced in CMDT Field Definition fields are stored in an atypical way, and require the usage of additional SOQL queries as part of `Rollup`'s upfront cost. A typical `Rollup` operation will use `2` SOQL queries per rollup — the query that determines whether or not a job should be queued or batched, and a query for the specific Rollup Limit metadata (a dynamic query, which unfortunately means that it counts against the SOQL limits) — prior to going into the async context (where all limits are renewed) plus `1` SOQL qery (also dynamic, which is why it contributes even though it's querying CMDT). However, usage of custom fields as any of the four fields referenced in the `Rollup__mdt` custom metadata (details below) adds an additional SOQL query. If the SOQL queries used by `Rollup` becomes cause for concern, please submit an issue and we can work to address it!
+
+#### Rollup Custom Metadata Field Breakdown
+
 Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 
 - `Calc Item` - the SObject the calculation is derived from — in this case, Oppportunity

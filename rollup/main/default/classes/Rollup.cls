@@ -1010,6 +1010,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return batchRollup;
   }
 
+  private static Map<String, String> durableIdToFieldName;
   private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
     Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
     String paredFieldName = getParedFieldName(desiredField, objectDescribe);
@@ -1019,9 +1020,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
     else if(fieldNameToField.containsKey(paredFieldName + 'Id')) {
       return fieldNameToField.get(paredFieldName + 'Id');
-    } else if(fieldNameToField.containsKey(paredFieldName + '__c')) {
-      return fieldNameToField.get(paredFieldName + '__c');
     }
+
+    try {
+      Id testCustomField = Id.valueOf(paredFieldName);
+      if(durableIdToFieldName == null) {
+        durableIdToFieldName = new Map<String, String>();
+        List<FieldDefinition> fieldDefinitions = [SELECT QualifiedApiName, DurableId FROM FieldDefinition WHERE EntityDefinitionId = : objectDescribe.getName()];
+        for(FieldDefinition fieldDef : fieldDefinitions) {
+          durableIdToFieldName.put(fieldDef.DurableId, fieldDef.QualifiedApiName);
+        }
+      }
+      String actualFieldName = durableIdToFieldName.get(desiredField);
+      return fieldNameToField.get(actualFieldName);
+    } catch(Exception ex) {
+      // do nothing, it didn't work
+    }
+
     return null;
   }
 
