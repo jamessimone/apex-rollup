@@ -239,7 +239,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
 
-      String countQuery = getCountQueryString(rollup.lookupObj, '=');
+      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, 'Id', '=');
       if (queryCountsToLookupIds.containsKey(countQuery)) {
         queryCountsToLookupIds.get(countQuery).addAll(uniqueLookupFields);
       } else {
@@ -291,7 +291,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       objIds.addAll(this.getCalcItemsByLookupField(rollup).keySet());
     }
     for (SObjectType sObjectType : this.lookupObjectToUniqueFieldNames.keySet()) {
-      query = this.getQueryString(sObjectType, this.lookupObjectToUniqueFieldNames.get(sObjectType), this.rollups[0].lookupFieldOnLookupObject);
+      query = getQueryString(
+        sObjectType,
+        new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)),
+        String.valueOf(this.rollups[0].lookupFieldOnLookupObject),
+        '='
+      );
     }
     return Database.getQueryLocator(query);
   }
@@ -350,7 +355,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         return new List<SObject>();
       }
       // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
-      String queryString = this.getQueryString(rollup.lookupObj, uniqueQueryFieldNames, rollup.lookupFieldOnLookupObject);
+      String queryString = getQueryString(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=');
       List<SObject> lookupItems = Database.query(queryString);
       this.initializeRollupFieldDefaults(lookupItems, rollup);
       return lookupItems;
@@ -773,7 +778,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     DescribeSObjectResult objectDescribe = sObjectType.getDescribe();
-    Set<String> uniqueFieldNames = new Set<String>();
+    Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
     for (Rollup__mdt rollupInfo : rollupMetadata) {
       uniqueFieldNames.add(getParedFieldName(rollupInfo.LookupFieldOnCalcItem__c, objectDescribe));
       uniqueFieldNames.add(getParedFieldName(rollupInfo.ROllupFieldOnCalcItem__c, objectDescribe));
@@ -792,14 +797,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    List<Id> recordIds = new List<Id>();
+    // non-obvious coupling between objIds and the "fullQuery" below
+    List<Id> objIds = new List<Id>();
     for (SObject cdcRecord : cdcRecords) {
       uniqueFieldNames.addAll(header.changedfields);
-      recordIds.add(header.getRecordIds()[0]);
+      objIds.add(header.getRecordIds()[0]);
     }
 
-    String startQuery = uniqueFieldNames.contains('Id') ? 'SELECT ' : 'SELECT Id,';
-    String fullQuery = startQuery + String.join(new List<String>(uniqueFieldNames), ',') + ' FROM ' + sObjectType + ' WHERE Id = :recordIds';
+    String fullQuery = getQueryString(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
     Map<Id, SObject> cdcRecordsMap = new Map<Id, SObject>(Database.query(fullQuery));
 
     Rollup rollupToReturn = runFromTrigger(rollupMetadata, null, cdcRecordsMap.values(), cdcRecordsMap);
@@ -851,10 +856,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   /** end global-facing section, begin private static helpers */
 
-  private static String getCountQueryString(SObjectType sObjectType, String equalityOperatorForIds) {
-    return 'SELECT Count() FROM ' + sObjectType + ' WHERE Id ' + equalityOperatorForIds + ' :objIds';
-  }
-
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
     for (Rollup rollup : rollups) {
       if (rollup.rollups.isEmpty() == false) {
@@ -887,23 +888,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // normally, you could use a shortcut to initialize a Set<Id> like this
     // by calling new Map<Id, SObject>(currentRecords).keyset() -
     // but that code path fails if there are null Ids in the list
-    Set<Id> currentRecordIds = new Set<Id>();
+    Set<Id> objIds = new Set<Id>();
     for (SObject currentRecord : currentRecords) {
       if (currentRecord.Id != null) {
-        currentRecordIds.add(currentRecord.Id);
+        objIds.add(currentRecord.Id);
       }
     }
     // we need to do two things: get the old records, and initialize default values for both existing records and the ones that don't have matches in the db
+    DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
+    Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
     Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(
-      Database.query('SELECT ' + rollupFieldOnCalcItem + '\nFROM ' + String.valueOf(sObjectType) + '\nWHERE Id = :currentRecordIds')
+      Database.query(getQueryString(sObjectType, new List<String>{ rollupFieldOnCalcItem }, 'Id', '='))
     );
     for (SObject currentRecord : currentRecords) {
-      DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
       SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
         ? existingOldRecordsMap.get(currentRecord.Id)
         : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
       existingRecordOrDefault.Id = currentRecord.Id;
-      Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
       SObjectField fieldToken = fieldTokensForObject.get(rollupFieldOnCalcItem);
       if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null || fieldToken.getDescribe().isUpdateable() == false) {
         continue;
@@ -1005,7 +1006,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return batchRollup;
   }
 
-  private static Map<String, String> durableIdToFieldName;
+  // "entityDefinitionToFields" is lazy loaded, since it's only needed to custom fields
+  private static Map<String, Map<String, String>> entityDefinitionToFields;
   private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
     Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
     String paredFieldName = getParedFieldName(desiredField, objectDescribe);
@@ -1015,17 +1017,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
       return fieldNameToField.get(paredFieldName + 'Id');
     }
-
+    // if the field name still doesn't match, chances are it's a custom field, which are stored differently in CMDT
     try {
+      // this will throw if the pared field name is not an actual Id value
       Id testCustomField = Id.valueOf(paredFieldName);
-      if (durableIdToFieldName == null) {
-        durableIdToFieldName = new Map<String, String>();
-        List<FieldDefinition> fieldDefinitions = [SELECT QualifiedApiName, DurableId FROM FieldDefinition WHERE EntityDefinitionId = :objectDescribe.getName()];
+      String currentObject = objectDescribe.getName();
+      if (entityDefinitionToFields == null) {
+        entityDefinitionToFields = new Map<String, Map<String, String>>();
+      }
+      if (entityDefinitionToFields.containsKey(currentObject) == false) {
+        List<FieldDefinition> fieldDefinitions = [SELECT QualifiedApiName, DurableId FROM FieldDefinition WHERE EntityDefinitionId = :currentObject];
         for (FieldDefinition fieldDef : fieldDefinitions) {
-          durableIdToFieldName.put(fieldDef.DurableId, fieldDef.QualifiedApiName);
+          if (entityDefinitionToFields.containsKey(currentObject)) {
+            entityDefinitionToFields.get(currentObject).put(fieldDef.DurableId, fieldDef.QualifiedApiName);
+          } else {
+            entityDefinitionToFields.put(currentObject, new Map<String, String>{ fieldDef.DurableId => fieldDef.QualifiedApiName });
+          }
         }
       }
-      String actualFieldName = durableIdToFieldName.get(desiredField);
+      String actualFieldName = entityDefinitionToFields.get(currentObject).get(desiredField);
       return fieldNameToField.get(actualFieldName);
     } catch (Exception ex) {
       // do nothing, it didn't work
@@ -1139,6 +1149,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return batchRollup != null ? batchRollup : rollup;
   }
 
+  private static String getQueryString(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
+    // again noting the coupling for consumers of this method
+    // "objIds" is required to be present in the scope where the query is run
+    return 'SELECT ' + String.join(uniqueQueryFieldNames, ',') + '\nFROM ' + sObjectType + '\nWHERE ' + lookupFieldOnLookupObject + ' ' + equality + ' :objIds';
+  }
+
   /** End static section, begin private instance methods */
 
   protected void processAsync() {
@@ -1169,18 +1185,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     DML.doUpdate(updatedLookupRecords.values());
-  }
-
-  protected String getQueryString(SObjectType sObjectType, Set<String> uniqueQueryFieldNames, SObjectField lookupFieldOnLookupObject) {
-    // again noting the coupling for consumers of this method
-    // "objIds" is required to be present in the scope where the query is run
-    return 'SELECT ' +
-      String.join(new List<String>(uniqueQueryFieldNames), ',') +
-      '\nFROM ' +
-      sObjectType +
-      '\nWHERE ' +
-      lookupFieldOnLookupObject +
-      ' = :objIds';
   }
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval) {
@@ -1592,21 +1596,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     protected virtual void setReturnValue() {
     }
 
-    protected virtual Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
+    protected virtual Object calculateNewAggregateValue(Set<Id> objIds, Op operation, SObjectField operationField, SObjectType sObjectType) {
       String operationName = operation.name().contains('_') ? operation.name().substringAfter('_') : operation.name();
-      String alias = operationName.toLowerCase() + 'field';
-      String query =
-        'SELECT ' +
-        operationName +
-        '(' +
-        operationField +
-        ')' +
-        alias +
-        ' FROM ' +
-        sObjectType +
-        ' WHERE Id != :excludedItems ' +
-        this.lookupKeyQuery;
-
+      String alias = operationName.toLowerCase() + 'Field';
+      String query = getQueryString(sObjectType, new List<String>{ operationName + '(' + operationField + ')' + alias }, 'Id', '!=') + this.lookupKeyQuery;
       List<SObject> aggregate = Database.query(query);
       return aggregate.isEmpty() == false ? aggregate[0].get(alias) : null;
     }
@@ -1651,21 +1644,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    protected override Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
+    protected override Object calculateNewAggregateValue(Set<Id> objIds, Op operation, SObjectField operationField, SObjectType sObjectType) {
       Boolean isGroupable = operationField.getDescribe().isGroupable();
-      String query =
-        'SELECT ' +
-        operationField +
-        (isGroupable ? ', COUNT(Id)' : '') +
-        ' FROM ' +
-        sObjectType +
-        ' WHERE Id != :excludedItems ' +
-        this.lookupKeyQuery +
-        ' AND ' +
-        operationField +
-        ' != null' +
-        // not every field supports grouping for counts. unlucky.
-        (isGroupable ? (' GROUP BY ' + operationField) : '');
+      List<String> queryFields = new List<String>{ String.valueOf(operationField) };
+      if (isGroupable) {
+        queryFields.add('COUNT(Id)');
+      }
+      String query = getQueryString(sObjectType, queryFields, 'Id', '!=') + this.lookupKeyQuery + (isGroupable ? (' GROUP BY ' + operationField) : '');
       List<SObject> results = Database.query(query);
       for (SObject res : results) {
         // have to use the String representation of the operationField to avoid:
@@ -1779,13 +1764,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.returnVal = this.returnDecimal;
     }
 
-    protected virtual override Object calculateNewAggregateValue(Set<Id> excludedItems, Op operation, SObjectField operationField, SObjectType sObjectType) {
+    protected virtual override Object calculateNewAggregateValue(Set<Id> objIds, Op operation, SObjectField operationField, SObjectType sObjectType) {
       Object aggregate;
       try {
-        aggregate = super.calculateNewAggregateValue(excludedItems, operation, operationField, sObjectType);
+        aggregate = super.calculateNewAggregateValue(objIds, operation, operationField, sObjectType);
       } catch (Exception ex) {
         Decimal minOrMax;
-        List<SObject> allOtherItems = Database.query('SELECT ' + operationField + ' FROM ' + sObjectType + ' WHERE Id != :excludedItems' + this.lookupKeyQuery);
+        List<SObject> allOtherItems = Database.query(
+          getQueryString(sObjectType, new List<String>{ String.valueOf(operationField) }, 'Id', '!=') + this.lookupKeyQuery
+        );
         for (SObject otherItem : allOtherItems) {
           Decimal otherItemDate = this.getDecimalOrDefault(otherItem.get(operationField));
           if (otherItemDate != null && operation.name().contains(Op.MAX.name()) && (minOrMax == null || otherItemDate > minOrMax)) {
@@ -2045,7 +2032,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // the List isn't strongly typed at this point, otherwise we could avoid this shameful statement
       SObjectType sObjectType = calcItems[0].getSobjectType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Integer countOfPreExistingItems = Database.countQuery(getCountQueryString(sObjectType, '!=') + this.lookupKeyQuery);
+      Integer countOfPreExistingItems = Database.countQuery(getQueryString(sObjectType, new List<String>{ 'Count()' }, 'Id', '!=') + this.lookupKeyQuery);
       Decimal oldSum = (Decimal) this.calculateNewAggregateValue(objIds, Op.SUM, operationField, sObjectType);
 
       List<SObject> applicableCalcItems = operation == Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
