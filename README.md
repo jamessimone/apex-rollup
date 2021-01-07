@@ -36,9 +36,15 @@ trigger ExampleTrigger on Opportunity(after insert, after update, before delete)
 
 That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
 
+#### Special Considerations For Use Of Custom Fields As Rollup/Lookup Fields
+
+One **special** thing to note on the subject of Field Definitions — custom fields referenced in CMDT Field Definition fields are stored in an atypical way, and require the usage of additional SOQL queries as part of `Rollup`'s upfront cost. A typical `Rollup` operation will use `2` SOQL queries per rollup — the query that determines whether or not a job should be queued or batched, and a query for the specific Rollup Limit metadata (a dynamic query, which unfortunately means that it counts against the SOQL limits) — prior to going into the async context (where all limits are renewed) plus `1` SOQL qery (also dynamic, which is why it contributes even though it's querying CMDT). However, usage of custom fields as any of the four fields referenced in the `Rollup__mdt` custom metadata (details below) adds an additional SOQL query. If the SOQL queries used by `Rollup` becomes cause for concern, please submit an issue and we can work to address it!
+
+#### Rollup Custom Metadata Field Breakdown
+
 Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 
-- `Calc Item` - the SObject the calculation is derived from -- in this case, Oppportunity
+- `Calc Item` - the SObject the calculation is derived from — in this case, Oppportunity
 - `Lookup Object` - the SObject you’d like to roll the values up to (in this case, Account)
 - `Rollup Field On Calc Item` - the field you’d like to aggregate (let's say Amount)
 - `Lookup Field On Calc Item`- the field storing the Id or String referencing a unique value on another object (In the example, Id)
@@ -49,7 +55,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 
-You can perform have as many rollups as you'd like per object/trigger -- all operations are boxcarred together for optimal efficiency.
+You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
 #### Establishing Org Limits For Rollup Operations
 
@@ -77,7 +83,7 @@ Invoking the `Rollup` process from a Flow, in particular, is a joy; with a Recor
 
 ![Example flow](./media/joys-of-apex-rollup-flow.png "Fun and easy rollups from Flows")
 
-This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups -- be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow. As long as you can manipulate data to correspond to the shape of an existing SObject's fields, they don't even have to exist; you could have an Autolaunched flow rolling up records when invoked from a REST API so long as the data you're consuming contains a String/Id matching something on the "parent" rollup object.
+This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups — be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow. As long as you can manipulate data to correspond to the shape of an existing SObject's fields, they don't even have to exist; you could have an Autolaunched flow rolling up records when invoked from a REST API so long as the data you're consuming contains a String/Id matching something on the "parent" rollup object.
 
 Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builder:
 
@@ -205,6 +211,10 @@ public static Rollup sumFromTrigger(
 
 // for using as the "one line of code" and CMDT-driven rollups
 public static void runFromTrigger()
+
+// the alternative one-liner for CDC triggers
+// more on that in the CDC section of "Special Considerations", below
+public static void runFromCDCTrigger()
 ```
 
 All of the "...fromTrigger" methods shown above can also be invoked using a final argument, the `Evaluator`:
@@ -245,7 +255,7 @@ Rollup.sumFromTrigger(
 
 It's that simple. Note that in order for custom Apex solutions that don't use the `batch` static method on `Rollup` to properly start, the `runCalc()` method must also be called. That is, if you only have one rollup operation per object, you'll _always_ need to call `runCalc()` when invoking `Rollup` from a trigger.
 
-Another note for when the use of an `Evaluator` class might be necessary -- let's say that you have some slight lookup skew caused by a fallback object in a lookup relationship. This fallback object has thousands of objects tied to it, and updates to it are frequently painful / slow. If you didn't need the rollup for the fallback, you could implement an `Evaluator` to exclude it from being processed:
+Another note for when the use of an `Evaluator` class might be necessary — let's say that you have some slight lookup skew caused by a fallback object in a lookup relationship. This fallback object has thousands of objects tied to it, and updates to it are frequently painful / slow. If you didn't need the rollup for the fallback, you could implement an `Evaluator` to exclude it from being processed:
 
 ```java
 // again using the example of Opportunities
@@ -277,7 +287,7 @@ trigger OpportunityTrigger on Opportunity(before update, after update, before in
 
 ## Special Considerations
 
-While pains have been taken to create a solution that's truly one-sized-fits-all, any professional working in the Salesforce ecosystem knows that it's difficult to make that the case for any product or service - even something open-source and forever-free, like `Rollup`. All of that is to say that while I have tested the hell out of `Rollup` and have used it already in production, your mileage may vary depending on what you're trying to do. Some operations that are explicitly not supported within the SOQL aggregate functions (like `SELECT MIN(ActivityDate) FROM Task`) are possible when using `Rollup`. Another example would be `MAX` or `MIN` operations on multi-select picklists. I don't know _why_ you would want to do that ... but you can!
+While pains have been taken to create a solution that's truly one-sized-fits-all, any professional working in the Salesforce ecosystem knows that it's difficult to make that the case for any product or service — even something open-source and forever-free, like `Rollup`. All of that is to say that while I have tested the hell out of `Rollup` and have used it already in production, your mileage may vary depending on what you're trying to do. Some operations that are explicitly not supported within the SOQL aggregate functions (like `SELECT MIN(ActivityDate) FROM Task`) are possible when using `Rollup`. Another example would be `MAX` or `MIN` operations on multi-select picklists. I don't know _why_ you would want to do that ... but you can!
 
 ### Picklists
 
@@ -291,11 +301,11 @@ One of the reasons that `Rollup` can boast of superior performance is that, for 
 - a MAX operation might find that one of the calculation items supplied to it previously _was_ the _maxmimum_ value, but is no longer the max on an update
 - ... pretty much any operation involving AVERAGE
 
-In these instances, `Rollup` _does_ requery the calculation object; it also does another loop through the calculation items supplied to it in search of _all_ the values necessary to find the true rollup value. This provides context, more than anything -- the rollup operation should still be lightning fast.
+In these instances, `Rollup` _does_ requery the calculation object; it also does another loop through the calculation items supplied to it in search of _all_ the values necessary to find the true rollup value. This provides context, more than anything — the rollup operation should still be lightning fast.
 
 ### Custom Apex
 
-If you are implementing `Rollup` through the use of the static Apex methods instead of CMDT, one thing to be aware of -- if you need to perform 6+ rollup operations _and_ you are rolling up to more than one target object, you should absolutely keep your rollups ordered by the target object when invoking the `batch` method:
+If you are implementing `Rollup` through the use of the static Apex methods instead of CMDT, one thing to be aware of — if you need to perform 6+ rollup operations _and_ you are rolling up to more than one target object, you should absolutely keep your rollups ordered by the target object when invoking the `batch` method:
 
 ```java
 // this is perfectly valid
@@ -320,6 +330,23 @@ Rollup.batch(
   Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
 );
 ```
+
+### Change Data Capture (CDC)
+
+As of [v1.0.4](https://github.com/jamessimone/apex-rollup/tree/v1.0.4), CDC _is_ supported. However, at the moment Change Data Capture can be used strictly through CMDT, and requires a different one-liner for installation into your CDC object Trigger:
+
+```java
+// within your CDC trigger, using Opportunity as an example:
+trigger OpportunityChangeEventTrigger on OpportunityChangeEvent (after insert) {
+  Rollup.runFromCDCTrigger();
+}
+```
+
+Note that you're still selecting `Opportunity` as the `Calc Item` within your Rollup metadata record in this example; in fact, you cannot select `OpportunityChangeEvent`, so hopefully that was already clear. This means that people interested in using CDC should view it as an either/or option when compared to invoking `Rollup` from a standard, synchronous trigger. Additionally, that means reparenting that occurs at the calculation item level (the child object in the rollup operation) is not yet a supported feature of `Rollup` for CDC-based rollup actions — because the underlying object has already been updated in the database, and because CDC events only contain the new values for changed fields (instead of the new & old values). It's a TBD-type situation if this will ever be supported.
+
+### Multi-Currency Orgs
+
+Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
 
 ## Commit History & Contributions
 
