@@ -8,3 +8,5 @@ yarn.lock
 .vscode/
 .localdevserver/
 debug.log
+DEVHUB_SFDX_URL.txt
+tests/apex
