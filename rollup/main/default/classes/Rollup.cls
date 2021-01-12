@@ -786,10 +786,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     // it would have been nice if this was an enum!
     switch on header.changeType {
-      when 'CREATE' {
+      when 'CREATE', 'GAP_CREATE' {
         triggerContext = TriggerOperation.AFTER_INSERT;
       }
-      when 'UPDATE' {
+      when 'UPDATE', 'GAP_UPDATE' {
         triggerContext = TriggerOperation.AFTER_UPDATE;
       }
       when 'DELETE' {
