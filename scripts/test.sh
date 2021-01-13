@@ -1,9 +1,14 @@
 #!/usr/bin/bash
 
-set -e
-trap 'catch $? $LINENO' EXIT
+# Prior to using this script, it's important to have used the output of "sfdx force:org:list --verbose" to copy the
+# "sfdxAuthUrl" value to a text file at the root of this project called "DEVHUB_SFDX_URL.txt"
+# This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
+# DEVHUB_SFDX_URL.txt file is populated in a build step
 
-# Script will throw on line 30 if our scratch org allotment for the day has been exceeded
+set -e
+trap 'catch $? $LINENO' ERR
+
+# Script will throw if our scratch org allotment for the day has been exceeded
 catch() {
   echo "No scratch orgs remaining, running tests on sandbox"
 
@@ -28,7 +33,7 @@ echo "Test command to use: $testInvocation"
 
 
 # Create Scratch Org
-sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+sfdx force:org:create -v apex-rollup -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
 # Deploy
 sfdx force:source:push
 # Run tests
@@ -46,3 +51,4 @@ else
 fi
 
 echo "Build + testing finished successfully"
+exit 0

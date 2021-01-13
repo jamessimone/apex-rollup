@@ -56,4 +56,4 @@ jobs:
 
       - name: "Run build script, test, and exit"
         shell: bash
-        run: "sh ./test.sh"
+        run: "sh ./scripts/test.sh"
