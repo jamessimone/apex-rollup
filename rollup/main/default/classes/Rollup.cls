@@ -119,7 +119,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private enum RollupInvocationPoint {
     FROM_TRIGGER,
     FROM_INVOCABLE,
-    FROM_SCHEDULED
+    FROM_SCHEDULED,
+    FROM_LWC
   }
 
   private Rollup(RollupInvocationPoint invokePoint) {
@@ -384,13 +385,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String calcItemSObjectName,
     String operationName
   ) {
-    SObjectType sObjectType = getSObjectTypeFromName(lookupSObjectType);
-    Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe().fields.getMap();
-
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     String countQuery = getQueryString(calcItemSObjectName, new List<String>{ 'Count()' }, 'Id', '!=');
-    Set<Id> objIds = new Set<Id>();
+    Set<Id> objIds = new Set<Id>(); // get everything that doesn't have a null Id - a pretty trick
+    Integer amountOfCalcItems = Database.countQuery(countQuery);
+
+    SObjectType sObjectType = getSObjectTypeFromName(lookupSObjectType);
+    Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe().fields.getMap();
+
+    Rollup thisRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
+    // TODO: this should be based on the overall query limit, not the DML one ...
+    RollupLimit__mdt sensibleDefault = thisRollup.getSensibleLimitsDefault();
+    if (amountOfCalcItems < sensibleDefault.MaxLookupRowsBeforeBatching__c) {
+      //enqueue
+    } else {
+      //batch to get calc items and then batch to
+    }
   }
 
   global class FlowInput {
