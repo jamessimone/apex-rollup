@@ -374,6 +374,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * - Schedulable
    */
 
+  @AuraEnabled
+  global static void performFullRecalculation(
+    String opFieldOnCalcItem,
+    String lookupFieldOnCalcItem,
+    String lookupFieldOnLookupItem,
+    String calcFieldOnLookupItem,
+    String lookupSObjectType,
+    String calcItemSObjectName,
+    String operationName
+  ) {
+    SObjectType sObjectType = getSObjectTypeFromName(lookupSObjectType);
+    Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe().fields.getMap();
+
+    // just how many items are we talking, here? If it's less than the query limit, we can proceed
+    // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
+    String countQuery = getQueryString(calcItemSObjectName, new List<String>{ 'Count()' }, 'Id', '!=');
+    Set<Id> objIds = new Set<Id>();
+  }
+
   global class FlowInput {
     @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)' required=true)
     global List<SObject> recordsToRollup;
@@ -1006,7 +1025,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return batchRollup;
   }
 
-  // "entityDefinitionToFields" is lazy loaded, since it's only needed to custom fields
+  // "entityDefinitionToFields" is lazy loaded, since it's only needed for custom fields
   private static Map<String, Map<String, String>> entityDefinitionToFields;
   private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
     Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
