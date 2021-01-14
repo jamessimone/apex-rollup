@@ -28,7 +28,7 @@ if($scratchOrgAllotment -gt 0) {
   # Deploy
   sfdx force:source:push
   # Run tests
-  Invoke-Expression '$testInvocation'
+  Invoke-Expression $testInvocation
   Write-Output "Scratch org tests finished running with success: $?"
   # Delete scratch org
   sfdx force:org:delete -p -u apex-rollup-scratch-org
@@ -38,7 +38,7 @@ if($scratchOrgAllotment -gt 0) {
   # Deploy
   sfdx force:source:deploy -p rollup
   # Run tests
-  Invoke-Expression '$testInvocation'
+  Invoke-Expression $testInvocation
   Write-Output "Tests finished running with success: $?"
 }
 
