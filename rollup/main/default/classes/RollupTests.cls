@@ -2140,7 +2140,7 @@ private class RollupTests {
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity> {
+    List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(Name = 'one', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
       new Opportunity(Name = 'two', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
       new Opportunity(Name = 'three', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
@@ -2151,15 +2151,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation(
-      'Amount',
-      'AccountId',
-      'Id',
-      'AnnualRevenue',
-      'Account',
-      'Opportunity',
-      'SUM'
-    );
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM');
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2170,28 +2162,20 @@ private class RollupTests {
   static void shouldBatchForFullRecalcWhenOverLimits() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity> {
-      new Opportunity(Name = 'one', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'two', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'three', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'four', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'five', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'six', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(Name = 'oneBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'twoBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'threeBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'fourBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'fiveBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'sixBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
     };
     insert opps;
 
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation(
-      'Amount',
-      'AccountId',
-      'Id',
-      'AnnualRevenue',
-      'Account',
-      'Opportunity',
-      'SUM'
-    );
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM');
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];

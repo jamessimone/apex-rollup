@@ -118,14 +118,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     DELETE_AVERAGE
   }
 
-  private enum RollupInvocationPoint {
+  public enum RollupInvocationPoint {
     FROM_TRIGGER,
     FROM_INVOCABLE,
     FROM_SCHEDULED,
     FROM_LWC
   }
 
-  private Rollup(RollupInvocationPoint invokePoint) {
+  protected Rollup(RollupInvocationPoint invokePoint) {
     this.isBatched = true;
     // a batch only becomes valid if other Rollups are added to it
     this.isNoOp = true;
@@ -406,7 +406,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       RollupType__c = operationName
     );
     String queryString = getQueryString(calcItemType, new List<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem }, 'Id', '!=');
-    if (amountOfCalcItems < 0) {
+    if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       List<SObject> calcItems = Database.query(queryString);
       Rollup thisRollup = getRollup(
         new List<Rollup__mdt>{ rollupInfo },
@@ -420,40 +420,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else {
       //batch to get calc items and then batch to rollup
       return Database.executeBatch(new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType));
-    }
-  }
-
-  public class RollupFullBatchRecalculator extends Rollup {
-    private final String queryString;
-    private final Rollup__mdt rollupInfo;
-    private final SObjectType calcItemType;
-    public RollupFullBatchRecalculator(String queryString, RollupInvocationPoint invokePoint, Rollup__mdt rollupInfo, SObjectType calcItemType) {
-      super(invokePoint);
-      this.queryString = queryString;
-      this.rollupInfo = rollupInfo;
-    }
-
-    public override Database.QueryLocator start(Database.BatchableContext bc) {
-      System.assert(false, 'made it here');
-      return Database.getQueryLocator(this.queryString);
-    }
-
-    public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-      // this batch class is a glorified "for loop" for the calc items, dispatching
-      // them to the overall Rollup framework while breaking us out of the query limits
-      getRollup(
-          new List<Rollup__mdt>{ this.rollupInfo },
-          this.calcItemType,
-          calcItems,
-          new Map<Id, SObject>(calcItems),
-          null, // the evaluator, which we don't need here
-          RollupInvocationPoint.FROM_LWC
-        )
-        .runCalc();
-    }
-
-    public override void finish(Database.BatchableContext bc) {
-      System.debug('Recalculation batched');
     }
   }
 
@@ -1239,6 +1205,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   /** End static section, begin protected + private instance methods */
+
+  protected Rollup getDelegatedRollup(
+    Rollup__mdt rollupInfo,
+    SObjectType calcItemType,
+    List<SObject> calcItems,
+    Map<Id, SObject> oldCalcItems,
+    Evaluator eval,
+    RollupInvocationPoint invokePoint
+  ) {
+    return getRollup(new List<Rollup__mdt>{ rollupInfo }, calcItemType, calcItems, oldCalcItems, eval, invokePoint);
+  }
 
   protected virtual Integer getMaxQueryRows() {
     return maxQueryRowOverride != null ? maxQueryRowOverride : Limits.getLimitQueryRows() - Limits.getQueryRows();
