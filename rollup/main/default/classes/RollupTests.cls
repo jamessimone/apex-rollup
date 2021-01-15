@@ -2134,6 +2134,70 @@ private class RollupTests {
     System.assertNotEquals(null, jobId);
   }
 
+  /** Integration tests */
+
+  @isTest
+  static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<Opportunity> opps = new List<Opportunity> {
+      new Opportunity(Name = 'one', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'two', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'three', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'four', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'five', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'six', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    };
+    insert opps;
+
+    Test.startTest();
+    Rollup.performFullRecalculation(
+      'Amount',
+      'AccountId',
+      'Id',
+      'AnnualRevenue',
+      'Account',
+      'Opportunity',
+      'SUM'
+    );
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+  }
+
+  @isTest
+  static void shouldBatchForFullRecalcWhenOverLimits() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<Opportunity> opps = new List<Opportunity> {
+      new Opportunity(Name = 'one', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'two', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'three', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'four', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'five', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'six', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    };
+    insert opps;
+
+    Rollup.maxQueryRowOverride = 1;
+
+    Test.startTest();
+    Rollup.performFullRecalculation(
+      'Amount',
+      'AccountId',
+      'Id',
+      'AnnualRevenue',
+      'Account',
+      'Opportunity',
+      'SUM'
+    );
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+  }
+
   //** Helpers */
 
   private static DMLMock getMock(List<SObject> records) {
