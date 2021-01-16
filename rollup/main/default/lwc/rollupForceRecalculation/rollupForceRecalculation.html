@@ -1,19 +1,76 @@
 <template>
-  <lightning-layout>
-    <lightning-input type="text" label="Rollup field on calc item" value={opFieldOnCalcItem}> </lightning-input>
-    <lightning-input type="text" label="Lookup field on calc item" value={lookupFieldOnCalcItem}> </lightning-input>
-    <lightning-input type="text" label="Lookup field on lookup object" value={lookupFieldOnLookupObject}> </lightning-input>
-    <lightning-input type="text" label="Rollup field on lookup object" value={rollupFieldOnLookupObject}> </lightning-input>
-    <lightning-input type="text" label="Lookup SObject API Name" value={lookupSObjectName}> </lightning-input>
-    <lightning-input type="text" label="Calc Item SObject API Name" value={calcItemSObjectName}> </lightning-input>
-    <lightning-input type="text" label="Rollup Operation Name" value={rollupOperationName}> </lightning-input>
-    <lightning-button onsubmit={handleSubmit}>Start Rollup!</lightning-button>
-  </lightning-layout>
-  <template if:true={isRollingUp}>
-    <div>Rollup processing ...</div>
-    <template if:true={rollupStatus}>
-      <div>Batch job status: {rollupStatus}</div>
+  <div class="slds-box white">
+    <div class="slds-m-bottom_small">After entering the below information, click the submit button to start up your Rollup.</div>
+    <lightning-layout vertical-align="center">
+      <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="Calc Item SObject API Name"
+          name="calcItemSObjectName"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the rollup field on calc item"
+          name="opFieldOnCalcItem"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the lookup field on calc item"
+          name="lookupFieldOnCalcItem"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the lookup field on the lookup object"
+          name="lookupFieldOnLookupObject"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the Rollup field on the lookup object"
+          name="rollupFieldOnLookupObject"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="Lookup SObject API Name"
+          name="lookupSObjectName"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE)"
+          name="operationName"
+          onchange={handleChange}
+        >
+        </lightning-input>
+        <lightning-button class="slds-col slds-m-top_small" onclick={handleSubmit} label="Start rollup!"></lightning-button>
+      </div>
+    </lightning-layout>
+    <template if:true={isRollingUp}>
+      <div>Rollup processing ...</div>
+      <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
     </template>
-    <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
-  </template>
+    <template if:true={rollupStatus}>
+      <div class="slds-m-top_small">Batch job status: {rollupStatus}</div>
+    </template>
+    <template if:true={error}>
+      <div class="slds-m-top_small">There was an error performing your rollup: {error}</div>
+    </template>
+  </div>
 </template>
