@@ -1,0 +1,19 @@
+<template>
+  <lightning-layout>
+    <lightning-input type="text" label="Rollup field on calc item" value={opFieldOnCalcItem}> </lightning-input>
+    <lightning-input type="text" label="Lookup field on calc item" value={lookupFieldOnCalcItem}> </lightning-input>
+    <lightning-input type="text" label="Lookup field on lookup object" value={lookupFieldOnLookupObject}> </lightning-input>
+    <lightning-input type="text" label="Rollup field on lookup object" value={rollupFieldOnLookupObject}> </lightning-input>
+    <lightning-input type="text" label="Lookup SObject API Name" value={lookupSObjectName}> </lightning-input>
+    <lightning-input type="text" label="Calc Item SObject API Name" value={calcItemSObjectName}> </lightning-input>
+    <lightning-input type="text" label="Rollup Operation Name" value={rollupOperationName}> </lightning-input>
+    <lightning-button onsubmit={handleSubmit}>Start Rollup!</lightning-button>
+  </lightning-layout>
+  <template if:true={isRollingUp}>
+    <div>Rollup processing ...</div>
+    <template if:true={rollupStatus}>
+      <div>Batch job status: {rollupStatus}</div>
+    </template>
+    <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
+  </template>
+</template>
