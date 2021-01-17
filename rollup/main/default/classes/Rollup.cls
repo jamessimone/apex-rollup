@@ -215,15 +215,68 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private class WhereFieldCondition {
-    public String fieldName { get; set; }
-    public String criteria { get; set; }
-    public Object value {get; set; }
+    public final String fieldName;
+    public final String criteria;
+    public final String value;
+    public WhereFieldCondition(String fieldName, String criteria, String value) {
+      this.fieldName = fieldName;
+      this.criteria = criteria;
+      this.value = value;
+    }
   }
 
   public class WhereFieldEvaluator implements Evaluator {
+    private final SObjectType calcItemSObjectType;
+    private final Map<String, String> conditionMapping = new Map<String, String>{ '<>' => '!=', 'not in' => '!=', 'in' => '=', 'not like' => 'notlike', 'LIKE' => 'like', 'NOT LIKE' => 'notlike' };
+    private final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
+      this.calcItemSObjectType = calcItemSObjectType;
+      for (String conditionKey : this.conditionMapping.keySet()) {
+        whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
+      }
+      List<String> splitWhere = whereClause.split('/(and|AND)/');
 
+      try {
+        for(String splitWhereClause : splitWhere) {
+          splitWhereClause = splitWhereClause.trim();
+          String fieldName = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
+          splitWhereClause = splitWhereClause.replace(fieldName, '').trim();
+          String criteria = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
+          String value = splitWhereClause.replace(criteria, '').trim().replaceAll('\'', '');
+          // is it a list? we'll create conditions for each entry in the list
+          if (value.startsWith('(') && value.endsWith(')')) {
+            List<String> values = value.substring(1, value.length() - 1).split(',');
+            for (String val : values) {
+              this.conditions.add(new WhereFieldCondition(fieldName, criteria, val));
+            }
+          } else {
+            this.conditions.add(new WhereFieldCondition(fieldName, criteria, value));
+          }
+        }
+      }
+      catch(Exception ex) {
+        System.debug(LoggingLevel.ERROR, ex.getMessage() + '\n' + ex.getStackTraceString());
+        throw new IllegalArgumentException('Where clause entered with incorrect number of args: ' + whereClause);
+      }
+    }
+
+    public Boolean matches(Object calcItem) {
+      Boolean matches = calcItem instanceof SObject;
+      if (matches == false) {
+        return matches;
+      }
+
+      // TODO: handle parent fields, LIKE and NOT LIKE
+      SObject item = (SObject) calcItem;
+      for(WhereFieldCondition condition : this.conditions) {
+        Object storedValue = item.get(condition.fieldName);
+        matches = condition.criteria == '=' ? storedValue.toString() == condition.value : storedValue.toString() != condition.value;
+        if(matches) {
+          break;
+        }
+      }
+      return matches;
     }
   }
 
@@ -1002,7 +1055,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             RollupType__c,
             ChangedFieldsOnCalcItem__c,
             FullRecalculationDefaultNumberValue__c,
-            FullRecalculationDefaultStringValue__c
+            FullRecalculationDefaultStringValue__c,
+            CalcItemWhereClause__c
           FROM Rollup__mdt
           WHERE CalcItem__c = :String.valueOf(sObjectType)
           ORDER BY LookupObject__c
@@ -1044,8 +1098,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
+      // TODO: if they're BOTH not null
       if (eval == null && String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)) {
         eval = new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+      } else if(eval == null && String.isNotBlank(rollupMetadata.CalcItemWhereClause__c)) {
+        eval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
       }
 
       Id rollupLimitId;
@@ -2160,7 +2217,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           RollupType__c,
           ChangedFieldsOnCalcItem__c,
           FullRecalculationDefaultNumberValue__c,
-          FullRecalculationDefaultStringValue__c
+          FullRecalculationDefaultStringValue__c,
+          CalcItemWhereClause__c
         FROM Rollup__mdt
         WHERE Id = :this.rollupMetadataIds
         ORDER BY LookupObject__c

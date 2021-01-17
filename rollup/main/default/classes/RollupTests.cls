@@ -297,7 +297,7 @@ private class RollupTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Name != \'B\''
+        CalcItemWhereClause__c = 'Name != \'RollupZZ\''
       )
     };
 
