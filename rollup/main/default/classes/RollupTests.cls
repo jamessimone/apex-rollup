@@ -287,7 +287,32 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtField() {
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEquals() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Name = \'RollupZ\''
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on exclusion metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
+  }
+
+  @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEquals() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -306,9 +331,82 @@ private class RollupTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on exclusion metadata AFTER_INSERT');
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on != exclusion metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
+  }
+
+  @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEqualsAlternate() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Name <> \'RollupZZ\''
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on != exclusion metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
+  }
+
+  @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEqualsMultiple() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Name IN (\'RollupZZ\', \'RollupZ\')'
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on IN exclusion metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('RollupZZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
+  }
+
+  @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEqualsMultiple() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Name NOT IN (\'RollupZZ\', \'RollupZ\')'
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated based on NOT IN exclusion metadata AFTER_INSERT');
   }
 
   @isTest
