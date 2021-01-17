@@ -15,5 +15,4 @@
     <navType>Standard</navType>
     <tabs>Recalculate_Rollup</tabs>
     <uiType>Lightning</uiType>
-    <utilityBar>Rollup_UtilityBar</utilityBar>
 </CustomApplication>

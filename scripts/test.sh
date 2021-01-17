@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-# Prior to using this script, it's important to have used the output of "sfdx force:org:list --verbose" to copy the
+# Prior to using this script, it's important to have used the output of "sfdx force:org:display --verbose" to copy the
 # "sfdxAuthUrl" value to a text file at the root of this project called "DEVHUB_SFDX_URL.txt"
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
@@ -37,16 +37,17 @@ sfdx force:org:create -v apex-rollup -f config/project-scratch-def.json -a apex-
 # Deploy
 sfdx force:source:push
 # Run tests
+echo "Starting test run ..."
 eval '$testInvocation'
 # Delete scratch org
 sfdx force:org:delete -p -u apex-rollup-scratch-org
 
 # If the priorUserName is not blank, reset to it
-if test -z "$priorUserName";
+if test -z "$priorUserName"
 then
   echo "Prior user name not set, continuing"
 else
-  echo "Resetting SFDX to previously authorized org"
+  echo "Resetting SFDX to previously authorized org for: $priorUserName"
   sfdx force:config:set defaultusername=$priorUserName
 fi
 

@@ -2182,6 +2182,26 @@ private class RollupTests {
     System.assertEquals(6, acc.AnnualRevenue);
   }
 
+  @isTest
+  static void shouldNotAddToExistingAmountForFullRecalc() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 60;
+    update acc;
+
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(Name = 'oneExisting', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'twoExisting', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    };
+    insert opps;
+
+    Test.startTest();
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM');
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, acc.AnnualRevenue);
+  }
+
   //** Helpers */
 
   private static DMLMock getMock(List<SObject> records) {

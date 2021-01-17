@@ -44,6 +44,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   // non-final instance variables
   private Boolean isFullRecalc = false;
+  private Boolean isForcedRecalc = false;
   private Boolean isNoOp;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
@@ -151,6 +152,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.rollups = innerRollup.rollups;
     this.isNoOp = this.rollups.isEmpty() == false;
     this.isFullRecalc = innerRollup.isFullRecalc;
+    this.isForcedRecalc = innerRollup.isForcedRecalc;
   }
 
   private Rollup(
@@ -228,6 +230,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType targetType;
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
     for (Rollup rollup : this.rollups) {
+      rollup.isFullRecalc = this.isFullRecalc;
       if (targetType == null) {
         targetType = rollup.lookupObj;
       } else if (rollup.lookupObj != targetType) {
@@ -418,9 +421,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItemType,
         calcItems,
         new Map<Id, SObject>(calcItems),
-        null, // the evaluator, which we don't need here
+        null, // TODO: add the new query string evaluator here
         RollupInvocationPoint.FROM_LWC
       );
+      thisRollup.isFullRecalc = true;
       return thisRollup.runCalc();
     } else {
       //batch to get calc items and then batch to rollup
@@ -865,7 +869,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // because CDC is async, the DB will always be updated by the time we get there
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
-    rollupToReturn.isFullRecalc = triggerContext == TriggerOperation.AFTER_UPDATE;
+    rollupToReturn.isForcedRecalc = triggerContext == TriggerOperation.AFTER_UPDATE;
     rollupToReturn.runCalc();
   }
 
@@ -1239,7 +1243,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupItemKeys.remove(lookupId);
           // this way, the updated values are persisted for each field, and the default values are initialized
           SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
-          if (updatedLookupObject.get(rollup.opFieldOnLookupObject) == null) {
+          if (updatedLookupObject.get(rollup.opFieldOnLookupObject) == null || this.isFullRecalc) {
             updatedLookupObject.put(rollup.opFieldOnLookupObject, FieldInitializer.getDefaultValue(rollup.opFieldOnLookupObject));
           }
           lookupItems.add(updatedLookupObject);
@@ -1298,7 +1302,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected void initializeRollupFieldDefaults(List<SObject> lookupItems, Rollup rollup) {
     // prior to returning, we need to ensure the default value for the rollup field is set
     for (SObject lookupItem : lookupItems) {
-      if (lookupItem.get(rollup.opFieldOnLookupObject) == null) {
+      if (lookupItem.get(rollup.opFieldOnLookupObject) == null || rollup.isFullRecalc) {
         lookupItem.put(rollup.opFieldOnLookupObject, FieldInitializer.getDefaultValue(rollup.opFieldOnLookupObject));
       }
     }
@@ -1380,7 +1384,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private Object getRollupVal(Rollup rollup, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
     RollupCalculator rollupCalc = this.getRollupType(priorVal, rollup, lookupRecordKey, lookupKeyField);
-    rollupCalc.setIsFullRecalc(this.isFullRecalc);
+    rollupCalc.setisForcedRecalc(this.isForcedRecalc);
     rollupCalc.performRollup(rollup.op, calcItems, rollup.oldCalcItems, rollup.opFieldOnCalcItem);
     return rollupCalc.getReturnValue();
   }
@@ -1548,7 +1552,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private abstract class RollupCalculator {
-    private Boolean isFullRecalc = false;
+    private Boolean isForcedRecalc = false;
     private Boolean isFirstTimeThrough = true;
 
     protected final String lookupKeyQuery;
@@ -1567,8 +1571,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return this.returnVal;
     }
 
-    public void setIsFullRecalc(Boolean isFullRecalc) {
-      this.isFullRecalc = isFullRecalc;
+    public void setisForcedRecalc(Boolean isForcedRecalc) {
+      this.isForcedRecalc = isForcedRecalc;
     }
 
     public virtual void performRollup(Op op, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
@@ -1577,7 +1581,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (this.shouldShortCircuit) {
           this.handleShortCircuit(op, calcItem, operationField);
           continue;
-        } else if (this.isFullRecalc) {
+        } else if (this.isForcedRecalc) {
           // here we don't exclude items because the calc items have already been updated
           this.returnVal = this.calculateNewAggregateValue(new Set<Id>(), op, operationField, calcItem.getSObjectType());
           // not just a break, a return. We don't want to pass go - we don't want to call "setReturnValue" below
