@@ -214,6 +214,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
+  private class WhereFieldCondition {
+    public String fieldName { get; set; }
+    public String criteria { get; set; }
+    public Object value {get; set; }
+  }
+
+  public class WhereFieldEvaluator implements Evaluator {
+
+    public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
+
+    }
+  }
+
   public String runCalc() {
     RollupLimit__mdt orgDefaults = this.getSingleLimitOrDefault('DeveloperName', LIMIT_ORG_DEFAULTS, defaultRollupLimit);
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true

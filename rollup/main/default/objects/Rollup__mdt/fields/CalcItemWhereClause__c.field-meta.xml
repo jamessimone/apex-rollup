@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CalcItemWhereClause__c</fullName>
+    <description>Enter in WHERE clause entries here to exclude items from your rollup calculation. You do not need to start with WHERE, but otherwise should proceed with valid SOQL syntax.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Enter in WHERE clause entries here to exclude items from your rollup calculation. You do not need to start with WHERE, but otherwise should proceed with valid SOQL syntax.</inlineHelpText>
+    <label>Calc Item Where Clause</label>
+    <length>32768</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
