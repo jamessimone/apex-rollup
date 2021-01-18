@@ -215,21 +215,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private class WhereFieldCondition {
+    private final SObjectType sObjectType;
     private final String fieldName;
     private final String criteria;
     private final String value;
     private final List<String> values;
     private final Set<String> positiveEqualities = new Set<String>{ '=', 'like' };
 
-    public WhereFieldCondition(String fieldName, String criteria, String value) {
+    public WhereFieldCondition(String fieldName, String criteria, String value, SObjectType sObjectType) {
       this.fieldName = fieldName;
       this.criteria = criteria;
       this.value = value;
+      this.sObjectType = sObjectType;
     }
-    public WhereFieldCondition(String fieldName, String criteria, List<String> values) {
+    public WhereFieldCondition(String fieldName, String criteria, List<String> values, SObjectType sObjectType) {
       this.fieldName = fieldName;
       this.criteria = criteria;
       this.values = values;
+      this.sObjectType = sObjectType;
     }
 
     public Boolean equals(Object o) {
@@ -256,10 +259,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (isEqual == false) {
         return isEqual;
       }
-      // TODO: handle parent fields
+
       SObject item = (SObject) o;
-      String storedValue = item.get(this.fieldName).toString();
       criteriaVal = criteriaVal.trim();
+      String storedValue = this.getFieldValue(item, this.fieldName, this.sObjectType).toString();
       switch on this.criteria {
         when '=' {
           isEqual = storedValue == criteriaVal;
@@ -276,10 +279,39 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
       return isEqual;
     }
+
+    private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
+      DescribesObjectResult sObjectDescribe = sObjectType.getDescribe();
+      Map<String, SObjectField> fieldMap = sObjectDescribe.fields.getMap();
+      if(fieldPath.contains('.') && fieldMap.containsKey(fieldPath) == false) {
+        List<String> fieldNameParts = fieldPath.split('\\.');
+        String relationshipName = fieldNameParts.remove(0);
+        String originalName = relationshipName;
+        if(relationshipName.contains('__r')) {
+          relationshipName = relationshipName.replace('__r', '__c');
+        } else {
+          relationshipName += 'Id';
+        }
+        SObjectField fieldToken = fieldMap.get(relationshipName);
+        SObjectType parentSObjectType;
+        if(fieldToken.getDescribe().isNamePointing()) {
+          Id fieldValue = (Id)item.get(relationshipName);
+          parentSObjectType = fieldValue.getSobjectType();
+        } else {
+          parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
+        }
+        SObject parentSObject = item.getSObject(originalName);
+        if(fieldNameParts.isEmpty() == false) {
+          return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
+        } else {
+          return parentSObject.get(originalName);
+        }
+      }
+      return item.get(fieldPath);
+    }
   }
 
   public class WhereFieldEvaluator implements Evaluator {
-    private final SObjectType calcItemSObjectType;
     private final Map<String, String> conditionMapping = new Map<String, String>{
       '<>' => '!=',
       'not in' => '!=',
@@ -293,7 +325,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     private final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
-      this.calcItemSObjectType = calcItemSObjectType;
       for (String conditionKey : this.conditionMapping.keySet()) {
         whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
       }
@@ -310,9 +341,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           // is it a list? we'll create conditions for each entry in the list
           if (value.startsWith('(') && value.endsWith(')')) {
             List<String> values = value.substring(1, value.length() - 1).split(',');
-            this.conditions.add(new WhereFieldCondition(fieldName, criteria, values));
+            this.conditions.add(new WhereFieldCondition(fieldName, criteria, values, calcItemSObjectType));
           } else {
-            this.conditions.add(new WhereFieldCondition(fieldName, criteria, value));
+            this.conditions.add(new WhereFieldCondition(fieldName, criteria, value, calcItemSObjectType));
           }
         }
       } catch (Exception ex) {

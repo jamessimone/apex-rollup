@@ -410,6 +410,32 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForParentFields() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);
+    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
+    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Account.Name != ' + acc.Name
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated based on parent field exclusion metadata AFTER_INSERT');
+  }
+
+  @isTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
