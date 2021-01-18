@@ -219,6 +219,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     private final String criteria;
     private final String value;
     private final List<String> values;
+    private final Set<String> positiveEqualities = new Set<String>{ '=', 'like' };
 
     public WhereFieldCondition(String fieldName, String criteria, String value) {
       this.fieldName = fieldName;
@@ -233,17 +234,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public Boolean equals(Object o) {
       if (this.values != null) {
-        Boolean isEqual = false;
-        for (String val : this.values) {
-          // TODO: may not be able to use recursion here, because the whole list needs to be evaluated at once.
-          isEqual = this.equals(o, val);
+        Boolean isEqual = true;
+        for (Integer index = 0; index < this.values.size(); index++) {
+          String criteriaVal = this.values[index];
+          isEqual = this.equals(o, criteriaVal);
+          if (this.criteria.contains('!') && isEqual == false) {
+            break;
+          } else if (this.positiveEqualities.contains(this.criteria) && isEqual) {
+            break;
+          } else if (index < this.values.size() - 1) {
+            isEqual = true;
+          }
         }
         return isEqual;
       }
       return this.equals(o, this.value);
     }
 
-    private Boolean equals(Object o, String val) {
+    private Boolean equals(Object o, String criteriaVal) {
       Boolean isEqual = o instanceof SObject;
       if (isEqual == false) {
         return isEqual;
@@ -251,22 +259,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // TODO: handle parent fields
       SObject item = (SObject) o;
       String storedValue = item.get(this.fieldName).toString();
-      System.debug(storedValue);
+      criteriaVal = criteriaVal.trim();
       switch on this.criteria {
         when '=' {
-          isEqual = storedValue == this.value;
+          isEqual = storedValue == criteriaVal;
         }
         when '!=' {
-          isEqual = storedValue != this.value;
+          isEqual = storedValue != criteriaVal;
         }
         when 'like' {
-          isEqual = storedValue.contains(this.value);
+          isEqual = storedValue.contains(criteriaVal);
         }
-        when 'notlike' {
-          isEqual = storedValue.contains(this.value) == false;
+        when '!like' {
+          isEqual = storedValue.contains(criteriaVal) == false;
         }
       }
-      System.debug(isEqual);
       return isEqual;
     }
   }
@@ -279,9 +286,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       'NOT IN' => '!=',
       'in' => '=',
       'IN' => '=',
-      'not like' => 'notlike',
+      'not like' => '!like',
       'LIKE' => 'like',
-      'NOT LIKE' => 'notlike'
+      'NOT LIKE' => '!like'
     };
     private final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
 
@@ -290,6 +297,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       for (String conditionKey : this.conditionMapping.keySet()) {
         whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
       }
+      // TODO: handle OR statements
       List<String> splitWhere = whereClause.split('/(and|AND)/');
 
       try {
@@ -314,7 +322,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public Boolean matches(Object calcItem) {
-      Boolean matches = false;
+      Boolean matches = true;
       for (WhereFieldCondition condition : this.conditions) {
         matches = condition == calcItem;
         if (matches == false) {
