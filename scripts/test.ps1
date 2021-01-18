@@ -12,9 +12,10 @@ if(Test-Path ".\DEVHUB_SFDX_URL.txt") {
   $orgInfo.result.sfdxAuthUrl | Out-File -FilePath ".\DEVHUB_SFDX_URL.txt"
 }
 
-# Authorize Dev Hub using prior creds
+# Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
-sfdx force:auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup --setdefaultdevhubusername --setdefaultusername
+sfdx force:auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
+sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
@@ -27,6 +28,7 @@ if($scratchOrgAllotment -gt 0) {
   Write-Output "Beginning scratch org creation"
   $userNameHasBeenSet = $true
   # Create Scratch Org
+  try {
   sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
   # Deploy
   sfdx force:source:push
@@ -35,6 +37,9 @@ if($scratchOrgAllotment -gt 0) {
   Write-Output "Scratch org tests finished running with success: $?"
   # Delete scratch org
   sfdx force:org:delete -p -u apex-rollup-scratch-org
+  } catch {
+    Write-Output "There was an issue with scratch org creation, continuing ..."
+  }
 } else {
   Write-Output "No scratch orgs remaining, running tests on sandbox"
 
