@@ -11,7 +11,8 @@ export default class RollupForceRecalculation extends LightningElement {
     rollupFieldOnLookupObject: '',
     lookupSObjectName: '',
     calcItemSObjectName: '',
-    operationName: ''
+    operationName: '',
+    potentialWhereClause: ''
   };
 
   @track isRollingUp = false;

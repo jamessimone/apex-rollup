@@ -9,6 +9,7 @@
           label="Calc Item SObject API Name"
           name="calcItemSObjectName"
           onchange={handleChange}
+          required
         >
         </lightning-input>
         <lightning-input
@@ -17,6 +18,7 @@
           label="API Name of the rollup field on calc item"
           name="opFieldOnCalcItem"
           onchange={handleChange}
+          required
         >
         </lightning-input>
         <lightning-input
@@ -25,6 +27,7 @@
           label="API Name of the lookup field on calc item"
           name="lookupFieldOnCalcItem"
           onchange={handleChange}
+          required
         >
         </lightning-input>
         <lightning-input
@@ -33,6 +36,7 @@
           label="API Name of the lookup field on the lookup object"
           name="lookupFieldOnLookupObject"
           onchange={handleChange}
+          required
         >
         </lightning-input>
         <lightning-input
@@ -41,6 +45,7 @@
           label="API Name of the Rollup field on the lookup object"
           name="rollupFieldOnLookupObject"
           onchange={handleChange}
+          required
         >
         </lightning-input>
         <lightning-input
@@ -49,6 +54,7 @@
           label="Lookup SObject API Name"
           name="lookupSObjectName"
           onchange={handleChange}
+          required
         >
         </lightning-input>
         <lightning-input
@@ -57,8 +63,15 @@
           label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE)"
           name="operationName"
           onchange={handleChange}
+          required
         >
         </lightning-input>
+        <lightning-textarea
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          onchange={handleChange}
+          label="Where Clause SOQL Filters (Optional)"
+          name="potentialWhereClause"
+        ></lightning-textarea>
         <lightning-button class="slds-col slds-m-top_small" onclick={handleSubmit} label="Start rollup!"></lightning-button>
       </div>
     </lightning-layout>

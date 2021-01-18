@@ -283,25 +283,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
       DescribesObjectResult sObjectDescribe = sObjectType.getDescribe();
       Map<String, SObjectField> fieldMap = sObjectDescribe.fields.getMap();
-      if(fieldPath.contains('.') && fieldMap.containsKey(fieldPath) == false) {
+      if (fieldPath.contains('.') && fieldMap.containsKey(fieldPath) == false) {
         List<String> fieldNameParts = fieldPath.split('\\.');
         String relationshipName = fieldNameParts.remove(0);
         String originalName = relationshipName;
-        if(relationshipName.contains('__r')) {
+        if (relationshipName.contains('__r')) {
           relationshipName = relationshipName.replace('__r', '__c');
         } else {
           relationshipName += 'Id';
         }
         SObjectField fieldToken = fieldMap.get(relationshipName);
         SObjectType parentSObjectType;
-        if(fieldToken.getDescribe().isNamePointing()) {
-          Id fieldValue = (Id)item.get(relationshipName);
+        if (fieldToken.getDescribe().isNamePointing()) {
+          Id fieldValue = (Id) item.get(relationshipName);
           parentSObjectType = fieldValue.getSobjectType();
         } else {
           parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
         }
         SObject parentSObject = item.getSObject(originalName);
-        if(fieldNameParts.isEmpty() == false) {
+        if (fieldNameParts.isEmpty() == false) {
           return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
         } else {
           return parentSObject.get(originalName);
@@ -312,15 +312,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public override String toString() {
       String baseString = this.fieldName + ' ' + this.criteria + ' ';
-      if(this.values != null) {
+      if (this.values != null) {
         baseString += '(';
-        for(String val : this.values) {
-          String escapedVal = '\''+ val +'\'';
+        for (String val : this.values) {
+          String escapedVal = '\'' + val + '\'';
           baseString += this.values.indexOf(val) > 0 ? ', ' + escapedVal : escapedVal;
         }
         baseString += ')';
       } else {
-        baseString += '\''+ this.value +'\'';
+        baseString += '\'' + this.value + '\'';
       }
       return baseString;
     }
@@ -376,7 +376,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       for (WhereFieldCondition condition : this.conditions) {
         // == works here because .equals() is overridden in the WhereFieldCondition class
         Boolean isOrCondition = this.whereClause.containsIgnoreCase('or ' + condition.toString());
-        if(isOrCondition) {
+        if (isOrCondition) {
           matches = matches || condition == calcItem;
         } else {
           matches = matches && condition == calcItem;
@@ -585,7 +585,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
       RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupType__c = operationName
+      RollupType__c = operationName,
+      CalcItemWhereClause__c = potentialWhereClause
     );
     String queryString = getQueryString(calcItemType, new List<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem }, 'Id', '!=');
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
@@ -595,7 +596,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItemType,
         calcItems,
         new Map<Id, SObject>(calcItems),
-        String.isNotblank(potentialWhereClause) ? new WhereFieldEvaluator(potentialWhereClause, calcItemType) : null,
+        null, // the evaluator, which will get assigned if the "potentialWhereClause" is not blank
         RollupInvocationPoint.FROM_LWC
       );
       thisRollup.isFullRecalc = true;
@@ -660,6 +661,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
     )
     global String fullRecalculationDefaultStringValue;
+    @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
+    global String calcItemWhereClause;
   }
 
   global class FlowOutput {
@@ -707,7 +710,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           RollupType__c = rollupContext + flowInput.rollupOperation,
           ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
           FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-          FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue
+          FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+          CalcItemWhereClause__c = flowInput.calcItemWhereClause
         );
         Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, flowInput.rollupFieldOnCalcItem);
         rollups.add(
@@ -1206,7 +1210,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
-      // TODO: if they're BOTH not null
+      // TODO: if they're **BOTH** not null ...
       if (eval == null && String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)) {
         eval = new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
       } else if (eval == null && String.isNotBlank(rollupMetadata.CalcItemWhereClause__c)) {
