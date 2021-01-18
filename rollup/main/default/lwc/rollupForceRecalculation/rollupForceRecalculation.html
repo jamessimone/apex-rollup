@@ -1,0 +1,89 @@
+<template>
+  <div class="slds-box white">
+    <div class="slds-m-bottom_small">After entering the below information, click the submit button to start up your Rollup.</div>
+    <lightning-layout vertical-align="center">
+      <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="Calc Item SObject API Name"
+          name="calcItemSObjectName"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the rollup field on calc item"
+          name="opFieldOnCalcItem"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the lookup field on calc item"
+          name="lookupFieldOnCalcItem"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the lookup field on the lookup object"
+          name="lookupFieldOnLookupObject"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="API Name of the Rollup field on the lookup object"
+          name="rollupFieldOnLookupObject"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="Lookup SObject API Name"
+          name="lookupSObjectName"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-input
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          type="text"
+          label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE)"
+          name="operationName"
+          onchange={handleChange}
+          required
+        >
+        </lightning-input>
+        <lightning-textarea
+          class="slds-col slds-form-element slds-form-element_horizontal"
+          onchange={handleChange}
+          label="Where Clause SOQL Filters (Optional)"
+          name="potentialWhereClause"
+        ></lightning-textarea>
+        <lightning-button class="slds-col slds-m-top_small" onclick={handleSubmit} label="Start rollup!"></lightning-button>
+      </div>
+    </lightning-layout>
+    <template if:true={isRollingUp}>
+      <div>Rollup processing ...</div>
+      <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
+    </template>
+    <template if:true={rollupStatus}>
+      <div class="slds-m-top_small">Batch job status: {rollupStatus}</div>
+    </template>
+    <template if:true={error}>
+      <div class="slds-m-top_small">There was an error performing your rollup: {error}</div>
+    </template>
+  </div>
+</template>

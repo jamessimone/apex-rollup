@@ -1,9 +1,12 @@
 #!/usr/bin/bash
 
-set -e
-trap 'catch $? $LINENO' EXIT
+# Prior to using this script, it's important to have used the output of "sfdx force:org:display --verbose" to copy the
+# "sfdxAuthUrl" value to a text file at the root of this project called "DEVHUB_SFDX_URL.txt"
 
-# Script will throw on line 30 if our scratch org allotment for the day has been exceeded
+set -e
+trap 'catch $? $LINENO' ERR
+
+# Script will throw if our scratch org allotment for the day has been exceeded
 catch() {
   echo "No scratch orgs remaining, running tests on sandbox"
 
@@ -28,21 +31,23 @@ echo "Test command to use: $testInvocation"
 
 
 # Create Scratch Org
-sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+sfdx force:org:create -v apex-rollup -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
 # Deploy
 sfdx force:source:push
 # Run tests
+echo "Starting test run ..."
 eval '$testInvocation'
 # Delete scratch org
 sfdx force:org:delete -p -u apex-rollup-scratch-org
 
 # If the priorUserName is not blank, reset to it
-if test -z "$priorUserName";
+if test -z "$priorUserName"
 then
   echo "Prior user name not set, continuing"
 else
-  echo "Resetting SFDX to previously authorized org"
+  echo "Resetting SFDX to previously authorized org for: $priorUserName"
   sfdx force:config:set defaultusername=$priorUserName
 fi
 
 echo "Build + testing finished successfully"
+exit 0
