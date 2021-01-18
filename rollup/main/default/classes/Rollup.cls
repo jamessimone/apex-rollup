@@ -232,8 +232,42 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public Boolean equals(Object o) {
-      //TODO: for lists, recurse, return true if something matches
-      return false;
+      if (this.values != null) {
+        Boolean isEqual = false;
+        for (String val : this.values) {
+          // TODO: may not be able to use recursion here, because the whole list needs to be evaluated at once.
+          isEqual = this.equals(o, val);
+        }
+        return isEqual;
+      }
+      return this.equals(o, this.value);
+    }
+
+    private Boolean equals(Object o, String val) {
+      Boolean isEqual = o instanceof SObject;
+      if (isEqual == false) {
+        return isEqual;
+      }
+      // TODO: handle parent fields
+      SObject item = (SObject) o;
+      String storedValue = item.get(this.fieldName).toString();
+      System.debug(storedValue);
+      switch on this.criteria {
+        when '=' {
+          isEqual = storedValue == this.value;
+        }
+        when '!=' {
+          isEqual = storedValue != this.value;
+        }
+        when 'like' {
+          isEqual = storedValue.contains(this.value);
+        }
+        when 'notlike' {
+          isEqual = storedValue.contains(this.value) == false;
+        }
+      }
+      System.debug(isEqual);
+      return isEqual;
     }
   }
 
@@ -280,16 +314,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public Boolean matches(Object calcItem) {
-      Boolean matches = calcItem instanceof SObject;
-      if (matches == false) {
-        return matches;
-      }
-
-      // TODO: handle parent fields, LIKE and NOT LIKE, refactor this to .equals method
-      SObject item = (SObject) calcItem;
+      Boolean matches = false;
       for (WhereFieldCondition condition : this.conditions) {
-        Object storedValue = item.get(condition.fieldName);
-        matches = condition.criteria == '=' ? storedValue.toString() == condition.value : storedValue.toString() != condition.value;
+        matches = condition == calcItem;
+        if (matches == false) {
+          break;
+        }
       }
       return matches;
     }
