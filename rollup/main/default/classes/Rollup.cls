@@ -309,9 +309,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
       return item.get(fieldPath);
     }
+
+    public override String toString() {
+      String baseString = this.fieldName + ' ' + this.criteria + ' ';
+      if(this.values != null) {
+        baseString += '(';
+        for(String val : this.values) {
+          String escapedVal = '\''+ val +'\'';
+          baseString += this.values.indexOf(val) > 0 ? ', ' + escapedVal : escapedVal;
+        }
+        baseString += ')';
+      } else {
+        baseString += '\''+ this.value +'\'';
+      }
+      return baseString;
+    }
   }
 
   public class WhereFieldEvaluator implements Evaluator {
+    private final String whereClause;
     private final Map<String, String> conditionMapping = new Map<String, String>{
       '<>' => '!=',
       'not in' => '!=',
@@ -328,8 +344,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       for (String conditionKey : this.conditionMapping.keySet()) {
         whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
       }
-      // TODO: handle OR statements
-      List<String> splitWhere = whereClause.split('/(and|AND)/');
+      this.whereClause = whereClause;
+      List<String> splitWhere = whereClause.split('(and|AND|OR|or)');
 
       try {
         for (String splitWhereClause : splitWhere) {
@@ -353,11 +369,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public Boolean matches(Object calcItem) {
-      Boolean matches = true;
+      // if there's only one condition, you only need to prove that condition
+      // otherwise, if there's more than one condition, you either have to prove them all or
+      // have an OR statement be true
+      Boolean matches = this.conditions.isEmpty() || this.conditions.size() == 1;
       for (WhereFieldCondition condition : this.conditions) {
-        matches = condition == calcItem;
-        if (matches == false) {
-          break;
+        // == works here because .equals() is overridden in the WhereFieldCondition class
+        Boolean isOrCondition = this.whereClause.containsIgnoreCase('or ' + condition.toString());
+        if(isOrCondition) {
+          matches = matches || condition == calcItem;
+        } else {
+          matches = matches && condition == calcItem;
         }
       }
       return matches;
@@ -528,6 +550,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * - Batch (multiple Rollup operations chained into one job)
    * - Invocable
    * - Schedulable
+   * - LWC-based full recalculation calls
    */
 
   @AuraEnabled
@@ -543,7 +566,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String rollupFieldOnLookupObject,
     String lookupSObjectName,
     String calcItemSObjectName,
-    String operationName
+    String operationName,
+    String potentialWhereClause
   ) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
@@ -571,7 +595,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItemType,
         calcItems,
         new Map<Id, SObject>(calcItems),
-        null, // TODO: add the new query string evaluator here
+        String.isNotblank(potentialWhereClause) ? new WhereFieldEvaluator(potentialWhereClause, calcItemType) : null,
         RollupInvocationPoint.FROM_LWC
       );
       thisRollup.isFullRecalc = true;

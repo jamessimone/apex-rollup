@@ -436,6 +436,34 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForOrStatements() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
+    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
+    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Account.Name != \'' + acc.Name + '\' OR Name = \'' + oppTwo.Name + '\'' + ' AND Name != \'RollupZZ\''
+      )
+    };
+
+    Rollup.triggerContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on OR being used AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should include OR items');
+  }
+
+  @isTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2300,7 +2328,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2324,7 +2352,7 @@ private class RollupTests {
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2344,7 +2372,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
