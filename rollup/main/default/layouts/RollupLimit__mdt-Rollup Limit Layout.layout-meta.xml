@@ -42,6 +42,10 @@
                 <behavior>Edit</behavior>
                 <field>TriggerOrInvocableName__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>ShouldRunAsSyncOperation__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>

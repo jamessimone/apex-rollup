@@ -118,7 +118,7 @@ Unfortunately, the "Description" section for Invocable fields does not show up a
 
 Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has now rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
 
-![Example of Rollup App](./media/joys-of-apex-app.PNG 'Manually kicking off rollup jobs')
+![Example of Rollup App](./media/joys-of-apex-app.png 'Manually kicking off rollup jobs')
 
 ### Scheduled Job
 

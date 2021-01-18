@@ -6,7 +6,7 @@
 # DEVHUB_SFDX_URL.txt file is populated in a build step
 
 set -e
-trap 'catch $? $LINENO' ERR
+trap 'catch $? $LINENO' EXIT
 
 # Script will throw if our scratch org allotment for the day has been exceeded
 catch() {

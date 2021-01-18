@@ -2397,6 +2397,24 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldSuccessfullyExcludeBasedOnWhereCriteriaDuringFullRecalc() {
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(Name = 'oneName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'twoName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    };
+    insert opps;
+
+    Test.startTest();
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', 'Account.Name != \'' + acc.Name + '\'');
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
+  }
+
+  @isTest
   static void shouldRunSyncWhenFlaggedOnRollupLimit() {
     Account acc = [SELECT Id FROM Account];
 

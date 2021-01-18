@@ -317,7 +317,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           return parentSObject.get(originalName);
         }
       }
-      return item.get(fieldPath);
+      return item == null ? '' : item.get(fieldPath);
     }
 
     public override String toString() {
@@ -348,9 +348,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       'LIKE' => 'like',
       'NOT LIKE' => '!like'
     };
-    private final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
+    public final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
+      if (whereClause == null) {
+        whereClause = '';
+      }
       for (String conditionKey : this.conditionMapping.keySet()) {
         whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
       }
@@ -442,10 +445,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     Boolean shouldRunAsBatch = shouldRunAsBatch || (orgDefaults.ShouldRunAsBatchable__c && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
-    if (orgDefaults.ShouldRunAsSyncOperation__c) {
-      this.process(this.rollups);
-      return 'Ran all due to org default sync setting!';
-    } else if (this.syncRollups.isEmpty() == false) {
+    if (this.syncRollups.isEmpty() == false) {
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
     } else if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
@@ -604,7 +604,27 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       RollupType__c = operationName,
       CalcItemWhereClause__c = potentialWhereClause
     );
-    String queryString = getQueryString(calcItemType, new List<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem }, 'Id', '!=');
+    List<String> queryFields = new List<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
+    WhereFieldEvaluator eval = new WhereFieldEvaluator(potentialWhereClause, calcItemType);
+    for (WhereFieldCondition condition : eval.conditions) {
+      if (queryFields.contains(condition.fieldName) == false) {
+        queryFields.add(condition.fieldName);
+        if (condition.fieldName.contains('.')) {
+          List<String> relationshipNames = condition.fieldName.split('\\.');
+          String priorVal = '';
+          for (String relationshipName : relationshipNames) {
+            if (String.isNotBlank(priorVal)) {
+              priorVal += '.';
+            }
+            priorVal += relationshipName.trim();
+          }
+          if (queryFields.contains(priorVal) == false) {
+            queryFields.add(priorVal);
+          }
+        }
+      }
+    }
+    String queryString = getQueryString(calcItemType, queryFields, 'Id', '!=');
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       List<SObject> calcItems = Database.query(queryString);
       Rollup thisRollup = getRollup(
@@ -612,7 +632,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItemType,
         calcItems,
         new Map<Id, SObject>(calcItems),
-        null, // the evaluator, which will get assigned if the "potentialWhereClause" is not blank
+        eval,
         RollupInvocationPoint.FROM_LWC
       );
       thisRollup.isFullRecalc = true;
