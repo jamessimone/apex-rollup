@@ -100,7 +100,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
-  private static final DefaultSObjectFieldInitializer FieldInitializer = new DefaultSObjectFieldInitializer();
+  private static final DefaultSObjectFieldInitializer FIELD_INITIALIZER = new DefaultSObjectFieldInitializer();
 
   private enum Op {
     SUM,
@@ -1138,7 +1138,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null || fieldToken.getDescribe().isUpdateable() == false) {
         continue;
       } else {
-        existingRecordOrDefault.put(rollupFieldOnCalcItem, FieldInitializer.getDefaultValue(fieldToken));
+        existingRecordOrDefault.put(rollupFieldOnCalcItem, FIELD_INITIALIZER.getDefaultValue(fieldToken));
       }
       existingOldRecordsMap.put(currentRecord.Id, existingRecordOrDefault);
     }
@@ -1426,7 +1426,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           // this way, the updated values are persisted for each field, and the default values are initialized
           SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
           if (updatedLookupObject.get(rollup.opFieldOnLookupObject) == null || this.isFullRecalc) {
-            updatedLookupObject.put(rollup.opFieldOnLookupObject, FieldInitializer.getDefaultValue(rollup.opFieldOnLookupObject));
+            updatedLookupObject.put(rollup.opFieldOnLookupObject, FIELD_INITIALIZER.getDefaultValue(rollup.opFieldOnLookupObject));
           }
           lookupItems.add(updatedLookupObject);
         }
@@ -1484,7 +1484,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // prior to returning, we need to ensure the default value for the rollup field is set
     for (SObject lookupItem : lookupItems) {
       if (lookupItem.get(rollup.opFieldOnLookupObject) == null || rollup.isFullRecalc) {
-        lookupItem.put(rollup.opFieldOnLookupObject, FieldInitializer.getDefaultValue(rollup.opFieldOnLookupObject));
+        lookupItem.put(rollup.opFieldOnLookupObject, FIELD_INITIALIZER.getDefaultValue(rollup.opFieldOnLookupObject));
       }
     }
   }
@@ -1747,7 +1747,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (defaultVal != null) {
         this.returnVal = defaultVal;
       } else {
-        this.returnVal = priorVal == null ? FieldInitializer.getDefaultValue(operationField) : priorVal;
+        this.returnVal = priorVal == null ? FIELD_INITIALIZER.getDefaultValue(operationField) : priorVal;
       }
       this.lookupKeyQuery = ' AND ' + lookupKeyField + ' = \'' + lookupRecordKey + '\'';
     }
@@ -1867,7 +1867,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public CountDistinctRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
       super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
       this.distinctValues = new Set<Object>();
-      if (this.returnVal != FieldInitializer.getDefaultValue(operationfield)) {
+      if (this.returnVal != FIELD_INITIALIZER.getDefaultValue(operationfield)) {
         this.distinctValues.add(this.returnVal);
       }
     }
@@ -1942,7 +1942,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public virtual override Object getReturnValue() {
       Decimal potentialReturnValue = (Decimal) this.returnVal;
-      if (potentialReturnValue == FieldInitializer.maximumLongValue || potentialReturnValue == FieldInitializer.minimumLongValue) {
+      if (potentialReturnValue == FIELD_INITIALIZER.maximumLongValue || potentialReturnValue == FIELD_INITIALIZER.minimumLongValue) {
         this.returnVal = 0;
       }
       return this.returnVal;
@@ -2008,7 +2008,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Object potentialReturnValue = (Decimal) this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
         this.returnDecimal = this.getDecimalOrDefault(potentialReturnValue);
         if (this.returnDecimal == 0) {
-          this.returnDecimal = operation == Op.UPDATE_MAX ? FieldInitializer.minimumLongValue : FieldInitializer.maximumLongValue;
+          this.returnDecimal = operation == Op.UPDATE_MAX ? FIELD_INITIALIZER.minimumLongValue : FIELD_INITIALIZER.maximumLongValue;
         }
       } else if (operation == Op.UPDATE_MAX && newVal > this.returnDecimal) {
         this.returnDecimal = newVal;
@@ -2039,7 +2039,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           }
         }
         if (minOrMax == null) {
-          aggregate = operation.name().contains(Op.MIN.name()) ? FieldInitializer.maximumLongValue : FieldInitializer.minimumLongValue;
+          aggregate = operation.name().contains(Op.MIN.name()) ? FIELD_INITIALIZER.maximumLongValue : FIELD_INITIALIZER.minimumLongValue;
         } else {
           aggregate = minOrMax;
         }
@@ -2064,7 +2064,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     protected virtual override Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
       if (potentiallyUnitializedDecimal == null) {
-        return FieldInitializer.defaultDateTime.getTime();
+        return FIELD_INITIALIZER.defaultDateTime.getTime();
       }
       // one of the worst things about SOQL is that Datetimes retrieved have the millisecond values truncated
       Datetime datetimeWithMs = potentiallyUnitializedDecimal instanceof Decimal
@@ -2105,7 +2105,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class TimeRollupCalculator extends DatetimeRollupCalculator {
     public TimeRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
-      super(Datetime.newInstanceGmt(FieldInitializer.defaultDateTime.dateGmt(), (Time) priorVal), operationField, defaultVal, lookupRecordKey, lookupKeyField);
+      super(Datetime.newInstanceGmt(FIELD_INITIALIZER.defaultDateTime.dateGmt(), (Time) priorVal), operationField, defaultVal, lookupRecordKey, lookupKeyField);
     }
 
     public override Object getReturnValue() {
@@ -2115,11 +2115,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     protected override Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
       Datetime defaultDatetime;
       if (potentiallyUnitializedDecimal instanceof Time) {
-        defaultDatetime = Datetime.newInstanceGmt(FieldInitializer.defaultDateTime.dateGmt(), (Time) potentiallyUnitializedDecimal);
+        defaultDatetime = Datetime.newInstanceGmt(FIELD_INITIALIZER.defaultDateTime.dateGmt(), (Time) potentiallyUnitializedDecimal);
       } else if (potentiallyUnitializedDecimal instanceof Decimal) {
         defaultDatetime = Datetime.newInstance(((Decimal) potentiallyUnitializedDecimal).longValue());
       } else {
-        defaultDatetime = FieldInitializer.defaultDateTime;
+        defaultDatetime = FIELD_INITIALIZER.defaultDateTime;
       }
       return defaultDatetime.getTime();
     }
