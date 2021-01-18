@@ -14,7 +14,7 @@ You have several different options when it comes to making use of `Rollup`:
 - The Custom Metadata-driven solution: install with _one line of code_
 - From Flow / Process builder using the included invocable action
 - Via a scheduled job, created by running some Anonymous Apex
-- [One-off jobs, kicked off via the `Rollup` app](./README.md#calculating-rollup-after-install)
+- [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
 
 ### CMDT-based Rollup Solution:
 
@@ -46,7 +46,7 @@ That's it! Now you're ready to configure your rollups using Custom Metadata. `Ro
 
 #### Special Considerations For Use Of Custom Fields As Rollup/Lookup Fields
 
-One **special** thing to note on the subject of Field Definitions — custom fields referenced in CMDT Field Definition fields are stored in an atypical way, and require the usage of additional SOQL queries as part of `Rollup`'s upfront cost. A typical `Rollup` operation will use `2` SOQL queries per rollup — the query that determines whether or not a job should be queued or batched, and a query for the specific Rollup Limit metadata (a dynamic query, which unfortunately means that it counts against the SOQL limits) — prior to going into the async context (where all limits are renewed) plus `1` SOQL qery (also dynamic, which is why it contributes even though it's querying CMDT). However, usage of custom fields as any of the four fields referenced in the `Rollup__mdt` custom metadata (details below) adds an additional SOQL query. If the SOQL queries used by `Rollup` becomes cause for concern, please submit an issue and we can work to address it!
+One **special** thing to note on the subject of Field Definitions — custom fields referenced in CMDT Field Definition fields are stored in an atypical way, and require the usage of additional SOQL queries as part of `Rollup`'s upfront cost. A typical `Rollup` operation will use `2` SOQL queries per rollup — the query that determines whether or not a job should be queued or batched, and a query for the specific Rollup Limit metadata (a dynamic query, which unfortunately means that it counts against the SOQL limits) — prior to going into the async context (where all limits are renewed) plus `1` SOQL qery (also dynamic, which is why it contributes even though it's querying CMDT). However, usage of custom fields as any of the four fields referenced in the `Rollup__mdt` custom metadata (details below) adds an additional SOQL query. If the SOQL queries used by `Rollup` becomes cause for concern, please [submit an issue](/issues) and we can work to address it!
 
 #### Rollup Custom Metadata Field Breakdown
 
@@ -62,7 +62,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly.
+- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. Also, at this time complex criteria (anything using grouped AND/OR's with parantheses) are not supported. Please [submit an issue](/issues) if you are using Rollup and need parathetical criteria-based grouping in order to properly identify which items should be rolled up!
 
 You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
