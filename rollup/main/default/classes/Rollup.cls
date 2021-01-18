@@ -362,6 +362,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       try {
         for (String splitWhereClause : splitWhere) {
+          if(String.isBlank(splitWhereClause)) {
+            continue;
+          }
           splitWhereClause = splitWhereClause.trim();
           String fieldName = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
           splitWhereClause = splitWhereClause.replace(fieldName, '').trim();

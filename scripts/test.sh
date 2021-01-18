@@ -2,11 +2,9 @@
 
 # Prior to using this script, it's important to have used the output of "sfdx force:org:display --verbose" to copy the
 # "sfdxAuthUrl" value to a text file at the root of this project called "DEVHUB_SFDX_URL.txt"
-# This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
-# DEVHUB_SFDX_URL.txt file is populated in a build step
 
 set -e
-trap 'catch $? $LINENO' EXIT
+trap 'catch $? $LINENO' ERR
 
 # Script will throw if our scratch org allotment for the day has been exceeded
 catch() {

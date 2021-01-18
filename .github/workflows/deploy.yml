@@ -55,5 +55,5 @@ jobs:
           DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
 
       - name: 'Run build script, test, and exit'
-        shell: bash
-        run: 'sh ./scripts/test.sh'
+        shell: pwsh
+        run: '. ./scripts/test.ps1'
