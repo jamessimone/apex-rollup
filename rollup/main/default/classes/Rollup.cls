@@ -8,7 +8,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private static Boolean shouldRunAsBatch = false;
   @testVisible
-  private static TriggerOperation triggerContext;
+  private static TriggerOperation apexContext;
   @testVisible
   private static List<SObject> records;
   @testVisible
@@ -67,6 +67,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
+  private List<Rollup> syncRollups {
+    get {
+      if (syncRollups == null) {
+        syncRollups = new List<Rollup>();
+      }
+      return syncRollups;
+    }
+    set;
+  }
+
   private List<Rollup> rollups {
     get {
       if (rollups == null) {
@@ -120,7 +130,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public enum RollupInvocationPoint {
-    FROM_TRIGGER,
+    FROM_APEX,
     FROM_INVOCABLE,
     FROM_SCHEDULED,
     FROM_LWC
@@ -391,7 +401,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
     this.ingestRollupLimitData(orgDefaults);
 
-    this.isNoOp = this.rollups.isEmpty();
+    this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
     if (this.isNoOp || orgDefaults.ShouldAbortRun__c) {
       return 'No process Id';
     }
@@ -432,7 +442,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     Boolean shouldRunAsBatch = shouldRunAsBatch || (orgDefaults.ShouldRunAsBatchable__c && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
-    if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
+    if (orgDefaults.ShouldRunAsSyncOperation__c) {
+      this.process(this.rollups);
+      return 'Ran all due to org default sync setting!';
+    } else if (this.syncRollups.isEmpty() == false) {
+      this.process(this.syncRollups);
+      return 'Running rollups flagged to go synchronously';
+    } else if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       return Database.executeBatch(new Rollup(this));
     } else if (
@@ -462,7 +478,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
      * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
-    this.getFieldNamesForRollups();
+    this.getFieldNamesForRollups(this.rollups);
     String query;
     Set<String> objIds = new Set<String>();
     for (Rollup rollup : this.rollups) {
@@ -484,7 +500,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.initializeRollupFieldDefaults(lookupItems, rollup);
     }
     this.lookupItems = lookupItems;
-    this.processAsync();
+    this.process(this.rollups);
   }
 
   public virtual void finish(Database.BatchableContext context) {
@@ -540,7 +556,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public void execute(System.QueueableContext qc) {
-      this.processAsync();
+      this.process(this.rollups);
     }
   }
 
@@ -743,29 +759,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global static void batch(List<Rollup> rollups) {
-    Rollup batchRollup = new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER);
+    Rollup batchRollup = new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX);
     flattenBatches(batchRollup, rollups);
     batchRollup.runCalc();
   }
 
-  global static Rollup averageFromTrigger(
+  global static Rollup averageFromApex(
     SObjectField averageFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField averageFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return averageFromTrigger(
-      averageFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      averageFieldOnOperationObject,
-      lookupSobjectType,
-      null
-    );
+    return averageFromApex(averageFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, averageFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  global static Rollup averageFromTrigger(
+  global static Rollup averageFromApex(
     SObjectField averageFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -773,25 +782,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(
-      averageFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      sumFieldOnOpOject,
-      lookupSobjectType,
-      Op.AVERAGE,
-      eval
-    );
+    return operateFromApex(averageFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.AVERAGE, eval);
   }
 
-  global static Rollup countDistinctFromTrigger(
+  global static Rollup countDistinctFromApex(
     SObjectField countDistinctFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField countDistinctFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return countDistinctFromTrigger(
+    return countDistinctFromApex(
       countDistinctFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnOperationObject,
@@ -801,7 +802,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  global static Rollup countDistinctFromTrigger(
+  global static Rollup countDistinctFromApex(
     SObjectField countDistinctFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -809,7 +810,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(
+    return operateFromApex(
       countDistinctFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnOperationObject,
@@ -820,14 +821,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  global static Rollup concatDistinctFromTrigger(
+  global static Rollup concatDistinctFromApex(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField concatFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return concatDistinctFromTrigger(
+    return concatDistinctFromApex(
       concatFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnOperationObject,
@@ -837,7 +838,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  global static Rollup concatDistinctFromTrigger(
+  global static Rollup concatDistinctFromApex(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -845,7 +846,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(
+    return operateFromApex(
       concatFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnOperationObject,
@@ -856,17 +857,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  global static Rollup concatFromTrigger(
+  global static Rollup concatFromApex(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField concatFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return concatFromTrigger(concatFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, concatFieldOnOperationObject, lookupSobjectType, null);
+    return concatFromApex(concatFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, concatFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  global static Rollup concatFromTrigger(
+  global static Rollup concatFromApex(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -874,7 +875,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(
+    return operateFromApex(
       concatFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnOperationObject,
@@ -885,17 +886,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-  global static Rollup countFromTrigger(
+  global static Rollup countFromApex(
     SObjectField countFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField countFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return countFromTrigger(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, countFieldOnOperationObject, lookupSobjectType, null);
+    return countFromApex(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, countFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  global static Rollup countFromTrigger(
+  global static Rollup countFromApex(
     SObjectField countFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -903,20 +904,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.COUNT, eval);
+    return operateFromApex(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.COUNT, eval);
   }
 
-  global static Rollup maxFromTrigger(
+  global static Rollup maxFromApex(
     SObjectField maxFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField maxFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return maxFromTrigger(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, null);
+    return maxFromApex(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  global static Rollup maxFromTrigger(
+  global static Rollup maxFromApex(
     SObjectField maxFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -924,28 +925,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(
-      maxFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      maxFieldOnOperationObject,
-      lookupSobjectType,
-      Op.MAX,
-      eval
-    );
+    return operateFromApex(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, Op.MAX, eval);
   }
 
-  global static Rollup minFromTrigger(
+  global static Rollup minFromApex(
     SObjectField minFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField minFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return minFromTrigger(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOperationObject, lookupSobjectType, null);
+    return minFromApex(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOperationObject, lookupSobjectType, null);
   }
 
-  global static Rollup minFromTrigger(
+  global static Rollup minFromApex(
     SObjectField minFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -953,10 +946,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOpOject, lookupSobjectType, Op.MIN, eval);
+    return operateFromApex(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOpOject, lookupSobjectType, Op.MIN, eval);
   }
 
-  global static Rollup sumFromTrigger(
+  global static Rollup sumFromApex(
     SObjectField sumFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -964,20 +957,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType lookupSobjectType,
     Evaluator eval
   ) {
-    return operateFromTrigger(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.SUM, eval);
+    return operateFromApex(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.SUM, eval);
   }
 
-  global static Rollup sumFromTrigger(
+  global static Rollup sumFromApex(
     SObjectField sumFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
     SObjectField sumFieldOnOpOject,
     SObjectType lookupSobjectType
   ) {
-    return sumFromTrigger(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, null);
+    return sumFromApex(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, null);
   }
 
-  private static Rollup operateFromTrigger(
+  private static Rollup operateFromApex(
     SObjectField operationFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnOperationObject,
@@ -994,7 +987,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
       RollupType__c = rollupOperation.name()
     );
-    return runFromTrigger(new List<Rollup__mdt>{ rollupMetadata }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
+    return runFromApex(new List<Rollup__mdt>{ rollupMetadata }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }
 
   global static void runFromCDCTrigger() {
@@ -1023,13 +1016,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // it would have been nice if this was an enum!
     switch on header.changeType {
       when 'CREATE', 'GAP_CREATE' {
-        triggerContext = TriggerOperation.AFTER_INSERT;
+        apexContext = TriggerOperation.AFTER_INSERT;
       }
       when 'UPDATE', 'GAP_UPDATE' {
-        triggerContext = TriggerOperation.AFTER_UPDATE;
+        apexContext = TriggerOperation.AFTER_UPDATE;
       }
       when 'DELETE' {
-        triggerContext = TriggerOperation.BEFORE_DELETE;
+        apexContext = TriggerOperation.BEFORE_DELETE;
       }
     }
 
@@ -1043,29 +1036,29 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String fullQuery = getQueryString(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
     Map<Id, SObject> cdcRecordsMap = new Map<Id, SObject>(Database.query(fullQuery));
 
-    Rollup rollupToReturn = runFromTrigger(rollupMetadata, null, cdcRecordsMap.values(), cdcRecordsMap);
+    Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcRecordsMap.values(), cdcRecordsMap);
     // because CDC is async, the DB will always be updated by the time we get there
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
-    rollupToReturn.isForcedRecalc = triggerContext == TriggerOperation.AFTER_UPDATE;
+    rollupToReturn.isForcedRecalc = apexContext == TriggerOperation.AFTER_UPDATE;
     rollupToReturn.runCalc();
   }
 
   global static void runFromTrigger() {
     SObjectType sObjectType = getTriggerRecords().getSObjectType();
     List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
-    runFromTrigger(rollupMetadata, null, getTriggerRecords(), getOldTriggerRecordsMap()).runCalc();
+    runFromApex(rollupMetadata, null, getTriggerRecords(), getOldTriggerRecordsMap()).runCalc();
   }
 
-  private static Rollup runFromTrigger(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+  private static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     if (shouldRunFromTrigger() == false) {
-      return new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER);
+      return new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX);
     }
 
     String rollupContext;
     Boolean shouldReturn = false;
 
-    switch on triggerContext {
+    switch on apexContext {
       when AFTER_UPDATE {
         rollupContext = 'UPDATE_';
       }
@@ -1086,8 +1079,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     return shouldReturn
-      ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_TRIGGER)
-      : getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_TRIGGER);
+      ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX)
+      : getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_APEX);
   }
 
   /** end global-facing section, begin private static helpers */
@@ -1303,19 +1296,27 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static Boolean shouldRunFromTrigger() {
     shouldRun = (shouldRun != null && shouldRun) || Trigger.isExecuting;
-    // in order to accomodate CDC; we set the triggerContext manually there
+    // in order to accomodate CDC; we set the apexContext manually there
     // since technically all CDC is done from an AFTER_INSERT context
     if (Trigger.operationType != null && isCDC == false) {
-      triggerContext = Trigger.operationType;
+      apexContext = Trigger.operationType;
     }
     // there are only three allowed trigger operations that qualify
     if (
       shouldRun &&
-      triggerContext != TriggerOperation.AFTER_INSERT &&
-      triggerContext != TriggerOperation.AFTER_UPDATE &&
-      triggerContext != TriggerOperation.BEFORE_DELETE
+      apexContext != TriggerOperation.AFTER_INSERT &&
+      apexContext != TriggerOperation.AFTER_UPDATE &&
+      apexContext != TriggerOperation.BEFORE_DELETE &&
+      apexContext != TriggerOperation.AFTER_UNDELETE
     ) {
       shouldRun = false;
+    }
+    // for our purposes, an undelete behaviors **strictly** the same as an insert
+    // the implications are that if you programmatically changed the lookup field
+    // before undeleting a record in Apex, things might get weird, but aside from that
+    // edge case ...
+    if (apexContext == TriggerOperation.AFTER_UNDELETE) {
+      apexContext = TriggerOperation.AFTER_INSERT;
     }
     return shouldRun;
   }
@@ -1412,11 +1413,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return maxQueryRowOverride != null ? maxQueryRowOverride : Limits.getLimitQueryRows() - Limits.getQueryRows();
   }
 
-  protected void processAsync() {
-    this.getFieldNamesForRollups();
+  protected void process(List<Rollup> rollups) {
+    this.getFieldNamesForRollups(rollups);
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
-
-    for (Rollup rollup : this.rollups) {
+    for (Rollup rollup : rollups) {
       Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup);
       List<SObject> lookupItems = new List<SObject>();
       Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
@@ -1432,9 +1432,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
       lookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj)));
-      List<SObject> updatedRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, lookupItems);
-
-      for (SObject updatedRecord : updatedRecords) {
+      List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, lookupItems);
+      for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
       }
     }
@@ -1455,9 +1454,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return applicableItems;
   }
 
-  private void getFieldNamesForRollups() {
+  private void getFieldNamesForRollups(List<Rollup> rollups) {
     this.lookupObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
-    for (Rollup rollup : this.rollups) {
+    for (Rollup rollup : rollups) {
       String rollupField = rollup.opFieldOnLookupObject.getDescribe().getName();
       String lookupfield = rollup.lookupFieldOnLookupObject.getDescribe().getName();
       if (lookupObjectToUniqueFieldNames.containsKey(rollup.lookupObj)) {
@@ -1497,7 +1496,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (testOverrideData != null) {
       return testOverrideData;
     }
-    String query = 'SELECT Id, MaxLookupRowsBeforeBatching__c, MaxLookupRowsForQueueable__c, Rollup__c, ShouldAbortRun__c, ShouldRunAsBatchable__c, ShouldRunAsQueueable__c, TriggerOrInvocableName__c FROM RollupLimit__mdt WHERE {0} LIMIT 1'
+    String query = 'SELECT Id, MaxLookupRowsBeforeBatching__c, MaxLookupRowsForQueueable__c, Rollup__c, ShouldAbortRun__c, ShouldRunAsBatchable__c, ShouldRunAsQueueable__c, ShouldRunAsSyncOperation__c, TriggerOrInvocableName__c FROM RollupLimit__mdt WHERE {0} LIMIT 1'
       .replace('{0}', whereField + '= \'' + whereValue + '\'');
     List<RollupLimit__mdt> rollupLimits = (List<RollupLimit__mdt>) Database.query(query);
     if (rollupLimits.isEmpty()) {
@@ -1534,6 +1533,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       } else if (limitSpecificToRollup.ShouldRunAsQueueable__c) {
         // once you've been opted into batching, it should stick
         shouldRunAsBatch = shouldRunAsBatch || false;
+      } else if (limitSpecificToRollup.ShouldRunAsSyncOperation__c || orgDefaults.ShouldRunAsSyncOperation__c) {
+        this.rollups.remove(index);
+        this.syncRollups.add(rollup);
       }
 
       // you can increase the default limits, but it would be too messy to try to rank the individual rollup operations in a batched context

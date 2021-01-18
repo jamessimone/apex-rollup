@@ -29,11 +29,18 @@ Rollup.runFromTrigger();
 Let me repeat: you **must** have the following contexts listed on your trigger:
 
 ```java
-trigger ExampleTrigger on Opportunity(after insert, after update, before delete) {
+trigger ExampleTrigger on Opportunity(after insert, after update, before delete, after undelete) {
   Rollup.runFromTrigger();
   // etc. You can invoke the above from your handler if you have one
 }
 ```
+
+To be clear - the following trigger contexts are necessary when using `runFromTrigger` on any trigger installing `Rollup`:
+
+- after insert
+- after update
+- before delete
+- after undelete
 
 That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
 
@@ -75,6 +82,7 @@ These are the fields on the `Rollup Limit` custom metadata type:
 - `Should Abort Run` - if done at the `Org_Defaults` level, completely shuts down all rollup operations in the org. Otherwise, can be used on an individual rollup basis to turn on/off.
 - `Should Run As Batchable` - if enabled, is the preferred method for running rollup operations. You can only set this or `Should Run As Queueable` to true at once.
 - `Should Run As Queueable` - by default, rollup operations run as Queueables until the aforementioned `5000` record limit unless `Should Run As Batchable` is set to true
+- `Should Run As Sync Operation` - forces the rollup to be performed synchronously. Useful if you have validations on the parent object's rollup field that need to all be handled at once.
 - `Trigger Or Invocable Name` - If you are using custom Apex, a schedulable, or rolling up by way of the Invocable action and can't use the `Rollup` lookup field. Use the pattern `trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup` - for example: 'trigger_opportunity_stagename_to_account_name_rollup' (use lowercase on the field names). If there is a matching Rollup Limit record, those rules will be used. The first part of the string comes from how a rollup has been invoked - either by `trigger`, `invocable`, or `schedule`. A scheduled flow still uses `invocable`!
 
 ### Flow / Process Builder Invocable
@@ -138,16 +146,16 @@ If the CMDT-based or other solutions won't cut it and you need more customizabil
 ```java
 // you can batch rollup operations into one!
 Rollup.batch(
-  Rollup.countDistinctFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
-  Rollup.sumFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+  Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
+  Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
 );
 
 // you could even batch multiple batches (not sure why you would do this, but it's technically supported!!)
 Rollup.batch(
   Rollup.batch(
     // ... it's batches all the way down!
-    Rollup.countDistinctFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
-    Rollup.sumFromTrigger(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+    Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
+    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
   ),
   // don't actually do this, please
   Rollup.average(Opportunity.CloseDate, Opportunity.Id, Lead.ConvertedDate, Lead.ConvertedOpportunityId, Lead.SObjectType)
@@ -164,7 +172,7 @@ public static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup)
 public static void batch(List<Rollup> rollups)
 public static Rollup runCalc() // more on this method below
 
-public static Rollup averageFromTrigger(
+public static Rollup averageFromApex(
   SObjectField averageFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -172,7 +180,7 @@ public static Rollup averageFromTrigger(
   SObjectType lookupSobjectType
 )
 
-public static Rollup countDistinctFromTrigger(
+public static Rollup countDistinctFromApex(
   SObjectField countDistinctFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -180,7 +188,7 @@ public static Rollup countDistinctFromTrigger(
   SObjectType lookupSobjectType
 )
 
-public static Rollup concatFromTrigger(
+public static Rollup concatFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -188,7 +196,7 @@ public static Rollup concatFromTrigger(
   SObjectType lookupSobjectType
 )
 
-public static Rollup countFromTrigger(
+public static Rollup countFromApex(
   SObjectField countFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -196,7 +204,7 @@ public static Rollup countFromTrigger(
   SObjectType lookupSobjectType
 )
 
-public static Rollup maxFromTrigger(
+public static Rollup maxFromApex(
   SObjectField maxFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -204,7 +212,7 @@ public static Rollup maxFromTrigger(
   SObjectType lookupSobjectType
 )
 
-public static Rollup minFromTrigger(
+public static Rollup minFromApex(
   SObjectField minFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -212,7 +220,7 @@ public static Rollup minFromTrigger(
   SObjectType lookupSobjectType
 )
 
-public static Rollup sumFromTrigger(
+public static Rollup sumFromApex(
   SObjectField sumFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -254,7 +262,7 @@ public class OpportunityNameEvaluator implements Rollup.Evaluator {
 
 // and an example usage:
 
-Rollup.sumFromTrigger(
+Rollup.sumFromApex(
   Opportunity.Amount
   Opportunity.AccountId,
   Account.Id,
@@ -272,7 +280,7 @@ Another note for when the use of an `Evaluator` class might be necessary — let
 // again using the example of Opportunities
 trigger OpportunityTrigger on Opportunity(before update, after update, before insert, after insert, before delete) {
 
-  Rollup.sumFromTrigger(
+  Rollup.sumFromApex(
     Opportunity.Amount
     Opportunity.AccountId,
     Account.Id,
@@ -323,22 +331,22 @@ If you are implementing `Rollup` through the use of the static Apex methods inst
 Rollup.batch(
   // repeated just for lack of having better examples, but let's say five separate rollups ....
   // the important part is that they're ordered by the last argument; the SObjectType in question
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
 )
 
 // this should be avoided. It ** could ** potentially lead to a chunking error when updating all of the rollup fields
 Rollup.batch(
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
-  Rollup.concatDistinctFromTrigger(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromTrigger(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
+  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
+  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
 );
 ```
 
