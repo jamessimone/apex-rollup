@@ -280,11 +280,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         when '!=' {
           isEqual = storedValue != criteriaVal;
         }
-        when 'like' {
-          isEqual = storedValue.contains(criteriaVal);
-        }
-        when '!like' {
-          isEqual = storedValue.contains(criteriaVal) == false;
+        when 'like', '!like' {
+          String strippedCriteria = criteriaVal.replace('%', '');
+          Boolean containsCriteria = storedValue.contains(strippedCriteria);
+          isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
         }
       }
       return isEqual;
@@ -338,15 +337,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   public class WhereFieldEvaluator implements Evaluator {
     private final String whereClause;
+    // totally not obvious ranking going on here - it's absolutely imperative that
+    // the two-word conditions go first; otherwise replacing will fail on the whole string
+    // due to casing issues (NOT like, NOT in). I could make those be part of the map, too,
+    // but that seems even worse than the pseudo-ranking going on here
     private final Map<String, String> conditionMapping = new Map<String, String>{
-      '<>' => '!=',
       'not in' => '!=',
       'NOT IN' => '!=',
+      'not like' => '!like',
+      'NOT LIKE' => '!like',
+      '<>' => '!=',
       'in' => '=',
       'IN' => '=',
-      'not like' => '!like',
-      'LIKE' => 'like',
-      'NOT LIKE' => '!like'
+      'LIKE' => 'like'
     };
     public final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
 
@@ -368,7 +371,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           splitWhereClause = splitWhereClause.trim();
           String fieldName = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
           splitWhereClause = splitWhereClause.replace(fieldName, '').trim();
-          String criteria = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
+          String criteria = splitWhereClause.substring(0, splitWhereClause.indexOf(' ')).trim();
           String value = splitWhereClause.replace(criteria, '').trim().replaceAll('\'', '').trim();
           // is it a list? we'll create conditions for each entry in the list
           if (value.startsWith('(') && value.endsWith(')')) {

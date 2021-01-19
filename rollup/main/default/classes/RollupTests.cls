@@ -13,7 +13,7 @@ private class RollupTests {
     insert new List<SObject>{ con, opp };
   }
 
-  private class DMLMock extends Rollup.DMLHelper {
+  public class DMLMock extends Rollup.DMLHelper {
     public List<SObject> Records = new List<SObject>();
     public override void doUpdate(List<SObject> recordsToUpdate) {
       this.Records = recordsToUpdate;
@@ -478,6 +478,60 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on OR being used AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should include OR items');
+  }
+
+  @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForLikeStatements() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
+    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
+    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Account.Name LIKE \'%Rollup%\''
+      )
+    };
+
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on LIKE clause being used AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('RollupZZ', updatedAcc.Name, 'MAX AFTER_INSERT should include like items');
+  }
+
+  @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForNotLikeStatements() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
+    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
+    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupType__c = 'MAX',
+        CalcItemWhereClause__c = 'Account.Name NOT LIKE \'%Rollup%\''
+      )
+    };
+
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated based on NOT LIKE clause being used AFTER_INSERT');
   }
 
   @isTest
