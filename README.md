@@ -112,6 +112,10 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 
 Unfortunately, the "Description" section for Invocable fields does not show up as help text within the Flow Builder, but hopefully it's clear how each property should be configured!
 
+#### Considerations For Scheduled Flows
+
+In order to prevent blowing through the Flow Interview limit for each day, it's important to note that the use of `Rollup` with Condition Requirements in the scheduled flow's start node will run a flow interview for _every_ record that qualifies. However, if the scheduled flow is run for all records, the process is bulkified successfully and you only consume a single flow interview per batch of records.
+
 ### Calculating Rollups After Install
 
 <div id="calculating-rollup-after-install></div>
