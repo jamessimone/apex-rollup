@@ -201,210 +201,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean matches(Object calcItem);
   }
 
-  public class SObjectChangedFieldEvaluator implements Evaluator {
-    private final List<String> changedFieldNames;
-    private final Map<Id, SObject> oldRecordsMap;
-    public SObjectChangedFieldEvaluator(List<String> changedFieldNames, Map<Id, SObject> oldRecordsMap) {
-      this.changedFieldNames = changedFieldNames;
-      this.oldRecordsMap = oldRecordsMap;
-    }
-
-    public Boolean matches(Object calcItem) {
-      SObject calcSObject = (SObject) calcItem;
-      SObject oldRecord = oldRecordsMap.get(calcSObject.Id);
-      Boolean matches = this.changedFieldNames.isEmpty() || this.oldRecordsMap == null;
-      for (String fieldName : this.changedFieldNames) {
-        // need to trim because list can be comma-separated with leading/trailing spaces
-        if (calcSObject.get(fieldName.trim()) != oldRecord.get(fieldName.trim())) {
-          matches = true;
-          break;
-        }
-      }
-      return matches;
-    }
-  }
-
-  private class WhereFieldCondition {
-    private final SObjectType sObjectType;
-    private final String fieldName;
-    private final String criteria;
-    private final String value;
-    private final List<String> values;
-    private final Set<String> positiveEqualities = new Set<String>{ '=', 'like' };
-
-    public WhereFieldCondition(String fieldName, String criteria, String value, SObjectType sObjectType) {
-      this.fieldName = fieldName;
-      this.criteria = criteria;
-      this.value = value;
-      this.sObjectType = sObjectType;
-    }
-    public WhereFieldCondition(String fieldName, String criteria, List<String> values, SObjectType sObjectType) {
-      this.fieldName = fieldName;
-      this.criteria = criteria;
-      this.values = values;
-      this.sObjectType = sObjectType;
-    }
-
-    public Boolean equals(Object o) {
-      if (this.values != null) {
-        Boolean isEqual = true;
-        for (Integer index = 0; index < this.values.size(); index++) {
-          String criteriaVal = this.values[index];
-          isEqual = this.equals(o, criteriaVal);
-          if (this.criteria.contains('!') && isEqual == false) {
-            break;
-          } else if (this.positiveEqualities.contains(this.criteria) && isEqual) {
-            break;
-          } else if (index < this.values.size() - 1) {
-            isEqual = true;
-          }
-        }
-        return isEqual;
-      }
-      return this.equals(o, this.value);
-    }
-
-    private Boolean equals(Object o, String criteriaVal) {
-      Boolean isEqual = o instanceof SObject;
-      if (isEqual == false) {
-        return isEqual;
-      }
-
-      SObject item = (SObject) o;
-      criteriaVal = criteriaVal.trim();
-      String storedValue = this.getFieldValue(item, this.fieldName, this.sObjectType).toString();
-      switch on this.criteria {
-        when '=' {
-          isEqual = storedValue == criteriaVal;
-        }
-        when '!=' {
-          isEqual = storedValue != criteriaVal;
-        }
-        when 'like', '!like' {
-          String strippedCriteria = criteriaVal.replace('%', '');
-          Boolean containsCriteria = storedValue.contains(strippedCriteria);
-          isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
-        }
-      }
-      return isEqual;
-    }
-
-    private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
-      DescribesObjectResult sObjectDescribe = sObjectType.getDescribe();
-      Map<String, SObjectField> fieldMap = sObjectDescribe.fields.getMap();
-      if (fieldPath.contains('.') && fieldMap.containsKey(fieldPath) == false) {
-        List<String> fieldNameParts = fieldPath.split('\\.');
-        String relationshipName = fieldNameParts.remove(0);
-        String originalName = relationshipName;
-        if (relationshipName.contains('__r')) {
-          relationshipName = relationshipName.replace('__r', '__c');
-        } else {
-          relationshipName += 'Id';
-        }
-        SObjectField fieldToken = fieldMap.get(relationshipName);
-        SObjectType parentSObjectType;
-        if (fieldToken.getDescribe().isNamePointing()) {
-          Id fieldValue = (Id) item.get(relationshipName);
-          parentSObjectType = fieldValue.getSobjectType();
-        } else {
-          parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
-        }
-        SObject parentSObject = item.getSObject(originalName);
-        if (fieldNameParts.isEmpty() == false) {
-          return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
-        } else {
-          return parentSObject.get(originalName);
-        }
-      }
-      return item == null ? '' : item.get(fieldPath);
-    }
-
-    public override String toString() {
-      String baseString = this.fieldName + ' ' + this.criteria + ' ';
-      if (this.values != null) {
-        baseString += '(';
-        for (String val : this.values) {
-          String escapedVal = '\'' + val + '\'';
-          baseString += this.values.indexOf(val) > 0 ? ', ' + escapedVal : escapedVal;
-        }
-        baseString += ')';
-      } else {
-        baseString += '\'' + this.value + '\'';
-      }
-      return baseString;
-    }
-  }
-
-  public class WhereFieldEvaluator implements Evaluator {
-    private final String whereClause;
-    // totally not obvious ranking going on here - it's absolutely imperative that
-    // the two-word conditions go first; otherwise replacing will fail on the whole string
-    // due to casing issues (NOT like, NOT in). I could make those be part of the map, too,
-    // but that seems even worse than the pseudo-ranking going on here
-    private final Map<String, String> conditionMapping = new Map<String, String>{
-      'not in' => '!=',
-      'NOT IN' => '!=',
-      'not like' => '!like',
-      'NOT LIKE' => '!like',
-      '<>' => '!=',
-      'in' => '=',
-      'IN' => '=',
-      'LIKE' => 'like'
-    };
-    public final List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
-
-    public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
-      if (whereClause == null) {
-        whereClause = '';
-      }
-      for (String conditionKey : this.conditionMapping.keySet()) {
-        whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
-      }
-      this.whereClause = whereClause;
-      List<String> splitWhere = whereClause.split('(and|AND|OR|or)');
-
-      try {
-        for (String splitWhereClause : splitWhere) {
-          if(String.isBlank(splitWhereClause)) {
-            continue;
-          }
-          splitWhereClause = splitWhereClause.trim();
-          String fieldName = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
-          splitWhereClause = splitWhereClause.replace(fieldName, '').trim();
-          String criteria = splitWhereClause.substring(0, splitWhereClause.indexOf(' ')).trim();
-          String value = splitWhereClause.replace(criteria, '').trim().replaceAll('\'', '').trim();
-          // is it a list? we'll create conditions for each entry in the list
-          if (value.startsWith('(') && value.endsWith(')')) {
-            List<String> values = value.substring(1, value.length() - 1).split(',');
-            this.conditions.add(new WhereFieldCondition(fieldName, criteria, values, calcItemSObjectType));
-          } else {
-            this.conditions.add(new WhereFieldCondition(fieldName, criteria, value, calcItemSObjectType));
-          }
-        }
-      } catch (Exception ex) {
-        System.debug(LoggingLevel.ERROR, ex.getMessage() + '\n' + ex.getStackTraceString());
-        throw new IllegalArgumentException('Where clause entered with incorrect number of args: ' + whereClause);
-      }
-    }
-
-    public Boolean matches(Object calcItem) {
-      // if there's only one condition, you only need to prove that condition
-      // otherwise, if there's more than one condition, you either have to prove them all or
-      // have an OR statement be true
-      Boolean matches = this.conditions.isEmpty() || this.conditions.size() == 1;
-      for (WhereFieldCondition condition : this.conditions) {
-        // == works here because .equals() is overridden in the WhereFieldCondition class
-        Boolean isOrCondition = this.whereClause.containsIgnoreCase('or ' + condition.toString());
-        if (isOrCondition) {
-          matches = matches || condition == calcItem;
-        } else {
-          matches = matches && condition == calcItem;
-        }
-      }
-      return matches;
-    }
-  }
-
   public String runCalc() {
     RollupLimit__mdt orgDefaults = this.getSingleLimitOrDefault('DeveloperName', LIMIT_ORG_DEFAULTS, defaultRollupLimit);
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
@@ -610,27 +406,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       RollupType__c = operationName,
       CalcItemWhereClause__c = potentialWhereClause
     );
-    List<String> queryFields = new List<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
-    WhereFieldEvaluator eval = new WhereFieldEvaluator(potentialWhereClause, calcItemType);
-    for (WhereFieldCondition condition : eval.conditions) {
-      if (queryFields.contains(condition.fieldName) == false) {
-        queryFields.add(condition.fieldName);
-        if (condition.fieldName.contains('.')) {
-          List<String> relationshipNames = condition.fieldName.split('\\.');
-          String priorVal = '';
-          for (String relationshipName : relationshipNames) {
-            if (String.isNotBlank(priorVal)) {
-              priorVal += '.';
-            }
-            priorVal += relationshipName.trim();
-          }
-          if (queryFields.contains(priorVal) == false) {
-            queryFields.add(priorVal);
-          }
-        }
-      }
-    }
-    String queryString = getQueryString(calcItemType, queryFields, 'Id', '!=');
+    Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
+    RollupEvaluators.WhereFieldEvaluator eval = new RollupEvaluators.WhereFieldEvaluator(potentialWhereClause, calcItemType);
+    queryFields.addAll(eval.getRelationshipFieldNames());
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=');
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       List<SObject> calcItems = Database.query(queryString);
       Rollup thisRollup = getRollup(
@@ -1231,9 +1010,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       // TODO: if they're **BOTH** not null ...
       if (eval == null && String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)) {
-        eval = new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+        eval = new RollupEvaluators.SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
       } else if (eval == null && String.isNotBlank(rollupMetadata.CalcItemWhereClause__c)) {
-        eval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+        eval = new RollupEvaluators.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
       }
 
       Id rollupLimitId;
