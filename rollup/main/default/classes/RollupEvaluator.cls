@@ -70,7 +70,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.values = new List<String>();
 
       for (String val : values) {
-        this.values.add(val.trim().replace('%', ''));
+        this.values.add(val?.trim()?.replace('%', ''));
       }
     }
 
@@ -81,7 +81,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
 
       SObject item = (SObject) o;
-      String storedValue = this.getFieldValue(item, this.fieldName, this.sObjectType).toString();
+      String storedValue = String.valueOf(this.getFieldValue(item, this.fieldName, this.sObjectType));
       switch on this.criteria {
         when '=' {
           isEqual = this.values.contains(storedValue);
@@ -97,6 +97,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             containsCriteria = containsCriteria || storedValue.contains(val);
           }
           isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
+        }
+        when '>', '>=' , '<', '<=' {
+          Boolean isGreaterThan = false;
+          for(String val : this.values) {
+            isGreaterThan = isGreaterThan || this.criteria.endsWith('=') ? storedValue >= val: storedValue > val;
+          }
+          if(this.criteria.contains('=')) {
+            return isGreaterThan;
+          }
+          return this.criteria.contains('<') ? isGreaterThan == false : isGreaterThan;
         }
       }
       return isEqual;
@@ -176,29 +186,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
       }
       this.whereClause = whereClause;
-      List<String> splitWhere = whereClause.split('(and|AND|OR|or)');
-
-      try {
-        for (String splitWhereClause : splitWhere) {
-          if (String.isBlank(splitWhereClause)) {
-            continue;
-          }
-          splitWhereClause = splitWhereClause.trim();
-          String fieldName = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
-          splitWhereClause = splitWhereClause.replace(fieldName, '').trim();
-          String criteria = splitWhereClause.substring(0, splitWhereClause.indexOf(' ')).trim();
-          String value = splitWhereClause.replace(criteria, '').trim().replaceAll('\'', '').trim();
-          if (value.startsWith('(') && value.endsWith(')')) {
-            List<String> values = value.substring(1, value.length() - 1).split(',');
-            this.conditions.add(new WhereFieldCondition(fieldName, criteria, values, calcItemSObjectType));
-          } else {
-            this.conditions.add(new WhereFieldCondition(fieldName, criteria, value, calcItemSObjectType));
-          }
-        }
-      } catch (Exception ex) {
-        System.debug(LoggingLevel.ERROR, ex.getMessage() + '\n' + ex.getStackTraceString());
-        throw new IllegalArgumentException('Where clause entered with incorrect number of args: ' + whereClause);
-      }
+      List<String> splitWhere = this.getSplitWhereClause();
+      this.createConditions(splitWhere, calcItemSObjectType);
     }
 
     public List<String> getRelationshipFieldNames() {
@@ -231,14 +220,63 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = this.conditions.isEmpty() || this.conditions.size() == 1;
       for (WhereFieldCondition condition : this.conditions) {
         // == works here because .equals() is overridden in the WhereFieldCondition class
+        Boolean innerMatch = condition == calcItem;
         Boolean isOrCondition = this.whereClause.containsIgnoreCase('or ' + condition.toString());
         if (isOrCondition) {
-          matches = matches || condition == calcItem;
+          matches = innerMatch || matches;
         } else {
-          matches = matches && condition == calcItem;
+          matches = innerMatch && matches;
         }
       }
       return matches;
+    }
+
+    private List<String> getSplitWhereClause() {
+      List<String> splitWhere = this.whereClause.split('( and | AND | OR | or )');
+      // shocker - strings can have the criteria keywords IN them. reconstitute the strings that have been incorrectly split
+      for(Integer index = splitWhere.size() - 1; index >= 0; index--) {
+        String splitWhereClause = splitWhere[index];
+        // we have to assume that the only place where this could happen is at the back of the string
+        if(splitWhereClause.endsWith('\'') && splitWhereClause.indexOf('\'') == splitWhereClause.length() - 1 && index > 0) {
+          try {
+            String nextString = splitWhere[index - 1];
+            String foundCriteria = this.whereClause.substring(this.whereClause.indexOf(nextString) + nextString.length(), this.whereClause.indexOf(splitWhereClause)).trim();
+            splitWhere[index - 1] = (nextString + ' ' + foundCriteria + ' ' + splitWhereClause);
+            splitWhere[index] = '';
+          } catch(Exception ex) {
+            this.logError(ex);
+          }
+        }
+      }
+      return splitWhere;
+    }
+
+    private void createConditions(List<String> splitWhere, SObjectType calcItemSObjectType) {
+      try {
+        for (String splitWhereClause : splitWhere) {
+          if (String.isBlank(splitWhereClause)) {
+            continue;
+          }
+          splitWhereClause = splitWhereClause.trim();
+          String fieldName = splitWhereClause.substring(0, splitWhereClause.indexOf(' '));
+          splitWhereClause = splitWhereClause.replace(fieldName, '').trim();
+          String criteria = splitWhereClause.substring(0, splitWhereClause.indexOf(' ')).trim();
+          String value = splitWhereClause.replace(criteria, '').trim().replaceAll('\'', '').trim();
+          if (value.startsWith('(') && value.endsWith(')')) {
+            List<String> values = value.substring(1, value.length() - 1).split(',');
+            this.conditions.add(new WhereFieldCondition(fieldName, criteria, values, calcItemSObjectType));
+          } else {
+            this.conditions.add(new WhereFieldCondition(fieldName, criteria, value, calcItemSObjectType));
+          }
+        }
+      } catch (Exception ex) {
+        this.logError(ex);
+        throw new IllegalArgumentException('Where clause entered with incorrect number of args: ' + whereClause);
+      }
+    }
+
+    private void logError(Exception ex) {
+      System.debug(LoggingLevel.ERROR, 'RollupEvaluator: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
     }
   }
 }
