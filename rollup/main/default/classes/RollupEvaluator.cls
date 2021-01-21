@@ -98,15 +98,19 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
           isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
         }
-        when '>', '>=' , '<', '<=' {
-          Boolean isGreaterThan = false;
-          for(String val : this.values) {
-            isGreaterThan = isGreaterThan || this.criteria.endsWith('=') ? storedValue >= val: storedValue > val;
+        when '>', '>=' {
+          if (this.values.size() != 1) {
+            throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           }
-          if(this.criteria.contains('=')) {
-            return isGreaterThan;
+
+          return this.criteria.endsWith('=') ? storedValue >= this.values[0] : storedValue > this.values[0];
+        }
+        when '<', '<=' {
+          if (this.values.size() != 1) {
+            throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           }
-          return this.criteria.contains('<') ? isGreaterThan == false : isGreaterThan;
+
+          return this.criteria.endsWith('=') ? storedValue <= this.values[0] : storedValue < this.values[0];
         }
       }
       return isEqual;
@@ -234,16 +238,20 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private List<String> getSplitWhereClause() {
       List<String> splitWhere = this.whereClause.split('( and | AND | OR | or )');
       // shocker - strings can have the criteria keywords IN them. reconstitute the strings that have been incorrectly split
-      for(Integer index = splitWhere.size() - 1; index >= 0; index--) {
+      for (Integer index = splitWhere.size() - 1; index >= 0; index--) {
         String splitWhereClause = splitWhere[index];
         // we have to assume that the only place where this could happen is at the back of the string
-        if(splitWhereClause.endsWith('\'') && splitWhereClause.indexOf('\'') == splitWhereClause.length() - 1 && index > 0) {
+        if (splitWhereClause.endsWith('\'') && splitWhereClause.indexOf('\'') == splitWhereClause.length() - 1 && index > 0) {
           try {
             String nextString = splitWhere[index - 1];
-            String foundCriteria = this.whereClause.substring(this.whereClause.indexOf(nextString) + nextString.length(), this.whereClause.indexOf(splitWhereClause)).trim();
+            String foundCriteria = this.whereClause.substring(
+                this.whereClause.indexOf(nextString) + nextString.length(),
+                this.whereClause.indexOf(splitWhereClause)
+              )
+              .trim();
             splitWhere[index - 1] = (nextString + ' ' + foundCriteria + ' ' + splitWhereClause);
             splitWhere[index] = '';
-          } catch(Exception ex) {
+          } catch (Exception ex) {
             this.logError(ex);
           }
         }

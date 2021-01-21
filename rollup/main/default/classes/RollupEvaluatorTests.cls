@@ -157,6 +157,7 @@ private class RollupEvaluatorTests {
     eval = new RollupEvaluator.WhereFieldEvaluator('Amount >= 4.00', oppOne.getSObjectType());
 
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 4.00)), 'Should match since amount equals!');
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 5.00)), 'Should match since amount greater than!');
   }
 
   @isTest
@@ -178,6 +179,7 @@ private class RollupEvaluatorTests {
     Test.stopTest();
 
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 4.00)), 'Should match since amount equals!');
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 3.00)), 'Should match since amount less than!');
   }
 
 
