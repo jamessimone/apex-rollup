@@ -1,5 +1,33 @@
-public without sharing class RollupEvaluators {
-  public class SObjectChangedFieldEvaluator implements Rollup.Evaluator {
+public without sharing abstract class RollupEvaluator implements Rollup.Evaluator {
+  public abstract Boolean matches(Object calcItem);
+
+  public static RollupEvaluator getEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
+    Boolean isChangedFieldEval = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c);
+    Boolean isWhereClauseEval = String.isNotBlank(rollupMetadata.CalcItemWhereClause__c);
+    if (isChangedFieldEval && isWhereClauseEval) {
+      return new CombinedEvaluator(rollupMetadata, oldCalcItems, sObjectType);
+    } else if (isChangedFieldEval) {
+      return new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+    } else if (isWhereClauseEval) {
+      return new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+    }
+    return null;
+  }
+
+  private class CombinedEvaluator extends RollupEvaluator {
+    private final RollupEvaluator changedFiedEval;
+    private final RollupEvaluator whereClauseEval;
+    public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
+      this.changedFiedEval = new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+      this.whereClauseEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+    }
+
+    public override Boolean matches(Object calcItem) {
+      return this.changedFiedEval.matches(calcItem) && this.whereClauseEval.matches(calcItem);
+    }
+  }
+
+  public class SObjectChangedFieldEvaluator extends RollupEvaluator {
     private final List<String> changedFieldNames;
     private final Map<Id, SObject> oldRecordsMap;
     public SObjectChangedFieldEvaluator(List<String> changedFieldNames, Map<Id, SObject> oldRecordsMap) {
@@ -7,7 +35,7 @@ public without sharing class RollupEvaluators {
       this.oldRecordsMap = oldRecordsMap;
     }
 
-    public Boolean matches(Object calcItem) {
+    public override Boolean matches(Object calcItem) {
       SObject calcSObject = (SObject) calcItem;
       SObject oldRecord = oldRecordsMap.get(calcSObject.Id);
       Boolean matches = this.changedFieldNames.isEmpty() || this.oldRecordsMap == null;
@@ -27,6 +55,7 @@ public without sharing class RollupEvaluators {
     private final String fieldName;
     private final String criteria;
     private final String value;
+    private final List<String> originalValues;
     private final List<String> values;
     private final Set<String> positiveEqualities = new Set<String>{ '=', 'like' };
 
@@ -36,10 +65,11 @@ public without sharing class RollupEvaluators {
     public WhereFieldCondition(String fieldName, String criteria, List<String> values, SObjectType sObjectType) {
       this.fieldName = fieldName;
       this.criteria = criteria;
-      this.values = new List<String>();
+      this.originalValues = values;
       this.sObjectType = sObjectType;
+      this.values = new List<String>();
 
-      for(String val : values) {
+      for (String val : values) {
         this.values.add(val.trim().replace('%', ''));
       }
     }
@@ -63,7 +93,7 @@ public without sharing class RollupEvaluators {
           // like/not like have to be handled separately because it's the storedValue
           // that gets tested against, not the other way around
           Boolean containsCriteria = false;
-          for(String val : this.values) {
+          for (String val : this.values) {
             containsCriteria = containsCriteria || storedValue.contains(val);
           }
           isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
@@ -72,50 +102,55 @@ public without sharing class RollupEvaluators {
       return isEqual;
     }
 
+    public override String toString() {
+      String baseString = this.fieldName + ' ' + this.criteria + ' ';
+      baseString += this.originalValues.size() == 1 ? '' : '(';
+      for (String val : this.originalValues) {
+        String escapedVal = '\'' + val + '\'';
+        baseString += this.originalValues.indexOf(val) > 0 ? ', ' + escapedVal : escapedVal;
+      }
+      baseString += this.originalValues.size() == 1 ? '' : ')';
+      return baseString;
+    }
+
     private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
-      DescribesObjectResult sObjectDescribe = sObjectType.getDescribe();
-      Map<String, SObjectField> fieldMap = sObjectDescribe.fields.getMap();
-      if (fieldPath.contains('.') && fieldMap.containsKey(fieldPath) == false) {
-        List<String> fieldNameParts = fieldPath.split('\\.');
-        String relationshipName = fieldNameParts.remove(0);
-        String originalName = relationshipName;
-        if (relationshipName.contains('__r')) {
-          relationshipName = relationshipName.replace('__r', '__c');
-        } else {
-          relationshipName += 'Id';
-        }
-        SObjectField fieldToken = fieldMap.get(relationshipName);
-        SObjectType parentSObjectType;
-        if (fieldToken.getDescribe().isNamePointing()) {
-          Id fieldValue = (Id) item.get(relationshipName);
-          parentSObjectType = fieldValue.getSobjectType();
-        } else {
-          parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
-        }
-        SObject parentSObject = item.getSObject(originalName);
-        if (fieldNameParts.isEmpty() == false) {
-          return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
-        } else {
-          return parentSObject.get(originalName);
-        }
+      // handle compound fields separately
+      if (fieldPath.contains('.') && sObjectType.getDescribe().fields.getMap().containsKey(fieldPath) == false) {
+        return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
       }
       return item == null ? '' : item.get(fieldPath);
     }
 
-    public override String toString() {
-      String baseString = this.fieldName + ' ' + this.criteria + ' ';
-      baseString += this.values.size() == 1 ? '' : '(';
-      for (String val : this.values) {
-        String escapedVal = '\'' + val + '\'';
-        // TODO: re-add percentage signs for like/!like
-        baseString += this.values.indexOf(val) > 0 ? ', ' + escapedVal : escapedVal;
+    private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
+      List<String> fieldNameParts = fieldPath.split('\\.');
+      // here, we pop fields off the front of the list because for tertiary+ object relationships (eg Owner.Profile.Name)
+      // we need to recurse till the value itself can be captured
+      String relationshipName = fieldNameParts.remove(0);
+      String originalName = relationshipName;
+      if (relationshipName.contains('__r')) {
+        relationshipName = relationshipName.replace('__r', '__c');
+      } else {
+        relationshipName += 'Id';
       }
-      baseString += this.values.size() == 1 ? '' : ')';
-      return baseString;
+      SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
+      SObjectType parentSObjectType;
+      if (fieldToken.getDescribe().isNamePointing()) {
+        Id fieldValue = (Id) item.get(relationshipName);
+        parentSObjectType = fieldValue.getSobjectType();
+      } else {
+        // there's only ever one item in the list for non-polymorphic fields
+        parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
+      }
+      SObject parentSObject = item.getSObject(originalName);
+      if (fieldNameParts.isEmpty() == false) {
+        return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
+      } else {
+        return parentSObject.get(originalName);
+      }
     }
   }
 
-  public class WhereFieldEvaluator implements Rollup.Evaluator {
+  public class WhereFieldEvaluator extends RollupEvaluator {
     private final String whereClause;
     // totally not obvious ranking going on here - it's absolutely imperative that
     // the two-word conditions go first; otherwise replacing will fail on the whole string
@@ -189,17 +224,14 @@ public without sharing class RollupEvaluators {
       return fieldNames;
     }
 
-    public Boolean matches(Object calcItem) {
+    public override Boolean matches(Object calcItem) {
       // if there's only one condition, you only need to prove that condition
       // otherwise, if there's more than one condition, you either have to prove them all or
       // have an OR statement be true
       Boolean matches = this.conditions.isEmpty() || this.conditions.size() == 1;
-      System.debug(this.whereClause);
       for (WhereFieldCondition condition : this.conditions) {
         // == works here because .equals() is overridden in the WhereFieldCondition class
         Boolean isOrCondition = this.whereClause.containsIgnoreCase('or ' + condition.toString());
-        System.debug(condition.toString());
-        System.debug(isOrCondition);
         if (isOrCondition) {
           matches = matches || condition == calcItem;
         } else {

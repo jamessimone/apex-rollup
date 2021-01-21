@@ -407,7 +407,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       CalcItemWhereClause__c = potentialWhereClause
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
-    RollupEvaluators.WhereFieldEvaluator eval = new RollupEvaluators.WhereFieldEvaluator(potentialWhereClause, calcItemType);
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(potentialWhereClause, calcItemType);
     queryFields.addAll(eval.getRelationshipFieldNames());
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=');
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
@@ -951,7 +951,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
-    // Even after Spring '21, can't call .getAll here because the Developer Name restriction would disallow multiple rules per SObject
+    // TODO: after Spring 21, call .getAll() here instead; even though you can't filter by fields other than
+    // DeveloperName/Id with getInstance(), not having to stipulate the fields each time will end up saving us lines of code
+    // in the long run
     return rollupMetadata != null
       ? rollupMetadata
       : [
@@ -1010,9 +1012,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       // TODO: if they're **BOTH** not null ...
       if (eval == null && String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)) {
-        eval = new RollupEvaluators.SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+        eval = new RollupEvaluator.SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
       } else if (eval == null && String.isNotBlank(rollupMetadata.CalcItemWhereClause__c)) {
-        eval = new RollupEvaluators.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+        eval = new RollupEvaluator.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
       }
 
       Id rollupLimitId;
