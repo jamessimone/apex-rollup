@@ -1010,13 +1010,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
-      // TODO: if they're **BOTH** not null ...
-      if (eval == null && String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)) {
-        eval = new RollupEvaluator.SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
-      } else if (eval == null && String.isNotBlank(rollupMetadata.CalcItemWhereClause__c)) {
-        eval = new RollupEvaluator.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
-      }
-
       Id rollupLimitId;
       if (rollupMetadata.Id != null) {
         // for CMDT-driven rollups, we can tie the rollup operation straight to a RollupLimit__mdt record
@@ -1036,7 +1029,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItems,
         oldCalcItems,
         batchRollup,
-        eval,
+        eval != null ? eval : RollupEvaluator.getEvaluator(rollupMetadata, oldCalcItems, sObjectType),
         rollupLimitId,
         rollupInvokePoint,
         rollupMetadata.FullRecalculationDefaultNumberValue__c,

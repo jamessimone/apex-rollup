@@ -1,4 +1,6 @@
 public without sharing abstract class RollupEvaluator implements Rollup.Evaluator {
+  private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
+
   public abstract Boolean matches(Object calcItem);
 
   public static RollupEvaluator getEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
@@ -54,10 +56,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final SObjectType sObjectType;
     private final String fieldName;
     private final String criteria;
-    private final String value;
     private final List<String> originalValues;
     private final List<String> values;
-    private final Set<String> positiveEqualities = new Set<String>{ '=', 'like' };
 
     public WhereFieldCondition(String fieldName, String criteria, String value, SObjectType sObjectType) {
       this(fieldName, criteria, new List<String>{ value }, sObjectType);
@@ -70,7 +70,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.values = new List<String>();
 
       for (String val : values) {
-        this.values.add(val?.trim()?.replace('%', ''));
+        if (String.isNotBlank(val)) {
+          this.values.add(val.trim().replace('%', ''));
+        }
       }
     }
 
@@ -98,6 +100,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
           isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
         }
+        // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
+        // greater than / less than routes, but we test for it first just to be triple-sure
         when '>', '>=' {
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
@@ -136,16 +140,18 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
-      List<String> fieldNameParts = fieldPath.split('\\.');
+      List<String> fieldNameParts = fieldPath.split(RELATIONSHIP_FIELD_DELIMITER);
       // here, we pop fields off the front of the list because for tertiary+ object relationships (eg Owner.Profile.Name)
       // we need to recurse till the value itself can be captured
-      String relationshipName = fieldNameParts.remove(0);
+      String relationshipName = fieldNameParts.remove(0).trim();
       String originalName = relationshipName;
+
       if (relationshipName.contains('__r')) {
         relationshipName = relationshipName.replace('__r', '__c');
       } else {
         relationshipName += 'Id';
       }
+
       SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
       SObjectType parentSObjectType;
       if (fieldToken.getDescribe().isNamePointing()) {
@@ -190,7 +196,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
       }
       this.whereClause = whereClause;
-      List<String> splitWhere = this.getSplitWhereClause();
+      List<String> splitWhere = this.getSplitWhereClause(this.whereClause);
       this.createConditions(splitWhere, calcItemSObjectType);
     }
 
@@ -200,7 +206,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (fieldNames.contains(condition.fieldName) == false) {
           fieldNames.add(condition.fieldName);
           if (condition.fieldName.contains('.')) {
-            List<String> relationshipNames = condition.fieldName.split('\\.');
+            List<String> relationshipNames = condition.fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
             String priorVal = '';
             for (String relationshipName : relationshipNames) {
               if (String.isNotBlank(priorVal)) {
@@ -225,6 +231,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       for (WhereFieldCondition condition : this.conditions) {
         // == works here because .equals() is overridden in the WhereFieldCondition class
         Boolean innerMatch = condition == calcItem;
+        // TODO: this needs to be brought into alignment with nested conditionals. It was fine at the top level
+        // when that was all that was going on, but now if the outer conditional is an AND, this reports false positives
         Boolean isOrCondition = this.whereClause.containsIgnoreCase('or ' + condition.toString());
         if (isOrCondition) {
           matches = innerMatch || matches;
@@ -235,8 +243,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return matches;
     }
 
-    private List<String> getSplitWhereClause() {
-      List<String> splitWhere = this.whereClause.split('( and | AND | OR | or )');
+    private List<String> getSplitWhereClause(String whereClause) {
+      List<String> splitWhere = whereClause.split('( and | AND | OR | or )');
       // shocker - strings can have the criteria keywords IN them. reconstitute the strings that have been incorrectly split
       for (Integer index = splitWhere.size() - 1; index >= 0; index--) {
         String splitWhereClause = splitWhere[index];
@@ -244,9 +252,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (splitWhereClause.endsWith('\'') && splitWhereClause.indexOf('\'') == splitWhereClause.length() - 1 && index > 0) {
           try {
             String nextString = splitWhere[index - 1];
-            String foundCriteria = this.whereClause.substring(
-                this.whereClause.indexOf(nextString) + nextString.length(),
-                this.whereClause.indexOf(splitWhereClause)
+            String foundCriteria = whereClause.substring(
+                whereClause.indexOf(nextString) + nextString.length(),
+                whereClause.indexOf(splitWhereClause)
               )
               .trim();
             splitWhere[index - 1] = (nextString + ' ' + foundCriteria + ' ' + splitWhereClause);
@@ -256,6 +264,34 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
+
+      for (Integer index = 0; index < splitWhere.size(); index++) {
+        String match = splitWhere[index];
+        Integer originalMatchIndex = index;
+        match = match.trim();
+        Integer openParansRange = match.indexOf('(');
+        if (openParansRange == 0) {
+          Integer whereWeAreInTheFullString = whereClause.indexOf(match) + match.length();
+          // you can have as many clauses as you want in parantheses, but they can only
+          // either be AND or OR (at least according to SOQL). +5 is enough to capture AND or OR
+          Boolean isOr = whereClause.substring(whereWeAreInTheFullString, whereWeAreInTheFullString + 5).containsIgnoreCase('or');
+          match = match.substring(1, match.length() - 1);
+          // iterate through the rest of the list, stopping at the end of the parantheses
+          for (Integer innerIndex = index + 1; innerIndex < splitWhere.size(); innerIndex++) {
+            String innerMatch = splitWhere[innerIndex].trim();
+            splitWhere[innerIndex] = '';
+            if (innerMatch.endsWith(')')) {
+              match += (isOr ? ' OR ' : ' AND ') + innerMatch.substring(0, innerMatch.length() - 1);
+              break;
+            } else {
+              match += (isOr ? ' OR ' : ' AND ') + innerMatch;
+            }
+          }
+          splitWhere[originalMatchIndex] = '';
+          splitWhere.addAll(this.getSplitWhereClause(match));
+        }
+      }
+
       return splitWhere;
     }
 

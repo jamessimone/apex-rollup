@@ -168,7 +168,6 @@ private class RollupEvaluatorTests {
 
     String whereClause = 'Amount < 4';
 
-    Test.startTest();
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
     System.assertEquals(true, eval.matches(oppOne), 'Should match due to not having amount');
@@ -176,13 +175,44 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppThree), 'Should match since amount is less than');
 
     eval = new RollupEvaluator.WhereFieldEvaluator('Amount <= 4.00', oppOne.getSObjectType());
-    Test.stopTest();
 
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 4.00)), 'Should match since amount equals!');
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 3.00)), 'Should match since amount less than!');
   }
 
+  @isTest
+  static void shouldReturnCorrectlyForNestedConditionals() {
+    Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
+    Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
+    Opportunity oppThree = new Opportunity(Amount = 3.01, StageName = 'Hello there');
+    Opportunity oppFour = new Opportunity(StageName = 'Hi');
 
-  // dual conditions (where and record changed), and the record changed tests, nested conditionals
+    String whereClause = 'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\')';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertNotEquals(true, eval.matches(oppOne), 'Name does not match!');
+    System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
+    System.assertEquals(true, eval.matches(oppThree), 'Amount and name roughly match!');
+    System.assertEquals(true, eval.matches(oppFour), 'Amount and name match');
+  }
+
+  @isTest
+  static void shouldReturnDualEvaluatorWhenCalcItemChangedFieldsAndWhereClauseFilledOut() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name');
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.StageName = 'Old Name';
+
+    Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', StageName = 'Same', Amount = 25);
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c  ='Amount > 20');
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(rollupMetadata, new Map<Id, SObject>{
+      oldOpp.Id => oldOpp, secondOpp.Id => secondOpp
+    }, Opportunity.SObjectType);+
+
+    System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
+    System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match, stage name unchanged even though amount > 20');
+  }
 }
 

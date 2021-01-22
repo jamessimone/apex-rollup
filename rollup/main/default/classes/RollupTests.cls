@@ -1877,6 +1877,7 @@ private class RollupTests {
     System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract Amount from Account');
   }
 
+  // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
   @isTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{
@@ -2248,9 +2249,11 @@ private class RollupTests {
     System.assertEquals(2, acc.AnnualRevenue);
   }
 
+  // also an integration test for querying relationship names
+  // on CalcItemWhereClause__c Rollup__mdt field
   @isTest
   static void shouldSuccessfullyExcludeBasedOnWhereCriteriaDuringFullRecalc() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
 
     List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(Name = 'oneName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
