@@ -2253,7 +2253,7 @@ private class RollupTests {
   // on CalcItemWhereClause__c Rollup__mdt field
   @isTest
   static void shouldSuccessfullyExcludeBasedOnWhereCriteriaDuringFullRecalc() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
 
     List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(Name = 'oneName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),

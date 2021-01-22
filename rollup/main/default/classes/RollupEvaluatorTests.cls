@@ -79,13 +79,13 @@ private class RollupEvaluatorTests {
     Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);
     Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
     Opportunity oppThree = new Opportunity(Name = 'RollupZZ');
-    String whereClause = 'Account.Name != \'' + acc.Name + '\' OR Name = \'' + oppTwo.Name + '\'' + ' AND Name != \'RollupZZ\'';
+    String whereClause = 'Account.Name != \'' + acc.Name + '\' OR Name = \'' + oppTwo.Name + '\'';
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
     System.assertNotEquals(true, eval.matches(oppOne), 'Should not match based on parent field');
     System.assertEquals(true, eval.matches(oppTwo), 'Should match since the name exactly matches the OR clause');
-    System.assertNotEquals(true, eval.matches(oppThree), 'Should not match based on name field');
+    System.assertEquals(true, eval.matches(oppThree), 'Should match since the account name does not match');
   }
 
   @isTest
@@ -170,7 +170,7 @@ private class RollupEvaluatorTests {
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
-    System.assertEquals(true, eval.matches(oppOne), 'Should match due to not having amount');
+    System.assertNotEquals(true, eval.matches(oppOne), 'Should not match due to not having amount');
     System.assertNotEquals(true, eval.matches(oppTwo), 'Should not match since amount is greater than criteria');
     System.assertEquals(true, eval.matches(oppThree), 'Should match since amount is less than');
 
@@ -185,9 +185,10 @@ private class RollupEvaluatorTests {
     Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
     Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
     Opportunity oppThree = new Opportunity(Amount = 3.01, StageName = 'Hello there');
-    Opportunity oppFour = new Opportunity(StageName = 'Hi');
+    Opportunity oppFour = new Opportunity(StageName = 'Hi', Amount = 0);
+    Opportunity oppFive = new Opportunity(Id = '0066g000000000000T', Amount = 3.99999);
 
-    String whereClause = 'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\')';
+    String whereClause = 'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\' OR (Id IN (\''+ oppFive.Id +'\' AND Amount = '+ oppFive.Amount + ')))';
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
@@ -195,6 +196,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
     System.assertEquals(true, eval.matches(oppThree), 'Amount and name roughly match!');
     System.assertEquals(true, eval.matches(oppFour), 'Amount and name match');
+    System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');
   }
 
   @isTest
