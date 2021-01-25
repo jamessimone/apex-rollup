@@ -303,6 +303,8 @@ private class RollupTests {
     System.assertEquals('Z', updatedAcc.Name, 'MAX AFTER_INSERT should add the default override based on CMDT if there is no greater value');
   }
 
+  // an integration test of sorts, to validate that CalcItemWhereClause__c is correctly handed off to the right evaluator
+  // the other tests pertaining to this are in RollupEvaluatorTests
   @isTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEquals() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
@@ -326,212 +328,6 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on exclusion metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEquals() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Name != \'RollupZZ\''
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on != exclusion metadata AFTER_INSERT');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEqualsAlternate() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Name <> \'RollupZZ\''
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on != exclusion metadata AFTER_INSERT');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEqualsMultiple() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Name IN (\'RollupZZ\', \'RollupZ\')'
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on IN exclusion metadata AFTER_INSERT');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('RollupZZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEqualsMultiple() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Name NOT IN (\'RollupZZ\', \'RollupZ\')'
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated based on NOT IN exclusion metadata AFTER_INSERT');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForParentFields() {
-    Account acc = [SELECT Id, Name FROM Account];
-    Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);
-    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
-    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Account.Name != ' + acc.Name
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated based on parent field exclusion metadata AFTER_INSERT');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForOrStatements() {
-    Account acc = [SELECT Id, Name FROM Account];
-    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
-    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
-    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Account.Name != \'' + acc.Name + '\' OR Name = \'' + oppTwo.Name + '\'' + ' AND Name != \'RollupZZ\''
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on OR being used AFTER_INSERT');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should include OR items');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForLikeStatements() {
-    Account acc = [SELECT Id, Name FROM Account];
-    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
-    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
-    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Account.Name LIKE \'%Rollup%\''
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on LIKE clause being used AFTER_INSERT');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('RollupZZ', updatedAcc.Name, 'MAX AFTER_INSERT should include like items');
-  }
-
-  @isTest
-  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForNotLikeStatements() {
-    Account acc = [SELECT Id, Name FROM Account];
-    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
-    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
-    DMLMock mock = getMock(new List<Opportunity>{ oppOne, oppTwo });
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
-        CalcItemWhereClause__c = 'Account.Name NOT LIKE \'%Rollup%\''
-      )
-    };
-
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated based on NOT LIKE clause being used AFTER_INSERT');
   }
 
   @isTest
@@ -2081,6 +1877,7 @@ private class RollupTests {
     System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract Amount from Account');
   }
 
+  // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
   @isTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{
@@ -2452,9 +2249,11 @@ private class RollupTests {
     System.assertEquals(2, acc.AnnualRevenue);
   }
 
+  // also an integration test for querying relationship names
+  // on CalcItemWhereClause__c Rollup__mdt field
   @isTest
   static void shouldSuccessfullyExcludeBasedOnWhereCriteriaDuringFullRecalc() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
 
     List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(Name = 'oneName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
