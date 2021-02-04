@@ -35,6 +35,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: Test
     steps:
+      # Checkout the code
+      - name: 'Checkout source code'
+        uses: actions/checkout@v2
+
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
@@ -43,10 +47,6 @@ jobs:
           tar xJf sfdx-linux-amd64.tar.xz -C sfdx-cli --strip-components 1
           ./sfdx-cli/install
 
-      # Checkout the code
-      - name: 'Checkout source code'
-        uses: actions/checkout@v2
-
       # Store secret for dev hub
       - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
         shell: bash
@@ -54,6 +54,13 @@ jobs:
         env:
           DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
 
-      - name: 'Run build script, test, and exit'
+      - name: 'Deploy & Test'
         shell: pwsh
         run: '. ./scripts/test.ps1'
+
+      # Upload code coverage data
+      - name: 'Upload code coverage for Apex to Codecov.io'
+        uses: codecov/codecov-action@v1
+        with:
+            flags: Apex
+            token: ${{ secrets.CODECOV_TOKEN }}
