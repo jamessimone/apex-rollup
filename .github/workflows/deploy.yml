@@ -35,6 +35,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: Test
     steps:
+      # Checkout the code
+      - name: 'Checkout source code'
+        uses: actions/checkout@v2
+
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
@@ -42,10 +46,6 @@ jobs:
           mkdir sfdx-cli
           tar xJf sfdx-linux-amd64.tar.xz -C sfdx-cli --strip-components 1
           ./sfdx-cli/install
-
-      # Checkout the code
-      - name: 'Checkout source code'
-        uses: actions/checkout@v2
 
       # Store secret for dev hub
       - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
