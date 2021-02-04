@@ -12,8 +12,8 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 You have several different options when it comes to making use of `Rollup`:
 
 - The Custom Metadata-driven solution: install with _one line of code_
-- From Flow / Process builder using the included invocable action
-- Via a scheduled job, created by running some Anonymous Apex
+- From Flow / Process builder using [the included invocable action](#flow-process-builder-invocable)
+- [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 - [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
 
 ### CMDT-based Rollup Solution:
@@ -62,7 +62,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/tree/v1.0.9), nested conditionals (conditionals contained within parantheses are supported.  However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](/issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field.
+- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/tree/v1.0.9), nested conditionals (conditionals contained within parantheses are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](/issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field.
 
 You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
@@ -86,6 +86,8 @@ These are the fields on the `Rollup Limit` custom metadata type:
 - `Trigger Or Invocable Name` - If you are using custom Apex, a schedulable, or rolling up by way of the Invocable action and can't use the `Rollup` lookup field. Use the pattern `trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup` - for example: 'trigger_opportunity_stagename_to_account_name_rollup' (use lowercase on the field names). If there is a matching Rollup Limit record, those rules will be used. The first part of the string comes from how a rollup has been invoked - either by `trigger`, `invocable`, or `schedule`. A scheduled flow still uses `invocable`!
 
 ### Flow / Process Builder Invocable
+
+<div id="flow-process-builder-invocable"></div>
 
 I will touch only on Flows given that all indications from Salesforce would lead a person to believe they are the future of the "clicks" part in "clicks versus code":
 
@@ -118,17 +120,19 @@ In order to prevent blowing through the Flow Interview limit for each day, it's 
 
 ### Calculating Rollups After Install
 
-<div id="calculating-rollup-after-install></div>
+<div id="calculating-rollup-after-install"></div>
 
 Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has now rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
 
-![Example of Rollup App](./media/joys-of-apex-app.png 'Manually kicking off rollup jobs')
+![Example of Rollup App](./media/joys-of-apex-rollup-app.png 'Manually kicking off rollup jobs')
 
-### Scheduled Job
+### Scheduled Jobs
+
+<div id="scheduled-jobs"></div>
 
 I would _highly_ recommend scheduling through Scheduled Flows.
 
-That being said, `Rollup` has options to use Scheduled Jobs if that's more your style. You can use the following Anonymous Apex script to schedule rollups:
+That being said, `Rollup` exposes the option to use Scheduled Jobs if that's more your style. You can use the following Anonymous Apex script to schedule rollups:
 
 ```java
 // Method signature: (String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval)
