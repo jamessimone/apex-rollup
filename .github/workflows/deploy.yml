@@ -57,3 +57,10 @@ jobs:
       - name: 'Run build script, test, and exit'
         shell: pwsh
         run: '. ./scripts/test.ps1'
+
+      # Upload code coverage data
+      - name: 'Upload code coverage for Apex to Codecov.io'
+        uses: codecov/codecov-action@v1
+        with:
+            flags: Apex
+            token: ${{ secrets.CODECOV_TOKEN }}
