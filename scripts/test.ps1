@@ -21,7 +21,7 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 # Also store test command shared between script branches, below
 $scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests" -c -r human -w 20'
+$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests" -c -d ./tests/apex -r human -w 20'
 Write-Output "Test command to use: $testInvocation"
 
 if($scratchOrgAllotment -gt 0) {
@@ -59,4 +59,4 @@ if($orgInfo.result.username -And $userNameHasBeenSet) {
   sfdx force:config:set defaultusername=$priorUserName
 }
 
-Write-Output "Build + testing finished successfully"
+Write-Output "Build + testing finished successfully, preparing to upload code coverage"
