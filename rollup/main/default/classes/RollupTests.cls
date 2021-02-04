@@ -254,6 +254,30 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldRunRegardlessOfMetadataCasing() {
+    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupType__c = 'sum'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT should add the original opportunity amount based on CMDT');
+  }
+
+  @isTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadata() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1816,6 +1840,24 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
+  }
+
+  @isTest
+  static void shouldBeInvokedRegardlessOfCasingFromFlow() {
+    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
+    DMLMock mock = getMock(opps);
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'insert', 'sum'));
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'sum AFTER_INSERT from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT from flow should match input Amount');
   }
 
   @isTest

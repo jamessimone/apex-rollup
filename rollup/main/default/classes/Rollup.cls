@@ -528,7 +528,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
           LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
           RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-          RollupType__c = rollupContext + flowInput.rollupOperation,
+          RollupType__c = rollupContext + flowInput.rollupOperation.toUpperCase(),
           ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
           FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
           FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
@@ -902,7 +902,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String getFlowRollupContext(FlowInput firstInput) {
-    String flowContext = firstInput.rollupContext;
+    String flowContext = firstInput.rollupContext.toUpperCase();
     if (String.isBlank(flowContext)) {
       flowContext = 'INSERT';
     } else if (flowContext == 'UPSERT') {
@@ -999,7 +999,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
     Map<String, SObjectField> fieldNameToField = describeForSObject.fields.getMap();
     for (Rollup__mdt rollupMetadata : rollupOperations) {
-      Op rollupOp = opNameToOp.get(rollupMetadata.RollupType__c);
+      Op rollupOp = opNameToOp.get(rollupMetadata.RollupType__c.toUpperCase());
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField lookupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
 
