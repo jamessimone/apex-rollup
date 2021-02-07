@@ -14,7 +14,7 @@ if(Test-Path ".\DEVHUB_SFDX_URL.txt") {
 
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
-sfdx force:auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
+sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
 sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to

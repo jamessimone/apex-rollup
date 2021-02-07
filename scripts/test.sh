@@ -20,7 +20,7 @@ catch() {
 echo "Starting build script"
 
 # Authorize Dev Hub
-sfdx force:auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup --setdefaultdevhubusername --setdefaultusername
+sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup --setdefaultdevhubusername --setdefaultusername
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
