@@ -177,7 +177,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Id rollupLimitId,
     Rollup__mdt rollupMetadata
   ) {
-    this.calcItems = this.filter(calcItems, eval);
     this.eval = eval;
     this.opFieldOnCalcItem = opFieldOnCalcItem;
     this.lookupFieldOnCalcItem = lookupFieldOnCalcItem;
@@ -186,11 +185,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.lookupObj = lookupObj;
     this.op = op;
     this.oldCalcItems = oldCalcItems;
-    this.isNoOp = this.calcItems.isEmpty() && rollupMetadata?.IsFullRecordSet__c == false;
     this.isBatched = false;
     this.invokePoint = invokePoint;
     this.rollupLimitId = rollupLimitId;
     this.metadata = rollupMetadata;
+    this.calcItems = this.filter(calcItems, eval, rollupMetadata);
+    this.isNoOp = this.calcItems.isEmpty() && rollupMetadata?.IsFullRecordSet__c == false;
   }
 
   global interface Evaluator {
@@ -1230,6 +1230,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
       lookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj)));
+      JSON.serialize('!!!!!!!!!!!!');
+      JSON.serializePretty(lookupItems);
       List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, lookupItems);
       for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
@@ -1239,13 +1241,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     DML.doUpdate(updatedLookupRecords.values());
   }
 
-  private List<SObject> filter(List<SObject> calcItems, Evaluator eval) {
+  private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
     List<SObject> applicableItems = new List<SObject>();
     if (calcItems == null) {
       return applicableItems;
     }
     for (SObject calcItem : calcItems) {
       if (eval == null || eval.matches(calcItem)) {
+        applicableItems.add(calcItem);
+        // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
+        // have to do this EXTRA explicit check
+      } else if(rollupMetadata?.IsFullRecordSet__c == true) {
+        calcItem.put(this.opFieldOnCalcItem, FIELD_INITIALIZER.getDefaultValue(this.opFieldOnCalcItem));
         applicableItems.add(calcItem);
       }
     }

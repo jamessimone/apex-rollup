@@ -372,7 +372,7 @@ private class RollupTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupType__c = 'SUM',
-        CalcItemWhereClause__c = 'Name = \'RollupZ\'',
+        CalcItemWhereClause__c = 'Name != \'RollupZ\'',
         IsFullRecordSet__c = true,
         FullRecalculationDefaultNumberValue__c = 0
       )
