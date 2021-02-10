@@ -355,6 +355,40 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldResetRollupValueWhenNoItemsMatchAndToggleIsSupplied() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 50;
+    update acc;
+    Rollup.defaultRollupLimit = null;
+
+    DMLMock mock = loadMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ', AccountId = acc.Id) });
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupType__c = 'SUM',
+        CalcItemWhereClause__c = 'Name = \'RollupZ\'',
+        IsFullRecordSet__c = true,
+        FullRecalculationDefaultNumberValue__c = 0
+      )
+    };
+
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'IsFullRecordSet__c should force account to reset its rollup value AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Full record set flag should force empty match set to still update lookup item');
+  }
+
+  @isTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{

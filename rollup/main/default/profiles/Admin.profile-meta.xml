@@ -101,6 +101,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Rollup__mdt.IsFullRecordSet__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Rollup__mdt.LookupFieldOnCalcItem__c</field>
         <readable>true</readable>
     </fieldPermissions>
