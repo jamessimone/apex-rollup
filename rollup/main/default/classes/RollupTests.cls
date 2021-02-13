@@ -218,6 +218,28 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldDecrementCountFromTriggerBeforeDeleteIfValueIsRemoved() {
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 9;
+    update acc;
+    Rollup.defaultRollupLimit = null;
+
+    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
+    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, Amount = 1) };
+
+    Test.startTest();
+    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should not have been populated COUNT BEFORE_DELETE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(acc.AnnualRevenue - 1, updatedAcc.AnnualRevenue, 'COUNT BEFORE_DELETE should decrement when field is removed');
+  }
+
+  @isTest
   static void shouldNotCountNullValues() {
     DMLMock mock = getMock(new List<Opportunity>{ new Opportunity() });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;

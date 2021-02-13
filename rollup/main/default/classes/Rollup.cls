@@ -1779,7 +1779,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     protected virtual Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
+      if (potentiallyUnitializedDecimal instanceOf Decimal) {
       return (Decimal) (potentiallyUnitializedDecimal == null ? 0 : potentiallyUnitializedDecimal);
+      } else {
+          return potentiallyUnitializedDecimal == null ? 0 : 1;
+      }
     }
 
     protected virtual Decimal getNumericValue(SObject calcItem, SObjectField operationField) {
@@ -1990,7 +1994,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // we shouldn't encourage negative counts. it's totally possible as a rollup is implemented and updates happen before
       // inserts or deletes, but it doesn't really make sense in the context of tracking
       Integer potentialReturnVal = Integer.valueOf((Decimal) super.getReturnValue());
-      return potentialReturnVal - this.existingValue < 0 ? 0 : potentialReturnVal;
+      return potentialReturnVal < 0 ? 0 : potentialReturnVal;
     }
 
     protected override Decimal getNumericValue(SObject calcItem, SObjectField operationField) {
