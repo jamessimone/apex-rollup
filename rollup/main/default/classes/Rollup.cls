@@ -142,25 +142,30 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.invokePoint = invokePoint;
   }
 
-  private Rollup(Rollup innerRollup) {
+  private Rollup(Rollup innerRollup, Op op, List<SObject> calcItems) {
     this(
-      innerRollup.calcItems,
+      calcItems,
       innerRollup.opFieldOnCalcItem,
       innerRollup.lookupFieldOnCalcItem,
       innerRollup.lookupFieldOnLookupObject,
       innerRollup.opFieldOnLookupObject,
       innerRollup.lookupObj,
-      innerRollup.op,
+      op,
       innerRollup.oldCalcItems,
       innerRollup.eval,
       innerRollup.invokePoint,
       innerRollup.rollupLimitId,
       innerRollup.metadata
     );
+
     this.rollups = innerRollup.rollups;
     this.isNoOp = this.rollups.isEmpty() && innerRollup.metadata?.IsFullRecordSet__c == false;
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isForcedRecalc = innerRollup.isForcedRecalc;
+  }
+
+  private Rollup(Rollup innerRollup) {
+    this(innerRollup, innerRollup.op, innerRollup.calcItems);
   }
 
   private Rollup(
@@ -1281,6 +1286,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       } else {
         lookupFieldToCalcItems.get(key).add(calcItem);
       }
+
+      SObject potentialOldCalcItem = rollup.oldCalcItems?.get(calcItem.Id);
+      if(potentialOldCalcItem != null) {
+        String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);
+        if (lookupFieldToCalcItems.containsKey(oldKey) == false) {
+          lookupFieldToCalcItems.put(oldKey, new List<SObject>{ potentialOldCalcItem });
+        } else {
+          lookupFieldToCalcItems.get(oldKey).add(potentialOldCalcItem);
+        }
+      }
     }
     return lookupFieldToCalcItems;
   }
@@ -1354,21 +1369,97 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private List<SObject> getUpdatedLookupItemsByRollup(Rollup rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
-    List<SObject> recordsToUpdate = new List<SObject>();
+    // TODO reparenting - rollup member variables still has oldCalcItems
+    // At least 2 unit tests needed
+    // 1. reparenting has occurred, and both parents are already part of recordsToUpdate
+    // 2. reparenting has occurred, and only new parent is in context --> need to query old parent
+
+    // once we have both parents (old and new)
+    // create 1 new rollup for any reparented records, then append new rollup to this.rollups
+    // call loadRollup()
+    /*
+    loadRollups(
+        rollupFieldOnCalcItem,
+        lookupFieldOnCalcItem,
+        lookupFieldOnOpObject,
+        rollupFieldOnOpObject,
+        lookupSObjectType,
+        rollupOp,
+        calcItems,
+        oldCalcItems,
+        batchRollup,
+        eval != null ? eval : RollupEvaluator.getEvaluator(rollupMetadata, oldCalcItems, sObjectType),
+        rollupLimitId,
+        rollupInvokePoint,
+        rollupMetadata
+      );
+    */
+
+    Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
+    Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     for (SObject lookupRecord : lookupItems) {
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> calcItems = calcItemsByLookupField.get(key);
+
+        // Check for reparented records
+        Map<Id, SObject> oldCalcItems = rollup.oldCalcItems;
+        for(SObject calcItem : calcItems) {
+          SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
+
+          if(oldCalcItem == null) {
+            continue;
+          }
+
+          String priorLookup = (String)oldCalcItem.get(rollup.lookupFieldOnCalcItem);
+          Object newLookup = calcItem.get(rollup.lookupFieldOnCalcItem);
+
+          if(newLookup != priorLookup) {
+              if(!oldLookupItems.containsKey(priorLookup)) {
+                  oldLookupItems.put(priorLookup, new List<SObject>());
+              }
+              List<SObject> reparentedCalcItemsForKey = oldLookupItems.get(priorLookup);
+              reparentedCalcItemsForKey.add(calcItem);
+          }
+        }
+
+        // Check for changed values
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, calcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
+        //System.assert(false, lookupRecord);
+        System.debug('lookupRecord==' + lookupRecord);
+        System.debug('priorVal==' + priorVal);
+        System.debug('newVal==' + newVal);
         if (priorVal != newVal) {
-          recordsToUpdate.add(lookupRecord);
+          recordsToUpdate.put(key, lookupRecord);
         }
       }
     }
 
-    return recordsToUpdate;
+   // System.assert(false, 'lookupItems==' + lookupItems);
+    for (SObject lookupRecord : lookupItems) {
+      String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
+      if(oldLookupItems.containsKey(key)) {
+        // Yes, old parent record has already had a new rollup established in memory
+        List<SObject> reparentedCalcItems = oldLookupItems.get(key);
+
+        String currentOp  = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
+        String deleteOpName = 'DELETE_' + currentOp;
+        Op deleteOp = opNameToOp.get(deleteOpName);
+        //System.assert(false, deleteOpName);
+        Rollup oldLookupsRollup = new Rollup(rollup, deleteOp, reparentedCalcItems);
+
+        Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
+        Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
+        //System.assert(false, 'newVal==' + newVal);
+        lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
+
+        recordsToUpdate.put(key, lookupRecord);
+      }
+    }
+
+    return recordsToUpdate.values();
   }
 
   private Object getRollupVal(Rollup rollup, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
@@ -1780,9 +1871,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     protected virtual Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
       if (potentiallyUnitializedDecimal instanceOf Decimal) {
-      return (Decimal) (potentiallyUnitializedDecimal == null ? 0 : potentiallyUnitializedDecimal);
+        return (Decimal) (potentiallyUnitializedDecimal == null ? 0 : potentiallyUnitializedDecimal);
       } else {
-          return potentiallyUnitializedDecimal == null ? 0 : 1;
+        return potentiallyUnitializedDecimal == null ? 0 : 1;
       }
     }
 
@@ -1801,7 +1892,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Decimal potentialReturnValue = (Decimal) this.returnVal;
       if (potentialReturnValue == FIELD_INITIALIZER.maximumLongValue || potentialReturnValue == FIELD_INITIALIZER.minimumLongValue) {
         this.returnVal = 0;
-      }
+    }
       return this.returnVal;
     }
 

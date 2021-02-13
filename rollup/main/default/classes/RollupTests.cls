@@ -2388,6 +2388,39 @@ private class RollupTests {
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT AFTER_INSERT should add when field is populated sync calc');
   }
 
+  @isTest
+  static void shouldCorrectlyReparentWhenBothParentsArePartOfRollup() {
+    // Happy path
+    Account acc = [SELECT Id FROM Account];
+
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account newAcc = new Account(AnnualRevenue = 300, Name = 'AnotherRollupTest');
+    insert newAcc;
+
+    Rollup.defaultRollupLimit = null;
+
+    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50, AccountId = acc.Id);
+    Opportunity reparentedOpp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = newAcc.AnnualRevenue, AccountId = acc.Id);
+    DMLMock mock = loadMock(new List<Opportunity>{ opp, reparentedOpp });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
+      opp.Id => new Opportunity(AccountId = acc.Id, Amount = 25),
+      reparentedOpp.Id => new Opportunity(AccountId = newAcc.Id, Amount = newAcc.AnnualRevenue)
+    };
+
+    Test.startTest();
+    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
+    Account updatedAcc = (Account) mock.Records[0];
+    //System.assertEquals(325, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+    Account updatedNewAcc = (Account) mock.Records[1];
+    System.assertEquals(0, updatedNewAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+  }
+
   //** Helpers */
 
   private static DMLMock getMock(List<SObject> records) {

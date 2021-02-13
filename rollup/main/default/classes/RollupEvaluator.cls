@@ -34,8 +34,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static RollupEvaluator getChangedFieldEval(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems) {
     List<String> changedFieldNames = rollupMetadata.ChangedFieldsOnCalcItem__c.split(',');
     if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c)) {
-      // TODO: detect reparenting, in progress on feature/support-for-reparented-records branch
-      // changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
+      // detect reparenting
+      changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
     }
     return new SObjectChangedFieldEvaluator(changedFieldNames, oldCalcItems);
   }
