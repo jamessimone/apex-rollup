@@ -75,7 +75,7 @@ private class RollupTests {
     DMLMock mock = getMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Amount = 25) };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Amount = 25) };
 
     Test.startTest();
     Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -186,7 +186,7 @@ private class RollupTests {
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType));
     DMLMock mock = getMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, Amount = 1) };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Id = opp.Id, Amount = 1) };
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -208,7 +208,7 @@ private class RollupTests {
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
     DMLMock mock = getMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, Amount = 1) };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Id = opp.Id, Amount = 1) };
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -1988,8 +1988,8 @@ private class RollupTests {
     DMLMock mock = getMock(opps);
 
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      opps[0].Id => new Opportunity(Id = opps[0].Id, Amount = 250, Name = opps[0].Name),
-      opps[1].Id => new Opportunity(Id = opps[1].Id, Name = 'Name that does not match', Amount = 200)
+      opps[0].Id => new Opportunity(AccountId = opps[0].AccountId, Id = opps[0].Id, Amount = 250, Name = opps[0].Name),
+      opps[1].Id => new Opportunity(AccountId = opps[1].AccountId, Id = opps[1].Id, Name = 'Name that does not match', Amount = 200)
     };
 
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'UPDATE', 'SUM');
