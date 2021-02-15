@@ -1288,7 +1288,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
 
       SObject potentialOldCalcItem = rollup.oldCalcItems?.get(calcItem.Id);
-      if(potentialOldCalcItem != null) {
+      if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);
         if (lookupFieldToCalcItems.containsKey(oldKey) == false) {
           lookupFieldToCalcItems.put(oldKey, new List<SObject>{ potentialOldCalcItem });
@@ -1369,7 +1369,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private List<SObject> getUpdatedLookupItemsByRollup(Rollup rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
-    // TODO reparenting - rollup member variables still has oldCalcItems
+    // TODO: reparenting - rollup member variables still has oldCalcItems
     // At least 2 unit tests needed
     // 1. reparenting has occurred, and both parents are already part of recordsToUpdate
     // 2. reparenting has occurred, and only new parent is in context --> need to query old parent
@@ -1377,23 +1377,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // once we have both parents (old and new)
     // create 1 new rollup for any reparented records, then append new rollup to this.rollups
     // call loadRollup()
-    /*
-    loadRollups(
-        rollupFieldOnCalcItem,
-        lookupFieldOnCalcItem,
-        lookupFieldOnOpObject,
-        rollupFieldOnOpObject,
-        lookupSObjectType,
-        rollupOp,
-        calcItems,
-        oldCalcItems,
-        batchRollup,
-        eval != null ? eval : RollupEvaluator.getEvaluator(rollupMetadata, oldCalcItems, sObjectType),
-        rollupLimitId,
-        rollupInvokePoint,
-        rollupMetadata
-      );
-    */
 
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
@@ -1404,22 +1387,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
         // Check for reparented records
         Map<Id, SObject> oldCalcItems = rollup.oldCalcItems;
-        for(SObject calcItem : calcItems) {
+        for (SObject calcItem : calcItems) {
           SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
 
-          if(oldCalcItem == null) {
+          if (oldCalcItem == null) {
             continue;
           }
 
-          String priorLookup = (String)oldCalcItem.get(rollup.lookupFieldOnCalcItem);
+          String priorLookup = (String) oldCalcItem.get(rollup.lookupFieldOnCalcItem);
           Object newLookup = calcItem.get(rollup.lookupFieldOnCalcItem);
 
-          if(newLookup != priorLookup) {
-              if(!oldLookupItems.containsKey(priorLookup)) {
-                  oldLookupItems.put(priorLookup, new List<SObject>());
-              }
-              List<SObject> reparentedCalcItemsForKey = oldLookupItems.get(priorLookup);
-              reparentedCalcItemsForKey.add(calcItem);
+          if (newLookup != priorLookup) {
+            if (!oldLookupItems.containsKey(priorLookup)) {
+              oldLookupItems.put(priorLookup, new List<SObject>());
+            }
+            List<SObject> reparentedCalcItemsForKey = oldLookupItems.get(priorLookup);
+            reparentedCalcItemsForKey.add(calcItem);
           }
         }
 
@@ -1437,14 +1420,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-   // System.assert(false, 'lookupItems==' + lookupItems);
+    // System.assert(false, 'lookupItems==' + lookupItems);
     for (SObject lookupRecord : lookupItems) {
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
-      if(oldLookupItems.containsKey(key)) {
+      if (oldLookupItems.containsKey(key)) {
         // Yes, old parent record has already had a new rollup established in memory
         List<SObject> reparentedCalcItems = oldLookupItems.get(key);
 
-        String currentOp  = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
+        String currentOp = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
         String deleteOpName = 'DELETE_' + currentOp;
         Op deleteOp = opNameToOp.get(deleteOpName);
         //System.assert(false, deleteOpName);
@@ -1870,7 +1853,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     protected virtual Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
-      if (potentiallyUnitializedDecimal instanceOf Decimal) {
+      if (potentiallyUnitializedDecimal instanceof Decimal) {
         return (Decimal) (potentiallyUnitializedDecimal == null ? 0 : potentiallyUnitializedDecimal);
       } else {
         return potentiallyUnitializedDecimal == null ? 0 : 1;
@@ -1892,7 +1875,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Decimal potentialReturnValue = (Decimal) this.returnVal;
       if (potentialReturnValue == FIELD_INITIALIZER.maximumLongValue || potentialReturnValue == FIELD_INITIALIZER.minimumLongValue) {
         this.returnVal = 0;
-    }
+      }
       return this.returnVal;
     }
 

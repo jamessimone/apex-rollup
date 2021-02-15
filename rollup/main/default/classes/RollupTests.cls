@@ -2404,7 +2404,6 @@ private class RollupTests {
     DMLMock mock = loadMock(new List<Opportunity>{ opp, reparentedOpp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{
       opp.Id => new Opportunity(AccountId = acc.Id, Amount = 25),
       reparentedOpp.Id => new Opportunity(AccountId = newAcc.Id, Amount = newAcc.AnnualRevenue)
