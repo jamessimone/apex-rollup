@@ -1923,7 +1923,7 @@ private class RollupTests {
   static void shouldBeInvokedSuccessfullyAfterSaveFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType)) };
     DMLMock mock = getMock(opps);
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(Id = opps[0].Id, Amount = 250) };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(AccountId = opps[0].AccountId, Id = opps[0].Id, Amount = 250) };
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'UPDATE', 'SUM'));
