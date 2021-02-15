@@ -1369,15 +1369,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private List<SObject> getUpdatedLookupItemsByRollup(Rollup rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
-    // TODO: reparenting - rollup member variables still has oldCalcItems
-    // At least 2 unit tests needed
-    // 1. reparenting has occurred, and both parents are already part of recordsToUpdate
-    // 2. reparenting has occurred, and only new parent is in context --> need to query old parent
-
-    // once we have both parents (old and new)
-    // create 1 new rollup for any reparented records, then append new rollup to this.rollups
-    // call loadRollup()
-
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     for (SObject lookupRecord : lookupItems) {
@@ -1402,7 +1393,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               oldLookupItems.put(priorLookup, new List<SObject>());
             }
             List<SObject> reparentedCalcItemsForKey = oldLookupItems.get(priorLookup);
-            reparentedCalcItemsForKey.add(calcItem);
+            reparentedCalcItemsForKey.add(oldCalcItem);
           }
         }
 
@@ -1410,17 +1401,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, calcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
-        //System.assert(false, lookupRecord);
-        System.debug('lookupRecord==' + lookupRecord);
-        System.debug('priorVal==' + priorVal);
-        System.debug('newVal==' + newVal);
         if (priorVal != newVal) {
           recordsToUpdate.put(key, lookupRecord);
         }
       }
     }
 
-    // System.assert(false, 'lookupItems==' + lookupItems);
+    // Remove the value from the old parent record when re-parenting has occurred
     for (SObject lookupRecord : lookupItems) {
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (oldLookupItems.containsKey(key)) {
@@ -1434,12 +1421,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         String currentOp = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
         String deleteOpName = 'DELETE_' + currentOp;
         Op deleteOp = opNameToOp.get(deleteOpName);
-        //System.assert(false, deleteOpName);
         Rollup oldLookupsRollup = new Rollup(rollup, deleteOp, reparentedCalcItems);
 
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
-        //System.assert(false, 'newVal==' + newVal);
+
         lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
 
         recordsToUpdate.put(key, lookupRecord);
@@ -1881,6 +1867,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Decimal newVal = this.getNumericValue(calcItem, operationField);
 
       if(this.isReparented(calcItem, oldCalcItem, lookupFieldOnCalcItem)) {
+        String oldParentId = (String)oldCalcItem.get(lookupFieldOnCalcItem);
         return newVal;
       }
 
