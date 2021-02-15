@@ -1427,6 +1427,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // Yes, old parent record has already had a new rollup established in memory
         List<SObject> reparentedCalcItems = oldLookupItems.get(key);
 
+        if (reparentedCalcItems.isEmpty()) {
+          continue;
+        }
+
         String currentOp = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
         String deleteOpName = 'DELETE_' + currentOp;
         Op deleteOp = opNameToOp.get(deleteOpName);
