@@ -2450,6 +2450,43 @@ private class RollupTests {
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
+  @isTest
+  static void shouldCorrectlyReparentForStrings() {
+    Account acc = [SELECT Id FROM Account];
+
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account oldAcc = new Account(Name = 'Something');
+    insert oldAcc;
+    Rollup.defaultRollupLimit = null;
+
+    List<Opportunity> testOpps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Name = 'X', Id = generateId(Opportunity.SObjectType)),
+      new Opportunity(AccountId = acc.Id, Name = 'Y', Id = generateId(Opportunity.SObjectType))
+    };
+
+    DMLMock mock = loadMock(testOpps);
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Opportunity firstOpp = testOpps[0].clone(true, true);
+    Opportunity secondOpp = testOpps[1].clone(true, true);
+    secondOpp.AccountId = oldAcc.Id;
+
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
+      firstOpp.Id => firstOpp,
+      secondOpp.Id => secondOpp
+    };
+
+    Test.startTest();
+    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.Name, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('Y', updatedAcc.Name, 'MAX AFTER_UPDATE should take the maximum string');
+    Account updatedOldAcc = (Account) mock.Records[1];
+    System.assertEquals('', updatedOldAcc.Name, 'MAX AFTER_UPDATE should be empty after reparenting');
+  }
+
   //** Helpers */
 
   private static DMLMock getMock(List<SObject> records) {
