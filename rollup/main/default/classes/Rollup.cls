@@ -1290,6 +1290,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObject potentialOldCalcItem = rollup.oldCalcItems?.get(calcItem.Id);
       if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);
+
+        if(key == oldKey) {
+          continue;
+        }
+
         if (lookupFieldToCalcItems.containsKey(oldKey) == false) {
           lookupFieldToCalcItems.put(oldKey, new List<SObject>{ potentialOldCalcItem });
         } else {
