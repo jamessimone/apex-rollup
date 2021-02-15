@@ -1230,8 +1230,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
       lookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj)));
-      JSON.serialize('!!!!!!!!!!!!');
-      JSON.serializePretty(lookupItems);
       List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, lookupItems);
       for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
@@ -1251,8 +1249,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         applicableItems.add(calcItem);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
-      } else if(rollupMetadata?.IsFullRecordSet__c == true) {
-        calcItem.put(this.opFieldOnCalcItem, FIELD_INITIALIZER.getDefaultValue(this.opFieldOnCalcItem));
+      } else if (rollupMetadata?.IsFullRecordSet__c == true) {
+        if (this.opFieldOnCalcItem.getDescribe().isCalculated() == false) {
+          calcItem.put(this.opFieldOnCalcItem, FIELD_INITIALIZER.getDefaultValue(this.opFieldOnCalcItem));
+        }
         applicableItems.add(calcItem);
       }
     }

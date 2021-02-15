@@ -118,7 +118,7 @@ Unfortunately, the "Description" section for Invocable fields does not show up a
 
 #### Considerations For Scheduled Flows
 
-In order to prevent blowing through the Flow Interview limit for each day, it's important to note that the use of `Rollup` with Condition Requirements in the scheduled flow's start node will run a flow interview for _every_ record that qualifies. However, if the scheduled flow is run for all records, the process is bulkified successfully and you only consume a single flow interview per batch of records.
+In order to prevent blowing through the Flow Interview limit for each day, it's important to note that the use of `Rollup` with a specific SObject in the scheduled flow's start node will run a flow interview for _every_ record retrieved. However, if the scheduled flow is run without a specific SObject having been selected in the start node, the process is bulkified successfully and you only consume a single flow interview per batch of records.
 
 ### Calculating Rollups After Install
 

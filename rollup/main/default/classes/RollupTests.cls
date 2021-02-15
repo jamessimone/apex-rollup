@@ -123,13 +123,13 @@ private class RollupTests {
   static void shouldCountDistinctFromTriggerOnUpdate() {
     Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
-    insert new Opportunity(Name = 'Test Count Distinct Insert', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
+    insert new Opportunity(Name = 'Test Count Distinct Insert One', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
     Rollup.defaultRollupLimit = null;
 
-    Opportunity opp = new Opportunity(Name = 'Test Count Distinct Insert', Id = generateId(Opportunity.SObjectType));
+    Opportunity opp = new Opportunity(Name = 'Test Count Distinct Insert Two', Id = generateId(Opportunity.SObjectType));
     DMLMock mock = getMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    // the important part here is that the old value WAS distinct; the new one isn't
+    // the important part here is that the old value differs
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Name = 'something different', Id = opp.Id) };
 
     Test.startTest();
@@ -138,7 +138,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT_DISTINCT AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should ensure distinct values');
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should ensure distinct values');
   }
 
   @isTest
@@ -1055,6 +1055,8 @@ private class RollupTests {
     Opportunity opp = new Opportunity(StageName = 'test max on delete', CloseDate = System.today(), Name = 'Z', AccountId = acc.Id);
     insert opp;
     Rollup.defaultRollupLimit = null;
+    // ensure that if any automation has changed the name, we keep track of it
+    opp = [SELECT Name FROM Opportunity WHERE Id = :opp.Id];
 
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
 
@@ -1066,9 +1068,10 @@ private class RollupTests {
     Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
+    Boolean originalOppNameGreater = opp.Name > testOpps[0].Name;
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_DELETE STRING');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(opp.Name, updatedAcc.AccountNumber, 'MAX BEFORE_DELETE should take the maximum string');
+    System.assertEquals(originalOppNameGreater ? opp.Name : testOpps[0].Name, updatedAcc.AccountNumber, 'MAX BEFORE_DELETE should take the maximum string');
   }
 
   @isTest

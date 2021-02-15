@@ -11,7 +11,7 @@ private class RollupIntegrationTests {
     acc.AccountIdText__c = acc.Id;
     update acc;
 
-    Opportunity opp = new Opportunity(Name = 'Rollup Integration', StageName = 'testInt', CloseDate = System.today(), Amount = 1, AccountIdText__c = acc.Id);
+    Opportunity opp = new Opportunity(Name = 'Rollup Integration', StageName = 'testInt', CloseDate = System.today(), Amount = 1, AccountIdText__c = acc.Id, AccountId = acc.Id);
     insert opp;
   }
 
@@ -44,5 +44,39 @@ private class RollupIntegrationTests {
 
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(1, acc.AnnualRevenue, 'Custom metadata mapping failed!');
+  }
+
+  @isTest
+  static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    List<Opportunity> opps = [SELECT Id, Name, AmountFormula__c, AccountId FROM Opportunity];
+    Rollup.records = opps;
+    Rollup.shouldRun = true;
+
+    FieldDefinition oppCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AmountFormula__c' AND EntityDefinitionId = 'Opportunity'];
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = oppCustomField.DurableId,
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
+        LookupFieldOnLookupObject__c = 'Account.Id',
+        RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
+        RollupType__c = 'SUM',
+        IsFullRecordSet__c = true,
+        CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
+        FullRecalculationDefaultNumberValue__c = 0
+      )
+    };
+
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(1, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 }
