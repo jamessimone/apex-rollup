@@ -2415,7 +2415,7 @@ private class RollupTests {
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
     Account updatedAcc = (Account) mock.Records[0];
-    //System.assertEquals(325, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+    System.assertEquals(325, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
     Account updatedNewAcc = (Account) mock.Records[1];
     System.assertEquals(0, updatedNewAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }

@@ -1665,12 +1665,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private abstract class RollupCalculator {
     private Boolean isForcedRecalc = false;
     private Boolean isFirstTimeThrough = true;
+    private SObjectField lookupKeyField;
 
     protected final String lookupKeyQuery;
 
     protected Boolean shouldShortCircuit = false;
     protected Object returnVal;
     public RollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
+      this.lookupKeyField = lookupKeyField;
+
       if (defaultVal != null) {
         this.returnVal = defaultVal;
       } else {
@@ -1709,7 +1712,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               this.handleSumOrCount(op, calcItem, operationField);
             }
             when UPDATE_SUM, UPDATE_COUNT {
-              this.handleUpdateSumOrCount(op, calcItem, operationField, oldCalcItems);
+              this.handleUpdateSumOrCount(op, calcItem, this.lookupKeyField, operationField, oldCalcItems);
             }
             when DELETE_SUM, DELETE_COUNT {
               this.handleDeleteSumOrCount(op, calcItem, operationField);
@@ -1759,7 +1762,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     public virtual void handleSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
     }
-    public virtual void handleUpdateSumOrCount(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+    public virtual void handleUpdateSumOrCount(Op op, SObject calcItem, SObjectField lookupFieldOnCalcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
     }
     public virtual void handleDeleteSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
     }
@@ -1786,6 +1789,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       String query = getQueryString(sObjectType, new List<String>{ operationName + '(' + operationField + ')' + alias }, 'Id', '!=') + this.lookupKeyQuery;
       List<SObject> aggregate = Database.query(query);
       return aggregate.isEmpty() == false ? aggregate[0].get(alias) : null;
+    }
+
+    protected Boolean isReparented(SObject calcItem, SObject oldCalcItem, SObjectField lookupFieldOnCalcItem) {
+      return calcItem.get(lookupFieldOnCalcItem) != oldCalcItem.get(lookupFieldOnCalcItem);
     }
   }
 
@@ -1864,9 +1871,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return this.getDecimalOrDefault(calcItem.get(operationField));
     }
 
-    protected virtual Decimal getNumericChangedValue(SObject calcItem, SObjectfield operationField, Map<Id, SObject> oldCalcItems) {
+    protected virtual Decimal getNumericChangedValue(SObject calcItem, SObjectfield lookupFieldOnCalcItem, SObjectfield operationField, Map<Id, SObject> oldCalcItems) {
+      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+
       Decimal newVal = this.getNumericValue(calcItem, operationField);
-      Decimal oldVal = this.getNumericValue((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem), operationField);
+
+      if(this.isReparented(calcItem, oldCalcItem, lookupFieldOnCalcItem)) {
+        return newVal;
+      }
+
+      Decimal oldVal = this.getNumericValue(oldCalcItem, operationField);
       // could be negative, could be positive ... could be 0!
       return newVal - oldVal;
     }
@@ -1903,8 +1917,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.returnDecimal += this.getNumericValue(calcItem, operationField);
     }
 
-    public override void handleUpdateSumOrCount(Op op, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
-      this.returnDecimal += this.getNumericChangedValue(calcItem, operationField, oldCalcItems);
+    public override void handleUpdateSumOrCount(Op op, SObject calcItem, SObjectField lookupFieldOnCalcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      this.returnDecimal += this.getNumericChangedValue(calcItem, lookupFieldOnCalcItem, operationField, oldCalcItems);
     }
 
     public override void handleDeleteSumOrCount(Op op, SObject calcItem, SObjectField operationField) {
@@ -2075,9 +2089,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return calcItem.get(operationField) != null ? 1 : 0;
     }
 
-    protected override Decimal getNumericChangedValue(SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+    protected override Decimal getNumericChangedValue(SObject calcItem, SObjectField lookupFieldOnCalcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
+      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+
       Object newVal = calcItem.get(operationField);
-      Object priorCalcVal = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(operationField) : newVal;
+      if(this.isReparented(calcItem, oldCalcItem, lookupFieldOnCalcItem)) {
+        return (Decimal) newVal;
+      }
+
+      Object priorCalcVal = oldCalcItem.get(operationField);
       // for updates, we have to decrement the count if the value has been cleared out
       return newVal == null && priorCalcVal != null ? -1 : 0;
     }
