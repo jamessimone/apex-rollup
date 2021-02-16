@@ -203,7 +203,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public String runCalc() {
-    RollupLimit__mdt orgDefaults = this.getSingleLimitOrDefault('DeveloperName', LIMIT_ORG_DEFAULTS, defaultRollupLimit);
+    // clone because the RollupLimit__mdt is read-only when retrieved from the cache
+    RollupLimit__mdt orgDefaults = getSingleLimitOrDefault(RollupLimit__mdt.DeveloperName, LIMIT_ORG_DEFAULTS, defaultRollupLimit).clone(true, true);
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
     this.ingestRollupLimitData(orgDefaults);
 
@@ -957,28 +958,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
-    // TODO: after Spring 21, call .getAll() here instead; even though you can't filter by fields other than
-    // DeveloperName/Id with getInstance(), not having to stipulate the fields each time will end up saving us lines of code
-    // in the long run
-    return rollupMetadata != null
-      ? rollupMetadata
-      : [
-          SELECT
-            CalcItem__c,
-            RollupFieldOnCalcItem__c,
-            LookupObject__c,
-            LookupFieldOnCalcItem__c,
-            LookupFieldOnLookupObject__c,
-            RollupFieldOnLookupObject__c,
-            RollupType__c,
-            ChangedFieldsOnCalcItem__c,
-            FullRecalculationDefaultNumberValue__c,
-            FullRecalculationDefaultStringValue__c,
-            CalcItemWhereClause__c
-          FROM Rollup__mdt
-          WHERE CalcItem__c = :String.valueOf(sObjectType)
-          ORDER BY LookupObject__c
-        ];
+    if(rollupMetadata != null) {
+      return rollupMetadata;
+    }
+    List<Rollup__mdt> rollupMetadatas = Rollup__mdt.getAll().values();
+    for(Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
+      Rollup__mdt rollupMetadata = rollupMetadatas[index];
+      if(rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
+        rollupMetadatas.remove(index);
+      }
+    }
+    return rollupMetadatas;
   }
 
   private static Rollup getRollup(
@@ -1016,13 +1006,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
-      Id rollupLimitId;
+      RollupLimit__mdt rollupLimit;
       if (rollupMetadata.Id != null) {
         // for CMDT-driven rollups, we can tie the rollup operation straight to a RollupLimit__mdt record
-        rollupLimitId = [SELECT Id FROM RollupLimit__mdt WHERE Rollup__c = :rollupMetadata.Id LIMIT 1]?.Id;
+        rollupLimit = getSingleLimitOrDefault(RollupLimit__mdt.Rollup__c, rollupMetadata.Id, null);
       } else {
         String limitKey = getRollupLimitMetadataKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupSObjectType, rollupFieldOnOpObject);
-        rollupLimitId = [SELECT Id FROM RollupLimit__mdt WHERE TriggerOrInvocableName__c = :limitKey LIMIT 1]?.Id;
+        rollupLimit = getSingleLimitOrDefault(RollupLimit__mdt.TriggerOrInvocableName__c, limitKey, null);
       }
 
       loadRollups(
@@ -1036,7 +1026,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         oldCalcItems,
         batchRollup,
         eval != null ? eval : RollupEvaluator.getEvaluator(rollupMetadata, oldCalcItems, sObjectType),
-        rollupLimitId,
+        rollupLimit.DeveloperName == LIMIT_INITIALIZED_HERE ? null : rollupLimit.Id,
         rollupInvokePoint,
         rollupMetadata
       );
@@ -1199,6 +1189,32 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return 'SELECT ' + String.join(uniqueQueryFieldNames, ',') + '\nFROM ' + sObjectType + '\nWHERE ' + lookupFieldOnLookupObject + ' ' + equality + ' :objIds';
   }
 
+  private static RollupLimit__mdt getSingleLimitOrDefault(SObjectField whereField, Object whereValue, RollupLimit__mdt testOverrideData) {
+    // there are multiple spots where testOverrideData can be supplied, which is why it's necessary to pass this value
+    if (testOverrideData != null) {
+      return testOverrideData;
+    }
+    List<RollupLimit__mdt> rollupLimits = RollupLimit__mdt.getAll().values();
+    for(RollupLimit__mdt rollupLimit : rollupLimits) {
+      if(rollupLimit.get(whereField) == whereValue) {
+        return rollupLimit;
+      }
+    }
+
+    return getSensibleLimitsDefault();
+  }
+
+  private static RollupLimit__mdt getSensibleLimitsDefault() {
+    return new RollupLimit__mdt(
+      DeveloperName = LIMIT_INITIALIZED_HERE,
+      MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
+      MaxLookupRowsForQueueable__c = Limits.getLimitDmlRows() / 2,
+      ShouldAbortRun__c = false,
+      ShouldRunAsBatchable__c = false,
+      ShouldRunAsQueueable__c = false
+    );
+  }
+
   /** End static section, begin protected + private instance methods */
 
   protected Rollup getDelegatedRollup(
@@ -1314,42 +1330,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private RollupLimit__mdt getSingleLimitOrDefault(String whereField, String whereValue, RollupLimit__mdt testOverrideData) {
-    // ugly, but OR statements on custom metadata queries results in:
-    // System.QueryException: MALFORMED QUERY: Disjunctions not supported
-    // which is ridiculous because they run fine in the Salesforce Developer Console!
-    if (testOverrideData != null) {
-      return testOverrideData;
-    }
-    String query = 'SELECT Id, MaxLookupRowsBeforeBatching__c, MaxLookupRowsForQueueable__c, Rollup__c, ShouldAbortRun__c, ShouldRunAsBatchable__c, ShouldRunAsQueueable__c, ShouldRunAsSyncOperation__c, TriggerOrInvocableName__c FROM RollupLimit__mdt WHERE {0} LIMIT 1'
-      .replace('{0}', whereField + '= \'' + whereValue + '\'');
-    List<RollupLimit__mdt> rollupLimits = (List<RollupLimit__mdt>) Database.query(query);
-    if (rollupLimits.isEmpty()) {
-      // allow tests to override
-      rollupLimits.add(this.getSensibleLimitsDefault());
-    }
-    return rollupLimits[0];
-  }
-
-  private RollupLimit__mdt getSensibleLimitsDefault() {
-    return new RollupLimit__mdt(
-      DeveloperName = LIMIT_INITIALIZED_HERE,
-      MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
-      MaxLookupRowsForQueueable__c = Limits.getLimitDmlRows() / 2,
-      ShouldAbortRun__c = false,
-      ShouldRunAsBatchable__c = false,
-      ShouldRunAsQueueable__c = false
-    );
-  }
-
   private void ingestRollupLimitData(RollupLimit__mdt orgDefaults) {
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       Rollup rollup = this.rollups[index];
-      String limitWhereField = rollup.rollupLimitId == null ? 'TriggerOrInvocableName__c' : 'Id';
+      SObjectField limitWhereField = rollup.rollupLimitId == null ? RollupLimit__mdt.TriggerOrInvocableName__c : RollupLimit__mdt.Id;
       String limitWhereValue = rollup.rollupLimitId == null
         ? getRollupLimitMetadataKey(rollup.invokePoint, rollup.opFieldOnCalcItem, rollup.lookupObj, rollup.opFieldOnLookupObject)
         : rollup.rollupLimitId;
-      RollupLimit__mdt limitSpecificToRollup = this.getSingleLimitOrDefault(limitWhereField, limitWhereValue, specificRollupLimit);
+      RollupLimit__mdt limitSpecificToRollup = getSingleLimitOrDefault(limitWhereField, limitWhereValue, specificRollupLimit);
 
       if (limitSpecificToRollup.ShouldAbortRun__c) {
         this.rollups.remove(index);
@@ -2271,26 +2259,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> rollupMetadata = [
-        SELECT
-          CalcItem__c,
-          RollupFieldOnCalcItem__c,
-          LookupObject__c,
-          LookupFieldOnCalcItem__c,
-          LookupFieldOnLookupObject__c,
-          RollupFieldOnLookupObject__c,
-          RollupType__c,
-          ChangedFieldsOnCalcItem__c,
-          FullRecalculationDefaultNumberValue__c,
-          FullRecalculationDefaultStringValue__c,
-          CalcItemWhereClause__c,
-          IsFullRecordSet__c
-        FROM Rollup__mdt
-        WHERE Id = :this.rollupMetadataIds
-        ORDER BY LookupObject__c
-      ];
+      List<Rollup__mdt> allMetadata = Rollup__mdt.getall().values();
+      Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
+      for(Rollup__mdt meta : allMetadata) {
+        if(rollupMetadataIds.contains(meta.Id) == false) {
+          continue;
+        } else if(lookupObjectToMetadata.containsKey(meta.LookupObject__c)) {
+          lookupObjectToMetadata.get(meta.LookupObject__c).add(meta);
+        } else {
+          lookupObjectToMetadata.put(meta.LookupObject__c, new List<Rollup__mdt>{ meta });
+        }
+      }
+      List<Rollup__mdt> rollupsOrderedByLookupItem = new List<Rollup__mdt>();
+      for(String lookupObject : lookupObjectToMetadata.keySet()) {
+        rollupsOrderedByLookupItem.addAll(lookupObjectToMetadata.get(lookupObject));
+      }
       List<SObject> calcItems = Database.query(this.query);
-      getRollup(rollupMetadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, RollupInvocationPoint.FROM_SCHEDULED)
+      getRollup(rollupsOrderedByLookupItem, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, RollupInvocationPoint.FROM_SCHEDULED)
         .runCalc();
     }
   }
