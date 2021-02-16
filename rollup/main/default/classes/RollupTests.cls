@@ -2487,6 +2487,46 @@ private class RollupTests {
     System.assertEquals('', updatedOldAcc.Name, 'MAX AFTER_UPDATE should be empty after reparenting');
   }
 
+  @isTest
+  static void shouldCorrectlyReparentForCountDistinct() {
+    Account acc = [SELECT Id FROM Account];
+
+    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');
+    insert oldAcc;
+    Rollup.defaultRollupLimit = null;
+
+    List<Opportunity> testOpps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Name = 'X', Id = generateId(Opportunity.SObjectType)),
+      new Opportunity(AccountId = acc.Id, Name = 'X', Id = generateId(Opportunity.SObjectType)),
+      new Opportunity(AccountId = acc.Id, Name = 'Y', Id = generateId(Opportunity.SObjectType))
+    };
+
+    DMLMock mock = loadMock(testOpps);
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Opportunity firstOpp = testOpps[0].clone(true, true);
+    Opportunity secondOpp = testOpps[1].clone(true, true);
+    Opportunity thirdOpp = testOpps[2].clone(true, true);
+    thirdOpp.AccountId = oldAcc.Id;
+
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
+      firstOpp.Id => firstOpp,
+      secondOpp.Id => secondOpp,
+      thirdOpp.Id => thirdOpp
+    };
+
+    Test.startTest();
+    Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING: ' + mock.Records);
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should take the maximum string');
+    Account updatedOldAcc = (Account) mock.Records[1];
+    System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
+  }
+
   //** Helpers */
 
   private static DMLMock getMock(List<SObject> records) {
