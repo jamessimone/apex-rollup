@@ -958,13 +958,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
-    if(rollupMetadata != null) {
+    if (rollupMetadata != null) {
       return rollupMetadata;
     }
     List<Rollup__mdt> rollupMetadatas = Rollup__mdt.getAll().values();
-    for(Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
+    for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
-      if(rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
+      if (rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
         rollupMetadatas.remove(index);
       }
     }
@@ -1195,8 +1195,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return testOverrideData;
     }
     List<RollupLimit__mdt> rollupLimits = RollupLimit__mdt.getAll().values();
-    for(RollupLimit__mdt rollupLimit : rollupLimits) {
-      if(rollupLimit.get(whereField) == whereValue) {
+    for (RollupLimit__mdt rollupLimit : rollupLimits) {
+      if (rollupLimit.get(whereField) == whereValue) {
         return rollupLimit;
       }
     }
@@ -1307,7 +1307,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);
 
-        if(key == oldKey) {
+        if (key == oldKey) {
           continue;
         }
 
@@ -1803,7 +1803,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public override void handleCountDistinct(Op operation, SObject calcItem, SObjectField operationField) {
       if (operation != Op.DELETE_COUNT_DISTINCT && calcItem.get(operationField) != null) {
         this.distinctValues.add(calcItem.get(operationField));
-      } else {
+      } else if (operation == Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues.clear();
       }
       this.shouldShortCircuit = true;
@@ -1864,7 +1864,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       Decimal newVal = this.getNumericValue(calcItem, operationField);
 
-      if(this.isReparented(calcItem, oldCalcItem)) {
+      if (this.isReparented(calcItem, oldCalcItem)) {
         return newVal;
       }
 
@@ -2081,7 +2081,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
 
       Object newVal = calcItem.get(operationField);
-      if(this.isReparented(calcItem, oldCalcItem)) {
+      if (this.isReparented(calcItem, oldCalcItem)) {
         return (Decimal) newVal;
       }
 
@@ -2261,21 +2261,28 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public void execute(SchedulableContext sc) {
       List<Rollup__mdt> allMetadata = Rollup__mdt.getall().values();
       Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
-      for(Rollup__mdt meta : allMetadata) {
-        if(rollupMetadataIds.contains(meta.Id) == false) {
+      for (Rollup__mdt meta : allMetadata) {
+        if (rollupMetadataIds.contains(meta.Id) == false) {
           continue;
-        } else if(lookupObjectToMetadata.containsKey(meta.LookupObject__c)) {
+        } else if (lookupObjectToMetadata.containsKey(meta.LookupObject__c)) {
           lookupObjectToMetadata.get(meta.LookupObject__c).add(meta);
         } else {
           lookupObjectToMetadata.put(meta.LookupObject__c, new List<Rollup__mdt>{ meta });
         }
       }
       List<Rollup__mdt> rollupsOrderedByLookupItem = new List<Rollup__mdt>();
-      for(String lookupObject : lookupObjectToMetadata.keySet()) {
+      for (String lookupObject : lookupObjectToMetadata.keySet()) {
         rollupsOrderedByLookupItem.addAll(lookupObjectToMetadata.get(lookupObject));
       }
       List<SObject> calcItems = Database.query(this.query);
-      getRollup(rollupsOrderedByLookupItem, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, RollupInvocationPoint.FROM_SCHEDULED)
+      getRollup(
+          rollupsOrderedByLookupItem,
+          calcItems.getSObjectType(),
+          calcItems,
+          new Map<Id, SObject>(calcItems),
+          this.eval,
+          RollupInvocationPoint.FROM_SCHEDULED
+        )
         .runCalc();
     }
   }

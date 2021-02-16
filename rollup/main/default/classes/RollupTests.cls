@@ -2435,9 +2435,7 @@ private class RollupTests {
     DMLMock mock = loadMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      opp.Id => new Opportunity(AccountId = oldAcc.Id, Amount = oldAcc.AnnualRevenue)
-    };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = oldAcc.Id, Amount = oldAcc.AnnualRevenue) };
 
     Test.startTest();
     Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2471,10 +2469,7 @@ private class RollupTests {
     Opportunity secondOpp = testOpps[1].clone(true, true);
     secondOpp.AccountId = oldAcc.Id;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      firstOpp.Id => firstOpp,
-      secondOpp.Id => secondOpp
-    };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ firstOpp.Id => firstOpp, secondOpp.Id => secondOpp };
 
     Test.startTest();
     Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.Name, Account.SObjectType).runCalc();
@@ -2510,11 +2505,7 @@ private class RollupTests {
     Opportunity thirdOpp = testOpps[2].clone(true, true);
     thirdOpp.AccountId = oldAcc.Id;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      firstOpp.Id => firstOpp,
-      secondOpp.Id => secondOpp,
-      thirdOpp.Id => thirdOpp
-    };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ firstOpp.Id => firstOpp, secondOpp.Id => secondOpp, thirdOpp.Id => thirdOpp };
 
     Test.startTest();
     Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
