@@ -43,7 +43,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   // non-final instance variables
   private Boolean isFullRecalc = false;
-  private Boolean isForcedRecalc = false;
+  private Boolean isCDCUpdate = false;
   private Boolean isNoOp;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
@@ -161,7 +161,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.rollups = innerRollup.rollups;
     this.isNoOp = this.rollups.isEmpty() && innerRollup.metadata?.IsFullRecordSet__c == false;
     this.isFullRecalc = innerRollup.isFullRecalc;
-    this.isForcedRecalc = innerRollup.isForcedRecalc;
+    this.isCDCUpdate = innerRollup.isCDCUpdate;
   }
 
   private Rollup(Rollup innerRollup) {
@@ -851,7 +851,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // because CDC is async, the DB will always be updated by the time we get there
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
-    rollupToReturn.isForcedRecalc = apexContext == TriggerOperation.AFTER_UPDATE;
+    rollupToReturn.isCDCUpdate = apexContext == TriggerOperation.AFTER_UPDATE;
     rollupToReturn.runCalc();
   }
 
@@ -1442,7 +1442,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private Object getRollupVal(Rollup rollup, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
     RollupCalculator rollupCalc = this.getRollupType(priorVal, rollup, lookupRecordKey, lookupKeyField);
-    rollupCalc.setisForcedRecalc(this.isForcedRecalc);
+    rollupCalc.setCDCUpdate(this.isCDCUpdate);
     rollupCalc.performRollup(rollup.op, calcItems, rollup.oldCalcItems, rollup.opFieldOnCalcItem);
     return rollupCalc.getReturnValue();
   }
@@ -1658,7 +1658,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private abstract class RollupCalculator {
-    private Boolean isForcedRecalc = false;
+    private Boolean isCDCUpdate = false;
     private Boolean isFirstTimeThrough = true;
 
     protected final SObjectField lookupKeyField;
@@ -1680,8 +1680,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return this.returnVal;
     }
 
-    public void setisForcedRecalc(Boolean isForcedRecalc) {
-      this.isForcedRecalc = isForcedRecalc;
+    public void setCDCUpdate(Boolean isCDCUpdate) {
+      this.isCDCUpdate = isCDCUpdate;
     }
 
     public virtual void performRollup(Op op, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, SObjectField operationField) {
@@ -1690,7 +1690,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (this.shouldShortCircuit) {
           this.handleShortCircuit(op, calcItem, operationField);
           continue;
-        } else if (this.isForcedRecalc) {
+        } else if (this.isCDCUpdate) {
           // here we don't exclude items because the calc items have already been updated
           this.returnVal = this.calculateNewAggregateValue(new Set<Id>(), op, operationField, calcItem.getSObjectType());
           // not just a break, a return. We don't want to pass go - we don't want to call "setReturnValue" below
@@ -1815,27 +1815,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public override void handleCountDistinct(Op operation, SObject calcItem, SObjectField operationField) {
       if (operation != Op.DELETE_COUNT_DISTINCT && calcItem.get(operationField) != null) {
         this.distinctValues.add(calcItem.get(operationField));
+      } else {
+        this.distinctValues.clear();
       }
       this.shouldShortCircuit = true;
       this.calculateNewAggregateValue(new Set<Id>{ calcItem.Id }, operation, operationField, calcItem.getSObjectType());
     }
 
     public override void handleUpdateCountDistinct(Op operation, SObject calcItem, SObjectField operationField, Map<Id, SObject> oldCalcItems) {
-      System.debug('starting calc.handleUpdateCountDistinct');
-
       SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
 
       Object currentVal = calcItem.get(operationField);
       Object priorCalcVal = oldCalcItem.get(operationField);
 
-      System.debug('currentVal==' + currentVal);
-      System.debug('priorCalcVal==' + priorCalcVal);
       if (currentVal != priorCalcVal || this.isReparented(calcItem, oldCalcItem)) {
         this.distinctValues.add(currentVal);
         this.shouldShortCircuit = true;
         this.calculateNewAggregateValue(oldCalcItems.keySet(), operation, operationField, calcItem.getSObjectType());
       }
-      System.debug('this.distinctValues==' + this.distinctValues);
     }
 
     protected override Object calculateNewAggregateValue(Set<Id> objIds, Op operation, SObjectField operationField, SObjectType sObjectType) {

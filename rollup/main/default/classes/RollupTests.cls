@@ -24,7 +24,7 @@ private class RollupTests {
 
   @isTest
   static void shouldNotRunForInvalidApexContext() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 50) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50) });
     Rollup.apexContext = TriggerOperation.BEFORE_INSERT;
 
     Test.startTest();
@@ -36,7 +36,7 @@ private class RollupTests {
 
   @isTest
   static void shouldSumFromTriggerAfterInsert() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Rollup rollup = Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType);
@@ -55,7 +55,7 @@ private class RollupTests {
   @isTest
   static void shouldSumFromTriggerAfterUndelete() {
     // undelete should behave the same as an insert, for our purposes
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
     Rollup.apexContext = TriggerOperation.AFTER_UNDELETE;
 
     Rollup rollup = Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType);
@@ -72,7 +72,7 @@ private class RollupTests {
   @isTest
   static void shouldSumFromTriggerAfterUpdate() {
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Amount = 25) };
@@ -88,7 +88,7 @@ private class RollupTests {
 
   @isTest
   static void shouldSumFromTriggerBeforeDelete() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
@@ -107,7 +107,7 @@ private class RollupTests {
     insert new Opportunity(Name = 'Test Count Distinct Insert', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
     Rollup.defaultRollupLimit = null;
 
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'Test Count Distinct Insert Two') });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Name = 'Test Count Distinct Insert Two') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -127,7 +127,7 @@ private class RollupTests {
     Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Name = 'Test Count Distinct Insert Two', Id = generateId(Opportunity.SObjectType));
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     // the important part here is that the old value differs
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Name = 'something different', Id = opp.Id) };
@@ -149,7 +149,7 @@ private class RollupTests {
     update acc; // we want to ensure that the AnnualRevenue is reset because there are no other matching values
     Rollup.defaultRollupLimit = null;
 
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity() });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity() });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
@@ -163,7 +163,7 @@ private class RollupTests {
 
   @isTest
   static void shouldCountFromTriggerAfterInsert() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -184,7 +184,7 @@ private class RollupTests {
     Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType));
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Id = opp.Id, Amount = 1) };
 
@@ -206,7 +206,7 @@ private class RollupTests {
     Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Id = opp.Id, Amount = 1) };
 
@@ -226,7 +226,7 @@ private class RollupTests {
     Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, Amount = 1) };
 
@@ -241,7 +241,7 @@ private class RollupTests {
 
   @isTest
   static void shouldNotCountNullValues() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity() });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity() });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -253,7 +253,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRunSumFromTriggerBasedOnMetadata() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
@@ -277,7 +277,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRunRegardlessOfMetadataCasing() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
@@ -301,7 +301,7 @@ private class RollupTests {
 
   @isTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadata() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
@@ -326,7 +326,7 @@ private class RollupTests {
 
   @isTest
   static void shouldOverrideStringBasedDefaultBasedOnMetadata() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'A') });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Name = 'A') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Name',
@@ -353,7 +353,7 @@ private class RollupTests {
   // the other tests pertaining to this are in RollupEvaluatorTests
   @isTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEquals() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Name',
@@ -412,7 +412,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
@@ -445,7 +445,7 @@ private class RollupTests {
 
   @isTest
   static void shouldBatchTwoOperations() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -467,7 +467,7 @@ private class RollupTests {
 
   @isTest
   static void shouldBatchThreeOperations() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 100, Name = 'My test name') });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100, Name = 'My test name') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -491,7 +491,7 @@ private class RollupTests {
 
   @isTest
   static void shouldThrowExceptionWhenBatchedOperationWithMultipleSObjectTypes() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 50, Name = 'Test') });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50, Name = 'Test') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
 
@@ -514,7 +514,7 @@ private class RollupTests {
       new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -532,7 +532,7 @@ private class RollupTests {
       new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(Id = opps[0].Id), opps[1].Id => new Opportunity(Id = opps[1].Id) };
 
@@ -672,7 +672,7 @@ private class RollupTests {
     Rollup.defaultRollupLimit = null;
 
     Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
-    DMLMock mock = getMock(originalOpps);
+    DMLMock mock = loadAccountIdMock(originalOpps);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
@@ -690,7 +690,7 @@ private class RollupTests {
       new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -708,7 +708,7 @@ private class RollupTests {
       new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(Id = opps[0].Id), opps[1].Id => new Opportunity(Id = opps[1].Id) };
 
@@ -876,7 +876,7 @@ private class RollupTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.Name = acc.AccountNumber;
 
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp };
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
@@ -898,7 +898,7 @@ private class RollupTests {
     Rollup.defaultRollupLimit = null;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
-    DMLMock mock = getMock(new List<Opportunity>{ opp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
@@ -921,7 +921,7 @@ private class RollupTests {
     Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
     Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'hello another string');
     Opportunity thirdOpp = opp.clone(true, true);
-    DMLMock mock = getMock(new List<Opportunity>{ opp, secondOpp, thirdOpp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp, secondOpp, thirdOpp });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -952,7 +952,7 @@ private class RollupTests {
     Opportunity secondOldOpp = secondOpp.clone(true, true);
     secondOldOpp.Name = acc.AccountNumber;
 
-    DMLMock mock = getMock(new List<Opportunity>{ opp, secondOpp });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp, secondOpp });
     Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOldOpp.Id => secondOldOpp };
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
@@ -973,7 +973,7 @@ private class RollupTests {
   static void shouldMaxOnStringsOnInsert() {
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
 
-    DMLMock mock = getMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testOpps);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -989,7 +989,7 @@ private class RollupTests {
   static void shouldMinOnStringsOnInsert() {
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
 
-    DMLMock mock = getMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testOpps);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -1008,7 +1008,7 @@ private class RollupTests {
       new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType))
     };
 
-    DMLMock mock = getMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testOpps);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{
       testOpps[0].Id => new Opportunity(Id = testOpps[0].Id, Name = ''),
@@ -1031,7 +1031,7 @@ private class RollupTests {
       new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType))
     };
 
-    DMLMock mock = getMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testOpps);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>(testOpps);
 
@@ -1054,7 +1054,7 @@ private class RollupTests {
 
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
 
-    DMLMock mock = getMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testOpps);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ testOpps[0].Id => new Opportunity(Id = testOpps[0].Id, Name = 'A') };
 
@@ -1082,7 +1082,7 @@ private class RollupTests {
 
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
 
-    DMLMock mock = getMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testOpps);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>(testOpps);
 
@@ -1184,7 +1184,7 @@ private class RollupTests {
       new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
@@ -1221,7 +1221,7 @@ private class RollupTests {
       new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{
       opps[0].Id => new Opportunity(Amount = 100000, Id = opps[0].Id),
@@ -1255,7 +1255,7 @@ private class RollupTests {
 
     List<Opportunity> opps = new List<Opportunity>{ testOppTwo };
 
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ testOppOne.Id => testOppOne };
 
@@ -1886,7 +1886,7 @@ private class RollupTests {
   @isTest
   static void shouldBeInvokedSuccessfullyAfterInsertFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'INSERT', 'SUM'));
@@ -1904,7 +1904,7 @@ private class RollupTests {
   @isTest
   static void shouldBeInvokedRegardlessOfCasingFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'insert', 'sum'));
@@ -1922,7 +1922,7 @@ private class RollupTests {
   @isTest
   static void shouldBeInvokedSuccessfullyAfterSaveFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType)) };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(AccountId = opps[0].AccountId, Id = opps[0].Id, Amount = 250) };
 
     Test.startTest();
@@ -1944,7 +1944,7 @@ private class RollupTests {
       new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     opps[1].AccountId = null;
 
     Test.startTest();
@@ -1963,7 +1963,7 @@ private class RollupTests {
   @isTest
   static void shouldBeInvokedSuccessfullyBeforeDeleteFromFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'DELETE', 'SUM'));
@@ -1985,7 +1985,7 @@ private class RollupTests {
       new Opportunity(Amount = 1000, Name = 'Acme opp', Id = generateId(Opportunity.SObjectType)),
       new Opportunity(Amount = 500, Name = 'Test name changed opp', Id = generateId(Opportunity.SObjectType))
     };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
 
     Rollup.oldRecordsMap = new Map<Id, Opportunity>{
       opps[0].Id => new Opportunity(AccountId = opps[0].AccountId, Id = opps[0].Id, Amount = 250, Name = opps[0].Name),
@@ -2054,7 +2054,7 @@ private class RollupTests {
   @isTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadataForFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'INSERT', 'SUM');
     flowInputs[0].fullRecalculationDefaultNumberValue = -1001;
 
@@ -2109,7 +2109,7 @@ private class RollupTests {
   @isTest
   static void shouldOverrideStringBasedDefaultForFlow() {
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Name = 'A') };
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'INSERT', 'SUM');
     flowInputs[0].fullRecalculationDefaultStringValue = 'Z';
     flowInputs[0].rollupFieldOnOpObject = 'Name';
@@ -2170,7 +2170,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRunSuccessfullyAsBatch() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
 
@@ -2189,7 +2189,7 @@ private class RollupTests {
 
   @isTest
   static void shouldAbortWhenOrgDefaultsHaveDisabledRunning() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
 
@@ -2202,7 +2202,7 @@ private class RollupTests {
 
   @isTest
   static void shouldAbortWhenSpecificRollupLimitDisablesRunning() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
 
@@ -2215,7 +2215,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificRollupLimit = new RollupLimit__mdt(ShouldRunAsBatchable__c = true);
 
@@ -2229,7 +2229,7 @@ private class RollupTests {
 
   @isTest
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldRunAsBatchable__c = true, MaxLookupRowsBeforeBatching__c = 1000);
 
@@ -2243,7 +2243,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRunAsQueueableWhenSpecificLimitIsQueueableAndBatchableIsFalse() {
-    DMLMock mock = getMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificRollupLimit = new RollupLimit__mdt(ShouldRunAsBatchable__c = false, ShouldRunAsQueueable__c = true);
 
@@ -2376,7 +2376,7 @@ private class RollupTests {
 
     List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1), new Opportunity(Amount = 1) };
 
-    DMLMock mock = getMock(opps);
+    DMLMock mock = loadAccountIdMock(opps);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificRollupLimit = new RollupLimit__mdt(ShouldRunAsSyncOperation__c = true);
 
@@ -2520,16 +2520,17 @@ private class RollupTests {
     Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    System.assertEquals(2, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING: ' + mock.Records);
+    System.debug(mock.Records);
+    System.assertEquals(2, mock.Records.size(), 'Records should have been populated COUNT DISTINCT AFTER_UPDATE reparenting STRING: ' + mock.Records);
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should take the maximum string');
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
     Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
   }
 
   //** Helpers */
 
-  private static DMLMock getMock(List<SObject> records) {
+  private static DMLMock loadAccountIdMock(List<SObject> records) {
     Account acc = [SELECT Id FROM Account];
     for (SObject record : records) {
       record.put('AccountId', acc.Id);
