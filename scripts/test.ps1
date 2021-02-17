@@ -33,6 +33,7 @@ if($scratchOrgAllotment -gt 0) {
   # Deploy
   sfdx force:source:push
   # Run tests
+  Write-Output "Starting test run ..."
   Invoke-Expression $testInvocation
   Write-Output "Scratch org tests finished running with success: $?"
   # Delete scratch org
