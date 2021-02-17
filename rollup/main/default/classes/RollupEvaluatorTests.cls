@@ -261,12 +261,9 @@ private class RollupEvaluatorTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.AccountId = '0013g000000000000Z';
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c  ='Amount > 20');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20');
 
-    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(rollupMetadata, new Map<Id, SObject>{
-      oldOpp.Id => oldOpp
-    }, Opportunity.SObjectType);+
-
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
   }
 }
