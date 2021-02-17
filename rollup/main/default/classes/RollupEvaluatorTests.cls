@@ -188,7 +188,12 @@ private class RollupEvaluatorTests {
     Opportunity oppFour = new Opportunity(StageName = 'Hi', Amount = 0);
     Opportunity oppFive = new Opportunity(Id = '0066g000000000000T', Amount = 3.99999);
 
-    String whereClause = 'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\' OR (Id IN (\''+ oppFive.Id +'\' AND Amount = '+ oppFive.Amount + ')))';
+    String whereClause =
+      'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\' OR (Id IN (\'' +
+      oppFive.Id +
+      '\' AND Amount = ' +
+      oppFive.Amount +
+      ')))';
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
@@ -200,6 +205,38 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldReturnForMultipleOrConditionalsWithQueryKeywordsInString() {
+    Opportunity oppOne = new Opportunity(ForecastCategoryName = 'Omitted');
+    Opportunity oppTwo = new Opportunity(ForecastCategoryName = 'Pipeline'); // pipeline has "in" within it; this is a query keyword that should not get replaced
+    Opportunity oppThree = new Opportunity(ForecastCategoryName = 'Best Case');
+    Opportunity oppFour = new Opportunity(ForecastCategoryName = 'Commit');
+    Opportunity oppFive = new Opportunity(Amount = 5, ForecastCategoryName = 'Closed');
+    Formula.recalculateFormulas(new List<Opportunity>{ oppOne, oppTwo, oppThree, oppFour, oppFive });
+
+    String whereClause = 'ForecastCategoryName = \'Omitted\' OR ForecastCategoryName = \'Best Case\' OR ForecastCategoryName = \'Pipeline\' OR Amount = 5';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(true, eval.matches(oppOne), 'ForecastCategoryName for opp one should match');
+    System.assertEquals(true, eval.matches(oppTwo), 'ForecastCategoryName for opp two should match');
+    System.assertEquals(true, eval.matches(oppThree), 'ForecastCategoryName for opp three should match');
+    System.assertEquals(false, eval.matches(oppFour), 'ForecastCategoryName for opp four should not match');
+    System.assertEquals(true, eval.matches(oppFive), 'Amount for opp five should match');
+  }
+
+  @isTest
+  static void shouldReturnCorrectlyWhenQueryKeywordsWithSpacesArePartOfString() {
+    // even worse than the above - imagine a Name field "This in That" returning false
+    // because we've mistakenly transformed it into "This = that" 🤦‍♂️
+
+    Opportunity nameShouldMatch = new Opportunity(Name = 'This in That');
+    String whereClause = 'Name = \'This in That\'';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+    System.assertEquals(true, eval.matches(nameShouldMatch), 'Name should match');
+  }
+
+  @isTest
   static void shouldReturnDualEvaluatorWhenCalcItemChangedFieldsAndWhereClauseFilledOut() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name');
     Opportunity oldOpp = opp.clone(true, true);
@@ -207,14 +244,14 @@ private class RollupEvaluatorTests {
 
     Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', StageName = 'Same', Amount = 25);
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c  ='Amount > 20');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c = 'Amount > 20');
 
-    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(rollupMetadata, new Map<Id, SObject>{
-      oldOpp.Id => oldOpp, secondOpp.Id => secondOpp
-    }, Opportunity.SObjectType);+
-
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      Opportunity.SObjectType
+    );
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match, stage name unchanged even though amount > 20');
   }
 }
-

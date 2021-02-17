@@ -1730,7 +1730,7 @@ private class RollupTests {
     System.assertEquals('Field: BillingAddress of type: ADDRESS specified invalid for rollup operation', ex.getMessage());
   }
 
-  /** CDC trigger tests - TODO: separate test suite to provide code coverage for the usage of custom fields as Field Definitions within Rollup__mdt */
+  /** CDC trigger tests */
 
   @isTest
   static void shouldWorkForChangeDataEventCaptureTriggersOnCreate() {

@@ -1,6 +1,21 @@
 public without sharing abstract class RollupEvaluator implements Rollup.Evaluator {
   private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
 
+  // totally not obvious ranking going on here - it's absolutely imperative that
+  // the two-word conditions go first; otherwise replacing will fail on the whole string
+  // due to casing issues (NOT like, NOT in). I could make those be part of the map, too,
+  // but that seems even worse than the pseudo-ranking going on here
+  private static final Map<String, String> CONDITION_MAP = new Map<String, String>{
+    ' not in ' => ' != ',
+    ' NOT IN ' => ' != ',
+    ' not like ' => ' !like ',
+    ' NOT LIKE ' => ' !like ',
+    ' <> ' => ' != ',
+    ' in ' => ' = ',
+    ' IN ' => ' = ',
+    ' LIKE ' => ' like '
+  };
+
   public abstract Boolean matches(Object calcItem);
 
   public static RollupEvaluator getEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
@@ -9,18 +24,27 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     if (isChangedFieldEval && isWhereClauseEval) {
       return new CombinedEvaluator(rollupMetadata, oldCalcItems, sObjectType);
     } else if (isChangedFieldEval) {
-      return new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+      return getChangedFieldEval(rollupMetadata, oldCalcItems);
     } else if (isWhereClauseEval) {
       return new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
     }
     return null;
   }
 
+  private static RollupEvaluator getChangedFieldEval(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems) {
+    List<String> changedFieldNames = rollupMetadata.ChangedFieldsOnCalcItem__c.split(',');
+    if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c)) {
+      // TODO: detect reparenting, in progress on feature/support-for-reparented-records branch
+      // changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
+    }
+    return new SObjectChangedFieldEvaluator(changedFieldNames, oldCalcItems);
+  }
+
   private class CombinedEvaluator extends RollupEvaluator {
     private final RollupEvaluator changedFiedEval;
     private final RollupEvaluator whereClauseEval;
     public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-      this.changedFiedEval = new SObjectChangedFieldEvaluator(rollupMetadata.ChangedFieldsOnCalcItem__c.split(','), oldCalcItems);
+      this.changedFiedEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
       this.whereClauseEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
     }
 
@@ -53,29 +77,17 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   public class WhereFieldEvaluator extends RollupEvaluator {
+    private final String originalWhereClause;
     private final String whereClause;
-    // totally not obvious ranking going on here - it's absolutely imperative that
-    // the two-word conditions go first; otherwise replacing will fail on the whole string
-    // due to casing issues (NOT like, NOT in). I could make those be part of the map, too,
-    // but that seems even worse than the pseudo-ranking going on here
-    private final Map<String, String> conditionMapping = new Map<String, String>{
-      'not in' => '!=',
-      'NOT IN' => '!=',
-      'not like' => '!like',
-      'NOT LIKE' => '!like',
-      '<>' => '!=',
-      'in' => '=',
-      'IN' => '=',
-      'LIKE' => 'like'
-    };
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
+      this.originalWhereClause = whereClause;
       if (whereClause == null) {
         whereClause = '';
       }
-      for (String conditionKey : this.conditionMapping.keySet()) {
-        whereClause = whereClause.replace(conditionKey, conditionMapping.get(conditionKey));
+      for (String conditionKey : CONDITION_MAP.keySet()) {
+        whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
       }
       this.whereClause = whereClause;
       this.createConditions(calcItemSObjectType);
@@ -110,10 +122,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
         for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
-          Boolean hasInnerMatch = conditionalGrouping == calcItem;
-          if(hasInnerMatch && conditionalGrouping.isOrConditional()) {
+          Boolean hasInnerMatch = conditionalGrouping.equals(calcItem);
+          if (hasInnerMatch && conditionalGrouping.isOrConditional()) {
             matches = true;
-          } else if(conditionalGrouping.isOrConditional() == false) {
+          } else if (conditionalGrouping.isOrConditional() == false) {
             matches = matches && hasInnerMatch;
           }
         }
@@ -196,7 +208,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
           Boolean isAnInnerOrCondition = false;
           List<String> innerWhereClauses = this.getSoqlWhereClauses(potentialNestedConditional, calcItemSObjectType);
-          for(String innerWhere : innerWhereClauses) {
+          for (String innerWhere : innerWhereClauses) {
             isAnInnerOrCondition = isAnInnerOrCondition || this.isOrConditional(potentialNestedConditional, innerWhere);
             conditions.addAll(this.createConditionsFromString(innerWhere, calcItemSObjectType));
           }
@@ -219,7 +231,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private Boolean isOrConditional(String fullString, String conditionalStatement) {
       Boolean isOr = false;
       Boolean isFirstConditional = fullString.indexOf(conditionalStatement) == 0;
-      if(isFirstConditional) {
+      if (isFirstConditional) {
         return isOr;
       }
       Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement) + conditionalStatement.length();
@@ -239,10 +251,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String fieldName = whereClause.substring(0, whereClause.indexOf(' '));
       whereClause = whereClause.replace(fieldName, '').trim();
       String criteria = whereClause.substring(0, whereClause.indexOf(' ')).trim();
-      String value = whereClause.replace(criteria, '').trim().replaceAll('\'', '').trim();
-      if(value.startsWith('(') && value.contains(',') == false) {
+      String value = this.getValue(criteria, whereClause);
+
+      if (value.startsWith('(') && value.contains(',') == false) {
         value = value.substring(1, value.length());
-      } else if(value.endsWith(')') && value.contains(',') == false) {
+      } else if (value.endsWith(')') && value.contains(',') == false) {
         value = value.substring(0, value.length() - 1);
       }
       if (value.startsWith('(') && value.endsWith(')')) {
@@ -252,6 +265,28 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         conditions.add(new WhereFieldCondition(fieldName, criteria, value, calcItemSObjectType));
       }
       return conditions;
+    }
+
+    private String getValue(String criteria, String whereClausePiece) {
+      Integer firstIndexOfCriteria = whereClausePiece.indexOf(criteria);
+      Integer lastIndexOfCriteria = whereClausePiece.lastIndexOf(criteria);
+      if (firstIndexOfCriteria != lastIndexOfCriteria) {
+        // whoops - we accidentally replaced a conditional keyword in the value
+        // let's fix that
+        whereClausePiece = whereClausePiece.substring(firstIndexOfCriteria + criteria.length(), whereClausePiece.length() - 1);
+        for (String conditionKey : CONDITION_MAP.keySet()) {
+          String conditionValue = CONDITION_MAP.get(conditionKey);
+          if (conditionValue.trim() != criteria) {
+            continue;
+          }
+          String potentialReplacement = whereClausePiece.replace(criteria, conditionKey.trim());
+          if (this.originalWhereClause.contains(potentialReplacement)) {
+            whereClausePiece = potentialReplacement;
+            break;
+          }
+        }
+      }
+      return whereClausePiece.replace(criteria, '').trim().replaceAll('\'', '').trim();
     }
 
     private void logError(Exception ex) {
@@ -333,7 +368,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
       for (String val : values) {
         if (String.isNotBlank(val)) {
-          if(this.hasValues == null) {
+          if (this.hasValues == null) {
             this.hasValues = true;
           }
           this.values.add(val.trim().replace('%', ''));
@@ -357,7 +392,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           // like/not like have to be handled separately because it's the storedValue
           // that gets tested against, not the other way around
           Boolean containsCriteria = false;
-          if(storedValue == null) {
+          if (storedValue == null) {
             return false;
           }
           for (String val : this.values) {
@@ -370,7 +405,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         when '>', '>=' {
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
-          } else if(storedValue == null) {
+          } else if (storedValue == null) {
             return false;
           }
 
@@ -379,7 +414,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         when '<', '<=' {
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
-          } else if(storedValue == null) {
+          } else if (storedValue == null) {
             return false;
           }
 
