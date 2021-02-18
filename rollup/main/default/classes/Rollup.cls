@@ -541,7 +541,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           CalcItemWhereClause__c = flowInput.calcItemWhereClause,
           IsFullRecordSet__c = flowInput.isFullRecordSet
         );
-        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, flowInput.rollupFieldOnCalcItem);
+        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(
+          flowInput.recordsToRollup,
+          sObjectType,
+          flowInput.rollupFieldOnCalcItem,
+          flowInput.lookupFieldOnCalcItem
+        );
         rollups.add(
           getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, RollupInvocationPoint.FROM_INVOCABLE)
         );
@@ -919,7 +924,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
-  private static Map<Id, SObject> getOldFlowRecords(List<SObject> currentRecords, SObjectType sObjectType, String rollupFieldOnCalcItem) {
+  private static Map<Id, SObject> getOldFlowRecords(
+    List<SObject> currentRecords,
+    SObjectType sObjectType,
+    String rollupFieldOnCalcItem,
+    String lookupFieldOnCalcItem
+  ) {
     if (currentRecords.isEmpty()) {
       return new Map<Id, SObject>();
     } else if (oldRecordsMap != null) {
@@ -939,7 +949,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
     Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
     Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(
-      Database.query(getQueryString(sObjectType, new List<String>{ rollupFieldOnCalcItem }, 'Id', '='))
+      Database.query(getQueryString(sObjectType, new List<String>{ rollupFieldOnCalcItem, lookupFieldOnCalcItem }, 'Id', '='))
     );
     for (SObject currentRecord : currentRecords) {
       SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
@@ -1271,9 +1281,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
-        if (this.opFieldOnCalcItem.getDescribe().isCalculated() == false) {
-          calcItem.put(this.opFieldOnCalcItem, FIELD_INITIALIZER.getDefaultValue(this.opFieldOnCalcItem));
-        }
         applicableItems.add(calcItem);
       }
     }
@@ -1371,7 +1378,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
         // Check for reparented records
         Map<Id, SObject> oldCalcItems = rollup.oldCalcItems;
-        for (SObject calcItem : calcItems) {
+        for (Integer index = calcItems.size() - 1; index >= 0; index--) {
+          SObject calcItem = calcItems[index];
+          if(rollup.eval?.matches(calcItem) == false && rollup.metadata?.IsFullRecordSet__c == true) {
+            // technically it should only be possible for a calc item that doesn't match
+            // to still exist if it is a Full Record Set operation; this gives people the chance
+            // to reset rollup values if none of the records passed in match the eval criteria
+            calcItems.remove(index);
+            continue;
+          }
           SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
 
           if (oldCalcItem == null) {
@@ -1393,8 +1408,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // Check for changed values
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, calcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
-        lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
         if (priorVal != newVal) {
+          lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
       }
@@ -2101,7 +2116,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Integer countOfPreExistingItems = Database.countQuery(getQueryString(sObjectType, new List<String>{ 'Count()' }, 'Id', '!=') + this.lookupKeyQuery);
 
       Decimal oldSum = (Decimal) this.calculateNewAggregateValue(objIds, Op.SUM, operationField, sObjectType);
-      if(oldSum == null) {
+      if (oldSum == null) {
         oldSum = 0;
       }
 
@@ -2115,7 +2130,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Decimal denominator = countOfPreExistingItems + applicableCalcItems.size();
 
       // Can't divide by 0, so just return null
-      if(denominator == 0) {
+      if (denominator == 0) {
         average = null;
       } else {
         average = numerator / denominator;

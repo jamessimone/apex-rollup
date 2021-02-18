@@ -384,7 +384,7 @@ private class RollupTests {
     update acc;
     Rollup.defaultRollupLimit = null;
 
-    DMLMock mock = loadMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ', AccountId = acc.Id) });
+    DMLMock mock = loadMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ', AccountId = acc.Id, Amount = 50) });
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
