@@ -2229,7 +2229,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectType sObjectType = calcItems[0].getSobjectType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Integer countOfPreExistingItems = Database.countQuery(getQueryString(sObjectType, new List<String>{ 'Count()' }, 'Id', '!=') + this.lookupKeyQuery);
+
       Decimal oldSum = (Decimal) this.calculateNewAggregateValue(objIds, Op.SUM, operationField, sObjectType);
+      if(oldSum == null) {
+        oldSum = 0;
+      }
 
       List<SObject> applicableCalcItems = operation == Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       Decimal newSum = 0;
@@ -2237,7 +2241,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         newSum += (Decimal) calcItem.get(operationField);
       }
 
-      average = (oldSum + newSum) / (countOfPreExistingItems + applicableCalcItems.size());
+      Decimal numerator = oldSum + newSum;
+      Decimal denominator = countOfPreExistingItems + applicableCalcItems.size();
+
+      // Can't divide by 0, so just return null
+      if(denominator == 0) {
+        average = null;
+      } else {
+        average = numerator / denominator;
+      }
       this.returnVal = average;
     }
   }
