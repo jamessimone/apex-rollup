@@ -62,5 +62,4 @@ jobs:
       - name: 'Upload code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v1
         with:
-            flags: Apex
             token: ${{ secrets.CODECOV_TOKEN }}
