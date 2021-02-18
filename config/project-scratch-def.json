@@ -3,5 +3,6 @@
   "edition": "Developer",
   "country": "US",
   "language": "en_US",
-  "features": []
+  "features": [],
+  "hasSampleData": true
 }
