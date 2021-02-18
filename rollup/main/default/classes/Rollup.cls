@@ -99,9 +99,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
-  private static final DefaultSObjectFieldInitializer FIELD_INITIALIZER = new DefaultSObjectFieldInitializer();
+  private static final RollupFieldInitializer FIELD_INITIALIZER = new RollupFieldInitializer();
 
-  private enum Op {
+  public enum Op {
     SUM,
     UPDATE_SUM,
     DELETE_SUM,
@@ -1515,136 +1515,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private virtual class DefaultSObjectFieldInitializer {
-    public final Datetime defaultDateTime = Datetime.newInstanceGmt(1970, 1, 1);
-    public final Long maximumLongValue = (Math.pow(2, 63) - 1).longValue();
-    public final Long minimumLongValue = this.maximumLongValue * -1;
-    public final Integer maximumIntegerValue = 2147483647;
-    public final Integer minimumIntegerValue = this.maximumIntegerValue * -1;
-
-    public virtual Object getDefaultValue(SObjectField field) {
-      DescribeFieldResult fieldDescribe = field.getDescribe();
-      if (fieldDescribe.isDefaultedOnCreate() && fieldDescribe.getDefaultValue() != null) {
-        return fieldDescribe.getDefaultValue();
-      }
-      // not surprisingly, "getDefaultValue" on the DescribeFieldResult returns null for fields without default values
-      // this is a shame - all types *should* have default values. Instead, we have the privilege of getting to initialize them
-      Object initializedDefault;
-      switch on fieldDescribe.getType() {
-        when CURRENCY, DOUBLE, INTEGER, LONG, PERCENT {
-          initializedDefault = 0;
-        }
-        when DATETIME {
-          initializedDefault = this.defaultDateTime;
-        }
-        when DATE {
-          initializedDefault = this.defaultDateTime.dateGmt();
-        }
-        when TIME {
-          initializedDefault = this.defaultDateTime.timeGmt();
-        }
-        when STRING, ID, TEXTAREA, URL, PHONE, EMAIL, REFERENCE {
-          initializedDefault = '';
-        }
-        when PICKLIST, MULTIPICKLIST {
-          initializedDefault = new PicklistController(fieldDescribe).getDefaultValue(field);
-        }
-        when else {
-          throw new IllegalArgumentException('Field: ' + field + ' of type: ' + fieldDescribe.getType().name() + ' specified invalid for rollup operation');
-        }
-      }
-      return initializedDefault;
-    }
-  }
-
-  private class PicklistController extends DefaultSObjectFieldInitializer {
-    private final Boolean isPicklist;
-    private final Boolean isMultiSelectPicklist;
-    private List<String> activeVals;
-    private Map<String, Integer> picklistToRank;
-
-    public PicklistController(DescribeFieldResult fieldDescribe) {
-      DisplayType fieldType = fieldDescribe.getType();
-      this.isPicklist = fieldType == DisplayType.MULTIPICKLIST || fieldType == DisplayType.PICKLIST;
-      this.isMultiSelectPicklist = fieldType == DisplayType.MULTIPICKLIST;
-
-      if (this.isPicklist) {
-        this.picklistToRank = new Map<String, Integer>();
-        this.activeVals = new List<String>();
-
-        /**
-         * not obvious (or even documented) but getPicklistValues ALWAYS returns
-         * the picklist values in order of their appearance in the UI, which is also
-         * their alleged "rank" - for example, MAX/MIN on picklists is done by which order they appear
-         * in the list, instead of by the actual text values
-         * */
-        List<Schema.PicklistEntry> picklistVals = fieldDescribe.getPicklistValues();
-        if (picklistVals.isEmpty()) {
-          this.activeVals.add('');
-          return;
-        }
-
-        for (Integer index = 0; index < picklistVals.size(); index++) {
-          PicklistEntry picklist = picklistVals[index];
-          this.doBookkeepingOnPicklist(picklist);
-          // all inactive values will use -1 as a sentinel value
-          picklistToRank.put(picklist.getValue(), picklist.isActive() ? index : -1);
-        }
-      }
-    }
-
-    private void doBookkeepingOnPicklist(PicklistEntry picklist) {
-      if (picklist.isDefaultValue() && this.activeVals.isEmpty()) {
-        this.activeVals.add(picklist.getValue());
-      } else if (picklist.isDefaultValue() && this.activeVals.isEmpty() == false) {
-        this.activeVals.add(0, picklist.getValue());
-      } else if (picklist.isActive()) {
-        this.activeVals.add(picklist.getValue());
-      }
-    }
-
-    public override Object getDefaultValue(SObjectField field) {
-      if (this.isPicklist == false) {
-        return super.getDefaultValue(field);
-      }
-
-      return this.activeVals[0];
-    }
-
-    public Boolean isPicklist() {
-      return this.isPicklist;
-    }
-
-    public Boolean isMultiSelectPicklist() {
-      return this.isMultiSelectPicklist;
-    }
-
-    public Boolean isTrueFor(String picklistVal, String comparisonValue, Op operation) {
-      if (this.isPicklist == false) {
-        return false;
-      }
-      Boolean isMin = this.isMin(operation);
-      if (String.isNotBlank(comparisonValue) && this.picklistToRank.containsKey(picklistVal) == false) {
-        return isMin ? picklistVal < comparisonValue : picklistVal > comparisonValue;
-      }
-      Integer rank = this.getRank(picklistVal, operation);
-      Integer comparisonRank = this.getRank(comparisonValue, operation);
-      return isMin ? rank < comparisonRank : rank > comparisonRank;
-    }
-
-    public Integer getRank(String picklistVal, Op operation) {
-      return this.picklistToRank.containsKey(picklistVal) ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
-    }
-
-    private Boolean isMin(Op operation) {
-      return operation.name().contains(Op.MIN.name());
-    }
-
-    private Integer getSentinelValue(Op operation) {
-      return this.isMin(operation) ? this.maximumIntegerValue : this.minimumIntegerValue;
-    }
-  }
-
   private abstract class RollupCalculator {
     private Boolean isCDCUpdate = false;
     private Boolean isFirstTimeThrough = true;
@@ -2190,10 +2060,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private class PicklistRollupCalculator extends StringRollupCalculator {
-    private final PicklistController picklistController;
+    private final RollupFieldInitializer.PicklistController picklistController;
     public PicklistRollupCalculator(Object priorVal, SObjectField operationField, Object defaultVal, String lookupRecordKey, SObjectField lookupKeyField) {
       super(priorVal, operationField, defaultVal, lookupRecordKey, lookupKeyField);
-      this.picklistController = new PicklistController(operationField.getDescribe());
+      this.picklistController = new RollupFieldInitializer.PicklistController(operationField.getDescribe());
     }
 
     protected override Boolean isTrueFor(Op operation, String newVal, String priorVal) {
