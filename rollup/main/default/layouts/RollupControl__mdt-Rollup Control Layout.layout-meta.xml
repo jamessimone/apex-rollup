@@ -79,6 +79,7 @@
     <relatedLists>
         <fields>MasterLabel</fields>
         <fields>DeveloperName</fields>
+        <fields>CalcItem__c</fields>
         <fields>RollupFieldOnCalcItem__c</fields>
         <fields>LookupFieldOnCalcItem__c</fields>
         <fields>LookupFieldOnLookupObject__c</fields>
