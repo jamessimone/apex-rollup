@@ -203,7 +203,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public String runCalc() {
-    RollupControl__mdt orgDefaults = getSensibleLimitsDefault();
+    // clone because the RollupControl__mdt is read-only when retrieved from the cache
+    RollupControl__mdt orgDefaults = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).clone(true, true);
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
     this.ingestRollupControlData(orgDefaults);
 
@@ -1223,8 +1224,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static RollupControl__mdt getSensibleLimitsDefault() {
-    // clone because the RollupControl__mdt is read-only when retrieved from the cache
-    RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS).clone(true, true);
+    RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
     if (sensibleDefault == null) {
       // this *should* be impossible, since the record is included on install, but ...
       sensibleDefault = new RollupControl__mdt(

@@ -2185,7 +2185,7 @@ private class RollupTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
   }
 
-  /** Rollup Limit metadata tests */
+  /** Rollup Control metadata tests */
 
   @isTest
   static void shouldAbortWhenOrgDefaultsHaveDisabledRunning() {

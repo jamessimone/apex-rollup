@@ -19,7 +19,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   public abstract Boolean matches(Object calcItem);
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c) || String.isNotBlank(metadata.LookupFieldOnCalcItem__c);
+    Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
     Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
     RollupEvaluator secondEval;
     if (isChangedFieldEval && isWhereClauseEval) {
