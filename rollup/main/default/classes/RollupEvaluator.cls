@@ -43,7 +43,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     List<String> changedFieldNames = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)
       ? rollupMetadata.ChangedFieldsOnCalcItem__c.split(',')
       : new List<String>();
-    if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c) && oldCalcItems.isEmpty() == false) {
+    if (String.isNotBlank(rollupMetadata.LookupFieldOnCalcItem__c) && oldCalcItems.isEmpty() == false) {
       // detect reparenting
       changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
     }
