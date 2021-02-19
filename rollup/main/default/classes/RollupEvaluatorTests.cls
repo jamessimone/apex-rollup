@@ -249,9 +249,9 @@ private class RollupEvaluatorTests {
   @isTest
   static void shouldCorrectlyIdentifyIncludesForMultiSelectPicklists() {
     // QuickText.Channel is the only multi-select picklist in a vanilla Salesforce org
-    QuickText qt = new QuickText(Channel='AAA;BBB');
+    QuickText qt = new QuickText(Channel='AAA;BBB;CCC');
     QuickText nonMatch = new QuickText(Channel='AAA');
-    String whereClause = 'Channel INCLUDES (\'AAA;BBB\')';
+    String whereClause = 'Channel INCLUDES (\'AAA;CCC\')';
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, QuickText.SObjectType);
     System.assertEquals(true, eval.matches(qt), 'Channel should match');

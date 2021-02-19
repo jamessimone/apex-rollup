@@ -14,10 +14,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     ' in ' => ' = ',
     ' IN ' => ' = ',
     ' LIKE ' => ' like ',
-    ' INCLUDES ' => ' like ',
-    ' includes ' => ' like ',
-    ' EXCLUDES ' => ' !like ',
-    ' excludes ' => ' !like '
+    ' INCLUDES ' => ' includes ',
+    ' includes ' => ' includes ',
+    ' EXCLUDES ' => ' !includes ',
+    ' excludes ' => ' !includes '
   };
 
   public abstract Boolean matches(Object calcItem);
@@ -304,7 +304,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       // if it's just a singular value enclosed in quotes or a multi-select picklist, we can just take the inner string
       if (whereClausePiece.startsWith('\'') && whereClausePiece.endsWith('\'')) {
         return whereClausePiece.substring(1, whereClausePiece.length() - 1);
-      } else if(whereClausePiece.startsWith('(') && whereClausePiece.endsWith(')') && whereClausePiece.contains(';')) {
+      } else if (whereClausePiece.startsWith('(') && whereClausePiece.endsWith(')') && whereClausePiece.contains(';')) {
         return whereClausePiece.substring(1, whereClausePiece.length() - 1).replaceAll('\'', '').trim();
       }
 
@@ -419,17 +419,18 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         when 'like', '!like' {
           // like/not like have to be handled separately because it's the storedValue
           // that gets tested against, not the other way around
-          Boolean containsCriteria = false;
+          isEqual = false;
           if (storedValue == null) {
-            return false;
-          }
-          for (String val : this.values) {
-            containsCriteria = storedValue.contains(val);
-            if (containsCriteria) {
-              break;
+            // do nothing
+          } else {
+            for (String val : this.values) {
+              isEqual = storedValue.contains(val);
+              if (isEqual) {
+                break;
+              }
             }
+            isEqual = this.criteria == 'like' ? isEqual : isEqual == false;
           }
-          isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
         }
         // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
         // greater than / less than routes, but we test for it first just to be triple-sure
@@ -437,19 +438,30 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           } else if (storedValue == null) {
-            return false;
+            isEqual = false;
+          } else {
+            isEqual = this.criteria.endsWith('=') ? storedValue >= this.values[0] : storedValue > this.values[0];
           }
-
-          return this.criteria.endsWith('=') ? storedValue >= this.values[0] : storedValue > this.values[0];
         }
         when '<', '<=' {
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           } else if (storedValue == null) {
-            return false;
+            isEqual = false;
+          } else {
+            isEqual = this.criteria.endsWith('=') ? storedValue <= this.values[0] : storedValue < this.values[0];
           }
-
-          return this.criteria.endsWith('=') ? storedValue <= this.values[0] : storedValue < this.values[0];
+        }
+        when 'includes', '!includes' {
+          isEqual = false;
+          for (String value : this.values) {
+            List<String> splitValues = value.split(';');
+            for (String splitValue : splitValues) {
+              // for this one, we can't break early; it's only true if all values match
+              isEqual = storedValue.contains(splitValue);
+            }
+          }
+          isEqual = this.criteria == 'includes' ? isEqual : isEqual == false;
         }
       }
       return isEqual;
