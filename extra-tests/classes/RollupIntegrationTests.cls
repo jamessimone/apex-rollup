@@ -4,7 +4,7 @@ private class RollupIntegrationTests {
   // we still don't need to actually update the records to prove the point
   @TestSetup
   static void setup() {
-    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupIntegrationTests');
     insert acc;
 
@@ -32,7 +32,7 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = oppCustomField.DurableId,
         LookupFieldOnLookupObject__c = accCustomField.DurableId,
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
-        RollupType__c = 'MAX'
+        RollupOperation__c = 'MAX'
       )
     };
 
@@ -51,6 +51,7 @@ private class RollupIntegrationTests {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     List<Opportunity> opps = [SELECT Id, Name, AmountFormula__c, AccountId FROM Opportunity];
+    System.assertEquals(1, opps[0].AmountFormula__c, 'Test has started with wrong opp conditions!');
     Rollup.records = opps;
     Rollup.shouldRun = true;
 
@@ -63,7 +64,7 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
         LookupFieldOnLookupObject__c = 'Account.Id',
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
-        RollupType__c = 'SUM',
+        RollupOperation__c = 'SUM',
         IsFullRecordSet__c = true,
         CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
         FullRecalculationDefaultNumberValue__c = 0
@@ -77,6 +78,6 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(1, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
+    System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 }

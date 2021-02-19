@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All_Rollups</fullName>
+    <columns>MasterLabel</columns>
+    <columns>DeveloperName</columns>
+    <columns>RollupOperation__c</columns>
+    <columns>CalcItem__c</columns>
+    <columns>RollupFieldOnCalcItem__c</columns>
+    <columns>LookupFieldOnCalcItem__c</columns>
+    <columns>LookupFieldOnLookupObject__c</columns>
+    <columns>RollupFieldOnLookupObject__c</columns>
+    <columns>RollupControl__c</columns>
+    <columns>LookupObject__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>All Rollups</label>
+</ListView>

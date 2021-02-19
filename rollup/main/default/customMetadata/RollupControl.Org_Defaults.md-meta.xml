@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Org Defaults</label>
+    <protected>false</protected>
+    <values>
+        <field>MaxLookupRowsBeforeBatching__c</field>
+        <value xsi:type="xsd:double">3000.0</value>
+    </values>
+    <values>
+        <field>MaxLookupRowsForQueueable__c</field>
+        <value xsi:type="xsd:double">5000.0</value>
+    </values>
+    <values>
+        <field>ShouldAbortRun__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>ShouldRunAs__c</field>
+        <value xsi:type="xsd:string">Queueable</value>
+    </values>
+    <values>
+        <field>TriggerOrInvocableName__c</field>
+        <value xsi:nil="true"/>
+    </values>
+</CustomMetadata>

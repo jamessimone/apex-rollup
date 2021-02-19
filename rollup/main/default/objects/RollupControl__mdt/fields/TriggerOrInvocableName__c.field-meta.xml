@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TriggerOrInvocableName__c</fullName>
+    <description>The API name for the record is too short; use the pattern &quot;trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup&quot; - for example: &apos;trigger_opportunity_stagename_to_account_name_rollup&apos; (use lowercase on the field names). If there is a matching Rollup Control record, those rules will be used. If you are using the &quot;batch&quot; method in Rollup, use this pattern instead: &quot;trigger_batch_objectName_rollup&quot;, for example: &quot;trigger_batch_opportunity_rollup&quot; to set controls for the whole thing. Individual Rollup Control records override the settings for the batch they happen to be in, with the exception of the override flag for &quot;Should Abort Run&quot;, which always cancels the whole thing.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The API name for the record is too short; use the pattern &quot;trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup&quot; - for example: &apos;trigger_opportunity_stagename_to_account_name_rollup&apos; (use lowercase on the field names). If there is a matching Rollup Control record, those rules will be used. If you are using the &quot;batch&quot; method in Rollup, use this pattern instead: &quot;trigger_batch_objectName_rollup&quot;, See field description for more.</inlineHelpText>
+    <label>Trigger Or Invocable Name</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

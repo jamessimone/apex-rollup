@@ -13,27 +13,41 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     ' <> ' => ' != ',
     ' in ' => ' = ',
     ' IN ' => ' = ',
-    ' LIKE ' => ' like '
+    ' LIKE ' => ' like ',
+    ' INCLUDES ' => ' includes ',
+    ' includes ' => ' includes ',
+    ' EXCLUDES ' => ' !includes ',
+    ' excludes ' => ' !includes '
   };
 
   public abstract Boolean matches(Object calcItem);
 
-  public static RollupEvaluator getEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    Boolean isChangedFieldEval = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c);
-    Boolean isWhereClauseEval = String.isNotBlank(rollupMetadata.CalcItemWhereClause__c);
+  public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
+    Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
+    Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
+    RollupEvaluator secondEval;
     if (isChangedFieldEval && isWhereClauseEval) {
-      return new CombinedEvaluator(rollupMetadata, oldCalcItems, sObjectType);
+      secondEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
     } else if (isChangedFieldEval) {
-      return getChangedFieldEval(rollupMetadata, oldCalcItems);
+      secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
-      return new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+      secondEval = new WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType);
     }
-    return null;
+
+    if (eval != null && secondEval != null) {
+      return new CombinedEvaluator(eval, secondEval);
+    } else if (eval == null && secondEval != null) {
+      return secondEval;
+    }
+
+    return eval;
   }
 
   private static RollupEvaluator getChangedFieldEval(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems) {
-    List<String> changedFieldNames = rollupMetadata.ChangedFieldsOnCalcItem__c.split(',');
-    if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c)) {
+    List<String> changedFieldNames = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)
+      ? rollupMetadata.ChangedFieldsOnCalcItem__c.split(',')
+      : new List<String>();
+    if (String.isNotBlank(rollupMetadata.LookupFieldOnCalcItem__c) && oldCalcItems.isEmpty() == false) {
       // detect reparenting
       changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
     }
@@ -41,15 +55,20 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private class CombinedEvaluator extends RollupEvaluator {
-    private final RollupEvaluator changedFiedEval;
-    private final RollupEvaluator whereClauseEval;
+    private final Rollup.Evaluator firstEval;
+    private final Rollup.Evaluator secondEval;
+
     public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-      this.changedFiedEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
-      this.whereClauseEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+      this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
+      this.secondEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+    }
+    public CombinedEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
+      this.firstEval = firstEval;
+      this.secondEval = secondEval;
     }
 
     public override Boolean matches(Object calcItem) {
-      return this.changedFiedEval.matches(calcItem) && this.whereClauseEval.matches(calcItem);
+      return this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
     }
   }
 
@@ -67,7 +86,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = this.changedFieldNames.isEmpty() || this.oldRecordsMap == null;
       for (String fieldName : this.changedFieldNames) {
         // need to trim because list can be comma-separated with leading/trailing spaces
-        if (calcSObject.get(fieldName.trim()) != oldRecord.get(fieldName.trim())) {
+        if (calcSObject.get(fieldName.trim()) != oldRecord?.get(fieldName.trim())) {
           matches = true;
           break;
         }
@@ -137,9 +156,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<String> splitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
       try {
         for (String splitWhereClause : splitWheres) {
-          Boolean isOrConditional = isOrConditional(this.whereClause, splitWhereClause);
           List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
-          if (isOrConditional) {
+          if (this.isOrConditional(this.whereClause, splitWhereClause)) {
             this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
           } else {
             this.conditionalGroupings.add(new AndConditionalGrouping(conditions));
@@ -283,9 +301,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
       whereClausePiece = whereClausePiece.replace(criteria, '').trim();
 
-      // if it's just a singular value enclosed in quotes, we can just take the inner string
+      // if it's just a singular value enclosed in quotes or a multi-select picklist, we can just take the inner string
       if (whereClausePiece.startsWith('\'') && whereClausePiece.endsWith('\'')) {
         return whereClausePiece.substring(1, whereClausePiece.length() - 1);
+      } else if (whereClausePiece.startsWith('(') && whereClausePiece.endsWith(')') && whereClausePiece.contains(';')) {
+        return whereClausePiece.substring(1, whereClausePiece.length() - 1).replaceAll('\'', '').trim();
       }
 
       // otherwise, clean the string up and replace any inner quotes before returning
@@ -399,14 +419,18 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         when 'like', '!like' {
           // like/not like have to be handled separately because it's the storedValue
           // that gets tested against, not the other way around
-          Boolean containsCriteria = false;
+          isEqual = false;
           if (storedValue == null) {
-            return false;
+            // do nothing
+          } else {
+            for (String val : this.values) {
+              isEqual = storedValue.contains(val);
+              if (isEqual) {
+                break;
+              }
+            }
+            isEqual = this.criteria == 'like' ? isEqual : isEqual == false;
           }
-          for (String val : this.values) {
-            containsCriteria = containsCriteria || storedValue.contains(val);
-          }
-          isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
         }
         // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
         // greater than / less than routes, but we test for it first just to be triple-sure
@@ -414,19 +438,30 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           } else if (storedValue == null) {
-            return false;
+            isEqual = false;
+          } else {
+            isEqual = this.criteria.endsWith('=') ? storedValue >= this.values[0] : storedValue > this.values[0];
           }
-
-          return this.criteria.endsWith('=') ? storedValue >= this.values[0] : storedValue > this.values[0];
         }
         when '<', '<=' {
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           } else if (storedValue == null) {
-            return false;
+            isEqual = false;
+          } else {
+            isEqual = this.criteria.endsWith('=') ? storedValue <= this.values[0] : storedValue < this.values[0];
           }
-
-          return this.criteria.endsWith('=') ? storedValue <= this.values[0] : storedValue < this.values[0];
+        }
+        when 'includes', '!includes' {
+          isEqual = false;
+          for (String value : this.values) {
+            List<String> splitValues = value.split(';');
+            for (String splitValue : splitValues) {
+              // for this one, we can't break early; it's only true if all values match
+              isEqual = storedValue.contains(splitValue);
+            }
+          }
+          isEqual = this.criteria == 'includes' ? isEqual : isEqual == false;
         }
       }
       return isEqual;
