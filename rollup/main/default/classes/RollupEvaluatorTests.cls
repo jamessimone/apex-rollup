@@ -141,6 +141,17 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForParanthesisAtEndOfString() {
+    Opportunity nameWithParanthesis = new Opportunity(Name = 'Realized Gain/(Loss)');
+
+    String whereClause = 'Name = \'Realized Gain/(Loss)\'';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, nameWithParanthesis.getSObjectType());
+
+    System.assertEquals(true, eval.matches(nameWithParanthesis), 'Where clause should not have been split in the wrong place!');
+  }
+
+  @isTest
   static void shouldWorkForGreaterThanConditions() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);

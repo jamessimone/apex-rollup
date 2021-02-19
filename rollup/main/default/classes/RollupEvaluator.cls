@@ -134,9 +134,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private void createConditions(SObjectType calcItemSObjectType) {
-      List<String> splitWhere = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
+      List<String> splitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
       try {
-        for (String splitWhereClause : splitWhere) {
+        for (String splitWhereClause : splitWheres) {
           Boolean isOrConditional = isOrConditional(this.whereClause, splitWhereClause);
           List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
           if (isOrConditional) {
@@ -253,11 +253,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String criteria = whereClause.substring(0, whereClause.indexOf(' ')).trim();
       String value = this.getValue(criteria, whereClause);
 
-      if (value.startsWith('(') && value.contains(',') == false) {
-        value = value.substring(1, value.length());
-      } else if (value.endsWith(')') && value.contains(',') == false) {
-        value = value.substring(0, value.length() - 1);
-      }
       if (value.startsWith('(') && value.endsWith(')')) {
         List<String> values = value.substring(1, value.length() - 1).split(',');
         conditions.add(new WhereFieldCondition(fieldName, criteria, values, calcItemSObjectType));
@@ -286,7 +281,20 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      return whereClausePiece.replace(criteria, '').trim().replaceAll('\'', '').trim();
+      whereClausePiece = whereClausePiece.replace(criteria, '').trim();
+
+      // if it's just a singular value enclosed in quotes, we can just take the inner string
+      if (whereClausePiece.startsWith('\'') && whereClausePiece.endsWith('\'')) {
+        return whereClausePiece.substring(1, whereClausePiece.length() - 1);
+      }
+
+      // otherwise, clean the string up and replace any inner quotes before returning
+      if (whereClausePiece.startsWith('(') && whereClausePiece.contains(',') == false) {
+        whereClausePiece = whereClausePiece.substring(1, whereClausePiece.length());
+      } else if (whereClausePiece.endsWith(')') && whereClausePiece.contains(',') == false) {
+        whereClausePiece = whereClausePiece.substring(0, whereClausePiece.length() - 1);
+      }
+      return whereClausePiece.replaceAll('\'', '').trim();
     }
 
     private void logError(Exception ex) {
