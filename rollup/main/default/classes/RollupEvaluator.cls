@@ -43,7 +43,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     List<String> changedFieldNames = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)
       ? rollupMetadata.ChangedFieldsOnCalcItem__c.split(',')
       : new List<String>();
-    if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c)) {
+    if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c) && oldCalcItems.isEmpty() == false) {
       // detect reparenting
       changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
     }
@@ -53,6 +53,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private class CombinedEvaluator extends RollupEvaluator {
     private final Rollup.Evaluator firstEval;
     private final Rollup.Evaluator secondEval;
+
     public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
       this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
       this.secondEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
@@ -81,7 +82,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = this.changedFieldNames.isEmpty() || this.oldRecordsMap == null;
       for (String fieldName : this.changedFieldNames) {
         // need to trim because list can be comma-separated with leading/trailing spaces
-        if (calcSObject.get(fieldName.trim()) != oldRecord.get(fieldName.trim())) {
+        if (calcSObject.get(fieldName.trim()) != oldRecord?.get(fieldName.trim())) {
           matches = true;
           break;
         }

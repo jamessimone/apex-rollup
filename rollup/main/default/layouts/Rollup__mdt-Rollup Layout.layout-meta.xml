@@ -105,7 +105,7 @@
         <fields>MasterLabel</fields>
         <fields>DeveloperName</fields>
         <fields>NamespacePrefix</fields>
-        <relatedList>RollupLimit__mdt.Rollup__c</relatedList>
+        <relatedList>RollupControl__mdt.Rollup__c</relatedList>
     </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>
     <showHighlightsPanel>false</showHighlightsPanel>

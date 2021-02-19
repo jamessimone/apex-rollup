@@ -4,7 +4,7 @@ private class RollupIntegrationTests {
   // we still don't need to actually update the records to prove the point
   @TestSetup
   static void setup() {
-    Rollup.defaultRollupLimit = new RollupLimit__mdt(ShouldAbortRun__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupIntegrationTests');
     insert acc;
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RollupControl__c</fullName>
+    <description>The Rollup Control metadata relationship in question</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The Rollup Control metadata relationship in question</inlineHelpText>
+    <label>Rollup Control</label>
+    <referenceTo>RollupControl__mdt</referenceTo>
+    <relationshipLabel>Rollups</relationshipLabel>
+    <relationshipName>Rollups</relationshipName>
+    <required>true</required>
+    <type>MetadataRelationship</type>
+    <unique>false</unique>
+</CustomField>

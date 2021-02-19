@@ -69,13 +69,13 @@ You can perform have as many rollups as you'd like per object/trigger — all op
 
 #### Establishing Org Limits For Rollup Operations
 
-When you install `Rollup`, you get two custom metadata types - `Rollup__mdt`, describe above, and `RollupLimit__mdt`. The latter can be used in three different ways:
+When you install `Rollup`, you get two custom metadata types - `Rollup__mdt`, describe above, and `RollupControl__mdt`. The latter can be used in three different ways:
 
-1. if you're using the CMDT trigger-based approach highlighted above to manage your rollups, you can tie the `RollupLimit` record to an individual `Rollup` record
+1. if you're using the CMDT trigger-based approach highlighted above to manage your rollups, you can tie the `RollupControl` record to an individual `Rollup` record
 2. if you're using an invocable/scheduled/custom Apex-based approach, you can use specific patterns to match on the rollup being performed
-3. you can create a record with the API Name `Org_Defaults` to specify master-level overrides for your rollups
+3. you can use the included Rollup Control with API Name `Org_Defaults` to specify master-level overrides for all your rollups
 
-These are the fields on the `Rollup Limit` custom metadata type:
+These are the fields on the `Rollup Control` custom metadata type:
 
 - `Max Lookup Rows Before Batching` - if you are rolling up to an object that interacts in many different ways within the system, `Rollup` moves from using a Queueable based system (read: fast and light) to a Batched Apex approach (read: solid, sometimes slow). You can override the default for switching to Batch Apex by lowering the number of rows. Without an `Org_Default` record, this defaults to `3333`
 - `Max Lookup Rows For Queueable` - if you haven't selected a Batch Apex override, defaults to `5000`

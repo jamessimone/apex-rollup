@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>Can be used to throttle / control individual Rollup rules, or to specify Org Defaults that differ from what&apos;s been stipulated as the default at the field level. Use a record named &quot;Org_Defaults&quot; to control the defaults.</description>
-    <label>Rollup Limit</label>
-    <pluralLabel>Rollup Limits</pluralLabel>
-    <visibility>Public</visibility>
-</CustomObject>
