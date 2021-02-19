@@ -18,21 +18,31 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
   public abstract Boolean matches(Object calcItem);
 
-  public static RollupEvaluator getEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    Boolean isChangedFieldEval = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c);
-    Boolean isWhereClauseEval = String.isNotBlank(rollupMetadata.CalcItemWhereClause__c);
+  public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
+    Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c) || String.isNotBlank(metadata.LookupFieldOnCalcItem__c);
+    Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
+    RollupEvaluator secondEval;
     if (isChangedFieldEval && isWhereClauseEval) {
-      return new CombinedEvaluator(rollupMetadata, oldCalcItems, sObjectType);
+      secondEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
     } else if (isChangedFieldEval) {
-      return getChangedFieldEval(rollupMetadata, oldCalcItems);
+      secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
-      return new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+      secondEval = new WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType);
     }
-    return null;
+
+    if (eval != null && secondEval != null) {
+      return new CombinedEvaluator(eval, secondEval);
+    } else if (eval == null && secondEval != null) {
+      return secondEval;
+    }
+
+    return eval;
   }
 
   private static RollupEvaluator getChangedFieldEval(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems) {
-    List<String> changedFieldNames = rollupMetadata.ChangedFieldsOnCalcItem__c.split(',');
+    List<String> changedFieldNames = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)
+      ? rollupMetadata.ChangedFieldsOnCalcItem__c.split(',')
+      : new List<String>();
     if (String.isNotEmpty(rollupMetadata.LookupFieldOnCalcItem__c)) {
       // detect reparenting
       changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
@@ -41,15 +51,19 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private class CombinedEvaluator extends RollupEvaluator {
-    private final RollupEvaluator changedFiedEval;
-    private final RollupEvaluator whereClauseEval;
+    private final Rollup.Evaluator firstEval;
+    private final Rollup.Evaluator secondEval;
     public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-      this.changedFiedEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
-      this.whereClauseEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+      this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
+      this.secondEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+    }
+    public CombinedEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
+      this.firstEval = firstEval;
+      this.secondEval = secondEval;
     }
 
     public override Boolean matches(Object calcItem) {
-      return this.changedFiedEval.matches(calcItem) && this.whereClauseEval.matches(calcItem);
+      return this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
     }
   }
 
@@ -137,9 +151,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<String> splitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
       try {
         for (String splitWhereClause : splitWheres) {
-          Boolean isOrConditional = isOrConditional(this.whereClause, splitWhereClause);
           List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
-          if (isOrConditional) {
+          if (this.isOrConditional(this.whereClause, splitWhereClause)) {
             this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
           } else {
             this.conditionalGroupings.add(new AndConditionalGrouping(conditions));
@@ -404,7 +417,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             return false;
           }
           for (String val : this.values) {
-            containsCriteria = containsCriteria || storedValue.contains(val);
+            containsCriteria = storedValue.contains(val);
+            if (containsCriteria) {
+              break;
+            }
           }
           isEqual = this.criteria == 'like' ? containsCriteria : containsCriteria == false;
         }

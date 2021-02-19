@@ -1035,7 +1035,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItems,
         oldCalcItems,
         batchRollup,
-        eval != null ? eval : RollupEvaluator.getEvaluator(rollupMetadata, oldCalcItems, sObjectType),
+        RollupEvaluator.getEvaluator(eval, rollupMetadata, oldCalcItems, sObjectType),
         rollupLimit.DeveloperName == LIMIT_INITIALIZED_HERE ? null : rollupLimit.Id,
         rollupInvokePoint,
         rollupMetadata

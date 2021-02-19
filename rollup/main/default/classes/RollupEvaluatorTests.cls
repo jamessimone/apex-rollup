@@ -258,6 +258,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c = 'Amount > 20');
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      null,
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
       Opportunity.SObjectType
@@ -272,9 +273,74 @@ private class RollupEvaluatorTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.AccountId = '0013g000000000000Z';
 
+    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId', CalcItemWhereClause__c = 'Amount > 20');
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(null, rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
+    System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
+  }
+
+  @isTest
+  static void shouldReturnDualEvaluatorWhenEvalIsPassedInAndReparenting() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', AccountId = '0016g000000000000X', Amount = 50);
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.AccountId = '0013g000000000000Z';
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId');
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
+    System.assertEquals(true, eval.matches(opp), 'Should match since always true eval passed in and reparented');
+  }
+
+  @isTest
+  static void shouldReturnDualEvaluatorWhenEvalIsPassedAndCalcItemWhereClause() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50);
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.StageName = 'Old Name';
+
+    Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z',  Amount = 15);
+
     Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20');
 
-    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should match since amount is > 20');
+    System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match since amount is < 20');
+  }
+
+  @isTest
+  static void shouldReturnDoubleDualEvalWhenEvalIsPassedAndCalcItemWhereClauseAndChangedFields() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name');
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.StageName = 'Old Name';
+
+    Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', StageName = 'Same', Amount = 25);
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c = 'Amount > 20');
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
+    System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match since StageName has not changed');
+  }
+
+  private class AlwaysTrueEval implements Rollup.Evaluator {
+    public Boolean matches(Object calcItem) {
+      return true;
+    }
   }
 }
