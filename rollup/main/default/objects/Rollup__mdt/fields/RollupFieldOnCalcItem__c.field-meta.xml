@@ -10,7 +10,7 @@
     <referenceTo>FieldDefinition</referenceTo>
     <relationshipLabel>Rollups2</relationshipLabel>
     <relationshipName>Rollups2</relationshipName>
-    <required>false</required>
+    <required>true</required>
     <type>MetadataRelationship</type>
     <unique>false</unique>
 </CustomField>

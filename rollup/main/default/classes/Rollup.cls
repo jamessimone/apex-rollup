@@ -404,7 +404,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
       RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupType__c = operationName,
+      RollupOperation__c = operationName,
       CalcItemWhereClause__c = potentialWhereClause
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
@@ -535,7 +535,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
           LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
           RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-          RollupType__c = rollupContext + flowInput.rollupOperation.toUpperCase(),
+          RollupOperation__c = rollupContext + flowInput.rollupOperation.toUpperCase(),
           ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
           FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
           FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
@@ -803,7 +803,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
       LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
       RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
-      RollupType__c = rollupOperation.name()
+      RollupOperation__c = rollupOperation.name()
     );
     return runFromApex(new List<Rollup__mdt>{ rollupMetadata }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }
@@ -893,7 +893,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     for (Rollup__mdt rollupInfo : rollupMetadata) {
-      rollupInfo.RollupType__c = rollupContext + rollupInfo.RollupType__c;
+      rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
     }
 
     return shouldReturn
@@ -1006,7 +1006,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
     Map<String, SObjectField> fieldNameToField = describeForSObject.fields.getMap();
     for (Rollup__mdt rollupMetadata : rollupOperations) {
-      Op rollupOp = opNameToOp.get(rollupMetadata.RollupType__c.toUpperCase());
+      Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField lookupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
 

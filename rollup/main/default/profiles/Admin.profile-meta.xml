@@ -69,11 +69,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>Rollup__mdt.CalcItem__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>Rollup__mdt.ChangedFieldsOnCalcItem__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -90,36 +85,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Rollup__mdt.IsFullRecordSet__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Rollup__mdt.LookupFieldOnCalcItem__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Rollup__mdt.LookupFieldOnLookupObject__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Rollup__mdt.LookupObject__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Rollup__mdt.RollupFieldOnCalcItem__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Rollup__mdt.RollupFieldOnLookupObject__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Rollup__mdt.RollupType__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <layoutAssignments>

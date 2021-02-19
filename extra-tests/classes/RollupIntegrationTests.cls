@@ -32,7 +32,7 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = oppCustomField.DurableId,
         LookupFieldOnLookupObject__c = accCustomField.DurableId,
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
-        RollupType__c = 'MAX'
+        RollupOperation__c = 'MAX'
       )
     };
 
@@ -64,7 +64,7 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
         LookupFieldOnLookupObject__c = 'Account.Id',
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
-        RollupType__c = 'SUM',
+        RollupOperation__c = 'SUM',
         IsFullRecordSet__c = true,
         CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
         FullRecalculationDefaultNumberValue__c = 0

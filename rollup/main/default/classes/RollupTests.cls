@@ -261,7 +261,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'SUM'
+        RollupOperation__c = 'SUM'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -285,7 +285,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'sum'
+        RollupOperation__c = 'sum'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -309,7 +309,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'SUM',
+        RollupOperation__c = 'SUM',
         FullRecalculationDefaultNumberValue__c = 100000
       )
     };
@@ -334,7 +334,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
+        RollupOperation__c = 'MAX',
         FullRecalculationDefaultStringValue__c = 'Z'
       )
     };
@@ -361,7 +361,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
-        RollupType__c = 'MAX',
+        RollupOperation__c = 'MAX',
         CalcItemWhereClause__c = 'Name = \'RollupZ\''
       )
     };
@@ -393,7 +393,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'SUM',
+        RollupOperation__c = 'SUM',
         CalcItemWhereClause__c = 'Name != \'RollupZ\'',
         IsFullRecordSet__c = true,
         FullRecalculationDefaultNumberValue__c = 0
@@ -420,7 +420,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'COUNT'
+        RollupOperation__c = 'COUNT'
       ),
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
@@ -428,7 +428,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'NumberOfEmployees',
-        RollupType__c = 'COUNT_DISTINCT'
+        RollupOperation__c = 'COUNT_DISTINCT'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1785,7 +1785,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'SUM'
+        RollupOperation__c = 'SUM'
       )
     };
 
@@ -1825,7 +1825,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'SUM'
+        RollupOperation__c = 'SUM'
       )
     };
 
@@ -1868,7 +1868,7 @@ private class RollupTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupType__c = 'SUM'
+        RollupOperation__c = 'SUM'
       )
     };
 

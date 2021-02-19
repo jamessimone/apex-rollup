@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Only_one_override_can_be_set</fullName>
+    <active>true</active>
+    <description>You can only set the string or number based override for assigning to the lookup object&apos;s rollup field</description>
+    <errorConditionFormula>AND(
+  NOT(ISBLANK(FullRecalculationDefaultStringValue__c)),
+  NOT(ISNULL(FullRecalculationDefaultNumberValue__c))
+)</errorConditionFormula>
+    <errorMessage>You can only set the string or number based override for assigning to the lookup object&apos;s rollup field</errorMessage>
+</ValidationRule>
