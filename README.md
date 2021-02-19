@@ -58,7 +58,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Lookup Field On Calc Item`- the field storing the Id or String referencing a unique value on another object (In the example, Id)
 - `Lookup Field On Lookup Object` - the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Field On Lookup Object` - the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
-- `Rollup Type` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas
+- `Rollup Type` - A picklist field to select the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas in the rollup field itself.
+- `Rollup Control` - link to the Org Defaults for controlling rollups, or set a specific Rollup Control CMDT to be used with this rollup
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
@@ -81,9 +82,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Max Lookup Rows For Queueable` - if you haven't selected a Batch Apex override, defaults to `5000`
 - `Rollup` lookup field to the `Rollup__mdt` metadata record. Optional.
 - `Should Abort Run` - if done at the `Org_Defaults` level, completely shuts down all rollup operations in the org. Otherwise, can be used on an individual rollup basis to turn on/off.
-- `Should Run As Batchable` - if enabled, is the preferred method for running rollup operations. You can only set this or `Should Run As Queueable` to true at once.
-- `Should Run As Queueable` - by default, rollup operations run as Queueables until the aforementioned `5000` record limit unless `Should Run As Batchable` is set to true
-- `Should Run As Sync Operation` - forces the rollup to be performed synchronously. Useful if you have validations on the parent object's rollup field that need to all be handled at once.
+- `Should Run As` - a picklist dictating the preferred method for running rollup operations. Possible values are `Queueable`, `Batchable`, or `Synchronous Rollup`.
 - `Trigger Or Invocable Name` - If you are using custom Apex, a schedulable, or rolling up by way of the Invocable action and can't use the `Rollup` lookup field. Use the pattern `trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup` - for example: 'trigger_opportunity_stagename_to_account_name_rollup' (use lowercase on the field names). If there is a matching Rollup Limit record, those rules will be used. The first part of the string comes from how a rollup has been invoked - either by `trigger`, `invocable`, or `schedule`. A scheduled flow still uses `invocable`!
 
 ### Flow / Process Builder Invocable

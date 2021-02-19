@@ -203,8 +203,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public String runCalc() {
-    // clone because the RollupControl__mdt is read-only when retrieved from the cache
-    RollupControl__mdt orgDefaults = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).clone(true, true);
+    RollupControl__mdt orgDefaults = getSensibleLimitsDefault();
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
     this.ingestRollupControlData(orgDefaults);
 
@@ -248,7 +247,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       totalCountOfRecords += Database.countQuery(countQuery);
     }
 
-    Boolean shouldRunAsBatch = shouldRunAsBatch;// || (orgDefaults.ShouldRunAs__c && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
+    Boolean shouldRunAsBatch =
+      shouldRunAsBatch || (orgDefaults.ShouldRunAs__c == 'Batchable' && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
     if (this.syncRollups.isEmpty() == false) {
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
@@ -1027,7 +1027,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       RollupControl__mdt rollupControl;
       if (clonedMetadata.RollupControl__c != null) {
         // for CMDT-driven rollups, the rollup record is always tied to a RollupControl__mdt record
-        rollupControl = getSingleControlOrDefault(RollupControl__mdt.Id, clonedMetadata.RollupControl__c, null);
+        rollupControl = new RollupControl__mdt(Id = clonedMetadata.RollupControl__c);
       } else {
         String controlKey = getRollupControlKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupSObjectType, rollupFieldOnOpObject);
         rollupControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, null);
@@ -1223,8 +1223,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static RollupControl__mdt getSensibleLimitsDefault() {
-    RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
-    if(sensibleDefault == null) {
+    // clone because the RollupControl__mdt is read-only when retrieved from the cache
+    RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS).clone(true, true);
+    if (sensibleDefault == null) {
       // this *should* be impossible, since the record is included on install, but ...
       sensibleDefault = new RollupControl__mdt(
         DeveloperName = CONTROL_ORG_DEFAULTS,
@@ -1365,8 +1366,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       } else if (rollupSpecificControl.ShouldRunAs__c == 'Queueable') {
         // once you've been opted into batching, it should stick
         shouldRunAsBatch = shouldRunAsBatch || false;
-      }
-      else if (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup') {
+      } else if (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup') {
         this.rollups.remove(index);
         this.syncRollups.add(rollup);
       }
@@ -1393,7 +1393,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Map<Id, SObject> oldCalcItems = rollup.oldCalcItems;
         for (Integer index = calcItems.size() - 1; index >= 0; index--) {
           SObject calcItem = calcItems[index];
-          if(rollup.eval?.matches(calcItem) == false && rollup.metadata?.IsFullRecordSet__c == true) {
+          if (rollup.eval?.matches(calcItem) == false && rollup.metadata?.IsFullRecordSet__c == true) {
             // technically it should only be possible for a calc item that doesn't match
             // to still exist if it is a Full Record Set operation; this gives people the chance
             // to reset rollup values if none of the records passed in match the eval criteria

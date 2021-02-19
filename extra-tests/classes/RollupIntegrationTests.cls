@@ -51,6 +51,7 @@ private class RollupIntegrationTests {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     List<Opportunity> opps = [SELECT Id, Name, AmountFormula__c, AccountId FROM Opportunity];
+    System.assertEquals(1, opps[0].AmountFormula__c, 'Test has started with wrong opp conditions!');
     Rollup.records = opps;
     Rollup.shouldRun = true;
 
@@ -77,6 +78,6 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(1, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
+    System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 }

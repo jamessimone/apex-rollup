@@ -2396,7 +2396,6 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(AnnualRevenue = 300, Name = 'AnotherRollupTest');
     insert oldAcc;
-
     Rollup.defaultControl = null;
 
     Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50, AccountId = acc.Id);
@@ -2511,7 +2510,6 @@ private class RollupTests {
     Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    System.debug(mock.Records);
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated COUNT DISTINCT AFTER_UPDATE reparenting STRING: ' + mock.Records);
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
