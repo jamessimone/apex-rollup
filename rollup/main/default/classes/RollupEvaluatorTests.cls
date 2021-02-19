@@ -239,12 +239,23 @@ private class RollupEvaluatorTests {
   static void shouldReturnCorrectlyWhenQueryKeywordsWithSpacesArePartOfString() {
     // even worse than the above - imagine a Name field "This in That" returning false
     // because we've mistakenly transformed it into "This = that" 🤦‍♂️
-
     Opportunity nameShouldMatch = new Opportunity(Name = 'This in That');
     String whereClause = 'Name = \'This in That\'';
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
     System.assertEquals(true, eval.matches(nameShouldMatch), 'Name should match');
+  }
+
+  @isTest
+  static void shouldCorrectlyIdentifyIncludesForMultiSelectPicklists() {
+    // QuickText.Channel is the only multi-select picklist in a vanilla Salesforce org
+    QuickText qt = new QuickText(Channel='AAA;BBB');
+    QuickText nonMatch = new QuickText(Channel='AAA');
+    String whereClause = 'Channel INCLUDES (\'AAA;BBB\')';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, QuickText.SObjectType);
+    System.assertEquals(true, eval.matches(qt), 'Channel should match');
+    System.assertNotEquals(true, eval.matches(nonMatch), 'Does not have full picklist val, should not match');
   }
 
   @isTest

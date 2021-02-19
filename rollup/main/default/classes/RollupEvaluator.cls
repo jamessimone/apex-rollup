@@ -13,7 +13,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     ' <> ' => ' != ',
     ' in ' => ' = ',
     ' IN ' => ' = ',
-    ' LIKE ' => ' like '
+    ' LIKE ' => ' like ',
+    ' INCLUDES ' => ' like ',
+    ' includes ' => ' like ',
+    ' EXCLUDES ' => ' !like ',
+    ' excludes ' => ' !like '
   };
 
   public abstract Boolean matches(Object calcItem);
@@ -297,9 +301,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
       whereClausePiece = whereClausePiece.replace(criteria, '').trim();
 
-      // if it's just a singular value enclosed in quotes, we can just take the inner string
+      // if it's just a singular value enclosed in quotes or a multi-select picklist, we can just take the inner string
       if (whereClausePiece.startsWith('\'') && whereClausePiece.endsWith('\'')) {
         return whereClausePiece.substring(1, whereClausePiece.length() - 1);
+      } else if(whereClausePiece.startsWith('(') && whereClausePiece.endsWith(')') && whereClausePiece.contains(';')) {
+        return whereClausePiece.substring(1, whereClausePiece.length() - 1).replaceAll('\'', '').trim();
       }
 
       // otherwise, clean the string up and replace any inner quotes before returning
