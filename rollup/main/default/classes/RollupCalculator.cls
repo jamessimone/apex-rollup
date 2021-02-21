@@ -51,7 +51,7 @@ public without sharing abstract class RollupCalculator {
         lookupKeyField
       );
     } else if (op.name().contains(Rollup.Op.FIRST.name()) || op.name().contains(Rollup.Op.LAST.name())) {
-      return new FirstLastRollupCalculator(
+      FirstLastRollupCalculator firstLastCalc = new FirstLastRollupCalculator(
         priorVal,
         op,
         opFieldOnCalcItem,
@@ -60,6 +60,8 @@ public without sharing abstract class RollupCalculator {
         lookupRecordKey,
         lookupKeyField
       );
+      firstLastCalc.setOrderByField(metadata);
+      return firstLastCalc;
     } else if (priorVal instanceof Decimal) {
       return new DecimalRollupCalculator(
         priorVal,
@@ -248,7 +250,7 @@ public without sharing abstract class RollupCalculator {
   }
   public virtual void handleUpdateFirstLast(SObject calcItem, Map<Id, SObject> oldCalcItems) {
   }
-  public virtual void handleDeleteFirstLast(SObject calcItem){
+  public virtual void handleDeleteFirstLast(SObject calcItem) {
   }
   protected virtual void handleShortCircuit(SObject calcItem) {
   }
@@ -842,6 +844,8 @@ public without sharing abstract class RollupCalculator {
   }
 
   private class FirstLastRollupCalculator extends RollupCalculator {
+    private String orderByField;
+
     public FirstLastRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -854,10 +858,90 @@ public without sharing abstract class RollupCalculator {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
     }
 
+    public void setOrderByField(Rollup__mdt metadata) {
+      this.orderByField = metadata.OrderByFirstLast__c;
+    }
+
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      if (calcItems.isEmpty()) {
+        return;
+      }
+      SObjectType sObjectType = calcItems[0].getSObjectType();
+      Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       // a full-recalc is always necessary because we don't retain the information about the order by field
-      // TODO need to consider the query limits for this method, and any other RollupCalculator where a full recalc
-      // is performed (Average) for each parent item
+      calcItems.addAll(Database.query(Rollup.getQueryString(sObjectType, new List<String>{ String.valueOf(this.opFieldOnCalcItem) }, 'Id', '!=')));
+
+      new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
+      this.returnVal = calcItems[0].get(this.opFieldOnCalcItem);
+    }
+  }
+
+  private class FirstLastSorter {
+    private final Boolean isFirst;
+    private final String orderByField;
+
+    private final Integer moveTowardFrontOfList = 1;
+    private final Integer moveTowardBackOfList = -1;
+
+    public FirstLastSorter(Rollup.Op op, String orderByField) {
+      this.isFirst = op.name().contains(Rollup.Op.FIRST.name());
+      this.orderByField = orderByField;
+    }
+
+    public Integer compare(Object o1, Object o2) {
+      Integer returnVal = 0;
+      SObject objOne = (SObject) o1;
+      SObject objTwo = (SObject) o2;
+
+      Object potentialFirstVal = objOne.get(this.orderByField);
+      Object potentialSecondVal = objTwo.get(this.orderByField);
+
+      // nulls last
+      if(potentialFirstVal == null && potentialSecondVal != null) {
+        returnVal = this.moveTowardFrontOfList;
+      } else if(potentialSecondVal == null && potentialFirstVal != null) {
+        returnVal = this.moveTowardBackOfList;
+      } else if (potentialFirstVal == null && potentialSecondVal == null) {
+        return returnVal;
+      }
+
+      if(potentialFirstVal instanceof Datetime && potentialFirstVal != potentialSecondVal) {
+        Datetime firstVal = (Datetime) potentialFirstVal;
+        Datetime secondVal = (Datetime) potentialSecondVal;
+
+        returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+      }
+
+      return this.isFirst ? returnVal : returnVal * -1;
+    }
+
+    public void sort(Object[] values) {
+      ComparableItem[] wrappedItems = new List<ComparableItem>();
+
+      for (Object value : values) {
+        wrappedItems.add(new ComparableItem(this, value));
+      }
+
+      wrappedItems.sort();
+
+      values.clear();
+      for (ComparableItem item : wrappedItems) {
+        values.add(item.value);
+      }
+    }
+  }
+
+  private class ComparableItem implements System.Comparable {
+    private final FirstLastSorter sorter;
+    private final Object value;
+
+    public ComparableItem(FirstLastSorter sorter, Object value) {
+      this.sorter = sorter;
+      this.value = value;
+    }
+
+    public Integer compareTo(Object o) {
+      return sorter.compare(value, ((ComparableItem) o).value);
     }
   }
 }
