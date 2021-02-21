@@ -30,7 +30,7 @@ private class RollupFieldInitializerTests {
     System.assertEquals('', initializer.getDefaultValue(Account.Phone), 'phone');
     System.assertEquals('', initializer.getDefaultValue(Contact.Email), 'email');
     System.assertEquals('', initializer.getDefaultValue(Contact.AccountId), 'reference');
-    System.assertEquals('', initializer.getDefaultValue(Task.Subject), 'combobox');
+    System.assertEquals(Task.Subject.getDescribe().getDefaultValue() != null ? Task.Subject.getDescribe().getDefaultValue() : '', initializer.getDefaultValue(Task.Subject), 'combobox');
   }
 
   @isTest
