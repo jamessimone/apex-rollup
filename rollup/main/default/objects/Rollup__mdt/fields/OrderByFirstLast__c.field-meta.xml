@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>OrderByFirstLast__c</fullName>
+    <description>In FIRST or LAST operations, specify the string for the API Name of the field to order calc items by. Text is used instead of a Field Definition so that you can specify ordering by a parent&apos;s field.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>In FIRST or LAST operations, specify the string for the API Name of the field to order calc items by. Text is used instead of a Field Definition so that you can specify ordering by a parent&apos;s field.</inlineHelpText>
+    <label>Order By (First/Last)</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

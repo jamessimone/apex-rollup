@@ -2,7 +2,7 @@
 private class RollupFieldInitializerTests {
   @isTest
   static void shouldReturnDefaultForNumberFields() {
-    RollupFieldInitializer initializer = new RollupFieldInitializer();
+    RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
     System.assertEquals(0, initializer.getDefaultValue(Campaign.NumberSent), 'double');
     System.assertEquals(0, initializer.getDefaultValue(Account.AnnualRevenue), 'currency');
@@ -12,7 +12,7 @@ private class RollupFieldInitializerTests {
 
   @isTest
   static void shouldReturnDefaultsForDates() {
-    RollupFieldInitializer initializer = new RollupFieldInitializer();
+    RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
     System.assertEquals(initializer.defaultDateTime, initializer.getDefaultValue(Task.ReminderDatetime), 'datetime');
     System.assertEquals(initializer.defaultDateTime.dateGmt(), initializer.getDefaultValue(Opportunity.CloseDate), 'date');
@@ -21,7 +21,7 @@ private class RollupFieldInitializerTests {
 
   @isTest
   static void shouldReturnDefaultsForStrings() {
-    RollupFieldInitializer initializer = new RollupFieldInitializer();
+    RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
     System.assertEquals('', initializer.getDefaultValue(Account.Id), 'Id');
     System.assertEquals('', initializer.getDefaultValue(Task.Description), 'text area');
@@ -44,7 +44,7 @@ private class RollupFieldInitializerTests {
       return;
     }
 
-    RollupFieldInitializer initializer = new RollupFieldInitializer();
+    RollupFieldInitializer initializer = RollupFieldInitializer.Current;
     System.assertEquals(picklistEntries[0].getValue(), initializer.getDefaultValue(Account.Industry));
 
     // multi-select
@@ -88,7 +88,7 @@ private class RollupFieldInitializerTests {
 
   @isTest
   static void shouldThrowForUnhandledTypes() {
-    RollupFieldInitializer initializer = new RollupFieldInitializer();
+    RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
     Exception ex;
     try {
