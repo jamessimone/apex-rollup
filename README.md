@@ -68,6 +68,15 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 
 You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
+#### Notes On The Use Of CMDT To Control Your Rollups
+
+There are two limitations to Entity Definition relationships that currently exist:
+
+1. They cannot refer to the User object
+2. They cannot refer to the Task/Event objects
+
+For rollups referring to these objects, you can use either the Invocable or the static methods exposed on `Rollup` from Apex to roll values up.
+
 #### Establishing Org Limits For Rollup Operations
 
 When you install `Rollup`, you get two custom metadata types - `Rollup__mdt`, describe above, and `RollupControl__mdt`. The latter can be used in three different ways:
