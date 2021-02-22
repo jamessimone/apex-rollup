@@ -457,8 +457,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           for (String value : this.values) {
             List<String> splitValues = value.split(';');
             for (String splitValue : splitValues) {
-              // for this one, we can't break early; it's only true if all values match
               isEqual = storedValue.contains(splitValue);
+              if(isEqual == false) {
+                break;
+              }
             }
           }
           isEqual = this.criteria == 'includes' ? isEqual : isEqual == false;

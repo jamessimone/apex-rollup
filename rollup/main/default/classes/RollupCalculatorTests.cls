@@ -81,6 +81,31 @@ private class RollupCalculatorTests {
   }
 
   @isTest
+  static void shouldReturnMiddleValueWhenFirstAndLastAreNull() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.FIRST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 1),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 2, CloseDate = System.today()),
+        new Opportunity(Id = '0066g00003VDGbF003', Amount = 15)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(2, (Decimal) calc.getReturnValue());
+  }
+
+  @isTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(

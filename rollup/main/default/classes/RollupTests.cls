@@ -20,16 +20,30 @@ private class RollupTests {
     }
   }
 
+  static Object testPriorVal;
+  static Rollup.Op testOp;
+  static SObjectField testOpFieldOnCalcItem;
+  static SObjectField testOpFieldOnLookupObject;
+  static Rollup__mdt testMetadata;
+  static String testLookupRecordKey;
+  static SObjectField testLookupKeyField;
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
-    Object priorVal,
-    Rollup.Op op,
-    SObjectfield opFieldOnCalcItem,
-    SObjectField opFieldOnLookupObject,
-    Rollup__mdt metadata,
-    String lookupRecordKey,
-    SObjectField lookupKeyField
+      Object priorVal,
+      Rollup.Op op,
+      SObjectfield opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      String lookupRecordKey,
+      SObjectField lookupKeyField
     ) {
+      testPriorVal = priorVal;
+      testOp = op;
+      testOpFieldOnCalcItem = opFieldOnCalcItem;
+      testOpFieldOnLookupObject = opFieldOnLookupObject;
+      testMetadata = metadata;
+      testLookupRecordKey = lookupRecordKey;
+      testLookupKeyField = lookupKeyField;
       return new RollupCalcMock();
     }
   }
@@ -1349,6 +1363,110 @@ private class RollupTests {
     Rollup.lastFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'CloseDate').runCalc();
     Test.stopTest();
     System.assertEquals(true, calcMockWasCalled);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForAverage() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForCountDistinct() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForConcatDistinct() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a').runCalc();
+    Test.stopTest();
+
+    System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForConcat() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a').runCalc();
+    Test.stopTest();
+
+    System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForCount() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForFirst() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.firstFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForLast() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.lastFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForMin() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
   // Now we test different field types for success: time, datetime, date. Here be dragons.
