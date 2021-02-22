@@ -402,7 +402,7 @@ npm -i
 I use Prettier in conjunction with the `prettier-apex` plugin for formatting Apex. There are (hopefully) minor stylistic choices that I have made and hope any contributors will respect when modifying the code:
 
 - Format On Save. I let Prettier do all the heavy lifting
-- Column length (set in `.prettierrc`) is set to `160`. That's a _little_ wide for laptop developers. I know, as I've spent a good portion of time on my personal Thinkpad working on this project. Still, for a desktop it's perfect for reducing lines of code. Forgive me.
+- Column length (set in `.prettierrc`) is set to `160`. That's a _little_ wide for laptop developers. I know, as I've spent a good portion of time on my personal Thinkpad working on this project. Still, for a desktop it's perfect for reducing lines of code. Forgive me - as the project matures, I am working to break down the dependency tree so that the individual classes are more manageable, with the end goal of reducing the column width to something more reasonable, like `120` or perhaps `140`.
 - Spaces ... are .... set to `2`. Pretty unusual for Java-ish languages, but as I am looking to keep this all in one class, it really helped with increasing readability / reducing LOC
 
 Further instructions for contributions are listed [in the Contributing doc](./Contributing.md). Please ensure the guidelines enumerated there are respected when submitting pull requests.
