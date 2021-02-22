@@ -1734,11 +1734,6 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldTakeFirstValueOnInsert() {
-
-  }
-
-  @isTest
   static void shouldThrowExceptionWhenTryingToOperateOnDisallowedFieldTypes() {
     Account acc = [SELECT Id FROM Account];
     DMLMock mock = loadMock(new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) });
