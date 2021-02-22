@@ -328,15 +328,14 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
-      Boolean isGroupable = this.opFieldOnCalcItem.getDescribe().isGroupable();
-      List<String> queryFields = new List<String>{ String.valueOf(this.opFieldOnCalcItem) };
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
-      if (isGroupable && isArchivable == false) {
+      Boolean isGroupable = isArchivable == false && this.opFieldOnCalcItem.getDescribe().isGroupable();
+      List<String> queryFields = new List<String>{ String.valueOf(this.opFieldOnCalcItem) };
+      if (isGroupable) {
         queryFields.add('COUNT(Id)');
       }
       String query =
-        Rollup.getQueryString(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
-        (isGroupable && isArchivable == false ? (' GROUP BY ' + this.opFieldOnCalcItem) : '');
+        Rollup.getQueryString(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) + (isGroupable ? (' GROUP BY ' + this.opFieldOnCalcItem) : '');
       List<SObject> results = Database.query(query);
       for (SObject res : results) {
         // have to use the String representation of the this.opFieldOnCalcItem to avoid:
