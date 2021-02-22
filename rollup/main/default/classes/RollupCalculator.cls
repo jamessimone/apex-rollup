@@ -194,15 +194,6 @@ public without sharing abstract class RollupCalculator {
           when DELETE_CONCAT, DELETE_CONCAT_DISTINCT {
             this.handleDeleteConcat(calcItem);
           }
-          when FIRST, LAST {
-            this.handleFirstLast(calcItem);
-          }
-          when UPDATE_FIRST, UPDATE_LAST {
-            this.handleUpdateFirstLast(calcItem, oldCalcItems);
-          }
-          when DELETE_FIRST, DELETE_LAST {
-            this.handleDeleteFirstLast(calcItem);
-          }
         }
       }
 
@@ -245,12 +236,6 @@ public without sharing abstract class RollupCalculator {
   public virtual void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
   }
   public virtual void handleDeleteConcat(SObject calcItem) {
-  }
-  public virtual void handleFirstLast(Sobject calcItem) {
-  }
-  public virtual void handleUpdateFirstLast(SObject calcItem, Map<Id, SObject> oldCalcItems) {
-  }
-  public virtual void handleDeleteFirstLast(SObject calcItem) {
   }
   protected virtual void handleShortCircuit(SObject calcItem) {
   }
@@ -908,6 +893,16 @@ public without sharing abstract class RollupCalculator {
       if(potentialFirstVal instanceof Datetime && potentialFirstVal != potentialSecondVal) {
         Datetime firstVal = (Datetime) potentialFirstVal;
         Datetime secondVal = (Datetime) potentialSecondVal;
+
+        returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+      } else if(potentialFirstVal instanceof String) {
+        String firstVal = (String) potentialFirstVal;
+        String secondVal = (String) potentialSecondVal;
+
+        returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+      } else if(potentialFirstVal instanceof Decimal) {
+        Decimal firstVal = (Decimal) potentialFirstVal;
+        Decimal secondVal = (Decimal) potentialSecondVal;
 
         returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
       }

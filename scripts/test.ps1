@@ -12,6 +12,10 @@ if(Test-Path ".\DEVHUB_SFDX_URL.txt") {
   $orgInfo.result.sfdxAuthUrl | Out-File -FilePath ".\DEVHUB_SFDX_URL.txt"
 }
 
+Write-Output "Copying deploy SFDX project json file to root directory, storing backup in /scripts"
+Copy-Item -Path ./sfdx-project.json -Destination ./scripts/sfdx-project.json
+Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.json -Force
+
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
 sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
@@ -21,7 +25,7 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 # Also store test command shared between script branches, below
 $scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests" -c -d ./tests/apex -r human -w 20'
+$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests" -c -d ./tests/apex -r human -w 20'
 Write-Output "Test command to use: $testInvocation"
 
 if($scratchOrgAllotment -gt 0) {
@@ -59,5 +63,9 @@ if($orgInfo.result.username -And $userNameHasBeenSet) {
   Write-Output "Resetting SFDX to previously authorized org"
   sfdx force:config:set defaultusername=$priorUserName
 }
+
+Write-Output "Resetting SFDX project JSON at project root"
+Copy-Item -Path ./scripts/sfdx-project.json -Destination ./sfdx-project.json -Force
+Remove-Item -Path ./scripts/sfdx-project.json
 
 Write-Output "Build + testing finished successfully, preparing to upload code coverage"
