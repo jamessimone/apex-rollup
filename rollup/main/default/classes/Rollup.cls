@@ -597,7 +597,34 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField averageFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return averageFromApex(averageFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, averageFieldOnOperationObject, lookupSobjectType, null);
+    return averageFromApex(
+      averageFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      averageFieldOnOperationObject,
+      lookupSobjectType,
+      null,
+      null
+    );
+  }
+
+  global static Rollup averageFromApex(
+    SObjectField averageFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField averageFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue
+  ) {
+    return averageFromApex(
+      averageFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      averageFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
   }
 
   global static Rollup averageFromApex(
@@ -606,9 +633,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField sumFieldOnOpOject,
     SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue,
     Evaluator eval
   ) {
-    return operateFromApex(averageFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.AVERAGE, eval);
+    return operateFromApex(
+      averageFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      sumFieldOnOpOject,
+      lookupSobjectType,
+      Op.AVERAGE,
+      defaultRecalculationValue,
+      eval
+    );
   }
 
   global static Rollup countDistinctFromApex(
@@ -624,6 +661,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       lookupFieldOnOperationObject,
       countDistinctFieldOnOperationObject,
       lookupSobjectType,
+      null,
       null
     );
   }
@@ -634,6 +672,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField countDistinctFieldOnOperationObject,
     SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue
+  ) {
+    return countDistinctFromApex(
+      countDistinctFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      countDistinctFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
+  }
+
+  global static Rollup countDistinctFromApex(
+    SObjectField countDistinctFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField countDistinctFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue,
     Evaluator eval
   ) {
     return operateFromApex(
@@ -643,6 +701,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       countDistinctFieldOnOperationObject,
       lookupSobjectType,
       Op.COUNT_DISTINCT,
+      defaultRecalculationValue,
       eval
     );
   }
@@ -660,6 +719,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       lookupFieldOnOperationObject,
       concatFieldOnOperationObject,
       lookupSobjectType,
+      null,
       null
     );
   }
@@ -670,6 +730,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField concatFieldOnOperationObject,
     SObjectType lookupSobjectType,
+    String defaultRecalculationValue
+  ) {
+    return concatDistinctFromApex(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
+  }
+
+  global static Rollup concatDistinctFromApex(
+    SObjectField concatFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField concatFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    String defaultRecalculationValue,
     Evaluator eval
   ) {
     return operateFromApex(
@@ -679,6 +759,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       concatFieldOnOperationObject,
       lookupSobjectType,
       Op.CONCAT_DISTINCT,
+      defaultRecalculationValue,
       eval
     );
   }
@@ -690,7 +771,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField concatFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return concatFromApex(concatFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, concatFieldOnOperationObject, lookupSobjectType, null);
+    return concatFromApex(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSobjectType,
+      null,
+      null
+    );
   }
 
   global static Rollup concatFromApex(
@@ -699,6 +788,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField concatFieldOnOperationObject,
     SObjectType lookupSobjectType,
+    String defaultRecalculationValue
+  ) {
+    return concatFromApex(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
+  }
+
+  global static Rollup concatFromApex(
+    SObjectField concatFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField concatFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    String defaultRecalculationValue,
     Evaluator eval
   ) {
     return operateFromApex(
@@ -708,6 +817,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       concatFieldOnOperationObject,
       lookupSobjectType,
       Op.CONCAT,
+      defaultRecalculationValue,
       eval
     );
   }
@@ -719,7 +829,34 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField countFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return countFromApex(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, countFieldOnOperationObject, lookupSobjectType, null);
+    return countFromApex(
+      countFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      countFieldOnOperationObject,
+      lookupSobjectType,
+      null,
+      null
+    );
+  }
+
+  global static Rollup countFromApex(
+    SObjectField countFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField countFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue
+  ) {
+    return countFromApex(
+      countFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      countFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
   }
 
   global static Rollup countFromApex(
@@ -728,9 +865,148 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField sumFieldOnOpOject,
     SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue,
     Evaluator eval
   ) {
-    return operateFromApex(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.COUNT, eval);
+    return operateFromApex(
+      countFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      sumFieldOnOpOject,
+      lookupSobjectType,
+      Op.COUNT,
+      defaultRecalculationValue,
+      eval
+    );
+  }
+
+  global static Rollup firstFromApex(
+    SObjectField firstFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField firstFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    String orderByFirstLast
+  ) {
+    return firstFromApex(
+      firstFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      firstFieldOnOpObject,
+      lookupSobjectType,
+      null,
+      orderByFirstLast,
+      null
+    );
+  }
+
+  global static Rollup firstFromApex(
+    SObjectField firstFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField firstFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    String orderByFirstLast
+  ) {
+    return firstFromApex(
+      firstFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      firstFieldOnOpObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      orderByFirstLast,
+      null
+    );
+  }
+
+  global static Rollup firstFromApex(
+    SObjectField firstFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField firstFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    String orderByFirstLast,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      firstFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      firstFieldOnOpObject,
+      lookupSobjectType,
+      Op.FIRST,
+      defaultRecalculationValue,
+      orderByFirstLast,
+      eval
+    );
+  }
+
+  global static Rollup lastFromApex(
+    SObjectField lastFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField lastFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    String orderByFirstLast
+  ) {
+    return lastFromApex(
+      lastFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      lastFieldOnOpObject,
+      lookupSobjectType,
+      null,
+      orderByFirstLast,
+      null
+    );
+  }
+
+
+  global static Rollup lastFromApex(
+    SObjectField lastFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField lastFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    String orderByFirstLast
+  ) {
+    return lastFromApex(
+      lastFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      lastFieldOnOpObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      orderByFirstLast,
+      null
+    );
+  }
+
+  global static Rollup lastFromApex(
+    SObjectField lastFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField lastFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    String orderByFirstLast,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      lastFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      lastFieldOnOpObject,
+      lookupSobjectType,
+      Op.LAST,
+      defaultRecalculationValue,
+      orderByFirstLast,
+      eval
+    );
   }
 
   global static Rollup maxFromApex(
@@ -740,7 +1016,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField maxFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return maxFromApex(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, null);
+    return maxFromApex(
+      maxFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      maxFieldOnOperationObject,
+      lookupSobjectType,
+      null,
+      null
+    );
   }
 
   global static Rollup maxFromApex(
@@ -749,9 +1033,38 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField maxFieldOnOperationObject,
     SObjectType lookupSobjectType,
+    Object defaultRecalculationValue
+  ) {
+    return maxFromApex(
+      maxFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      maxFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
+  }
+
+  global static Rollup maxFromApex(
+    SObjectField maxFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField maxFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
     Evaluator eval
   ) {
-    return operateFromApex(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, Op.MAX, eval);
+    return operateFromApex(
+      maxFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      maxFieldOnOperationObject,
+      lookupSobjectType,
+      Op.MAX,
+      defaultRecalculationValue,
+      eval
+    );
   }
 
   global static Rollup minFromApex(
@@ -761,7 +1074,34 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField minFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return minFromApex(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOperationObject, lookupSobjectType, null);
+    return minFromApex(
+      minFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      minFieldOnOperationObject,
+      lookupSobjectType,
+      null,
+      null
+    );
+  }
+
+  global static Rollup minFromApex(
+    SObjectField minFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField minFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue
+  ) {
+    return minFromApex(
+      minFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      minFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
   }
 
   global static Rollup minFromApex(
@@ -770,20 +1110,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField lookupFieldOnOperationObject,
     SObjectField minFieldOnOpOject,
     SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
     Evaluator eval
   ) {
-    return operateFromApex(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOpOject, lookupSobjectType, Op.MIN, eval);
-  }
-
-  global static Rollup sumFromApex(
-    SObjectField sumFieldOnCalcItem,
-    SObjectField lookupFieldOnCalcItem,
-    SObjectField lookupFieldOnOperationObject,
-    SObjectField sumFieldOnOpOject,
-    SObjectType lookupSobjectType,
-    Evaluator eval
-  ) {
-    return operateFromApex(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, Op.SUM, eval);
+    return operateFromApex(
+      minFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      minFieldOnOpOject,
+      lookupSobjectType,
+      Op.MIN,
+      defaultRecalculationValue,
+      eval
+    );
   }
 
   global static Rollup sumFromApex(
@@ -793,7 +1132,55 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField sumFieldOnOpOject,
     SObjectType lookupSobjectType
   ) {
-    return sumFromApex(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, null);
+    return sumFromApex(
+      sumFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      sumFieldOnOpOject,
+      lookupSobjectType,
+      null,
+      null
+    );
+  }
+
+  global static Rollup sumFromApex(
+    SObjectField sumFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField sumFieldOnOpOject,
+    SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue
+  ) {
+    return sumFromApex(
+      sumFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      sumFieldOnOpOject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      null
+    );
+  }
+
+  global static Rollup sumFromApex(
+    SObjectField sumFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField sumFieldOnOpOject,
+    SObjectType lookupSobjectType,
+    Decimal defaultRecalculationValue,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      sumFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      sumFieldOnOpOject,
+      lookupSobjectType,
+      Op.SUM,
+      defaultRecalculationValue,
+      eval
+    );
   }
 
   private static Rollup operateFromApex(
@@ -803,6 +1190,31 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField operationFieldOnOperationObject,
     SObjectType lookupSObjectType,
     Op rollupOperation,
+    Object defaultRecalculationValue,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      operationFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      operationFieldOnOperationObject,
+      lookupSObjectType,
+      rollupOperation,
+      defaultRecalculationValue,
+      null,
+      eval
+    );
+  }
+
+  private static Rollup operateFromApex(
+    SObjectField operationFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField operationFieldOnOperationObject,
+    SObjectType lookupSObjectType,
+    Op rollupOperation,
+    Object defaultRecalculationValue,
+    String orderByFirstLast,
     Evaluator eval
   ) {
     Rollup__mdt rollupMetadata = new Rollup__mdt(
@@ -811,8 +1223,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
       LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
       RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
-      RollupOperation__c = rollupOperation.name()
+      RollupOperation__c = rollupOperation.name(),
+      OrderByFirstLast__c = orderByFirstLast
     );
+    if (defaultRecalculationValue instanceof Decimal) {
+      rollupMetadata.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
+    } else if (defaultRecalculationValue instanceof String) {
+      rollupMetadata.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
+    }
     return runFromApex(new List<Rollup__mdt>{ rollupMetadata }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }
 
@@ -1465,7 +1883,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private Object getRollupVal(Rollup roll, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
-    RollupCalculator rollupCalc = RollupCalculator.getCalculator(
+    RollupCalculator rollupCalc = RollupCalculator.Factory.getCalculator(
       priorVal,
       roll.op,
       roll.opFieldOnCalcItem,

@@ -10,8 +10,21 @@ public without sharing abstract class RollupCalculator {
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
 
-  // Factory method
-  public static RollupCalculator getCalculator(
+  @testVisible
+  private static Factory testFactory;
+
+  public static Factory Factory {
+    get {
+      if (Factory == null) {
+        Factory = testFactory == null ? new RollupCalculator.Factory() : testFactory;
+      }
+      return Factory;
+    }
+    set;
+  }
+
+  public virtual class Factory {
+    public virtual RollupCalculator getCalculator(
     Object priorVal,
     Rollup.Op op,
     SObjectfield opFieldOnCalcItem,
@@ -119,8 +132,9 @@ public without sharing abstract class RollupCalculator {
       throw new IllegalArgumentException('Calculation not defined for: ' + JSON.serialize(priorVal));
     }
   }
+  }
 
-  private RollupCalculator(
+  protected RollupCalculator(
     Object priorVal,
     Rollup.Op op,
     SObjectField opFieldOnCalcItem,
