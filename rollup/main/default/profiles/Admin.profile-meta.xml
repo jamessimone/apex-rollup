@@ -54,6 +54,16 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>RollupControl__mdt.MaxQueryRows__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupControl__mdt.MaxRollupRetries__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>RollupControl__mdt.ShouldAbortRun__c</field>
         <readable>true</readable>
     </fieldPermissions>

@@ -23,9 +23,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static Integer maxQueryRowOverride;
 
   private static Boolean isCDC = false;
-
+  private static Boolean isDeferralAllowed = true;
+  private static Integer stackDepth = 0;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
-  private static final String LIMIT_INITIALIZED_HERE = 'Sensible_Defaults';
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -47,6 +47,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private Boolean isNoOp;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
+  private RollupControl__mdt rollupControl;
 
   /**
    * receiving an interface/subclass from a property get/set (from the book "The Art Of Unit Testing") is an old technique;
@@ -82,6 +83,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         rollups = new List<Rollup>();
       }
       return rollups;
+    }
+    set;
+  }
+
+  private List<Rollup> deferredRollups {
+    get {
+      if (deferredRollups == null) {
+        deferredRollups = new List<Rollup>();
+      }
+      return deferredRollups;
     }
     set;
   }
@@ -209,6 +220,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   public String runCalc() {
     // clone because the RollupControl__mdt is read-only when retrieved from the cache
     RollupControl__mdt orgDefaults = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).clone(true, true);
+    this.rollupControl = orgDefaults;
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
     this.ingestRollupControlData(orgDefaults);
 
@@ -249,7 +261,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Integer totalCountOfRecords = 0;
     for (String countQuery : queryCountsToLookupIds.keySet()) {
       Set<String> objIds = queryCountsToLookupIds.get(countQuery);
-      totalCountOfRecords += Database.countQuery(countQuery);
+      totalCountOfRecords += getCountFromDb(countQuery, objIds);
     }
 
     Boolean shouldRunAsBatch =
@@ -396,8 +408,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType calcItemType = getSObjectTypeFromName(calcItemSObjectName);
     String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, 'Id', '!=');
-    Set<Id> objIds = new Set<Id>(); // get everything that doesn't have a null Id - a pretty trick
-    Integer amountOfCalcItems = Database.countQuery(countQuery);
+
+    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
+    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
 
     // emptyRollup only used to call "getMaxQueryRows" below
     Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
@@ -829,15 +842,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField countFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return countFromApex(
-      countFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      countFieldOnOperationObject,
-      lookupSobjectType,
-      null,
-      null
-    );
+    return countFromApex(countFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, countFieldOnOperationObject, lookupSobjectType, null, null);
   }
 
   global static Rollup countFromApex(
@@ -964,7 +969,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
   }
 
-
   global static Rollup lastFromApex(
     SObjectField lastFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1016,15 +1020,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField maxFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return maxFromApex(
-      maxFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      maxFieldOnOperationObject,
-      lookupSobjectType,
-      null,
-      null
-    );
+    return maxFromApex(maxFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, maxFieldOnOperationObject, lookupSobjectType, null, null);
   }
 
   global static Rollup maxFromApex(
@@ -1074,15 +1070,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField minFieldOnOperationObject,
     SObjectType lookupSobjectType
   ) {
-    return minFromApex(
-      minFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      minFieldOnOperationObject,
-      lookupSobjectType,
-      null,
-      null
-    );
+    return minFromApex(minFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, minFieldOnOperationObject, lookupSobjectType, null, null);
   }
 
   global static Rollup minFromApex(
@@ -1132,15 +1120,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectField sumFieldOnOpOject,
     SObjectType lookupSobjectType
   ) {
-    return sumFromApex(
-      sumFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      sumFieldOnOpOject,
-      lookupSobjectType,
-      null,
-      null
-    );
+    return sumFromApex(sumFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, sumFieldOnOpOject, lookupSobjectType, null, null);
   }
 
   global static Rollup sumFromApex(
@@ -1329,10 +1309,44 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   /** end global-facing section, begin public/private static helpers */
 
-  public static String getQueryString(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
+  public static String getQueryString(
+    SObjectType sObjectType,
+    List<String> uniqueQueryFieldNames,
+    String lookupFieldOnLookupObject,
+    String equality,
+    String optionalWhereClause
+  ) {
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
-    return 'SELECT ' + String.join(uniqueQueryFieldNames, ',') + '\nFROM ' + sObjectType + '\nWHERE ' + lookupFieldOnLookupObject + ' ' + equality + ' :objIds';
+    String baseQuery =
+      'SELECT ' +
+      String.join(uniqueQueryFieldNames, ',') +
+      '\nFROM ' +
+      sObjectType +
+      '\nWHERE ' +
+      lookupFieldOnLookupObject +
+      ' ' +
+      equality +
+      ' :objIds';
+    if (String.isNotBlank(optionalWhereClause)) {
+      baseQuery += optionalWhereClause;
+    }
+    if (sObjectType == Task.SObjectType || sObjectType == Event.SObjectType) {
+      // handle archived rows
+      baseQuery += '\nAND IsDeleted = false ALL ROWS';
+    }
+    return baseQuery;
+  }
+
+  public static String getQueryString(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
+    return getQueryString(sObjectType, uniqueQueryFieldNames, lookupFieldOnLookupObject, equality, null);
+  }
+
+  private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
+    if (countQuery.contains('ALL ROWS')) {
+      countQuery = countQuery.replace('ALL ROWS', '');
+    }
+    return Database.countQuery(countQuery);
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
@@ -1638,6 +1652,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // there are multiple spots where testOverrideData can be supplied, which is why it's necessary to pass this value
     if (testOverrideData != null) {
       return testOverrideData;
+    } else if (whereField == RollupControl__mdt.Id) {
+      return RollupControl__mdt.getInstance((Id) whereValue);
     }
     List<RollupControl__mdt> rollupControls = RollupControl__mdt.getAll().values();
     for (RollupControl__mdt rollupControl : rollupControls) {
@@ -1646,10 +1662,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    return getSensibleLimitsDefault();
+    return getSensibleControlDefault();
   }
 
-  private static RollupControl__mdt getSensibleLimitsDefault() {
+  private static RollupControl__mdt getSensibleControlDefault() {
     RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
     if (sensibleDefault == null) {
       // this *should* be impossible, since the record is included on install, but ...
@@ -1657,6 +1673,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         DeveloperName = CONTROL_ORG_DEFAULTS,
         MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
         MaxLookupRowsForQueueable__c = Limits.getLimitDmlRows() / 2,
+        MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
         ShouldAbortRun__c = false,
         ShouldRunAs__c = 'Queueable'
       );
@@ -1684,7 +1701,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected void process(List<Rollup> rollups) {
     this.getFieldNamesForRollups(rollups);
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
-    for (Rollup rollup : rollups) {
+    for (Integer index = 0; index < rollups.size(); index++) {
+      // for each iteration, ensure we're not operating beyond the bounds of our query limits
+      Rollup rollup = rollups[index];
+      if (this.hasExceededCurrentRollupQueryLimit(rollup.rollupControl)) {
+        this.deferredRollups.add(rollup);
+        continue;
+      }
       Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup);
       List<SObject> lookupItems = new List<SObject>();
       Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
@@ -1707,6 +1730,28 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     DML.doUpdate(updatedLookupRecords.values());
+
+    this.processDeferredRollups();
+  }
+
+  private Boolean hasExceededCurrentRollupQueryLimit(RollupControl__mdt control) {
+    return Limits.getQueries() >= control?.MaxQueryRows__c && isDeferralAllowed;
+  }
+
+  private void processDeferredRollups() {
+    if (this.deferredRollups.isEmpty() == false && isDeferralAllowed && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
+      stackDepth++;
+      // tragic, but necessary due to limits on requeueing allowed during testing
+      isDeferralAllowed = Test.isRunningTest() == false;
+      this.rollups.clear();
+      this.rollups.addAll(this.deferredRollups);
+      this.deferredRollups.clear();
+      if (System.isBatch()) {
+        Database.executeBatch(this);
+      } else {
+        System.enqueueJob(this);
+      }
+    }
   }
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
@@ -1784,6 +1829,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         ? getRollupControlKey(rollup.invokePoint, rollup.opFieldOnCalcItem, rollup.lookupObj, rollup.opFieldOnLookupObject)
         : rollup.rollupControlId;
       RollupControl__mdt rollupSpecificControl = getSingleControlOrDefault(controlWhereField, controlWhereValue, specificControl);
+      rollup.rollupControl = rollupSpecificControl;
 
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);

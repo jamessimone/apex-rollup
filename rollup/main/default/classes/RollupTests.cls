@@ -2591,7 +2591,7 @@ private class RollupTests {
 
   @isTest
   static void shouldCorrectlyReparentWhenBothParentsArePartOfRollup() {
-    // Happy path
+    // Happy path - all items in memory
     Account acc = [SELECT Id FROM Account];
 
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
@@ -2622,7 +2622,7 @@ private class RollupTests {
 
   @isTest
   static void shouldCorrectlyReparentWhenOnlyNewParentIsPartOfRollup() {
-    // Unhappy path
+    // Unhappy path - query for related rows
     Account acc = [SELECT Id FROM Account];
 
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
@@ -2747,6 +2747,45 @@ private class RollupTests {
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
     Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+  }
+
+  /** Queries */
+  @isTest
+  static void shouldQueryAllTasks() {
+    String queryString = Rollup.getQueryString(Task.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
+
+    // validate the query
+    Set<String> objIds = new Set<String>();
+    Database.query(queryString);
+
+    System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
+  }
+
+  @isTest
+  static void shouldQueryAllEvents() {
+    String queryString = Rollup.getQueryString(Event.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
+
+    // validate the query
+    Set<String> objIds = new Set<String>();
+    Database.query(queryString);
+
+    System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
+  }
+
+  /** Re-queueing */
+  @isTest
+  static void shouldRequeueRollupsWhenQueryLimitsExceeded() {
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 0);
+
+    Test.startTest();
+    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
   //** Helpers */

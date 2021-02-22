@@ -4,6 +4,48 @@ private class RollupCalculatorTests {
 
   /** FIRST / LAST operations */
   @isTest
+  static void shouldReturnDefaultWhenNoCalcItemsFirst() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.FIRST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>(),
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(0, (Decimal) calc.getReturnValue());
+  }
+
+  @isTest
+  static void shouldReturnDefaultWhenNoCalcItemsAverage() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.Average,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>(),
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(0, (Decimal) calc.getReturnValue());
+  }
+
+  @isTest
   static void shouldReturnFirstValueBasedOnMetadataField() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
