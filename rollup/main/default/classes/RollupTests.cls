@@ -13,10 +13,47 @@ private class RollupTests {
     insert new List<SObject>{ con, opp };
   }
 
-  public class DMLMock extends Rollup.DMLHelper {
+  private class DMLMock extends Rollup.DMLHelper {
     public List<SObject> Records = new List<SObject>();
     public override void doUpdate(List<SObject> recordsToUpdate) {
       this.Records = recordsToUpdate;
+    }
+  }
+
+  static Object testPriorVal;
+  static Rollup.Op testOp;
+  static SObjectField testOpFieldOnCalcItem;
+  static SObjectField testOpFieldOnLookupObject;
+  static Rollup__mdt testMetadata;
+  static String testLookupRecordKey;
+  static SObjectField testLookupKeyField;
+  private class FactoryMock extends RollupCalculator.Factory {
+    public override RollupCalculator getCalculator(
+      Object priorVal,
+      Rollup.Op op,
+      SObjectfield opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      String lookupRecordKey,
+      SObjectField lookupKeyField
+    ) {
+      testPriorVal = priorVal;
+      testOp = op;
+      testOpFieldOnCalcItem = opFieldOnCalcItem;
+      testOpFieldOnLookupObject = opFieldOnLookupObject;
+      testMetadata = metadata;
+      testLookupRecordKey = lookupRecordKey;
+      testLookupKeyField = lookupKeyField;
+      return new RollupCalcMock();
+    }
+  }
+
+  static Boolean calcMockWasCalled = false;
+  public class RollupCalcMock extends RollupCalculator {
+    // everything is a no-op
+    public RollupCalcMock() {
+      super(0, Rollup.Op.First, null, null, null, null, null);
+      calcMockWasCalled = true;
     }
   }
 
@@ -50,6 +87,24 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount');
+  }
+
+  @isTest
+  static void shouldTakeDefaultForSumWhenGiven() {
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Rollup rollup = Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5);
+
+    System.assertEquals(true, mock.Records.isEmpty());
+
+    Test.startTest();
+    rollup.runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(55, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount to the default');
   }
 
   @isTest
@@ -986,6 +1041,22 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldMaxStringsWhenDefaultIsGiven() {
+    List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
+
+    DMLMock mock = loadAccountIdMock(testOpps);
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType, 'ZZZ').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_INSERT STRING');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('ZZZ', updatedAcc.AccountNumber, 'MAX AFTER_INSERT should take the maximum string including default');
+  }
+
+  @isTest
   static void shouldMinOnStringsOnInsert() {
     List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
 
@@ -1154,8 +1225,8 @@ private class RollupTests {
     Rollup.minFromApex(Lead.LeadSource, Lead.Company, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    AggregateResult res = [SELECT MIN(LeadSource) maxSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
-    String minLeadSource = (String) res.get('maxSource');
+    AggregateResult res = [SELECT MIN(LeadSource) minSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
+    String minLeadSource = (String) res.get('minSource');
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING');
     Account updatedAcc = (Account) mock.Records[0];
@@ -1266,6 +1337,136 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated AVERAGE BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(testOppOne.Amount, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE should take into account only non-deleted values');
+  }
+
+  // TODO migrate tests specific to calculating to this format
+  @isTest
+  static void shouldRollupForFirst() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.firstFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'CloseDate').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(true, calcMockWasCalled);
+  }
+
+  @isTest
+  static void shouldRollupForLast() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.lastFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'CloseDate').runCalc();
+    Test.stopTest();
+    System.assertEquals(true, calcMockWasCalled);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForAverage() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForCountDistinct() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForConcatDistinct() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a').runCalc();
+    Test.stopTest();
+
+    System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForConcat() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a').runCalc();
+    Test.stopTest();
+
+    System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForCount() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForFirst() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.firstFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForLast() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.lastFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
+  }
+
+  @isTest
+  static void shouldPassRecalcValueForMin() {
+    RollupCalculator.Factory = new FactoryMock();
+    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
   // Now we test different field types for success: time, datetime, date. Here be dragons.

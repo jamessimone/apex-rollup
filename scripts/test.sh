@@ -26,7 +26,7 @@ sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup --setdefaultdevh
 # Also store test command shared between script branches, below
 priorUserName=$(sfdx force:org:display | grep -i 'Alias' | cut -c7- | xargs || "")
 echo "Prior username, if set: $priorUserName"
-testInvocation='sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests" -r human -w 20'
+testInvocation='sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests" -r human -w 20'
 echo "Test command to use: $testInvocation"
 
 

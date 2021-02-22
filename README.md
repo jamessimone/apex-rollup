@@ -58,15 +58,25 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Lookup Field On Calc Item`- the field storing the Id or String referencing a unique value on another object (In the example, Id)
 - `Lookup Field On Lookup Object` - the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Field On Lookup Object` - the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
-- `Rollup Operation` - A picklist field to select the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas in the rollup field itself.
+- `Rollup Operation` - A picklist field to select the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas in the rollup field itself.
 - `Rollup Control` - link to the Org Defaults for controlling rollups, or set a specific Rollup Control CMDT to be used with this rollup. Multiple rollups can be tied to one specific Control record, or simply use the Org Default record (included) for all of your rollups.
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 - `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/tree/v1.0.9), nested conditionals (conditionals contained within parantheses are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](/issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field.
-- `Is Full Record Set` - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
+- `Is Full Record Set` (optional) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
+- `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. **Note** unlike DLRS, this field is _not_ optional on a first/last operation; a validation rule will enforce that you supply a value here, even if the value used is the same as the field you are rolling up on.
 
 You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
+
+#### Notes On The Use Of CMDT To Control Your Rollups
+
+There are two limitations to Entity Definition relationships that currently exist:
+
+1. They cannot refer to the User object
+2. They cannot refer to the Task/Event objects
+
+For rollups referring to these objects, you can use either the Invocable or the static methods exposed on `Rollup` from Apex to roll values up.
 
 #### Establishing Org Limits For Rollup Operations
 
@@ -106,12 +116,13 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Lookup Field On Lookup Object` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Field On Lookup Object` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
 - `Rollup Context` - INSERT / UPSERT / UPDATE / DELETE
-- `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT. Both CONCAT and CONCAT_DISTINCT separate values with commas
+- `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas
 - `Calc item changed fields` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 - `SOQL Where Clause To Exclude Calc Items` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly.
 - `Is Full Record Set` (optional) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by toggling this field
+- `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. **Note** unlike DLRS, this field is _not_ optional on a first/last operation; a validation rule will enforce that you supply a value here, even if the value used is the same as the field you are rolling up on.
 
 Unfortunately, the "Description" section for Invocable fields does not show up as help text within the Flow Builder, but hopefully it's clear how each property should be configured!
 
@@ -179,63 +190,8 @@ The following methods are exposed:
 public static void batch(Rollup rollup, Rollup secondRollup)
 public static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup)
 public static void batch(List<Rollup> rollups)
+
 public static Rollup runCalc() // more on this method below
-
-public static Rollup averageFromApex(
-  SObjectField averageFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField averageFieldOnOperationObject,
-  SObjectType lookupSobjectType
-)
-
-public static Rollup countDistinctFromApex(
-  SObjectField countDistinctFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField countDistinctFieldOnOperationObject,
-  SObjectType lookupSobjectType
-)
-
-public static Rollup concatFromApex(
-  SObjectField concatFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField concatFieldOnOperationObject,
-  SObjectType lookupSobjectType
-)
-
-public static Rollup countFromApex(
-  SObjectField countFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField countFieldOnOperationObject,
-  SObjectType lookupSobjectType
-)
-
-public static Rollup maxFromApex(
-  SObjectField maxFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField maxFieldOnOperationObject,
-  SObjectType lookupSobjectType
-)
-
-public static Rollup minFromApex(
-  SObjectField minFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField minFieldOnOperationObject,
-  SObjectType lookupSobjectType
-)
-
-public static Rollup sumFromApex(
-  SObjectField sumFieldOnCalcItem,
-  SObjectField lookupFieldOnCalcItem,
-  SObjectField lookupFieldOnOperationObject,
-  SObjectField sumFieldOnOpOject,
-  SObjectType lookupSobjectType
-)
 
 // for using as the "one line of code" and CMDT-driven rollups
 public static void runFromTrigger()
@@ -243,6 +199,282 @@ public static void runFromTrigger()
 // the alternative one-liner for CDC triggers
 // more on that in the CDC section of "Special Considerations", below
 public static void runFromCDCTrigger()
+
+global static Rollup averageFromApex(
+  SObjectField averageFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField averageFieldOnOperationObject,
+  SObjectType lookupSobjectType
+)
+
+global static Rollup averageFromApex(
+  SObjectField averageFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField averageFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue
+)
+
+global static Rollup averageFromApex(
+  SObjectField averageFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField sumFieldOnOpOject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue,
+  Evaluator eval
+)
+
+global static Rollup countDistinctFromApex(
+  SObjectField countDistinctFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField countDistinctFieldOnOperationObject,
+  SObjectType lookupSobjectType
+)
+
+global static Rollup countDistinctFromApex(
+  SObjectField countDistinctFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField countDistinctFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue
+)
+
+global static Rollup countDistinctFromApex(
+  SObjectField countDistinctFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField countDistinctFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue,
+  Evaluator eval
+)
+
+global static Rollup concatDistinctFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType
+)
+
+global static Rollup concatDistinctFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  String defaultRecalculationValue
+)
+
+global static Rollup concatDistinctFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  String defaultRecalculationValue,
+  Evaluator eval
+)
+
+global static Rollup concatFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType
+)
+
+global static Rollup concatFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  String defaultRecalculationValue
+)
+
+global static Rollup concatFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  String defaultRecalculationValue,
+  Evaluator eval
+)
+
+global static Rollup countFromApex(
+  SObjectField countFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField countFieldOnOperationObject,
+  SObjectType lookupSobjectType
+)
+
+global static Rollup countFromApex(
+  SObjectField countFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField countFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue
+)
+
+global static Rollup countFromApex(
+  SObjectField countFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField sumFieldOnOpOject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue,
+  Evaluator eval
+)
+
+global static Rollup firstFromApex(
+  SObjectField firstFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField firstFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  String orderByFirstLast
+)
+
+global static Rollup firstFromApex(
+  SObjectField firstFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField firstFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue, // can be a string or a number for first
+  String orderByFirstLast
+)
+
+global static Rollup firstFromApex(
+  SObjectField firstFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField firstFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue, // can be a string or a number for first
+  String orderByFirstLast,
+  Evaluator eval
+)
+
+global static Rollup lastFromApex(
+  SObjectField lastFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField lastFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  String orderByFirstLast
+)
+
+global static Rollup lastFromApex(
+  SObjectField lastFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField lastFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue, // can be a string or a number for last
+  String orderByFirstLast
+)
+
+global static Rollup lastFromApex(
+  SObjectField lastFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField lastFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue, // can be a string or a number for last
+  String orderByFirstLast,
+  Evaluator eval
+)
+
+global static Rollup maxFromApex(
+  SObjectField maxFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField maxFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+)
+
+global static Rollup maxFromApex(
+  SObjectField maxFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField maxFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue // can be a string or a number for max
+)
+
+global static Rollup maxFromApex(
+  SObjectField maxFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField maxFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue, // can be a string or a number for max
+  Evaluator eval
+)
+
+global static Rollup minFromApex(
+  SObjectField minFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField minFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+)
+
+global static Rollup minFromApex(
+  SObjectField minFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField minFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue // can be a string or a number for min
+)
+
+global static Rollup minFromApex(
+  SObjectField minFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField minFieldOnOpOject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue, // can be a string or a number for min
+  Evaluator eval
+)
+
+global static Rollup sumFromApex(
+  SObjectField sumFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField sumFieldOnOpOject,
+  SObjectType lookupSobjectType,
+)
+
+global static Rollup sumFromApex(
+  SObjectField sumFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField sumFieldOnOpOject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue
+)
+
+global static Rollup sumFromApex(
+  SObjectField sumFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField sumFieldOnOpOject,
+  SObjectType lookupSobjectType,
+  Decimal defaultRecalculationValue,
+  Evaluator eval
+)
 ```
 
 All of the "...fromTrigger" methods shown above can also be invoked using a final argument, the `Evaluator`:
@@ -282,6 +514,8 @@ Rollup.sumFromApex(
 ```
 
 It's that simple. Note that in order for custom Apex solutions that don't use the `batch` static method on `Rollup` to properly start, the `runCalc()` method must also be called. That is, if you only have one rollup operation per object, you'll _always_ need to call `runCalc()` when invoking `Rollup` from a trigger.
+
+On the subject of the `defaultRecalculationValue` arguments -- if you are making use of a custom Evaluator but **don't** need to specify the default, you can always pass `null` for this parameter.
 
 Another note for when the use of an `Evaluator` class might be necessary — let's say that you have some slight lookup skew caused by a fallback object in a lookup relationship. This fallback object has thousands of objects tied to it, and updates to it are frequently painful / slow. If you didn't need the rollup for the fallback, you could implement an `Evaluator` to exclude it from being processed:
 
@@ -391,7 +625,7 @@ npm -i
 I use Prettier in conjunction with the `prettier-apex` plugin for formatting Apex. There are (hopefully) minor stylistic choices that I have made and hope any contributors will respect when modifying the code:
 
 - Format On Save. I let Prettier do all the heavy lifting
-- Column length (set in `.prettierrc`) is set to `160`. That's a _little_ wide for laptop developers. I know, as I've spent a good portion of time on my personal Thinkpad working on this project. Still, for a desktop it's perfect for reducing lines of code. Forgive me.
+- Column length (set in `.prettierrc`) is set to `160`. That's a _little_ wide for laptop developers. I know, as I've spent a good portion of time on my personal Thinkpad working on this project. Still, for a desktop it's perfect for reducing lines of code. Forgive me - as the project matures, I am working to break down the dependency tree so that the individual classes are more manageable, with the end goal of reducing the column width to something more reasonable, like `120` or perhaps `140`.
 - Spaces ... are .... set to `2`. Pretty unusual for Java-ish languages, but as I am looking to keep this all in one class, it really helped with increasing readability / reducing LOC
 
 Further instructions for contributions are listed [in the Contributing doc](./Contributing.md). Please ensure the guidelines enumerated there are respected when submitting pull requests.

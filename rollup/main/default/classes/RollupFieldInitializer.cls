@@ -1,4 +1,10 @@
 public virtual class RollupFieldInitializer {
+
+  private RollupFieldInitializer() {
+  }
+
+  public static final RollupFieldInitializer Current = new RollupFieldInitializer();
+
   public final Datetime defaultDateTime = Datetime.newInstanceGmt(1970, 1, 1);
   public final Long maximumLongValue = (Math.pow(2, 63) - 1).longValue();
   public final Long minimumLongValue = this.maximumLongValue * -1;
@@ -46,6 +52,7 @@ public virtual class RollupFieldInitializer {
     private Map<String, Integer> picklistToRank;
 
     public PicklistController(DescribeFieldResult fieldDescribe) {
+      super();
       DisplayType fieldType = fieldDescribe.getType();
       this.isPicklist = fieldType == DisplayType.MULTIPICKLIST || fieldType == DisplayType.PICKLIST;
       this.isMultiSelectPicklist = fieldType == DisplayType.MULTIPICKLIST;
@@ -86,11 +93,7 @@ public virtual class RollupFieldInitializer {
     }
 
     public override Object getDefaultValue(SObjectField field) {
-      if (this.isPicklist == false) {
-        return super.getDefaultValue(field);
-      }
-
-      return this.activeVals[0];
+      return this.isPicklist == false ? super.getDefaultValue(field) : this.activeVals[0];
     }
 
     public Boolean isPicklist() {

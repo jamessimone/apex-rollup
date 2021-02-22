@@ -5,7 +5,6 @@ fflib*
 dmc_config.json
 yarn.lock
 .sfdx/
-.vscode/
 .localdevserver/
 debug.log
 DEVHUB_SFDX_URL.txt

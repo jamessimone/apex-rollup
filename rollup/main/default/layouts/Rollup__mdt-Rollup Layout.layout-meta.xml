@@ -83,6 +83,10 @@
                 <behavior>Edit</behavior>
                 <field>IsFullRecordSet__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>OrderByFirstLast__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
