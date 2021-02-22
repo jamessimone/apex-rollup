@@ -220,6 +220,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   public String runCalc() {
     // clone because the RollupControl__mdt is read-only when retrieved from the cache
     RollupControl__mdt orgDefaults = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).clone(true, true);
+    this.rollupControl = orgDefaults;
     // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
     this.ingestRollupControlData(orgDefaults);
 

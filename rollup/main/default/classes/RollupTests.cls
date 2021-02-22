@@ -2777,6 +2777,7 @@ private class RollupTests {
   static void shouldRequeueRollupsWhenQueryLimitsExceeded() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100);
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 0);
 
     Test.startTest();
