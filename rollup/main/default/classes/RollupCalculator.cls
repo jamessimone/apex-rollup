@@ -757,7 +757,7 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
-      this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
+      this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
     }
 
     protected override Boolean isTrueFor(String newVal, String priorVal) {

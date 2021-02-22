@@ -1154,8 +1154,8 @@ private class RollupTests {
     Rollup.minFromApex(Lead.LeadSource, Lead.Company, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    AggregateResult res = [SELECT MIN(LeadSource) maxSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
-    String minLeadSource = (String) res.get('maxSource');
+    AggregateResult res = [SELECT MIN(LeadSource) minSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
+    String minLeadSource = (String) res.get('minSource');
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING');
     Account updatedAcc = (Account) mock.Records[0];

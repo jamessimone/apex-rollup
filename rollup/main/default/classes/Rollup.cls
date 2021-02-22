@@ -495,6 +495,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
     )
     global Boolean isFullRecordSet;
+
+    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
+    global String orderByFirstLast;
   }
 
   global class FlowOutput {
@@ -544,7 +547,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
           FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
           CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-          IsFullRecordSet__c = flowInput.isFullRecordSet
+          IsFullRecordSet__c = flowInput.isFullRecordSet,
+          OrderByFirstLast__c = flowInput.orderByFirstLast
         );
         Map<Id, SObject> oldFlowRecords = getOldFlowRecords(
           flowInput.recordsToRollup,
