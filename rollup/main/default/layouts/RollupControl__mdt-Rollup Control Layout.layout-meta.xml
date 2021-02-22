@@ -11,24 +11,12 @@
                 <field>MasterLabel</field>
             </layoutItems>
             <layoutItems>
-                <behavior>Required</behavior>
-                <field>DeveloperName</field>
-            </layoutItems>
-            <layoutItems>
-                <behavior>Edit</behavior>
-                <field>MaxLookupRowsBeforeBatching__c</field>
-            </layoutItems>
-            <layoutItems>
-                <behavior>Edit</behavior>
-                <field>MaxLookupRowsForQueueable__c</field>
-            </layoutItems>
-            <layoutItems>
                 <behavior>Edit</behavior>
                 <field>ShouldAbortRun__c</field>
             </layoutItems>
             <layoutItems>
-                <behavior>Required</behavior>
-                <field>ShouldRunAs__c</field>
+                <behavior>Edit</behavior>
+                <field>MaxLookupRowsBeforeBatching__c</field>
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
@@ -37,15 +25,38 @@
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
-                <behavior>Edit</behavior>
-                <field>IsProtected</field>
+                <behavior>Required</behavior>
+                <field>DeveloperName</field>
             </layoutItems>
             <layoutItems>
                 <behavior>Required</behavior>
-                <field>NamespacePrefix</field>
+                <field>ShouldRunAs__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>MaxLookupRowsForQueueable__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
+    </layoutSections>
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Scalability</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>MaxQueryRows__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>MaxRollupRetries__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsLeftToRight</style>
     </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
@@ -57,11 +68,19 @@
                 <behavior>Readonly</behavior>
                 <field>CreatedById</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>IsProtected</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
                 <behavior>Readonly</behavior>
                 <field>LastModifiedById</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Required</behavior>
+                <field>NamespacePrefix</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
