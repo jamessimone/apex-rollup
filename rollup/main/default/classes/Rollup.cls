@@ -25,7 +25,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static Boolean isCDC = false;
 
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
-  private static final String LIMIT_INITIALIZED_HERE = 'Sensible_Defaults';
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -1332,7 +1331,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   public static String getQueryString(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
-    return 'SELECT ' + String.join(uniqueQueryFieldNames, ',') + '\nFROM ' + sObjectType + '\nWHERE ' + lookupFieldOnLookupObject + ' ' + equality + ' :objIds';
+    String baseQuery = 'SELECT ' + String.join(uniqueQueryFieldNames, ',') + '\nFROM ' + sObjectType + '\nWHERE ' + lookupFieldOnLookupObject + ' ' + equality + ' :objIds';
+    if(sObjectType == Task.SObjectType || sObjectType == Event.SObjectType) {
+      // handle archived rows
+      baseQuery += ' AND IsDeleted = false ALL ROWS';
+    }
+    return baseQuery;
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {

@@ -2749,6 +2749,29 @@ private class RollupTests {
     System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
+  /** Queries */
+  @isTest
+  static void shouldQueryAllTasks() {
+    String queryString = Rollup.getQueryString(Task.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
+
+    // validate the query
+    Set<String> objIds = new Set<String>();
+    Database.query(queryString);
+
+    System.assertEquals(true, queryString.contains(' AND IsDeleted = false ALL ROWS'));
+  }
+
+  @isTest
+  static void shouldQueryAllEvents() {
+    String queryString = Rollup.getQueryString(Event.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
+
+    // validate the query
+    Set<String> objIds = new Set<String>();
+    Database.query(queryString);
+
+    System.assertEquals(true, queryString.contains(' AND IsDeleted = false ALL ROWS'));
+  }
+
   //** Helpers */
 
   private static DMLMock loadAccountIdMock(List<SObject> records) {
