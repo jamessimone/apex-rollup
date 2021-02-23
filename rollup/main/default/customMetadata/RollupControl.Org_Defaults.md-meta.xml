@@ -3,6 +3,10 @@
     <label>Org Defaults</label>
     <protected>false</protected>
     <values>
+        <field>BatchChunkSize__c</field>
+        <value xsi:type="xsd:double">2000.0</value>
+    </values>
+    <values>
         <field>MaxLookupRowsBeforeBatching__c</field>
         <value xsi:type="xsd:double">3000.0</value>
     </values>
@@ -12,10 +16,14 @@
     </values>
     <values>
         <field>MaxQueryRows__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:type="xsd:double">100.0</value>
     </values>
     <values>
         <field>MaxRollupRetries__c</field>
+        <value xsi:type="xsd:double">100.0</value>
+    </values>
+    <values>
+        <field>MaximumRollupRetries__c</field>
         <value xsi:nil="true"/>
     </values>
     <values>

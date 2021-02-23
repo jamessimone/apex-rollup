@@ -2418,7 +2418,7 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable');
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1);
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();

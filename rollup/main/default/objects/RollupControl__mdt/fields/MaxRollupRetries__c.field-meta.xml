@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>MaxRollupRetries__c</fullName>
+    <defaultValue>100</defaultValue>
+    <description>Use in conjunction with Max Query Rows. This determines the maximum possible rollup jobs (either batched or queued) that can be spawned from a single overall rollup operation. Default is 100.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Use in conjunction with Max Query Rows. This determines the maximum possible rollup jobs (either batched or queued) that can be spawned from a single overall rollup operation. Default is 100.</inlineHelpText>
+    <label>Max Rollup Retries</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

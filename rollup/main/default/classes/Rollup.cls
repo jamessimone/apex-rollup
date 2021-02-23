@@ -218,10 +218,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public String runCalc() {
-    // clone because the RollupControl__mdt is read-only when retrieved from the cache
-    RollupControl__mdt orgDefaults = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).clone(true, true);
+    RollupControl__mdt orgDefaults = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
     this.rollupControl = orgDefaults;
-    // side effect in the below method - rollups can be removed from this.rollups if a limit record ShouldAbortRun__c == true
+    // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     this.ingestRollupControlData(orgDefaults);
 
     this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
@@ -271,7 +270,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return 'Running rollups flagged to go synchronously';
     } else if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
-      return Database.executeBatch(new Rollup(this));
+      return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
     } else if (
       shouldRunAsBatch == false && (orgDefaults.MaxLookupRowsForQueueable__c == null || totalCountOfRecords <= orgDefaults.MaxLookupRowsForQueueable__c)
     ) {
@@ -1349,6 +1348,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return Database.countQuery(countQuery);
   }
 
+  private static List<SObject> getMetadataFromCache(SObject metadataRecord) {
+    // CMDT is read-only when returned from the cache
+    Map<String, SObject> metadataMap;
+    switch on metadataRecord {
+      when Rollup__mdt rollupMeta {
+        metadataMap = Rollup__mdt.getAll().deepClone();
+      }
+      when RollupControl__mdt rollupControl {
+        metadataMap = RollupControl__mdt.getAll().deepClone();
+      }
+    }
+    return metadataMap?.values();
+  }
+
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
     for (Rollup rollup : rollups) {
       if (rollup.rollups.isEmpty() == false) {
@@ -1418,7 +1431,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (rollupMetadata != null) {
       return rollupMetadata;
     }
-    List<Rollup__mdt> rollupMetadatas = Rollup__mdt.getAll().values();
+    List<Rollup__mdt> rollupMetadatas = (List<Rollup__mdt>) getMetadataFromCache(new Rollup__mdt());
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
       if (rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
@@ -1463,18 +1476,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
-      // reset the CMDT field-level definitions using the SObjectField tokens. Since the CMDT is read-only
-      // when retrieved from the cache, clone it first
-      Rollup__mdt clonedMetadata = rollupMetadata.clone(true, true);
-      clonedMetadata.RollupFieldOnCalcItem__c = rollupFieldOnCalcItem.getDescribe().getName();
-      clonedMetadata.LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName();
-      clonedMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
-      clonedMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
+      // reset the CMDT field-level definitions using the SObjectField tokens
+      rollupMetadata.RollupFieldOnCalcItem__c = rollupFieldOnCalcItem.getDescribe().getName();
+      rollupMetadata.LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName();
+      rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
+      rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
 
       RollupControl__mdt rollupControl;
-      if (clonedMetadata.RollupControl__c != null) {
+      if (rollupMetadata.RollupControl__c != null) {
         // for CMDT-driven rollups, the rollup record is always tied to a RollupControl__mdt record
-        rollupControl = new RollupControl__mdt(Id = clonedMetadata.RollupControl__c);
+        rollupControl = new RollupControl__mdt(Id = rollupMetadata.RollupControl__c);
       } else {
         String controlKey = getRollupControlKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupSObjectType, rollupFieldOnOpObject);
         rollupControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, null);
@@ -1490,10 +1501,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         calcItems,
         oldCalcItems,
         batchRollup,
-        RollupEvaluator.getEvaluator(eval, clonedMetadata, oldCalcItems, sObjectType),
+        RollupEvaluator.getEvaluator(eval, rollupMetadata, oldCalcItems, sObjectType),
         rollupControl?.Id,
         rollupInvokePoint,
-        clonedMetadata
+        rollupMetadata
       );
     }
     return batchRollup;
@@ -1649,13 +1660,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static RollupControl__mdt getSingleControlOrDefault(SObjectField whereField, Object whereValue, RollupControl__mdt testOverrideData) {
-    // there are multiple spots where testOverrideData can be supplied, which is why it's necessary to pass this value
+    // there are multiple spots where testOverrideData can be supplied, which is why it's necessary to pass the argument to this method
     if (testOverrideData != null) {
       return testOverrideData;
     } else if (whereField == RollupControl__mdt.Id) {
-      return RollupControl__mdt.getInstance((Id) whereValue);
+      return RollupControl__mdt.getInstance((Id) whereValue)?.clone(true, true);
     }
-    List<RollupControl__mdt> rollupControls = RollupControl__mdt.getAll().values();
+    List<RollupControl__mdt> rollupControls = (List<RollupControl__mdt>) getMetadataFromCache(new RollupControl__mdt());
     for (RollupControl__mdt rollupControl : rollupControls) {
       if (rollupControl.get(whereField) == whereValue) {
         return rollupControl;
@@ -1671,12 +1682,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // this *should* be impossible, since the record is included on install, but ...
       sensibleDefault = new RollupControl__mdt(
         DeveloperName = CONTROL_ORG_DEFAULTS,
+        BatchChunkSize__c = 2000,
         MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
         MaxLookupRowsForQueueable__c = Limits.getLimitDmlRows() / 2,
         MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
         ShouldAbortRun__c = false,
         ShouldRunAs__c = 'Queueable'
       );
+    } else {
+      sensibleDefault = sensibleDefault.clone(true, true);
     }
     return sensibleDefault;
   }
@@ -1747,7 +1761,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
       if (System.isBatch()) {
-        Database.executeBatch(this);
+        Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
       } else {
         System.enqueueJob(this);
       }
@@ -1967,7 +1981,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> allMetadata = Rollup__mdt.getall().values();
+      List<Rollup__mdt> allMetadata = getMetadataFromCache(new Rollup__mdt());
       Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
       for (Rollup__mdt meta : allMetadata) {
         if (rollupMetadataIds.contains(meta.Id) == false) {
