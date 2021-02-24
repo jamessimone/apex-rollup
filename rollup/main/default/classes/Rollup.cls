@@ -21,6 +21,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static RollupControl__mdt specificControl;
   @testVisible
   private static Integer maxQueryRowOverride;
+  // in this case, we promote the visiblity of this variable for tests
+  // specially to validate that the buffer is flushed when "processStoredFlowRollups" is called
+  @testVisible
+  private static List<Rollup> FLOW_ROLLUPS = new List<Rollup>();
 
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
@@ -452,7 +456,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     @InvocableVariable(label='Rollup target\'s SObject Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
     global String rollupSObjectName;
 
-    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT' required=true)
+    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT, CONCAT_DISTINCT, FIRST, LAST' required=true)
     global String rollupOperation;
 
     @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
@@ -510,6 +514,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
     global String orderByFirstLast;
+
+    @InvocableVariable(label='Defer processing')
+    global Boolean deferProcessing = false;
   }
 
   global class FlowOutput {
@@ -534,7 +541,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<Rollup> rollups = new List<Rollup>();
 
     try {
-      Map<Id, SObject> calcItems = new Map<Id, SObject>();
       FlowInput firstInput = flowInputs.isEmpty() == false ? flowInputs[0] : new FlowInput();
       String rollupContext = getFlowRollupContext(firstInput);
 
@@ -542,11 +548,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         FlowOutput flowOutput = new FlowOutput();
         flowOutputReturns.add(flowOutput);
 
-        if (flowInput.recordsToRollup.isEmpty()) {
+        if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
           continue;
         }
-
-        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
 
         Rollup__mdt rollupMeta = new Rollup__mdt(
           RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
@@ -562,15 +566,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           IsFullRecordSet__c = flowInput.isFullRecordSet,
           OrderByFirstLast__c = flowInput.orderByFirstLast
         );
-        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(
-          flowInput.recordsToRollup,
-          sObjectType,
-          flowInput.rollupFieldOnCalcItem,
-          flowInput.lookupFieldOnCalcItem
-        );
-        rollups.add(
-          getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, RollupInvocationPoint.FROM_INVOCABLE)
-        );
+
+        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+        Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
+        if (String.isNotBlank(rollupMeta.LookupFieldOnCalcItem__c)) {
+          uniqueFieldNames.add(rollupMeta.LookupFieldOnCalcItem__c);
+        }
+        if (String.isNotBlank(rollupMeta.RollupFieldOnCalcItem__c)) {
+          uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
+        }
+        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
+        Rollup roll = getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, RollupInvocationPoint.FROM_INVOCABLE);
+        if (flowInput.deferProcessing) {
+          FLOW_ROLLUPS.add(roll);
+        } else {
+          rollups.add(roll);
+        }
       }
       batch(rollups);
     } catch (Exception ex) {
@@ -1341,6 +1352,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return getQueryString(sObjectType, uniqueQueryFieldNames, lookupFieldOnLookupObject, equality, null);
   }
 
+  public static void processStoredFlowRollups() {
+    batch(FLOW_ROLLUPS);
+    FLOW_ROLLUPS.clear();
+  }
+
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
     if (countQuery.contains('ALL ROWS')) {
       countQuery = countQuery.replace('ALL ROWS', '');
@@ -1384,12 +1400,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
-  private static Map<Id, SObject> getOldFlowRecords(
-    List<SObject> currentRecords,
-    SObjectType sObjectType,
-    String rollupFieldOnCalcItem,
-    String lookupFieldOnCalcItem
-  ) {
+  private static Map<Id, SObject> getOldFlowRecords(List<SObject> currentRecords, SObjectType sObjectType, List<String> calcItemFields) {
     if (currentRecords.isEmpty()) {
       return new Map<Id, SObject>();
     } else if (oldRecordsMap != null) {
@@ -1408,19 +1419,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // we need to do two things: get the old records, and initialize default values for both existing records and the ones that don't have matches in the db
     DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
     Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
-    Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(
-      Database.query(getQueryString(sObjectType, new List<String>{ rollupFieldOnCalcItem, lookupFieldOnCalcItem }, 'Id', '='))
-    );
+    Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(Database.query(getQueryString(sObjectType, calcItemFields, 'Id', '=')));
     for (SObject currentRecord : currentRecords) {
       SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
         ? existingOldRecordsMap.get(currentRecord.Id)
         : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
       existingRecordOrDefault.Id = currentRecord.Id;
-      SObjectField fieldToken = fieldTokensForObject.get(rollupFieldOnCalcItem);
-      if (existingRecordOrDefault.get(rollupFieldOnCalcItem) != null || fieldToken.getDescribe().isUpdateable() == false) {
-        continue;
-      } else {
-        existingRecordOrDefault.put(rollupFieldOnCalcItem, RollupFieldInitializer.Current.getDefaultValue(fieldToken));
+      for (String fieldName : calcItemFields) {
+        SObjectField fieldToken = fieldTokensForObject.get(fieldName);
+        if (existingRecordOrDefault.get(fieldName) != null || fieldToken.getDescribe().isUpdateable() == false) {
+          continue;
+        } else {
+          existingRecordOrDefault.put(fieldName, RollupFieldInitializer.Current.getDefaultValue(fieldToken));
+        }
       }
       existingOldRecordsMap.put(currentRecord.Id, existingRecordOrDefault);
     }
