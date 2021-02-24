@@ -2,14 +2,20 @@ global without sharing class RollupFlowBulkProcessor {
   @testVisible
   private static Rollup__mdt testMetadata;
 
+  private RollupFlowBulkProcessor() {
+    // only used for invocable
+  }
+
   global class FlowInput {
-    @InvocableVariable(label='Records to rollup' required=true)
+    @InvocableVariable(label='Records to rollup')
     global List<SObject> recordsToRollup;
     @InvocableVariable(label='Rollup Context' required=true)
     global String rollupContext;
+    @InvocableVariable(label='Defer processing?')
+    global Boolean deferProcessing = true;
   }
 
-  @InvocableMethod(category='Rollups' label='Add flow rollup inputs to later be batched')
+  @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup')
   global static List<Rollup.FlowOutput> addRollup(List<FlowInput> flowInputs) {
     List<Rollup.FlowOutput> outputs = new List<Rollup.FlowOutput>();
 
@@ -22,6 +28,7 @@ global without sharing class RollupFlowBulkProcessor {
         if (testMetadata != null) {
           rollupMetadata.add(testMetadata);
         }
+
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
         String sObjectName = flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
         List<Rollup.FlowInput> rollupFlowInputs = new List<Rollup.FlowInput>();
@@ -42,7 +49,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupFieldOnOpObject = meta.RollupFieldOnLookupObject__c;
             input.rollupOperation = meta.RollupOperation__c;
             input.rollupSObjectName = meta.LookupObject__c;
-            input.deferProcessing = true;
+            input.deferProcessing = flowInput.deferProcessing;
             rollupFlowInputs.add(input);
 
             output.message = 'Rollup queued for context: ' + meta.RollupOperation__c + ' with metadata values: ' + JSON.serialize(input);

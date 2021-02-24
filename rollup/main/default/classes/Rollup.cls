@@ -21,12 +21,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static RollupControl__mdt specificControl;
   @testVisible
   private static Integer maxQueryRowOverride;
+  // in this case, we promote the visiblity of this variable for tests
+  // specially to validate that the buffer is flushed when "processStoredFlowRollups" is called
+  @testVisible
+  private static List<Rollup> FLOW_ROLLUPS = new List<Rollup>();
 
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
   private static Integer stackDepth = 0;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
-  private static List<Rollup> FLOW_ROLLUPS = new List<Rollup>();
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -1347,6 +1350,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   public static String getQueryString(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
     return getQueryString(sObjectType, uniqueQueryFieldNames, lookupFieldOnLookupObject, equality, null);
+  }
+
+  public static void processStoredFlowRollups() {
+    batch(FLOW_ROLLUPS);
+    FLOW_ROLLUPS.clear();
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
