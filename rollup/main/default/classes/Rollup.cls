@@ -159,6 +159,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // a batch only becomes valid if other Rollups are added to it
     this.isNoOp = true;
     this.invokePoint = invokePoint;
+    this.rollupControl = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
   }
 
   private Rollup(Rollup innerRollup, Op op, List<SObject> calcItems) {
@@ -304,17 +305,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
      */
     this.getFieldNamesForRollups(this.rollups);
     String query;
+    String lookupFieldOnLookupObject;
     Set<String> objIds = new Set<String>();
     for (Rollup rollup : this.rollups) {
+      lookupFieldOnLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
       objIds.addAll(this.getCalcItemsByLookupField(rollup).keySet());
     }
     for (SObjectType sObjectType : this.lookupObjectToUniqueFieldNames.keySet()) {
-      query = getQueryString(
-        sObjectType,
-        new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)),
-        String.valueOf(this.rollups[0].lookupFieldOnLookupObject),
-        '='
-      );
+      query = getQueryString(sObjectType, new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)), lookupFieldOnLookupObject, '=');
     }
     return Database.getQueryLocator(query);
   }
@@ -445,7 +443,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return thisRollup.runCalc();
     } else {
       //batch to get calc items and then batch to rollup
-      return Database.executeBatch(new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType));
+      return Database.executeBatch(
+        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType),
+        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
+      );
     }
   }
 
@@ -1376,13 +1377,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> metadataMap;
     switch on metadataRecord {
       when Rollup__mdt rollupMeta {
-        metadataMap = Rollup__mdt.getAll().deepClone();
+        metadataMap = Rollup__mdt.getAll();
       }
       when RollupControl__mdt rollupControl {
-        metadataMap = RollupControl__mdt.getAll().deepClone();
+        metadataMap = RollupControl__mdt.getAll();
       }
     }
-    return metadataMap?.values();
+    return metadataMap?.deepClone()?.values();
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
@@ -1449,7 +1450,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (rollupMetadata != null) {
       return rollupMetadata;
     }
-    List<Rollup__mdt> rollupMetadatas = (List<Rollup__mdt>) getMetadataFromCache(new Rollup__mdt());
+    List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(new Rollup__mdt());
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
       if (rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
@@ -1684,7 +1685,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else if (whereField == RollupControl__mdt.Id) {
       return RollupControl__mdt.getInstance((Id) whereValue)?.clone(true, true);
     }
-    List<RollupControl__mdt> rollupControls = (List<RollupControl__mdt>) getMetadataFromCache(new RollupControl__mdt());
+    List<RollupControl__mdt> rollupControls = getMetadataFromCache(new RollupControl__mdt());
     for (RollupControl__mdt rollupControl : rollupControls) {
       if (rollupControl.get(whereField) == whereValue) {
         return rollupControl;
