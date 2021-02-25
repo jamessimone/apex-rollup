@@ -450,7 +450,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global class FlowInput {
-    @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)' required=true)
+    @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)')
     global List<SObject> recordsToRollup;
 
     @InvocableVariable(label='Rollup target\'s SObject Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
@@ -576,7 +576,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
         }
         Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
-        Rollup roll = getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, RollupInvocationPoint.FROM_INVOCABLE);
+        Rollup roll = getRollup(
+          new List<Rollup__mdt>{ rollupMeta },
+          sObjectType,
+          flowInput.recordsToRollup,
+          oldFlowRecords,
+          null,
+          RollupInvocationPoint.FROM_INVOCABLE
+        );
         if (flowInput.deferProcessing) {
           FLOW_ROLLUPS.add(roll);
         } else {
