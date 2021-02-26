@@ -1372,17 +1372,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return Database.countQuery(countQuery);
   }
 
-  private static List<SObject> getMetadataFromCache(SObject metadataRecord) {
-    // CMDT is read-only when returned from the cache
+  private static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     Map<String, SObject> metadataMap;
-    switch on metadataRecord {
-      when Rollup__mdt rollupMeta {
-        metadataMap = Rollup__mdt.getAll();
-      }
-      when RollupControl__mdt rollupControl {
-        metadataMap = RollupControl__mdt.getAll();
-      }
+    if (metadataType == Rollup__mdt.SObjectType) {
+      metadataMap = Rollup__mdt.getAll();
+    } else if (metadataType == RollupControl__mdt.SObjectType) {
+      metadataMap = RollupControl__mdt.getAll();
     }
+    // CMDT is read-only when returned from the cache
+    // use "deepClone" to get access to mutable versions
+    // of the CMDT records
     return metadataMap?.deepClone()?.values();
   }
 
@@ -1450,7 +1449,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (rollupMetadata != null) {
       return rollupMetadata;
     }
-    List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(new Rollup__mdt());
+    List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
       if (rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
@@ -1685,7 +1684,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else if (whereField == RollupControl__mdt.Id) {
       return RollupControl__mdt.getInstance((Id) whereValue)?.clone(true, true);
     }
-    List<RollupControl__mdt> rollupControls = getMetadataFromCache(new RollupControl__mdt());
+    List<RollupControl__mdt> rollupControls = getMetadataFromCache(RollupControl__mdt.SObjectType);
     for (RollupControl__mdt rollupControl : rollupControls) {
       if (rollupControl.get(whereField) == whereValue) {
         return rollupControl;
@@ -2000,7 +1999,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> allMetadata = getMetadataFromCache(new Rollup__mdt());
+      List<Rollup__mdt> allMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);
       Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
       for (Rollup__mdt meta : allMetadata) {
         if (rollupMetadataIds.contains(meta.Id) == false) {
