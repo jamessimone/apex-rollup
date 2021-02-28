@@ -41,9 +41,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private final Op op;
   private final Evaluator eval;
   private final Boolean isBatched;
-  private final RollupInvocationPoint invokePoint;
   private final Id rollupControlId;
   private final Rollup__mdt metadata;
+
+  protected final RollupInvocationPoint invokePoint;
 
   // non-final instance variables
   private Boolean isFullRecalc = false;
@@ -246,19 +247,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         hasMoreThanOneTarget = true;
       }
 
-      Set<String> uniqueLookupFields = new Set<String>();
+      Set<String> uniqueIds = new Set<String>();
       for (SObject calcItem : rollup.calcItems) {
         String lookupKey = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
         if (String.isNotBlank(lookupKey)) {
-          uniqueLookupFields.add(lookupKey);
+          uniqueIds.add(lookupKey);
         }
       }
 
-      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, 'Id', '=');
+      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, String.valueOf(rollup.lookupFieldOnLookupObject), '=');
       if (queryCountsToLookupIds.containsKey(countQuery)) {
-        queryCountsToLookupIds.get(countQuery).addAll(uniqueLookupFields);
+        queryCountsToLookupIds.get(countQuery).addAll(uniqueIds);
       } else {
-        queryCountsToLookupIds.put(countQuery, uniqueLookupFields);
+        queryCountsToLookupIds.put(countQuery, uniqueIds);
       }
     }
 
@@ -284,7 +285,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       throw new AsyncException(
         'Number of records that would be rolled up : ' +
         totalCountOfRecords +
-        ' exceeds safety threshold, or you tried to run this in Batch mode with more than one target type. (' +
+        ' exceeds safety threshold, or you tried to run this in Batch mode with more than one target type: (' +
         hasMoreThanOneTarget +
         ')'
       );
@@ -408,7 +409,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType calcItemType = getSObjectTypeFromName(calcItemSObjectName);
-    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, 'Id', '!=');
+    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=');
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
@@ -422,13 +423,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
       RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupOperation__c = operationName,
-      CalcItemWhereClause__c = potentialWhereClause
+      RollupOperation__c = operationName
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(potentialWhereClause, calcItemType);
     queryFields.addAll(eval.getRelationshipFieldNames());
-    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=');
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', potentialWhereClause);
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       List<SObject> calcItems = Database.query(queryString);
       Rollup thisRollup = getRollup(
@@ -1317,6 +1317,36 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     for (Rollup__mdt rollupInfo : rollupMetadata) {
+      if (rollupInfo.IsRollupStartedFromParent__c) {
+        shouldReturn = true;
+        List<String> lookupIds = new List<String>();
+        for (SObject calcItem : calcItems) {
+          String lookupId = (String) calcItem.get(rollupInfo.LookupFieldOnLookupObject__c);
+          if (String.isNotBlank(lookupId)) {
+            lookupIds.add(lookupId);
+          }
+        }
+        String serializedLookups = JSON.serialize(lookupIds).replaceAll('"', '\'');
+        String whereClause =
+          rollupInfo.LookupObject__c +
+          '.' +
+          rollupInfo.LookupFieldOnLookupObject__c +
+          // the serialized version of the list starts and ends with brackets: []
+          // replace with parens: ()
+          ' IN (' +
+          serializedLookups.substring(1, serializedLookups.length() - 1) +
+          ')';
+        performFullRecalculation(
+          rollupInfo.RollupFieldOnCalcItem__c,
+          rollupInfo.LookupFieldOnCalcItem__c,
+          rollupInfo.LookupFieldOnLookupObject__c,
+          rollupInfo.RollupFieldOnLookupObject__c,
+          rollupInfo.LookupObject__c,
+          rollupInfo.CalcItem__c,
+          rollupInfo.RollupOperation__c,
+          whereClause
+        );
+      }
       rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
     }
 
@@ -1347,7 +1377,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       equality +
       ' :objIds';
     if (String.isNotBlank(optionalWhereClause)) {
-      baseQuery += optionalWhereClause;
+      if (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR')) {
+        baseQuery += optionalWhereClause;
+      } else {
+        baseQuery += '\nAND ' + optionalWhereClause;
+      }
     }
     if (sObjectType == Task.SObjectType || sObjectType == Event.SObjectType) {
       // handle archived rows
@@ -1628,8 +1662,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return new Map<Id, SObject>();
   }
 
-  private static SObjectType getSObjectTypeFromName(String sobjectName) {
-    return ((SObject) Type.forName(sobjectName).newInstance()).getSObjectType();
+  private static SObjectType getSObjectTypeFromName(String sObjectName) {
+    return ((SObject) Type.forName(sObjectName).newInstance()).getSObjectType();
   }
 
   private static String getParedFieldName(String fullFieldName, DescribeSObjectResult describeForSObject) {

@@ -28,7 +28,7 @@ public class RollupFullBatchRecalculator extends Rollup {
         calcItems,
         new Map<Id, SObject>(calcItems),
         null, // the evaluator, which we don't need here
-        RollupInvocationPoint.FROM_LWC
+        this.invokePoint
       )
       .runCalc();
   }

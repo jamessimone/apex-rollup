@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsRollupStartedFromParent__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Most rollups are initiated from the child object and rolled up to the parent - however, if you&apos;d like to have the rollup start from the parent and recalculate for all children when the parent is updated, check this box.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Most rollups are initiated from the child object and rolled up to the parent - however, if you&apos;d like to have the rollup start from the parent and recalculate for all children when the parent is updated, check this box.</inlineHelpText>
+    <label>Is Rollup Started From Parent</label>
+    <type>Checkbox</type>
+</CustomField>

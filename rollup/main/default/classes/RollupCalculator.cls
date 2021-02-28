@@ -152,7 +152,7 @@ public without sharing abstract class RollupCalculator {
     } else {
       this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) : priorVal;
     }
-    this.lookupKeyQuery = '\nAND ' + lookupKeyField + ' = \'' + lookupRecordKey + '\'';
+    this.lookupKeyQuery = lookupKeyField + ' = \'' + lookupRecordKey + '\'';
   }
   public virtual Object getReturnValue() {
     return this.returnVal;

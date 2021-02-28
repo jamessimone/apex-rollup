@@ -309,7 +309,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
 
       // otherwise, clean the string up and replace any inner quotes before returning
-      if (whereClausePiece.startsWith('(') && whereClausePiece.contains(',') == false) {
+      if (whereClausePiece.startsWith('(') && whereClausePiece.endsWith(')') && whereClausePiece.contains(',') == false) {
+        whereClausePiece = whereClausePiece.substring(1, whereClausePiece.length() - 1);
+      } else if (whereClausePiece.startsWith('(') && whereClausePiece.contains(',') == false) {
         whereClausePiece = whereClausePiece.substring(1, whereClausePiece.length());
       } else if (whereClausePiece.endsWith(')') && whereClausePiece.contains(',') == false) {
         whereClausePiece = whereClausePiece.substring(0, whereClausePiece.length() - 1);
@@ -458,7 +460,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             List<String> splitValues = value.split(';');
             for (String splitValue : splitValues) {
               isEqual = storedValue.contains(splitValue);
-              if(isEqual == false) {
+              if (isEqual == false) {
                 break;
               }
             }
