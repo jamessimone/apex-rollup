@@ -538,6 +538,34 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldAllowRollupFromParentByInvocable() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Opportunity opp = [SELECT Id, Amount FROM Opportunity];
+    opp.AccountId = acc.Id;
+    update opp;
+    Rollup.defaultControl = null;
+
+    List<Account> accs = new List<Account>{ acc };
+    DMLMock mock = loadMock(accs);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'INSERT', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
+  }
+
+  @isTest
   static void shouldBatchTwoOperations() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
