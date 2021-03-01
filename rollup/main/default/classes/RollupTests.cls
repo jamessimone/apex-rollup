@@ -551,6 +551,7 @@ private class RollupTests {
 
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'INSERT', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'Opportunity';
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -562,7 +563,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
+    System.assertEquals(opp.Amount, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
   }
 
   @isTest

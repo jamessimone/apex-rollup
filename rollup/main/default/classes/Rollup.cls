@@ -521,6 +521,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
+    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    global String calcItemTypeWhenRollupStartedFromParent;
   }
 
   global class FlowOutput {
@@ -555,10 +557,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
           continue;
         } else {
-          SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
           String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
           whereClause += getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
-          // TODO we now need an input on both invocables for the calc item type since it won't come from the records for this kind of rollup
           if (flowInput.isRollupStartedFromParent) {
             performFullRecalculation(
               flowInput.rollupFieldOnCalcItem,
@@ -566,13 +566,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.lookupFieldOnOpObject,
               flowInput.rollupFieldOnOpObject,
               flowInput.rollupSObjectName,
-              sObjectType.getDescribe().getName(),
+              flowInput.calcItemTypeWhenRollupStartedFromParent,
               flowInput.rollupOperation.toUpperCase(),
               whereClause
             );
             continue;
           }
 
+          SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
           Rollup__mdt rollupMeta = new Rollup__mdt(
             RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
             LookupObject__c = flowInput.rollupSObjectName,
