@@ -557,9 +557,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
           continue;
         } else {
-          String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
-          whereClause += getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
           if (flowInput.isRollupStartedFromParent) {
+            String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
+            whereClause += getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
             performFullRecalculation(
               flowInput.rollupFieldOnCalcItem,
               flowInput.lookupFieldOnCalcItem,
