@@ -1405,22 +1405,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
-    List<String> lookupIds = new List<String>();
+    String parentWhereClause = ' IN (';
     for (SObject calcItem : calcItems) {
       String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
       if (String.isNotBlank(lookupId)) {
-        lookupIds.add(lookupId);
+        parentWhereClause += '\'' + lookupId + '\',';
       }
     }
-    String serializedLookups = JSON.serialize(lookupIds).replaceAll('"', '\'');
-    return lookupObjectName +
-      '.' +
-      lookupFieldOnLookupObject +
-      // the serialized version of the list starts and ends with brackets: []
-      // replace with parens: ()
-      ' IN (' +
-      serializedLookups.substring(1, serializedLookups.length() - 1) +
-      ')';
+    // remove trailing comma, because this comment is less LOC than doing the for loop with an index and checking before appending the comma :)
+    parentWhereClause = parentWhereClause.substringBeforeLast(',') + ')';
+    return lookupObjectName + '.' + lookupFieldOnLookupObject + parentWhereClause;
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
