@@ -19,7 +19,7 @@ private class RollupFlowBulkProcessorTests {
 
     System.assertEquals(true, outputs[0].message.contains('SUM'));
     System.assertEquals(true, outputs[0].isSuccess, 'Should not error when adding deferred flow rollup');
-    System.assertEquals(1, Rollup.FLOW_ROLLUPS.size());
+    System.assertEquals(1, Rollup.FLOW_ROLLUPS.size(), 'Deferred rollup should be kept in buffer');
   }
 
   @isTest
@@ -50,6 +50,5 @@ private class RollupFlowBulkProcessorTests {
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(5, acc.AnnualRevenue);
     System.assertEquals(0, Rollup.FLOW_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
-
   }
 }

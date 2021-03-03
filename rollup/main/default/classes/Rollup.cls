@@ -41,9 +41,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private final Op op;
   private final Evaluator eval;
   private final Boolean isBatched;
-  private final RollupInvocationPoint invokePoint;
   private final Id rollupControlId;
   private final Rollup__mdt metadata;
+
+  protected final RollupInvocationPoint invokePoint;
 
   // non-final instance variables
   private Boolean isFullRecalc = false;
@@ -159,6 +160,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // a batch only becomes valid if other Rollups are added to it
     this.isNoOp = true;
     this.invokePoint = invokePoint;
+    this.rollupControl = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
   }
 
   private Rollup(Rollup innerRollup, Op op, List<SObject> calcItems) {
@@ -245,19 +247,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         hasMoreThanOneTarget = true;
       }
 
-      Set<String> uniqueLookupFields = new Set<String>();
+      Set<String> uniqueIds = new Set<String>();
       for (SObject calcItem : rollup.calcItems) {
         String lookupKey = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
         if (String.isNotBlank(lookupKey)) {
-          uniqueLookupFields.add(lookupKey);
+          uniqueIds.add(lookupKey);
         }
       }
 
-      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, 'Id', '=');
+      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, String.valueOf(rollup.lookupFieldOnLookupObject), '=');
       if (queryCountsToLookupIds.containsKey(countQuery)) {
-        queryCountsToLookupIds.get(countQuery).addAll(uniqueLookupFields);
+        queryCountsToLookupIds.get(countQuery).addAll(uniqueIds);
       } else {
-        queryCountsToLookupIds.put(countQuery, uniqueLookupFields);
+        queryCountsToLookupIds.put(countQuery, uniqueIds);
       }
     }
 
@@ -283,7 +285,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       throw new AsyncException(
         'Number of records that would be rolled up : ' +
         totalCountOfRecords +
-        ' exceeds safety threshold, or you tried to run this in Batch mode with more than one target type. (' +
+        ' exceeds safety threshold, or you tried to run this in Batch mode with more than one target type: (' +
         hasMoreThanOneTarget +
         ')'
       );
@@ -304,17 +306,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
      */
     this.getFieldNamesForRollups(this.rollups);
     String query;
+    String lookupFieldOnLookupObject;
     Set<String> objIds = new Set<String>();
     for (Rollup rollup : this.rollups) {
+      lookupFieldOnLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
       objIds.addAll(this.getCalcItemsByLookupField(rollup).keySet());
     }
     for (SObjectType sObjectType : this.lookupObjectToUniqueFieldNames.keySet()) {
-      query = getQueryString(
-        sObjectType,
-        new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)),
-        String.valueOf(this.rollups[0].lookupFieldOnLookupObject),
-        '='
-      );
+      query = getQueryString(sObjectType, new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)), lookupFieldOnLookupObject, '=');
     }
     return Database.getQueryLocator(query);
   }
@@ -410,7 +409,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType calcItemType = getSObjectTypeFromName(calcItemSObjectName);
-    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, 'Id', '!=');
+    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=');
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
@@ -424,13 +423,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
       RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupOperation__c = operationName,
-      CalcItemWhereClause__c = potentialWhereClause
+      RollupOperation__c = operationName
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(potentialWhereClause, calcItemType);
     queryFields.addAll(eval.getRelationshipFieldNames());
-    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=');
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', potentialWhereClause);
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       List<SObject> calcItems = Database.query(queryString);
       Rollup thisRollup = getRollup(
@@ -445,7 +443,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return thisRollup.runCalc();
     } else {
       //batch to get calc items and then batch to rollup
-      return Database.executeBatch(new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType));
+      return Database.executeBatch(
+        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType),
+        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
+      );
     }
   }
 
@@ -517,6 +518,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     @InvocableVariable(label='Defer processing')
     global Boolean deferProcessing = false;
+
+    @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
+    global Boolean isRollupStartedFromParent = false;
+    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    global String calcItemTypeWhenRollupStartedFromParent;
   }
 
   global class FlowOutput {
@@ -550,47 +556,63 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
         if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
           continue;
-        }
-
-        Rollup__mdt rollupMeta = new Rollup__mdt(
-          RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
-          LookupObject__c = flowInput.rollupSObjectName,
-          LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
-          LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
-          RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-          RollupOperation__c = rollupContext + flowInput.rollupOperation.toUpperCase(),
-          ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
-          FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-          FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
-          CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-          IsFullRecordSet__c = flowInput.isFullRecordSet,
-          OrderByFirstLast__c = flowInput.orderByFirstLast
-        );
-
-        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
-        Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
-        if (String.isNotBlank(rollupMeta.LookupFieldOnCalcItem__c)) {
-          uniqueFieldNames.add(rollupMeta.LookupFieldOnCalcItem__c);
-        }
-        if (String.isNotBlank(rollupMeta.RollupFieldOnCalcItem__c)) {
-          uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
-        }
-        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
-        Rollup roll = getRollup(
-          new List<Rollup__mdt>{ rollupMeta },
-          sObjectType,
-          flowInput.recordsToRollup,
-          oldFlowRecords,
-          null,
-          RollupInvocationPoint.FROM_INVOCABLE
-        );
-        if (flowInput.deferProcessing) {
-          FLOW_ROLLUPS.add(roll);
         } else {
-          rollups.add(roll);
+          if (flowInput.isRollupStartedFromParent) {
+            String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
+            whereClause += getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
+            performFullRecalculation(
+              flowInput.rollupFieldOnCalcItem,
+              flowInput.lookupFieldOnCalcItem,
+              flowInput.lookupFieldOnOpObject,
+              flowInput.rollupFieldOnOpObject,
+              flowInput.rollupSObjectName,
+              flowInput.calcItemTypeWhenRollupStartedFromParent,
+              flowInput.rollupOperation.toUpperCase(),
+              whereClause
+            );
+            continue;
+          }
+
+          SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+          Rollup__mdt rollupMeta = new Rollup__mdt(
+            RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
+            LookupObject__c = flowInput.rollupSObjectName,
+            LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
+            LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
+            RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
+            RollupOperation__c = rollupContext + flowInput.rollupOperation.toUpperCase(),
+            ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+            FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+            FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+            CalcItemWhereClause__c = flowInput.calcItemWhereClause,
+            IsFullRecordSet__c = flowInput.isFullRecordSet,
+            OrderByFirstLast__c = flowInput.orderByFirstLast
+          );
+
+          Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
+          if (String.isNotBlank(rollupMeta.LookupFieldOnCalcItem__c)) {
+            uniqueFieldNames.add(rollupMeta.LookupFieldOnCalcItem__c);
+          }
+          if (String.isNotBlank(rollupMeta.RollupFieldOnCalcItem__c)) {
+            uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
+          }
+          Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
+          Rollup roll = getRollup(
+            new List<Rollup__mdt>{ rollupMeta },
+            sObjectType,
+            flowInput.recordsToRollup,
+            oldFlowRecords,
+            null,
+            RollupInvocationPoint.FROM_INVOCABLE
+          );
+          if (flowInput.deferProcessing) {
+            FLOW_ROLLUPS.add(roll);
+          } else {
+            rollups.add(roll);
+          }
         }
+        batch(rollups);
       }
-      batch(rollups);
     } catch (Exception ex) {
       for (FlowOutput flowOutput : flowOutputReturns) {
         flowOutput.IsSuccess = false;
@@ -1316,6 +1338,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     for (Rollup__mdt rollupInfo : rollupMetadata) {
+      if (rollupInfo.IsRollupStartedFromParent__c) {
+        shouldReturn = true;
+        String whereClause = getParentWhereClause(calcItems, rollupInfo.LookupFieldOnLookupObject__c, rollupInfo.LookupObject__c);
+        performFullRecalculation(
+          rollupInfo.RollupFieldOnCalcItem__c,
+          rollupInfo.LookupFieldOnCalcItem__c,
+          rollupInfo.LookupFieldOnLookupObject__c,
+          rollupInfo.RollupFieldOnLookupObject__c,
+          rollupInfo.LookupObject__c,
+          rollupInfo.CalcItem__c,
+          rollupInfo.RollupOperation__c,
+          whereClause
+        );
+      }
       rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
     }
 
@@ -1346,7 +1382,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       equality +
       ' :objIds';
     if (String.isNotBlank(optionalWhereClause)) {
-      baseQuery += optionalWhereClause;
+      if (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR')) {
+        baseQuery += optionalWhereClause;
+      } else {
+        baseQuery += '\nAND ' + optionalWhereClause;
+      }
     }
     if (sObjectType == Task.SObjectType || sObjectType == Event.SObjectType) {
       // handle archived rows
@@ -1364,6 +1404,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     FLOW_ROLLUPS.clear();
   }
 
+  private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
+    String parentWhereClause = ' IN (';
+    for (SObject calcItem : calcItems) {
+      String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
+      if (String.isNotBlank(lookupId)) {
+        parentWhereClause += '\'' + lookupId + '\',';
+      }
+    }
+    // remove trailing comma, because this comment is less LOC than doing the for loop with an index and checking before appending the comma :)
+    parentWhereClause = parentWhereClause.substringBeforeLast(',') + ')';
+    return lookupObjectName + '.' + lookupFieldOnLookupObject + parentWhereClause;
+  }
+
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
     if (countQuery.contains('ALL ROWS')) {
       countQuery = countQuery.replace('ALL ROWS', '');
@@ -1371,18 +1424,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return Database.countQuery(countQuery);
   }
 
-  private static List<SObject> getMetadataFromCache(SObject metadataRecord) {
-    // CMDT is read-only when returned from the cache
+  private static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     Map<String, SObject> metadataMap;
-    switch on metadataRecord {
-      when Rollup__mdt rollupMeta {
-        metadataMap = Rollup__mdt.getAll().deepClone();
-      }
-      when RollupControl__mdt rollupControl {
-        metadataMap = RollupControl__mdt.getAll().deepClone();
-      }
+    if (metadataType == Rollup__mdt.SObjectType) {
+      metadataMap = Rollup__mdt.getAll();
+    } else if (metadataType == RollupControl__mdt.SObjectType) {
+      metadataMap = RollupControl__mdt.getAll();
     }
-    return metadataMap?.values();
+    // CMDT is read-only when returned from the cache
+    // use "deepClone" to get access to mutable versions
+    // of the CMDT records
+    return metadataMap?.deepClone()?.values();
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
@@ -1449,7 +1501,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (rollupMetadata != null) {
       return rollupMetadata;
     }
-    List<Rollup__mdt> rollupMetadatas = (List<Rollup__mdt>) getMetadataFromCache(new Rollup__mdt());
+    List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
       if (rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
@@ -1628,8 +1680,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return new Map<Id, SObject>();
   }
 
-  private static SObjectType getSObjectTypeFromName(String sobjectName) {
-    return ((SObject) Type.forName(sobjectName).newInstance()).getSObjectType();
+  private static SObjectType getSObjectTypeFromName(String sObjectName) {
+    return ((SObject) Type.forName(sObjectName).newInstance()).getSObjectType();
   }
 
   private static String getParedFieldName(String fullFieldName, DescribeSObjectResult describeForSObject) {
@@ -1684,7 +1736,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else if (whereField == RollupControl__mdt.Id) {
       return RollupControl__mdt.getInstance((Id) whereValue)?.clone(true, true);
     }
-    List<RollupControl__mdt> rollupControls = (List<RollupControl__mdt>) getMetadataFromCache(new RollupControl__mdt());
+    List<RollupControl__mdt> rollupControls = getMetadataFromCache(RollupControl__mdt.SObjectType);
     for (RollupControl__mdt rollupControl : rollupControls) {
       if (rollupControl.get(whereField) == whereValue) {
         return rollupControl;
@@ -1999,7 +2051,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> allMetadata = getMetadataFromCache(new Rollup__mdt());
+      List<Rollup__mdt> allMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);
       Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
       for (Rollup__mdt meta : allMetadata) {
         if (rollupMetadataIds.contains(meta.Id) == false) {

@@ -498,6 +498,74 @@ private class RollupTests {
     System.assertEquals(1, updatedAcc.NumberOfEmployees, 'COUNT_DISTINCT AFTER_INSERT should count regardless of not pointing to a field based on CMDT');
   }
 
+  /** Parent-initiated rollups */
+  @isTest
+  static void shouldAllowRollupToBeInitiatedFromTheParent() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Opportunity opp = [SELECT Id, Amount FROM Opportunity];
+    opp.AccountId = acc.Id;
+    update opp;
+    Rollup.defaultControl = null;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Opportunity',
+        IsRollupStartedFromParent__c = true
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.records = new List<Account>{ acc };
+    Rollup.oldRecordsMap = new Map<Id, Account>{ acc.Id => new Account(Id = acc.Id, AnnualRevenue = 0) };
+    Rollup.shouldRun = true;
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been updated based on parent metadata AFTER_UPDATE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertNotEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should have been updated with testSetup opp amount');
+  }
+
+  @isTest
+  static void shouldAllowRollupFromParentByInvocable() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Opportunity opp = [SELECT Id, Amount FROM Opportunity];
+    opp.AccountId = acc.Id;
+    update opp;
+    Rollup.defaultControl = null;
+
+    List<Account> accs = new List<Account>{ acc };
+    DMLMock mock = loadMock(accs);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'INSERT', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'Opportunity';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(opp.Amount, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
+  }
+
   @isTest
   static void shouldBatchTwoOperations() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });

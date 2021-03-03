@@ -13,6 +13,8 @@ global without sharing class RollupFlowBulkProcessor {
     global String rollupContext;
     @InvocableVariable(label='Defer processing?')
     global Boolean deferProcessing = true;
+    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    global String calcItemTypeWhenRollupStartedFromParent;
   }
 
   @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup')
@@ -33,10 +35,12 @@ global without sharing class RollupFlowBulkProcessor {
         String sObjectName = flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
         List<Rollup.FlowInput> rollupFlowInputs = new List<Rollup.FlowInput>();
         for (Rollup__mdt meta : rollupMetadata) {
-          if (meta.CalcItem__c == sObjectName) {
+          if (
+            meta.CalcItem__c == sObjectName ||
+            String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent) && flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
+          ) {
             Rollup.FlowInput input = new Rollup.FlowInput();
-            input.rollupContext = flowInput.rollupContext;
-            input.recordsToRollup = flowInput.recordsToRollup;
+            // pertinent fields from CMDT
             input.calcItemChangedFields = meta.ChangedFieldsOnCalcItem__c;
             input.calcItemWhereClause = meta.CalcItemWhereClause__c;
             input.fullRecalculationDefaultNumberValue = meta.FullRecalculationDefaultNumberValue__c;
@@ -49,7 +53,12 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupFieldOnOpObject = meta.RollupFieldOnLookupObject__c;
             input.rollupOperation = meta.RollupOperation__c;
             input.rollupSObjectName = meta.LookupObject__c;
+            input.isRollupStartedFromParent = meta.IsRollupStartedFromParent__c;
+            // everything else is supplied from the invocable
+            input.rollupContext = flowInput.rollupContext;
+            input.recordsToRollup = flowInput.recordsToRollup;
             input.deferProcessing = flowInput.deferProcessing;
+            input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
             rollupFlowInputs.add(input);
 
             output.message = 'Rollup queued for context: ' + meta.RollupOperation__c + ' with metadata values: ' + JSON.serialize(input);

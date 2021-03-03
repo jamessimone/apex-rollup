@@ -74,6 +74,24 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseForLists() {
+    List<String> accIds = new List<String>{
+      '0016g0000000000001',
+      '0016g0000000000002'
+    };
+    String whereClause = 'AccountId IN ' + JSON.serialize(accIds).replace('[', '(').replace(']', ')').replaceAll('"', '\'');
+
+    Opportunity oppOne = new Opportunity(AccountId = accIds[0]);
+    Opportunity oppTwo = new Opportunity(accountId = accIds[1]);
+    Opportunity shouldNotMatch = new Opportunity(AccountId = '0016g0000000000003');
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+    System.assertEquals(true, eval.matches(oppOne), 'first account Id is in list');
+    System.assertEquals(true, eval.matches(oppTwo), 'second account Id is in list');
+    System.assertNotEquals(true, eval.matches(shouldNotMatch), 'third account Id is not in list');
+  }
+
+  @isTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForOrStatements() {
     Account acc = new Account(Name = 'RollupEvaluatorTests');
     Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);
