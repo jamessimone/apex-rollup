@@ -1498,13 +1498,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
-    if (rollupMetadata != null) {
-      return rollupMetadata;
-    }
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
+    if (rollupMetadata != null) {
+      rollupMetadatas.addAll(rollupMetadata);
+    }
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
-      if (rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()) {
+      String sObjectName = sObjectType.getDescribe().getName();
+      if (rollupMetadata.CalcItem__c != sObjectName && rollupMetadata.IsRollupStartedFromParent__c == false) {
+        rollupMetadatas.remove(index);
+      } else if (rollupMetadata.IsRollupStartedFromParent__c && sObjectName != rollupMetadata.LookupObject__c) {
         rollupMetadatas.remove(index);
       }
     }
