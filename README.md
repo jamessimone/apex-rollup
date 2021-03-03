@@ -21,7 +21,7 @@ You have several different options when it comes to making use of `Rollup`:
 All you need is one line of code in any trigger where you'd like to perform rollups to a "parent" object. If you were taking values from your Opportunity records and rolling some of them up to the Account, this single line would be put into your `Opportunity.trigger` file or within your Opportunity Handler class:
 
 ```java
-// in a trigger. after insert, after update, and before delete are required
+// in a trigger. after insert, after update, before delete, and after undelete are REQUIRED
 // to be listed on your trigger in order for this to work properly
 Rollup.runFromTrigger();
 ```
@@ -42,6 +42,8 @@ To be clear - the following trigger contexts are necessary when using `runFromTr
 - before delete
 - after undelete
 
+The _only_ exception to the above is if you are using the `Is Rollup Started From The Parent` checkbox field on the `Rollup__mdt` custom metadata (<a href="#rollup-metadata-details">more details on that below</a>). If the rollup starts from the parent, you are free to only list the trigger contexts that make sense for you - for example, if you are initiating a rollup from parent records and the children records whose values you are rolling up are only ever updated when the parent is being inserted, you are free to use `after insert` in your Apex trigger if you have no need of the other contexts.
+
 That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
 
 #### Special Considerations For Use Of Custom Fields As Rollup/Lookup Fields
@@ -51,6 +53,8 @@ One **special** thing to note on the subject of Field Definitions — custom fie
 #### Rollup Custom Metadata Field Breakdown
 
 Within the `Rollup__mdt` custom metadata type, add a new record with fields:
+
+<div id="rollup-metadata-details"/>
 
 - `Calc Item` - the SObject the calculation is derived from — in this case, Oppportunity
 - `Lookup Object` - the SObject you’d like to roll the values up to (in this case, Account)
