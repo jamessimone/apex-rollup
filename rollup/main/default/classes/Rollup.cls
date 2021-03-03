@@ -1421,7 +1421,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
     DescribeSObjectResult parentDescribe = getSObjectTypeFromName(lookupObjectName).getDescribe();
-    String paredLookupFieldName = getParedFieldName(lookupFieldOnLookupObject, parentDescribe);
+    String paredLookupFieldName = getSObjectFieldByName(parentDescribe, lookupFieldOnLookupObject).getDescribe().getName();
     String parentWhereClause = ' IN (';
     for (SObject calcItem : calcItems) {
       String lookupId = (String) calcItem.get(paredLookupFieldName);
