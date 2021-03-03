@@ -1369,6 +1369,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String equality,
     String optionalWhereClause
   ) {
+    DescribeSObjectResult sObjectToken = sObjectType.getDescribe();
+    Map<String, SObjectField> baseFields = sObjectToken.fields.getMap();
+    for(Integer index = 0; index < uniqueQueryFieldNames.size(); index++) {
+      String uniqueFieldName = uniqueQueryFieldNames[index];
+      uniqueFieldName = getParedFieldName(uniqueFieldName, sObjectToken);
+      uniqueQueryFieldNames[index] = uniqueFieldName;
+      // ensure that the base relationship name field is transformed appropriately
+      if(baseFields.containsKey(uniqueFieldName + 'Id') || baseFields.containsKey(uniqueFieldName + '__c')) {
+        SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null ? baseFields.get(uniqueFieldName + '__c') : baseFields.get(uniqueFieldName + 'Id');
+        DescribeFieldResult fieldToken = baseField.getDescribe();
+        if(fieldToken.getType() == DisplayType.REFERENCE) {
+          uniqueQueryFieldNames[index] = baseField.getDescribe().getName();
+        }
+      }
+    }
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
     String baseQuery =
@@ -1405,16 +1420,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
+    DescribeSObjectResult parentDescribe = getSObjectTypeFromName(lookupObjectName).getDescribe();
+    String paredLookupFieldName = getParedFieldName(lookupFieldOnLookupObject, parentDescribe);
     String parentWhereClause = ' IN (';
     for (SObject calcItem : calcItems) {
-      String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
+      String lookupId = (String) calcItem.get(paredLookupFieldName);
       if (String.isNotBlank(lookupId)) {
         parentWhereClause += '\'' + lookupId + '\',';
       }
     }
     // remove trailing comma, because this comment is less LOC than doing the for loop with an index and checking before appending the comma :)
     parentWhereClause = parentWhereClause.substringBeforeLast(',') + ')';
-    return lookupObjectName + '.' + lookupFieldOnLookupObject + parentWhereClause;
+    return lookupObjectName + '.' + paredLookupFieldName + parentWhereClause;
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
