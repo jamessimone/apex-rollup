@@ -103,6 +103,8 @@ These are the fields on the `Rollup Control` custom metadata type:
 
 <div id="flow-process-builder-invocable"></div>
 
+**Important note for Record Triggered Flows as of 26 Februray 2021**: a patch to the Spring 21 release introduced a breaking change in the way that the Flow engine hands off Invocable variables to Apex. Currently, if you are using an After Save flow, you have to use `Get Records` using the current record's Id in order to populate the `Records To Rollup` argument properly for both invocables. I will remove this notice when the functionality has been fixed, but there is a bug with simply adding the current record to a collection variable and passing that to the invocable action accordingly. Thank you for your attention to this notice!
+
 I will touch only on Flows given that all indications from Salesforce would lead a person to believe they are the future of the "clicks" part in "clicks versus code":
 
 Invoking the `Rollup` process from a Flow, in particular, is a joy; with a Record Triggered Flow, you can do the up-front processing to take in only the records you need, and then dispatch the rollup operation to the `Rollup` invocable:
