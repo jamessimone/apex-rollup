@@ -2563,6 +2563,20 @@ private class RollupTests {
   /** Integration tests */
 
   @isTest
+  static void shouldNotFailForTruncatedTextFields() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Description = '0'.repeat(256), Name = 'Truncate', StageName = 'Prospecting', CloseDate = System.today());
+    insert opp;
+
+    Test.startTest();
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null);
+    Test.stopTest();
+
+    acc = [SELECT Name FROM Account];
+    System.assertEquals(255, acc.Name.length(), acc.Name);
+  }
+
+  @isTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 

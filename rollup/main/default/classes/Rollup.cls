@@ -1437,14 +1437,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           SELECT
             // we have to do transforms on these fields because custom objects/custom fields
             // have references that otherwise won't work with the rest of the code
-            LookupObject__c, 
+            LookupObject__c,
             LookupObject__r.QualifiedApiName,
-            CalcItem__c, 
+            CalcItem__c,
             CalcItem__r.QualifiedApiName,
             RollupFieldOnCalcItem__c,
             RollupFieldOnCalcItem__r.QualifiedApiName,
-            LookupFieldOnCalcItem__c,         
-            LookupFieldOnCalcItem__r.QualifiedApiName, 
+            LookupFieldOnCalcItem__c,
+            LookupFieldOnCalcItem__r.QualifiedApiName,
             LookupFieldOnLookupObject__c,
             LookupFieldOnLookupObject__r.QualifiedApiName,
             RollupFieldOnLookupObject__c,
@@ -2072,7 +2072,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private virtual class DMLHelper {
     public virtual void doUpdate(List<SObject> recordsToUpdate) {
-      update recordsToUpdate;
+      Database.DMLOptions dmlOptions = new Database.DMLOptions();
+      dmlOptions.AllowFieldTruncation = true;
+      Database.update(recordsToUpdate, dmlOptions);
     }
   }
 
