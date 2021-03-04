@@ -299,6 +299,8 @@ private class RollupCalculatorTests {
     System.assertEquals(16, (Decimal) calc.getReturnValue());
   }
 
+  // AVERAGE tests
+
   @isTest
   static void shouldNotTryToAverageNull() {
     Rollup__mdt metadata = new Rollup__mdt();

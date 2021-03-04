@@ -35,10 +35,10 @@ private class RollupFlowBulkProcessorTests {
       RollupOperation__c = 'SUM',
       CalcItem__c = 'Opportunity',
       LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'Opportunity.Amount',
-      LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
-      LookupFieldOnLookupObject__c = 'Account.Id',
-      RollupFieldOnLookupObject__c = 'Account.AnnualRevenue'
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue'
     );
 
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
@@ -62,10 +62,10 @@ private class RollupFlowBulkProcessorTests {
       RollupOperation__c = 'SUM',
       CalcItem__c = 'Opportunity',
       LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'Opportunity.Kaffufle', // this obviously doesn't exist
-      LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
-      LookupFieldOnLookupObject__c = 'Account.Id',
-      RollupFieldOnLookupObject__c = 'Account.AnnualRevenue'
+      RollupFieldOnCalcItem__c = 'Kaffufle', // this obviously doesn't exist
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue'
     );
 
     List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });

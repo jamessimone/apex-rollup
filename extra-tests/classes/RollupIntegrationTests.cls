@@ -22,15 +22,12 @@ private class RollupIntegrationTests {
     Rollup.records = [SELECT Id, Amount, AccountIdText__c FROM Opportunity];
     Rollup.shouldRun = true;
 
-    FieldDefinition oppCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AccountIdText__c' AND EntityDefinitionId = 'Opportunity'];
-    FieldDefinition accCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AccountIdText__c' AND EntityDefinitionId = 'Account'];
-
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Opportunity.Amount',
+        RollupFieldOnCalcItem__c = 'Amount',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = oppCustomField.DurableId,
-        LookupFieldOnLookupObject__c = accCustomField.DurableId,
+        LookupFieldOnCalcItem__c = 'AccountIdText__c',
+        LookupFieldOnLookupObject__c = 'AccountIdText__c',
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
         RollupOperation__c = 'MAX',
         CalcItem__c = 'Opportunity'
@@ -56,15 +53,13 @@ private class RollupIntegrationTests {
     Rollup.records = opps;
     Rollup.shouldRun = true;
 
-    FieldDefinition oppCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AmountFormula__c' AND EntityDefinitionId = 'Opportunity'];
-
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = oppCustomField.DurableId,
+        RollupFieldOnCalcItem__c = 'AmountFormula__c',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
-        LookupFieldOnLookupObject__c = 'Account.Id',
-        RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
         IsFullRecordSet__c = true,
         CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
@@ -92,30 +87,12 @@ private class RollupIntegrationTests {
       new ApplicationLog__c(Application__c = app.Id, Object__c = 'Lead'),
       new ApplicationLog__c(Application__c = app.Id, Object__c = 'Account')
     };
+
     Rollup.records = appLogs;
     Rollup.shouldRun = true;
-
-    EntityDefinition appDefinition = [SELECT DurableId FROM EntityDefinition WHERE QualifiedApiName = 'Application__c'];
-    EntityDefinition appLogDefinition = [SELECT DurableId FROM EntityDefinition WHERE QualifiedApiName = 'ApplicationLog__c'];
-
-    FieldDefinition appObjects = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Objects__c' AND EntityDefinitionId = :appDefinition.DurableId];
-    FieldDefinition appId = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Id' AND EntityDefinitionId = :appDefinition.DurableId];
-    FieldDefinition appLogObject = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Object__c' AND EntityDefinitionId = :appLogDefinition.DurableId];
-    FieldDefinition appLogAppLookup = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Application__c' AND EntityDefinitionId = :appLogDefinition.DurableId];
-
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        CalcItem__c = appLogDefinition.DurableId,
-        RollupFieldOnCalcItem__c = appLogObject.DurableId,
-        LookupFieldOnCalcItem__c = appLogAppLookup.DurableId,
-        LookupObject__c = appDefinition.DurableId,
-        LookupFieldOnLookupObject__c = appId.DurableId,
-        RollupFieldOnLookupObject__c = appObjects.DurableId,
-        RollupOperation__c = 'CONCAT_DISTINCT'
-      )
-    };
-
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    // the CMDT record actually exists and is queried for; this test is to ensure that the custom object/field references
+    // get updated correctly in Rollup
 
     Test.startTest();
     Rollup.runFromTrigger();
