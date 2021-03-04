@@ -117,7 +117,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
           if (fieldNames.contains(condition.fieldName) == false) {
-            fieldNames.add(condition.fieldName);
+            if(condition.fieldName.contains('__c.') == false) {
+              fieldNames.add(condition.fieldName);
+            }
             if (condition.fieldName.contains('.')) {
               List<String> relationshipNames = condition.fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
               String priorVal = '';
@@ -125,7 +127,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
                 if (String.isNotBlank(priorVal)) {
                   priorVal += '.';
                 }
-                priorVal += relationshipName.trim();
+                priorVal += relationshipName.replace('__c', '__r').trim();
               }
               if (fieldNames.contains(priorVal) == false) {
                 fieldNames.add(priorVal);

@@ -1424,6 +1424,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     FLOW_ROLLUPS.clear();
   }
 
+  private static List<Rollup__mdt> cachedMetadata;
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     List<SObject> metadata;
     // CMDT is read-only when returned from the cache
@@ -1431,42 +1432,44 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // of the CMDT records. We also need to clean up the Entity Definition / Field Definition
     // particles for custom objects - the final sweep through on custom fields will be done later
     if (metadataType == Rollup__mdt.SObjectType) {
-      List<Rollup__mdt> cachedMetadata = [
-        SELECT
-          // we have to do transforms on these fields because custom objects/custom fields
-          // have references that otherwise won't work with the rest of the code
-          LookupObject__c, 
-          LookupObject__r.QualifiedApiName,
-          CalcItem__c, 
-          CalcItem__r.QualifiedApiName,
-          RollupFieldOnCalcItem__c,
-          RollupFieldOnCalcItem__r.QualifiedApiName,
-          LookupFieldOnCalcItem__c,         
-          LookupFieldOnCalcItem__r.QualifiedApiName, 
-          LookupFieldOnLookupObject__c,
-          LookupFieldOnLookupObject__r.QualifiedApiName,
-          RollupFieldOnLookupObject__c,
-          RollupFieldOnLookupObject__r.QualifiedApiName,
-          // rest of the fields
-          CalcItemWhereClause__c,
-          ChangedFieldsOnCalcItem__c,
-          FullRecalculationDefaultNumberValue__c,
-          FullRecalculationDefaultStringValue__c,
-          IsFullRecordSet__c,
-          IsRollupStartedFromParent__c,
-          OrderByFirstLast__c,
-          RollupControl__c,
-          RollupOperation__c
-        FROM Rollup__mdt
-      ];
-      // do the transforms
-      for(Rollup__mdt meta : cachedMetadata) {
-        meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
-        meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
-        meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
-        meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
-        meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
-        meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
+      if(cachedMetadata == null) {
+        cachedMetadata = [
+          SELECT
+            // we have to do transforms on these fields because custom objects/custom fields
+            // have references that otherwise won't work with the rest of the code
+            LookupObject__c, 
+            LookupObject__r.QualifiedApiName,
+            CalcItem__c, 
+            CalcItem__r.QualifiedApiName,
+            RollupFieldOnCalcItem__c,
+            RollupFieldOnCalcItem__r.QualifiedApiName,
+            LookupFieldOnCalcItem__c,         
+            LookupFieldOnCalcItem__r.QualifiedApiName, 
+            LookupFieldOnLookupObject__c,
+            LookupFieldOnLookupObject__r.QualifiedApiName,
+            RollupFieldOnLookupObject__c,
+            RollupFieldOnLookupObject__r.QualifiedApiName,
+            // rest of the fields
+            CalcItemWhereClause__c,
+            ChangedFieldsOnCalcItem__c,
+            FullRecalculationDefaultNumberValue__c,
+            FullRecalculationDefaultStringValue__c,
+            IsFullRecordSet__c,
+            IsRollupStartedFromParent__c,
+            OrderByFirstLast__c,
+            RollupControl__c,
+            RollupOperation__c
+          FROM Rollup__mdt
+        ];
+        // do the transforms
+        for(Rollup__mdt meta : cachedMetadata) {
+          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
+          meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
+          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
+          meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
+          meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
+          meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
+        }
       }
       metadata = cachedMetadata;
       if (rollupMetadata != null) {
@@ -1488,7 +1491,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     // remove trailing comma, because this comment is less LOC than doing the for loop with an index and checking before appending the comma :)
     parentWhereClause = parentWhereClause.substringBeforeLast(',') + ')';
-    return lookupObjectName + '.' + lookupFieldOnLookupObject + parentWhereClause;
+    return lookupObjectName.replace('__c', '__r') + '.' + lookupFieldOnLookupObject + parentWhereClause;
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
