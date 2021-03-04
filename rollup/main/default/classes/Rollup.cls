@@ -1307,9 +1307,29 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global static void runFromTrigger() {
-    SObjectType sObjectType = getTriggerRecords().getSObjectType();
-    List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
-    runFromApex(rollupMetadata, null, getTriggerRecords(), getOldTriggerRecordsMap()).runCalc();
+    List<SObject> triggerRecords = getTriggerRecords();
+    List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(triggerRecords.getSObjectType());
+    runFromApex(rollupMetadata, null, triggerRecords, getOldTriggerRecordsMap()).runCalc();
+  }
+
+  /**
+   * @param `List<SObject>` calcItems - the records whose values you'd like to roll up
+   * @param `TriggerOperation` rollupContext - acceptable values are:
+   * - TriggerOperation.AFTER_INSERT
+   * - TriggerOperation.AFTER_UDATE
+   * - TriggerOperation.BEFORE_DELETE
+   * - TriggerOperation.AFTER_UNDELETE
+   */
+  global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext) {
+    shouldRun = true;
+    records = calcItems;
+    apexContext = rollupContext;
+
+    runFromTrigger();
+
+    records = null;
+    shouldRun = null;
+    apexContext = null;
   }
 
   private static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -1437,14 +1457,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           SELECT
             // we have to do transforms on these fields because custom objects/custom fields
             // have references that otherwise won't work with the rest of the code
-            LookupObject__c, 
+            LookupObject__c,
             LookupObject__r.QualifiedApiName,
-            CalcItem__c, 
+            CalcItem__c,
             CalcItem__r.QualifiedApiName,
             RollupFieldOnCalcItem__c,
             RollupFieldOnCalcItem__r.QualifiedApiName,
-            LookupFieldOnCalcItem__c,         
-            LookupFieldOnCalcItem__r.QualifiedApiName, 
+            LookupFieldOnCalcItem__c,
+            LookupFieldOnCalcItem__r.QualifiedApiName,
             LookupFieldOnLookupObject__c,
             LookupFieldOnLookupObject__r.QualifiedApiName,
             RollupFieldOnLookupObject__c,
@@ -1675,7 +1695,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static Boolean shouldRunFromTrigger() {
-    shouldRun = (shouldRun != null && shouldRun) || Trigger.isExecuting;
+    shouldRun = shouldRun || Trigger.isExecuting;
     // in order to accomodate CDC; we set the apexContext manually there
     // since technically all CDC is done from an AFTER_INSERT context
     if (Trigger.operationType != null && isCDC == false) {
@@ -2072,7 +2092,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private virtual class DMLHelper {
     public virtual void doUpdate(List<SObject> recordsToUpdate) {
-      update recordsToUpdate;
+      Database.DMLOptions dmlOptions = new Database.DMLOptions();
+      dmlOptions.AllowFieldTruncation = true;
+      Database.update(recordsToUpdate, dmlOptions);
     }
   }
 

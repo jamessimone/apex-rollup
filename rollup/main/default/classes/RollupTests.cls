@@ -506,6 +506,36 @@ private class RollupTests {
     System.assertEquals(1, updatedAcc.NumberOfEmployees, 'COUNT_DISTINCT AFTER_INSERT should count regardless of not pointing to a field based on CMDT');
   }
 
+  @isTest
+  static void shouldRunDirectlyFromApex() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Amount = 5),
+      new Opportunity(AccountId = acc.Id, Amount = 10)
+    };
+
+    Rollup.records = opps;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromApex(opps, TriggerOperation.AFTER_INSERT);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(15, acc.AnnualRevenue);
+  }
+
   /** Parent-initiated rollups */
   @isTest
   static void shouldAllowRollupToBeInitiatedFromTheParent() {
@@ -2561,6 +2591,20 @@ private class RollupTests {
   }
 
   /** Integration tests */
+
+  @isTest
+  static void shouldNotFailForTruncatedTextFields() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Description = '0'.repeat(256), Name = 'Truncate', StageName = 'Prospecting', CloseDate = System.today());
+    insert opp;
+
+    Test.startTest();
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null);
+    Test.stopTest();
+
+    acc = [SELECT Name FROM Account];
+    System.assertEquals(255, acc.Name.length(), acc.Name);
+  }
 
   @isTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
