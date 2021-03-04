@@ -22,17 +22,15 @@ private class RollupIntegrationTests {
     Rollup.records = [SELECT Id, Amount, AccountIdText__c FROM Opportunity];
     Rollup.shouldRun = true;
 
-    FieldDefinition oppCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AccountIdText__c' AND EntityDefinitionId = 'Opportunity'];
-    FieldDefinition accCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AccountIdText__c' AND EntityDefinitionId = 'Account'];
-
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Opportunity.Amount',
+        RollupFieldOnCalcItem__c = 'Amount',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = oppCustomField.DurableId,
-        LookupFieldOnLookupObject__c = accCustomField.DurableId,
+        LookupFieldOnCalcItem__c = 'AccountIdText__c',
+        LookupFieldOnLookupObject__c = 'AccountIdText__c',
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
-        RollupOperation__c = 'MAX'
+        RollupOperation__c = 'MAX',
+        CalcItem__c = 'Opportunity'
       )
     };
 
@@ -55,19 +53,18 @@ private class RollupIntegrationTests {
     Rollup.records = opps;
     Rollup.shouldRun = true;
 
-    FieldDefinition oppCustomField = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'AmountFormula__c' AND EntityDefinitionId = 'Opportunity'];
-
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = oppCustomField.DurableId,
+        RollupFieldOnCalcItem__c = 'AmountFormula__c',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
-        LookupFieldOnLookupObject__c = 'Account.Id',
-        RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
         IsFullRecordSet__c = true,
         CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
-        FullRecalculationDefaultNumberValue__c = 0
+        FullRecalculationDefaultNumberValue__c = 0,
+        CalcItem__c = 'Opportunity'
       )
     };
 
@@ -79,5 +76,29 @@ private class RollupIntegrationTests {
 
     acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
+  }
+
+  @isTest
+  static void shouldSupportCustomObjectsReferencedViaCustomMetadata() {
+    Application__c app = new Application__c(Name = 'RollupIntegrationTests App');
+    insert app;
+
+    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{
+      new ApplicationLog__c(Application__c = app.Id, Object__c = 'Lead'),
+      new ApplicationLog__c(Application__c = app.Id, Object__c = 'Account')
+    };
+
+    Rollup.records = appLogs;
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    // the CMDT record actually exists and is queried for; this test is to ensure that the custom object/field references
+    // get updated correctly in Rollup
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    app = [SELECT Objects__c FROM Application__c WHERE Id = :app.Id];
+    System.assertEquals('Lead, Account', app.Objects__c);
   }
 }

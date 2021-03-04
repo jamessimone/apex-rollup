@@ -518,11 +518,11 @@ private class RollupTests {
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Opportunity.Amount',
+        RollupFieldOnCalcItem__c = 'Amount',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
-        LookupFieldOnLookupObject__c = 'Account.Id',
-        RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'COUNT',
         CalcItem__c = 'Opportunity',
         IsRollupStartedFromParent__c = true

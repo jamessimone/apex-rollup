@@ -51,4 +51,25 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(5, acc.AnnualRevenue);
     System.assertEquals(0, Rollup.FLOW_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
   }
+
+  @isTest
+  static void shouldNotReportSuccessForInnerFailure() {
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
+    input.rollupContext = 'INSERT';
+
+    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(
+      RollupOperation__c = 'SUM',
+      CalcItem__c = 'Opportunity',
+      LookupObject__c = 'Account',
+      RollupFieldOnCalcItem__c = 'Kaffufle', // this obviously doesn't exist
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue'
+    );
+
+    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    System.assertEquals(false, outputs[0].isSuccess);
+  }
 }

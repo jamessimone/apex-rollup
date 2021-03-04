@@ -1269,11 +1269,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return;
     }
 
-    DescribeSObjectResult objectDescribe = sObjectType.getDescribe();
     Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
     for (Rollup__mdt rollupInfo : rollupMetadata) {
-      uniqueFieldNames.add(getParedFieldName(rollupInfo.LookupFieldOnCalcItem__c, objectDescribe));
-      uniqueFieldNames.add(getParedFieldName(rollupInfo.ROllupFieldOnCalcItem__c, objectDescribe));
+      uniqueFieldNames.add(getParedFieldName(rollupInfo.LookupFieldOnCalcItem__c));
+      uniqueFieldNames.add(getParedFieldName(rollupInfo.ROllupFieldOnCalcItem__c));
     }
 
     // it would have been nice if this was an enum!
@@ -1371,17 +1370,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   ) {
     DescribeSObjectResult sObjectToken = sObjectType.getDescribe();
     Map<String, SObjectField> baseFields = sObjectToken.fields.getMap();
-    for(Integer index = 0; index < uniqueQueryFieldNames.size(); index++) {
+    for (Integer index = 0; index < uniqueQueryFieldNames.size(); index++) {
       String uniqueFieldName = uniqueQueryFieldNames[index];
-      uniqueFieldName = getParedFieldName(uniqueFieldName, sObjectToken);
-      uniqueQueryFieldNames[index] = uniqueFieldName;
+      String paredFieldName = getParedFieldName(uniqueFieldName);
       // ensure that the base relationship name field is transformed appropriately
-      if(baseFields.containsKey(uniqueFieldName + 'Id') || baseFields.containsKey(uniqueFieldName + '__c')) {
-        SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null ? baseFields.get(uniqueFieldName + '__c') : baseFields.get(uniqueFieldName + 'Id');
+      if (baseFields.containsKey(paredFieldName + 'Id') || baseFields.containsKey(paredFieldName + '__c')) {
+        SObjectField baseField = baseFields.get(paredFieldName + 'Id') == null ? baseFields.get(paredFieldName + '__c') : baseFields.get(paredFieldName + 'Id');
         DescribeFieldResult fieldToken = baseField.getDescribe();
-        if(fieldToken.getType() == DisplayType.REFERENCE) {
-          uniqueQueryFieldNames[index] = baseField.getDescribe().getName();
+        if (fieldToken.getType() == DisplayType.REFERENCE && uniqueQueryFieldNames.contains(fieldToken.getName()) == false) {
+          uniqueQueryFieldNames[index] = fieldToken.getName();
         }
+      } else if (
+        baseFields.containsKey(uniqueFieldName) == false &&
+        baseFields.containsKey(paredFieldName) &&
+        sObjectToken.getName() == uniqueFieldName.substringBefore('.') &&
+        uniqueQueryFieldNames.contains(paredFieldName) == false
+      ) {
+        uniqueQueryFieldNames[index] = paredFieldName;
       }
     }
     // again noting the coupling for consumers of this method
@@ -1419,19 +1424,71 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     FLOW_ROLLUPS.clear();
   }
 
+  public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
+    List<SObject> metadata;
+    // CMDT is read-only when returned from the cache
+    // use "deepClone" to get access to mutable versions
+    // of the CMDT records. We also need to clean up the Entity Definition / Field Definition
+    // particles for custom objects - the final sweep through on custom fields will be done later
+    if (metadataType == Rollup__mdt.SObjectType) {
+      List<Rollup__mdt> cachedMetadata = [
+        SELECT
+          // we have to do transforms on these fields because custom objects/custom fields
+          // have references that otherwise won't work with the rest of the code
+          LookupObject__c, 
+          LookupObject__r.QualifiedApiName,
+          CalcItem__c, 
+          CalcItem__r.QualifiedApiName,
+          RollupFieldOnCalcItem__c,
+          RollupFieldOnCalcItem__r.QualifiedApiName,
+          LookupFieldOnCalcItem__c,         
+          LookupFieldOnCalcItem__r.QualifiedApiName, 
+          LookupFieldOnLookupObject__c,
+          LookupFieldOnLookupObject__r.QualifiedApiName,
+          RollupFieldOnLookupObject__c,
+          RollupFieldOnLookupObject__r.QualifiedApiName,
+          // rest of the fields
+          CalcItemWhereClause__c,
+          ChangedFieldsOnCalcItem__c,
+          FullRecalculationDefaultNumberValue__c,
+          FullRecalculationDefaultStringValue__c,
+          IsFullRecordSet__c,
+          IsRollupStartedFromParent__c,
+          OrderByFirstLast__c,
+          RollupControl__c,
+          RollupOperation__c
+        FROM Rollup__mdt
+      ];
+      // do the transforms
+      for(Rollup__mdt meta : cachedMetadata) {
+        meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
+        meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
+        meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
+        meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
+        meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
+        meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
+      }
+      metadata = cachedMetadata;
+      if (rollupMetadata != null) {
+        metadata.addAll(rollupMetadata);
+      }
+    } else if (metadataType == RollupControl__mdt.SObjectType) {
+      metadata = RollupControl__mdt.getAll().deepClone().values();
+    }
+    return metadata;
+  }
+
   private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
-    DescribeSObjectResult parentDescribe = getSObjectTypeFromName(lookupObjectName).getDescribe();
-    String paredLookupFieldName = getSObjectFieldByName(parentDescribe, lookupFieldOnLookupObject).getDescribe().getName();
     String parentWhereClause = ' IN (';
     for (SObject calcItem : calcItems) {
-      String lookupId = (String) calcItem.get(paredLookupFieldName);
+      String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
       if (String.isNotBlank(lookupId)) {
         parentWhereClause += '\'' + lookupId + '\',';
       }
     }
     // remove trailing comma, because this comment is less LOC than doing the for loop with an index and checking before appending the comma :)
     parentWhereClause = parentWhereClause.substringBeforeLast(',') + ')';
-    return lookupObjectName + '.' + paredLookupFieldName + parentWhereClause;
+    return lookupObjectName + '.' + lookupFieldOnLookupObject + parentWhereClause;
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
@@ -1439,19 +1496,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       countQuery = countQuery.replace('ALL ROWS', '');
     }
     return Database.countQuery(countQuery);
-  }
-
-  private static List<SObject> getMetadataFromCache(SObjectType metadataType) {
-    Map<String, SObject> metadataMap;
-    if (metadataType == Rollup__mdt.SObjectType) {
-      metadataMap = Rollup__mdt.getAll();
-    } else if (metadataType == RollupControl__mdt.SObjectType) {
-      metadataMap = RollupControl__mdt.getAll();
-    }
-    // CMDT is read-only when returned from the cache
-    // use "deepClone" to get access to mutable versions
-    // of the CMDT records
-    return metadataMap?.deepClone()?.values();
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
@@ -1516,9 +1560,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
-    if (rollupMetadata != null) {
-      rollupMetadatas.addAll(rollupMetadata);
-    }
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
       String sObjectName = sObjectType.getDescribe().getName();
@@ -1600,39 +1641,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return batchRollup;
   }
 
-  // "entityDefinitionToFields" is lazy loaded, since it's only needed for custom fields
-  private static Map<String, Map<String, String>> entityDefinitionToFields;
   private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
     Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
-    String paredFieldName = getParedFieldName(desiredField, objectDescribe);
+    String paredFieldName = getParedFieldName(desiredField);
     if (fieldNameToField.containsKey(paredFieldName)) {
       return fieldNameToField.get(paredFieldName);
     } else if (fieldNameToField.containsKey(paredFieldName + 'Id')) {
       // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
       return fieldNameToField.get(paredFieldName + 'Id');
-    }
-    // if the field name still doesn't match, chances are it's a custom field, which are stored differently in CMDT
-    try {
-      // this will throw if the pared field name is not an actual Id value
-      Id testCustomField = Id.valueOf(paredFieldName);
-      String currentObject = objectDescribe.getName();
-      if (entityDefinitionToFields == null) {
-        entityDefinitionToFields = new Map<String, Map<String, String>>();
-      }
-      if (entityDefinitionToFields.containsKey(currentObject) == false) {
-        List<FieldDefinition> fieldDefinitions = [SELECT QualifiedApiName, DurableId FROM FieldDefinition WHERE EntityDefinitionId = :currentObject];
-        for (FieldDefinition fieldDef : fieldDefinitions) {
-          if (entityDefinitionToFields.containsKey(currentObject)) {
-            entityDefinitionToFields.get(currentObject).put(fieldDef.DurableId, fieldDef.QualifiedApiName);
-          } else {
-            entityDefinitionToFields.put(currentObject, new Map<String, String>{ fieldDef.DurableId => fieldDef.QualifiedApiName });
-          }
-        }
-      }
-      String actualFieldName = entityDefinitionToFields.get(currentObject).get(desiredField);
-      return fieldNameToField.get(actualFieldName);
-    } catch (Exception ex) {
-      // do nothing, it didn't work
     }
 
     return null;
@@ -1704,8 +1720,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return ((SObject) Type.forName(sObjectName).newInstance()).getSObjectType();
   }
 
-  private static String getParedFieldName(String fullFieldName, DescribeSObjectResult describeForSObject) {
-    return String.isBlank(fullFieldName) ? '' : fullFieldName.replace(describeForSObject.getName() + '.', '');
+  private static String getParedFieldName(String fullFieldName) {
+    if (String.isBlank(fullFieldName)) {
+      return '';
+    }
+    return fullFieldName.contains('.') ? fullFieldName.substringAfter('.') : fullFieldName;
   }
 
   private static Rollup loadRollups(
