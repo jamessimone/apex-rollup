@@ -234,6 +234,11 @@ public static void runFromTrigger()
 // more on that in the CDC section of "Special Considerations", below
 public static void runFromCDCTrigger()
 
+// imperatively from Apex, relying on CMDT for additional rollup info
+global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext)
+
+// imperatively from Apex with arguments taking the place of values previously supplied by CMDT
+// can be used in conjunction with "batch" to group rollup operations (as seen in the example preceding this section)
 global static Rollup averageFromApex(
   SObjectField averageFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
