@@ -52,6 +52,16 @@
                 <default>false</default>
                 <label>CONCAT_DISTINCT</label>
             </value>
+            <value>
+                <fullName>FIRST</fullName>
+                <default>false</default>
+                <label>FIRST</label>
+            </value>
+            <value>
+                <fullName>LAST</fullName>
+                <default>false</default>
+                <label>LAST</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

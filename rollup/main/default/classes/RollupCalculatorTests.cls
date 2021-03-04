@@ -298,4 +298,30 @@ private class RollupCalculatorTests {
 
     System.assertEquals(16, (Decimal) calc.getReturnValue());
   }
+
+  @isTest
+  static void shouldNotTryToAverageNull() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.AVERAGE,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 2),
+        new Opportunity(Id = '0066g00003VDGbF002'),
+        new Opportunity(Id = '0066g00003VDGbF003'),
+        new Opportunity(Id = '0066g00003VDGbF004', Amount = 2)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(1, (Decimal) calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
+  }
 }

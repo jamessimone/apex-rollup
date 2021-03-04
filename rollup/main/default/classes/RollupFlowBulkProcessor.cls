@@ -26,7 +26,7 @@ global without sharing class RollupFlowBulkProcessor {
       if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
         output.message = 'No records';
       } else {
-        List<Rollup__mdt> rollupMetadata = Rollup__mdt.getAll().deepClone().values();
+        List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
         if (testMetadata != null) {
           rollupMetadata.add(testMetadata);
         }
@@ -65,7 +65,13 @@ global without sharing class RollupFlowBulkProcessor {
           }
         }
 
-        Rollup.performRollup(rollupFlowInputs);
+        List<Rollup.FlowOutput> innerOutputs = Rollup.performRollup(rollupFlowInputs);
+        for(Rollup.FlowOutput innerOutput : innerOutputs) {
+          if(innerOutput.isSuccess == false) {
+            output.isSuccess = false;
+            output.message = innerOutput.message;
+          }
+        }
       }
       outputs.add(output);
     }

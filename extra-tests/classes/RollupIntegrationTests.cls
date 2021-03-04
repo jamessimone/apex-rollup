@@ -32,7 +32,8 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = oppCustomField.DurableId,
         LookupFieldOnLookupObject__c = accCustomField.DurableId,
         RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
-        RollupOperation__c = 'MAX'
+        RollupOperation__c = 'MAX',
+        CalcItem__c = 'Opportunity'
       )
     };
 
@@ -67,7 +68,8 @@ private class RollupIntegrationTests {
         RollupOperation__c = 'SUM',
         IsFullRecordSet__c = true,
         CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
-        FullRecalculationDefaultNumberValue__c = 0
+        FullRecalculationDefaultNumberValue__c = 0,
+        CalcItem__c = 'Opportunity'
       )
     };
 
@@ -79,5 +81,47 @@ private class RollupIntegrationTests {
 
     acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
+  }
+
+  @isTest
+  static void shouldSupportCustomObjectsReferencedViaCustomMetadata() {
+    Application__c app = new Application__c(Name = 'RollupIntegrationTests App');
+    insert app;
+
+    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{
+      new ApplicationLog__c(Application__c = app.Id, Object__c = 'Lead'),
+      new ApplicationLog__c(Application__c = app.Id, Object__c = 'Account')
+    };
+    Rollup.records = appLogs;
+    Rollup.shouldRun = true;
+
+    EntityDefinition appDefinition = [SELECT DurableId FROM EntityDefinition WHERE QualifiedApiName = 'Application__c'];
+    EntityDefinition appLogDefinition = [SELECT DurableId FROM EntityDefinition WHERE QualifiedApiName = 'ApplicationLog__c'];
+
+    FieldDefinition appObjects = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Objects__c' AND EntityDefinitionId = :appDefinition.DurableId];
+    FieldDefinition appId = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Id' AND EntityDefinitionId = :appDefinition.DurableId];
+    FieldDefinition appLogObject = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Object__c' AND EntityDefinitionId = :appLogDefinition.DurableId];
+    FieldDefinition appLogAppLookup = [SELECT DurableId FROM FieldDefinition WHERE QualifiedApiName = 'Application__c' AND EntityDefinitionId = :appLogDefinition.DurableId];
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = appLogDefinition.DurableId,
+        RollupFieldOnCalcItem__c = appLogObject.DurableId,
+        LookupFieldOnCalcItem__c = appLogAppLookup.DurableId,
+        LookupObject__c = appDefinition.DurableId,
+        LookupFieldOnLookupObject__c = appId.DurableId,
+        RollupFieldOnLookupObject__c = appObjects.DurableId,
+        RollupOperation__c = 'CONCAT_DISTINCT'
+      )
+    };
+
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    app = [SELECT Objects__c FROM Application__c WHERE Id = :app.Id];
+    System.assertEquals('Lead, Account', app.Objects__c);
   }
 }

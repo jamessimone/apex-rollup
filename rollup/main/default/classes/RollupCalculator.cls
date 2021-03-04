@@ -676,7 +676,7 @@ public without sharing abstract class RollupCalculator {
 
     protected override void setReturnValue() {
       String possibleReturnValue = this.stringVal.normalizeSpace();
-      String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substring(0, possibleReturnValue.length() - 1) : possibleReturnValue;
+      String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substringBeforeLast(',') : possibleReturnValue;
       this.returnVal = (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
     }
 
@@ -752,7 +752,11 @@ public without sharing abstract class RollupCalculator {
     }
 
     private String concatWithDelimiter(String newVal) {
-      return this.concatDelimiter + newVal + this.concatDelimiter;
+      if(String.isBlank(this.stringVal) || this.stringVal.endsWith(this.concatDelimiter)) {
+        return newVal + this.concatDelimiter;
+      } else {
+        return this.concatDelimiter + newVal + this.concatDelimiter;
+      }
     }
 
     private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {
@@ -817,7 +821,7 @@ public without sharing abstract class RollupCalculator {
 
       // the List isn't strongly typed at this point, otherwise we could avoid this shameful statement
       SObjectType sObjectType = calcItems[0].getSobjectType();
-      Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+    Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       String query = Rollup.getQueryString(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
       Integer countOfPreExistingItems = isArchivable ? Database.query(query).size() : Database.countQuery(query);
@@ -830,7 +834,8 @@ public without sharing abstract class RollupCalculator {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       Decimal newSum = 0;
       for (SObject calcItem : applicableCalcItems) {
-        newSum += (Decimal) calcItem.get(this.opFieldOnCalcItem);
+        Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
+        newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
       }
 
       Decimal numerator = oldSum + newSum;

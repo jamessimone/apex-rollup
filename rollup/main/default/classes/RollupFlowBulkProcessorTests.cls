@@ -35,10 +35,10 @@ private class RollupFlowBulkProcessorTests {
       RollupOperation__c = 'SUM',
       CalcItem__c = 'Opportunity',
       LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'Amount',
-      LookupFieldOnCalcItem__c = 'AccountId',
-      LookupFieldOnLookupObject__c = 'Id',
-      RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      RollupFieldOnCalcItem__c = 'Opportunity.Amount',
+      LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
+      LookupFieldOnLookupObject__c = 'Account.Id',
+      RollupFieldOnLookupObject__c = 'Account.AnnualRevenue'
     );
 
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
@@ -50,5 +50,26 @@ private class RollupFlowBulkProcessorTests {
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(5, acc.AnnualRevenue);
     System.assertEquals(0, Rollup.FLOW_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
+  }
+
+  @isTest
+  static void shouldNotReportSuccessForInnerFailure() {
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
+    input.rollupContext = 'INSERT';
+
+    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(
+      RollupOperation__c = 'SUM',
+      CalcItem__c = 'Opportunity',
+      LookupObject__c = 'Account',
+      RollupFieldOnCalcItem__c = 'Opportunity.Kaffufle', // this obviously doesn't exist
+      LookupFieldOnCalcItem__c = 'Opportunity.AccountId',
+      LookupFieldOnLookupObject__c = 'Account.Id',
+      RollupFieldOnLookupObject__c = 'Account.AnnualRevenue'
+    );
+
+    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    System.assertEquals(false, outputs[0].isSuccess);
   }
 }

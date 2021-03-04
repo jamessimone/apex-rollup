@@ -42,6 +42,8 @@ To be clear - the following trigger contexts are necessary when using `runFromTr
 - before delete
 - after undelete
 
+This means that if you are invoking `Rollup.runFromTrigger();` from any other context (be it a quick action, LWC, Aura or wherever), nothing will happen; there won't be an error, but a rollup also won't be performed. For more information on one-off rollups, please see <a href="#calculating-rollup-after-install">Calculating Rollups After Install</a>.
+
 The _only_ exception to the above is if you are using the `Is Rollup Started From The Parent` checkbox field on the `Rollup__mdt` custom metadata (<a href="#rollup-metadata-details">more details on that below</a>). If the rollup starts from the parent, you are free to only list the trigger contexts that make sense for you - for example, if you are initiating a rollup from parent records and the children records whose values you are rolling up are only ever updated when the parent is being inserted, you are free to use `after insert` in your Apex trigger if you have no need of the other contexts.
 
 That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
