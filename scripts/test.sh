@@ -1,53 +1,71 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
-# Prior to using this script, it's important to have used the output of "sfdx force:org:display --verbose" to copy the
-# "sfdxAuthUrl" value to a text file at the root of this project called "DEVHUB_SFDX_URL.txt"
-
-set -e
-trap 'catch $? $LINENO' ERR
-
-# Script will throw if our scratch org allotment for the day has been exceeded
-catch() {
-  echo "No scratch orgs remaining, running tests on sandbox"
-
-  # Deploy
-  sfdx force:source:deploy -p rollup
-  # Run tests
-  eval '$testInvocation'
-  exit $?
-}
+# This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
+# DEVHUB_SFDX_URL.txt file is populated in a build step
 
 echo "Starting build script"
 
-# Authorize Dev Hub
-sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup --setdefaultdevhubusername --setdefaultusername
+orgInfo=$(sfdx force:org:display --json --verbose 2>/dev/null)
+userNameHasBeenSet=0
+
+if [ -f "./DEVHUB_SFDX_URL.txt" ]; then
+  echo "Auth file exists"
+else
+  echo "creating auth file"
+  echo $orgInfo | jq -r '.result.sfdxAuthUrl' > ./DEVHUB_SFDX_URL.txt
+fi
+
+echo "Copying deploy SFDX project json file to root directory, storing backup in /scripts"
+cp ./sfdx-project.json ./scripts/sfdx-project.json
+cp ./scripts/deploy-sfdx-project.json ./sfdx-project.json 
+
+# Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
+
+sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
+sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
-priorUserName=$(sfdx force:org:display | grep -i 'Alias' | cut -c7- | xargs || "")
-echo "Prior username, if set: $priorUserName"
-testInvocation='sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupFlowBulkProcessorTests" -r human -w 20'
+scratchOrgAllotment=$(sfdx force:limits:api:display --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
+echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
+testInvocation='sfdx force:apex:test:run -n "RollupTests,RollupEvaluatorTests,RollupFieldInitializerTests,RollupCalculatorTests,RollupIntegrationTests,RollupFlowBulkProcessorTests" -c -d ./tests/apex -r human -w 20'
 echo "Test command to use: $testInvocation"
 
-
-# Create Scratch Org
-sfdx force:org:create -v apex-rollup -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
-# Deploy
-sfdx force:source:push
-# Run tests
-echo "Starting test run ..."
-eval '$testInvocation'
-# Delete scratch org
-sfdx force:org:delete -p -u apex-rollup-scratch-org
-
-# If the priorUserName is not blank, reset to it
-if test -z "$priorUserName"
-then
-  echo "Prior user name not set, continuing"
+if [ $scratchOrgAllotment -gt 0 ]; then
+  echo "Beginning scratch org creation"
+  userNameHasBeenSet=1
+  {
+    sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+    # Deploy
+    sfdx force:source:push
+    # Run tests
+    echo "Starting test run ..."
+    $testInvocation
+    echo "Scratch org tests finished running with success: $?"
+    # Delete scratch org
+    sfdx force:org:delete -p -u apex-rollup-scratch-org
+  } || {
+    echo "there was a problem with scratch org creation. continuing..."
+  }
 else
-  echo "Resetting SFDX to previously authorized org for: $priorUserName"
+  echo "No scratch orgs remaining, running tests on sandbox"
+  # Deploy
+  sfdx force:source:deploy -p rollup
+  # Run tests
+  $testInvocation
+  echo "Tests finished running with success: $?"
+  
+fi
+
+# If the priorUserName is not blank and we used a scratch org, reset to it
+if [ "$(echo $orgInfo | jq -r '.result.username' 2>/dev/null)" != "" ] && [ $userNameHasBeenSet -gt 0 ]; then
+  priorUserName=$(echo $orgInfo | jq -r '.result.username')
+  echo "Resetting SFDX to previously authorized org"
   sfdx force:config:set defaultusername=$priorUserName
 fi
 
-echo "Build + testing finished successfully"
-exit 0
+echo "Resetting SFDX project JSON at project root"
+cp ./scripts/sfdx-project.json ./sfdx-project.json 
+rm ./scripts/sfdx-project.json
+
+echo "Build + testing finished successfully, preparing to upload code coverage"
