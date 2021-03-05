@@ -1,7 +1,7 @@
 @isTest
 private class RollupRelationshipFieldFinderTests {
   @isTest
-  static void shouldFindRelationshipBetweenCustomObjects() {
+  static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
     Id appId = Id.valueOf('a036g00000TvyKnAAJ');
     ApplicationLog__c log = new ApplicationLog__c(Application__c = appId, Name = 'Test Rollup Grandchildren');
 
@@ -14,7 +14,20 @@ private class RollupRelationshipFieldFinderTests {
   }
 
   @isTest
-  static void shouldFindRelationshipBetweenStandardObjects() {
+  static void shouldFindParentRelationshipBetweenStandardObjects() {
+    Id accountId = '0016g00000TvyKnAAJ';
+    Opportunity opp = new Opportunity(AccountId = accountId);
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder('Account');
+
+    System.assertEquals(
+      new List<SObjectType>{ Opportunity.SObjectType, Account.SObjectType },
+      finder.getParentTypes(opp.getSObjectType(), 'AccountId', opp.AccountId)
+    );
+  }
+
+  @isTest
+  static void shouldFindGrandParentRelationshipBetweenStandardObjects() {
     Id oppId = Id.valueOf('0066g00000TvyKnAAJ');
     OpportunityLineItem oli = new OpportunityLineItem(OpportunityId = oppId);
 

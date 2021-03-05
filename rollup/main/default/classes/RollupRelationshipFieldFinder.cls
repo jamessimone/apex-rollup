@@ -15,15 +15,13 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   public List<SObjectType> getParentTypes(SObjectType childType, String childField, Id childLookup) {
+    // actually counting the frames consumed is almost certainly overkill
+    // but this prevents us from accidentally blowing the stack
+    stackCount++;
     if (this.isFirstRun) {
       this.originalChildType = childType;
       this.isFirstRun = false;
-    } else if (relationshipTypes.contains(originalChildType)) {
-      return this.assembleFinalRelationships();
-    }
-
-    stackCount++;
-    if (stackCount > MAX_STACK_COUNT) {
+    } else if (relationshipTypes.contains(originalChildType) || stackCount > MAX_STACK_COUNT) {
       return this.assembleFinalRelationships();
     }
 
@@ -31,9 +29,18 @@ public without sharing class RollupRelationshipFieldFinder {
     SObjectField fieldToken = fieldMap.get(childField);
     SObjectType parentType = getSObjectType(fieldToken, childLookup.getSObjectType());
 
+    /**
+     * Because the sanity checks necessary to find the ultimate "one true [morty] object chain"
+     * deviate slightly depending on whether or not we've reached the parent object we care about
+     * (as opposed to the intermediate objects that may exist in the chain), the work is broken down
+     * into two different Resolver classes that share some behavior with one another.
+     */
     if (fieldToken == null && childType?.getDescribe()?.getName() != 'User') {
+      // we are potentially at the top level; let's check that before moving on
       new RelationshipFieldResolver(this, childType).tryResolve(fieldMap, null);
     } else if (parentType != null) {
+      // can we establish a relationship between the Id that's been passed in and the next level up in the chain?
+      // let's find out - with recursion!
       Map<String, SObjectField> middleFieldMap = parentType.getDescribe().fields.getMap();
       new RecurseRelationshipFieldResolver(this, childType).tryResolve(middleFieldMap, parentType);
     }
@@ -46,25 +53,21 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     protected override void handle(SObjectField innerField, SObjectType parentType) {
-      if (innerField.getDescribe().getType() != DisplayType.REFERENCE) {
-        return;
-      } else {
-        // recurse to try to find a way to the eventual parent
-        for (SObjectType potentialParent : innerField.getDescribe().getReferenceTo()) {
-          if (this.finder.processedTypes.contains(potentialParent) == false) {
-            this.finder.processedTypes.add(potentialParent);
-            // if the relationship is deeper than grandchild -> grandparent, keep going
-            Id fakeIdOfType = potentialParent.getDescribe().getKeyPrefix() + '0'.repeat(12);
-            String potentialName = innerField.getDescribe().getName();
-            Set<SObjectType> priorSet = new Set<SObjectType>(this.finder.relationshipTypes);
-            List<SObjectType> parentTypes = this.finder.getParentTypes(potentialParent, potentialName, fakeIdOfType);
-            // I'm sure there's a better way to do this, but this is what I came up with ...
-            if (parentTypes.size() > priorSet.size()) {
-              this.finder.tryAddType(parentType);
-              this.finder.tryAddType(this.type);
-              hasInnerBreak = true;
-              break;
-            }
+      // recurse to try to find a way to the eventual parent
+      for (SObjectType potentialParent : innerField.getDescribe().getReferenceTo()) {
+        if (this.finder.processedTypes.contains(potentialParent) == false) {
+          this.finder.processedTypes.add(potentialParent);
+          // if the relationship is deeper than grandchild -> grandparent, keep going
+          Id fakeIdOfType = potentialParent.getDescribe().getKeyPrefix() + '0'.repeat(12);
+          String potentialName = innerField.getDescribe().getName();
+          Set<SObjectType> priorSet = new Set<SObjectType>(this.finder.relationshipTypes);
+          List<SObjectType> parentTypes = this.finder.getParentTypes(potentialParent, potentialName, fakeIdOfType);
+          // I'm sure there's a better way to do this, but this is what I came up with ...
+          if (parentTypes.size() > priorSet.size()) {
+            this.finder.tryAddType(parentType);
+            this.finder.tryAddType(this.type);
+            hasInnerBreak = true;
+            break;
           }
         }
       }
@@ -110,7 +113,7 @@ public without sharing class RollupRelationshipFieldFinder {
       }
     }
 
-    public Boolean matchesType(SObjectType innerType) {
+    private Boolean matchesType(SObjectType innerType) {
       Boolean matches = false;
       if (innerType?.getDescribe()?.getName() == this.finder.parentName) {
         matches = true;
