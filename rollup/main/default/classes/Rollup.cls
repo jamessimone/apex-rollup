@@ -414,7 +414,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
 
-    // emptyRollup only used to call "getMaxQueryRows" below
+    // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
     Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
     SObjectType lookupType = getSObjectTypeFromName(lookupSObjectName);
     Rollup__mdt rollupInfo = new Rollup__mdt(
@@ -1450,7 +1450,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // CMDT is read-only when returned from the cache
     // use "deepClone" to get access to mutable versions
     // of the CMDT records. We also need to clean up the Entity Definition / Field Definition
-    // particles for custom objects - the final sweep through on custom fields will be done later
+    // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
       if(cachedMetadata == null) {
         cachedMetadata = [
