@@ -66,7 +66,7 @@ public without sharing class RollupRelationshipFieldFinder {
           if (parentTypes.size() > priorSet.size()) {
             this.finder.tryAddType(parentType);
             this.finder.tryAddType(this.type);
-            hasInnerBreak = true;
+            this.hasInnerBreak = true;
             break;
           }
         }
