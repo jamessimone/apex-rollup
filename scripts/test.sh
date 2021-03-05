@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
-# DEVHUB_SFDX_URL.txt file is populated in a build step
+# The script assumes you've `jq` installed in addition to `sfdx`
 
 echo "Starting build script"
 
@@ -26,7 +25,7 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
-scratchOrgAllotment=$(sfdx force:limits:api:display --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
+scratchOrgAllotment=$(sfdx force:limits:api:display 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
 echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 testInvocation='sfdx force:apex:test:run -n "RollupTests,RollupEvaluatorTests,RollupFieldInitializerTests,RollupCalculatorTests,RollupIntegrationTests,RollupFlowBulkProcessorTests" -c -d ./tests/apex -r human -w 20'
 echo "Test command to use: $testInvocation"
