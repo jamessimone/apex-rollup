@@ -33,52 +33,41 @@ public without sharing class RollupRelationshipFieldFinder {
 
     if (fieldToken == null && childType?.getDescribe()?.getName() != 'User') {
       new RelationshipFieldResolver(this, childType).tryResolve(fieldMap, null);
-    } else if (parentType?.getDescribe()?.getName() == this.parentName) {
-      // new RecurseRelationshipFieldResolver(this).tryResolve(fieldMap, childType, parentType);
-
-      this.tryAddType(parentType);
-      this.tryAddType(childType);
     } else if (parentType != null) {
       Map<String, SObjectField> middleFieldMap = parentType.getDescribe().fields.getMap();
-      for (String intermediateFieldName : middleFieldMap.keySet()) {
-        Boolean hasInnerBreak = false;
-        SObjectField middleFieldToken = middleFieldMap.get(intermediateFieldName);
-        if (middleFieldToken.getDescribe().getType() != DisplayType.REFERENCE) {
-          continue;
-        } else {
-          // recurse to try to find a way to the eventual parent
-          for (SObjectType potentialParent : middleFieldToken.getDescribe().getReferenceTo()) {
-            if (this.processedTypes.contains(potentialParent) == false) {
-              this.processedTypes.add(potentialParent);
-              // if the relationship is deeper than grandchild -> grandparent, keep going
-              Id fakeIdOfType = potentialParent.getDescribe().getKeyPrefix() + '0'.repeat(12);
-              String potentialName = middleFieldToken.getDescribe().getName();
-              Set<SObjectType> priorSet = new Set<SObjectType>(this.relationshipTypes);
-              List<SObjectType> parentTypes = getParentTypes(potentialParent, potentialName, fakeIdOfType);
-              if (parentTypes.size() > priorSet.size()) {
-                this.tryAddType(parentType);
-                this.tryAddType(childType);
-                hasInnerBreak = true;
-                break;
-              }
-            }
-          }
-          if (hasInnerBreak) {
-            break;
-          }
-        }
-      }
+      new RecurseRelationshipFieldResolver(this, childType).tryResolve(middleFieldMap, parentType);
     }
     return this.assembleFinalRelationships();
   }
 
-  // GOOD STOPPING POINT
   private class RecurseRelationshipFieldResolver extends RelationshipFieldResolver {
     public RecurseRelationshipFieldResolver(RollupRelationshipFieldFinder finder, SObjectType type) {
       super(finder, type);
     }
 
-    protected override void handle(SobjectField innerField) {
+    protected override void handle(SObjectField innerField, SObjectType parentType) {
+      if (innerField.getDescribe().getType() != DisplayType.REFERENCE) {
+        return;
+      } else {
+        // recurse to try to find a way to the eventual parent
+        for (SObjectType potentialParent : innerField.getDescribe().getReferenceTo()) {
+          if (this.finder.processedTypes.contains(potentialParent) == false) {
+            this.finder.processedTypes.add(potentialParent);
+            // if the relationship is deeper than grandchild -> grandparent, keep going
+            Id fakeIdOfType = potentialParent.getDescribe().getKeyPrefix() + '0'.repeat(12);
+            String potentialName = innerField.getDescribe().getName();
+            Set<SObjectType> priorSet = new Set<SObjectType>(this.finder.relationshipTypes);
+            List<SObjectType> parentTypes = this.finder.getParentTypes(potentialParent, potentialName, fakeIdOfType);
+            // I'm sure there's a better way to do this, but this is what I came up with ...
+            if (parentTypes.size() > priorSet.size()) {
+              this.finder.tryAddType(parentType);
+              this.finder.tryAddType(this.type);
+              hasInnerBreak = true;
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -93,7 +82,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     public void tryResolve(Map<String, SObjectField> fieldMap, SObjectType parentType) {
-      if(this.matchesType(parentType)) {
+      if (this.matchesType(parentType)) {
         return;
       }
       for (String fieldName : fieldMap.keySet()) {
@@ -101,17 +90,17 @@ public without sharing class RollupRelationshipFieldFinder {
         if (innerField.getDescribe().getType() != DisplayType.REFERENCE) {
           continue;
         } else {
-          this.handle(innerField);
+          this.handle(innerField, parentType);
         }
       }
     }
 
-    protected virtual void handle(SObjectField innerField) {
+    protected virtual void handle(SObjectField innerField, SObjectType parentType) {
       for (SObjectType innerType : innerField.getDescribe().getReferenceTo()) {
         if (this.matchesType(innerType)) {
           break;
         } else {
-          if(innerType != null) {
+          if (innerType != null) {
             finder.processedTypes.add(innerType);
           }
           if (this.hasInnerBreak) {
