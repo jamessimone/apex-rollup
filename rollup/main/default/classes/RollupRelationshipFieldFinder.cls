@@ -95,6 +95,9 @@ public without sharing class RollupRelationshipFieldFinder {
         } else {
           this.handle(innerField, parentType);
         }
+        if (this.hasInnerBreak) {
+          break;
+        }
       }
     }
 
@@ -104,7 +107,7 @@ public without sharing class RollupRelationshipFieldFinder {
           break;
         } else {
           if (innerType != null) {
-            finder.processedTypes.add(innerType);
+            this.finder.processedTypes.add(innerType);
           }
           if (this.hasInnerBreak) {
             break;
