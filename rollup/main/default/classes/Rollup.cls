@@ -277,18 +277,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
-    } else if (
-      shouldRunAsBatch == false && (orgDefaults.MaxLookupRowsForQueueable__c == null || totalCountOfRecords <= orgDefaults.MaxLookupRowsForQueueable__c)
-    ) {
-      return System.enqueueJob(this);
     } else {
-      throw new AsyncException(
-        'Number of records that would be rolled up : ' +
-        totalCountOfRecords +
-        ' exceeds safety threshold, or you tried to run this in Batch mode with more than one target type: (' +
-        hasMoreThanOneTarget +
-        ')'
-      );
+      return System.enqueueJob(this);
     }
   }
 
@@ -328,6 +318,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   public virtual void finish(Database.BatchableContext context) {
     System.debug('Rollup: batch finished successfully');
+  }
+
+  private class RollupAsyncSaver implements System.Queueable {
+    private final List<SObject> records;
+    public RollupAsyncSaver(List<SObject> records) {
+      this.records = records;
+    }
+
+    public void execute(QueueableContext context) {
+      new DMLHelper().doUpdate(this.records);
+    }
   }
 
   private class RollupAsyncProcessor extends Rollup implements System.Queueable {
@@ -1809,6 +1810,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static RollupControl__mdt getSensibleControlDefault() {
+    if(defaultControl != null) {
+      return defaultControl;
+    }
     RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
     if (sensibleDefault == null) {
       // this *should* be impossible, since the record is included on install, but ...
@@ -1816,7 +1820,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         DeveloperName = CONTROL_ORG_DEFAULTS,
         BatchChunkSize__c = 2000,
         MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
-        MaxLookupRowsForQueueable__c = Limits.getLimitDmlRows() / 2,
+        MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
+        MaximumRollupRetries__c = 100, // TODO fixme
         MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
         ShouldAbortRun__c = false,
         ShouldRunAs__c = 'Queueable'
@@ -1873,6 +1878,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
       }
+    }
+
+    System.assert(false, this.rollupControl.MaxParentRowsUpdatedAtOnce__c);
+    if(this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size()) {
+      Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
+      Integer removalIndex = 0;
+      List<SObject> asyncUpdateList = new List<SObject>();
+      for(String lookupKey : updatedLookupRecords.keySet()) {
+        SObject lookupRecordToUpdate = updatedLookupRecords.get(lookupKey);
+        asyncUpdateList.add(lookupRecordToUpdate);
+        updatedLookupRecords.remove(lookupKey);
+        System.assert(false, 'Made it here: ' + JSON.serialize(lookupRecordToUpdate));
+        removalIndex++;
+        if(removalIndex >= maxIndexToRemove) {
+          break;
+        }
+
+      }
+      System.enqueueJob(new RollupAsyncSaver(asyncUpdateList));
     }
 
     DML.doUpdate(updatedLookupRecords.values());
@@ -1995,8 +2019,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (rollupSpecificControl.MaxLookupRowsBeforeBatching__c > orgDefaults.MaxLookupRowsBeforeBatching__c) {
         orgDefaults.MaxLookupRowsBeforeBatching__c = rollupSpecificControl.MaxLookupRowsBeforeBatching__c;
       }
-      if (rollupSpecificControl.MaxLookupRowsForQueueable__c > orgDefaults.MaxLookupRowsForQueueable__c) {
-        orgDefaults.MaxLookupRowsForQueueable__c = rollupSpecificControl.MaxLookupRowsForQueueable__c;
+      if(rollupSpecificControl.MaxParentRowsUpdatedAtOnce__c == null) {
+        rollupSpecificControl.MaxParentRowsUpdatedAtOnce__c = orgDefaults.MaxParentRowsUpdatedAtOnce__c;
       }
     }
   }

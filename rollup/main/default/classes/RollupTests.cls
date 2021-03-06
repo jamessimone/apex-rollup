@@ -651,22 +651,19 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldThrowExceptionWhenBatchedOperationWithMultipleSObjectTypes() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50, Name = 'Test') });
+  static void shouldDeferUpdateWhenMaxParentRowsLessThanCurrentUpdateRows() {
+    Opportunity opp = new Opportunity(Amount = 50, Name = 'MaxParentRows', StageName = 'Prospecting', CloseDate = System.today());
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1);
 
-    Exception ex;
-    try {
-      Rollup.batch(
-        Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType),
-        Rollup.concatFromApex(Opportunity.Name, Opportunity.CreatedById, User.Id, User.Username, User.SObjectType)
-      );
-    } catch (Exception e) {
-      ex = e;
-    }
+    Test.startTest();
+    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
 
-    System.assertNotEquals(null, ex);
+    Account acc = [SELECT AnnualRevenue FROM Account];
+    System.assertNotEquals(50, acc.AnnualRevenue, 'Account should have been updated since the mock is not used async');
   }
 
   @isTest

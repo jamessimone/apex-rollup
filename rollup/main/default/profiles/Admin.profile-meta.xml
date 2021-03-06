@@ -54,7 +54,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>RollupControl__mdt.MaxLookupRowsForQueueable__c</field>
+        <field>RollupControl__mdt.MaxParentRowsUpdatedAtOnce__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
