@@ -172,7 +172,7 @@ In order to prevent blowing through the Flow Interview limit for each day, it's 
 
 <div id="calculating-rollup-after-install"></div>
 
-Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has now rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
+Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has no rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
 
 ![Example of Rollup App](./media/joys-of-apex-rollup-app.png 'Manually kicking off rollup jobs')
 

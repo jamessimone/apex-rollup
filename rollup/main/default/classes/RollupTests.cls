@@ -663,7 +663,7 @@ private class RollupTests {
     Test.stopTest();
 
     Account acc = [SELECT AnnualRevenue FROM Account];
-    System.assertNotEquals(50, acc.AnnualRevenue, 'Account should have been updated since the mock is not used async');
+    System.assertEquals(50, acc.AnnualRevenue, 'Account should have been updated since the mock is not used async');
   }
 
   @isTest
@@ -2524,7 +2524,7 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1, MaxLookupRowsBeforeBatching__c = 0);
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2538,7 +2538,7 @@ private class RollupTests {
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', MaxLookupRowsBeforeBatching__c = 1000);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', MaxLookupRowsBeforeBatching__c = 1000, BatchChunkSize__c = 50);
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2570,7 +2570,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, new List<Id>(), null);
+      Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, new List<String>(), null);
     } catch (Exception e) {
       ex = e;
     }
@@ -2582,7 +2582,7 @@ private class RollupTests {
   static void shouldScheduleSuccessfullyForGoodQuery() {
     String goodQuery = 'SELECT Id, StageName FROM Opportunity WHERE CreatedDate > YESTERDAY';
 
-    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, new List<Id>(), null);
+    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, new List<String>(), null);
 
     System.assertNotEquals(null, jobId);
   }

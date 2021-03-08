@@ -183,6 +183,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.isNoOp = this.rollups.isEmpty() && innerRollup.metadata?.IsFullRecordSet__c == false;
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isCDCUpdate = innerRollup.isCDCUpdate;
+    this.rollupControl = innerRollup.rollupControl;
   }
 
   private Rollup(Rollup innerRollup) {
@@ -1502,6 +1503,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return metadata;
   }
 
+  // TODO port over to using this for getParentWhereClause; consider "toString" method for getting the where
+  // clause into the state that the evaluators expect for performFullRecalculation
+  private class QueryWrapper {
+    public QueryWrapper() {
+      this.query = '';
+      this.objIds = new Set<Id>();
+    }
+    public String query;
+    public Set<Id> objIds;
+  }
+
   private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
     String parentWhereClause = ' IN (';
     for (SObject calcItem : calcItems) {
@@ -1880,7 +1892,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    System.assert(false, this.rollupControl.MaxParentRowsUpdatedAtOnce__c);
     if(this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size()) {
       Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
       Integer removalIndex = 0;
@@ -1889,7 +1900,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         SObject lookupRecordToUpdate = updatedLookupRecords.get(lookupKey);
         asyncUpdateList.add(lookupRecordToUpdate);
         updatedLookupRecords.remove(lookupKey);
-        System.assert(false, 'Made it here: ' + JSON.serialize(lookupRecordToUpdate));
         removalIndex++;
         if(removalIndex >= maxIndexToRemove) {
           break;
@@ -2005,11 +2015,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
-      } else if (rollupSpecificControl.ShouldRunAs__c == 'Batchable' && shouldRunAsBatch == false) {
-        shouldRunAsBatch = true;
-      } else if (rollupSpecificControl.ShouldRunAs__c == 'Queueable') {
-        // once you've been opted into batching, it should stick
-        shouldRunAsBatch = shouldRunAsBatch || false;
       } else if (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup') {
         this.rollups.remove(index);
         this.syncRollups.add(rollup);
@@ -2127,16 +2132,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class RollupSchedulable implements System.Schedulable {
     private final String query;
-    private final List<String> rollupMetadataIds;
+    private final List<String> rollupObjectNames;
     private final Evaluator eval;
 
-    public RollupSchedulable(String query, List<String> rollupMetadataIds, Evaluator eval) {
+    public RollupSchedulable(String query, List<String> rollupObjectNames, Evaluator eval) {
       this.query = query;
-      this.rollupMetadataIds = rollupMetadataIds;
+      this.rollupObjectNames = rollupObjectNames;
       this.eval = eval;
       try {
         Database.query(this.query);
-      } catch (Exception ex) {
+      } catch (QueryException ex) {
         throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
       }
     }
@@ -2145,21 +2150,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       List<Rollup__mdt> allMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);
       Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
       for (Rollup__mdt meta : allMetadata) {
-        if (rollupMetadataIds.contains(meta.Id) == false) {
+        if (rollupObjectNames.contains(meta.CalcItem__c) == false) {
           continue;
-        } else if (lookupObjectToMetadata.containsKey(meta.LookupObject__c)) {
-          lookupObjectToMetadata.get(meta.LookupObject__c).add(meta);
+        } else if (lookupObjectToMetadata.containsKey(meta.CalcItem__c)) {
+          lookupObjectToMetadata.get(meta.CalcItem__c).add(meta);
         } else {
-          lookupObjectToMetadata.put(meta.LookupObject__c, new List<Rollup__mdt>{ meta });
+          lookupObjectToMetadata.put(meta.CalcItem__c, new List<Rollup__mdt>{ meta });
         }
       }
-      List<Rollup__mdt> rollupsOrderedByLookupItem = new List<Rollup__mdt>();
+      List<Rollup__mdt> rollupsOrderedByCalcObject = new List<Rollup__mdt>();
       for (String lookupObject : lookupObjectToMetadata.keySet()) {
-        rollupsOrderedByLookupItem.addAll(lookupObjectToMetadata.get(lookupObject));
+        rollupsOrderedByCalcObject.addAll(lookupObjectToMetadata.get(lookupObject));
       }
       List<SObject> calcItems = Database.query(this.query);
       getRollup(
-          rollupsOrderedByLookupItem,
+          rollupsOrderedByCalcObject,
           calcItems.getSObjectType(),
           calcItems,
           new Map<Id, SObject>(calcItems),
