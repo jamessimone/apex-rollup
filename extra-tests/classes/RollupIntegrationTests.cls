@@ -142,6 +142,42 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c];
-    System.assertEquals(45/3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of all items for denominator, not just matching items');
+    System.assertEquals(45/3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of matching items');
+  }
+
+  @isTest
+  static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
+    ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
+    insert parentApp;
+
+    List<Application__c> apps =  new List<Application__c>{
+      new Application__c(Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
+      new Application__c(Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
+      new Application__c(Something_With_Underscores__c = 'Financial Services', ParentApplication__c = parentApp.Id, Engagement_Score__c = 30),
+      new Application__c(Something_With_Underscores__c = 'Backslashes/Too', ParentApplication__c = parentApp.Id, Engagement_Score__c = 5),
+      new Application__c(Something_With_Underscores__c = 'Something & Something Else', ParentApplication__c = parentApp.Id, Engagement_Score__c = 10)
+    };
+    insert apps;
+
+    Rollup.FlowInput input = new Rollup.FlowInput();
+    input.lookupFieldOnCalcItem = 'ParentApplication__c';
+    input.lookupFieldOnOpObject = 'Id';
+    input.recordsToRollup = new List<ParentApplication__c>{ parentApp };
+    input.rollupContext = 'INSERT';
+    input.rollupFieldOnCalcItem = 'Engagement_Score__c';
+    input.rollupFieldOnOpObject = 'Engagement_Rollup__c';
+    input.rollupOperation = 'SUM';
+    input.rollupSObjectName = 'ParentApplication__c';
+    input.isRollupStartedFromParent = true;
+    input.calcItemTypeWhenRollupStartedFromParent = 'Application__c';
+
+    Test.startTest();
+    Rollup.performRollup(new List<Rollup.FlowInput>{
+      input
+    });
+    Test.stopTest();
+
+    ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c];
+    System.assertEquals(125, updatedParent.Engagement_Rollup__c, 'Custom fields should work when rollup started from parent!');
   }
 }
