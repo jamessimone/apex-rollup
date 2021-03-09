@@ -1884,7 +1884,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         BatchChunkSize__c = 2000,
         MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
         MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
-        MaximumRollupRetries__c = 100, // TODO fixme
+        MaximumRollupRetries__c = 100,
         MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
         ShouldAbortRun__c = false,
         ShouldRunAs__c = 'Queueable'
@@ -1972,7 +1972,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (this.deferredRollups.isEmpty() == false && isDeferralAllowed && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
       stackDepth++;
       // tragic, but necessary due to limits on requeueing allowed during testing
-      isDeferralAllowed = Test.isRunningTest() == false;
+      isDeferralAllowed = Test.isRunningTest() == false && this.rollupControl.MaximumRollupRetries__c > stackDepth;
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
