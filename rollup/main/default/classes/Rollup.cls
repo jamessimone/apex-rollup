@@ -1912,7 +1912,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
         applicableItems.add(calcItem);
-      } else if(rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name()) && rollupMetadata?.RollupOperation__c != Rollup.Op.DELETE_AVERAGE.name()) {
+      } else if(rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
         applicableItems.add(calcItem);
       }
     }
