@@ -114,12 +114,13 @@ private class RollupIntegrationTests {
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
     insert parentApp;
 
+    String baseId = Application__c.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(11);
     List<Application__c> applications = new List<Application__c>{
-      new Application__c(Id = 'a036g00000TvyKnAA1', Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
-      new Application__c(Id = 'a036g00000TvyKnAB1', Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
-      new Application__c(Id = 'a036g00000TvyKnAA2', Something_With_Underscores__c = 'Financial Services', ParentApplication__c = parentApp.Id, Engagement_Score__c = 30),
-      new Application__c(Id = 'a036g00000TvyKnAA3', Something_With_Underscores__c = 'Backslashes/Too', ParentApplication__c = parentApp.Id, Engagement_Score__c = 5),
-      new Application__c(Id = 'a036g00000TvyKnAA4', Something_With_Underscores__c = 'Something & Something Else', ParentApplication__c = parentApp.Id, Engagement_Score__c = 10)
+      new Application__c(Id = baseId + 1, Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
+      new Application__c(Id = baseId + 2, Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
+      new Application__c(Id = baseId + 3, Something_With_Underscores__c = 'Financial Services', ParentApplication__c = parentApp.Id, Engagement_Score__c = 30),
+      new Application__c(Id = baseId + 4, Something_With_Underscores__c = 'Backslashes/Too', ParentApplication__c = parentApp.Id, Engagement_Score__c = 5),
+      new Application__c(Id = baseId + 5, Something_With_Underscores__c = 'Something & Something Else', ParentApplication__c = parentApp.Id, Engagement_Score__c = 10)
     };
     Rollup.records = applications;
 
