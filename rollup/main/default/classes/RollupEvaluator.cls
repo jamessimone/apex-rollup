@@ -302,7 +302,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       }
       whereClausePiece = whereClausePiece.trim();
-      System.debug(whereClausePiece);
 
       // if it's just a singular value enclosed in quotes or a multi-select picklist, we can just take the inner string
       if (whereClausePiece.startsWith('\'') && whereClausePiece.endsWith('\'')) {
