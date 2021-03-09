@@ -285,18 +285,22 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private String getValue(String criteria, String whereClausePiece) {
       Integer firstIndexOfCriteria = whereClausePiece.indexOf(criteria);
       Integer lastIndexOfCriteria = whereClausePiece.lastIndexOf(criteria);
-      if (firstIndexOfCriteria != lastIndexOfCriteria) {
+      
+      if (firstIndexOfCriteria != lastIndexOfCriteria || this.originalWhereClause.contains(whereClausePiece) == false) {
         // whoops - we accidentally replaced a conditional keyword in the value
         // let's fix that
         whereClausePiece = whereClausePiece.substring(firstIndexOfCriteria + criteria.length(), whereClausePiece.length() - 1);
         for (String conditionKey : CONDITION_MAP.keySet()) {
           String conditionValue = CONDITION_MAP.get(conditionKey);
-          if (conditionValue.trim() != criteria) {
-            continue;
-          }
           String potentialReplacement = whereClausePiece.replace(criteria, conditionKey.trim());
           if (this.originalWhereClause.contains(potentialReplacement)) {
             whereClausePiece = potentialReplacement;
+            break;
+          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
+            whereClausePiece = whereClausePiece.replace(' = ', ' in ');
+            break;
+          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
+            whereClausePiece = whereClausePiece.replace(' = ', ' not in ');
             break;
           }
         }
