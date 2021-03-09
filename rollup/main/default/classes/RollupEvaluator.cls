@@ -271,7 +271,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String fieldName = whereClause.substring(0, whereClause.indexOf(' '));
       whereClause = whereClause.replace(fieldName, '').trim();
       String criteria = whereClause.substring(0, whereClause.indexOf(' ')).trim();
-      String value = this.getValue(criteria, whereClause);
+      String value = this.getValue( whereClause.substringAfter(criteria));
 
       if (value.startsWith('(') && value.endsWith(')')) {
         List<String> values = value.substring(1, value.length() - 1).split(',');
@@ -282,26 +282,27 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return conditions;
     }
 
-    private String getValue(String criteria, String whereClausePiece) {
-      Integer firstIndexOfCriteria = whereClausePiece.indexOf(criteria);
-      Integer lastIndexOfCriteria = whereClausePiece.lastIndexOf(criteria);
-      if (firstIndexOfCriteria != lastIndexOfCriteria) {
-        // whoops - we accidentally replaced a conditional keyword in the value
+    private String getValue(String whereClausePiece) {
+      if (this.originalWhereClause.contains(whereClausePiece) == false) {
+        // whoops - we may have accidentally replaced a conditional keyword in the value
         // let's fix that
-        whereClausePiece = whereClausePiece.substring(firstIndexOfCriteria + criteria.length(), whereClausePiece.length() - 1);
         for (String conditionKey : CONDITION_MAP.keySet()) {
           String conditionValue = CONDITION_MAP.get(conditionKey);
-          if (conditionValue.trim() != criteria) {
-            continue;
-          }
-          String potentialReplacement = whereClausePiece.replace(criteria, conditionKey.trim());
+          String potentialReplacement = whereClausePiece.replace(conditionKey, conditionValue.trim());
           if (this.originalWhereClause.contains(potentialReplacement)) {
             whereClausePiece = potentialReplacement;
+            break;
+          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
+            whereClausePiece = whereClausePiece.replace(' = ', ' in ');
+            break;
+          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
+            whereClausePiece = whereClausePiece.replace(' != ', ' not in ');
             break;
           }
         }
       }
-      whereClausePiece = whereClausePiece.replace(criteria, '').trim();
+      whereClausePiece = whereClausePiece.trim();
+      System.debug(whereClausePiece);
 
       // if it's just a singular value enclosed in quotes or a multi-select picklist, we can just take the inner string
       if (whereClausePiece.startsWith('\'') && whereClausePiece.endsWith('\'')) {

@@ -6,7 +6,8 @@ public without sharing abstract class RollupCalculator {
   protected final SObjectField lookupKeyField;
   protected final String lookupKeyQuery;
   protected final Rollup.Op op;
-
+  
+  protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
 
@@ -160,6 +161,9 @@ public without sharing abstract class RollupCalculator {
 
   public void setCDCUpdate(Boolean isCDCUpdate) {
     this.isCDCUpdate = isCDCUpdate;
+  }
+  public void setEvaluator(Rollup.Evaluator eval) {
+    this.eval = eval;
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -821,7 +825,7 @@ public without sharing abstract class RollupCalculator {
 
       // the List isn't strongly typed at this point, otherwise we could avoid this shameful statement
       SObjectType sObjectType = calcItems[0].getSobjectType();
-    Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+      Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       String query = Rollup.getQueryString(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
       Integer countOfPreExistingItems = isArchivable ? Database.query(query).size() : Database.countQuery(query);
@@ -834,8 +838,10 @@ public without sharing abstract class RollupCalculator {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       Decimal newSum = 0;
       for (SObject calcItem : applicableCalcItems) {
-        Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
-        newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
+        if(this.eval == null || this.eval.matches(calcItem) == true) {
+          Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
+          newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
+        }
       }
 
       Decimal numerator = oldSum + newSum;

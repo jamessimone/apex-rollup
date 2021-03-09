@@ -61,6 +61,28 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldNotFilterCalcItemsBasedOnWhereClauseWithInOrNotIn() {
+    Account acc = new Account(Name = 'Something & Something Else');
+    Account two = new Account(Name = 'Vertical/Backslash');
+    Account doesNotMatch = new Account(Name = 'Something with in the string');
+    Account three = new Account(Name = 'basic string');
+
+    String whereClause = 'Name != \'Something with in the string\'';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, acc.getSObjectType());
+
+    System.assertNotEquals(true, eval.matches(doesNotMatch), 'In should not be replaced');
+    System.assertEquals(true, eval.matches(acc));
+    System.assertEquals(true, eval.matches(two));
+    System.assertEquals(true, eval.matches(three));
+
+    whereClause = 'Name != \'Something with not in the string\'';
+    eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, acc.getSObjectType());
+
+    System.assertNotEquals(true, eval.matches(new Account(Name = 'Something with not in the string')));
+  }
+
+  @isTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForParentFields() {
     Account acc = new Account(Name = 'RollupEvaluatorTests');
     Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);

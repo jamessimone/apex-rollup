@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Picklist__c</fullName>
+    <externalId>false</externalId>
+    <label>Picklist</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>First &amp; Second</fullName>
+                <default>false</default>
+                <label>First &amp; Second</label>
+            </value>
+            <value>
+                <fullName>Standard</fullName>
+                <default>false</default>
+                <label>Standard</label>
+            </value>
+            <value>
+                <fullName>Something with and in the name</fullName>
+                <default>false</default>
+                <label>Something with and in the name</label>
+            </value>
+            <value>
+                <fullName>Third &amp; Fourth</fullName>
+                <default>false</default>
+                <label>Third &amp; Fourth</label>
+            </value>
+            <value>
+                <fullName>Has/A Backslash</fullName>
+                <default>false</default>
+                <label>Has/A Backslash</label>
+            </value>
+            <value>
+                <fullName>Fifth &amp; Sixth</fullName>
+                <default>false</default>
+                <label>Fifth &amp; Sixth</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

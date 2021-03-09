@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Something_With_Underscores__c</fullName>
+    <externalId>false</externalId>
+    <label>Something With Underscores</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>We have and in the name</fullName>
+                <default>false</default>
+                <label>We have and in the name</label>
+            </value>
+            <value>
+                <fullName>Backslashes/Too</fullName>
+                <default>false</default>
+                <label>Backslashes/Too</label>
+            </value>
+            <value>
+                <fullName>Financial Services</fullName>
+                <default>false</default>
+                <label>Financial Services</label>
+            </value>
+            <value>
+                <fullName>Something &amp; Something Else</fullName>
+                <default>false</default>
+                <label>Something &amp; Something Else</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
