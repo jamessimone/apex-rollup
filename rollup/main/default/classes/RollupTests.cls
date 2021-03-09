@@ -2570,7 +2570,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, new List<String>(), null);
+      Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, 'Account', null);
     } catch (Exception e) {
       ex = e;
     }
@@ -2582,7 +2582,7 @@ private class RollupTests {
   static void shouldScheduleSuccessfullyForGoodQuery() {
     String goodQuery = 'SELECT Id, StageName FROM Opportunity WHERE CreatedDate > YESTERDAY';
 
-    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, new List<String>(), null);
+    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, 'Opportunity', null);
 
     System.assertNotEquals(null, jobId);
   }
@@ -2596,7 +2596,7 @@ private class RollupTests {
     insert opp;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null);
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', '');
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -2618,7 +2618,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', '');
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2643,7 +2643,7 @@ private class RollupTests {
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', '');
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2664,7 +2664,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', '');
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];

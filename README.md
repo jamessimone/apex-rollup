@@ -185,17 +185,24 @@ I would _highly_ recommend scheduling through Scheduled Flows.
 That being said, `Rollup` exposes the option to use Scheduled Jobs if that's more your style. You can use the following Anonymous Apex script to schedule rollups:
 
 ```java
-// Method signature: (String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval)
+// Method signature: (String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval)
 Rollup.schedule(
   'My example job name',
   'my cron expression, like 0 0 0 * * ?',
   'my SOQL query, like SELECT Id, Amount FROM Opportunity WHERE CreatedDate > YESTERDAY',
-  new List<Id>{ 'The ids of Rollup__mdt records configuring the rollup operation' },
+  'The API name of the SObject associated with Rollup__mdt records configuring the rollup operation',
   null
 );
 ```
 
-That last argument - the `null` value - has to implement an interface called `Evaluator` (or it can just be left null). More on that below.
+That last argument - the `null` value - has to implement an interface called `Evaluator` (or it can just be left null). More on that below. 
+
+Note that the third argument - the `String rollupObjectName` should be one of two values:
+
+- the API name of the object(s) where rollups are started from the parent (where `Is Rollup Started From Parent` on `Rollup__mdt` is checked off) OR
+- the API name of the object(s) where rollups are started from the child object
+
+In either case, the SOQL query needs to correspond to either the parent or the children records that you'd like to operate on.
 
 ## Custom Apex Rollups
 
