@@ -162,9 +162,6 @@ public without sharing abstract class RollupCalculator {
   public void setCDCUpdate(Boolean isCDCUpdate) {
     this.isCDCUpdate = isCDCUpdate;
   }
-  public void setEvaluator(Rollup.Evaluator eval) {
-    this.eval = eval;
-  }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     for (Integer index = 0; index < calcItems.size(); index++) {
@@ -838,10 +835,8 @@ public without sharing abstract class RollupCalculator {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       Decimal newSum = 0;
       for (SObject calcItem : applicableCalcItems) {
-        if(this.eval == null || this.eval.matches(calcItem) == true) {
-          Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
-          newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
-        }
+        Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
+        newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
       }
 
       Decimal numerator = oldSum + newSum;

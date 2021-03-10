@@ -142,6 +142,6 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c];
-    System.assertEquals(45/5, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of all items for denominator, not just matching items'); 
+    System.assertEquals(45/3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of matching items'); 
   }
 }
