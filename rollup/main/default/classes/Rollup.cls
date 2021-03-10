@@ -410,7 +410,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   ) {
     QueryWrapper wrapper = new QueryWrapper(lookupSObjectName, lookupFieldOnLookupObject);
     wrapper.setQuery(potentialWhereClause);
-    return performFullRecalculation(
+    return performFullRecalculationInner(
       opFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnLookupObject,
@@ -533,7 +533,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
             QueryWrapper wrapper = getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
             wrapper.setQuery(whereClause + wrapper.getQuery());
-            performFullRecalculation(
+            performFullRecalculationInner(
               flowInput.rollupFieldOnCalcItem,
               flowInput.lookupFieldOnCalcItem,
               flowInput.lookupFieldOnOpObject,
@@ -1333,7 +1333,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (rollupInfo.IsRollupStartedFromParent__c) {
         shouldReturn = true;
         QueryWrapper wrapper = getParentWhereClause(calcItems, rollupInfo.LookupFieldOnLookupObject__c, rollupInfo.LookupObject__c);
-        performFullRecalculation(
+        performFullRecalculationInner(
           rollupInfo.RollupFieldOnCalcItem__c,
           rollupInfo.LookupFieldOnCalcItem__c,
           rollupInfo.LookupFieldOnLookupObject__c,
@@ -1354,7 +1354,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   /** end global-facing section, begin public/private static helpers */
 
-  private static String performFullRecalculation(
+  private static String performFullRecalculationInner(
     String opFieldOnCalcItem,
     String lookupFieldOnCalcItem,
     String lookupFieldOnLookupObject,
