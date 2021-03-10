@@ -837,15 +837,17 @@ public without sharing abstract class RollupCalculator {
 
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       Decimal newSum = 0;
+      Decimal currentDenominator = 0;
       for (SObject calcItem : applicableCalcItems) {
         if(this.eval == null || this.eval.matches(calcItem) == true) {
           Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
           newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
+          currentDenominator++;
         }
       }
 
       Decimal numerator = oldSum + newSum;
-      Decimal denominator = countOfPreExistingItems + applicableCalcItems.size();
+      Decimal denominator = countOfPreExistingItems + currentDenominator;
 
       // Can't divide by 0, so just return null
       if (denominator == 0) {
