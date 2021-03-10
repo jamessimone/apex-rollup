@@ -1,152 +1,102 @@
 public without sharing class RollupRelationshipFieldFinder {
-  private static final Integer MAX_STACK_COUNT = 900; // 1000, but with breathing room
-  private static Integer stackCount = 0;
+
+  private final List<String> relationshipParts;
+  private final TraversalObject traverseObject;
+  private final String rollupFieldName;
+  private final String finalFieldName;
 
   private Boolean isFirstRun = true;
-  private SObjectType originalChildType;
 
-  private final Set<SObjectType> processedTypes;
-  private final List<SObjectType> relationshipTypes;
-  private final String parentName;
-  public RollupRelationshipFieldFinder(String parentName) {
-    this.processedTypes = new Set<SObjectType>();
-    this.relationshipTypes = new List<SObjectType>();
-    this.parentName = parentName;
+  public RollupRelationshipFieldFinder(String relationshipPathName, String rollupFieldName) {
+    this.traverseObject = new TraversalObject();
+    this.relationshipParts = relationshipPathName.split('\\.');
+    this.rollupFieldName = rollupFieldName;
+    this.finalFieldName = this.relationshipParts[this.relationshipParts.size() - 1];
   }
 
-  public List<SObjectType> getParentTypes(SObjectType childType, String childField, Id childLookup) {
-    // actually counting the frames consumed is almost certainly overkill
-    // but this prevents us from accidentally blowing the stack
-    stackCount++;
-    if (this.isFirstRun) {
-      this.originalChildType = childType;
-      this.isFirstRun = false;
-    } else if (relationshipTypes.contains(originalChildType) || stackCount > MAX_STACK_COUNT) {
-      return this.assembleFinalRelationships();
-    }
+  public class TraversalObject {
+    public Boolean isFinished = true;
+    private final Map<Id, List<SObject>> lookupIdToFinalRecords = new Map<Id, List<SObject>>();
+    private Map<Id, Id> lookupIdMap = new Map<Id, Id>();
 
-    Map<String, SObjectField> fieldMap = childType.getDescribe().fields.getMap();
-    SObjectField fieldToken = fieldMap.get(childField);
-    SObjectType parentType = getSObjectType(fieldToken, childLookup.getSObjectType());
-
-    /**
-     * Because the sanity checks necessary to find the ultimate "one true [morty] object chain"
-     * deviate slightly depending on whether or not we've reached the parent object we care about
-     * (as opposed to the intermediate objects that may exist in the chain), the work is broken down
-     * into two different Resolver classes that share some behavior with one another.
-     */
-    if (fieldToken == null && childType?.getDescribe()?.getName() != 'User') {
-      // we are potentially at the top level; let's check that before moving on
-      new RelationshipFieldResolver(this, childType).tryResolve(fieldMap, null);
-    } else if (parentType != null) {
-      // can we establish a relationship between the Id that's been passed in and the next level up in the chain?
-      // let's find out - with recursion!
-      Map<String, SObjectField> middleFieldMap = parentType.getDescribe().fields.getMap();
-      new RecurseRelationshipFieldResolver(this, childType).tryResolve(middleFieldMap, parentType);
-    }
-    return this.assembleFinalRelationships();
-  }
-
-  private class RecurseRelationshipFieldResolver extends RelationshipFieldResolver {
-    public RecurseRelationshipFieldResolver(RollupRelationshipFieldFinder finder, SObjectType type) {
-      super(finder, type);
-    }
-
-    protected override void handle(SObjectField innerField, SObjectType parentType) {
-      // recurse to try to find a way to the eventual parent
-      for (SObjectType potentialParent : innerField.getDescribe().getReferenceTo()) {
-        if (this.finder.processedTypes.contains(potentialParent) == false) {
-          this.finder.processedTypes.add(potentialParent);
-          // if the relationship is deeper than grandchild -> grandparent, keep going
-          Id fakeIdOfType = potentialParent.getDescribe().getKeyPrefix() + '0'.repeat(12);
-          String potentialName = innerField.getDescribe().getName();
-          Set<SObjectType> priorSet = new Set<SObjectType>(this.finder.relationshipTypes);
-          List<SObjectType> parentTypes = this.finder.getParentTypes(potentialParent, potentialName, fakeIdOfType);
-          // I'm sure there's a better way to do this, but this is what I came up with ...
-          if (parentTypes.size() > priorSet.size()) {
-            this.finder.tryAddType(parentType);
-            this.finder.tryAddType(this.type);
-            this.hasInnerBreak = true;
-            break;
-          }
-        }
-      }
+    public List<SObject> retrieveParents(Id descendantId) {
+      return lookupIdToFinalRecords.containsKey(descendantId) ? lookupIdToFinalRecords.get(descendantId) : new List<SObject>();
     }
   }
 
-  private virtual class RelationshipFieldResolver {
-    protected Boolean hasInnerBreak = false;
-    protected RollupRelationshipFieldFinder finder;
-    protected SObjectType type;
-
-    public RelationshipFieldResolver(RollupRelationshipFieldFinder finder, SObjectType type) {
-      this.finder = finder;
-      this.type = type;
+  // TODO: heap size, yikes
+  public TraversalObject getParents(List<SObject> records) {
+    if(records.isEmpty() || this.relationshipParts.isEmpty()) {
+      this.traverseObject.isFinished = true;
+      return this.traverseObject;
+    } else if(Limits.getLimitQueries() / 2 < Limits.getQueries() || Limits.getLimitQueryRows() / 2 < Limits.getQueryRows()) {
+      return this.traverseObject;
     }
+    this.traverseObject.isFinished = false;
 
-    public void tryResolve(Map<String, SObjectField> fieldMap, SObjectType parentType) {
-      if (this.matchesType(parentType)) {
-        return;
-      }
-      for (String fieldName : fieldMap.keySet()) {
-        SObjectField innerField = fieldMap.get(fieldName);
-        if (innerField.getDescribe().getType() != DisplayType.REFERENCE) {
-          continue;
+    // even before the recursion begins, the List won't be strongly typed
+    SObjectType baseSObjectType = records[0].getSObjectType();
+    Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
+    SObjectField field = this.getField(fieldMap, this.relationshipParts.remove(0));
+    
+    if(field.getDescribe().getName() == this.finalFieldName) {
+      this.traverseObject.isFinished = true;
+      for (SObject record : records) {
+        Id descendantId = this.getDescendantId(record.Id);
+        if(this.traverseObject.lookupIdToFinalRecords.containsKey(descendantId)) {
+          this.traverseObject.lookupIdToFinalRecords.get(descendantId).add(record);
         } else {
-          this.handle(innerField, parentType);
-        }
-        if (this.hasInnerBreak) {
-          break;
+          this.traverseObject.lookupIdToFinalRecords.put(descendantId, new List<SObject>{ record });
         }
       }
+      this.traverseObject.lookupIdMap = null; // try to spare the heap
+      return this.traverseObject;
     }
+    
+    Set<Id> lookupIds = new Set<Id>();
+    for(SObject record : records) {
+      String lookupId = (String) record.get(field);
+      if (String.isNotBlank(lookupId)) {
+        lookupIds.add(lookupId);
 
-    protected virtual void handle(SObjectField innerField, SObjectType parentType) {
-      for (SObjectType innerType : innerField.getDescribe().getReferenceTo()) {
-        if (this.matchesType(innerType)) {
-          break;
+        if (this.isFirstRun) {
+          this.traverseObject.lookupIdMap.put(lookupId, record.Id);
         } else {
-          if (innerType != null) {
-            this.finder.processedTypes.add(innerType);
-          }
-          if (this.hasInnerBreak) {
-            break;
-          }
+          Id ultimateDescendantId = this.getDescendantId(lookupId);
+          this.traverseObject.lookupIdMap.put(lookupId, record.Id);
         }
       }
     }
+    
+    this.isFirstRun = false;
 
-    private Boolean matchesType(SObjectType innerType) {
-      Boolean matches = false;
-      if (innerType?.getDescribe()?.getName() == this.finder.parentName) {
-        matches = true;
-        this.finder.tryAddType(innerType);
-        this.finder.tryAddType(this.type);
+    String nextFieldToLookup = (this.relationshipParts.isEmpty() ? this.rollupFieldName : this.relationshipParts[0]).replace('__r', '__c');
+
+    Schema.DescribeFieldResult fieldDescribe = field.getDescribe();
+    String query = 'SELECT Id, ' + nextFieldToLookup + ' FROM ' + fieldDescribe.getReferenceTo()[0].getDescribe().getName() + ' WHERE Id = :lookupIds';
+    return this.getParents(Database.query(query));
+  }
+
+  private SObjectField getField(Map<String, SObjectField> fieldMap, String relationshipPart) {
+    // this sucks, but we need to find the field with the matching relationship name
+    for(String key : fieldMap.keySet()) {
+      SObjectField field = fieldMap.get(key);
+      if(field.getDescribe().getRelationshipName() == relationshipPart) {
+        return field;
+      } else if(field.getDescribe().getName() == relationshipPart) {
+        return field;
       }
-      return matches;
     }
+
+    return null;
   }
 
-  private void tryAddType(SObjectType type) {
-    if (this.relationshipTypes.contains(type) == false) {
-      this.relationshipTypes.add(type);
+  private Id getDescendantId(Id lookupId) {
+    Boolean hasMatch = this.traverseObject.lookupIdMap.containsKey(lookupId);
+    if(hasMatch) {
+      return this.getDescendantId(this.traverseObject.lookupIdMap.get(lookupId));
     }
+    return lookupId;
   }
-
-  private List<SObjectType> assembleFinalRelationships() {
-    List<SObjectType> returnTypes = new List<SObjectType>();
-    for (Integer index = this.relationshipTypes.size() - 1; index >= 0; index--) {
-      returnTypes.add(this.relationshipTypes[index]);
-    }
-    return returnTypes;
-  }
-
-  private SObjectType getSObjectType(SObjectField fieldToken, SObjectType idType) {
-    if (fieldToken == null) {
-      return null;
-    }
-    List<SObjectType> potentialParents = fieldToken.getDescribe().getReferenceTo();
-    Integer relationshipIndex = potentialParents.indexOf(idType);
-    return relationshipIndex >= 0 ? potentialParents[relationshipIndex] : null;
-  }
+    
 }
