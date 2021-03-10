@@ -1912,6 +1912,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
         applicableItems.add(calcItem);
+      } else if(rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
+        applicableItems.add(calcItem);
       }
     }
     return applicableItems;
@@ -2084,6 +2086,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       lookupRecordKey,
       lookupKeyField
     );
+    rollupCalc.setEvaluator(roll.eval);
     rollupCalc.setCDCUpdate(this.isCDCUpdate);
     rollupCalc.performRollup(calcItems, roll.oldCalcItems);
     return rollupCalc.getReturnValue();
