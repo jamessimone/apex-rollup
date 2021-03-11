@@ -1,15 +1,14 @@
 {
   "name": "apex-rollup",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
     "url": "https://github.com/jamessimone/apex-rollup"
   },
   "author": "james.simone",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
-    "sfdx-cli": "latest",
     "prettier-plugin-apex": "latest",
     "prettier": "latest"
   }
