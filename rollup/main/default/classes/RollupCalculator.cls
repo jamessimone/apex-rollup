@@ -663,7 +663,7 @@ public without sharing abstract class RollupCalculator {
 
   private virtual class StringRollupCalculator extends RollupCalculator {
     // for now, hard-coding to comma here. We may update this to allow for CMDT-based overrides of the delimiter
-    private final String concatDelimiter = ', ';
+    protected String concatDelimiter = ', ';
     private String stringVal;
     public StringRollupCalculator(
       Object priorVal,
@@ -678,10 +678,13 @@ public without sharing abstract class RollupCalculator {
       this.stringVal = (String) this.returnVal;
     }
 
-    protected virtual override void setReturnValue() {
+    protected override void setReturnValue() {
       String possibleReturnValue = this.stringVal.normalizeSpace();
-      String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substringBeforeLast(',') : possibleReturnValue;
-      this.returnVal = (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
+      String withoutEndingComma = possibleReturnValue.endsWith(this.concatDelimiter)
+        ? possibleReturnValue.substringBeforeLast(this.concatDelimiter)
+        : possibleReturnValue;
+      this.returnVal = (withoutEndingComma.startsWith(this.concatDelimiter) ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma)
+        .trim();
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
@@ -756,7 +759,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     private String concatWithDelimiter(String newVal) {
-      if(String.isBlank(this.stringVal) || this.stringVal.endsWith(this.concatDelimiter)) {
+      if (String.isBlank(this.stringVal) || this.stringVal.endsWith(this.concatDelimiter)) {
         return newVal + this.concatDelimiter;
       } else {
         return this.concatDelimiter + newVal + this.concatDelimiter;
@@ -786,6 +789,9 @@ public without sharing abstract class RollupCalculator {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
       this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
       this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
+      if (this.rollupFieldController.isMultiSelectPicklist()) {
+        this.concatDelimiter = ';';
+      }
     }
 
     protected override Boolean isTrueFor(String newVal, String priorVal) {
@@ -804,15 +810,6 @@ public without sharing abstract class RollupCalculator {
         return this.op.name().contains(Rollup.Op.MIN.name()) ? newValRank < priorValRank : newValRank > priorValRank;
       }
       return this.picklistController.isTrueFor(newVal, priorVal, this.op);
-    }
-
-    protected override void setReturnValue() {
-      super.setReturnValue();
-      if(this.rollupFieldController.isMultiSelectPicklist()) {
-        String localVal = (String) this.returnVal;
-        localVal = localVal.replaceAll(', ', ';');
-        this.returnVal = localVal;
-      }
     }
   }
 
@@ -850,7 +847,7 @@ public without sharing abstract class RollupCalculator {
       Decimal newSum = 0;
       Decimal currentDenominator = 0;
       for (SObject calcItem : applicableCalcItems) {
-        if(this.eval == null || this.eval.matches(calcItem) == true) {
+        if (this.eval == null || this.eval.matches(calcItem) == true) {
           Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
           newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
           currentDenominator++;

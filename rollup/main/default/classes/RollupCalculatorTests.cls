@@ -16,10 +16,7 @@ private class RollupCalculatorTests {
       Account.Id
     );
 
-    calc.performRollup(
-      new List<Opportunity>(),
-      new Map<Id, SObject>()
-    );
+    calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
 
     System.assertEquals(0, (Decimal) calc.getReturnValue());
   }
@@ -37,10 +34,7 @@ private class RollupCalculatorTests {
       Account.Id
     );
 
-    calc.performRollup(
-      new List<Opportunity>(),
-      new Map<Id, SObject>()
-    );
+    calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
 
     System.assertEquals(0, (Decimal) calc.getReturnValue());
   }
@@ -191,10 +185,7 @@ private class RollupCalculatorTests {
       new Opportunity(Id = '0066g00003VDGbF003', Amount = 15)
     };
 
-    calc.performRollup(
-      opps,
-      new Map<Id, SObject>()
-    );
+    calc.performRollup(opps, new Map<Id, SObject>());
 
     System.assertEquals(opps[0].Amount, (Decimal) calc.getReturnValue());
   }
@@ -327,7 +318,7 @@ private class RollupCalculatorTests {
     System.assertEquals(1, (Decimal) calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
   }
 
-    // PICKLIST tests
+  // PICKLIST tests
 
   @isTest
   static void shouldConcatenateProperlyToMultiSelectPicklist() {
@@ -345,13 +336,13 @@ private class RollupCalculatorTests {
     calc.performRollup(
       new List<Opportunity>{
         new Opportunity(Name = 'Hello'),
-        new Opportunity(Name = 'World'),
+        new Opportunity(Name = 'World, I know'),
         new Opportunity(Name = 'And'),
         new Opportunity(Name = 'SSK')
       },
       new Map<Id, SObject>()
     );
 
-    System.assertEquals('Hello;World;And;SSK', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
+    System.assertEquals('Hello;World, I know;And;SSK', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
   }
 }
