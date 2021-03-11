@@ -1,6 +1,24 @@
 
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
+$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests, RollupFlowBulkProcessorTests" -c -d ./tests/apex -r json -w 20'
+
+function Start-Tests() {
+  # Run tests
+  Write-Output "Starting test run ..."
+  $testOutput = (Invoke-Expression $testInvocation | ConvertFrom-Json).result.summary
+  if('Passed' -ne $testOutput.outcome) {
+    Write-Output $testOutput
+    throw $testOutput
+  }
+  Write-Output "Tests finished running with success: $testOutput"
+}
+
+function Reset-SFDX-Json() {
+  Write-Output "Resetting SFDX project JSON at project root"
+  Copy-Item -Path ./scripts/sfdx-project.json -Destination ./sfdx-project.json -Force
+  Remove-Item -Path ./scripts/sfdx-project.json
+}
 
 Write-Output "Starting build script"
 
@@ -25,7 +43,6 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 # Also store test command shared between script branches, below
 $scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests, RollupFlowBulkProcessorTests" -c -d ./tests/apex -r human -w 20'
 Write-Output "Test command to use: $testInvocation"
 
 if($scratchOrgAllotment -gt 0) {
@@ -35,24 +52,30 @@ if($scratchOrgAllotment -gt 0) {
   try {
   sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
   # Deploy
+  Write-Output 'Pushing source to scratch org ...'
   sfdx force:source:push
   # Run tests
-  Write-Output "Starting test run ..."
-  Invoke-Expression $testInvocation
+  Start-Tests
   Write-Output "Scratch org tests finished running with success: $?"
   # Delete scratch org
   sfdx force:org:delete -p -u apex-rollup-scratch-org
   } catch {
     Write-Output "There was an issue with scratch org creation, continuing ..."
+    Reset-SFDX-Json
+    throw 'Error!'
   }
 } else {
   Write-Output "No scratch orgs remaining, running tests on sandbox"
 
-  # Deploy
-  sfdx force:source:deploy -p rollup
-  # Run tests
-  Invoke-Expression $testInvocation
-  Write-Output "Tests finished running with success: $?"
+  try {
+    # Deploy
+    Write-Output "Deploying source to sandbox ..."
+    sfdx force:source:deploy -p rollup
+    Start-Tests
+  } catch {
+    Reset-SFDX-Json
+    throw 'Error!'
+  }
 }
 
 # If the priorUserName is not blank and we used a scratch org, reset to it
@@ -64,8 +87,7 @@ if($orgInfo.result.username -And $userNameHasBeenSet) {
   sfdx force:config:set defaultusername=$priorUserName
 }
 
-Write-Output "Resetting SFDX project JSON at project root"
-Copy-Item -Path ./scripts/sfdx-project.json -Destination ./sfdx-project.json -Force
-Remove-Item -Path ./scripts/sfdx-project.json
+Reset-SFDX-Json
 
 Write-Output "Build + testing finished successfully, preparing to upload code coverage"
+

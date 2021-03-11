@@ -6,7 +6,7 @@ public without sharing abstract class RollupCalculator {
   protected final SObjectField lookupKeyField;
   protected final String lookupKeyQuery;
   protected final Rollup.Op op;
-  
+
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
@@ -678,7 +678,7 @@ public without sharing abstract class RollupCalculator {
       this.stringVal = (String) this.returnVal;
     }
 
-    protected override void setReturnValue() {
+    protected virtual override void setReturnValue() {
       String possibleReturnValue = this.stringVal.normalizeSpace();
       String withoutEndingComma = possibleReturnValue.endsWith(',') ? possibleReturnValue.substringBeforeLast(',') : possibleReturnValue;
       this.returnVal = (withoutEndingComma.startsWith(',') ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma).trim();
@@ -773,6 +773,7 @@ public without sharing abstract class RollupCalculator {
 
   private class PicklistRollupCalculator extends StringRollupCalculator {
     private final RollupFieldInitializer.PicklistController picklistController;
+    private final RollupFieldInitializer.PicklistController rollupFieldController;
     public PicklistRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -784,6 +785,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
       this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
+      this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
     }
 
     protected override Boolean isTrueFor(String newVal, String priorVal) {
@@ -802,6 +804,15 @@ public without sharing abstract class RollupCalculator {
         return this.op.name().contains(Rollup.Op.MIN.name()) ? newValRank < priorValRank : newValRank > priorValRank;
       }
       return this.picklistController.isTrueFor(newVal, priorVal, this.op);
+    }
+
+    protected override void setReturnValue() {
+      super.setReturnValue();
+      if(this.rollupFieldController.isMultiSelectPicklist()) {
+        String localVal = (String) this.returnVal;
+        localVal = localVal.replaceAll(', ', ';');
+        this.returnVal = localVal;
+      }
     }
   }
 
