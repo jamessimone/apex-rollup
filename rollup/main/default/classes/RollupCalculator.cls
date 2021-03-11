@@ -679,11 +679,12 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void setReturnValue() {
+      String trimmedDelimiter = this.concatDelimiter.trim();
       String possibleReturnValue = this.stringVal.normalizeSpace();
-      String withoutEndingComma = possibleReturnValue.endsWith(this.concatDelimiter)
-        ? possibleReturnValue.substringBeforeLast(this.concatDelimiter)
+      String withoutEndingComma = possibleReturnValue.endsWith(trimmedDelimiter)
+        ? possibleReturnValue.substringBeforeLast(trimmedDelimiter)
         : possibleReturnValue;
-      this.returnVal = (withoutEndingComma.startsWith(this.concatDelimiter) ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma)
+      this.returnVal = (withoutEndingComma.startsWith(trimmedDelimiter) ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma)
         .trim();
     }
 
