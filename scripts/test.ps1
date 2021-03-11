@@ -6,12 +6,13 @@ $testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTest
 function Start-Tests() {
   # Run tests
   Write-Output "Starting test run ..."
-  $testOutput = (Invoke-Expression $testInvocation | ConvertFrom-Json).result.summary
-  if('Passed' -ne $testOutput.outcome) {
-    Write-Output $testOutput
+  $testOutput = Invoke-Expression $testInvocation | ConvertFrom-Json
+  Write-Output $testOutput.result.summary
+  Write-Output $testOutput.result.tests
+  if(0 -ne $testOutput.status) {
     throw $testOutput
   }
-  Write-Output "Tests finished running with success: $testOutput"
+  Write-Output "Tests finished running successfully"
 }
 
 function Reset-SFDX-Json() {
@@ -42,6 +43,7 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
 $scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
+
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 Write-Output "Test command to use: $testInvocation"
 
