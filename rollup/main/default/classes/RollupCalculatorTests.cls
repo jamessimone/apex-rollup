@@ -326,4 +326,32 @@ private class RollupCalculatorTests {
 
     System.assertEquals(1, (Decimal) calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
   }
+
+    // PICKLIST tests
+
+  @isTest
+  static void shouldConcatenateProperlyToMultiSelectPicklist() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      '',
+      Rollup.Op.CONCAT,
+      Opportunity.Name,
+      QuickText.Channel,
+      metadata,
+      QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      QuickText.Name
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Name = 'Hello'),
+        new Opportunity(Name = 'World'),
+        new Opportunity(Name = 'And'),
+        new Opportunity(Name = 'SSK')
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals('Hello;World;And;SSK', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
+  }
 }
