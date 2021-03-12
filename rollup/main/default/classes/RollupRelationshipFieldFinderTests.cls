@@ -52,6 +52,11 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
 
     System.assertEquals(parent, traversal.retrieveParent(opp.Id));
+
+    finder = new RollupRelationshipFieldFinder(control, 'Name', Account.SObjectType, new Map<Id, SObject>());
+    traversal = finder.getParents(new List<Opportunity>{ opp });
+
+    System.assertEquals(parent, traversal.retrieveParent(opp.Id));
   }
 
   @isTest
@@ -88,6 +93,17 @@ private class RollupRelationshipFieldFinderTests {
     Account intermediateOne = new Account(Name = 'Intermediate 1');
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
     insert new List<Account>{ intermediateOne, intermediateTwo };
+
+    List<Account> updatedAccounts = [SELECT Id, OwnerId FROM Account];
+    if(updatedAccounts.size() == 2) {
+      // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate
+      // the results
+      Account one = updatedAccounts[0];
+      Account two = updatedAccounts[1];
+      if(one.OwnerId != two.OwnerId) {
+        return;
+      }
+    }
 
     Opportunity opp = new Opportunity(AccountId = intermediateTwo.Id, Name = 'Child reparented', StageName = 'Prospecting', CloseDate = System.today());
     List<Opportunity> opps = new List<Opportunity>{ opp };
@@ -128,5 +144,24 @@ private class RollupRelationshipFieldFinderTests {
 
     finder = new RollupRelationshipFieldFinder(control, 'Account.Owner.Name', User.SObjectType, oldOpps);
     System.assertEquals(true, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should correctly report reparenting if new lookup is null');
+  }
+
+  @isTest
+  static void shouldReportReparentingCorrectlyForImmediateParent() {
+    Account parentOne = new Account(Name = 'Parent1');
+    Account parentTwo = new Account(Name = 'Parent2');
+    insert new List<Account>{ parentOne, parentTwo };
+
+    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'Child1', StageName = 'Prospecting', CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(AccountId = parentOne.Id, Name = 'Child1', StageName = 'Prospecting', CloseDate = System.today());
+    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
+    insert opps;
+
+    Map<Id, SObject> oldOpps = new Map<Id, SObject>{ oppOne.Id => oppOne, oppTwo.Id => new Opportunity(AccountId = parentTwo.Id) };
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Name', Account.SObjectType, oldOpps);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+
+    System.assertEquals(true, traversal.isUltimatelyReparented(oppTwo, 'AccountId'));
+    System.assertEquals(false, traversal.isUltimatelyReparented(oppOne, 'AccountId'));
   }
 }

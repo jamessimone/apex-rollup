@@ -1,6 +1,12 @@
+/**
+ * Big caveat here - this class can only be used with lookup relationships. The larger Rollup framework
+ * accepts and even welcomes text-based keys being used, but here we accept that text-based keys
+ * are likely niche, anyway, and that people looking to make use of a grandchild -> grandparent (or greater!)
+ * rollup are likely operating using lookups anyway
+ */
 public without sharing class RollupRelationshipFieldFinder {
   private final List<String> relationshipParts;
-  private final Traversal traverseObject;
+  private final Traversal traversal;
   private final SObjectType ultimateParent;
   private final String optionalWhereClause;
   private final RollupControl__mdt rollupControl;
@@ -9,11 +15,17 @@ public without sharing class RollupRelationshipFieldFinder {
   private Boolean isFirstRun = true;
 
   public RollupRelationshipFieldFinder(RollupControl__mdt rollupControl, String relationshipPathName, SObjectType ultimateParent, Map<Id, SObject> oldRecords) {
-    this.traverseObject = new Traversal(this);
+    this.traversal = new Traversal(this);
     this.relationshipParts = relationshipPathName.split('\\.');
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
     this.oldRecords = oldRecords;
+
+    if(this.relationshipParts.size() == 1) {
+      String fieldName = this.relationshipParts[0];
+      this.relationshipParts.set(0, ultimateParent.getDescribe().getName());
+      this.relationshipParts.add(fieldName);
+    }
   }
 
   public RollupRelationshipFieldFinder(
@@ -28,7 +40,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   public class Traversal {
-    public Boolean isFinished = true;
+    public Boolean isFinished = false;
     private final Map<Id, SObject> lookupIdToFinalRecords = new Map<Id, SObject>();
     private Map<Id, Id> lookupIdMap = new Map<Id, Id>();
     private final Map<Id, List<Id>> hierarchy = new Map<Id, List<Id>>();
@@ -41,6 +53,7 @@ public without sharing class RollupRelationshipFieldFinder {
     public SObject retrieveParent(Id descendantId) {
       return lookupIdToFinalRecords.get(descendantId);
     }
+
     public Boolean isUltimatelyReparented(SObject record, String relationshipFieldName) {
       Id currentLookupId = (Id) record.get(relationshipFieldName);
       Id oldLookupId = (Id) (this.finder.oldRecords.containsKey(record.Id)
@@ -63,28 +76,29 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
-  // TODO handle heap size
   public Traversal getParents(List<SObject> records) {
     if (records.isEmpty() || this.relationshipParts.isEmpty()) {
-      this.traverseObject.isFinished = true;
-      return this.traverseObject;
-    } else if (this.rollupControl.MaxQueryRows__c < Limits.getQueries() || Limits.getLimitQueryRows() / 4 < Limits.getQueryRows()) {
-      return this.traverseObject;
+      this.traversal.isFinished = true;
+      return this.traversal;
+    } else if (
+      this.rollupControl.MaxQueryRows__c < Limits.getQueries() ||
+      Limits.getLimitQueryRows() / 4 < Limits.getQueryRows() ||
+      Limits.getLimitHeapSize() / 2 < Limits.getHeapSize()
+    ) {
+      return this.traversal;
     }
-    this.traverseObject.isFinished = false;
 
     // even before the recursion begins, the List won't be strongly typed
     SObjectType baseSObjectType = records[0].getSObjectType();
     if (baseSObjectType == this.ultimateParent) {
       this.prepFinishedObject(records);
-      return this.traverseObject;
+      return this.traversal;
     } else {
       return this.recurseThroughObjectChain(records, baseSObjectType);
     }
   }
 
   private SObjectField getField(Map<String, SObjectField> fieldMap, String relationshipPart) {
-    // this sucks, but we need to find the field with the matching relationship name
     for (String key : fieldMap.keySet()) {
       SObjectField field = fieldMap.get(key);
       if (field.getDescribe().getRelationshipName() == relationshipPart) {
@@ -98,22 +112,23 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private Id getDescendantId(Id lookupId) {
-    Boolean hasMatch = this.traverseObject.lookupIdMap.containsKey(lookupId);
+    Boolean hasMatch = this.traversal.lookupIdMap.containsKey(lookupId);
     if (hasMatch) {
-      return this.getDescendantId(this.traverseObject.lookupIdMap.get(lookupId));
+      return this.getDescendantId(this.traversal.lookupIdMap.get(lookupId));
     }
     return lookupId;
   }
 
   private void prepFinishedObject(List<SObject> records) {
-    this.traverseObject.isFinished = true;
+    this.traversal.isFinished = true;
     for (SObject record : records) {
       Id descendantId = this.getDescendantId(record.Id);
       if (descendantId != record.Id) {
-        this.traverseObject.lookupIdToFinalRecords.put(descendantId, record);
+        this.traversal.lookupIdToFinalRecords.put(descendantId, record);
       }
     }
-    this.traverseObject.lookupIdMap = null; // try to spare the heap
+    this.traversal.isFinished = true;
+    this.traversal.lookupIdMap = null; // try to spare the heap
   }
 
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
@@ -131,18 +146,18 @@ public without sharing class RollupRelationshipFieldFinder {
       if (String.isNotBlank(lookupId)) {
         lookupIds.add(lookupId);
 
-        this.traverseObject.lookupIdMap.put(lookupId, record.Id);
+        this.traversal.lookupIdMap.put(lookupId, record.Id);
         if (this.isFirstRun) {
           // we need to keep track of potentially reparented lookups to aid with the note below
           if (this.oldRecords.containsKey(record.Id)) {
             Id oldLookupId = (Id) this.oldRecords.get(record.Id).get(field);
             if (String.isNotBlank(oldLookupId) && oldLookupId != lookupId) {
               lookupIds.add(oldLookupId);
-              this.traverseObject.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
+              this.traversal.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
             }
           }
-          this.traverseObject.hierarchy.put(lookupId, new List<Id>{ lookupId });
-        } else if (this.traverseObject.hierarchy.containsKey(record.Id)) {
+          this.traversal.hierarchy.put(lookupId, new List<Id>{ lookupId });
+        } else if (this.traversal.hierarchy.containsKey(record.Id)) {
           // track the hierarchy of objects to help in determining whether or not something
           // has ultimately been reparented
           // for example:
@@ -151,7 +166,7 @@ public without sharing class RollupRelationshipFieldFinder {
           // this would "traditionally" be a reparenting situation, but if we are skipping
           // the intermediate objects for a rollup and the end result is the same, we need
           // to avoid reporting false positives like this one
-          this.traverseObject.hierarchy.get(record.Id).add(lookupId);
+          this.traversal.hierarchy.get(record.Id).add(lookupId);
         }
       }
     }
@@ -160,6 +175,7 @@ public without sharing class RollupRelationshipFieldFinder {
     Schema.DescribeSObjectResult nextSObjectDescribe = firstId.getSObjectType().getDescribe();
     SObjectField nextFieldToken = this.getField(nextSObjectDescribe.fields.getMap(), nextFieldToLookup);
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
+    // TODO need to check to see if we need to add in additional fields in the SELECT statement
     String query = 'SELECT Id, ' + nextFieldToken.getDescribe().getName() + ' FROM ' + nextSObjectDescribe.getName() + ' WHERE Id = :lookupIds';
     if (this.isFirstRun && String.isNotBlank(this.optionalWhereClause)) {
       query += '\nAND ' + this.optionalWhereClause;

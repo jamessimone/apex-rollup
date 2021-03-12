@@ -2908,6 +2908,39 @@ private class RollupTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
+  /** Grandparent rollups */
+  @isTest
+  static void shouldAllowGrandparentRollups() {
+    Account acc = [SELECT Id FROM Account];
+    List<Opportunity> opps = new List<Opportunity> {
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    };
+    insert opps;
+
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = opps;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT'
+        // TODO - time to add in new field for relationship name path
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
+    User updatedUser = (User) mock.Records[0];
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
   //** Helpers */
 
   private static DMLMock loadAccountIdMock(List<SObject> records) {

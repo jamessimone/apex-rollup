@@ -1,7 +1,6 @@
 @isTest
 private class RollupIntegrationTests {
-  // "Integration," in the sense that these include custom fields that shouldn't be installed
-  // we still don't need to actually update the records to prove the point
+  // "Integration," in the sense that these include custom fields / objects that shouldn't be installed
   @TestSetup
   static void setup() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
