@@ -6,7 +6,8 @@ private class RollupRelationshipFieldFinderTests {
   @isTest
   static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
-    insert greatGrandparent;
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
     ParentApplication__c nonMatchingGrandParent = new ParentApplication__c(Name = 'Non-matching grandparent');
@@ -37,6 +38,15 @@ private class RollupRelationshipFieldFinderTests {
       traversal.retrieveParent(nonMatchingChild.Id),
       'No matching records should be returned for relationship that does not go fully up the chain'
     );
+
+    // ok, and can we access the great-grandparent if the lookup field is populated?
+    nonMatchingGrandParent.Account__c = secondGreatGrandparent.Id;
+    update nonMatchingGrandParent;
+
+    // this also validates that the internal state of the finder is resilient; that it can be called more than once
+    traversal = finder.getParents(appLogs);
+    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Should still match!');
+    System.assertEquals(secondGreatGrandparent, traversal.retrieveParent(nonMatchingChild.Id), 'Should now match!');
   }
 
   @isTest
@@ -71,7 +81,11 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
 
     parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id];
-    System.assertEquals([SELECT Id, Name FROM User WHERE Id = :parent.OwnerId][0], traversal.retrieveParent(opp.Id), 'User should have been retrieved correctly!');
+    System.assertEquals(
+      [SELECT Id, Name FROM User WHERE Id = :parent.OwnerId][0],
+      traversal.retrieveParent(opp.Id),
+      'User should have been retrieved correctly!'
+    );
   }
 
   @isTest
@@ -95,12 +109,12 @@ private class RollupRelationshipFieldFinderTests {
     insert new List<Account>{ intermediateOne, intermediateTwo };
 
     List<Account> updatedAccounts = [SELECT Id, OwnerId FROM Account];
-    if(updatedAccounts.size() == 2) {
+    if (updatedAccounts.size() == 2) {
       // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate
       // the results
       Account one = updatedAccounts[0];
       Account two = updatedAccounts[1];
-      if(one.OwnerId != two.OwnerId) {
+      if (one.OwnerId != two.OwnerId) {
         return;
       }
     }
@@ -163,5 +177,48 @@ private class RollupRelationshipFieldFinderTests {
 
     System.assertEquals(true, traversal.isUltimatelyReparented(oppTwo, 'AccountId'));
     System.assertEquals(false, traversal.isUltimatelyReparented(oppOne, 'AccountId'));
+  }
+
+  @isTest
+  static void shouldOnlyIncludeWhereClauseForLastObjectInChain() {
+    Account parentOne = new Account(Name = 'ParentToInclude');
+    Account parentTwo = new Account(Name = 'ParentToExclude');
+    insert new List<Account>{ parentOne, parentTwo };
+
+    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'ChildWithIncludedParent', StageName = 'Prospecting', CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(AccountId = parentTwo.Id, Name = 'ChildWithExcludedParent', StageName = 'Prospecting', CloseDate = System.today());
+    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
+    insert opps;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      'Name',
+      Account.SObjectType,
+      new Map<Id, SObject>(),
+      'Name != \'' +
+      parentTwo.Name +
+      '\''
+    );
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+
+    System.assertEquals(parentOne, traversal.retrieveParent(oppOne.Id), 'First opp parent should not be exluded!');
+    System.assertEquals(null, traversal.retrieveParent(oppTwo.Id), 'Second opp should have been excluded!');
+  }
+
+  @isTest
+  static void shouldTrackMultipleParents() {
+    Account parentOne = new Account(Name = 'SoloParent');
+    insert parentOne;
+
+    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'FirstParentedChild', StageName = 'Prospecting', CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(AccountId = parentOne.Id, Name = 'SecondParentedChild', StageName = 'Prospecting', CloseDate = System.today());
+    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
+    insert opps;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Name', Account.SObjectType, new Map<Id, SObject>(), '');
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+
+    System.assertEquals(parentOne, traversal.retrieveParent(oppOne.Id), 'First opp parent should not be exluded!');
+    System.assertEquals(parentOne, traversal.retrieveParent(oppTwo.Id), 'Second opp should not have been excluded!');
   }
 }

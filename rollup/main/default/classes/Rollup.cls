@@ -1368,8 +1368,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType calcItemType = getSObjectFromName(calcItemSObjectName).getSObjectType();
     String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=');
+    if (queryWrapper.hasQuery) {
+      countQuery += ('\nAND ' + queryWrapper.getQuery());
+    }
 
-    // TODO need to pass wrapper.getQuery() to getCountFromDb, as well, or set the query again and pass just the wrapper?
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
 
@@ -1387,13 +1389,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
     queryFields.addAll(eval.getRelationshipFieldNames());
-    String queryString = getQueryString(
-      calcItemType,
-      new List<String>(queryFields),
-      'Id',
-      '!=',
-      queryWrapper.getQuery()
-    );
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       Set<Id> recordIds = queryWrapper.recordIds;
       List<SObject> calcItems = Database.query(queryString);
@@ -1996,7 +1992,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
         applicableItems.add(calcItem);
-      } else if(rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
+      } else if (rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
         applicableItems.add(calcItem);
       }
     }
