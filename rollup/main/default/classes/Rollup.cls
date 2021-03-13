@@ -1373,7 +1373,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
-    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
+    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, queryWrapper.recordIds);
 
     // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
     Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
@@ -1575,6 +1575,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
+    return getCountFromDb(countQuery, objIds, null);
+  }
+
+  private static Integer getCountFromDb(String countQuery, Set<String> objIds, Set<Id> recordIds) {
     if (countQuery.contains('ALL ROWS')) {
       countQuery = countQuery.replace('ALL ROWS', '');
     }

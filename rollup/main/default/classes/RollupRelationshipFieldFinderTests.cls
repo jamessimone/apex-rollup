@@ -2,53 +2,6 @@
 private class RollupRelationshipFieldFinderTests {
   static RollupControl__mdt control = new RollupControl__mdt(MaxQueryRows__c = 10000);
 
-  // TODO move this to integration tests
-  @isTest
-  static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
-    Account greatGrandparent = new Account(Name = 'Great-grandparent');
-    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
-
-    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
-    ParentApplication__c nonMatchingGrandParent = new ParentApplication__c(Name = 'Non-matching grandparent');
-    insert new List<ParentApplication__c>{ grandParent, nonMatchingGrandParent };
-
-    Application__c parent = new Application__c(Name = 'Parent', ParentApplication__c = grandParent.Id);
-    Application__c nonMatchingParent = new Application__c(Name = 'Non matching parent', ParentApplication__c = nonMatchingGrandParent.Id);
-    insert new List<Application__c>{ parent, nonMatchingParent };
-
-    ApplicationLog__c child = new ApplicationLog__c(Application__c = parent.Id, Name = 'Test Rollup Grandchildren');
-    ApplicationLog__c nonMatchingChild = new ApplicationLog__c(Name = 'Non matching child', Application__c = nonMatchingParent.Id);
-    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, nonMatchingChild };
-    insert appLogs;
-
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
-      control,
-      'Application__r.ParentApplication__r.Account__r.Name',
-      Account.SObjectType,
-      new Map<Id, SObject>()
-    );
-
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(appLogs);
-    System.assertEquals(true, traversal.isFinished, 'Traversal should not have aborted early');
-    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Account should match!');
-
-    System.assertEquals(
-      null,
-      traversal.retrieveParent(nonMatchingChild.Id),
-      'No matching records should be returned for relationship that does not go fully up the chain'
-    );
-
-    // ok, and can we access the great-grandparent if the lookup field is populated?
-    nonMatchingGrandParent.Account__c = secondGreatGrandparent.Id;
-    update nonMatchingGrandParent;
-
-    // this also validates that the internal state of the finder is resilient; that it can be called more than once
-    traversal = finder.getParents(appLogs);
-    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Should still match!');
-    System.assertEquals(secondGreatGrandparent, traversal.retrieveParent(nonMatchingChild.Id), 'Should now match!');
-  }
-
   @isTest
   static void shouldFindParentRelationshipBetweenStandardObjects() {
     Account parent = new Account(Name = 'Parent relationship between standard objects');
