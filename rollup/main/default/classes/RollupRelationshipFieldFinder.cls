@@ -8,19 +8,20 @@ public without sharing class RollupRelationshipFieldFinder {
   private final List<String> originalParts;
   private final Traversal traversal;
   private final SObjectType ultimateParent;
-  private final String optionalWhereClause;
   private final RollupControl__mdt rollupControl;
   private final Map<Id, SObject> oldRecords;
+  private final Set<String> uniqueFinalFieldNames;
 
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
 
-  public RollupRelationshipFieldFinder(RollupControl__mdt rollupControl, String relationshipPathName, SObjectType ultimateParent, Map<Id, SObject> oldRecords) {
+  public RollupRelationshipFieldFinder(RollupControl__mdt rollupControl, String relationshipPathName, Set<String> uniqueFinalFieldNames, SObjectType ultimateParent, Map<Id, SObject> oldRecords) {
     this.traversal = new Traversal(this);
     this.relationshipParts = relationshipPathName.split('\\.');
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
     this.oldRecords = oldRecords;
+    this.uniqueFinalFieldNames = uniqueFinalFieldNames;
 
     if (this.relationshipParts.size() == 1) {
       String fieldName = this.relationshipParts[0];
@@ -28,17 +29,6 @@ public without sharing class RollupRelationshipFieldFinder {
       this.relationshipParts.add(fieldName);
     }
     this.originalParts = new List<String>(this.relationshipParts);
-  }
-
-  public RollupRelationshipFieldFinder(
-    RollupControl__mdt rollupControl,
-    String relationshipParts,
-    SObjectType ultimateParent,
-    Map<Id, SObject> oldRecords,
-    String optionalWhereClause
-  ) {
-    this(rollupControl, relationshipParts, ultimateParent, oldRecords);
-    this.optionalWhereClause = optionalWhereClause;
   }
 
   public class Traversal {
@@ -53,7 +43,11 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     public SObject retrieveParent(Id descendantId) {
-      return lookupIdToFinalRecords.get(descendantId);
+      return this.lookupIdToFinalRecords.get(descendantId);
+    }
+
+    public List<SObject> getAllParents() {
+      return this.lookupIdToFinalRecords.values();
     }
 
     public Boolean isUltimatelyReparented(SObject record, String relationshipFieldName) {
@@ -190,11 +184,17 @@ public without sharing class RollupRelationshipFieldFinder {
     String nextFieldToLookup = this.relationshipParts[0].replace('__r', '__c');
     SObjectType nextSObjectType = firstId.getSObjectType();
     SObjectField nextFieldToken = this.getField(nextSObjectType.getDescribe().fields.getMap(), nextFieldToLookup);
-    // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
-    String query = 'SELECT Id, ' + nextFieldToken.getDescribe().getName() + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
-    if (nextSObjectType == this.ultimateParent && String.isNotBlank(this.optionalWhereClause)) {
-      query += '\nAND ' + this.optionalWhereClause;
+    List<String> fieldNames = new List<String>();
+    if(nextSObjectType == this.ultimateParent) {
+      fieldNames.addAll(this.uniqueFinalFieldNames);
+    } else {
+      fieldNames.add(nextFieldToken.getDescribe().getName());
     }
+    if(fieldNames.contains('Id') == false) {
+      fieldNames.add('Id');
+    }
+    // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
+    String query = 'SELECT ' + String.join(fieldNames, ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
     // recurse through till we get to the top/bottom of the chain
     this.isFirstRun = false;
     return this.getParents(Database.query(query));

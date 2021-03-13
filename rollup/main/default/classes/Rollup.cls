@@ -53,6 +53,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
   private RollupControl__mdt rollupControl;
+  private RollupRelationshipFieldFinder.Traversal traversal;
 
   /**
    * receiving an interface/subclass from a property get/set (from the book "The Art Of Unit Testing") is an old technique;
@@ -289,6 +290,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public virtual Database.QueryLocator start(Database.BatchableContext context) {
+    // TODO - for batch, RollupRelationshipFieldFinder will end up needing to cache the
+    // query string to use, stopping before the final query so that the QueryLocator can be built
     /**
      * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
      * NB: we have to call "getFieldNamesForRollups" in both the "start" and "execute" methods because
@@ -370,6 +373,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     protected override List<SObject> getExistingLookupItems(Set<String> objIds, Rollup rollup, Set<String> uniqueQueryFieldNames) {
       if (objIds.isEmpty()) {
         return new List<SObject>();
+      } else if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+        // TODO handle if traversal doesn't finish
+        rollup.traversal = new RollupRelationshipFieldFinder(
+            rollup.rollupControl,
+            rollup.metadata.GrandparentRelationshipFieldPath__c,
+            uniqueQueryFieldNames,
+            rollup.lookupObj,
+            rollup.oldCalcItems
+          )
+          .getParents(rollup.calcItems);
+        return rollup.traversal.getAllParents();
       }
       // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
       String queryString = getQueryString(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=');
@@ -1505,6 +1519,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             ChangedFieldsOnCalcItem__c,
             FullRecalculationDefaultNumberValue__c,
             FullRecalculationDefaultStringValue__c,
+            GrandparentRelationshipFieldPath__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
             OrderByFirstLast__c,
@@ -1520,6 +1535,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
+        }
+        if (rollupMetadata != null) {
+          cachedMetadata.addAll(rollupMetadata);
         }
       }
       metadata = cachedMetadata.clone();
@@ -1915,9 +1933,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected void process(List<Rollup> rollups) {
     this.getFieldNamesForRollups(rollups);
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
-    for (Integer index = 0; index < rollups.size(); index++) {
+    for (Rollup rollup : rollups) {
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
-      Rollup rollup = rollups[index];
       if (this.hasExceededCurrentRollupQueryLimit(rollup.rollupControl)) {
         this.deferredRollups.add(rollup);
         continue;
@@ -2026,6 +2043,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         lookupFieldToCalcItems.get(key).add(calcItem);
       }
 
+      // if the lookup key differs from what it was on the old calc item,
+      // include that value as well so that we can fix reparented records' rollup values
       SObject potentialOldCalcItem = rollup.oldCalcItems?.get(calcItem.Id);
       if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);

@@ -99,6 +99,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Rollup__mdt.GrandparentRelationshipFieldPath__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Rollup__mdt.IsFullRecordSet__c</field>
         <readable>true</readable>
     </fieldPermissions>

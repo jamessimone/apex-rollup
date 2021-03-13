@@ -2930,11 +2930,15 @@ private class RollupTests {
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
-        RollupOperation__c = 'CONCAT'
-        // TODO - time to add in new field for relationship name path
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];

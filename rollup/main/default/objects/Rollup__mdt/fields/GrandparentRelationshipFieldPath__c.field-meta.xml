@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GrandparentRelationshipFieldPath__c</fullName>
+    <description>If you are rolling up from grandchildren -&gt; grandparent (or greater), supply the field path to the ultimate parent field. As an example, if you were rolling up from Opp Line Items to Account AnnualRevenue, you would do &quot;Opportunity.Account.AnnualRevenue&quot;</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>If you are rolling up from grandchildren -&gt; grandparent (or greater), supply the field path to the ultimate parent field. As an example, if you were rolling up from Opp Line Items to Account AnnualRevenue, you would do &quot;Opportunity.Account.AnnualRevenue&quot;</inlineHelpText>
+    <label>Grandparent Relationship Field Path</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
