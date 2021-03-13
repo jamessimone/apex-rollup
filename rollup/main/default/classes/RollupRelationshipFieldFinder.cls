@@ -12,6 +12,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private final Map<Id, SObject> oldRecords;
   private final Set<String> uniqueFinalFieldNames;
 
+  private List<SObject> records;
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
 
@@ -47,7 +48,21 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     public List<SObject> getAllParents() {
-      return this.lookupIdToFinalRecords.values();
+      // not ideal, but because multiple parents can be tied to different descendants ...
+      return new List<SObject>(new Set<SObject>(this.lookupIdToFinalRecords.values()));
+    }
+
+    public Map<String, List<SObject>> getParentLookupToRecords() {
+      Map<String, List<SObject>> parentToLookupRecords = new Map<String, List<SObject>>();
+      for(SObject record : this.finder.records) {
+        SObject parentRecord = this.retrieveParent(record.Id);
+        if(parentToLookupRecords.containsKey(parentRecord.Id)) {
+          parentToLookupRecords.get(parentRecord.Id).add(record);
+        } else {
+          parentToLookupRecords.put(parentRecord.Id, new List<SObject>{ record });
+        }
+      }
+      return parentToLookupRecords;
     }
 
     public Boolean isUltimatelyReparented(SObject record, String relationshipFieldName) {
@@ -196,7 +211,10 @@ public without sharing class RollupRelationshipFieldFinder {
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
     String query = 'SELECT ' + String.join(fieldNames, ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
     // recurse through till we get to the top/bottom of the chain
-    this.isFirstRun = false;
+    if(this.isFirstRun) {
+      this.records = records;
+      this.isFirstRun = false;
+    }
     return this.getParents(Database.query(query));
   }
 }
