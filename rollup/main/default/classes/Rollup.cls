@@ -241,8 +241,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean hasMoreThanOneTarget = false;
     Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget);
 
-    Boolean shouldBatch =
-      shouldRunAsBatch || (orgDefaults.ShouldRunAs__c == 'Batchable' && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
+    Boolean shouldBatch = shouldRunAsBatch || (orgDefaults.ShouldRunAs__c == 'Batchable' && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
     if (this.syncRollups.isEmpty() == false) {
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
@@ -344,7 +343,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         List<SObject> localLookupItems;
         if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
           localLookupItems = rollup.traversal.getAllParents();
-          System.debug(localLookupItems);
           // winnow the list, which would otherwise occur because of specifically only querying for the objIds passed in
           for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
             SObject lookupItem = localLookupItems[index];
@@ -1916,7 +1914,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         continue;
       }
 
-      System.debug(rollup.lookupObj);
       Map<String, List<SObject>> calcItemsByLookupField = grandparentRollups.containsKey(rollup.lookupObj)
         ? grandparentRollups.get(rollup.lookupObj).getParentLookupToRecords()
         : this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
@@ -2171,18 +2168,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           }
 
           String priorLookup = (String) oldCalcItem.get(rollup.lookupFieldOnCalcItem);
+          // if the lookup wasn't previously populated, there's nothing to update
+          if(String.isBlank(priorLookup)) {
+            continue;
+          }
           Object newLookup = calcItem.get(rollup.lookupFieldOnCalcItem);
 
-          if (
-            newLookup != priorLookup &&
-            rollup.traversal == null ||
-            rollup.traversal != null && rollup.traversal.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName())
-          ) {
-            if (oldLookupItems.containsKey(priorLookup) == false) {
-              oldLookupItems.put(priorLookup, new List<SObject>());
+          if (newLookup != priorLookup && rollup.traversal == null) {
+            this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+          } else if (rollup.traversal != null && rollup.traversal.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName())) {
+            // slightly different, but with the same end result
+            SObject reparentedRecord = rollup.traversal.retrieveParent(oldCalcItem.Id);
+            if (reparentedRecord != null) {
+              priorLookup = (String) reparentedRecord.get(rollup.lookupFieldOnLookupObject);
+              this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
             }
-            List<SObject> reparentedCalcItemsForKey = oldLookupItems.get(priorLookup);
-            reparentedCalcItemsForKey.add(oldCalcItem);
           }
         }
 
@@ -2215,9 +2215,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
 
-        lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
-
-        recordsToUpdate.put(key, lookupRecord);
+        if (priorVal != newVal) {
+          lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
+          recordsToUpdate.put(key, lookupRecord);
+        }
       }
     }
 
@@ -2238,6 +2239,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     rollupCalc.setCDCUpdate(this.isCDCUpdate);
     rollupCalc.performRollup(calcItems, roll.oldCalcItems);
     return rollupCalc.getReturnValue();
+  }
+
+  private void populateOldLookupItems(String priorLookup, SObject oldCalcItem, Map<String, List<SObject>> oldLookupItems) {
+    if (oldLookupItems.containsKey(priorLookup) == false) {
+      oldLookupItems.put(priorLookup, new List<SObject>{ oldCalcItem });
+    } else {
+       oldLookupItems.get(priorLookup).add(oldCalcItem);
+    }
   }
 
   @testVisible

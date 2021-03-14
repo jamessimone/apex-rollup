@@ -35,7 +35,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
   public class Traversal {
     private Boolean isFinished = false;
-    private Boolean isAbortedEarly;
+    private Boolean isAbortedEarly = false;
 
     private final Map<Id, SObject> lookupIdToFinalRecords = new Map<Id, SObject>();
     private Map<Id, List<Id>> lookupIdMap = new Map<Id, List<Id>>();
@@ -68,6 +68,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
     public Map<String, List<SObject>> getParentLookupToRecords() {
       Map<String, List<SObject>> parentToLookupRecords = new Map<String, List<SObject>>();
+      if(this.isAbortedEarly) {
+        return parentToLookupRecords;
+      }
       for(SObject record : this.finder.records) {
         SObject parentRecord = this.retrieveParent(record.Id);
         if(parentToLookupRecords.containsKey(parentRecord.Id)) {
@@ -87,7 +90,7 @@ public without sharing class RollupRelationshipFieldFinder {
       if (currentLookupId == oldLookupId) {
         return false;
       } else if (currentLookupId == null || oldLookupId == null) {
-        // this is pretty cut and dry. if we are moving from having a lookup to not havine one, or vice versa, it's a reparenting
+        // this is pretty cut and dry. if we are moving from having a lookup to not having one, or vice versa, it's a reparenting
         return true;
       }
       List<Id> currentHierarchy = this.hierarchy.get(currentLookupId);
