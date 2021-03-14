@@ -34,7 +34,9 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   public class Traversal {
-    public Boolean isFinished = false;
+    private Boolean isFinished = false;
+    private Boolean isAbortedEarly;
+
     private final Map<Id, SObject> lookupIdToFinalRecords = new Map<Id, SObject>();
     private Map<Id, List<Id>> lookupIdMap = new Map<Id, List<Id>>();
     private final Map<Id, List<Id>> hierarchy = new Map<Id, List<Id>>();
@@ -44,11 +46,18 @@ public without sharing class RollupRelationshipFieldFinder {
       this.finder = finder;
     }
 
+    public Boolean getIsFinished() {
+      return this.isFinished;
+    }
+
     public SObject retrieveParent(Id descendantId) {
       return this.lookupIdToFinalRecords.get(descendantId);
     }
 
     public List<SObject> getAllParents() {
+      if(this.isAbortedEarly) {
+        return new List<SObject>();
+      }
       // not ideal, but because multiple parents can be tied to different descendants ...
       return new List<SObject>(new Set<SObject>(this.lookupIdToFinalRecords.values()));
     }
@@ -201,6 +210,12 @@ public without sharing class RollupRelationshipFieldFinder {
           this.traversal.hierarchy.get(record.Id).add(lookupId);
         }
       }
+    }
+    // no matter how far up the chain we are, if we arrive at a point where there are no records, we're done
+    if(firstId == null) {
+      this.prepFinishedObject(records);
+      this.traversal.isAbortedEarly = true;
+      return this.traversal;
     }
 
     String nextFieldToLookup = this.relationshipParts[0].replace('__r', '__c');

@@ -344,6 +344,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         List<SObject> localLookupItems;
         if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
           localLookupItems = rollup.traversal.getAllParents();
+          System.debug(localLookupItems);
           // winnow the list, which would otherwise occur because of specifically only querying for the objIds passed in
           for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
             SObject lookupItem = localLookupItems[index];
@@ -479,6 +480,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     global Boolean isRollupStartedFromParent = false;
     @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
+
+    @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
+    global String grandparentRelationshipFieldPath;
   }
 
   global class FlowOutput {
@@ -543,7 +547,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
             CalcItemWhereClause__c = flowInput.calcItemWhereClause,
             IsFullRecordSet__c = flowInput.isFullRecordSet,
-            OrderByFirstLast__c = flowInput.orderByFirstLast
+            OrderByFirstLast__c = flowInput.orderByFirstLast,
+            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath
           );
 
           Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
@@ -1911,12 +1916,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         continue;
       }
 
+      System.debug(rollup.lookupObj);
       Map<String, List<SObject>> calcItemsByLookupField = grandparentRollups.containsKey(rollup.lookupObj)
         ? grandparentRollups.get(rollup.lookupObj).getParentLookupToRecords()
         : this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
-      if (rollup.traversal != null && rollup.traversal.isFinished == false) {
+      if (rollup.traversal != null && rollup.traversal.getIsFinished() == false) {
         this.deferredRollups.add(rollup);
         continue;
       } else if (rollup.traversal != null && grandparentRollups.containsKey(rollup.lookupObj) == false) {
@@ -2029,10 +2035,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             rollup.oldCalcItems
           )
           .getParents(rollup.calcItems);
-      } else if (rollup.traversal.isFinished == false) {
+      } else if (rollup.traversal.getIsFinished() == false) {
         rollup.traversal.recommence();
       }
-      return rollup.traversal.isFinished ? rollup.traversal.getParentLookupToRecords() : new Map<String, List<SObject>>();
+      return rollup.traversal.getIsFinished() ? rollup.traversal.getParentLookupToRecords() : new Map<String, List<SObject>>();
     }
     Map<String, List<SObject>> lookupFieldToCalcItems = new Map<String, List<SObject>>();
     for (SObject calcItem : rollup.calcItems) {

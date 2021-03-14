@@ -180,6 +180,7 @@ private class RollupIntegrationTests {
     System.assertEquals(125, updatedParent.Engagement_Rollup__c, 'Custom fields should work when rollup started from parent!');
   }
 
+  /** grandparent rollup tests */
   @isTest
   static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
@@ -208,7 +209,7 @@ private class RollupIntegrationTests {
     );
 
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(appLogs);
-    System.assertEquals(true, traversal.isFinished, 'Traversal should not have aborted early');
+    System.assertEquals(true, traversal.getIsFinished(), 'Traversal should not have aborted early');
     System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Account should match!');
 
     System.assertEquals(
@@ -226,4 +227,6 @@ private class RollupIntegrationTests {
     System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Should still match!');
     System.assertEquals(secondGreatGrandparent, traversal.retrieveParent(nonMatchingChild.Id), 'Should now match!');
   }
+
+  // TODO - test for successful bail if no grandparent records. test for reparenting/multiple grandparent rollups
 }

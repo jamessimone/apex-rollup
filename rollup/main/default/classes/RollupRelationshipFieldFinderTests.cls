@@ -71,7 +71,7 @@ private class RollupRelationshipFieldFinderTests {
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
 
-    System.assertEquals(false, traversal.isFinished, 'Should have bailed early!');
+    System.assertEquals(false, traversal.getIsFinished(), 'Should have bailed early!');
   }
 
   @isTest
