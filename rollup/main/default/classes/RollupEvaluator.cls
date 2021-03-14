@@ -117,7 +117,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
           if (fieldNames.contains(condition.fieldName) == false) {
-            if(condition.fieldName.contains('__c.') == false) {
+            if (condition.fieldName.contains('__c.') == false) {
               fieldNames.add(condition.fieldName);
             }
             if (condition.fieldName.contains('.')) {
@@ -271,7 +271,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String fieldName = whereClause.substring(0, whereClause.indexOf(' '));
       whereClause = whereClause.replace(fieldName, '').trim();
       String criteria = whereClause.substring(0, whereClause.indexOf(' ')).trim();
-      String value = this.getValue( whereClause.substringAfter(criteria));
+      String value = this.getValue(whereClause.substringAfter(criteria));
 
       if (value.startsWith('(') && value.endsWith(')')) {
         List<String> values = value.substring(1, value.length() - 1).split(',');
@@ -292,10 +292,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (this.originalWhereClause.contains(potentialReplacement)) {
             whereClausePiece = potentialReplacement;
             break;
-          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
+          } else if (this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
             whereClausePiece = whereClausePiece.replace(' = ', ' in ');
             break;
-          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
+          } else if (this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
             whereClausePiece = whereClausePiece.replace(' != ', ' not in ');
             break;
           }

@@ -12,6 +12,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private final Map<Id, SObject> oldRecords;
   private final Set<String> uniqueFinalFieldNames;
 
+  private List<SObject> recommencementRecords;
   private List<SObject> records;
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
@@ -50,6 +51,10 @@ public without sharing class RollupRelationshipFieldFinder {
     public List<SObject> getAllParents() {
       // not ideal, but because multiple parents can be tied to different descendants ...
       return new List<SObject>(new Set<SObject>(this.lookupIdToFinalRecords.values()));
+    }
+
+    public void recommence() {
+      this.finder.getParents(this.finder.recommencementRecords);
     }
 
     public Map<String, List<SObject>> getParentLookupToRecords() {
@@ -152,6 +157,8 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
+    // cache the latest records through in case we need to continue later
+    this.recommencementRecords = records;
     String currentRelationshipName = this.relationshipParts.remove(0);
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
     SObjectField field = this.getField(fieldMap, currentRelationshipName);

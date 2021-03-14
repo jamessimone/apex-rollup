@@ -510,10 +510,7 @@ private class RollupTests {
   static void shouldRunDirectlyFromApex() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, Amount = 5),
-      new Opportunity(AccountId = acc.Id, Amount = 10)
-    };
+    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(AccountId = acc.Id, Amount = 5), new Opportunity(AccountId = acc.Id, Amount = 10) };
 
     Rollup.records = opps;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2592,7 +2589,13 @@ private class RollupTests {
   @isTest
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Description = '0'.repeat(256), Name = 'Truncate', StageName = 'Prospecting', CloseDate = System.today());
+    Opportunity opp = new Opportunity(
+      AccountId = acc.Id,
+      Description = '0'.repeat(256),
+      Name = 'Truncate',
+      StageName = 'Prospecting',
+      CloseDate = System.today()
+    );
     insert opp;
 
     Test.startTest();
@@ -2912,7 +2915,7 @@ private class RollupTests {
   @isTest
   static void shouldAllowGrandparentRollups() {
     Account acc = [SELECT Id FROM Account];
-    List<Opportunity> opps = new List<Opportunity> {
+    List<Opportunity> opps = new List<Opportunity>{
       new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
       new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
     };
