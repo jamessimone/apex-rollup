@@ -106,7 +106,7 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
 
     System.assertEquals(false, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should not report false positive!');
-    System.assertEquals(intermediateTwo.OwnerId, traversal.getOldUltimateParent(opp, 'AccountId'));
+    System.assertEquals(intermediateTwo.Id, traversal.getOldLookupId(opp, 'AccountId'));
 
     finder = new RollupRelationshipFieldFinder(control, 'Account.Name', uniqueFieldNames, Account.SObjectType, oldOpps);
     traversal = finder.getParents(opps);

@@ -115,9 +115,9 @@ public without sharing class RollupRelationshipFieldFinder {
       }
     }
 
-    public Id getOldUltimateParent(SObject record, String relationshipFieldName) {
+    public Id getOldLookupId(SObject record, String relationshipFieldName) {
       CombinedHierarchy combinedHierarchy = this.getHierarchy(record, relationshipFieldName);
-      return combinedHierarchy.oldHierarchy?.isEmpty() == false ? combinedHierarchy.oldHierarchy[combinedHierarchy.oldHierarchy.size() - 1] : null;
+      return combinedHierarchy.oldHierarchy?.isEmpty() == false ? combinedHierarchy.currentHierarchy[0] : null;
     }
 
     private CombinedHierarchy getHierarchy(SObject record, String relationshipFieldName) {

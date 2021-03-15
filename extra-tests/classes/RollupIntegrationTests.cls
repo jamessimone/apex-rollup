@@ -308,8 +308,7 @@ private class RollupIntegrationTests {
     Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
     Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
 
-    // TODO - is this even working for non-grandparent reparentings? Seems .... doubtful
-    System.assertEquals(child.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
-    System.assertEquals(secondChild.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
+    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
+    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
   }
 }

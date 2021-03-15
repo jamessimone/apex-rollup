@@ -1514,9 +1514,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
       matchingMetadata = cachedMetadata.clone();
-      if (rollupMetadata != null) {
-        matchingMetadata.addAll(rollupMetadata);
-      }
     } else if (metadataType == RollupControl__mdt.SObjectType) {
       matchingMetadata = RollupControl__mdt.getAll().deepClone().values();
     }
@@ -1560,7 +1557,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     QueryWrapper wrapper = new QueryWrapper(lookupObjectName, lookupFieldOnLookupObject);
     for (SObject calcItem : calcItems) {
       String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
-      wrapper.addRecordId(lookupId);
+      if(String.isNotBlank(lookupId)) {
+        wrapper.addRecordId(lookupId);
+      }
     }
     return wrapper;
   }
@@ -1640,8 +1639,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String sObjectName = sObjectType.getDescribe().getName();
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
-      Rollup__mdt rollupMetadata = rollupMetadatas[index];
-      if (rollupMetadata.CalcItem__c != sObjectName && rollupMetadata.IsRollupStartedFromParent__c == false) {
+      Rollup__mdt meta = rollupMetadatas[index];
+      if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
         rollupMetadatas.remove(index);
       } else if (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c) {
         rollupMetadatas.remove(index);
@@ -1766,10 +1765,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     ) {
       shouldRun = false;
     }
-    // for our purposes, an undelete behaviors **strictly** the same as an insert
-    // the implications are that if you programmatically changed the lookup field
-    // before undeleting a record in Apex, things might get weird, but aside from that
-    // edge case ...
+    // an undelete behaviors **strictly** the same as an insert
+    // because the underlying SObject can't be modified till afterwards
     if (apexContext == TriggerOperation.AFTER_UNDELETE) {
       apexContext = TriggerOperation.AFTER_INSERT;
     }
@@ -2114,7 +2111,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
 
       if (hasMoreThanOneTarget) {
-        continue;
+        break;
       }
 
       Set<String> uniqueIds = new Set<String>();
@@ -2184,6 +2181,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             if (reparentedRecord != null) {
               priorLookup = (String) reparentedRecord.get(rollup.lookupFieldOnLookupObject);
               if (String.isNotBlank(priorLookup)) {
+                Id oldLookupId = rollup.traversal.getOldLookupId(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName());
+                oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, rollup);
                 this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
               }
             }
@@ -2206,8 +2205,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (oldLookupItems.containsKey(key)) {
         // Yes, old parent record has already had a new rollup established in memory
         List<SObject> reparentedCalcItems = oldLookupItems.get(key);
-        // TODO - it may be necessary here to actually remove items from the "reparentedCalcItems" list
-        // in the event that both a reparenting AND a field update have occurred :)
 
         if (reparentedCalcItems.isEmpty()) {
           continue;
@@ -2253,6 +2250,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else {
        oldLookupItems.get(priorLookup).add(oldCalcItem);
     }
+  }
+
+  private SObject reassignOldCalcItemIfValueChanged(String lookupId, SObject oldCalcItem, Rollup rollup) {
+    if(String.isBlank(lookupId)) {
+      return oldCalcItem;
+    }
+    // truly terrible, but before we pass the old item through the reparenting code path, we need to validate that it's only
+    // the lookup field that has changed; otherwise, if the opFieldOnCalcItem has changed too, substitute the item whose value
+    // previously corresponded to the parent record
+    for (SObject otherOldCalcItem : rollup.oldCalcItems.values()) {
+      if (otherOldCalcItem.get(rollup.lookupFieldOnCalcItem) == lookupId) {
+        if (otherOldCalcItem.get(rollup.opFieldOnCalcItem) != oldCalcItem.get(rollup.opFieldOnCalcItem)) {
+          return otherOldCalcItem;
+        }
+        break; // break on the match, no matter what
+      }
+    }
+    return oldCalcItem;
   }
 
   @testVisible
