@@ -4,7 +4,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * but this keeps things much simpler
    */
   @testVisible
-  private static Boolean shouldRun;
+  private static Boolean shouldRun = false;
   @testVisible
   private static Boolean shouldRunAsBatch = false;
   @testVisible
@@ -1328,7 +1328,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     runFromTrigger();
 
     records = null;
-    shouldRun = null;
+    shouldRun = false;
     apexContext = null;
   }
 
