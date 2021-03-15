@@ -2032,7 +2032,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             rollup.oldCalcItems
           )
           .getParents(rollup.calcItems);
-      } else if (rollup.traversal.getIsFinished() == false) {
+      } else if (rollup.traversal?.getIsFinished() == false) {
         rollup.traversal.recommence();
       }
       return rollup.traversal.getIsFinished() ? rollup.traversal.getParentLookupToRecords() : new Map<String, List<SObject>>();
@@ -2178,10 +2178,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
           } else if (rollup.traversal != null && rollup.traversal.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName())) {
             // slightly different, but with the same end result
+            // note that when the reparented record is not null
+            // it should be the same as the current "lookupRecord"
             SObject reparentedRecord = rollup.traversal.retrieveParent(oldCalcItem.Id);
             if (reparentedRecord != null) {
               priorLookup = (String) reparentedRecord.get(rollup.lookupFieldOnLookupObject);
-              this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+              if (String.isNotBlank(priorLookup)) {
+                this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+              }
             }
           }
         }
@@ -2202,6 +2206,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (oldLookupItems.containsKey(key)) {
         // Yes, old parent record has already had a new rollup established in memory
         List<SObject> reparentedCalcItems = oldLookupItems.get(key);
+        // TODO - it may be necessary here to actually remove items from the "reparentedCalcItems" list
+        // in the event that both a reparenting AND a field update have occurred :)
 
         if (reparentedCalcItems.isEmpty()) {
           continue;

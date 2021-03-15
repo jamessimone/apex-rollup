@@ -17,7 +17,13 @@ public without sharing class RollupRelationshipFieldFinder {
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
 
-  public RollupRelationshipFieldFinder(RollupControl__mdt rollupControl, String relationshipPathName, Set<String> uniqueFinalFieldNames, SObjectType ultimateParent, Map<Id, SObject> oldRecords) {
+  public RollupRelationshipFieldFinder(
+    RollupControl__mdt rollupControl,
+    String relationshipPathName,
+    Set<String> uniqueFinalFieldNames,
+    SObjectType ultimateParent,
+    Map<Id, SObject> oldRecords
+  ) {
     this.traversal = new Traversal(this);
     this.relationshipParts = relationshipPathName.split('\\.');
     this.rollupControl = rollupControl;
@@ -31,6 +37,11 @@ public without sharing class RollupRelationshipFieldFinder {
       this.relationshipParts.add(fieldName);
     }
     this.originalParts = new List<String>(this.relationshipParts);
+  }
+
+  private class CombinedHierarchy {
+    private List<Id> oldHierarchy;
+    private List<Id> currentHierarchy;
   }
 
   public class Traversal {
@@ -55,7 +66,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     public List<SObject> getAllParents() {
-      if(this.isAbortedEarly) {
+      if (this.isAbortedEarly) {
         return new List<SObject>();
       }
       // not ideal, but because multiple parents can be tied to different descendants ...
@@ -68,12 +79,12 @@ public without sharing class RollupRelationshipFieldFinder {
 
     public Map<String, List<SObject>> getParentLookupToRecords() {
       Map<String, List<SObject>> parentToLookupRecords = new Map<String, List<SObject>>();
-      if(this.isAbortedEarly) {
+      if (this.isAbortedEarly) {
         return parentToLookupRecords;
       }
-      for(SObject record : this.finder.records) {
+      for (SObject record : this.finder.records) {
         SObject parentRecord = this.retrieveParent(record.Id);
-        if(parentToLookupRecords.containsKey(parentRecord.Id)) {
+        if (parentToLookupRecords.containsKey(parentRecord.Id)) {
           parentToLookupRecords.get(parentRecord.Id).add(record);
         } else {
           parentToLookupRecords.put(parentRecord.Id, new List<SObject>{ record });
@@ -93,15 +104,31 @@ public without sharing class RollupRelationshipFieldFinder {
         // this is pretty cut and dry. if we are moving from having a lookup to not having one, or vice versa, it's a reparenting
         return true;
       }
-      List<Id> currentHierarchy = this.hierarchy.get(currentLookupId);
-      List<Id> oldHierarchy = this.hierarchy.get(oldLookupId);
-      if (currentHierarchy.size() > 0 && oldHierarchy.size() > 0) {
+      CombinedHierarchy combinedHierarchy = this.getHierarchy(record, relationshipFieldName);
+      if (combinedHierarchy.currentHierarchy?.size() > 0 && combinedHierarchy.oldHierarchy?.size() > 0) {
         // the last Ids present in the chain have to match, otherwise it's a reparenting
-        return currentHierarchy[currentHierarchy.size() - 1] != oldHierarchy[oldHierarchy.size() - 1];
+        return combinedHierarchy.currentHierarchy[combinedHierarchy.currentHierarchy.size() - 1] !=
+          combinedHierarchy.oldHierarchy[combinedHierarchy.oldHierarchy.size() - 1];
       } else {
         // if there was only one hop, we can just compare the Ids
         return currentLookupId != oldLookupId;
       }
+    }
+
+    public Id getOldUltimateParent(SObject record, String relationshipFieldName) {
+      CombinedHierarchy combinedHierarchy = this.getHierarchy(record, relationshipFieldName);
+      return combinedHierarchy.oldHierarchy?.isEmpty() == false ? combinedHierarchy.oldHierarchy[combinedHierarchy.oldHierarchy.size() - 1] : null;
+    }
+
+    private CombinedHierarchy getHierarchy(SObject record, String relationshipFieldName) {
+      Id currentLookupId = (Id) record.get(relationshipFieldName);
+      Id oldLookupId = (Id) (this.finder.oldRecords.containsKey(record.Id)
+        ? this.finder.oldRecords.get(record.Id).get(relationshipFieldName)
+        : currentLookupId);
+      CombinedHierarchy combinedHierarchy = new CombinedHierarchy();
+      combinedHierarchy.currentHierarchy = this.hierarchy.get(currentLookupId);
+      combinedHierarchy.oldHierarchy = this.hierarchy.get(oldLookupId);
+      return combinedHierarchy;
     }
   }
 
@@ -157,7 +184,7 @@ public without sharing class RollupRelationshipFieldFinder {
     this.traversal.isFinished = true;
     for (SObject record : records) {
       Set<Id> descendantIds = this.getDescendantIds(record.Id, new Set<Id>());
-      for(Id descendantId : descendantIds) {
+      for (Id descendantId : descendantIds) {
         if (descendantId != record.Id) {
           this.traversal.lookupIdToFinalRecords.put(descendantId, record);
         }
@@ -165,7 +192,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
     this.traversal.isFinished = true;
     this.relationshipParts = this.originalParts; // reset to initial state in case outer method is re-called
-    this.traversal.lookupIdMap = new Map<Id,List<Id>>(); // try to spare the heap
+    this.traversal.lookupIdMap = new Map<Id, List<Id>>(); // try to spare the heap
   }
 
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
@@ -185,7 +212,7 @@ public without sharing class RollupRelationshipFieldFinder {
       if (String.isNotBlank(lookupId)) {
         lookupIds.add(lookupId);
 
-        if(this.traversal.lookupIdMap.containsKey(lookupId)) {
+        if (this.traversal.lookupIdMap.containsKey(lookupId)) {
           this.traversal.lookupIdMap.get(lookupId).add(record.Id);
         } else {
           this.traversal.lookupIdMap.put(lookupId, new List<Id>{ record.Id });
@@ -215,7 +242,7 @@ public without sharing class RollupRelationshipFieldFinder {
       }
     }
     // no matter how far up the chain we are, if we arrive at a point where there are no records, we're done
-    if(firstId == null) {
+    if (firstId == null) {
       this.prepFinishedObject(records);
       this.traversal.isAbortedEarly = true;
       return this.traversal;
@@ -225,18 +252,18 @@ public without sharing class RollupRelationshipFieldFinder {
     SObjectType nextSObjectType = firstId.getSObjectType();
     SObjectField nextFieldToken = this.getField(nextSObjectType.getDescribe().fields.getMap(), nextFieldToLookup);
     List<String> fieldNames = new List<String>();
-    if(nextSObjectType == this.ultimateParent) {
+    if (nextSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalFieldNames);
     } else {
       fieldNames.add(nextFieldToken.getDescribe().getName());
     }
-    if(fieldNames.contains('Id') == false) {
+    if (fieldNames.contains('Id') == false) {
       fieldNames.add('Id');
     }
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
     String query = 'SELECT ' + String.join(fieldNames, ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
     // recurse through till we get to the top/bottom of the chain
-    if(this.isFirstRun) {
+    if (this.isFirstRun) {
       this.records = records;
       this.isFirstRun = false;
     }

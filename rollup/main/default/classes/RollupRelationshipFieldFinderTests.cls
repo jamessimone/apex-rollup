@@ -80,7 +80,8 @@ private class RollupRelationshipFieldFinderTests {
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
     insert new List<Account>{ intermediateOne, intermediateTwo };
 
-    List<Account> updatedAccounts = [SELECT Id, OwnerId FROM Account];
+
+    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account];
     if (updatedAccounts.size() == 2) {
       // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate
       // the results
@@ -88,6 +89,9 @@ private class RollupRelationshipFieldFinderTests {
       Account two = updatedAccounts[1];
       if (one.OwnerId != two.OwnerId) {
         return;
+      } else {
+        intermediateOne = one.Id == intermediateOne.Id ? one : two;
+        intermediateTwo = two.Id == intermediateTwo.Id ? two : one;
       }
     }
 
@@ -102,6 +106,7 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
 
     System.assertEquals(false, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should not report false positive!');
+    System.assertEquals(intermediateTwo.OwnerId, traversal.getOldUltimateParent(opp, 'AccountId'));
 
     finder = new RollupRelationshipFieldFinder(control, 'Account.Name', uniqueFieldNames, Account.SObjectType, oldOpps);
     traversal = finder.getParents(opps);
