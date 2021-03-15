@@ -142,25 +142,6 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c];
-    System.assertEquals(45/3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of all items for denominator, not just matching items'); 
-  }
-
-  // FLOW ENGINE TEST
-  @isTest
-  static void shouldAllowRecordTriggeredFlowsToInteractWithActionWithoutGetRecords() {
-    Account acc = new Account(Name = 'Record Triggered Flow Test');
-    insert acc;
-
-    AuthorizationForm form = new AuthorizationForm(Name = acc.Id, RevisionNumber = 'hi');
-
-    Exception e;
-    try {
-      insert form;
-    } catch(Exception ex) {
-      e = ex;
-    }
-
-    System.assertNotEquals(null, e, 'If this test fails, flow engine has fixed their record collection bug!');
-    System.assertEquals(true, e.getMessage().contains('to Apex type SObject for Apex action Rollup Variable recordsToRollup'), e.getMessage());
+    System.assertEquals(45/3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of all items for denominator, not just matching items');
   }
 }
