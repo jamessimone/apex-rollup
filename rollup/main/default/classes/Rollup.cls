@@ -1491,7 +1491,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
         }
       }
-      metadata = cachedMetadata;
+      metadata = cachedMetadata.clone();
       if (rollupMetadata != null) {
         metadata.addAll(rollupMetadata);
       }
@@ -1582,10 +1582,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
+    String sObjectName = sObjectType.getDescribe().getName();
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt rollupMetadata = rollupMetadatas[index];
-      String sObjectName = sObjectType.getDescribe().getName();
       if (rollupMetadata.CalcItem__c != sObjectName && rollupMetadata.IsRollupStartedFromParent__c == false) {
         rollupMetadatas.remove(index);
       } else if (rollupMetadata.IsRollupStartedFromParent__c && sObjectName != rollupMetadata.LookupObject__c) {
