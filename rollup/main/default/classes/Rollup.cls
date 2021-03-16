@@ -1509,9 +1509,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
         }
-        if (rollupMetadata != null) {
-          cachedMetadata.addAll(rollupMetadata);
-        }
+      }
+      if (rollupMetadata != null) {
+        cachedMetadata.addAll(rollupMetadata);
       }
       matchingMetadata = cachedMetadata.clone();
     } else if (metadataType == RollupControl__mdt.SObjectType) {
