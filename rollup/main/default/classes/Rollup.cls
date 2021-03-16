@@ -236,8 +236,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return 'No process Id';
     }
 
-    // we need to burn a few SOQL calls to consider how many records are going to be queried/updated
-    // then, using RollupControl__mdt and/or sensible defaults, we'll decide whether to queue up or batch (or fail - that's always an option)
+
     Boolean hasMoreThanOneTarget = false;
     Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget);
 
@@ -1279,6 +1278,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * - TriggerOperation.AFTER_UDATE
    * - TriggerOperation.BEFORE_DELETE
    * - TriggerOperation.AFTER_UNDELETE
+   *
+   * Note that while it's an anti-pattern to call this from directly within a Trigger,
+   * because `runFromTrigger()` coupled with CMDT is the better option,
+   * you should pass: `Trigger.operationType` for the second argument if you do.
    */
   global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext) {
     shouldRun = true;
@@ -1391,7 +1394,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       thisRollup.isFullRecalc = true;
       return thisRollup.runCalc();
     } else {
-      //batch to get calc items and then batch to rollup
+      // batch to get calc items and then batch to rollup
       return Database.executeBatch(
         new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType),
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
@@ -2100,6 +2103,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private Integer getLookupRecordsCount(Boolean hasMoreThanOneTarget) {
+    // we need to burn a few SOQL calls to consider how many records are going to be queried/updated
+    // then, using RollupControl__mdt and/or sensible defaults, we'll decide whether to queue up or batch (or fail - that's always an option)
+    // if there's more than one SObjectType involved (or it's a grandparnet rollup) we bail on retrieving the actual count
+    // because those types of rollups can't be batched (at least not currently)
     SObjectType targetType;
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
     for (Rollup rollup : this.rollups) {
