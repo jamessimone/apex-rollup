@@ -1,18 +1,12 @@
 
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
-$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests, RollupFlowBulkProcessorTests" -c -d ./tests/apex -r json -w 20'
+$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests, RollupFlowBulkProcessorTests" -c -d ./tests/apex -r human -w 20'
 
 function Start-Tests() {
   # Run tests
   Write-Output "Starting test run ..."
-  $testOutput = Invoke-Expression $testInvocation | ConvertFrom-Json
-  Write-Output $testOutput.result.summary
-  Write-Output $testOutput.result.tests
-  if(0 -ne $testOutput.status) {
-    throw $testOutput
-  }
-  Write-Output "Tests finished running successfully"
+  Invoke-Expression $testInvocation
 }
 
 function Reset-SFDX-Json() {
@@ -47,26 +41,34 @@ $scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 Write-Output "Test command to use: $testInvocation"
 
+$shouldDeployToSandbox = $false
+
 if($scratchOrgAllotment -gt 0) {
   Write-Output "Beginning scratch org creation"
-  $userNameHasBeenSet = $true
   # Create Scratch Org
   try {
-  sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
-  # Deploy
-  Write-Output 'Pushing source to scratch org ...'
-  sfdx force:source:push
-  # Run tests
-  Start-Tests
-  Write-Output "Scratch org tests finished running with success: $?"
-  # Delete scratch org
-  sfdx force:org:delete -p -u apex-rollup-scratch-org
+    $scratchOrgCreateMessage = sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+    # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
+    # The other issue is that this doesn't throw, so we have to test the response message ourselves
+    if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
+      throw $1
+    }
+    $userNameHasBeenSet = $true
+    # Deploy
+    Write-Output 'Pushing source to scratch org ...'
+    sfdx force:source:push
+    # Run tests
+    Start-Tests
+    Write-Output "Scratch org tests finished running with success: $?"
+    # Delete scratch org
+    sfdx force:org:delete -p -u apex-rollup-scratch-org
   } catch {
     Write-Output "There was an issue with scratch org creation, continuing ..."
-    Reset-SFDX-Json
-    throw 'Error!'
+    $shouldDeployToSandbox = $true
   }
-} else {
+}
+
+if($shouldDeployToSandbox) {
   Write-Output "No scratch orgs remaining, running tests on sandbox"
 
   try {
