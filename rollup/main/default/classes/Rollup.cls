@@ -1376,7 +1376,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
-    Integer amountOfCalcItems = String.isBlank(potentialGrandparentRelationshipFieldPath) ? getCountFromDb(countQuery, objIds, queryWrapper.recordIds) : 0;
+    Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable
+    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
 
     // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
     Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
@@ -1395,7 +1396,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     queryFields.addAll(whereEval.getRelationshipFieldNames());
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
-      Set<Id> recordIds = queryWrapper.recordIds;
       List<SObject> calculationItems = Database.query(queryString);
       Rollup thisRollup = getRollup(
         new List<Rollup__mdt>{ rollupInfo },
@@ -1410,7 +1410,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     } else {
       // batch to get calc items and then batch to rollup
       return Database.executeBatch(
-        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType),
+        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType, recordIds),
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
       );
     }
@@ -1901,7 +1901,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         BatchChunkSize__c = 2000,
         MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
         MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
-        MaximumRollupRetries__c = 100,
+        MaxRollupRetries__c = 100,
         MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
         ShouldAbortRun__c = false,
         ShouldRunAs__c = 'Queueable'
@@ -1940,9 +1940,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         continue;
       }
 
-      Map<String, List<SObject>> calcItemsByLookupField = grandparentRollups.containsKey(rollup.lookupObj)
-        ? grandparentRollups.get(rollup.lookupObj).getParentLookupToRecords()
-        : this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
+      if (grandparentRollups.containsKey(rollup.lookupObj) && rollup.traversal == null) {
+        rollup.traversal = grandparentRollups.get(rollup.lookupObj);
+      }
+
+      Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (rollup.traversal != null && rollup.traversal.getIsFinished() == false) {
@@ -2003,10 +2005,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (this.deferredRollups.isEmpty() == false && isDeferralAllowed && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
       stackDepth++;
       // tragic, but necessary due to limits on requeueing allowed during testing
-      isDeferralAllowed = Test.isRunningTest() == false && this.rollupControl.MaximumRollupRetries__c > stackDepth;
+      isDeferralAllowed = Test.isRunningTest() == false && this.rollupControl.MaxRollupRetries__c > stackDepth;
+
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
+
       if (System.isBatch()) {
         Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
       } else {
@@ -2131,16 +2135,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private Integer getLookupRecordsCount(Boolean hasMoreThanOneTarget) {
     // we need to burn a few SOQL calls to consider how many records are going to be queried/updated
     // then, using RollupControl__mdt and/or sensible defaults, we'll decide whether to queue up or batch (or fail - that's always an option)
-    // if there's more than one SObjectType involved (or it's a grandparnet rollup) we bail on retrieving the actual count
-    // because those types of rollups can't be batched (at least not currently)
+    // if there's more than one SObjectType involved we bail on retrieving the actual count
+    // because you can only return one list of SObjects from a batch job's QueryLocator
     SObjectType targetType;
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
     for (Rollup rollup : this.rollups) {
       rollup.isFullRecalc = this.isFullRecalc;
       if (targetType == null) {
         targetType = rollup.lookupObj;
-      } else if (rollup.lookupObj != targetType || String.isNotBlank(rollup.metadata?.GrandparentRelationshipFieldPath__c)) {
+      } else if (rollup.lookupObj != targetType) {
         hasMoreThanOneTarget = true;
+      } else if (String.isNotBlank(rollup.metadata?.GrandparentRelationshipFieldPath__c)) {
+        // getting the count for grandparent (or greater) relationships will be handled further
+        // downstream; for our purposes, it isn't useful to try to get all of the records while
+        // we're still in a sync context
+        continue;
       }
 
       if (hasMoreThanOneTarget) {

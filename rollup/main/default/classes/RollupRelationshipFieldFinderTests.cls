@@ -80,7 +80,6 @@ private class RollupRelationshipFieldFinderTests {
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
     insert new List<Account>{ intermediateOne, intermediateTwo };
 
-
     List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account];
     if (updatedAccounts.size() == 2) {
       // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate

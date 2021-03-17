@@ -2985,6 +2985,45 @@ private class RollupTests {
     System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
+  @isTest
+  static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    };
+    insert opps;
+
+    DMLMock mock = new DMLMock();
+    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
+    // start as synchronous rollup to allow for one deferral
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 2);
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = opps;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
+    User updatedUser = (User) mock.Records[0];
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
   //** Helpers */
 
   private static DMLMock loadAccountIdMock(List<SObject> records) {

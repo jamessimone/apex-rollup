@@ -16,6 +16,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private List<SObject> records;
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
+  private String currentRelationshipName;
 
   public RollupRelationshipFieldFinder(
     RollupControl__mdt rollupControl,
@@ -32,9 +33,7 @@ public without sharing class RollupRelationshipFieldFinder {
     this.uniqueFinalFieldNames = uniqueFinalFieldNames;
 
     if (this.relationshipParts.size() == 1) {
-      String fieldName = this.relationshipParts[0];
-      this.relationshipParts.set(0, ultimateParent.getDescribe().getName());
-      this.relationshipParts.add(fieldName);
+      this.relationshipParts.add(0, ultimateParent.getDescribe().getName());
     }
     this.originalParts = new List<String>(this.relationshipParts);
   }
@@ -141,6 +140,10 @@ public without sharing class RollupRelationshipFieldFinder {
       Limits.getLimitQueryRows() / 4 < Limits.getQueryRows() ||
       Limits.getLimitHeapSize() / 2 < Limits.getHeapSize()
     ) {
+      // we pop fields off of the list while recursively iterating
+      // which means we need to re-add the last field used if we are stopping
+      // due to limits
+      this.relationshipParts.add(0, this.currentRelationshipName);
       return this.traversal;
     }
 
@@ -198,7 +201,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
     // cache the latest records through in case we need to continue later
     this.recommencementRecords = records;
-    String currentRelationshipName = this.relationshipParts.remove(0);
+    this.currentRelationshipName = this.relationshipParts.remove(0);
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
     SObjectField field = this.getField(fieldMap, currentRelationshipName);
 
