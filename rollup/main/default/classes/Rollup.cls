@@ -1370,10 +1370,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType calcItemType = getSObjectFromName(calcItemSObjectName).getSObjectType();
-    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=');
-    if (queryWrapper.hasQuery) {
-      countQuery += ('\nAND ' + queryWrapper.getQuery());
-    }
+    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=', queryWrapper.getQuery());
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable

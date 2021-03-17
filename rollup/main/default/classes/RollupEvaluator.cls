@@ -523,9 +523,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
 
       SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
-      if(fieldToken == null) {
-        return null;
-      }
       SObjectType parentSObjectType;
       if (fieldToken.getDescribe().isNamePointing()) {
         Id fieldValue = (Id) item.get(relationshipName);
