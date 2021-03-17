@@ -220,10 +220,13 @@ In this example, there are four objects in scope:
 - `ParentApplication__c`, which has a lookup field `Account__c`
 - `Account`, and the field we'd like to rollup to has the API name `AnnualRevenue`
 
-Two important things to note about grand(or greater)parent rollups:
+Three important things to note about grand(or greater)parent rollups:
 
 - if your CMDT/invocable is set up with a relationship that is not the immediate parent and you don't fill out the `Grandparent Relationship Field Path`, it simply won't work. The field path is required because it's common for objects to have more than one lookup field to the same object
 - if you are using `Grandparent Relationship Field Path` with a polymorphic standard field like `Task.WhatId` or `Task.WhoId`, you should also supply a `SOQL Where Clause` to ensure you are filtering the calculation items to only be related to one type of parent at a time
+- grandparent rollups started from the parent (using the `Is Rollup Started From Parent` option) respect [SOQL's map relationship-field hopping of 5 levels](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_relationships_query_limits.htm):
+
+> In each specified relationship, no more than five levels can be specified in a child-to-parent relationship. For example, Contact.Account.Owner.FirstName (three levels)
 
 ## Custom Apex Rollups
 
