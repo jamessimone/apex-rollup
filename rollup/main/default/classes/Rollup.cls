@@ -236,7 +236,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return 'No process Id';
     }
 
-
     Boolean hasMoreThanOneTarget = false;
     Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget);
 
@@ -400,7 +399,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       lookupSObjectName,
       calcItemSObjectName,
       operationName,
-      wrapper
+      wrapper,
+      null
     );
   }
 
@@ -516,7 +516,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         } else {
           if (flowInput.isRollupStartedFromParent) {
             String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
-            QueryWrapper wrapper = getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
+            QueryWrapper wrapper = getParentWhereClause(
+              flowInput.recordsToRollup,
+              flowInput.lookupFieldOnOpObject,
+              flowInput.rollupSObjectName,
+              flowInput.grandparentRelationshipFieldPath
+            );
             wrapper.setQuery(whereClause + wrapper.getQuery());
             performFullRecalculationInner(
               flowInput.rollupFieldOnCalcItem,
@@ -526,7 +531,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.rollupSObjectName,
               flowInput.calcItemTypeWhenRollupStartedFromParent,
               flowInput.rollupOperation.toUpperCase(),
-              wrapper
+              wrapper,
+              flowInput.grandparentRelationshipFieldPath
             );
             continue;
           }
@@ -1322,7 +1328,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (Rollup__mdt rollupInfo : rollupMetadata) {
       if (rollupInfo.IsRollupStartedFromParent__c) {
         shouldReturn = true;
-        QueryWrapper wrapper = getParentWhereClause(calcItems, rollupInfo.LookupFieldOnLookupObject__c, rollupInfo.LookupObject__c);
+        QueryWrapper wrapper = getParentWhereClause(
+          calcItems,
+          rollupInfo.LookupFieldOnLookupObject__c,
+          rollupInfo.LookupObject__c,
+          rollupInfo.GrandparentRelationshipFieldPath__c
+        );
         performFullRecalculationInner(
           rollupInfo.RollupFieldOnCalcItem__c,
           rollupInfo.LookupFieldOnCalcItem__c,
@@ -1331,7 +1342,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           rollupInfo.LookupObject__c,
           rollupInfo.CalcItem__c,
           rollupInfo.RollupOperation__c,
-          wrapper
+          wrapper,
+          rollupInfo.GrandparentRelationshipFieldPath__c
         );
       }
       rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
@@ -1352,7 +1364,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String lookupSObjectName,
     String calcItemSObjectName,
     String operationName,
-    QueryWrapper queryWrapper
+    QueryWrapper queryWrapper,
+    String potentialGrandparentRelationshipFieldPath
   ) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
@@ -1363,7 +1376,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
-    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, queryWrapper.recordIds);
+    Integer amountOfCalcItems = String.isBlank(potentialGrandparentRelationshipFieldPath) ? getCountFromDb(countQuery, objIds, queryWrapper.recordIds) : 0;
 
     // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
     Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
@@ -1374,7 +1387,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
       RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupOperation__c = operationName
+      RollupOperation__c = operationName,
+      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
@@ -1525,7 +1539,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class QueryWrapper {
     public QueryWrapper(String lookupObject, String lookupField) {
-      this.query = lookupObject.replace('__c', '__r') + '.' + lookupField + ' = :recordIds';
+      String base = String.isBlank(lookupObject) ? '' : lookupObject.replace('__c', '__r') + '.';
+      this.query = base + lookupField + ' = :recordIds';
     }
     private Boolean hasQuery = false;
     private String query;
@@ -1556,11 +1571,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private static QueryWrapper getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
-    QueryWrapper wrapper = new QueryWrapper(lookupObjectName, lookupFieldOnLookupObject);
+  private static QueryWrapper getParentWhereClause(
+    List<SObject> calcItems,
+    String lookupFieldOnLookupObject,
+    String lookupObjectName,
+    String grandparentFieldPath
+  ) {
+    String fieldName = lookupFieldOnLookupObject;
+    if (String.isNotBlank(grandparentFieldPath)) {
+      lookupObjectName = '';
+      fieldName = grandparentFieldPath.substringBeforeLast('.') + '.Id';
+    }
+
+    QueryWrapper wrapper = new QueryWrapper(lookupObjectName, fieldName);
     for (SObject calcItem : calcItems) {
       String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
-      if(String.isNotBlank(lookupId)) {
+      if (String.isNotBlank(lookupId)) {
         wrapper.addRecordId(lookupId);
       }
     }
@@ -2173,7 +2199,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
           String priorLookup = (String) oldCalcItem.get(rollup.lookupFieldOnCalcItem);
           // if the lookup wasn't previously populated, there's nothing to update
-          if(String.isBlank(priorLookup)) {
+          if (String.isBlank(priorLookup)) {
             continue;
           }
           Object newLookup = calcItem.get(rollup.lookupFieldOnCalcItem);
@@ -2255,12 +2281,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (oldLookupItems.containsKey(priorLookup) == false) {
       oldLookupItems.put(priorLookup, new List<SObject>{ oldCalcItem });
     } else {
-       oldLookupItems.get(priorLookup).add(oldCalcItem);
+      oldLookupItems.get(priorLookup).add(oldCalcItem);
     }
   }
 
   private SObject reassignOldCalcItemIfValueChanged(String lookupId, SObject oldCalcItem, Rollup rollup) {
-    if(String.isBlank(lookupId)) {
+    if (String.isBlank(lookupId)) {
       return oldCalcItem;
     }
     // truly terrible, but before we pass the old item through the reparenting code path, we need to validate that it's only

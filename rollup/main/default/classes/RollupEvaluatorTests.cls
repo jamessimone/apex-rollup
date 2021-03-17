@@ -386,6 +386,14 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match since StageName has not changed');
   }
 
+  @isTest
+  static void shouldNotReturnRelationshipFieldsIfTheyAreNotDirectlyRelated() {
+    String queryString = 'User.Id IN (\'0056g000002GeR0AAA\')';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Opportunity.SObjectType);
+
+    System.assertEquals(new List<String>(), eval.getRelationshipFieldNames());
+  }
+
   private class AlwaysTrueEval implements Rollup.Evaluator {
     public Boolean matches(Object calcItem) {
       return true;
