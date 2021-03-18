@@ -16,7 +16,7 @@ fi
 
 echo "Copying deploy SFDX project json file to root directory, storing backup in /scripts"
 cp ./sfdx-project.json ./scripts/sfdx-project.json
-cp ./scripts/deploy-sfdx-project.json ./sfdx-project.json 
+cp ./scripts/deploy-sfdx-project.json ./sfdx-project.json
 
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
@@ -27,7 +27,7 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 # Also store test command shared between script branches, below
 scratchOrgAllotment=$(sfdx force:limits:api:display 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
 echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-testInvocation='sfdx force:apex:test:run -n "RollupTests,RollupEvaluatorTests,RollupFieldInitializerTests,RollupCalculatorTests,RollupIntegrationTests,RollupFlowBulkProcessorTests" -c -d ./tests/apex -r human -w 20'
+testInvocation='sfdx force:apex:test:run -n "RollupTests,RollupEvaluatorTests,RollupFieldInitializerTests,RollupCalculatorTests,RollupIntegrationTests,RollupFlowBulkProcessorTests,RollupRelationshipFieldFinderTests" -c -d ./tests/apex -r human -w 20'
 echo "Test command to use: $testInvocation"
 
 if [ $scratchOrgAllotment -gt 0 ]; then
@@ -53,7 +53,7 @@ else
   # Run tests
   $testInvocation
   echo "Tests finished running with success: $?"
-  
+
 fi
 
 # If the priorUserName is not blank and we used a scratch org, reset to it
@@ -64,7 +64,7 @@ if [ "$(echo $orgInfo | jq -r '.result.username' 2>/dev/null)" != "" ] && [ $use
 fi
 
 echo "Resetting SFDX project JSON at project root"
-cp ./scripts/sfdx-project.json ./sfdx-project.json 
+cp ./scripts/sfdx-project.json ./sfdx-project.json
 rm ./scripts/sfdx-project.json
 
 echo "Build + testing finished successfully, preparing to upload code coverage"

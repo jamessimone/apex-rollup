@@ -52,7 +52,7 @@ public without sharing class RollupRelationshipFieldFinder {
     private final Map<Id, List<Id>> hierarchy = new Map<Id, List<Id>>();
     private final RollupRelationshipFieldFinder finder;
 
-    public Traversal(RollupRelationshipFieldFinder finder) {
+    private Traversal(RollupRelationshipFieldFinder finder) {
       this.finder = finder;
     }
 
@@ -109,7 +109,11 @@ public without sharing class RollupRelationshipFieldFinder {
         return combinedHierarchy.currentHierarchy[combinedHierarchy.currentHierarchy.size() - 1] !=
           combinedHierarchy.oldHierarchy[combinedHierarchy.oldHierarchy.size() - 1];
       } else {
-        // if there was only one hop, we can just compare the Ids
+        // if there was only one hop, we can just compare the Ids. This comparison has to be last
+        // because it's possible (as explained below, where the hierarchy is created)
+        // that only the intermediate lookup fields have changed, and not the ultimate
+        // parent (which is what gets checked above).
+        // only if that isn't the case can we do the simple comparison below
         return currentLookupId != oldLookupId;
       }
     }

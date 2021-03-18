@@ -259,7 +259,7 @@ private class RollupEvaluatorTests {
     Opportunity oppThree = new Opportunity(ForecastCategoryName = 'Best Case');
     Opportunity oppFour = new Opportunity(ForecastCategoryName = 'Commit');
     Opportunity oppFive = new Opportunity(Amount = 5, ForecastCategoryName = 'Closed');
-    System.Formula.recalculateFormulas(new List<Opportunity>{ oppOne, oppTwo, oppThree, oppFour, oppFive });
+    Formula.recalculateFormulas(new List<Opportunity>{ oppOne, oppTwo, oppThree, oppFour, oppFive });
 
     String whereClause = 'ForecastCategoryName = \'Omitted\' OR ForecastCategoryName = \'Best Case\' OR ForecastCategoryName = \'Pipeline\' OR Amount = 5';
 

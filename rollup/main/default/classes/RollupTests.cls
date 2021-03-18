@@ -2599,7 +2599,7 @@ private class RollupTests {
     insert opp;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', '');
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -2621,7 +2621,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', '');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2646,7 +2646,7 @@ private class RollupTests {
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', '');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2667,7 +2667,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', '');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
