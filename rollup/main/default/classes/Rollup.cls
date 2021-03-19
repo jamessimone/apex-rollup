@@ -1561,7 +1561,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    if(isCDC) {
+    if (isCDC) {
       return new QueryWrapper();
     }
 
@@ -1584,10 +1584,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return wrapper;
   }
 
-
   private class QueryWrapper {
     private QueryWrapper() {
-
     }
     private QueryWrapper(String lookupObject, String lookupField) {
       String base = String.isBlank(lookupObject) ? '' : lookupObject.replace('__c', '__r') + '.';
