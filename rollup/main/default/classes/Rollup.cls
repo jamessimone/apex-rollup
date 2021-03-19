@@ -53,6 +53,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
   private RollupControl__mdt rollupControl;
+  private RollupRelationshipFieldFinder.Traversal traversal;
 
   /**
    * receiving an interface/subclass from a property get/set (from the book "The Art Of Unit Testing") is an old technique;
@@ -183,6 +184,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.isNoOp = this.rollups.isEmpty() && innerRollup.metadata?.IsFullRecordSet__c == false;
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isCDCUpdate = innerRollup.isCDCUpdate;
+    this.rollupControl = innerRollup.rollupControl;
   }
 
   private Rollup(Rollup innerRollup) {
@@ -234,61 +236,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return 'No process Id';
     }
 
-    // we need to burn a few SOQL calls to consider how many records are going to be queried/updated
-    // then, using RollupControl__mdt and/or sensible defaults, we'll decide whether to queue up or batch (or fail - that's always an option)
     Boolean hasMoreThanOneTarget = false;
-    SObjectType targetType;
-    Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
-    for (Rollup rollup : this.rollups) {
-      rollup.isFullRecalc = this.isFullRecalc;
-      if (targetType == null) {
-        targetType = rollup.lookupObj;
-      } else if (rollup.lookupObj != targetType) {
-        hasMoreThanOneTarget = true;
-      }
+    Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget);
 
-      Set<String> uniqueIds = new Set<String>();
-      for (SObject calcItem : rollup.calcItems) {
-        String lookupKey = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
-        if (String.isNotBlank(lookupKey)) {
-          uniqueIds.add(lookupKey);
-        }
-      }
-
-      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, String.valueOf(rollup.lookupFieldOnLookupObject), '=');
-      if (queryCountsToLookupIds.containsKey(countQuery)) {
-        queryCountsToLookupIds.get(countQuery).addAll(uniqueIds);
-      } else {
-        queryCountsToLookupIds.put(countQuery, uniqueIds);
-      }
-    }
-
-    Integer totalCountOfRecords = 0;
-    for (String countQuery : queryCountsToLookupIds.keySet()) {
-      Set<String> objIds = queryCountsToLookupIds.get(countQuery);
-      totalCountOfRecords += getCountFromDb(countQuery, objIds);
-    }
-
-    Boolean shouldRunAsBatch =
-      shouldRunAsBatch || (orgDefaults.ShouldRunAs__c == 'Batchable' && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
+    Boolean shouldBatch = shouldRunAsBatch || (orgDefaults.ShouldRunAs__c == 'Batchable' && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
     if (this.syncRollups.isEmpty() == false) {
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
-    } else if (shouldRunAsBatch && hasMoreThanOneTarget == false) {
+    } else if (shouldBatch && hasMoreThanOneTarget == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
-    } else if (
-      shouldRunAsBatch == false && (orgDefaults.MaxLookupRowsForQueueable__c == null || totalCountOfRecords <= orgDefaults.MaxLookupRowsForQueueable__c)
-    ) {
-      return System.enqueueJob(this);
     } else {
-      throw new AsyncException(
-        'Number of records that would be rolled up : ' +
-        totalCountOfRecords +
-        ' exceeds safety threshold, or you tried to run this in Batch mode with more than one target type: (' +
-        hasMoreThanOneTarget +
-        ')'
-      );
+      return System.enqueueJob(this);
     }
   }
 
@@ -305,16 +264,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
     this.getFieldNamesForRollups(this.rollups);
-    String query;
-    String lookupFieldOnLookupObject;
+    String lookupFieldForLookupObject;
+    SObjectType sObjectType;
     Set<String> objIds = new Set<String>();
     for (Rollup rollup : this.rollups) {
-      lookupFieldOnLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
-      objIds.addAll(this.getCalcItemsByLookupField(rollup).keySet());
+      sObjectType = rollup.lookupObj;
+      lookupFieldForLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
+      objIds.addAll(this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(sObjectType)).keySet());
     }
-    for (SObjectType sObjectType : this.lookupObjectToUniqueFieldNames.keySet()) {
-      query = getQueryString(sObjectType, new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)), lookupFieldOnLookupObject, '=');
-    }
+    String query = getQueryString(sObjectType, new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)), lookupFieldForLookupObject, '=');
     return Database.getQueryLocator(query);
   }
 
@@ -328,6 +286,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   public virtual void finish(Database.BatchableContext context) {
     System.debug('Rollup: batch finished successfully');
+  }
+
+  private class RollupAsyncSaver implements System.Queueable {
+    private final List<SObject> records;
+    public RollupAsyncSaver(List<SObject> records) {
+      this.records = records;
+    }
+
+    public void execute(QueueableContext context) {
+      new DMLHelper().doUpdate(this.records);
+    }
   }
 
   private class RollupAsyncProcessor extends Rollup implements System.Queueable {
@@ -368,12 +337,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     protected override List<SObject> getExistingLookupItems(Set<String> objIds, Rollup rollup, Set<String> uniqueQueryFieldNames) {
       if (objIds.isEmpty()) {
         return new List<SObject>();
+      } else {
+        List<SObject> localLookupItems;
+        if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+          localLookupItems = rollup.traversal.getAllParents();
+          // winnow the list, which would otherwise occur because of specifically only querying for the objIds passed in
+          for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
+            SObject lookupItem = localLookupItems[index];
+            String key = (String) lookupItem.get(rollup.lookupFieldOnLookupObject);
+            if (objIds.contains(key) == false) {
+              localLookupItems.remove(index);
+            }
+          }
+        } else {
+          String queryString = getQueryString(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=');
+          // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
+          localLookupItems = Database.query(queryString);
+        }
+        this.initializeRollupFieldDefaults(localLookupItems, rollup);
+        return localLookupItems;
       }
-      // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
-      String queryString = getQueryString(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=');
-      List<SObject> lookupItems = Database.query(queryString);
-      this.initializeRollupFieldDefaults(lookupItems, rollup);
-      return lookupItems;
     }
 
     public void execute(System.QueueableContext qc) {
@@ -406,48 +389,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String operationName,
     String potentialWhereClause
   ) {
-    // just how many items are we talking, here? If it's less than the query limit, we can proceed
-    // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
-    SObjectType calcItemType = getSObjectTypeFromName(calcItemSObjectName);
-    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=');
-
-    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
-    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds);
-
-    // emptyRollup only used to call "getMaxQueryRows" below
-    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
-    SObjectType lookupType = getSObjectTypeFromName(lookupSObjectName);
-    Rollup__mdt rollupInfo = new Rollup__mdt(
-      RollupFieldOnCalcItem__c = opFieldOnCalcItem,
-      LookupObject__c = lookupSObjectName,
-      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
-      LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
-      RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupOperation__c = operationName
+    QueryWrapper wrapper = new QueryWrapper(lookupSObjectName, lookupFieldOnLookupObject);
+    wrapper.setQuery(potentialWhereClause);
+    return performFullRecalculationInner(
+      opFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnLookupObject,
+      rollupFieldOnLookupObject,
+      lookupSObjectName,
+      calcItemSObjectName,
+      operationName,
+      wrapper,
+      null
     );
-    Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(potentialWhereClause, calcItemType);
-    queryFields.addAll(eval.getRelationshipFieldNames());
-    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', potentialWhereClause);
-    if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
-      List<SObject> calcItems = Database.query(queryString);
-      Rollup thisRollup = getRollup(
-        new List<Rollup__mdt>{ rollupInfo },
-        calcItemType,
-        calcItems,
-        new Map<Id, SObject>(calcItems),
-        eval,
-        RollupInvocationPoint.FROM_LWC
-      );
-      thisRollup.isFullRecalc = true;
-      return thisRollup.runCalc();
-    } else {
-      //batch to get calc items and then batch to rollup
-      return Database.executeBatch(
-        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType),
-        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
-      );
-    }
   }
 
   global class FlowInput {
@@ -523,6 +477,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     global Boolean isRollupStartedFromParent = false;
     @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
+
+    @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
+    global String grandparentRelationshipFieldPath;
   }
 
   global class FlowOutput {
@@ -559,8 +516,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         } else {
           if (flowInput.isRollupStartedFromParent) {
             String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
-            whereClause += getParentWhereClause(flowInput.recordsToRollup, flowInput.lookupFieldOnOpObject, flowInput.rollupSObjectName);
-            performFullRecalculation(
+            QueryWrapper wrapper = getParentWhereClause(
+              flowInput.recordsToRollup,
+              flowInput.lookupFieldOnOpObject,
+              flowInput.rollupSObjectName,
+              flowInput.grandparentRelationshipFieldPath
+            );
+            wrapper.setQuery(whereClause + wrapper.getQuery());
+            performFullRecalculationInner(
               flowInput.rollupFieldOnCalcItem,
               flowInput.lookupFieldOnCalcItem,
               flowInput.lookupFieldOnOpObject,
@@ -568,7 +531,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.rollupSObjectName,
               flowInput.calcItemTypeWhenRollupStartedFromParent,
               flowInput.rollupOperation.toUpperCase(),
-              whereClause
+              wrapper,
+              flowInput.grandparentRelationshipFieldPath
             );
             continue;
           }
@@ -586,7 +550,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
             CalcItemWhereClause__c = flowInput.calcItemWhereClause,
             IsFullRecordSet__c = flowInput.isFullRecordSet,
-            OrderByFirstLast__c = flowInput.orderByFirstLast
+            OrderByFirstLast__c = flowInput.orderByFirstLast,
+            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath
           );
 
           Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
@@ -623,8 +588,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return flowOutputReturns;
   }
 
-  global static Id schedule(String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval) {
-    RollupSchedulable scheduledRollup = new RollupSchedulable(query, rollupMetadataIds, eval);
+  global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
+    RollupSchedulable scheduledRollup = new RollupSchedulable(query, rollupObjectName, eval);
     return System.schedule(jobName, cronExp, scheduledRollup);
   }
 
@@ -1236,7 +1201,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String orderByFirstLast,
     Evaluator eval
   ) {
-    Rollup__mdt rollupMetadata = new Rollup__mdt(
+    Rollup__mdt meta = new Rollup__mdt(
       RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
       LookupObject__c = String.valueOf(lookupSObjectType),
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
@@ -1246,11 +1211,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       OrderByFirstLast__c = orderByFirstLast
     );
     if (defaultRecalculationValue instanceof Decimal) {
-      rollupMetadata.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
+      meta.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
     } else if (defaultRecalculationValue instanceof String) {
-      rollupMetadata.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
+      meta.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
     }
-    return runFromApex(new List<Rollup__mdt>{ rollupMetadata }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
+    return runFromApex(new List<Rollup__mdt>{ meta }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }
 
   global static void runFromCDCTrigger() {
@@ -1262,15 +1227,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     SObject firstRecord = cdcRecords[0];
     EventBus.ChangeEventHeader header = (EventBus.ChangeEventHeader) firstRecord.get('ChangeEventHeader');
-    SObjectType sObjectType = getSObjectTypeFromName(header.getEntityName());
+    SObjectType sObjectType = getSObjectFromName(header.getEntityName()).getSObjectType();
 
-    List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(sObjectType);
-    if (rollupMetadata.isEmpty()) {
+    List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(sObjectType);
+    if (matchingMetadata.isEmpty()) {
       return;
     }
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
-    for (Rollup__mdt rollupInfo : rollupMetadata) {
+    for (Rollup__mdt rollupInfo : matchingMetadata) {
       uniqueFieldNames.add(getParedFieldName(rollupInfo.LookupFieldOnCalcItem__c));
       uniqueFieldNames.add(getParedFieldName(rollupInfo.ROllupFieldOnCalcItem__c));
     }
@@ -1296,9 +1261,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     String fullQuery = getQueryString(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
-    Map<Id, SObject> cdcRecordsMap = new Map<Id, SObject>(Database.query(fullQuery));
+    // getting the items back from the database before putting them into the map is an important step
+    // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
+    // anything for .getSObjectType() - which we need, further downstream
+    List<SObject> cdcCalcItems = Database.query(fullQuery);
+    Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
-    Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcRecordsMap.values(), cdcRecordsMap);
+    Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcCalcItems, cdcCalcItemsMap);
     // because CDC is async, the DB will always be updated by the time we get there
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
@@ -1308,8 +1277,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   global static void runFromTrigger() {
     List<SObject> triggerRecords = getTriggerRecords();
-    List<Rollup__mdt> rollupMetadata = getTriggerRollupMetadata(triggerRecords.getSObjectType());
-    runFromApex(rollupMetadata, null, triggerRecords, getOldTriggerRecordsMap()).runCalc();
+    List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(triggerRecords.getSObjectType());
+    runFromApex(matchingMetadata, null, triggerRecords, getOldTriggerRecordsMap()).runCalc();
   }
 
   /**
@@ -1319,6 +1288,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * - TriggerOperation.AFTER_UDATE
    * - TriggerOperation.BEFORE_DELETE
    * - TriggerOperation.AFTER_UNDELETE
+   *
+   * Note that while it's an anti-pattern to call this from directly within a Trigger,
+   * because `runFromTrigger()` coupled with CMDT is the better option,
+   * you should pass: `Trigger.operationType` for the second argument if you do.
    */
   global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext) {
     shouldRun = true;
@@ -1359,8 +1332,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (Rollup__mdt rollupInfo : rollupMetadata) {
       if (rollupInfo.IsRollupStartedFromParent__c) {
         shouldReturn = true;
-        String whereClause = getParentWhereClause(calcItems, rollupInfo.LookupFieldOnLookupObject__c, rollupInfo.LookupObject__c);
-        performFullRecalculation(
+        QueryWrapper wrapper = getParentWhereClause(
+          calcItems,
+          rollupInfo.LookupFieldOnLookupObject__c,
+          rollupInfo.LookupObject__c,
+          rollupInfo.GrandparentRelationshipFieldPath__c
+        );
+        performFullRecalculationInner(
           rollupInfo.RollupFieldOnCalcItem__c,
           rollupInfo.LookupFieldOnCalcItem__c,
           rollupInfo.LookupFieldOnLookupObject__c,
@@ -1368,8 +1346,31 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           rollupInfo.LookupObject__c,
           rollupInfo.CalcItem__c,
           rollupInfo.RollupOperation__c,
-          whereClause
+          wrapper,
+          rollupInfo.GrandparentRelationshipFieldPath__c
         );
+      } else if (
+        rollupInfo.CalcItem__c != calcItems.getSObjectType().getDescribe().getName() &&
+        String.isNotBlank(rollupInfo.GrandparentRelationshipFieldPath__c) &&
+        calcItems.isEmpty() == false
+      ) {
+        // it's a grandparent rollup triggered by an intermediate object
+        shouldReturn = true;
+        // only run if any of the lookup fields have changed! (or if it's CDC, just to be safe ...)
+        QueryWrapper potentialQuery = getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
+        if (potentialQuery.hasQuery || isCDC) {
+          performFullRecalculationInner(
+            rollupInfo.RollupFieldOnCalcItem__c,
+            rollupInfo.LookupFieldOnCalcItem__c,
+            rollupInfo.LookupFieldOnLookupObject__c,
+            rollupInfo.RollupFieldOnLookupObject__c,
+            rollupInfo.LookupObject__c,
+            rollupInfo.CalcItem__c,
+            rollupInfo.RollupOperation__c,
+            potentialQuery,
+            rollupInfo.GrandparentRelationshipFieldPath__c
+          );
+        }
       }
       rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
     }
@@ -1380,6 +1381,63 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   /** end global-facing section, begin public/private static helpers */
+
+  private static String performFullRecalculationInner(
+    String opFieldOnCalcItem,
+    String lookupFieldOnCalcItem,
+    String lookupFieldOnLookupObject,
+    String rollupFieldOnLookupObject,
+    String lookupSObjectName,
+    String calcItemSObjectName,
+    String operationName,
+    QueryWrapper queryWrapper,
+    String potentialGrandparentRelationshipFieldPath
+  ) {
+    // just how many items are we talking, here? If it's less than the query limit, we can proceed
+    // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
+    SObjectType calcItemType = getSObjectFromName(calcItemSObjectName).getSObjectType();
+    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=', queryWrapper.getQuery());
+
+    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
+    Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable
+    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
+
+    // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
+    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
+    SObjectType lookupType = getSObjectFromName(lookupSObjectName).getSObjectType();
+    Rollup__mdt rollupInfo = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = opFieldOnCalcItem,
+      LookupObject__c = lookupSObjectName,
+      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
+      LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
+      RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
+      RollupOperation__c = operationName,
+      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath
+    );
+    Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
+    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
+    queryFields.addAll(whereEval.getRelationshipFieldNames());
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
+    if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
+      List<SObject> calculationItems = Database.query(queryString);
+      Rollup thisRollup = getRollup(
+        new List<Rollup__mdt>{ rollupInfo },
+        calcItemType,
+        calculationItems,
+        new Map<Id, SObject>(calculationItems),
+        whereEval,
+        RollupInvocationPoint.FROM_LWC
+      );
+      thisRollup.isFullRecalc = true;
+      return thisRollup.runCalc();
+    } else {
+      // batch to get calc items and then batch to rollup
+      return Database.executeBatch(
+        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType, recordIds),
+        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
+      );
+    }
+  }
 
   public static String getQueryString(
     SObjectType sObjectType,
@@ -1446,13 +1504,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static List<Rollup__mdt> cachedMetadata;
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
-    List<SObject> metadata;
+    List<SObject> matchingMetadata;
     // CMDT is read-only when returned from the cache
     // use "deepClone" to get access to mutable versions
     // of the CMDT records. We also need to clean up the Entity Definition / Field Definition
-    // particles for custom objects - the final sweep through on custom fields will be done later
+    // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
-      if(cachedMetadata == null) {
+      if (cachedMetadata == null) {
         cachedMetadata = [
           SELECT
             // we have to do transforms on these fields because custom objects/custom fields
@@ -1474,6 +1532,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             ChangedFieldsOnCalcItem__c,
             FullRecalculationDefaultNumberValue__c,
             FullRecalculationDefaultStringValue__c,
+            GrandparentRelationshipFieldPath__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
             OrderByFirstLast__c,
@@ -1482,7 +1541,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           FROM Rollup__mdt
         ];
         // do the transforms
-        for(Rollup__mdt meta : cachedMetadata) {
+        for (Rollup__mdt meta : cachedMetadata) {
           meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
           meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
           meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
@@ -1491,30 +1550,104 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
         }
       }
-      metadata = cachedMetadata.clone();
       if (rollupMetadata != null) {
-        metadata.addAll(rollupMetadata);
+        cachedMetadata.addAll(rollupMetadata);
       }
+      matchingMetadata = cachedMetadata.clone();
     } else if (metadataType == RollupControl__mdt.SObjectType) {
-      metadata = RollupControl__mdt.getAll().deepClone().values();
+      matchingMetadata = RollupControl__mdt.getAll().deepClone().values();
     }
-    return metadata;
+    return matchingMetadata;
   }
 
-  private static String getParentWhereClause(List<SObject> calcItems, String lookupFieldOnLookupObject, String lookupObjectName) {
-    String parentWhereClause = ' IN (';
+  private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    if (isCDC) {
+      return new QueryWrapper();
+    }
+
+    SObjectType sObjectType = calcItems[0].getSObjectType();
+    SObjectField fieldToken = getPartOfGrandparentChain(grandparentFieldPath, sObjectType);
+    String relationshipName = fieldToken.getDescribe().getRelationshipName();
+    Integer relationshipIndex = grandparentFieldPath.indexOf(relationshipName) + relationshipName.length();
+    String priorFieldPath = grandparentFieldPath.substring(0, relationshipIndex) + '.Id';
+    QueryWrapper wrapper = new QueryWrapper('', priorFieldPath);
+
+    for (SObject calcItem : calcItems) {
+      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+      String currentLookup = (String) calcItem.get(fieldToken);
+      String oldLookup = (String) oldCalcItem.get(fieldToken);
+      if (currentLookup != oldLookup) {
+        wrapper.addRecordId(currentLookup);
+        wrapper.addRecordId(oldLookup);
+      }
+    }
+    return wrapper;
+  }
+
+  private class QueryWrapper {
+    private QueryWrapper() {
+    }
+    private QueryWrapper(String lookupObject, String lookupField) {
+      String base = String.isBlank(lookupObject) ? '' : lookupObject.replace('__c', '__r') + '.';
+      this.query = base + lookupField + ' = :recordIds';
+    }
+
+    private Boolean hasQuery = false;
+    private String query;
+    public final Set<Id> recordIds = new Set<Id>();
+    private final List<String> stringifiedRecordIds = new List<String>();
+
+    public void addRecordId(String recordId) {
+      if (String.isNotBlank(recordId)) {
+        this.hasQuery = true;
+        this.recordIds.add(recordId);
+        this.stringifiedRecordIds.add('\'' + recordId + '\'');
+      }
+    }
+
+    public String getQuery() {
+      return this.hasQuery ? this.query : '';
+    }
+
+    public void setQuery(String query) {
+      if (String.isNotBlank(query)) {
+        this.hasQuery = true;
+        this.query = query;
+      }
+    }
+
+    public override String toString() {
+      return this.hasQuery ? this.query.replace('= :recordIds', 'IN (' + String.join(this.stringifiedRecordIds, ',') + ')') : '';
+    }
+  }
+
+  private static QueryWrapper getParentWhereClause(
+    List<SObject> calcItems,
+    String lookupFieldOnLookupObject,
+    String lookupObjectName,
+    String grandparentFieldPath
+  ) {
+    String fieldName = lookupFieldOnLookupObject;
+    if (String.isNotBlank(grandparentFieldPath)) {
+      lookupObjectName = '';
+      fieldName = grandparentFieldPath.substringBeforeLast('.') + '.Id';
+    }
+
+    QueryWrapper wrapper = new QueryWrapper(lookupObjectName, fieldName);
     for (SObject calcItem : calcItems) {
       String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
       if (String.isNotBlank(lookupId)) {
-        parentWhereClause += '\'' + lookupId + '\',';
+        wrapper.addRecordId(lookupId);
       }
     }
-    // remove trailing comma, because this comment is less LOC than doing the for loop with an index and checking before appending the comma :)
-    parentWhereClause = parentWhereClause.substringBeforeLast(',') + ')';
-    return lookupObjectName.replace('__c', '__r') + '.' + lookupFieldOnLookupObject + parentWhereClause;
+    return wrapper;
   }
 
   private static Integer getCountFromDb(String countQuery, Set<String> objIds) {
+    return getCountFromDb(countQuery, objIds, null);
+  }
+
+  private static Integer getCountFromDb(String countQuery, Set<String> objIds, Set<Id> recordIds) {
     if (countQuery.contains('ALL ROWS')) {
       countQuery = countQuery.replace('ALL ROWS', '');
     }
@@ -1566,7 +1699,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (SObject currentRecord : currentRecords) {
       SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
         ? existingOldRecordsMap.get(currentRecord.Id)
-        : (SObject) Type.forName(sObjectDescribe.getName()).newInstance();
+        : getSObjectFromName(sObjectDescribe.getName());
       existingRecordOrDefault.Id = currentRecord.Id;
       for (String fieldName : calcItemFields) {
         SObjectField fieldToken = fieldTokensForObject.get(fieldName);
@@ -1581,18 +1714,36 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return existingOldRecordsMap;
   }
 
-  private static List<Rollup__mdt> getTriggerRollupMetadata(SObjectType sObjectType) {
+  private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
     String sObjectName = sObjectType.getDescribe().getName();
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
-      Rollup__mdt rollupMetadata = rollupMetadatas[index];
-      if (rollupMetadata.CalcItem__c != sObjectName && rollupMetadata.IsRollupStartedFromParent__c == false) {
+      Rollup__mdt meta = rollupMetadatas[index];
+      if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
+        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
+          continue;
+        }
+      } else if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
         rollupMetadatas.remove(index);
-      } else if (rollupMetadata.IsRollupStartedFromParent__c && sObjectName != rollupMetadata.LookupObject__c) {
+      } else if (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c) {
         rollupMetadatas.remove(index);
       }
     }
     return rollupMetadatas;
+  }
+
+  private static SObjectField getPartOfGrandparentChain(String grandParentFieldPath, SObjectType sObjectType) {
+    List<String> validRelationshipNames = grandParentFieldPath.split('\\.');
+    // remove the last field since it's not a relationship
+    validRelationshipNames.remove(validRelationShipNames.size() - 1);
+    DescribeSObjectResult describeObject = sObjectType.getDescribe();
+    List<SObjectField> fieldTokens = describeObject.fields.getMap().values();
+    for (SObjectField fieldToken : fieldTokens) {
+      if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
+        return fieldToken;
+      }
+    }
+    return null;
   }
 
   private static Rollup getRollup(
@@ -1621,10 +1772,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
-      SObjectField lookupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
+      SObjectField calcLookupField = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
 
       // NB - this SHOULD work even for SObjects part of managed packages
-      SObjectType lookupSObjectType = getSObjectTypeFromName(rollupMetadata.LookupObject__c);
+      SObjectType lookupSObjectType = getSObjectFromName(rollupMetadata.LookupObject__c).getSObjectType();
       DescribeSObjectResult lookupObjectDescribe = lookupSObjectType.getDescribe();
       Map<String, SObjectField> lookupFieldNameToLookupFields = lookupObjectDescribe.fields.getMap();
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
@@ -1632,22 +1783,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       // reset the CMDT field-level definitions using the SObjectField tokens
       rollupMetadata.RollupFieldOnCalcItem__c = rollupFieldOnCalcItem.getDescribe().getName();
-      rollupMetadata.LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName();
+      rollupMetadata.LookupFieldOnCalcItem__c = calcLookupField.getDescribe().getName();
       rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
       rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
 
-      RollupControl__mdt rollupControl;
+      RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
         // for CMDT-driven rollups, the rollup record is always tied to a RollupControl__mdt record
-        rollupControl = new RollupControl__mdt(Id = rollupMetadata.RollupControl__c);
+        localControl = new RollupControl__mdt(Id = rollupMetadata.RollupControl__c);
       } else {
         String controlKey = getRollupControlKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupSObjectType, rollupFieldOnOpObject);
-        rollupControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, null);
+        localControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, null);
       }
 
       loadRollups(
         rollupFieldOnCalcItem,
-        lookupFieldOnCalcItem,
+        calcLookupField,
         lookupFieldOnOpObject,
         rollupFieldOnOpObject,
         lookupSObjectType,
@@ -1656,7 +1807,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         oldCalcItems,
         batchRollup,
         RollupEvaluator.getEvaluator(eval, rollupMetadata, oldCalcItems, sObjectType),
-        rollupControl?.Id,
+        localControl?.Id,
         rollupInvokePoint,
         rollupMetadata
       );
@@ -1711,10 +1862,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     ) {
       shouldRun = false;
     }
-    // for our purposes, an undelete behaviors **strictly** the same as an insert
-    // the implications are that if you programmatically changed the lookup field
-    // before undeleting a record in Apex, things might get weird, but aside from that
-    // edge case ...
+    // an undelete behaviors **strictly** the same as an insert
+    // because the underlying SObject can't be modified till afterwards
     if (apexContext == TriggerOperation.AFTER_UNDELETE) {
       apexContext = TriggerOperation.AFTER_INSERT;
     }
@@ -1739,8 +1888,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return new Map<Id, SObject>();
   }
 
-  private static SObjectType getSObjectTypeFromName(String sObjectName) {
-    return ((SObject) Type.forName(sObjectName).newInstance()).getSObjectType();
+  private static SObject getSObjectFromName(String sObjectName) {
+    return ((SObject) Type.forName(sObjectName).newInstance());
   }
 
   private static String getParedFieldName(String fullFieldName) {
@@ -1809,6 +1958,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static RollupControl__mdt getSensibleControlDefault() {
+    if (defaultControl != null) {
+      return defaultControl;
+    }
     RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
     if (sensibleDefault == null) {
       // this *should* be impossible, since the record is included on install, but ...
@@ -1816,7 +1968,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         DeveloperName = CONTROL_ORG_DEFAULTS,
         BatchChunkSize__c = 2000,
         MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
-        MaxLookupRowsForQueueable__c = Limits.getLimitDmlRows() / 2,
+        MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
+        MaxRollupRetries__c = 100,
         MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
         ShouldAbortRun__c = false,
         ShouldRunAs__c = 'Queueable'
@@ -1845,17 +1998,33 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   protected void process(List<Rollup> rollups) {
-    this.getFieldNamesForRollups(rollups);
+    this.getFieldNamesForRollups(rollups); // populates this.lookupObjectToUniqueFieldNames
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
-    for (Integer index = 0; index < rollups.size(); index++) {
+    Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
+    for (Rollup rollup : rollups) {
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
-      Rollup rollup = rollups[index];
       if (this.hasExceededCurrentRollupQueryLimit(rollup.rollupControl)) {
         this.deferredRollups.add(rollup);
         continue;
       }
-      Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup);
-      List<SObject> lookupItems = new List<SObject>();
+
+      if (grandparentRollups.containsKey(rollup.lookupObj) && rollup.traversal == null) {
+        rollup.traversal = grandparentRollups.get(rollup.lookupObj);
+      }
+
+      Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
+      // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
+      // trying until all necessary records have been retrieved
+      if (rollup.traversal != null && rollup.traversal.getIsFinished() == false) {
+        this.deferredRollups.add(rollup);
+        continue;
+      } else if (rollup.traversal != null && grandparentRollups.containsKey(rollup.lookupObj) == false) {
+        // cache the traversal for any future callers - because we queried for ALL unique grand(or greater)parent fields
+        // we don't need to re-traverse the whole object chain again if there are other grandparent rollups in the list
+        grandparentRollups.put(rollup.lookupObj, rollup.traversal);
+      }
+
+      List<SObject> localLookupItems = new List<SObject>();
       Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
       for (String lookupId : calcItemsByLookupField.keySet()) {
         if (updatedLookupRecords.containsKey(lookupId)) {
@@ -1865,14 +2034,30 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           if (updatedLookupObject.get(rollup.opFieldOnLookupObject) == null || this.isFullRecalc) {
             updatedLookupObject.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
           }
-          lookupItems.add(updatedLookupObject);
+          localLookupItems.add(updatedLookupObject);
         }
       }
-      lookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj)));
-      List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, lookupItems);
+      localLookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj)));
+      List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, localLookupItems);
       for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
       }
+    }
+
+    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size()) {
+      Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
+      Integer removalIndex = 0;
+      List<SObject> asyncUpdateList = new List<SObject>();
+      for (String lookupKey : updatedLookupRecords.keySet()) {
+        SObject lookupRecordToUpdate = updatedLookupRecords.get(lookupKey);
+        asyncUpdateList.add(lookupRecordToUpdate);
+        updatedLookupRecords.remove(lookupKey);
+        removalIndex++;
+        if (removalIndex >= maxIndexToRemove) {
+          break;
+        }
+      }
+      System.enqueueJob(new RollupAsyncSaver(asyncUpdateList));
     }
 
     DML.doUpdate(updatedLookupRecords.values());
@@ -1888,10 +2073,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (this.deferredRollups.isEmpty() == false && isDeferralAllowed && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
       stackDepth++;
       // tragic, but necessary due to limits on requeueing allowed during testing
-      isDeferralAllowed = Test.isRunningTest() == false;
+      isDeferralAllowed = Test.isRunningTest() == false && this.rollupControl.MaxRollupRetries__c > stackDepth;
+
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
+
       if (System.isBatch()) {
         Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
       } else {
@@ -1912,7 +2099,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
         applicableItems.add(calcItem);
-      } else if(rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
+      } else if (rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
         applicableItems.add(calcItem);
       }
     }
@@ -1932,7 +2119,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private Map<String, List<SObject>> getCalcItemsByLookupField(Rollup rollup) {
+  private Map<String, List<SObject>> getCalcItemsByLookupField(Rollup rollup, Set<String> uniqueQueryFieldNames) {
+    if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+      if (rollup.traversal == null) {
+        rollup.traversal = new RollupRelationshipFieldFinder(
+            rollup.rollupControl,
+            rollup.metadata.GrandparentRelationshipFieldPath__c,
+            uniqueQueryFieldNames,
+            rollup.lookupObj,
+            rollup.oldCalcItems
+          )
+          .getParents(rollup.calcItems);
+      } else if (rollup.traversal?.getIsFinished() == false) {
+        rollup.traversal.recommence();
+      }
+      return rollup.traversal.getIsFinished() ? rollup.traversal.getParentLookupToRecords() : new Map<String, List<SObject>>();
+    }
     Map<String, List<SObject>> lookupFieldToCalcItems = new Map<String, List<SObject>>();
     for (SObject calcItem : rollup.calcItems) {
       String key = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
@@ -1942,6 +2144,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         lookupFieldToCalcItems.get(key).add(calcItem);
       }
 
+      // if the lookup key differs from what it was on the old calc item,
+      // include that value as well so that we can fix reparented records' rollup values
       SObject potentialOldCalcItem = rollup.oldCalcItems?.get(calcItem.Id);
       if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);
@@ -1981,11 +2185,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
-      } else if (rollupSpecificControl.ShouldRunAs__c == 'Batchable' && shouldRunAsBatch == false) {
-        shouldRunAsBatch = true;
-      } else if (rollupSpecificControl.ShouldRunAs__c == 'Queueable') {
-        // once you've been opted into batching, it should stick
-        shouldRunAsBatch = shouldRunAsBatch || false;
       } else if (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup') {
         this.rollups.remove(index);
         this.syncRollups.add(rollup);
@@ -1995,10 +2194,60 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (rollupSpecificControl.MaxLookupRowsBeforeBatching__c > orgDefaults.MaxLookupRowsBeforeBatching__c) {
         orgDefaults.MaxLookupRowsBeforeBatching__c = rollupSpecificControl.MaxLookupRowsBeforeBatching__c;
       }
-      if (rollupSpecificControl.MaxLookupRowsForQueueable__c > orgDefaults.MaxLookupRowsForQueueable__c) {
-        orgDefaults.MaxLookupRowsForQueueable__c = rollupSpecificControl.MaxLookupRowsForQueueable__c;
+      if (rollupSpecificControl.MaxParentRowsUpdatedAtOnce__c == null) {
+        rollupSpecificControl.MaxParentRowsUpdatedAtOnce__c = orgDefaults.MaxParentRowsUpdatedAtOnce__c;
       }
     }
+  }
+
+  private Integer getLookupRecordsCount(Boolean hasMoreThanOneTarget) {
+    // we need to burn a few SOQL calls to consider how many records are going to be queried/updated
+    // then, using RollupControl__mdt and/or sensible defaults, we'll decide whether to queue up or batch (or fail - that's always an option)
+    // if there's more than one SObjectType involved we bail on retrieving the actual count
+    // because you can only return one list of SObjects from a batch job's QueryLocator
+    SObjectType targetType;
+    Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
+    for (Rollup rollup : this.rollups) {
+      rollup.isFullRecalc = this.isFullRecalc;
+      if (targetType == null) {
+        targetType = rollup.lookupObj;
+      } else if (rollup.lookupObj != targetType) {
+        hasMoreThanOneTarget = true;
+      } else if (String.isNotBlank(rollup.metadata?.GrandparentRelationshipFieldPath__c)) {
+        // getting the count for grandparent (or greater) relationships will be handled further
+        // downstream; for our purposes, it isn't useful to try to get all of the records while
+        // we're still in a sync context
+        continue;
+      }
+
+      if (hasMoreThanOneTarget) {
+        break;
+      }
+
+      Set<String> uniqueIds = new Set<String>();
+      for (SObject calcItem : rollup.calcItems) {
+        String lookupKey = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
+        if (String.isNotBlank(lookupKey)) {
+          uniqueIds.add(lookupKey);
+        }
+      }
+
+      String countQuery = getQueryString(rollup.lookupObj, new List<String>{ 'Count()' }, String.valueOf(rollup.lookupFieldOnLookupObject), '=');
+      if (queryCountsToLookupIds.containsKey(countQuery)) {
+        queryCountsToLookupIds.get(countQuery).addAll(uniqueIds);
+      } else {
+        queryCountsToLookupIds.put(countQuery, uniqueIds);
+      }
+    }
+
+    Integer totalCountOfRecords = 0;
+    if (hasMoreThanOneTarget == false) {
+      for (String countQuery : queryCountsToLookupIds.keySet()) {
+        Set<String> objIds = queryCountsToLookupIds.get(countQuery);
+        totalCountOfRecords += getCountFromDb(countQuery, objIds);
+      }
+    }
+    return totalCountOfRecords;
   }
 
   private List<SObject> getUpdatedLookupItemsByRollup(Rollup rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
@@ -2007,40 +2256,52 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (SObject lookupRecord : lookupItems) {
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
-        List<SObject> calcItems = calcItemsByLookupField.get(key);
+        List<SObject> localCalcItems = calcItemsByLookupField.get(key);
 
-        // Check for reparented records
-        Map<Id, SObject> oldCalcItems = rollup.oldCalcItems;
-        for (Integer index = calcItems.size() - 1; index >= 0; index--) {
-          SObject calcItem = calcItems[index];
+        for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
+          SObject calcItem = localCalcItems[index];
           if (rollup.eval?.matches(calcItem) == false && rollup.metadata?.IsFullRecordSet__c == true) {
             // technically it should only be possible for a calc item that doesn't match
             // to still exist if it is a Full Record Set operation; this gives people the chance
             // to reset rollup values if none of the records passed in match the eval criteria
-            calcItems.remove(index);
+            localCalcItems.remove(index);
             continue;
           }
-          SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
+          // Check for reparented records
+          SObject oldCalcItem = rollup.oldCalcItems.get(calcItem.Id);
 
           if (oldCalcItem == null) {
             continue;
           }
 
           String priorLookup = (String) oldCalcItem.get(rollup.lookupFieldOnCalcItem);
+          // if the lookup wasn't previously populated, there's nothing to update
+          if (String.isBlank(priorLookup)) {
+            continue;
+          }
           Object newLookup = calcItem.get(rollup.lookupFieldOnCalcItem);
 
-          if (newLookup != priorLookup) {
-            if (!oldLookupItems.containsKey(priorLookup)) {
-              oldLookupItems.put(priorLookup, new List<SObject>());
+          if (newLookup != priorLookup && rollup.traversal == null) {
+            this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+          } else if (rollup.traversal != null && rollup.traversal.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName())) {
+            // slightly different, but with the same end result
+            // note that when the reparented record is not null
+            // it should be the same as the current "lookupRecord"
+            SObject reparentedRecord = rollup.traversal.retrieveParent(oldCalcItem.Id);
+            if (reparentedRecord != null) {
+              priorLookup = (String) reparentedRecord.get(rollup.lookupFieldOnLookupObject);
+              if (String.isNotBlank(priorLookup)) {
+                Id oldLookupId = rollup.traversal.getOldLookupId(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName());
+                oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, rollup);
+                this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+              }
             }
-            List<SObject> reparentedCalcItemsForKey = oldLookupItems.get(priorLookup);
-            reparentedCalcItemsForKey.add(oldCalcItem);
           }
         }
 
         // Check for changed values
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.getRollupVal(rollup, calcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
+        Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         if (priorVal != newVal) {
           lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
@@ -2067,9 +2328,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
 
-        lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
-
-        recordsToUpdate.put(key, lookupRecord);
+        if (priorVal != newVal) {
+          lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
+          recordsToUpdate.put(key, lookupRecord);
+        }
       }
     }
 
@@ -2092,6 +2354,32 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return rollupCalc.getReturnValue();
   }
 
+  private void populateOldLookupItems(String priorLookup, SObject oldCalcItem, Map<String, List<SObject>> oldLookupItems) {
+    if (oldLookupItems.containsKey(priorLookup) == false) {
+      oldLookupItems.put(priorLookup, new List<SObject>{ oldCalcItem });
+    } else {
+      oldLookupItems.get(priorLookup).add(oldCalcItem);
+    }
+  }
+
+  private SObject reassignOldCalcItemIfValueChanged(String lookupId, SObject oldCalcItem, Rollup rollup) {
+    if (String.isBlank(lookupId)) {
+      return oldCalcItem;
+    }
+    // truly terrible, but before we pass the old item through the reparenting code path, we need to validate that it's only
+    // the lookup field that has changed; otherwise, if the opFieldOnCalcItem has changed too, substitute the item whose value
+    // previously corresponded to the parent record
+    for (SObject otherOldCalcItem : rollup.oldCalcItems.values()) {
+      if (otherOldCalcItem.get(rollup.lookupFieldOnCalcItem) == lookupId) {
+        if (otherOldCalcItem.get(rollup.opFieldOnCalcItem) != oldCalcItem.get(rollup.opFieldOnCalcItem)) {
+          return otherOldCalcItem;
+        }
+        break; // break on the match, no matter what
+      }
+    }
+    return oldCalcItem;
+  }
+
   @testVisible
   private virtual class DMLHelper {
     public virtual void doUpdate(List<SObject> recordsToUpdate) {
@@ -2103,46 +2391,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private class RollupSchedulable implements System.Schedulable {
     private final String query;
-    private final List<String> rollupMetadataIds;
+    private final SObjectType rollupObject;
     private final Evaluator eval;
 
-    public RollupSchedulable(String query, List<String> rollupMetadataIds, Evaluator eval) {
+    public RollupSchedulable(String query, String rollupObjectName, Evaluator eval) {
       this.query = query;
-      this.rollupMetadataIds = rollupMetadataIds;
+      this.rollupObject = getSObjectFromName(rollupObjectName).getSObjectType();
       this.eval = eval;
       try {
         Database.query(this.query);
-      } catch (Exception ex) {
+      } catch (QueryException ex) {
         throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
       }
     }
 
     public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> allMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);
-      Map<String, List<Rollup__mdt>> lookupObjectToMetadata = new Map<String, List<Rollup__mdt>>();
-      for (Rollup__mdt meta : allMetadata) {
-        if (rollupMetadataIds.contains(meta.Id) == false) {
-          continue;
-        } else if (lookupObjectToMetadata.containsKey(meta.LookupObject__c)) {
-          lookupObjectToMetadata.get(meta.LookupObject__c).add(meta);
-        } else {
-          lookupObjectToMetadata.put(meta.LookupObject__c, new List<Rollup__mdt>{ meta });
-        }
-      }
-      List<Rollup__mdt> rollupsOrderedByLookupItem = new List<Rollup__mdt>();
-      for (String lookupObject : lookupObjectToMetadata.keySet()) {
-        rollupsOrderedByLookupItem.addAll(lookupObjectToMetadata.get(lookupObject));
-      }
+      List<Rollup__mdt> metadata = getRollupMetadataBySObject(this.rollupObject);
       List<SObject> calcItems = Database.query(this.query);
-      getRollup(
-          rollupsOrderedByLookupItem,
-          calcItems.getSObjectType(),
-          calcItems,
-          new Map<Id, SObject>(calcItems),
-          this.eval,
-          RollupInvocationPoint.FROM_SCHEDULED
-        )
-        .runCalc();
+      getRollup(metadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, RollupInvocationPoint.FROM_SCHEDULED).runCalc();
     }
   }
 }

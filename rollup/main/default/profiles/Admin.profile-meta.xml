@@ -10,6 +10,14 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>RollupCalculator</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>RollupCalculatorTests</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>RollupEvaluator</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -26,7 +34,27 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>RollupFlowBulkProcessor</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>RollupFlowBulkProcessorTests</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>RollupFlowBulkSaver</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>RollupFullBatchRecalculator</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>RollupRelationshipFieldFinder</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>RollupRelationshipFieldFinderTests</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -54,7 +82,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>RollupControl__mdt.MaxLookupRowsForQueueable__c</field>
+        <field>RollupControl__mdt.MaxParentRowsUpdatedAtOnce__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -95,6 +123,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Rollup__mdt.FullRecalculationDefaultStringValue__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.GrandparentRelationshipFieldPath__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

@@ -97,10 +97,7 @@ private class RollupEvaluatorTests {
 
   @isTest
   static void shouldFilterCalcItemsBasedOnWhereClauseForLists() {
-    List<String> accIds = new List<String>{
-      '0016g0000000000001',
-      '0016g0000000000002'
-    };
+    List<String> accIds = new List<String>{ '0016g0000000000001', '0016g0000000000002' };
     String whereClause = 'AccountId IN ' + JSON.serialize(accIds).replace('[', '(').replace(']', ')').replaceAll('"', '\'');
 
     Opportunity oppOne = new Opportunity(AccountId = accIds[0]);
@@ -289,8 +286,8 @@ private class RollupEvaluatorTests {
   @isTest
   static void shouldCorrectlyIdentifyIncludesForMultiSelectPicklists() {
     // QuickText.Channel is the only multi-select picklist in a vanilla Salesforce org
-    QuickText qt = new QuickText(Channel='AAA;BBB;CCC');
-    QuickText nonMatch = new QuickText(Channel='AAA');
+    QuickText qt = new QuickText(Channel = 'AAA;BBB;CCC');
+    QuickText nonMatch = new QuickText(Channel = 'AAA');
     String whereClause = 'Channel INCLUDES (\'AAA;CCC\')';
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, QuickText.SObjectType);
@@ -353,7 +350,7 @@ private class RollupEvaluatorTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.StageName = 'Old Name';
 
-    Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z',  Amount = 15);
+    Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', Amount = 15);
 
     Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20');
 
@@ -387,6 +384,14 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match since StageName has not changed');
+  }
+
+  @isTest
+  static void shouldNotReturnRelationshipFieldsIfTheyAreNotDirectlyRelated() {
+    String queryString = 'User.Id IN (\'0056g000002GeR0AAA\')';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Opportunity.SObjectType);
+
+    System.assertEquals(new List<String>(), eval.getRelationshipFieldNames());
   }
 
   private class AlwaysTrueEval implements Rollup.Evaluator {

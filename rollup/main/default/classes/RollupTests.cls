@@ -510,10 +510,7 @@ private class RollupTests {
   static void shouldRunDirectlyFromApex() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, Amount = 5),
-      new Opportunity(AccountId = acc.Id, Amount = 10)
-    };
+    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(AccountId = acc.Id, Amount = 5), new Opportunity(AccountId = acc.Id, Amount = 10) };
 
     Rollup.records = opps;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -651,22 +648,19 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldThrowExceptionWhenBatchedOperationWithMultipleSObjectTypes() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50, Name = 'Test') });
+  static void shouldDeferUpdateWhenMaxParentRowsLessThanCurrentUpdateRows() {
+    Opportunity opp = new Opportunity(Amount = 50, Name = 'MaxParentRows', StageName = 'Prospecting', CloseDate = System.today());
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1);
 
-    Exception ex;
-    try {
-      Rollup.batch(
-        Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType),
-        Rollup.concatFromApex(Opportunity.Name, Opportunity.CreatedById, User.Id, User.Username, User.SObjectType)
-      );
-    } catch (Exception e) {
-      ex = e;
-    }
+    Test.startTest();
+    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
 
-    System.assertNotEquals(null, ex);
+    Account acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(50, acc.AnnualRevenue, 'Account should have been updated since the mock is not used async');
   }
 
   @isTest
@@ -2527,7 +2521,7 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1, MaxLookupRowsBeforeBatching__c = 0);
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2541,7 +2535,7 @@ private class RollupTests {
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', MaxLookupRowsBeforeBatching__c = 1000);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', MaxLookupRowsBeforeBatching__c = 1000, BatchChunkSize__c = 50);
 
     Test.startTest();
     Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2573,7 +2567,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, new List<Id>(), null);
+      Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, 'Account', null);
     } catch (Exception e) {
       ex = e;
     }
@@ -2585,7 +2579,7 @@ private class RollupTests {
   static void shouldScheduleSuccessfullyForGoodQuery() {
     String goodQuery = 'SELECT Id, StageName FROM Opportunity WHERE CreatedDate > YESTERDAY';
 
-    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, new List<Id>(), null);
+    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, 'Opportunity', null);
 
     System.assertNotEquals(null, jobId);
   }
@@ -2595,7 +2589,13 @@ private class RollupTests {
   @isTest
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Description = '0'.repeat(256), Name = 'Truncate', StageName = 'Prospecting', CloseDate = System.today());
+    Opportunity opp = new Opportunity(
+      AccountId = acc.Id,
+      Description = '0'.repeat(256),
+      Name = 'Truncate',
+      StageName = 'Prospecting',
+      CloseDate = System.today()
+    );
     insert opp;
 
     Test.startTest();
@@ -2909,6 +2909,119 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+  }
+
+  /** Grandparent rollups */
+  @isTest
+  static void shouldAllowGrandparentRollups() {
+    Account acc = [SELECT Id FROM Account];
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    };
+    insert opps;
+
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = opps;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
+    User updatedUser = (User) mock.Records[0];
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
+  @isTest
+  static void shouldAllowGrandparentRollupsFromParent() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    };
+    insert opps;
+
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe',
+        IsRollupStartedFromParent__c = true
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
+    User updatedUser = (User) mock.Records[0];
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
+  @isTest
+  static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
+      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    };
+    insert opps;
+
+    DMLMock mock = new DMLMock();
+    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
+    // start as synchronous rollup to allow for one deferral
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 2);
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = opps;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
+    User updatedUser = (User) mock.Records[0];
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   //** Helpers */

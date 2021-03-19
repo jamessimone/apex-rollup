@@ -5,7 +5,7 @@
        src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)!
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)! As of [v1.2.0](https://github.com/jamessimone/apex-rollup/tree/v1.2.0), `Rollup` also offers [the ability to roll directly up from children records to grandparent (or greater!) records](#grandparent-rollups), without needing complex hierarchical intermediate fields.
 
 ## Usage
 
@@ -73,6 +73,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Is Full Record Set` (optional, defaults to `false`) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
 - `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. **Note** unlike DLRS, this field is _not_ optional on a first/last operation; a validation rule will enforce that you supply a value here, even if the value used is the same as the field you are rolling up on.
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. `Rollup` will then go and retrieve the assorted children records before rolling the values up to the parents.
+- `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name (after the last period) should match up with what is being used in `Rollup Field On Lookup Object`. For caveats and more information on how to setup rollups looking to use this functionality, please refer to the linked section.
 
 You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
@@ -96,8 +97,8 @@ When you install `Rollup`, you get two custom metadata types - `Rollup__mdt`, de
 These are the fields on the `Rollup Control` custom metadata type:
 
 - `Max Lookup Rows Before Batching` - if you are rolling up to an object that interacts in many different ways within the system, `Rollup` moves from using a Queueable based system (read: fast and light) to a Batched Apex approach (read: solid, sometimes slow). You can override the default for switching to Batch Apex by lowering the number of rows. Without an `Org_Default` record, this defaults to `3333`
-- `Max Lookup Rows For Queueable` - if you haven't selected a Batch Apex override, defaults to `5000`
-- `Rollup` lookup field to the `Rollup__mdt` metadata record. Optional.
+- `Max Parent Rows Updated At Once` (defaults to 5000) - The maximum number of parent rows that can be updated in a single transaction. Otherwise, Rollup splits the parent items evenly and updates them in separate transactions. If you don't fill out this field (on the Org Defaults or specific Control records), defaults to half of the DML row limit.
+- `Rollup` (optional) - lookup field to the `Rollup__mdt` metadata record.
 - `Should Abort Run` - if done at the `Org_Defaults` level, completely shuts down all rollup operations in the org. Otherwise, can be used on an individual rollup basis to turn on/off.
 - `Should Run As` - a picklist dictating the preferred method for running rollup operations. Possible values are `Queueable`, `Batchable`, or `Synchronous Rollup`.
 - `Trigger Or Invocable Name` - If you are using custom Apex, a schedulable, or rolling up by way of the Invocable action and can't use the `Rollup` lookup field. Use the pattern `trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup` - for example: 'trigger_opportunity_stagename_to_account_name_rollup' (use lowercase on the field names). If there is a matching Rollup Limit record, those rules will be used. The first part of the string comes from how a rollup has been invoked - either by `trigger`, `invocable`, or `schedule`. A scheduled flow still uses `invocable`!
@@ -108,8 +109,6 @@ These are the fields on the `Rollup Control` custom metadata type:
 ### Flow / Process Builder Invocable
 
 <div id="flow-process-builder-invocable"></div>
-
-**Important note for Record Triggered Flows as of 26 Februray 2021**: a patch to the Spring 21 release introduced a breaking change in the way that the Flow engine hands off Invocable variables to Apex. Currently, if you are using a record triggered flow, you have to use `Get Records` using the current record's Id in order to populate the `Records To Rollup` argument properly for both invocables. I will remove this notice when the functionality has been fixed, but there is a bug with simply adding the current record to a collection variable and passing that to the invocable action accordingly. Thank you for your attention to this notice!
 
 I will touch only on Flows given that all indications from Salesforce would lead a person to believe they are the future of the "clicks" part in "clicks versus code":
 
@@ -138,8 +137,9 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Is Full Record Set` (optional) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by toggling this field
 - `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. **Note** unlike DLRS, this field is _not_ optional on a first/last operation; a validation rule will enforce that you supply a value here, even if the value used is the same as the field you are rolling up on.
 - `Defer Processing` (optional, default `false`) - when checked and set to `{!$GlobalConstant.True}`, you have to call the separate invocable method `Process Deferred Rollups` at the end of your flow. Otherwise, each invocable action kicks off a separate queueable/batch job. **Note** - for extremely large flows calling dozens of rollup operations, it behooves the end user / admin to occasionally call the `Process Deferred Rollups` to separate rollup operations into different jobs. You'll avoid running out of memory by doing so.
-- `Is Rollup Started From Parent` (defaults to `{!$GlobalConstant.False}`) - set to `{!$GlobalConstant.True}` if collection being passed in is the parent SObject, and you want to recalculate the defined rollup operation for the passed in parent records. Used in conjunction with `Calc Item Type When Rollup Started From Parent`
-- `Calc Item Type When Rollup Started From Parent` - only necessary to provide if `Is Rollup Started From Parent` field is enabled and set to `{!$GlobalConstant.True}`. Normally in this invocable, the calc item type is figured out by examining the passed-in collection - but when the collection is the parent records, we need the SObject API name of the calculation items explicitly defined.
+- `Is Rollup Started From Parent` (optional, defaults to `{!$GlobalConstant.False}`) - set to `{!$GlobalConstant.True}` if collection being passed in is the parent SObject, and you want to recalculate the defined rollup operation for the passed in parent records. Used in conjunction with `Calc Item Type When Rollup Started From Parent`
+- `Calc Item Type When Rollup Started From Parent` (optional) - only necessary to provide if `Is Rollup Started From Parent` field is enabled and set to `{!$GlobalConstant.True}`. Normally in this invocable, the calc item type is figured out by examining the passed-in collection - but when the collection is the parent records, we need the SObject API name of the calculation items explicitly defined.
+- `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name should match up with what is being used in `Rollup Field On Lookup Object`. Please see the caveats in the linked section for more information on how to set up your rollups correctly when using this feature.
 
 Here is an example of the base action filled out (not shown, but also important - the assignment of the collection to the `Records to rollup` variable):
 
@@ -172,7 +172,7 @@ In order to prevent blowing through the Flow Interview limit for each day, it's 
 
 <div id="calculating-rollup-after-install"></div>
 
-Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has now rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
+Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has no rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
 
 ![Example of Rollup App](./media/joys-of-apex-rollup-app.png 'Manually kicking off rollup jobs')
 
@@ -185,17 +185,50 @@ I would _highly_ recommend scheduling through Scheduled Flows.
 That being said, `Rollup` exposes the option to use Scheduled Jobs if that's more your style. You can use the following Anonymous Apex script to schedule rollups:
 
 ```java
-// Method signature: (String jobName, String cronExp, String query, List<Id> rollupMetadataIds, Evaluator eval)
+// Method signature: (String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval)
 Rollup.schedule(
   'My example job name',
   'my cron expression, like 0 0 0 * * ?',
   'my SOQL query, like SELECT Id, Amount FROM Opportunity WHERE CreatedDate > YESTERDAY',
-  new List<Id>{ 'The ids of Rollup__mdt records configuring the rollup operation' },
+  'The API name of the SObject associated with Rollup__mdt records configuring the rollup operation',
   null
 );
 ```
 
 That last argument - the `null` value - has to implement an interface called `Evaluator` (or it can just be left null). More on that below.
+
+Note that the third argument - the `String rollupObjectName` should be one of two values:
+
+- the API name of the object(s) where rollups are started from the parent (where `Is Rollup Started From Parent` on `Rollup__mdt` is checked off) OR
+- the API name of the object(s) where rollups are started from the child object
+
+In either case, the SOQL query needs to correspond to either the parent or the children records that you'd like to operate on.
+
+### Grandparent (Or Greater) Rollups
+
+<div id="grandparent-rollups"></div>
+
+It's not all that uncommon, especially with custom objects, to get into the practice of rolling up values from one object merely so that _another_ parent object can receive _those_ rolled up values; that is to say, we occasionally use intermediate objects in order to roll values up from a grandchild record to a grandparent (and there's no need to stop there; it's totally possible to want to roll up values from great-grandchildren to the great-grandparent record, and so on). `Rollup` offers the never-before-seen functionality of skipping the intermediate records so that you can go directly to the ultimate parent object. This is supported through the invocable rollup actions, as well as through the CMDT-based rollup approach by filling out the optional field `Grandparent Relationship Field Path`:
+
+![Example grandparent rollup](./media/example-grandparent-rollup.png)
+
+In this example, there are four objects in scope:
+
+- `ApplicationLog__c`, which has a lookup field `Application__c`
+- `Application__c`, which has a lookup field `ParentApplication__c`
+- `ParentApplication__c`, which has a lookup field `Account__c`
+- `Account`, and the field we'd like to rollup to has the API name `AnnualRevenue`
+
+**Important things to note about grand(or greater)parent rollups:**
+
+- **super important** all intermediate objects in the chain (so, in this example, `Application__c`, and `ParentApplication__c`) must _also_ have the `Rollup.runFromTrigger()` snippet in those object's triggers (or the appropriate invocable built). This special caveat handles cases where the intermediate objects' lookup fields are updated; no big deal if the ultimate parent lookup hasn't changed, but _big_ deal if the ultimate parent lookup _has_ changed
+- if your CMDT/invocable is set up with a relationship that is not the immediate parent and you don't fill out the `Grandparent Relationship Field Path`, it simply won't work. The field path is required because it's common for objects to have more than one lookup field to the same object
+- if you are using `Grandparent Relationship Field Path` with a polymorphic standard field like `Task.WhatId` or `Task.WhoId`, you should also supply a `SOQL Where Clause` to ensure you are filtering the calculation items to only be related to one type of parent at a time. **Note** - at this time, the `SOQL Where Clause` only works on the fields present on the initial calculation items, and does not support cross-object filtering
+- grandparent rollups respect [SOQL's map relationship-field hopping of 5 levels](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_relationships_query_limits.htm):
+
+> In each specified relationship, no more than five levels can be specified in a child-to-parent relationship. For example, Contact.Account.Owner.FirstName (three levels)
+
+While the base architecture for retrieving grand(or greater)parent items has no technical limit on the number of relationship field hops that can be made, correctly re-triggering the rollup calculations after an intermediate object has been updated made it necessary to respect this limit (for now).
 
 ## Custom Apex Rollups
 
@@ -239,6 +272,8 @@ public static void runFromTrigger()
 public static void runFromCDCTrigger()
 
 // imperatively from Apex, relying on CMDT for additional rollup info
+// if you are actually using this from WITHIN a trigger, the second argument should
+// ALWAYS be the "Trigger.operationType" static variable
 global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext)
 
 // imperatively from Apex with arguments taking the place of values previously supplied by CMDT

@@ -99,6 +99,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final String originalWhereClause;
     private final String whereClause;
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
+    private final Set<String> validRelationshipNames;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       this.originalWhereClause = whereClause;
@@ -110,6 +111,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
       this.whereClause = whereClause;
       this.createConditions(calcItemSObjectType);
+      this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
     }
 
     public List<String> getRelationshipFieldNames() {
@@ -117,19 +119,22 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
           if (fieldNames.contains(condition.fieldName) == false) {
-            if(condition.fieldName.contains('__c.') == false) {
+            if (condition.fieldName.contains('__c.') == false && this.validRelationshipNames.contains(condition.fieldName.substringBefore('.'))) {
               fieldNames.add(condition.fieldName);
             }
             if (condition.fieldName.contains('.')) {
               List<String> relationshipNames = condition.fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
               String priorVal = '';
               for (String relationshipName : relationshipNames) {
-                if (String.isNotBlank(priorVal)) {
+                if(String.isBlank(priorVal) && this.validRelationshipNames.contains(relationshipName) == false) {
+                  continue;
+                  // it's the first run, don't keep going if the relationship name doesn't exist
+                } else if (String.isNotBlank(priorVal)) {
                   priorVal += '.';
                 }
                 priorVal += relationshipName.replace('__c', '__r').trim();
               }
-              if (fieldNames.contains(priorVal) == false) {
+              if (String.isNotBlank(priorVal) && fieldNames.contains(priorVal) == false) {
                 fieldNames.add(priorVal);
               }
             }
@@ -152,6 +157,18 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       }
       return matches;
+    }
+
+    private Set<String> getValidRelationshipNames(SObjectType sObjectType) {
+      Set<String> validRelationshipNames = new Set<String>();
+      List<SObjectField> fields = sObjectType.getDescribe().fields.getMap().values();
+      for(SObjectField field : fields) {
+        String relationshipName = field.getDescribe().getRelationshipName();
+        if(String.isNotBlank(relationshipName)) {
+          validRelationshipNames.add(relationshipName);
+        }
+      }
+      return validRelationshipNames;
     }
 
     private void createConditions(SObjectType calcItemSObjectType) {
@@ -271,7 +288,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String fieldName = whereClause.substring(0, whereClause.indexOf(' '));
       whereClause = whereClause.replace(fieldName, '').trim();
       String criteria = whereClause.substring(0, whereClause.indexOf(' ')).trim();
-      String value = this.getValue( whereClause.substringAfter(criteria));
+      String value = this.getValue(whereClause.substringAfter(criteria));
 
       if (value.startsWith('(') && value.endsWith(')')) {
         List<String> values = value.substring(1, value.length() - 1).split(',');
@@ -292,10 +309,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (this.originalWhereClause.contains(potentialReplacement)) {
             whereClausePiece = potentialReplacement;
             break;
-          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
+          } else if (this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
             whereClausePiece = whereClausePiece.replace(' = ', ' in ');
             break;
-          } else if(this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
+          } else if (this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
             whereClausePiece = whereClausePiece.replace(' != ', ' not in ');
             break;
           }

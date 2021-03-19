@@ -34,7 +34,7 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
-                <field>MaxLookupRowsForQueueable__c</field>
+                <field>MaxParentRowsUpdatedAtOnce__c</field>
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>

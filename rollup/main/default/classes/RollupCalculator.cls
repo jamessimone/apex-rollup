@@ -681,10 +681,11 @@ public without sharing abstract class RollupCalculator {
     protected override void setReturnValue() {
       String trimmedDelimiter = this.concatDelimiter.trim();
       String possibleReturnValue = this.stringVal.normalizeSpace();
-      String withoutEndingComma = possibleReturnValue.endsWith(trimmedDelimiter)
-        ? possibleReturnValue.substringBeforeLast(trimmedDelimiter)
-        : possibleReturnValue;
-      this.returnVal = (withoutEndingComma.startsWith(trimmedDelimiter) ? withoutEndingComma.substring(1, withoutEndingComma.length()) : withoutEndingComma)
+      while(possibleReturnValue.endsWith(trimmedDelimiter)) {
+        possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
+      }
+
+      this.returnVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
         .trim();
     }
 
@@ -712,6 +713,9 @@ public without sharing abstract class RollupCalculator {
     public override void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
+      if(newVal == null) {
+        newVal = ''; // this.stringVal.contains throws for null, below
+      }
       String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
       if (isConcatDistinct && this.stringVal.contains(newVal) == false || !isConcatDistinct) {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
@@ -720,6 +724,9 @@ public without sharing abstract class RollupCalculator {
 
     public override void handleDeleteConcat(SObject calcItem) {
       String existingVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
+      if(existingVal == null) {
+        return;
+      }
       this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
     }
 

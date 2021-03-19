@@ -11,7 +11,7 @@
         <value xsi:type="xsd:double">3000.0</value>
     </values>
     <values>
-        <field>MaxLookupRowsForQueueable__c</field>
+        <field>MaxParentRowsUpdatedAtOnce__c</field>
         <value xsi:type="xsd:double">5000.0</value>
     </values>
     <values>
@@ -21,10 +21,6 @@
     <values>
         <field>MaxRollupRetries__c</field>
         <value xsi:type="xsd:double">100.0</value>
-    </values>
-    <values>
-        <field>MaximumRollupRetries__c</field>
-        <value xsi:nil="true"/>
     </values>
     <values>
         <field>ShouldAbortRun__c</field>
