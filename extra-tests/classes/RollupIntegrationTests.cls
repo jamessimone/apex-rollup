@@ -311,4 +311,54 @@ private class RollupIntegrationTests {
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
   }
+
+  @isTest
+  static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdated() {
+    Account greatGrandparent = new Account(Name = 'Great-grandparent');
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = secondGreatGrandparent.Id);
+    List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
+    insert parentApps;
+
+    Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
+    insert new List<ApplicationLog__c>{ child, secondChild };
+
+    Rollup.records = parentApps;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ApplicationLog__c',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'Application__c',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.oldRecordsMap = new Map<Id, SObject>{
+      grandParent.Id => new ParentApplication__c(Id = grandParent.Id, Account__c = secondGreatGrandparent.Id),
+      secondGrandparent.Id => new ParentApplication__c(Id = secondGrandparent.Id, Account__c = greatGrandparent.Id)
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+
+    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup!');
+    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again!');
+  }
 }

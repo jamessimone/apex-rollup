@@ -1261,9 +1261,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     String fullQuery = getQueryString(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
-    Map<Id, SObject> cdcRecordsMap = new Map<Id, SObject>(Database.query(fullQuery));
+    List<SObject> cdcCalcItems = Database.query(fullQuery);
+    Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
-    Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcRecordsMap.values(), cdcRecordsMap);
+    Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcCalcItems, cdcCalcItemsMap);
     // because CDC is async, the DB will always be updated by the time we get there
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
@@ -1345,6 +1346,28 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           wrapper,
           rollupInfo.GrandparentRelationshipFieldPath__c
         );
+      } else if (
+        rollupInfo.CalcItem__c != calcItems.getSObjectType().getDescribe().getName() &&
+        String.isNotBlank(rollupInfo.GrandparentRelationshipFieldPath__c) &&
+        calcItems.isEmpty() == false
+      ) {
+        // it's a grandparent rollup triggered by an intermediate object
+        shouldReturn = true;
+        // only run if any of the lookup fields have changed! (or if it's CDC, just to be safe ...)
+        QueryWrapper potentialQuery = getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
+        if (potentialQuery.hasQuery || isCDC) {
+          performFullRecalculationInner(
+            rollupInfo.RollupFieldOnCalcItem__c,
+            rollupInfo.LookupFieldOnCalcItem__c,
+            rollupInfo.LookupFieldOnLookupObject__c,
+            rollupInfo.RollupFieldOnLookupObject__c,
+            rollupInfo.LookupObject__c,
+            rollupInfo.CalcItem__c,
+            rollupInfo.RollupOperation__c,
+            potentialQuery,
+            rollupInfo.GrandparentRelationshipFieldPath__c
+          );
+        }
       }
       rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
     }
@@ -1534,11 +1557,40 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return matchingMetadata;
   }
 
+  private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    if(isCDC) {
+      return new QueryWrapper();
+    }
+
+    SObjectType sObjectType = calcItems[0].getSObjectType();
+    SObjectField fieldToken = getPartOfGrandparentChain(grandparentFieldPath, sObjectType);
+    String relationshipName = fieldToken.getDescribe().getRelationshipName();
+    Integer relationshipIndex = grandparentFieldPath.indexOf(relationshipName) + relationshipName.length();
+    String priorFieldPath = grandparentFieldPath.substring(0, relationshipIndex) + '.Id';
+    QueryWrapper wrapper = new QueryWrapper('', priorFieldPath);
+
+    for (SObject calcItem : calcItems) {
+      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+      String currentLookup = (String) calcItem.get(fieldToken);
+      String oldLookup = (String) oldCalcItem.get(fieldToken);
+      if (currentLookup != oldLookup) {
+        wrapper.addRecordId(currentLookup);
+        wrapper.addRecordId(oldLookup);
+      }
+    }
+    return wrapper;
+  }
+
+
   private class QueryWrapper {
-    public QueryWrapper(String lookupObject, String lookupField) {
+    private QueryWrapper() {
+
+    }
+    private QueryWrapper(String lookupObject, String lookupField) {
       String base = String.isBlank(lookupObject) ? '' : lookupObject.replace('__c', '__r') + '.';
       this.query = base + lookupField + ' = :recordIds';
     }
+
     private Boolean hasQuery = false;
     private String query;
     public final Set<Id> recordIds = new Set<Id>();
@@ -1666,13 +1718,31 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
-      if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
+      if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
+        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
+          continue;
+        }
+      } else if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
         rollupMetadatas.remove(index);
       } else if (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c) {
         rollupMetadatas.remove(index);
       }
     }
     return rollupMetadatas;
+  }
+
+  private static SObjectField getPartOfGrandparentChain(String grandParentFieldPath, SObjectType sObjectType) {
+    List<String> validRelationshipNames = grandParentFieldPath.split('\\.');
+    // remove the last field since it's not a relationship
+    validRelationshipNames.remove(validRelationShipNames.size() - 1);
+    DescribeSObjectResult describeObject = sObjectType.getDescribe();
+    List<SObjectField> fieldTokens = describeObject.fields.getMap().values();
+    for (SObjectField fieldToken : fieldTokens) {
+      if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
+        return fieldToken;
+      }
+    }
+    return null;
   }
 
   private static Rollup getRollup(
