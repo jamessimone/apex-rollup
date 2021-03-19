@@ -1261,6 +1261,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     String fullQuery = getQueryString(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
+    // getting the items back from the database before putting them into the map is an important step
+    // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
+    // anything for .getSObjectType() - which we need, further downstream
     List<SObject> cdcCalcItems = Database.query(fullQuery);
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
