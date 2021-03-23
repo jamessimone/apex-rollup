@@ -7,3 +7,4 @@ yarn.lock
 debug.log
 DEVHUB_SFDX_URL.txt
 tests/apex
+main/default/
