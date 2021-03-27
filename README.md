@@ -5,7 +5,7 @@
        src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)! As of [v1.2.0](https://github.com/jamessimone/apex-rollup/tree/v1.2.0), `Rollup` also offers [the ability to roll directly up from children records to grandparent (or greater!) records](#grandparent-rollups), without needing complex hierarchical intermediate fields.
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)! As of [v1.2.0](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.0), `Rollup` also offers [the ability to roll directly up from children records to grandparent (or greater!) records](#grandparent-rollups), without needing complex hierarchical intermediate fields.
 
 ## Usage
 
@@ -69,7 +69,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/tree/v1.0.9), nested conditionals (conditionals contained within parantheses are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](/issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field.
+- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](/issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field.
 - `Is Full Record Set` (optional, defaults to `false`) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
 - `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. **Note** unlike DLRS, this field is _not_ optional on a first/last operation; a validation rule will enforce that you supply a value here, even if the value used is the same as the field you are rolling up on.
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. `Rollup` will then go and retrieve the assorted children records before rolling the values up to the parents.
@@ -175,6 +175,10 @@ In order to prevent blowing through the Flow Interview limit for each day, it's 
 Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has no rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
 
 ![Example of Rollup App](./media/joys-of-apex-rollup-app.png 'Manually kicking off rollup jobs')
+
+**Note** - as of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), you can now kick the recalculation job by using your already-configured `Rollup__mdt` CMDT records:
+
+![Example of Rollup App Using CMDT](./media/joys-of-apex-rollup-app-cmdt.png 'Manually kicking off CMDT-based rollup jobs')
 
 ### Scheduled Jobs
 
@@ -673,7 +677,7 @@ Rollup.batch(
 
 ### Change Data Capture (CDC)
 
-As of [v1.0.4](https://github.com/jamessimone/apex-rollup/tree/v1.0.4), CDC _is_ supported. However, at the moment Change Data Capture can be used strictly through CMDT, and requires a different one-liner for installation into your CDC object Trigger:
+As of [v1.0.4](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.4), CDC _is_ supported. However, at the moment Change Data Capture can be used strictly through CMDT, and requires a different one-liner for installation into your CDC object Trigger:
 
 ```java
 // within your CDC trigger, using Opportunity as an example:
