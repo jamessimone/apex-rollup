@@ -1,5 +1,10 @@
 @isTest
 private class RollupFlowBulkProcessorTests {
+  @TestSetup
+  static void setup() {
+    upsert new RollupSettings__c(IsEnabled__c = true);
+  }
+
   @isTest
   static void shouldNotProcessIfNoRecords() {
     List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ new RollupFlowBulkProcessor.FlowInput() });
@@ -17,9 +22,11 @@ private class RollupFlowBulkProcessorTests {
 
     List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
-    System.assertEquals(true, outputs[0].message.contains('SUM'));
-    System.assertEquals(true, outputs[0].isSuccess, 'Should not error when adding deferred flow rollup');
-    System.assertEquals(1, Rollup.FLOW_ROLLUPS.size(), 'Deferred rollup should be kept in buffer');
+    System.assertNotEquals(true, outputs.isEmpty(), 'Should have passed back data from inputs');
+    for (Rollup.FlowOutput output : outputs) {
+      System.assertEquals(true, outputs[0].isSuccess, 'Should not error when adding deferred flow rollup');
+    }
+    System.assertNotEquals(true, Rollup.FLOW_ROLLUPS.isEmpty(), 'Deferred rollup should be kept in buffer');
   }
 
   @isTest

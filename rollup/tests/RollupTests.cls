@@ -11,6 +11,7 @@ private class RollupTests {
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
     Opportunity opp = new Opportunity(StageName = 'testsetup', Name = 'testsetup', CloseDate = System.today(), Amount = 500);
     insert new List<SObject>{ con, opp };
+    upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
   private class DMLMock extends Rollup.DMLHelper {

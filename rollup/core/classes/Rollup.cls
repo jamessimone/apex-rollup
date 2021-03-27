@@ -30,6 +30,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static Boolean isDeferralAllowed = true;
   private static Integer stackDepth = 0;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
+  private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -232,7 +233,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.ingestRollupControlData(orgDefaults);
 
     this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
-    if (this.isNoOp || orgDefaults.ShouldAbortRun__c) {
+    if (this.isNoOp || orgDefaults.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
       return 'No process Id';
     }
 
