@@ -5,11 +5,12 @@
       Alternatively, you can select a single Calc Item based off of your CMDT rollup records and have the recalculation run for all CMDT associated with that
       SObject type:
     </div>
-    <lightning-input type="toggle" label="Run off of CMDT?" onchange={handleToggle}></lightning-input>
+    <lightning-input data-id="cmdt-toggle" type="toggle" label="Run off of CMDT?" onchange={handleToggle}></lightning-input>
     <lightning-layout vertical-align="center">
       <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
         <template if:true={isCMDTRecalc}>
           <lightning-combobox
+            data-id="cmdt-select"
             name="Select Calc Item"
             label="Select Calc Item"
             value={selectedMetadata}
@@ -19,6 +20,7 @@
         </template>
         <template if:false={isCMDTRecalc}>
           <lightning-input
+            data-id="calcItemSObjectName"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="Calc Item SObject API Name"
@@ -28,6 +30,7 @@
           >
           </lightning-input>
           <lightning-input
+            data-id="opFieldOnCalcItem"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="API Name of the rollup field on calc item"
@@ -37,6 +40,7 @@
           >
           </lightning-input>
           <lightning-input
+            data-id="lookupFieldOnCalcItem"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="API Name of the lookup field on calc item"
@@ -46,6 +50,7 @@
           >
           </lightning-input>
           <lightning-input
+            data-id="lookupFieldOnLookupObject"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="API Name of the lookup field on the lookup object"
@@ -55,6 +60,7 @@
           >
           </lightning-input>
           <lightning-input
+            data-id="rollupFieldOnLookupObject"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="API Name of the rollup field on the lookup object"
@@ -64,6 +70,7 @@
           >
           </lightning-input>
           <lightning-input
+            data-id="lookupSObjectName"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="Lookup SObject API Name"
@@ -73,6 +80,7 @@
           >
           </lightning-input>
           <lightning-input
+            data-id="operationName"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
             label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE/FIRST/LAST)"

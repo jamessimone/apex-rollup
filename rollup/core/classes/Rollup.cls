@@ -394,12 +394,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
     Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
     SObjectType calcItemType; // always the same for this route, so we can just take whatever the last assignment is
-    Set<String> queryFields = new Set<String>{ 'Id ' };
+    Set<String> queryFields = new Set<String>{ 'Id' };
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
-      String whereClause = String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? matchingMeta.CalcItemWhereClause__c : '';
       calcItemType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
-      String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=', whereClause);
+      String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=', null);
       amountOfCalcItems += getCountFromDb(countQuery, objIds, recordIds);
       queryFields.add(matchingMeta.LookupFieldOnCalcItem__c);
       queryFields.add(matchingMeta.RollupFieldOnCalcItem__c);

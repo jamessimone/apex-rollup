@@ -196,6 +196,8 @@ Use the included app and permission set (`See Rollup App`) permission set to unc
 
 ![Example of Rollup App Using CMDT](./media/joys-of-apex-rollup-app-cmdt.png 'Manually kicking off CMDT-based rollup jobs')
 
+In either case, if you fill out the form values _or_ start the full recalculation via your selected CMDT records, the screen will lock until the rollup recalculation has finished. There's a small piece of text at the bottom with information about what the recalculation job's status is, and the screen will only unlock after it has either finished, failed, or been manually aborted by you.
+
 ### Scheduled Jobs
 
 <div id="scheduled-jobs"></div>

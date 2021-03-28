@@ -39,6 +39,14 @@ jobs:
       - name: 'Checkout source code'
         uses: actions/checkout@v2
 
+      # Install NPM & Run LWC tests
+      - name: 'Install node & run LWC tests'
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+        run: npm install
+        run: npm test
+
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
