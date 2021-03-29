@@ -5,6 +5,8 @@ import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
+export const NO_PROCESS_ID = 'No process Id';
+
 export default class RollupForceRecalculation extends LightningElement {
   @api rollupData = {
     opFieldOnCalcItem: '',
@@ -55,9 +57,6 @@ export default class RollupForceRecalculation extends LightningElement {
       .forEach(localMeta => {
         this.rollupMetadataOptions.push({ label: localMeta, value: localMeta });
       });
-    if (this.rollupMetadataOptions.length > 0) {
-      this.selectedMetadata = this.rollupMetadataOptions[0].value;
-    }
   }
 
   async handleSubmit(event) {
@@ -66,7 +65,12 @@ export default class RollupForceRecalculation extends LightningElement {
 
     try {
       let jobId;
-      if (!!this.selectedMetadata && this.isCMDTRecalc) {
+      if (this.isCMDTRecalc) {
+        if (!this.selectedMetadata) {
+          this._displayErrorToast('Select a valid option', 'Calc item must be selected!');
+          return;
+        }
+
         const localMetas = this._localMetadata[this.selectedMetadata];
         const matchingMetadata = [];
         // we have to transform the data slightly to conform to what the Apex deserializer expects by removing relationship fields
@@ -85,20 +89,15 @@ export default class RollupForceRecalculation extends LightningElement {
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {
-      const event = new ShowToastEvent({
-        title: 'An error occurred while rolling up',
-        message: e.body.message,
-        variant: 'error'
-      });
+      this._displayErrorToast('An error occurred while rolling up', e.body?.message ?? e.message);
       console.error(e); // in the event you dismiss the toast but still want to see the error
-      this.dispatchEvent(event);
-      this.error = e.body.message;
     }
   }
 
   async _getBatchJobStatus(jobId) {
-    if (!jobId) {
-      return;
+    if (!jobId || jobId === NO_PROCESS_ID) {
+      this.rollupStatus = 'Completed';
+      return Promise.resolve();
     }
     this.isRollingUp = true;
 
@@ -116,5 +115,15 @@ export default class RollupForceRecalculation extends LightningElement {
       }
     });
     await statusPromise;
+  }
+
+  _displayErrorToast(title, message) {
+    const event = new ShowToastEvent({
+      title,
+      message,
+      variant: 'error'
+    });
+    this.dispatchEvent(event);
+    this.error = message;
   }
 }
