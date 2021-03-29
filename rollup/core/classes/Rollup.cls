@@ -30,6 +30,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static Boolean isDeferralAllowed = true;
   private static Integer stackDepth = 0;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
+  private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -232,7 +233,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.ingestRollupControlData(orgDefaults);
 
     this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
-    if (this.isNoOp || orgDefaults.ShouldAbortRun__c) {
+    if (this.isNoOp || orgDefaults.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
       return 'No process Id';
     }
 
@@ -372,6 +373,45 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
    * - Schedulable
    * - LWC-based full recalculation calls
    */
+
+  @AuraEnabled(cacheable=true)
+  global static Map<String, List<Rollup__mdt>> getRollupMetadataByCalcItem() {
+    Map<String, List<Rollup__mdt>> calcItemToMetadata = new Map<String, List<Rollup__mdt>>();
+    List<Rollup__mdt> localMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);
+    for (Rollup__mdt localMeta : localMetadata) {
+      if (calcItemToMetadata.containsKey(localMeta.CalcItem__c)) {
+        calcItemToMetadata.get(localMeta.CalcItem__c).add(localMeta);
+      } else {
+        calcItemToMetadata.put(localMeta.CalcItem__c, new List<Rollup__mdt>{ localMeta });
+      }
+    }
+    return calcItemToMetadata;
+  }
+
+  @AuraEnabled
+  global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata) {
+    Integer amountOfCalcItems = 0;
+    Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
+    Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
+    SObjectType calcItemType; // always the same for this route, so we can just take whatever the last assignment is
+    Set<String> queryFields = new Set<String>{ 'Id' };
+
+    for (Rollup__mdt matchingMeta : matchingMetadata) {
+      calcItemType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
+      String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=', null);
+      amountOfCalcItems += getCountFromDb(countQuery, objIds, recordIds);
+      queryFields.add(matchingMeta.LookupFieldOnCalcItem__c);
+      queryFields.add(matchingMeta.RollupFieldOnCalcItem__c);
+      if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
+        queryFields.addAll(new RollupEvaluator.WhereFieldEvaluator(matchingMeta.CalcItemWhereClause__c, calcItemType).getRelationshipFieldNames());
+      }
+    }
+
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', null);
+
+    // eval always null via this route, despite having been used to get the relationship fields
+    return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, null);
+  }
 
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
@@ -1402,9 +1442,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
 
-    // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
-    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
-    SObjectType lookupType = getSObjectFromName(lookupSObjectName).getSObjectType();
     Rollup__mdt rollupInfo = new Rollup__mdt(
       RollupFieldOnCalcItem__c = opFieldOnCalcItem,
       LookupObject__c = lookupSObjectName,
@@ -1418,22 +1455,30 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
     queryFields.addAll(whereEval.getRelationshipFieldNames());
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
+
+    return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval);
+  }
+
+  private static String startFullRecalc(
+    List<Rollup__mdt> matchingMeta,
+    Integer amountOfCalcItems,
+    String queryString,
+    Set<String> objIds,
+    Set<Id> recordIds,
+    SObjectType calcItemType,
+    Evaluator eval
+  ) {
+    // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
+    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
     if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
       List<SObject> calculationItems = Database.query(queryString);
-      Rollup thisRollup = getRollup(
-        new List<Rollup__mdt>{ rollupInfo },
-        calcItemType,
-        calculationItems,
-        new Map<Id, SObject>(calculationItems),
-        whereEval,
-        RollupInvocationPoint.FROM_LWC
-      );
+      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, RollupInvocationPoint.FROM_LWC);
       thisRollup.isFullRecalc = true;
       return thisRollup.runCalc();
     } else {
       // batch to get calc items and then batch to rollup
       return Database.executeBatch(
-        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, rollupInfo, calcItemType, recordIds),
+        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, matchingMeta, calcItemType, recordIds),
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
       );
     }
@@ -1983,14 +2028,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   /** End static section, begin protected + private instance methods */
 
   protected Rollup getDelegatedRollup(
-    Rollup__mdt rollupInfo,
+    List<Rollup__mdt> rollupInfo,
     SObjectType calcItemType,
     List<SObject> calcItems,
     Map<Id, SObject> oldCalcItems,
-    Evaluator eval,
     RollupInvocationPoint invokePoint
   ) {
-    return getRollup(new List<Rollup__mdt>{ rollupInfo }, calcItemType, calcItems, oldCalcItems, eval, invokePoint);
+    return getRollup(rollupInfo, calcItemType, calcItems, oldCalcItems, null, invokePoint);
   }
 
   protected virtual Integer getMaxQueryRows() {

@@ -11,6 +11,7 @@ private class RollupTests {
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
     Opportunity opp = new Opportunity(StageName = 'testsetup', Name = 'testsetup', CloseDate = System.today(), Amount = 500);
     insert new List<SObject>{ con, opp };
+    upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
   private class DMLMock extends Rollup.DMLHelper {
@@ -69,6 +70,22 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, this is a no-op');
+  }
+
+  @isTest
+  static void shouldNotRunWhenDisabled() {
+    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
+    existingSetting.IsEnabled__c = false;
+    update existingSetting;
+
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, custom setting was disabled');
   }
 
   @isTest
@@ -2604,6 +2621,43 @@ private class RollupTests {
 
     acc = [SELECT Name FROM Account];
     System.assertEquals(255, acc.Name.length(), acc.Name);
+  }
+
+  @isTest
+  static void shouldEnqueueCMDTRecalcWhenBelowQueryLimits() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(Name = 'oneCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'twoCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'threeCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'fourCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'fiveCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
+      new Opportunity(Name = 'sixCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    };
+    insert opps;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM'
+      )
+    };
+
+    Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('Opportunity'));
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
   @isTest

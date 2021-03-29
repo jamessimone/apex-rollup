@@ -61,7 +61,11 @@ if($scratchOrgAllotment -gt 0) {
     Start-Tests
     Write-Output "Scratch org tests finished running with success: $?"
     # Delete scratch org
-    sfdx force:org:delete -p -u apex-rollup-scratch-org
+    try {
+      sfdx force:org:delete -p -u apex-rollup-scratch-org
+    } catch {
+      Write-Output "Scratch org deletion failed, continuing ..."
+    }
   } catch {
     Write-Output "There was an issue with scratch org creation, continuing ..."
     $shouldDeployToSandbox = $true

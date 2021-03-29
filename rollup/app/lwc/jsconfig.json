@@ -1,26 +1,13 @@
 {
-    "compilerOptions": {
-        "experimentalDecorators": true,
-        "baseUrl": ".",
-        "paths": {
-            "c/rollupForceRecalculation": [
-                "rollupForceRecalculation/rollupForceRecalculation.js"
-            ]
-        }
-    },
-    "include": [
-        "**/*",
-        "../../.sfdx/typings/lwc/**/*.d.ts",
-        "../../../../.sfdx/typings/lwc/**/*.d.ts"
-    ],
-    "typeAcquisition": {
-        "include": [
-            "jest"
-        ]
-    },
-    "paths": {
-        "c/*": [
-            "*"
-        ]
-    }
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "baseUrl": "."
+  },
+  "include": ["**/*", "../../.sfdx/typings/lwc/**/*.d.ts", "../../../.sfdx/typings/lwc/**/*.d.ts"],
+  "typeAcquisition": {
+    "include": ["jest"]
+  },
+  "paths": {
+    "c/*": ["*"]
+  }
 }

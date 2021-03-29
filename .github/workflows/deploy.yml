@@ -39,6 +39,17 @@ jobs:
       - name: 'Checkout source code'
         uses: actions/checkout@v2
 
+      - name: 'Setup node'
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: 'Install NPM'
+        run: npm install
+
+      - name: 'Run LWC Unit Tests'
+        run: npm test
+
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
@@ -62,4 +73,4 @@ jobs:
       - name: 'Upload code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v1
         with:
-            token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
