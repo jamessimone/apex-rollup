@@ -73,6 +73,22 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldNotRunWhenDisabled() {
+    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
+    existingSetting.IsEnabled__c = false;
+    update existingSetting;
+
+    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, custom setting was disabled');
+  }
+
+  @isTest
   static void shouldSumFromTriggerAfterInsert() {
     DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
