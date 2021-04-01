@@ -1,5 +1,3 @@
-
-Set-StrictMode -Version Latest
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
 $testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests, RollupFlowBulkProcessorTests, RollupRelationshipFieldFinderTests" -c -d ./tests/apex -r human -w 20'
@@ -88,7 +86,7 @@ if($shouldDeployToSandbox) {
 }
 
 # If the priorUserName is not blank and we used a scratch org, reset to it
-if($null -ne $orgInfo -And $null -ne $orgInfo.result -And $null -ne $orgInfo.result.username -And $userNameHasBeenSet) {
+if($orgInfo.result.username -And $userNameHasBeenSet) {
   # for some reason, setting straight from $orgInfo.result.username results in some weird destructuring
   # whereas this works, no problem
   $priorUserName = $orgInfo.result.username
