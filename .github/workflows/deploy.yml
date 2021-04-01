@@ -1,5 +1,5 @@
 # Unique name for this workflow
-name: Rollup Scratch Org Test Run
+name: Rollup Release Status
 
 on:
   push:
