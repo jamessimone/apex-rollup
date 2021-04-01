@@ -1,6 +1,7 @@
 # Apex Rollup
 
 [![Rollup Release Status](https://github.com/jamessimone/apex-rollup/actions/workflows/deploy.yml/badge.svg)](https://github.com/jamessimone/apex-rollup/actions/workflows/deploy.yml 'Click to view deployment pipeline history')
+[![Rollup Code Coverage](https://codecov.io/gh/jamessimone/apex-rollup/branch/main/graph/badge.svg)](https://codecov.io/gh/jamessimone/apex-rollup)
 
 <a href="https://githubsfdeploy.herokuapp.com?owner=jamesssimone&repo=apex-rollup&ref=main">
   <img alt="Deploy to Salesforce"
