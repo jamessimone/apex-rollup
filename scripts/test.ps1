@@ -88,7 +88,7 @@ if($shouldDeployToSandbox) {
 }
 
 # If the priorUserName is not blank and we used a scratch org, reset to it
-if($orgInfo?.result?.username -And $userNameHasBeenSet) {
+if($null -ne $orgInfo -And $null -ne $orgInfo.result -And $null -ne $orgInfo.result.username -And $userNameHasBeenSet) {
   # for some reason, setting straight from $orgInfo.result.username results in some weird destructuring
   # whereas this works, no problem
   $priorUserName = $orgInfo.result.username
