@@ -519,10 +519,7 @@ public without sharing abstract class RollupCalculator {
 
     public virtual override Object getReturnValue() {
       Object superReturnVal = super.getReturnValue();
-      if (superReturnVal instanceof Decimal) {
-        return Datetime.newInstance(((Decimal) superReturnVal).longValue());
-      }
-      return superReturnVal;
+      return superReturnVal instanceof Decimal ? Datetime.newInstance(((Decimal) superReturnVal).longValue()) : superReturnVal;
     }
 
     protected virtual override Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
@@ -613,10 +610,8 @@ public without sharing abstract class RollupCalculator {
         defaultDatetime = Datetime.newInstanceGmt(RollupFieldInitializer.Current.defaultDateTime.dateGmt(), (Time) potentiallyUnitializedDecimal);
       } else if (potentiallyUnitializedDecimal instanceof Decimal) {
         defaultDatetime = Datetime.newInstance(((Decimal) potentiallyUnitializedDecimal).longValue());
-      } else {
-        defaultDatetime = RollupFieldInitializer.Current.defaultDateTime;
       }
-      return defaultDatetime.getTime();
+      return (defaultDatetime != null ? defaultDatetime : RollupFieldInitializer.Current.defaultDateTime).getTime();
     }
   }
 
@@ -662,7 +657,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private virtual class StringRollupCalculator extends RollupCalculator {
-    // for now, hard-coding to comma here. We may update this to allow for CMDT-based overrides of the delimiter
+    // hard-coding to comma for now. We may update this to allow for CMDT-based overrides of the delimiter at some point
     protected String concatDelimiter = ', ';
     private String stringVal;
     public StringRollupCalculator(
@@ -681,7 +676,7 @@ public without sharing abstract class RollupCalculator {
     protected override void setReturnValue() {
       String trimmedDelimiter = this.concatDelimiter.trim();
       String possibleReturnValue = this.stringVal.normalizeSpace();
-      while(possibleReturnValue.endsWith(trimmedDelimiter)) {
+      while (possibleReturnValue.endsWith(trimmedDelimiter)) {
         possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
       }
 
@@ -713,7 +708,7 @@ public without sharing abstract class RollupCalculator {
     public override void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if(newVal == null) {
+      if (newVal == null) {
         newVal = ''; // this.stringVal.contains throws for null, below
       }
       String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
@@ -724,7 +719,7 @@ public without sharing abstract class RollupCalculator {
 
     public override void handleDeleteConcat(SObject calcItem) {
       String existingVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if(existingVal == null) {
+      if (existingVal == null) {
         return;
       }
       this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
