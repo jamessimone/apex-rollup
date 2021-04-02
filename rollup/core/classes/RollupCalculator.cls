@@ -900,8 +900,9 @@ public without sharing abstract class RollupCalculator {
       }
       SObjectType sObjectType = calcItems[0].getSObjectType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+      Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField };
       // a full-recalc is always necessary because we don't retain the information about the order by field
-      calcItems.addAll(Database.query(Rollup.getQueryString(sObjectType, new List<String>{ String.valueOf(this.opFieldOnCalcItem) }, 'Id', '!=')));
+      calcItems.addAll(Database.query(Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=')));
 
       new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
       this.returnVal = calcItems[0].get(this.opFieldOnCalcItem);
