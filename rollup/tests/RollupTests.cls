@@ -1483,6 +1483,43 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldRollupFirstLastWithQueriedOrderBy() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(CloseDate = System.today(), Name = 'QueriedOrderBy', Amount = 10, AccountId = acc.Id, StageName = 'Order By');
+    Opportunity secondOpp = opp.clone();
+    secondOpp.Name = 'ZZZZZZZ';
+    List<Opportunity> opps = new List<Opportunity>{ opp, secondOpp };
+    insert opps;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'FIRST',
+        CalcItem__c = 'Opportunity',
+        OrderByFirstLast__c = 'Name'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Rollup.records = opps;
+    Rollup.shouldRun = true;
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated FIRST AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(opp.Amount, updatedAcc.AnnualRevenue, 'FIRST AFTER_INSERT should correctly order by!');
+  }
+
+  @isTest
   static void shouldPassRecalcValueForAverage() {
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
