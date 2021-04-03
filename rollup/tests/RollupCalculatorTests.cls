@@ -142,6 +142,31 @@ private class RollupCalculatorTests {
   }
 
   @isTest
+  static void shouldReturnFirstValueWhenMiddleAndLastAreNull() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.FIRST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 1, CloseDate = System.today()),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 2),
+        new Opportunity(Id = '0066g00003VDGbF003', Amount = 15)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(1, (Decimal) calc.getReturnValue());
+  }
+
+  @isTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -367,27 +392,6 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldConcatenateProperlyToMultiSelectPicklist() {
-    Rollup__mdt metadata = new Rollup__mdt();
-    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
-      '',
-      Rollup.Op.MIN,
-      QuickText.Channel,
-      Opportunity.Name,
-      metadata,
-      Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
-      QuickText.Name
-    );
-
-    calc.performRollup(
-      new List<QuickText>{ new QuickText(Channel = 'A;C'), new QuickText(Channel = 'A;B'), new QuickText(Channel = 'A;B;C'), new QuickText(Channel = 'B;A') },
-      new Map<Id, SObject>()
-    );
-
-    System.assert(false, calc.getReturnValue());
-  }
-
-  @isTest
-  static void shouldMinOnMultiSelectPicklist() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       '',
       Rollup.Op.CONCAT,
@@ -407,6 +411,38 @@ private class RollupCalculatorTests {
       },
       new Map<Id, SObject>()
     );
+
+    System.assertEquals('Hello;World, I know;And;SSK', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
+  }
+
+  @isTest
+  static void shouldMinOnMultiSelectPicklist() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      '',
+      Rollup.Op.MIN,
+      QuickText.Channel,
+      Opportunity.Name,
+      metadata,
+      Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      QuickText.Name
+    );
+
+    List<Schema.PicklistEntry> picklistVals = QuickText.Channel.getDescribe().getPicklistValues();
+    if (picklistVals.size() < 3) {
+      return;
+    }
+
+    String firstVal = picklistVals[0].getValue();
+    String secondVal = picklistVals[1].getValue();
+    String thirdVal = picklistVals[2].getValue();
+
+    calc.performRollup(
+      new List<QuickText>{ new QuickText(Channel = firstVal + ';' + secondVal), new QuickText(Channel = secondVal + ';' + thirdVal) },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(firstVal + ';' + secondVal, calc.getReturnValue(), 'Min should take first entries for multi-select picklists');
   }
 
   // MIN / MAX
