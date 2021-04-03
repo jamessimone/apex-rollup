@@ -404,6 +404,11 @@ private class RollupEvaluatorTests {
     assertExceptionContains('Amount > (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
   }
 
+  @isTest
+  static void shouldThrowExceptionForMultipleValuesWithLessThan() {
+    assertExceptionContains('Amount < (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
+  }
+
   private static void assertExceptionContains(String whereClause, String expectedException, Opportunity opp) {
     Exception ex;
 
