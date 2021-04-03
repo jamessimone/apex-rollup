@@ -394,6 +394,30 @@ private class RollupEvaluatorTests {
     System.assertEquals(new List<String>(), eval.getRelationshipFieldNames());
   }
 
+  @isTest
+  static void shouldThrowExceptionForImproperlyEnteredWhereClause() {
+    assertExceptionContains('= 1', 'Where clause entered incorrectly', null);
+  }
+
+  @isTest
+  static void shouldThrowExceptionForMultipleValuesWithGreaterThan() {
+    assertExceptionContains('Amount > (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
+  }
+
+  private static void assertExceptionContains(String whereClause, String expectedException, Opportunity opp) {
+    Exception ex;
+
+    try {
+      RollupEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+      eval.matches(opp);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertNotEquals(null, ex);
+    System.assertEquals(true, ex.getMessage().contains(expectedException));
+  }
+
   private class AlwaysTrueEval implements Rollup.Evaluator {
     public Boolean matches(Object calcItem) {
       return true;

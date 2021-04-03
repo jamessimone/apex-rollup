@@ -44,9 +44,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private static RollupEvaluator getChangedFieldEval(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems) {
-    List<String> changedFieldNames = String.isNotBlank(rollupMetadata.ChangedFieldsOnCalcItem__c)
-      ? rollupMetadata.ChangedFieldsOnCalcItem__c.split(',')
-      : new List<String>();
+    List<String> changedFieldNames = rollupMetadata.ChangedFieldsOnCalcItem__c.split(',');
     if (String.isNotBlank(rollupMetadata.LookupFieldOnCalcItem__c) && oldCalcItems.isEmpty() == false) {
       // detect reparenting
       changedFieldNames.add(rollupMetadata.LookupFieldOnCalcItem__c);
@@ -102,10 +100,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final Set<String> validRelationshipNames;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
+      whereClause = whereClause == null ? '' : whereClause;
       this.originalWhereClause = whereClause;
-      if (whereClause == null) {
-        whereClause = '';
-      }
+
       for (String conditionKey : CONDITION_MAP.keySet()) {
         whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
       }
@@ -118,26 +115,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<String> fieldNames = new List<String>();
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
-          if (fieldNames.contains(condition.fieldName) == false) {
-            if (condition.fieldName.contains('__c.') == false && this.validRelationshipNames.contains(condition.fieldName.substringBefore('.'))) {
-              fieldNames.add(condition.fieldName);
-            }
-            if (condition.fieldName.contains('.')) {
-              List<String> relationshipNames = condition.fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
-              String priorVal = '';
-              for (String relationshipName : relationshipNames) {
-                if(String.isBlank(priorVal) && this.validRelationshipNames.contains(relationshipName) == false) {
-                  continue;
-                  // it's the first run, don't keep going if the relationship name doesn't exist
-                } else if (String.isNotBlank(priorVal)) {
-                  priorVal += '.';
-                }
-                priorVal += relationshipName.replace('__c', '__r').trim();
-              }
-              if (String.isNotBlank(priorVal) && fieldNames.contains(priorVal) == false) {
-                fieldNames.add(priorVal);
-              }
-            }
+          if (
+            fieldNames.contains(condition.fieldName) == false &&
+            condition.fieldName.contains('__c.') == false &&
+            this.validRelationshipNames.contains(condition.fieldName.substringBefore('.'))
+          ) {
+            fieldNames.add(condition.fieldName);
           }
         }
       }
@@ -160,15 +143,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private Set<String> getValidRelationshipNames(SObjectType sObjectType) {
-      Set<String> validRelationshipNames = new Set<String>();
+      Set<String> localRelationshipNames = new Set<String>();
       List<SObjectField> fields = sObjectType.getDescribe().fields.getMap().values();
-      for(SObjectField field : fields) {
+      for (SObjectField field : fields) {
         String relationshipName = field.getDescribe().getRelationshipName();
-        if(String.isNotBlank(relationshipName)) {
-          validRelationshipNames.add(relationshipName);
+        if (String.isNotBlank(relationshipName)) {
+          localRelationshipNames.add(relationshipName);
         }
       }
-      return validRelationshipNames;
+      return localRelationshipNames;
     }
 
     private void createConditions(SObjectType calcItemSObjectType) {
@@ -488,17 +471,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       }
       return isEqual;
-    }
-
-    public override String toString() {
-      String baseString = this.fieldName + ' ' + this.criteria + ' ';
-      baseString += this.originalValues.size() == 1 ? '' : '(';
-      for (String val : this.originalValues) {
-        String escapedVal = '\'' + val + '\'';
-        baseString += this.originalValues.indexOf(val) > 0 ? ', ' + escapedVal : escapedVal;
-      }
-      baseString += this.originalValues.size() == 1 ? '' : ')';
-      return baseString;
     }
 
     private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
