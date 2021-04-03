@@ -142,6 +142,31 @@ private class RollupCalculatorTests {
   }
 
   @isTest
+  static void shouldReturnFirstValueWhenMiddleAndLastAreNull() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.FIRST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 1, CloseDate = System.today()),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 2),
+        new Opportunity(Id = '0066g00003VDGbF003', Amount = 15)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(1, (Decimal) calc.getReturnValue());
+  }
+
+  @isTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -290,6 +315,31 @@ private class RollupCalculatorTests {
     System.assertEquals(16, (Decimal) calc.getReturnValue());
   }
 
+  @isTest
+  static void regressionShouldRollupFirstLastWithQueriedOrderBy() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.FIRST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, Name = 'b'),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 16, Name = 'a'),
+        new Opportunity(Id = '0066g00003VDGbF003', Amount = 1, Name = 'c')
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(16, (Decimal) calc.getReturnValue());
+  }
+
   // AVERAGE tests
 
   @isTest
@@ -302,7 +352,7 @@ private class RollupCalculatorTests {
       Account.AnnualRevenue,
       metadata,
       '0011g00003VDGbF002',
-      Account.Id
+      Opportunity.Id
     );
 
     calc.performRollup(
@@ -318,17 +368,36 @@ private class RollupCalculatorTests {
     System.assertEquals(1, (Decimal) calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
   }
 
+  // COUNT tests
+
+  @isTest
+  static void shouldReturnNewValOnCountChangeIfReparenting() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.UPDATE_COUNT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Opportunity.Id
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ opp.Id => new Opportunity(AccountId = '0016g00003VDGbF002', Amount = 1) });
+
+    System.assertEquals(opp.Amount, (Decimal) calc.getReturnValue(), 'New value should be returned on reparenting update!');
+  }
+
   // PICKLIST tests
 
   @isTest
   static void shouldConcatenateProperlyToMultiSelectPicklist() {
-    Rollup__mdt metadata = new Rollup__mdt();
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       '',
       Rollup.Op.CONCAT,
       Opportunity.Name,
       QuickText.Channel,
-      metadata,
+      new Rollup__mdt(),
       QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
       QuickText.Name
     );
@@ -344,5 +413,142 @@ private class RollupCalculatorTests {
     );
 
     System.assertEquals('Hello;World, I know;And;SSK', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
+  }
+
+  @isTest
+  static void shouldMinOnMultiSelectPicklist() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      '',
+      Rollup.Op.MIN,
+      QuickText.Channel,
+      Opportunity.Name,
+      metadata,
+      Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      QuickText.Name
+    );
+
+    List<Schema.PicklistEntry> picklistVals = QuickText.Channel.getDescribe().getPicklistValues();
+    if (picklistVals.size() < 3) {
+      return;
+    }
+
+    String firstVal = picklistVals[0].getValue();
+    String secondVal = picklistVals[1].getValue();
+    String thirdVal = picklistVals[2].getValue();
+
+    calc.performRollup(
+      new List<QuickText>{ new QuickText(Channel = firstVal + ';' + secondVal), new QuickText(Channel = secondVal + ';' + thirdVal) },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(firstVal + ';' + secondVal, calc.getReturnValue(), 'Min should take first entries for multi-select picklists');
+  }
+
+  // MIN / MAX
+
+  @isTest
+  static void shouldDefaultToMaxNumberOnMinIfNoMatchingItems() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    Date today = System.today();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      today,
+      Rollup.Op.UPDATE_MIN,
+      Task.ActivityDate, // not a "MIN"-able field in SOQL; crucial for this test
+      QuickText.Channel,
+      metadata,
+      QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      Task.WhatId
+    );
+
+    // the important things here: the current date is greater than both the passed in date (the "current" value on the lookup object)
+    // AND that the "current" value matches what's on the old item
+    Task t = new Task(ActivityDate = today.addDays(1), Id = Task.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12));
+
+    calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
+
+    Datetime expectedDt = Datetime.newInstance(RollupFieldInitializer.Current.maximumLongValue);
+
+    System.assertEquals(
+      Datetime.newInstanceGmt(expectedDt.yearGmt(), expectedDt.monthGmt(), expectedDt.dayGmt(), 0, 0, 0),
+      calc.getReturnValue(),
+      'Should have hours/minutes/seconds lopped off since we are operating on a Date field'
+    );
+  }
+
+  @isTest
+  static void shouldDefaultToMinNumberOnMaxIfNoMatchingItems() {
+    Rollup__mdt metadata = new Rollup__mdt();
+    Date today = System.today();
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      today,
+      Rollup.Op.UPDATE_MAX,
+      Task.ActivityDate, // not a "MAX"-able field in SOQL; crucial for this test
+      QuickText.Channel,
+      metadata,
+      QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      Task.WhatId
+    );
+
+    // the important things here: the current date is less than both the passed in date (the "current" value on the lookup object)
+    // AND that the "current" value matches what's on the old item
+    Task t = new Task(ActivityDate = today.addDays(-1), Id = Task.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12));
+
+    calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
+
+    Datetime expectedDt = Datetime.newInstance(RollupFieldInitializer.Current.minimumLongValue);
+
+    System.assertEquals(
+      Datetime.newInstanceGmt(expectedDt.yearGmt(), expectedDt.monthGmt(), expectedDt.dayGmt(), 0, 0, 0),
+      calc.getReturnValue(),
+      'Should have hours/minutes/seconds lopped off since we are operating on a Date field'
+    );
+  }
+
+  // Factory tests
+
+  @isTest
+  static void shouldThrowExceptionIfTypeNotSupported() {
+    Exception ex;
+
+    try {
+      RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+        Blob.valueOf(''), // unsupported type
+        Rollup.Op.CONCAT,
+        Opportunity.Name,
+        QuickText.Channel,
+        new Rollup__mdt(),
+        QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+        QuickText.Name
+      );
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertNotEquals(null, ex, 'Exception should have been thrown');
+  }
+
+  @isTest
+  static void shouldInvokeNoOpMethodsWithoutFail() {
+    RollupCalculator calc = new RollupCalcEmptyMock();
+    calc.handleCountDistinct(null);
+    calc.handleUpdateCountDistinct(null, null);
+    calc.handleSumOrCount(null);
+    calc.handleUpdateSumOrCount(null, null);
+    calc.handleDeleteSumOrCount(null);
+    calc.handleMin(null);
+    calc.handleMax(null);
+    calc.handleUpdateMinOrMax(null, null);
+    calc.handleConcat(null);
+    calc.handleUpdateConcat(null, null);
+    calc.handleDeleteConcat(null);
+
+    System.assert(true, 'Should make it here');
+  }
+
+  private class RollupCalcEmptyMock extends RollupCalculator {
+    public RollupCalcEmptyMock() {
+      super(0, Rollup.Op.LAST, null, null, null, null, null);
+    }
   }
 }
