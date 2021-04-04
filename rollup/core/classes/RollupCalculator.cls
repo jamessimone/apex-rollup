@@ -698,7 +698,7 @@ public without sharing abstract class RollupCalculator {
     public override void handleConcat(SObject calcItem) {
       Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (isConcatDistinct && this.stringVal.contains(newVal)) {
+      if (isConcatDistinct && (newVal == null ? false : this.stringVal.contains(newVal))) {
         // skip
       } else {
         this.stringVal += this.concatWithDelimiter(newVal);

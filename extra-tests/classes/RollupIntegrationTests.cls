@@ -373,4 +373,48 @@ private class RollupIntegrationTests {
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup!');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again!');
   }
+
+  @isTest
+  static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
+    Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
+    insert greatGrandparent;
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent NonFiltered', Account__c = greatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Should be filtered grandparent', Account__c = greatGrandparent.Id);
+    insert new List<ParentApplication__c>{ grandParent, secondGrandparent };
+
+    Application__c parent = new Application__c(Name = 'Parent-level NonFiltered', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level filtered', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Should not be appended since application should be filtered');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Should correctly be appended', Application__c = parent.Id);
+    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, secondChild };
+    insert appLogs;
+
+    Rollup.records = appLogs;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ApplicationLog__c',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'Application__c',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name',
+        CalcItemWhereClause__c = 'Application__r.Name != \'' + secondParent.Name + '\' AND Application__r.ParentApplication__r.Name != \'' +  grandParent.Name + '\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    System.assertEquals(greatGrandparent.Name, updatedGreatGrandparent.Name);
+  }
 }

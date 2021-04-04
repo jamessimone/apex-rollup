@@ -12,11 +12,24 @@ public without sharing class RollupRelationshipFieldFinder {
   private final Map<Id, SObject> oldRecords;
   private final Set<String> uniqueFinalFieldNames;
 
+  private String calcItemWhereClause;
   private List<SObject> recommencementRecords;
   private List<SObject> records;
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
   private String currentRelationshipName;
+
+  public RollupRelationshipFieldFinder(
+    RollupControl__mdt rollupControl,
+    String relationshipPathName,
+    Set<String> uniqueFinalFieldNames,
+    SObjectType ultimateParent,
+    Map<Id, SObject> oldRecords,
+    String calcItemWhereClause
+  ) {
+    this(rollupControl, relationshipPathName, uniqueFinalFieldNames, ultimateParent, oldRecords);
+    this.calcItemWhereClause = calcItemWhereClause;
+  }
 
   public RollupRelationshipFieldFinder(
     RollupControl__mdt rollupControl,
@@ -83,6 +96,9 @@ public without sharing class RollupRelationshipFieldFinder {
       }
       for (SObject record : this.finder.records) {
         SObject parentRecord = this.retrieveParent(record.Id);
+        if (parentRecord == null) {
+          continue;
+        }
         if (parentToLookupRecords.containsKey(parentRecord.Id)) {
           parentToLookupRecords.get(parentRecord.Id).add(record);
         } else {
@@ -207,11 +223,18 @@ public without sharing class RollupRelationshipFieldFinder {
     this.recommencementRecords = records;
     this.currentRelationshipName = this.relationshipParts.remove(0);
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
-    SObjectField field = this.getField(fieldMap, currentRelationshipName);
+    SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
+
+    // TODO - "replace" is a little too eager if there are additional query criteria.
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, baseSObjectType);
+    this.calcItemWhereClause = this.calcItemWhereClause.replace(this.currentRelationshipName + '.', '');
 
     Set<Id> lookupIds = new Set<Id>();
     Id firstId;
     for (SObject record : records) {
+      if(eval.matches(record) == false) {
+        continue;
+      }
       Id lookupId = (Id) record.get(field);
       if (firstId == null) {
         firstId = lookupId;
@@ -258,7 +281,8 @@ public without sharing class RollupRelationshipFieldFinder {
     String nextFieldToLookup = this.relationshipParts[0].replace('__r', '__c');
     SObjectType nextSObjectType = firstId.getSObjectType();
     SObjectField nextFieldToken = this.getField(nextSObjectType.getDescribe().fields.getMap(), nextFieldToLookup);
-    List<String> fieldNames = new List<String>();
+    Set<String> fieldNames = new Set<String>();
+
     if (nextSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalFieldNames);
     } else {
@@ -267,8 +291,15 @@ public without sharing class RollupRelationshipFieldFinder {
     if (fieldNames.contains('Id') == false) {
       fieldNames.add('Id');
     }
+
+    List<String> potentialRelationshipFields = eval.getRelationshipFieldNames();
+    for (String potentialRelationshipField : potentialRelationshipFields) {
+      fieldNames.add(potentialRelationshipField.replace(this.currentRelationshipName + '.', ''));
+    }
+
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
-    String query = 'SELECT ' + String.join(fieldNames, ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
+    String query = 'SELECT ' + String.join(new List<String>(fieldNames), ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
+    System.debug(query);
     // recurse through till we get to the top/bottom of the chain
     if (this.isFirstRun) {
       this.records = records;

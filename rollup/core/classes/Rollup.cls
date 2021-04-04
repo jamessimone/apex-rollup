@@ -2171,7 +2171,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             rollup.metadata.GrandparentRelationshipFieldPath__c,
             uniqueQueryFieldNames,
             rollup.lookupObj,
-            rollup.oldCalcItems
+            rollup.oldCalcItems,
+            rollup.metadata.CalcItemWhereClause__c
           )
           .getParents(rollup.calcItems);
       } else if (rollup.traversal?.getIsFinished() == false) {
