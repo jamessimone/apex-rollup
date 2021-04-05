@@ -98,6 +98,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final String whereClause;
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
+    private final List<String> splitWheres;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause;
@@ -107,8 +108,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
       }
       this.whereClause = whereClause;
-      this.createConditions(calcItemSObjectType);
+      this.splitWheres = this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
+    }
+
+    public List<String> getWhereClauses() {
+      return new List<String>(this.splitWheres);
     }
 
     public List<String> getRelationshipFieldNames() {
@@ -154,10 +159,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return localRelationshipNames;
     }
 
-    private void createConditions(SObjectType calcItemSObjectType) {
-      List<String> splitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
+    private List<String> createConditions(SObjectType calcItemSObjectType) {
+      List<String> localSplitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
       try {
-        for (String splitWhereClause : splitWheres) {
+        for (String splitWhereClause : localSplitWheres) {
           List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
           if (this.isOrConditional(this.whereClause, splitWhereClause)) {
             this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
@@ -169,6 +174,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         this.logError(ex);
         throw new IllegalArgumentException('Where clause entered incorrectly: ' + whereClause);
       }
+      return localSplitWheres;
     }
 
     private List<String> getSoqlWhereClauses(String whereClause, SObjectType calcItemSObjectType) {

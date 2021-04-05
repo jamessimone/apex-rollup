@@ -389,7 +389,8 @@ private class RollupIntegrationTests {
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Should not be appended since application should be filtered');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Should correctly be appended', Application__c = parent.Id);
-    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, secondChild };
+    ApplicationLog__c nonMatchChild = new ApplicationLog__c(Name = 'nonmatch', Application__c = parent.Id);
+    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, secondChild, nonMatchChild };
     insert appLogs;
 
     Rollup.records = appLogs;
@@ -403,12 +404,17 @@ private class RollupIntegrationTests {
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'CONCAT_DISTINCT',
         GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name',
-        CalcItemWhereClause__c = 'Application__r.Name != \'' + secondParent.Name + '\' AND Application__r.ParentApplication__r.Name != \'' +  grandParent.Name + '\''
+        CalcItemWhereClause__c = 'Application__r.Name != \'' +
+          secondParent.Name +
+          '\' AND Application__r.ParentApplication__r.Name != \'' +
+          grandParent.Name +
+          '\' AND Name != \'' +
+          nonMatchChild.Name +
+          '\''
       )
     };
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-
 
     Test.startTest();
     Rollup.runFromTrigger();

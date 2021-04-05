@@ -5,12 +5,15 @@
  * rollup are likely operating using lookups anyway
  */
 public without sharing class RollupRelationshipFieldFinder {
+  private static final String BASE_FIELD_KEY = 'BaseField';
+
   private final List<String> originalParts;
   private final Traversal traversal;
   private final SObjectType ultimateParent;
   private final RollupControl__mdt rollupControl;
   private final Map<Id, SObject> oldRecords;
   private final Set<String> uniqueFinalFieldNames;
+  private final Map<String, List<String>> relationshipNameToWhereClauses;
 
   private String calcItemWhereClause;
   private List<SObject> recommencementRecords;
@@ -49,6 +52,7 @@ public without sharing class RollupRelationshipFieldFinder {
       this.relationshipParts.add(0, ultimateParent.getDescribe().getName());
     }
     this.originalParts = new List<String>(this.relationshipParts);
+    this.relationshipNameToWhereClauses = new Map<String, List<String>>();
   }
 
   private class CombinedHierarchy {
@@ -173,7 +177,38 @@ public without sharing class RollupRelationshipFieldFinder {
       this.prepFinishedObject(records);
       return this.traversal;
     } else {
+      this.populateRelationshipNameToWhereClauses(baseSObjectType);
+      // re-create an eval specifically for the base relationship to winnow matching records
       return this.recurseThroughObjectChain(records, baseSObjectType);
+    }
+  }
+
+  private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, sObjectType);
+    for (String whereClause : eval.getWhereClauses()) {
+      List<String> splitWhereClause = whereClause.split(' ');
+      String key;
+      if (splitWhereClause.size() > 1) {
+        String fieldName = splitWhereClause[0];
+        // it's a base field; the filtering has already been done for base fields, so we only need to do relationship ones
+        if (fieldName.contains('.')) {
+          key = BASE_FIELD_KEY;
+          // the relationship name is the string immediately preceeding the last period
+          List<String> relationshipNames = fieldName.split('\\.');
+          Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
+          key = relationshipNames[keyIndex];
+        }
+      }
+      if (key != null) {
+        // the +1 is for the period following the key
+        String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
+
+        if (this.relationshipNameToWhereClauses.containsKey(key)) {
+          this.relationshipNameToWhereClauses.get(key).add(whereClauseForRelation);
+        } else {
+          this.relationshipNameToWhereClauses.put(key, new List<String>{ whereClauseForRelation });
+        }
+      }
     }
   }
 
@@ -225,14 +260,18 @@ public without sharing class RollupRelationshipFieldFinder {
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
 
-    // TODO - "replace" is a little too eager if there are additional query criteria.
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, baseSObjectType);
-    this.calcItemWhereClause = this.calcItemWhereClause.replace(this.currentRelationshipName + '.', '');
+    RollupEvaluator.WhereFieldEvaluator eval;
+    if (this.isFirstRun) {
+      eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, baseSObjectType);
+      for (String whereClausePart : eval.getWhereClauses()) {
+      }
+    }
 
     Set<Id> lookupIds = new Set<Id>();
     Id firstId;
     for (SObject record : records) {
-      if(eval.matches(record) == false) {
+      // we only need to matches the first run through; the rest will be filtered via SOQL
+      if (this.isFirstRun && eval?.matches(record) == false) {
         continue;
       }
       Id lookupId = (Id) record.get(field);
@@ -292,14 +331,27 @@ public without sharing class RollupRelationshipFieldFinder {
       fieldNames.add('Id');
     }
 
-    List<String> potentialRelationshipFields = eval.getRelationshipFieldNames();
-    for (String potentialRelationshipField : potentialRelationshipFields) {
-      fieldNames.add(potentialRelationshipField.replace(this.currentRelationshipName + '.', ''));
-    }
-
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
     String query = 'SELECT ' + String.join(new List<String>(fieldNames), ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
-    System.debug(query);
+
+    // for calc item where clauses, try to append the conditions sensibly
+    List<String> whereClauses = this.relationshipNameToWhereClauses.containsKey(this.currentRelationshipName)
+      ? this.relationshipNameToWhereClauses.get(this.currentRelationshipName)
+      : new List<String>();
+
+    for (Integer index = 0; index < whereClauses.size(); index++) {
+      if (index == 0) {
+        query += ' AND ';
+      }
+      String whereClause = whereClauses[index];
+      Boolean isOr = index > 0 && this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ' or ') >= 0;
+      if (isOr) {
+        query += ' OR ' + whereClause;
+      } else {
+        query += (index != 0 ? ' AND ' : '') + whereClause;
+      }
+    }
+
     // recurse through till we get to the top/bottom of the chain
     if (this.isFirstRun) {
       this.records = records;
