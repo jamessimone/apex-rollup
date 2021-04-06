@@ -438,7 +438,9 @@ private class RollupIntegrationTests {
     List<Task> tasks = new List<Task>{ matchingTask, nonMatchingTask };
     insert tasks;
 
-    Rollup.records = [SELECT Id, WhatId, What.Type, Subject FROM Task];
+    // things like What.Type aren't included by default in updates made within Triggers/Flows
+    // specifically NOT requerying here validates that Rollup can handle a polymorphic where clause
+    Rollup.records = tasks;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Task',

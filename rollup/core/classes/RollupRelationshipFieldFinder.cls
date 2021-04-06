@@ -175,43 +175,7 @@ public without sharing class RollupRelationshipFieldFinder {
       this.prepFinishedObject(records);
       return this.traversal;
     } else {
-      this.populateRelationshipNameToWhereClauses(baseSObjectType);
       return this.recurseThroughObjectChain(records, baseSObjectType);
-    }
-  }
-
-  private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
-    Boolean hasPolyMorphicFields = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, sObjectType);
-    for (String whereClause : eval.getWhereClauses()) {
-      // each where clause should begin with the field name:
-      // "AccountId = 'someId'" - so by splitting on the space,
-      // we would get the AccountId, for example
-      List<String> splitWhereClause = whereClause.split(' ');
-      String key;
-      if (splitWhereClause.size() > 1) {
-        String fieldName = splitWhereClause[0];
-        // common polymorphic lookup fields are avoided here because we have to assume the filtering for the base SObject has occurred further upstream
-        // TODO - remove this in favor of re-querying base objects with the polymorphic lookups populated in Rollup
-        Boolean isPolyMorphic = hasPolyMorphicFields && (fieldName == 'What.Type' || fieldName == 'Who.Type' || fieldName == 'Owner.Type');
-        // the filtering has already been done for base fields, so we only need to do relationship ones
-        if (fieldName.contains('.') && isPolyMorphic == false) {
-          // the relationship name is the string immediately preceeding the last period
-          List<String> relationshipNames = fieldName.split('\\.');
-          Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
-          key = relationshipNames[keyIndex];
-        }
-      }
-      if (key != null) {
-        // the +1 is for the period following the key
-        String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
-
-        if (this.relationshipNameToWhereClauses.containsKey(key)) {
-          this.relationshipNameToWhereClauses.get(key).add(whereClauseForRelation);
-        } else {
-          this.relationshipNameToWhereClauses.put(key, new List<String>{ whereClauseForRelation });
-        }
-      }
     }
   }
 
@@ -257,6 +221,8 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
+    this.populateRelationshipNameToWhereClauses(baseSObjectType);
+
     // cache the latest records through in case we need to continue later
     this.recommencementRecords = records;
     this.currentRelationshipName = this.relationshipParts.remove(0);
@@ -334,6 +300,37 @@ public without sharing class RollupRelationshipFieldFinder {
       this.isFirstRun = false;
     }
     return this.getParents(Database.query(query));
+  }
+
+  private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, sObjectType);
+    for (String whereClause : eval.getWhereClauses()) {
+      // each where clause should begin with the field name:
+      // "AccountId = 'someId'" - so by splitting on the space,
+      // we would get the AccountId, for example
+      List<String> splitWhereClause = whereClause.split(' ');
+      String key;
+      if (splitWhereClause.size() > 1) {
+        String fieldName = splitWhereClause[0];
+        // the filtering has already been done for base fields, so we only need to do relationship ones
+        if (fieldName.contains('.')) {
+          // the relationship name is the string immediately preceeding the last period
+          List<String> relationshipNames = fieldName.split('\\.');
+          Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
+          key = relationshipNames[keyIndex];
+        }
+      }
+      if (key != null) {
+        // the +1 is for the period following the key
+        String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
+
+        if (this.relationshipNameToWhereClauses.containsKey(key)) {
+          this.relationshipNameToWhereClauses.get(key).add(whereClauseForRelation);
+        } else {
+          this.relationshipNameToWhereClauses.put(key, new List<String>{ whereClauseForRelation });
+        }
+      }
+    }
   }
 
   private String appendAdditionalWhereClauses(String query, String relationshipName, Map<String, SObjectField> fieldMap) {

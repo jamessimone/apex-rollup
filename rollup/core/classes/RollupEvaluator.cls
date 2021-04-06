@@ -178,11 +178,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private List<String> getSoqlWhereClauses(String whereClause, SObjectType calcItemSObjectType) {
-      List<String> splitWheres = whereClause.split('( and | AND | OR | or )');
-      this.reconstructImproperlySplitClauses(splitWheres);
-      this.recurseForNestedConditionals(splitwheres, calcItemSObjectType);
+      List<String> localSplitWheres = whereClause.split('( and | AND | OR | or )');
+      this.reconstructImproperlySplitClauses(localSplitWheres);
+      this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType);
 
-      return splitWheres;
+      return localSplitWheres;
     }
 
     private void reconstructImproperlySplitClauses(List<String> splitWheres) {

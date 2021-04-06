@@ -2133,8 +2133,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
     List<SObject> applicableItems = new List<SObject>();
-    if (calcItems == null) {
+    if (calcItems == null || calcItems.isEmpty()) {
       return applicableItems;
+    } else {
+      calcItems = this.replaceCalcItemsForPolymorphicWhereClause(rollupMetadata, calcItems);
     }
     for (SObject calcItem : calcItems) {
       if (eval == null || eval.matches(calcItem)) {
@@ -2143,11 +2145,74 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
         applicableItems.add(calcItem);
-      } else if (rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name())) {
+      } else if (rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name()) == true) {
         applicableItems.add(calcItem);
       }
     }
     return applicableItems;
+  }
+
+  private List<SObject> replaceCalcItemsForPolymorphicWhereClause(Rollup__mdt rollupMetadata, List<SObject> calcItems) {
+    final String whatType = 'What.Type';
+    final String whoType = 'Who.Type';
+    final String ownerType = 'Owner.Type';
+
+    // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
+    SObjectType sObjectType = calcItems[0].getSObjectType();
+    Boolean hasPolyMorphicFields = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
+    SObject firstItem = calcItems[0];
+    if (String.isBlank(rollupMetadata?.CalcItemWhereClause__c)) {
+      return calcItems;
+    } else if (hasPolyMorphicFields) {
+      Boolean hasWhatClause = rollupMetadata.CalcItemWhereClause__c.contains(whatType);
+      Boolean hasWhoClause = rollupMetadata.CalcItemWhereClause__c.contains(whoType);
+      Boolean hasOwnerClause = rollupMetadata.CalcItemWhereClause__c.contains(ownerType);
+
+      if (hasWhatClause == false && hasWhoClause == false && hasOwnerClause == false) {
+        return calcItems;
+      }
+
+      // the calc item where clause contains at least one polymorphic field, but before re-querying we validate whether or not the fields are already provided
+      Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
+      Boolean alreadyHasFields = true;
+      List<String> additionalQueryFields = new List<String>();
+      if (hasWhatClause) {
+        alreadyHasFields = populatedFields.containsKey('What');
+        additionalQueryFields.add(whatType);
+      }
+      if (hasWhoClause) {
+        alreadyHasFields = alreadyHasFields && populatedFields.containsKey('Who');
+        additionalQueryFields.add(whoType);
+      }
+      if (hasOwnerClause) {
+        alreadyHasFields = alreadyHasFields && populatedFields.containsKey('Owner');
+        additionalQueryFields.add(ownerType);
+      }
+      if (alreadyHasFields) {
+        // hooray! we can early return without re-querying
+        return calcItems;
+      } else {
+        RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+        List<String> optionalWhereClauses = new List<String>();
+        for (String whereClause : whereEval.getWhereClauses()) {
+          // "consume" the metadata where clause
+          if (whereClause.contains(whatType) || whereClause.contains(whoType) || whereClause.contains(ownerType)) {
+            rollupMetadata.CalcItemWhereClause__c = rollupMetadata.CalcItemWhereClause__c.replace(whereClause, '');
+            optionalWhereClauses.add(whereClause);
+          }
+        }
+        additionalQueryFields.addAll(populatedFields.keySet());
+        String queryString = getQueryString(sObjectType, additionalQueryFields, 'Id', '=', String.join(optionalWhereClauses, ' AND '));
+        List<String> objIds = new List<String>();
+        for (SObject record : calcItems) {
+          if (String.isNotBlank(record.Id)) {
+            objIds.add(record.Id);
+          }
+        }
+        calcItems = Database.query(queryString);
+      }
+    }
+    return calcItems;
   }
 
   private void getFieldNamesForRollups(List<Rollup> rollups) {
