@@ -495,6 +495,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
+      System.debug(item);
       List<String> fieldNameParts = fieldPath.split(RELATIONSHIP_FIELD_DELIMITER);
       // here, we pop fields off the front of the list because for tertiary+ object relationships (eg Owner.Profile.Name)
       // we need to recurse till the value itself can be captured

@@ -423,4 +423,43 @@ private class RollupIntegrationTests {
     Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
     System.assertEquals(greatGrandparent.Name, updatedGreatGrandparent.Name);
   }
+
+  @isTest
+  static void shouldProperlyFilterPolymorphicFields() {
+    Account acc = new Account(Name = 'Matching type');
+    Case cas = new Case();
+    insert new List<SObject>{ acc, cas };
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp');
+    insert opp;
+
+    Task matchingTask = new Task(ActivityDate = System.today(), WhatId = opp.Id, Subject = 'Match');
+    Task nonMatchingTask = new Task(ActivityDate = System.today(), WhatId = cas.Id, Subject = 'Non match');
+    List<Task> tasks = new List<Task>{ matchingTask, nonMatchingTask };
+    insert tasks;
+
+    Rollup.records = [SELECT Id, WhatId, What.Type, Subject FROM Task];
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'What.Account.Name',
+        CalcItemWhereClause__c = 'What.Type = \'Opportunity\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(acc.Name + ', ' + matchingTask.Subject, updatedAcc.Name);
+  }
 }

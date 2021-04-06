@@ -2059,7 +2059,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
-      if (rollup.traversal != null && rollup.traversal.getIsFinished() == false) {
+      if (rollup.traversal?.getIsFinished() == false) {
         this.deferredRollups.add(rollup);
         continue;
       } else if (rollup.traversal != null && grandparentRollups.containsKey(rollup.lookupObj) == false) {

@@ -74,7 +74,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     public Boolean getIsFinished() {
-      return this.isFinished;
+      return this.isFinished || this.isAbortedEarly;
     }
 
     public SObject retrieveParent(Id descendantId) {
@@ -186,11 +186,14 @@ public without sharing class RollupRelationshipFieldFinder {
   private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, sObjectType);
     for (String whereClause : eval.getWhereClauses()) {
+      // each where clause should begin with the field name:
+      // "AccountId = 'someId'" - so by splitting on the space,
+      // we would get the AccountId, for example
       List<String> splitWhereClause = whereClause.split(' ');
       String key;
       if (splitWhereClause.size() > 1) {
         String fieldName = splitWhereClause[0];
-        // it's a base field; the filtering has already been done for base fields, so we only need to do relationship ones
+        // the filtering has already been done for base fields, so we only need to do relationship ones
         if (fieldName.contains('.')) {
           key = BASE_FIELD_KEY;
           // the relationship name is the string immediately preceeding the last period
@@ -260,20 +263,9 @@ public without sharing class RollupRelationshipFieldFinder {
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
 
-    RollupEvaluator.WhereFieldEvaluator eval;
-    if (this.isFirstRun) {
-      eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, baseSObjectType);
-      for (String whereClausePart : eval.getWhereClauses()) {
-      }
-    }
-
     Set<Id> lookupIds = new Set<Id>();
     Id firstId;
     for (SObject record : records) {
-      // we only need to matches the first run through; the rest will be filtered via SOQL
-      if (this.isFirstRun && eval?.matches(record) == false) {
-        continue;
-      }
       Id lookupId = (Id) record.get(field);
       if (firstId == null) {
         firstId = lookupId;
@@ -320,8 +312,8 @@ public without sharing class RollupRelationshipFieldFinder {
     String nextFieldToLookup = this.relationshipParts[0].replace('__r', '__c');
     SObjectType nextSObjectType = firstId.getSObjectType();
     SObjectField nextFieldToken = this.getField(nextSObjectType.getDescribe().fields.getMap(), nextFieldToLookup);
-    Set<String> fieldNames = new Set<String>();
 
+    Set<String> fieldNames = new Set<String>();
     if (nextSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalFieldNames);
     } else {
@@ -351,6 +343,7 @@ public without sharing class RollupRelationshipFieldFinder {
         query += (index != 0 ? ' AND ' : '') + whereClause;
       }
     }
+    System.debug(query);
 
     // recurse through till we get to the top/bottom of the chain
     if (this.isFirstRun) {
