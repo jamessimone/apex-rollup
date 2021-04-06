@@ -2158,9 +2158,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     final String ownerType = 'Owner.Type';
 
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
-    SObjectType sObjectType = calcItems[0].getSObjectType();
-    Boolean hasPolyMorphicFields = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
     SObject firstItem = calcItems[0];
+    SObjectType sObjectType = firstItem.getSObjectType();
+    Boolean hasPolyMorphicFields = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
     if (String.isBlank(rollupMetadata?.CalcItemWhereClause__c)) {
       return calcItems;
     } else if (hasPolyMorphicFields) {
