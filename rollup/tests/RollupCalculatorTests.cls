@@ -372,20 +372,46 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnNewValOnCountChangeIfReparenting() {
-    Rollup__mdt metadata = new Rollup__mdt();
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.UPDATE_COUNT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      metadata,
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
-      Opportunity.Id
+      Opportunity.AccountId
     );
     Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = '0016g00003VDGbF001');
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ opp.Id => new Opportunity(AccountId = '0016g00003VDGbF002', Amount = 1) });
 
     System.assertEquals(opp.Amount, (Decimal) calc.getReturnValue(), 'New value should be returned on reparenting update!');
+  }
+
+  // CONCAT tests
+
+  @isTest
+  static void shouldConcatDistinctProperly() {
+    String distinct = 'distinct';
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      distinct,
+      Rollup.Op.CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = distinct, AccountId = '0016g00003VDGbF001');
+    Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
+
+    System.assertEquals(
+      distinct +
+      ', ' +
+      nonDistinctOpp.Name,
+      (String) calc.getReturnValue(),
+      'Value containing original distinct value should also be concatenated'
+    );
   }
 
   // PICKLIST tests

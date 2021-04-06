@@ -488,14 +488,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean hasField = sObjectType.getDescribe().fields.getMap().containsKey(fieldPath);
       if (fieldPath.contains('.') && hasField == false) {
         return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
-      } else if (hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath)) {
+      } else if (hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath) || item.get(fieldPath) == null) {
         return item.get(fieldPath);
       }
       return '';
     }
 
     private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
-      System.debug(item);
       List<String> fieldNameParts = fieldPath.split(RELATIONSHIP_FIELD_DELIMITER);
       // here, we pop fields off the front of the list because for tertiary+ object relationships (eg Owner.Profile.Name)
       // we need to recurse till the value itself can be captured

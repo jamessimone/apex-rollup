@@ -430,7 +430,7 @@ private class RollupIntegrationTests {
     Case cas = new Case();
     insert new List<SObject>{ acc, cas };
 
-    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp');
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp', AccountId = acc.Id);
     insert opp;
 
     Task matchingTask = new Task(ActivityDate = System.today(), WhatId = opp.Id, Subject = 'Match');

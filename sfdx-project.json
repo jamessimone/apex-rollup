@@ -3,7 +3,8 @@
     {
       "path": "rollup",
       "default": true
-    }
+    },
+    {"path": "extra-tests"}
   ],
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",

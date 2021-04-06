@@ -1086,7 +1086,7 @@ private class RollupTests {
   static void shouldConcatDistinctOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
-    acc.AccountNumber = 'beginning test string something';
+    acc.AccountNumber = 'beginning, test string, something';
     update acc;
     Rollup.defaultControl = null;
 
@@ -1103,7 +1103,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      'beginning test string something, hello another string',
+      'beginning, test string, something, hello another string',
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_INSERT should only add unique values'
     );

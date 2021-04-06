@@ -696,23 +696,16 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void handleConcat(SObject calcItem) {
-      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (isConcatDistinct && (newVal == null ? false : this.stringVal.contains(newVal))) {
-        // skip
-      } else {
+      if (this.shouldConcat(newVal)) {
         this.stringVal += this.concatWithDelimiter(newVal);
       }
     }
 
     public override void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
-      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (newVal == null) {
-        newVal = ''; // this.stringVal.contains throws for null, below
-      }
       String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
-      if (isConcatDistinct && this.stringVal.contains(newVal) == false || !isConcatDistinct) {
+      if (this.shouldConcat(newVal)) {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
       }
     }
@@ -731,9 +724,11 @@ public without sharing abstract class RollupCalculator {
         this.stringVal = newVal;
       }
     }
+
     public override void handleMax(SObject calcItem) {
       this.handleMin(calcItem);
     }
+
     public override void handleUpdateMinOrMax(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
@@ -759,6 +754,27 @@ public without sharing abstract class RollupCalculator {
         return newVal < priorVal || String.isBlank(priorVal);
       }
       return false;
+    }
+
+    private Boolean shouldConcat(String newVal) {
+      Boolean shouldConcat = false;
+      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
+      Boolean hasVal = String.isNotBlank(newVal);
+      if (isConcatDistinct == false && hasVal) {
+        shouldConcat = true;
+      } else if (isConcatDistinct && hasVal) {
+        List<String> existingVals = this.stringVal.split(this.concatDelimiter);
+        Boolean matches = false;
+        for (String existingVal : existingVals) {
+          matches = existingVal == newVal;
+          if (matches) {
+            break;
+          }
+        }
+        shouldConcat = matches == false;
+      }
+
+      return shouldConcat;
     }
 
     private String concatWithDelimiter(String newVal) {
