@@ -124,7 +124,7 @@ describe('Rollup force recalc tests', () => {
         calcItemSObjectName: 'Contact',
         operationName: 'CONCAT',
         potentialWhereClause: '',
-        potetialConcatDelimiter: ''
+        potentialConcatDelimiter: ''
       });
     });
   });
