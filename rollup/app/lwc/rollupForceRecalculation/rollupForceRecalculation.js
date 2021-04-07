@@ -16,7 +16,8 @@ export default class RollupForceRecalculation extends LightningElement {
     lookupSObjectName: '',
     calcItemSObjectName: '',
     operationName: '',
-    potentialWhereClause: ''
+    potentialWhereClause: '',
+    potentialConcatDelimiter: ''
   };
   @api isCMDTRecalc = false;
   @api rollupMetadataOptions = [];

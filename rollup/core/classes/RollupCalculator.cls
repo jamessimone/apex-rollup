@@ -94,7 +94,8 @@ public without sharing abstract class RollupCalculator {
           opFieldOnLookupObject,
           metadata.FullRecalculationDefaultStringValue__c,
           lookupRecordKey,
-          lookupKeyField
+          lookupKeyField,
+          metadata.ConcatDelimiter__c
         );
       } else if (priorVal instanceof Date) {
         // not obvious: the order of these else if's is of supreme importance
@@ -657,7 +658,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private virtual class StringRollupCalculator extends RollupCalculator {
-    // hard-coding to comma for now. We may update this to allow for CMDT-based overrides of the delimiter at some point
     protected String concatDelimiter = ', ';
     private String stringVal;
     public StringRollupCalculator(
@@ -667,10 +667,14 @@ public without sharing abstract class RollupCalculator {
       SObjectField opFieldOnLookupObject,
       Object defaultVal,
       String lookupRecordKey,
-      SObjectField lookupKeyField
+      SObjectField lookupKeyField,
+      String customConcatDelimiter
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
       this.stringVal = (String) this.returnVal;
+      if (String.isNotBlank(customConcatDelimiter)) {
+        this.concatDelimiter = customConcatDelimiter + ' ';
+      }
     }
 
     protected override void setReturnValue() {
@@ -803,9 +807,10 @@ public without sharing abstract class RollupCalculator {
       SObjectField opFieldOnLookupObject,
       Object defaultVal,
       String lookupRecordKey,
-      SObjectField lookupKeyField
+      SObjectField lookupKeyField,
+      String customConcatDelimiter
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField, customConcatDelimiter);
       this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
       this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
       if (this.rollupFieldController.isMultiSelectPicklist()) {

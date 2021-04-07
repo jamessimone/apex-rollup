@@ -427,7 +427,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String lookupSObjectName,
     String calcItemSObjectName,
     String operationName,
-    String potentialWhereClause
+    String potentialWhereClause,
+    String potentialConcatDelimiter
   ) {
     QueryWrapper wrapper = new QueryWrapper(lookupSObjectName, lookupFieldOnLookupObject);
     wrapper.setQuery(potentialWhereClause);
@@ -440,7 +441,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       calcItemSObjectName,
       operationName,
       wrapper,
-      null
+      null,
+      potentialConcatDelimiter
     );
   }
 
@@ -509,6 +511,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
     global String orderByFirstLast;
+    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
+    global String concatDelimiter;
 
     @InvocableVariable(label='Defer processing')
     global Boolean deferProcessing = false;
@@ -572,7 +576,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.calcItemTypeWhenRollupStartedFromParent,
               flowInput.rollupOperation.toUpperCase(),
               wrapper,
-              flowInput.grandparentRelationshipFieldPath
+              flowInput.grandparentRelationshipFieldPath,
+              flowInput.concatDelimiter
             );
             continue;
           }
@@ -591,7 +596,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             CalcItemWhereClause__c = flowInput.calcItemWhereClause,
             IsFullRecordSet__c = flowInput.isFullRecordSet,
             OrderByFirstLast__c = flowInput.orderByFirstLast,
-            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath
+            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+            ConcatDelimiter__c = flowInput.concatDelimiter
           );
 
           Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
@@ -1387,7 +1393,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           rollupInfo.CalcItem__c,
           rollupInfo.RollupOperation__c,
           wrapper,
-          rollupInfo.GrandparentRelationshipFieldPath__c
+          rollupInfo.GrandparentRelationshipFieldPath__c,
+          rollupInfo.ConcatDelimiter__c
         );
       } else if (
         rollupInfo.CalcItem__c != calcItems.getSObjectType().getDescribe().getName() &&
@@ -1408,7 +1415,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             rollupInfo.CalcItem__c,
             rollupInfo.RollupOperation__c,
             potentialQuery,
-            rollupInfo.GrandparentRelationshipFieldPath__c
+            rollupInfo.GrandparentRelationshipFieldPath__c,
+            rollupInfo.ConcatDelimiter__c
           );
         }
       }
@@ -1431,7 +1439,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String calcItemSObjectName,
     String operationName,
     QueryWrapper queryWrapper,
-    String potentialGrandparentRelationshipFieldPath
+    String potentialGrandparentRelationshipFieldPath,
+    String potentialConcatDelimiter
   ) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
@@ -1449,7 +1458,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
       RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
       RollupOperation__c = operationName,
-      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath
+      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath,
+      ConcatDelimiter__c = potentialConcatDelimiter
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
@@ -1575,6 +1585,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             // rest of the fields
             CalcItemWhereClause__c,
             ChangedFieldsOnCalcItem__c,
+            ConcatDelimiter__c,
             FullRecalculationDefaultNumberValue__c,
             FullRecalculationDefaultStringValue__c,
             GrandparentRelationshipFieldPath__c,

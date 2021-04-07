@@ -2616,7 +2616,7 @@ private class RollupTests {
     insert opp;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null);
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null, null);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -2675,7 +2675,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2700,7 +2700,7 @@ private class RollupTests {
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2721,7 +2721,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2741,7 +2741,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', 'Account.Name != \'' + acc.Name + '\'');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', 'Account.Name != \'' + acc.Name + '\'', null);
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];

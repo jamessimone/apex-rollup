@@ -414,6 +414,31 @@ private class RollupCalculatorTests {
     );
   }
 
+  @isTest
+  static void shouldUseCustomConcatDelimiterWhenSupplied() {
+    String distinct = 'distinct';
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      distinct,
+      Rollup.Op.CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(ConcatDelimiter__c = ';'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = distinct, AccountId = '0016g00003VDGbF001');
+    Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
+
+    System.assertEquals(
+      distinct +
+      '; ' +
+      nonDistinctOpp.Name,
+      (String) calc.getReturnValue(),
+      'distinct values should be concatenated with custom delimiter!'
+    );
+  }
+
   // PICKLIST tests
 
   @isTest
