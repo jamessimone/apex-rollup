@@ -2144,7 +2144,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
     List<SObject> applicableItems = new List<SObject>();
-    if (calcItems == null || calcItems?.isEmpty() != false) {
+    if (calcItems?.isEmpty() != false) {
       return applicableItems;
     } else {
       calcItems = this.replaceCalcItemsForPolymorphicWhereClause(rollupMetadata, calcItems);
@@ -2219,7 +2219,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return calcItems;
   }
 
-  private void processWhereClauseForDownstreamEvals(List<String> optionalWhereClauses, Set<String> additionalQueryFields, Rollup__mdt rollupMetadata, SObjectType sObjectType, String whatType, String whoType, String owner) {
+  private void processWhereClauseForDownstreamEvals(
+    List<String> optionalWhereClauses,
+    Set<String> additionalQueryFields,
+    Rollup__mdt rollupMetadata,
+    SObjectType sObjectType,
+    String whatType,
+    String whoType,
+    String owner
+  ) {
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
     for (String whereClause : whereEval.getWhereClauses()) {
       if (whereClause.contains(whatType) || whereClause.contains(whoType) || whereClause.contains(owner)) {
@@ -2227,7 +2235,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (splitWheres.size() > 0) {
           additionalQueryFields.add(splitWheres[0]);
         }
-        // "consume" the metadata where clause
+        // "consume" the metadata where clause for downstream evaluators
+        // upstream evaluators will still have the CalcItemWhereClause__c cached
+        // since primitives are never passed by reference - this is the purpose behind the
+        // "additionalQueryFields" - with the fields returned for the matching calc items
+        // by the time they make it to any upstream evals, they have the fields necessary to properly match
         rollupMetadata.CalcItemWhereClause__c = rollupMetadata.CalcItemWhereClause__c.replace(whereClause, '');
         optionalWhereClauses.add(whereClause);
       }
