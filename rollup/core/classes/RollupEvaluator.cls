@@ -516,8 +516,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         // there's only ever one item in the list for non-polymorphic fields
         parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
       }
+
       SObject parentSObject = item.getSObject(originalName);
-      if (fieldNameParts.isEmpty() == false) {
+      // the polymorphic "Type" field won't show up in the map of valid fields for an object
+      // but if the value's been queried for, it's valid to pass back
+      if(fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type') {
+        return parentSObject.get(fieldNameParts[0]);
+      } else if (fieldNameParts.isEmpty() == false) {
         return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
       } else {
         return parentSObject.get(originalName);
