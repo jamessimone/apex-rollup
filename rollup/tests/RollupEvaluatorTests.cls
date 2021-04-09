@@ -229,6 +229,31 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForBooleanConditions() {
+    User active = new User(IsActive = true);
+    User nonActive = new User(IsActive = false);
+
+    String lowerWhere = 'IsActive = true';
+    String upperWhere = 'IsActive = TRUE';
+    String mixedCase = 'IsActive = True';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(lowerWhere, active.getSObjectType());
+
+    System.assertEquals(true, eval.matches(active));
+    System.assertNotEquals(true, eval.matches(nonActive));
+
+    eval = new RollupEvaluator.WhereFieldEvaluator(upperWhere, active.getSObjectType());
+
+    System.assertEquals(true, eval.matches(active), 'Upper TRUE should match');
+    System.assertNotEquals(true, eval.matches(nonActive), 'Upper TRUE should not match');
+
+    eval = new RollupEvaluator.WhereFieldEvaluator(mixedCase, active.getSObjectType());
+
+    System.assertEquals(true, eval.matches(active), 'Mixed case True should match');
+    System.assertNotEquals(true, eval.matches(nonActive), 'Mixed case True should not match');
+  }
+
+  @isTest
   static void shouldReturnCorrectlyForNestedConditionals() {
     Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
     Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
@@ -391,7 +416,7 @@ private class RollupEvaluatorTests {
     String queryString = 'User.Id IN (\'0056g000002GeR0AAA\')';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Opportunity.SObjectType);
 
-    System.assertEquals(new List<String>(), eval.getRelationshipFieldNames());
+    System.assertEquals(new List<String>(), eval.getQueryFields());
   }
 
   @isTest

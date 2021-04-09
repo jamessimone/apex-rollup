@@ -1,5 +1,7 @@
 public without sharing abstract class RollupEvaluator implements Rollup.Evaluator {
   private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
+  private static final String TRUE_VAL = 'true';
+  private static final String FALSE_VAL = 'false';
 
   // totally not obvious ranking going on here - it's absolutely imperative that
   // the two-word conditions go first; otherwise replacing will fail on the whole string
@@ -116,20 +118,24 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return new List<String>(this.splitWheres);
     }
 
-    public List<String> getRelationshipFieldNames() {
-      List<String> fieldNames = new List<String>();
+    public List<String> getQueryFields() {
+      Set<String> fieldNames = new Set<String>();
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
+          Boolean hasRelationshipField = condition.fieldName.contains('.');
           if (
+            hasRelationshipField &&
             fieldNames.contains(condition.fieldName) == false &&
             condition.fieldName.contains('__c.') == false &&
             this.validRelationshipNames.contains(condition.fieldName.substringBefore('.'))
           ) {
             fieldNames.add(condition.fieldName);
+          } else if (hasRelationshipField == false) {
+            fieldNames.add(condition.fieldName);
           }
         }
       }
-      return fieldNames;
+      return new List<String>(fieldNames);
     }
 
     public override Boolean matches(Object calcItem) {
@@ -408,6 +414,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (String.isNotBlank(val)) {
           if (this.hasValues == null) {
             this.hasValues = true;
+          }
+
+          // coerce Boolean values to their standard representation
+          if (val.equalsIgnoreCase(TRUE_VAL)) {
+            val = TRUE_VAL;
+          } else if (val.equalsIgnoreCase(FALSE_VAL)) {
+            val = FALSE_VAL;
           }
           this.values.add(val.trim().replace('%', ''));
         }

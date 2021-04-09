@@ -403,7 +403,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       queryFields.add(matchingMeta.LookupFieldOnCalcItem__c);
       queryFields.add(matchingMeta.RollupFieldOnCalcItem__c);
       if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
-        queryFields.addAll(new RollupEvaluator.WhereFieldEvaluator(matchingMeta.CalcItemWhereClause__c, calcItemType).getRelationshipFieldNames());
+        queryFields.addAll(new RollupEvaluator.WhereFieldEvaluator(matchingMeta.CalcItemWhereClause__c, calcItemType).getQueryFields());
       }
     }
 
@@ -1463,7 +1463,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     );
     Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
-    queryFields.addAll(whereEval.getRelationshipFieldNames());
+    queryFields.addAll(whereEval.getQueryFields());
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
     return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval);
