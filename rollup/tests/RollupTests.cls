@@ -583,20 +583,19 @@ private class RollupTests {
   static void shouldAllowRollupToBeInitiatedFromTheParent() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
-    ContactPointAddress cpa = [SELECT Id, PreferenceRank FROM ContactPointAddress];
-    cpa.ParentId = acc.Id;
-    update cpa;
+    Asset asset = new Asset(AccountId = acc.Id, Name = 'Rollup initiated from parent', Quantity = 500);
+    insert asset;
     Rollup.defaultControl = null;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        RollupFieldOnCalcItem__c = 'Quantity',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'COUNT',
-        CalcItem__c = 'ContactPointAddress',
+        CalcItem__c = 'Asset',
         IsRollupStartedFromParent__c = true
       )
     };
@@ -614,7 +613,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been updated based on parent metadata AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertNotEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should have been updated with testSetup cpa amount');
+    System.assertNotEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should have been updated with asset Quantity');
   }
 
   @isTest
@@ -1414,7 +1413,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated AVERAGE AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      Integer.valueOf((testCpa.PreferenceRank + cpas[0].PreferenceRank + cpas[1].PreferenceRank)) / 3,
+      (testCpa.PreferenceRank + cpas[0].PreferenceRank + cpas[1].PreferenceRank) / 3.00,
       updatedAcc.AnnualRevenue,
       'AVERAGE AFTER_INSERT should take into account all values'
     );
@@ -1449,7 +1448,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated AVERAGE AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      Integer.valueOf((testCpa.PreferenceRank + cpas[0].PreferenceRank + cpas[1].PreferenceRank)) / 3,
+      (testCpa.PreferenceRank + cpas[0].PreferenceRank + cpas[1].PreferenceRank) / 3.00,
       updatedAcc.AnnualRevenue,
       'AVERAGE AFTER_UPDATE should take into account all values, including those from memory'
     );
@@ -3084,11 +3083,11 @@ private class RollupTests {
   @isTest
   static void shouldAllowGrandparentRollupsFromParent() {
     Account acc = [SELECT Id, OwnerId FROM Account];
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
-      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Name = 'One', CloseDate = System.today(), StageName = 'grandParent'),
+      new Opportunity(AccountId = acc.Id, Name = 'Two', CloseDate = System.today(), StageName = 'grandParent')
     };
-    insert cpas;
+    insert opps;
 
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
@@ -3096,14 +3095,14 @@ private class RollupTests {
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
+        CalcItem__c = 'Opportunity',
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnCalcItem__c = 'AccountId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe',
         IsRollupStartedFromParent__c = true
       )
     };
@@ -3115,17 +3114,17 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
     Account acc = [SELECT Id, OwnerId FROM Account];
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
-      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
+    List<Opportunity> opps = new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Name = 'One', CloseDate = System.today(), StageName = 'grandParent'),
+      new Opportunity(AccountId = acc.Id, Name = 'Two', CloseDate = System.today(), StageName = 'grandParent')
     };
-    insert cpas;
+    insert opps;
 
     DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
@@ -3133,17 +3132,17 @@ private class RollupTests {
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
-    Rollup.records = cpas;
+    Rollup.records = opps;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
+        CalcItem__c = 'Opportunity',
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnCalcItem__c = 'AccountId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe'
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3154,7 +3153,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   //** Helpers */

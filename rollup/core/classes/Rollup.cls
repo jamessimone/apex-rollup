@@ -564,6 +564,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.recordsToRollup,
               flowInput.lookupFieldOnOpObject,
               flowInput.rollupSObjectName,
+              flowInput.lookupFieldOnCalcItem,
               flowInput.grandparentRelationshipFieldPath
             );
             wrapper.setQuery(whereClause + wrapper.getQuery());
@@ -1382,6 +1383,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           calcItems,
           rollupInfo.LookupFieldOnLookupObject__c,
           rollupInfo.LookupObject__c,
+          rollupInfo.LookupFieldOnCalcItem__c,
           rollupInfo.GrandparentRelationshipFieldPath__c
         );
         performFullRecalculationInner(
@@ -1681,12 +1683,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<SObject> calcItems,
     String lookupFieldOnLookupObject,
     String lookupObjectName,
+    String lookupFieldOnCalcItem,
     String grandparentFieldPath
   ) {
     String fieldName = lookupFieldOnLookupObject;
     if (String.isNotBlank(grandparentFieldPath)) {
       lookupObjectName = '';
       fieldName = grandparentFieldPath.substringBeforeLast('.') + '.Id';
+    } else if(lookupFieldOnCalcItem.endsWith('Id') || lookupFieldOnCalcItem.endsWith('__c')) {
+      lookupObjectName = '';
+      fieldName = lookupFieldOnCalcItem;
     }
 
     QueryWrapper wrapper = new QueryWrapper(lookupObjectName, fieldName);
