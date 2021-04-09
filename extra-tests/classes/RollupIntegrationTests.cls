@@ -106,7 +106,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     app = [SELECT Objects__c FROM Application__c WHERE Id = :app.Id];
-    System.assertEquals('Lead, Account', app.Objects__c);
+    System.assertEquals('Account, Lead', app.Objects__c);
   }
 
   @isTest
@@ -372,5 +372,213 @@ private class RollupIntegrationTests {
 
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup!');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again!');
+  }
+
+  @isTest
+  static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
+    Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
+    insert greatGrandparent;
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent NonFiltered', Account__c = greatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Should be filtered grandparent', Account__c = greatGrandparent.Id);
+    insert new List<ParentApplication__c>{ grandParent, secondGrandparent };
+
+    Application__c parent = new Application__c(Name = 'Parent-level NonFiltered', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level filtered', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Should not be appended since application should be filtered');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Should correctly be appended', Application__c = parent.Id);
+    ApplicationLog__c nonMatchChild = new ApplicationLog__c(Name = 'nonmatch', Application__c = parent.Id);
+    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, secondChild, nonMatchChild };
+    insert appLogs;
+
+    Rollup.records = appLogs;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ApplicationLog__c',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'Application__c',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name',
+        CalcItemWhereClause__c = 'Application__r.Name != \'' +
+          secondParent.Name +
+          '\' AND Application__r.ParentApplication__r.Name != \'' +
+          grandParent.Name +
+          '\' AND Name != \'' +
+          nonMatchChild.Name +
+          '\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    System.assertEquals(greatGrandparent.Name, updatedGreatGrandparent.Name, 'Great-grandparent name should not have been appended based on exclusions');
+  }
+
+  @isTest
+  static void shouldProperlyFilterPolymorphicWhatFields() {
+    Account acc = new Account(Name = 'Matching type');
+    Case cas = new Case();
+    insert new List<SObject>{ acc, cas };
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp', AccountId = acc.Id);
+    insert opp;
+
+    Task matchingTask = new Task(ActivityDate = System.today(), WhatId = opp.Id, Subject = 'Match');
+    Task nonMatchingTask = new Task(ActivityDate = System.today(), WhatId = cas.Id, Subject = 'Non match');
+    List<Task> tasks = new List<Task>{ matchingTask, nonMatchingTask };
+    insert tasks;
+
+    // things like What.Type aren't included by default in updates made within Triggers/Flows
+    // specifically NOT requerying here validates that Rollup can handle a polymorphic where clause
+    Rollup.records = tasks;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'What.Account.Name',
+        CalcItemWhereClause__c = 'What.Type = \'Opportunity\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(matchingTask.Subject + ', ' + acc.Name, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
+  }
+
+  @isTest
+  static void shouldAvoidRequeryingIfPolymorphicFieldsAreIncluded() {
+    Account acc = new Account(Name = 'Matching type');
+    insert acc;
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp', AccountId = acc.Id);
+    insert opp;
+
+    Task matchingTask = new Task(ActivityDate = System.today(), WhatId = opp.Id, Subject = 'Match');
+    insert matchingTask;
+
+    Rollup.records = [SELECT Id, Subject, What.Type, WhatId FROM Task];
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'What.Account.Name',
+        CalcItemWhereClause__c = 'What.Type = \'Opportunity\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(
+      matchingTask.Subject +
+      ', ' +
+      acc.Name,
+      updatedAcc.Name,
+      'Only matching task subject should have been appended via Who.Type requerying'
+    );
+  }
+
+  @isTest
+  static void shouldProperlyFilterPolymorphicWhoFields() {
+    Contact con = new Contact(LastName = 'Polly', Email = 'polly@morhpism.com');
+    Lead lead = new Lead(LastName = 'Morphism', Email = 'morphism@polly.com', Company = 'PollyMorphism');
+    insert new List<SObject>{ con, lead };
+
+    Task matchingTask = new Task(ActivityDate = System.today(), WhoId = lead.Id, Subject = 'Match');
+    Task nonMatchingTask = new Task(ActivityDate = System.today(), WhoId = con.Id, Subject = 'Not a Match');
+    List<Task> tasks = new List<Task>{ matchingTask, nonMatchingTask };
+    insert tasks;
+
+    Rollup.records = tasks;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhoId',
+        LookupObject__c = 'Lead',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'LastName',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItemWhereClause__c = 'Who.Type = \'Lead\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :lead.Id];
+    System.assertEquals(matchingTask.Subject + ', ' + lead.LastName, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
+  }
+
+  @isTest
+  static void shouldProperlyFilterPolymorphicOwnerFields() {
+    User currentUser = [SELECT Id, Name FROM User WHERE Id = :UserInfo.getUserId()];
+    Lead matchingLead = new Lead(Company = 'Matching polymorphic', LastName = 'Polly', OwnerId = currentUser.Id);
+    insert matchingLead;
+
+    Event nonMatchingEvent = new Event(
+      ActivityDateTime = System.now(),
+      WhoId = matchingLead.Id,
+      OwnerId = currentUser.Id,
+      Subject = 'Not a Match',
+      DurationInMinutes = 30
+    );
+    List<Event> events = new List<Event>{ nonMatchingEvent };
+    insert events;
+
+    Rollup.records = events;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhoId',
+        LookupObject__c = 'Lead',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'LastName',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItemWhereClause__c = 'Owner.Name != \'' + currentUser.Name + '\''
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :matchingLead.Id];
+    System.assertEquals(matchingLead.LastName, updatedLead.LastName, 'Lead last name should not have been updated');
   }
 }

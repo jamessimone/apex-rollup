@@ -16,7 +16,8 @@ export default class RollupForceRecalculation extends LightningElement {
     lookupSObjectName: '',
     calcItemSObjectName: '',
     operationName: '',
-    potentialWhereClause: ''
+    potentialWhereClause: '',
+    potentialConcatDelimiter: ''
   };
   @api isCMDTRecalc = false;
   @api rollupMetadataOptions = [];
@@ -89,7 +90,8 @@ export default class RollupForceRecalculation extends LightningElement {
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {
-      this._displayErrorToast('An error occurred while rolling up', e.body?.message ?? e.message);
+      const errorMessage = !!e.body && e.body.message ? e.body.message : e.message;
+      this._displayErrorToast('An error occurred while rolling up', errorMessage);
       console.error(e); // in the event you dismiss the toast but still want to see the error
     }
   }

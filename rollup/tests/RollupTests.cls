@@ -1086,7 +1086,7 @@ private class RollupTests {
   static void shouldConcatDistinctOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
-    acc.AccountNumber = 'beginning test string something';
+    acc.AccountNumber = 'beginning, test string, something';
     update acc;
     Rollup.defaultControl = null;
 
@@ -1103,7 +1103,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      'beginning test string something, hello another string',
+      'beginning, hello another string, something, test string',
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_INSERT should only add unique values'
     );
@@ -2616,7 +2616,7 @@ private class RollupTests {
     insert opp;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null);
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null, null);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -2675,7 +2675,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2700,7 +2700,7 @@ private class RollupTests {
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2721,7 +2721,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null);
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2741,7 +2741,7 @@ private class RollupTests {
     insert opps;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', 'Account.Name != \'' + acc.Name + '\'');
+    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', 'Account.Name != \'' + acc.Name + '\'', null);
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];

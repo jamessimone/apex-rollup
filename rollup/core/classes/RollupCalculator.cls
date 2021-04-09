@@ -94,7 +94,8 @@ public without sharing abstract class RollupCalculator {
           opFieldOnLookupObject,
           metadata.FullRecalculationDefaultStringValue__c,
           lookupRecordKey,
-          lookupKeyField
+          lookupKeyField,
+          metadata.ConcatDelimiter__c
         );
       } else if (priorVal instanceof Date) {
         // not obvious: the order of these else if's is of supreme importance
@@ -657,7 +658,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private virtual class StringRollupCalculator extends RollupCalculator {
-    // hard-coding to comma for now. We may update this to allow for CMDT-based overrides of the delimiter at some point
     protected String concatDelimiter = ', ';
     private String stringVal;
     public StringRollupCalculator(
@@ -667,21 +667,29 @@ public without sharing abstract class RollupCalculator {
       SObjectField opFieldOnLookupObject,
       Object defaultVal,
       String lookupRecordKey,
-      SObjectField lookupKeyField
+      SObjectField lookupKeyField,
+      String customConcatDelimiter
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
       this.stringVal = (String) this.returnVal;
+      if (String.isNotBlank(customConcatDelimiter)) {
+        this.concatDelimiter = customConcatDelimiter + ' ';
+      }
     }
 
     protected override void setReturnValue() {
-      String trimmedDelimiter = this.concatDelimiter.trim();
-      String possibleReturnValue = this.stringVal.normalizeSpace();
-      while (possibleReturnValue.endsWith(trimmedDelimiter)) {
-        possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
-      }
+      if(this.op.name().contains(Rollup.Op.CONCAT.name())) {
+        String trimmedDelimiter = this.concatDelimiter.trim();
+        String possibleReturnValue = this.stringVal.normalizeSpace();
+        while (possibleReturnValue.endsWith(trimmedDelimiter)) {
+          possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
+        }
 
-      this.returnVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
-        .trim();
+        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
+          .trim();
+        this.sortAndConcat();
+      }
+      this.returnVal = this.stringVal;
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
@@ -696,23 +704,16 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void handleConcat(SObject calcItem) {
-      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (isConcatDistinct && this.stringVal.contains(newVal)) {
-        // skip
-      } else {
+      if (this.shouldConcat(newVal)) {
         this.stringVal += this.concatWithDelimiter(newVal);
       }
     }
 
     public override void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
-      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (newVal == null) {
-        newVal = ''; // this.stringVal.contains throws for null, below
-      }
       String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
-      if (isConcatDistinct && this.stringVal.contains(newVal) == false || !isConcatDistinct) {
+      if (this.shouldConcat(newVal)) {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
       }
     }
@@ -731,9 +732,11 @@ public without sharing abstract class RollupCalculator {
         this.stringVal = newVal;
       }
     }
+
     public override void handleMax(SObject calcItem) {
       this.handleMin(calcItem);
     }
+
     public override void handleUpdateMinOrMax(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
@@ -759,6 +762,33 @@ public without sharing abstract class RollupCalculator {
         return newVal < priorVal || String.isBlank(priorVal);
       }
       return false;
+    }
+
+    private void sortAndConcat() {
+      List<String> values = this.stringVal.split(this.concatDelimiter);
+      values.sort();
+      this.stringVal = String.join(values, this.concatDelimiter);
+    }
+
+    private Boolean shouldConcat(String newVal) {
+      Boolean shouldConcat = false;
+      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
+      Boolean hasVal = String.isNotBlank(newVal);
+      if (isConcatDistinct == false && hasVal) {
+        shouldConcat = true;
+      } else if (isConcatDistinct && hasVal) {
+        List<String> existingVals = this.stringVal.split(this.concatDelimiter);
+        Boolean matches = false;
+        for (String existingVal : existingVals) {
+          matches = existingVal == newVal;
+          if (matches) {
+            break;
+          }
+        }
+        shouldConcat = matches == false;
+      }
+
+      return shouldConcat;
     }
 
     private String concatWithDelimiter(String newVal) {
@@ -787,9 +817,10 @@ public without sharing abstract class RollupCalculator {
       SObjectField opFieldOnLookupObject,
       Object defaultVal,
       String lookupRecordKey,
-      SObjectField lookupKeyField
+      SObjectField lookupKeyField,
+      String customConcatDelimiter
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField, customConcatDelimiter);
       this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
       this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
       if (this.rollupFieldController.isMultiSelectPicklist()) {

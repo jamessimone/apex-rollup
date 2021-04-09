@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ConcatDelimiter__c</fullName>
+    <description>For CONCAT and CONCAT_DISTINCT operations, optionally override the delimiter used between concatened entries. Defaults to comma.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>For CONCAT and CONCAT_DISTINCT operations, optionally override the delimiter used between concatened entries. Defaults to comma.</inlineHelpText>
+    <label>Concat Delimiter</label>
+    <length>1</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

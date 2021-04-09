@@ -98,6 +98,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final String whereClause;
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
+    private final List<String> splitWheres;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause;
@@ -107,8 +108,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
       }
       this.whereClause = whereClause;
-      this.createConditions(calcItemSObjectType);
+      this.splitWheres = this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
+    }
+
+    public List<String> getWhereClauses() {
+      return new List<String>(this.splitWheres);
     }
 
     public List<String> getRelationshipFieldNames() {
@@ -154,10 +159,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return localRelationshipNames;
     }
 
-    private void createConditions(SObjectType calcItemSObjectType) {
-      List<String> splitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
+    private List<String> createConditions(SObjectType calcItemSObjectType) {
+      List<String> localSplitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
       try {
-        for (String splitWhereClause : splitWheres) {
+        for (String splitWhereClause : localSplitWheres) {
           List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
           if (this.isOrConditional(this.whereClause, splitWhereClause)) {
             this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
@@ -169,14 +174,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         this.logError(ex);
         throw new IllegalArgumentException('Where clause entered incorrectly: ' + whereClause);
       }
+      return localSplitWheres;
     }
 
     private List<String> getSoqlWhereClauses(String whereClause, SObjectType calcItemSObjectType) {
-      List<String> splitWheres = whereClause.split('( and | AND | OR | or )');
-      this.reconstructImproperlySplitClauses(splitWheres);
-      this.recurseForNestedConditionals(splitwheres, calcItemSObjectType);
+      List<String> localSplitWheres = whereClause.split('( and | AND | OR | or )');
+      this.reconstructImproperlySplitClauses(localSplitWheres);
+      this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType);
 
-      return splitWheres;
+      return localSplitWheres;
     }
 
     private void reconstructImproperlySplitClauses(List<String> splitWheres) {
@@ -474,11 +480,18 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
-      // handle compound fields separately
-      if (fieldPath.contains('.') && sObjectType.getDescribe().fields.getMap().containsKey(fieldPath) == false) {
-        return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
+      if (item == null) {
+        return '';
       }
-      return item == null ? '' : item.get(fieldPath);
+
+      // handle compound fields separately
+      Boolean hasField = sObjectType.getDescribe().fields.getMap().containsKey(fieldPath);
+      if (fieldPath.contains('.') && hasField == false) {
+        return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
+      } else if (hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath) || item.get(fieldPath) == null) {
+        return item.get(fieldPath);
+      }
+      return '';
     }
 
     private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
@@ -503,8 +516,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         // there's only ever one item in the list for non-polymorphic fields
         parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
       }
+
       SObject parentSObject = item.getSObject(originalName);
-      if (fieldNameParts.isEmpty() == false) {
+      // the polymorphic "Type" field won't show up in the map of valid fields for an object
+      // but if the value's been queried for, it's valid to pass back
+      if(fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type') {
+        return parentSObject.get(fieldNameParts[0]);
+      } else if (fieldNameParts.isEmpty() == false) {
         return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
       } else {
         return parentSObject.get(originalName);

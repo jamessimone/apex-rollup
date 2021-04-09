@@ -179,4 +179,37 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(parentOne, traversal.retrieveParent(oppOne.Id), 'First opp parent should not be exluded!');
     System.assertEquals(parentOne, traversal.retrieveParent(oppTwo.Id), 'Second opp should not have been excluded!');
   }
+
+  @isTest
+  static void shouldProperlyReturnParentRecordsWithNestedConditionals() {
+    Account parentOne = new Account(Name = 'match', AccountNumber = '1');
+    Account parentTwo = new Account(Name = 'non-match');
+    insert new List<Account>{ parentOne, parentTwo };
+
+    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'FirstParentedChild', StageName = 'Prospecting', CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(AccountId = parentTwo.Id, Name = 'SecondParentedChild', StageName = 'Prospecting', CloseDate = System.today());
+    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
+    insert opps;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      'Account.Name',
+      new Set<String>{ 'Name', 'Id' },
+      Account.SObjectType,
+      new Map<Id, SObject>(),
+      'Account.Name != \'\' AND (Account.Name != \'' +
+      parentOne.Name +
+      '\' OR Account.AccountNumber = \'' +
+      parentOne.AccountNumber +
+      '\') AND Account.Name != \'' +
+      parentTwo.Name +
+      '\''
+    );
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+
+    // we don't anticipate it being necessary to return fields used in the where clause; just that records are filtered correctly
+    Account expectedAcc = new Account(Id = parentOne.Id, Name = parentOne.Name);
+    System.assertEquals(expectedAcc, traversal.retrieveParent(oppOne.Id), 'First opp parent should not be exluded with nested conditional!');
+    System.assertEquals(null, traversal.retrieveParent(oppTwo.Id), 'Second opp should have been excluded with clause after nested conditional!');
+  }
 }
