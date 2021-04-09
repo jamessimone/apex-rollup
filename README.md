@@ -3,12 +3,28 @@
 [![Rollup Release Status](https://github.com/jamessimone/apex-rollup/actions/workflows/deploy.yml/badge.svg)](https://github.com/jamessimone/apex-rollup/actions/workflows/deploy.yml 'Click to view deployment pipeline history')
 [![Rollup Code Coverage](https://codecov.io/gh/jamessimone/apex-rollup/branch/main/graph/badge.svg)](https://codecov.io/gh/jamessimone/apex-rollup)
 
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)! As of [v1.2.0](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.0), `Rollup` also offers [the ability to roll directly up from children records to grandparent (or greater!) records](#grandparent-rollups), without needing complex hierarchical intermediate fields.
+
+## Deployment
+
+### Package deployment options
+
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJMsAAO">
+  <button>Deploy Unmanaged Package to Prod</button>
+</a>
+
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJMsAAO">
+  <button>Deploy Unmanaged Package to Sandbox</button>
+</a>
+
+<br/>
+<br/>
+
+### Deploy just the source code
 <a href="https://githubsfdeploy.herokuapp.com?owner=jamessimone&repo=apex-rollup&ref=main">
   <img alt="Deploy to Salesforce"
        src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
-
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)! As of [v1.2.0](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.0), `Rollup` also offers [the ability to roll directly up from children records to grandparent (or greater!) records](#grandparent-rollups), without needing complex hierarchical intermediate fields.
 
 ## Setup
 

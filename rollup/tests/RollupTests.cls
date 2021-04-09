@@ -2645,7 +2645,8 @@ private class RollupTests {
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupOperation__c = 'SUM'
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'StageName = \'' + opps[0].StageName + '\''
       )
     };
 
