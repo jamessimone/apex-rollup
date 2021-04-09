@@ -24,7 +24,7 @@
             type="text"
             label="Calc Item SObject API Name"
             name="calcItemSObjectName"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -34,7 +34,7 @@
             type="text"
             label="API Name of the rollup field on calc item"
             name="opFieldOnCalcItem"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -44,7 +44,7 @@
             type="text"
             label="API Name of the lookup field on calc item"
             name="lookupFieldOnCalcItem"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -54,7 +54,7 @@
             type="text"
             label="API Name of the lookup field on the lookup object"
             name="lookupFieldOnLookupObject"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -64,7 +64,7 @@
             type="text"
             label="API Name of the rollup field on the lookup object"
             name="rollupFieldOnLookupObject"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -74,7 +74,7 @@
             type="text"
             label="Lookup SObject API Name"
             name="lookupSObjectName"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -84,7 +84,7 @@
             type="text"
             label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE/FIRST/LAST)"
             name="operationName"
-            onchange={handleChange}
+            oncommit={handleChange}
             required
           >
           </lightning-input>
@@ -94,7 +94,7 @@
             type="text"
             label="Concat Delimiter (Optional)"
             name="potentialConcatDelimiter"
-            onchange={handleChange}
+            oncommit={handleChange}
           >
           </lightning-input>
           <lightning-textarea
