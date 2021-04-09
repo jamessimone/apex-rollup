@@ -9,8 +9,8 @@ private class RollupTests {
     Account acc = new Account(Name = 'RollupTests');
     insert acc;
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
-    Opportunity opp = new Opportunity(StageName = 'testsetup', Name = 'testsetup', CloseDate = System.today(), Amount = 500);
-    insert new List<SObject>{ con, opp };
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'RollupTestsCpa');
+    insert new List<SObject>{ con, cpa };
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
@@ -62,11 +62,11 @@ private class RollupTests {
 
   @isTest
   static void shouldNotRunForInvalidApexContext() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
     Rollup.apexContext = TriggerOperation.BEFORE_INSERT;
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, this is a no-op');
@@ -78,11 +78,11 @@ private class RollupTests {
     existingSetting.IsEnabled__c = false;
     update existingSetting;
 
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 50) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, custom setting was disabled');
@@ -90,10 +90,18 @@ private class RollupTests {
 
   @isTest
   static void shouldSumFromTriggerAfterInsert() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
+    DMLMock mock = loadAccountIdMock(
+      new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 25), new ContactPointAddress(PreferenceRank = 25) }
+    );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
-    Rollup rollup = Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType);
+    Rollup rollup = Rollup.sumFromApex(
+      ContactPointAddress.PreferenceRank,
+      ContactPointAddress.ParentId,
+      Account.Id,
+      Account.AnnualRevenue,
+      Account.SObjectType
+    );
 
     System.assertEquals(true, mock.Records.isEmpty());
 
@@ -103,15 +111,24 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount');
+    System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount');
   }
 
   @isTest
   static void shouldTakeDefaultForSumWhenGiven() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
+    DMLMock mock = loadAccountIdMock(
+      new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 25), new ContactPointAddress(PreferenceRank = 25) }
+    );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
-    Rollup rollup = Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5);
+    Rollup rollup = Rollup.sumFromApex(
+      ContactPointAddress.PreferenceRank,
+      ContactPointAddress.ParentId,
+      Account.Id,
+      Account.AnnualRevenue,
+      Account.SObjectType,
+      5
+    );
 
     System.assertEquals(true, mock.Records.isEmpty());
 
@@ -121,16 +138,24 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(55, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount to the default');
+    System.assertEquals(55, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount to the default');
   }
 
   @isTest
   static void shouldSumFromTriggerAfterUndelete() {
     // undelete should behave the same as an insert, for our purposes
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 25), new Opportunity(Amount = 25) });
+    DMLMock mock = loadAccountIdMock(
+      new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 25), new ContactPointAddress(PreferenceRank = 25) }
+    );
     Rollup.apexContext = TriggerOperation.AFTER_UNDELETE;
 
-    Rollup rollup = Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType);
+    Rollup rollup = Rollup.sumFromApex(
+      ContactPointAddress.PreferenceRank,
+      ContactPointAddress.ParentId,
+      Account.Id,
+      Account.AnnualRevenue,
+      Account.SObjectType
+    );
 
     Test.startTest();
     rollup.runCalc();
@@ -138,19 +163,19 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM AFTER_UNDELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_UNDELETE should add the original opportunity amount');
+    System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_UNDELETE should add the original cpaortunity amount');
   }
 
   @isTest
   static void shouldSumFromTriggerAfterUpdate() {
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType), PreferenceRank = 50);
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Amount = 25) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, PreferenceRank = 25) };
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE');
@@ -160,11 +185,11 @@ private class RollupTests {
 
   @isTest
   static void shouldSumFromTriggerBeforeDelete() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated SUM BEFORE_DELETE');
@@ -176,14 +201,14 @@ private class RollupTests {
   static void shouldCountDistinctFromTriggerOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
-    insert new Opportunity(Name = 'Test Count Distinct Insert', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
+    insert new ContactPointAddress(Name = 'Test Count Distinct Insert', ParentId = acc.Id);
     Rollup.defaultControl = null;
 
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Name = 'Test Count Distinct Insert Two') });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Test Count Distinct Insert Two') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT_DISTINCT AFTER_INSERT');
@@ -195,17 +220,17 @@ private class RollupTests {
   static void shouldCountDistinctFromTriggerOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
-    insert new Opportunity(Name = 'Test Count Distinct Insert One', StageName = 'something', CloseDate = System.today(), AccountId = acc.Id);
+    insert new ContactPointAddress(Name = 'Test Count Distinct Insert One', ParentId = acc.Id);
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Name = 'Test Count Distinct Insert Two', Id = generateId(Opportunity.SObjectType));
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'Test Count Distinct Insert Two', Id = generateId(ContactPointAddress.SObjectType));
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     // the important part here is that the old value differs
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Name = 'something different', Id = opp.Id) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Name = 'something different', Id = cpa.Id) };
 
     Test.startTest();
-    Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT_DISTINCT AFTER_UPDATE');
@@ -221,11 +246,11 @@ private class RollupTests {
     update acc; // we want to ensure that the AnnualRevenue is reset because there are no other matching values
     Rollup.defaultControl = null;
 
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity() });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress() });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
-    Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT_DISTINCT BEFORE_DELETE');
@@ -235,11 +260,11 @@ private class RollupTests {
 
   @isTest
   static void shouldCountFromTriggerAfterInsert() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT AFTER_INSERT');
@@ -255,13 +280,13 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType));
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType));
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Id = opp.Id, Amount = 1) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, Id = cpa.Id, PreferenceRank = 1) };
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT AFTER_UPDATE');
@@ -277,13 +302,13 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType), PreferenceRank = 50);
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = opp.AccountId, Id = opp.Id, Amount = 1) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, Id = cpa.Id, PreferenceRank = 1) };
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(0, mock.Records.size(), 'Records should not have been populated COUNT AFTER_UPDATE');
@@ -297,13 +322,13 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50);
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType), PreferenceRank = 50);
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, Amount = 1) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, PreferenceRank = 1) };
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should not have been populated COUNT BEFORE_DELETE');
@@ -313,11 +338,11 @@ private class RollupTests {
 
   @isTest
   static void shouldNotCountNullValues() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity() });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress() });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(0, mock.Records.size(), 'Records should not have been populated when empty COUNT AFTER_INSERT');
@@ -325,16 +350,16 @@ private class RollupTests {
 
   @isTest
   static void shouldRunSumFromTriggerBasedOnMetadata() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -345,21 +370,21 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount based on CMDT');
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount based on CMDT');
   }
 
   @isTest
   static void shouldRunRegardlessOfMetadataCasing() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'sum',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -370,21 +395,21 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT should add the original opportunity amount based on CMDT');
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT should add the original cpaortunity amount based on CMDT');
   }
 
   @isTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadata() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         FullRecalculationDefaultNumberValue__c = 100000
       )
     };
@@ -396,21 +421,21 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opportunity amount to the default override based on CMDT');
+    System.assertEquals(100100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount to the default override based on CMDT');
   }
 
   @isTest
   static void shouldOverrideStringBasedDefaultBasedOnMetadata() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Name = 'A') });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Name',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'MAX',
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         FullRecalculationDefaultStringValue__c = 'Z'
       )
     };
@@ -429,17 +454,17 @@ private class RollupTests {
   // the other tests pertaining to this are in RollupEvaluatorTests
   @isTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEquals() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ'), new Opportunity(Name = 'RollupZZ') });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'RollupZ'), new ContactPointAddress(Name = 'RollupZZ') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Name',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'MAX',
         CalcItemWhereClause__c = 'Name = \'RollupZ\'',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
 
@@ -461,19 +486,19 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    DMLMock mock = loadMock(new List<Opportunity>{ new Opportunity(Name = 'RollupZ', AccountId = acc.Id, Amount = 50) });
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'RollupZ', ParentId = acc.Id, PreferenceRank = 50) });
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
         CalcItemWhereClause__c = 'Name != \'RollupZ\'',
         IsFullRecordSet__c = true,
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         FullRecalculationDefaultNumberValue__c = 0
       )
     };
@@ -490,25 +515,25 @@ private class RollupTests {
 
   @isTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'COUNT',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       ),
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'NumberOfEmployees',
         RollupOperation__c = 'COUNT_DISTINCT',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -527,23 +552,26 @@ private class RollupTests {
   static void shouldRunDirectlyFromApex() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(AccountId = acc.Id, Amount = 5), new Opportunity(AccountId = acc.Id, Amount = 10) };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 5),
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 10)
+    };
 
-    Rollup.records = opps;
+    Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
 
     Test.startTest();
-    Rollup.runFromApex(opps, TriggerOperation.AFTER_INSERT);
+    Rollup.runFromApex(cpas, TriggerOperation.AFTER_INSERT);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -555,20 +583,20 @@ private class RollupTests {
   static void shouldAllowRollupToBeInitiatedFromTheParent() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
-    Opportunity opp = [SELECT Id, Amount FROM Opportunity];
-    opp.AccountId = acc.Id;
-    update opp;
+    ContactPointAddress cpa = [SELECT Id, PreferenceRank FROM ContactPointAddress];
+    cpa.ParentId = acc.Id;
+    update cpa;
     Rollup.defaultControl = null;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'COUNT',
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         IsRollupStartedFromParent__c = true
       )
     };
@@ -586,16 +614,16 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been updated based on parent metadata AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertNotEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should have been updated with testSetup opp amount');
+    System.assertNotEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should have been updated with testSetup cpa amount');
   }
 
   @isTest
   static void shouldAllowRollupFromParentByInvocable() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
-    Opportunity opp = [SELECT Id, Amount FROM Opportunity];
-    opp.AccountId = acc.Id;
-    update opp;
+    ContactPointAddress cpa = [SELECT Id, PreferenceRank FROM ContactPointAddress];
+    cpa.ParentId = acc.Id;
+    update cpa;
     Rollup.defaultControl = null;
 
     List<Account> accs = new List<Account>{ acc };
@@ -603,7 +631,7 @@ private class RollupTests {
 
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'INSERT', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
-    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'Opportunity';
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -615,18 +643,24 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(opp.Amount, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
+    System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank');
   }
 
   @isTest
   static void shouldBatchTwoOperations() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
     Rollup.batch(
-      Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
-      Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      Rollup.countDistinctFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.NumberOfEmployees,
+        Account.SObjectType
+      ),
+      Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
     );
     Test.stopTest();
 
@@ -642,14 +676,20 @@ private class RollupTests {
 
   @isTest
   static void shouldBatchThreeOperations() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 100, Name = 'My test name') });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100, Name = 'My test name') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
     Rollup.batch(
-      Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
-      Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType),
-      Rollup.concatFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType)
+      Rollup.countDistinctFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.NumberOfEmployees,
+        Account.SObjectType
+      ),
+      Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType),
+      Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType)
     );
     Test.stopTest();
 
@@ -666,14 +706,14 @@ private class RollupTests {
 
   @isTest
   static void shouldDeferUpdateWhenMaxParentRowsLessThanCurrentUpdateRows() {
-    Opportunity opp = new Opportunity(Amount = 50, Name = 'MaxParentRows', StageName = 'Prospecting', CloseDate = System.today());
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 50, Name = 'MaxParentRows');
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1);
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     Account acc = [SELECT AnnualRevenue FROM Account];
@@ -682,39 +722,42 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxNumbersSuccessfullyAfterInsert() {
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 100, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 200, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(200, updatedAcc.AnnualRevenue, 'MAX AFTER_INSERT should take the maximum opportunity amount');
+    System.assertEquals(200, updatedAcc.AnnualRevenue, 'MAX AFTER_INSERT should take the maximum cpaortunity amount');
   }
 
   @isTest
   static void shouldMaxNumbersSuccessfullyAfterUpdate() {
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 100, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 200, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(Id = opps[0].Id), opps[1].Id => new Opportunity(Id = opps[1].Id) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => new ContactPointAddress(Id = cpas[0].Id),
+      cpas[1].Id => new ContactPointAddress(Id = cpas[1].Id)
+    };
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(200, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum opportunity amount');
+    System.assertEquals(200, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpaortunity amount');
   }
 
   @isTest
@@ -724,29 +767,29 @@ private class RollupTests {
     acc.AnnualRevenue = 250;
     update acc;
 
-    Opportunity opp = new Opportunity(Amount = acc.AnnualRevenue, AccountId = acc.Id, Name = 'testOpp', StageName = 'something', CloseDate = System.today());
-    Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
-    insert originalOpps;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'testCpa');
+    ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
+    insert originalCpas;
     Rollup.defaultControl = null;
 
-    Opportunity updatedOpp = opp.clone(true, true);
-    updatedOpp.Amount = 150;
-    List<Opportunity> opps = new List<Opportunity>{ updatedOpp };
-    Rollup.records = opps;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(new List<Opportunity>{ opp });
+    ContactPointAddress updatedCpa = cpa.clone(true, true);
+    updatedCpa.PreferenceRank = 150;
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ updatedCpa };
+    Rollup.records = cpas;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(new List<ContactPointAddress>{ cpa });
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(secondOpp.Amount, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum opportunity amount');
+    System.assertEquals(secondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpa PreferenceRank');
   }
 
   @isTest
@@ -756,31 +799,31 @@ private class RollupTests {
     acc.AnnualRevenue = 250;
     update acc;
 
-    Opportunity opp = new Opportunity(Amount = acc.AnnualRevenue, AccountId = acc.Id, Name = 'testOpp', StageName = 'something', CloseDate = System.today());
-    Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
-    insert originalOpps;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'testCpa');
+    ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
+    insert originalCpas;
     Rollup.defaultControl = null;
 
-    Opportunity updatedOpp = opp.clone(true, true);
-    updatedOpp.Amount = 150;
-    Opportunity updatedSecondOpp = secondOpp.clone(true, true);
-    updatedSecondOpp.Amount = secondOpp.Amount + 30; // the amount is really unimportant; that it doesn't match what's in the database is
-    List<Opportunity> opps = new List<Opportunity>{ updatedOpp, updatedSecondOpp };
-    Rollup.records = opps;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
+    ContactPointAddress updatedCpa = cpa.clone(true, true);
+    updatedCpa.PreferenceRank = 150;
+    ContactPointAddress updatedSecondCpa = secondCpa.clone(true, true);
+    updatedSecondCpa.PreferenceRank = secondCpa.PreferenceRank + 30; // the amount is really unimportant; that it doesn't match what's in the database is
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ updatedCpa, updatedSecondCpa };
+    Rollup.records = cpas;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(updatedSecondOpp.Amount, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum opportunity amount');
+    System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpa amount');
   }
 
   @isTest
@@ -791,43 +834,39 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(
-      Amount = acc.AnnualRevenue,
-      AccountId = acc.Id,
-      Name = 'testOpp',
-      StageName = 'something',
-      CloseDate = System.today(),
-      Id = generateId(Opportunity.SObjectType)
+    ContactPointAddress cpa = new ContactPointAddress(
+      PreferenceRank = acc.AnnualRevenue.intValue(),
+      ParentId = acc.Id,
+      Name = 'testCpa',
+      Id = generateId(ContactPointAddress.SObjectType)
     );
-    Opportunity secondOpp = new Opportunity(
-      Amount = 175,
-      AccountId = acc.Id,
-      Name = 'testOppTwo',
-      StageName = 'something',
-      CloseDate = System.today(),
-      Id = generateId(Opportunity.SObjectType)
+    ContactPointAddress secondCpa = new ContactPointAddress(
+      PreferenceRank = 175,
+      ParentId = acc.Id,
+      Name = 'testCpaTwo',
+      Id = generateId(ContactPointAddress.SObjectType)
     );
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
 
-    Opportunity updatedOpp = opp.clone(true, true);
-    updatedOpp.Amount = 150;
-    Opportunity updatedSecondOpp = secondOpp.clone(true, true);
-    updatedSecondOpp.Amount = secondOpp.Amount + 30; // the amount is really unimportant; that it doesn't match what's in memory is
-    List<Opportunity> opps = new List<Opportunity>{ updatedOpp, updatedSecondOpp };
-    Rollup.records = opps;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
+    ContactPointAddress updatedCpa = cpa.clone(true, true);
+    updatedCpa.PreferenceRank = 150;
+    ContactPointAddress updatedSecondCpa = secondCpa.clone(true, true);
+    updatedSecondCpa.PreferenceRank = secondCpa.PreferenceRank + 30; // the amount is really unimportant; that it doesn't match what's in memory is
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ updatedCpa, updatedSecondCpa };
+    Rollup.records = cpas;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(updatedSecondOpp.Amount, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum opportunity amount');
+    System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpaortunity amount');
   }
 
   @isTest
@@ -837,60 +876,63 @@ private class RollupTests {
     acc.AnnualRevenue = 250;
     update acc;
 
-    Opportunity opp = new Opportunity(Amount = 250, AccountId = acc.Id, Name = 'testOpp', StageName = 'something', CloseDate = System.today());
-    Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
-    insert originalOpps;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 250, ParentId = acc.Id, Name = 'testCpa');
+    ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
+    insert originalCpas;
     Rollup.defaultControl = null;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
-    DMLMock mock = loadAccountIdMock(originalOpps);
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
+    DMLMock mock = loadAccountIdMock(originalCpas);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'MAX BEFORE_DELETE should take the maximum opportunity amount');
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'MAX BEFORE_DELETE should take the maximum cpaortunity amount');
   }
 
   @isTest
   static void shouldMinNumbersSuccessfullyAfterInsert() {
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 100, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 200, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100, updatedAcc.AnnualRevenue, 'MIN AFTER_INSERT should take the minimum opportunity amount');
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'MIN AFTER_INSERT should take the minimum cpaortunity amount');
   }
 
   @isTest
   static void shouldMinNumbersSuccessfullyAfterUpdate() {
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 100, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 200, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 100, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 200, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(Id = opps[0].Id), opps[1].Id => new Opportunity(Id = opps[1].Id) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => new ContactPointAddress(Id = cpas[0].Id),
+      cpas[1].Id => new ContactPointAddress(Id = cpas[1].Id)
+    };
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the minimum opportunity amount');
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the minimum cpaortunity amount');
   }
 
   @isTest
@@ -900,29 +942,29 @@ private class RollupTests {
     acc.AnnualRevenue = 150;
     update acc;
 
-    Opportunity opp = new Opportunity(Amount = 150, AccountId = acc.Id, Name = 'testOpp', StageName = 'something', CloseDate = System.today());
-    Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
-    insert originalOpps;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 150, ParentId = acc.Id, Name = 'testCpa');
+    ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
+    insert originalCpas;
     Rollup.defaultControl = null;
 
-    Opportunity updatedOpp = opp.clone(true, true);
-    updatedOpp.Amount = 200;
-    List<Opportunity> opps = new List<Opportunity>{ updatedOpp };
-    Rollup.records = opps;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(new List<Opportunity>{ opp });
+    ContactPointAddress updatedCpa = cpa.clone(true, true);
+    updatedCpa.PreferenceRank = 200;
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ updatedCpa };
+    Rollup.records = cpas;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(new List<ContactPointAddress>{ cpa });
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(175, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the minimum opportunity amount');
+    System.assertEquals(175, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the minimum cpaortunity amount');
   }
 
   @isTest
@@ -932,31 +974,31 @@ private class RollupTests {
     acc.AnnualRevenue = 150;
     update acc;
 
-    Opportunity opp = new Opportunity(Amount = acc.AnnualRevenue, AccountId = acc.Id, Name = 'testOpp', StageName = 'something', CloseDate = System.today());
-    Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
-    insert originalOpps;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'testCpa');
+    ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
+    insert originalCpas;
     Rollup.defaultControl = null;
 
-    Opportunity updatedOpp = opp.clone(true, true);
-    updatedOpp.Amount = secondOpp.Amount + 50; // the amount isn't important - that it's now more than the second Opp amount is
-    Opportunity updatedSecondOpp = secondOpp.clone(true, true);
-    updatedSecondOpp.Amount = secondOpp.Amount - 30; // the amount is really unimportant; that it doesn't match what's in the database is
-    List<Opportunity> opps = new List<Opportunity>{ updatedOpp, updatedSecondOpp };
-    Rollup.records = opps;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
+    ContactPointAddress updatedCpa = cpa.clone(true, true);
+    updatedCpa.PreferenceRank = secondCpa.PreferenceRank + 50; // the amount isn't important - that it's now more than the second CPA PreferenceRank is
+    ContactPointAddress updatedSecondCpa = secondCpa.clone(true, true);
+    updatedSecondCpa.PreferenceRank = secondCpa.PreferenceRank - 30; // the amount is really unimportant; that it doesn't match what's in the database is
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ updatedCpa, updatedSecondCpa };
+    Rollup.records = cpas;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(updatedSecondOpp.Amount, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the min opportunity amount');
+    System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the min cpaortunity amount');
   }
 
   @isTest
@@ -967,43 +1009,39 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(
-      Amount = acc.AnnualRevenue,
-      AccountId = acc.Id,
-      Name = 'testOpp',
-      StageName = 'something',
-      CloseDate = System.today(),
-      Id = generateId(Opportunity.SObjectType)
+    ContactPointAddress cpa = new ContactPointAddress(
+      PreferenceRank = acc.AnnualRevenue.intValue(),
+      ParentId = acc.Id,
+      Name = 'testCpa',
+      Id = generateId(ContactPointAddress.SObjectType)
     );
-    Opportunity secondOpp = new Opportunity(
-      Amount = 175,
-      AccountId = acc.Id,
-      Name = 'testOppTwo',
-      StageName = 'something',
-      CloseDate = System.today(),
-      Id = generateId(Opportunity.SObjectType)
+    ContactPointAddress secondCpa = new ContactPointAddress(
+      PreferenceRank = 175,
+      ParentId = acc.Id,
+      Name = 'testCpaTwo',
+      Id = generateId(ContactPointAddress.SObjectType)
     );
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
 
-    Opportunity updatedOpp = opp.clone(true, true);
-    updatedOpp.Amount = secondOpp.Amount + 50; // the amount isn't important - that it's now more than the second Opp amount is
-    Opportunity updatedSecondOpp = secondOpp.clone(true, true);
-    updatedSecondOpp.Amount = secondOpp.Amount - 30; // the amount is really unimportant; that it doesn't match what's in the database is
-    List<Opportunity> opps = new List<Opportunity>{ updatedOpp, updatedSecondOpp };
-    Rollup.records = opps;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(originalOpps);
+    ContactPointAddress updatedCpa = cpa.clone(true, true);
+    updatedCpa.PreferenceRank = secondCpa.PreferenceRank + 50; // the amount isn't important - that it's now more than the second CPA PreferenceRank is
+    ContactPointAddress updatedSecondCpa = secondCpa.clone(true, true);
+    updatedSecondCpa.PreferenceRank = secondCpa.PreferenceRank - 30; // the amount is really unimportant; that it doesn't match what's in the database is
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ updatedCpa, updatedSecondCpa };
+    Rollup.records = cpas;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(updatedSecondOpp.Amount, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the min opportunity amount');
+    System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the min cpaortunity amount');
   }
 
   @isTest
@@ -1013,13 +1051,13 @@ private class RollupTests {
     acc.AnnualRevenue = 150;
     update acc;
 
-    Opportunity opp = new Opportunity(Amount = 150, AccountId = acc.Id, Name = 'testOpp', StageName = 'something', CloseDate = System.today());
-    Opportunity secondOpp = new Opportunity(Amount = 175, AccountId = acc.Id, Name = 'testOppTwo', StageName = 'something', CloseDate = System.today());
-    List<Opportunity> originalOpps = new List<Opportunity>{ opp, secondOpp };
-    insert originalOpps;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 150, ParentId = acc.Id, Name = 'testCpa');
+    ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
+    List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
+    insert originalCpas;
     Rollup.defaultControl = null;
 
-    Rollup.records = new List<Opportunity>{ opp };
+    Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>(Rollup.records);
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
@@ -1027,12 +1065,12 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(175, updatedAcc.AnnualRevenue, 'MIN BEFORE_DELETE should take the minimum opportunity amount');
+    System.assertEquals(175, updatedAcc.AnnualRevenue, 'MIN BEFORE_DELETE should take the minimum cpaortunity amount');
   }
 
   @isTest
@@ -1044,21 +1082,21 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'second test string', Id = generateId(Opportunity.SObjectType));
-    Opportunity oldOpp = opp.clone(true, true);
-    oldOpp.Name = acc.AccountNumber;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'second test string', Id = generateId(ContactPointAddress.SObjectType));
+    ContactPointAddress oldCpa = cpa.clone(true, true);
+    oldCpa.Name = acc.AccountNumber;
 
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp };
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldCpa.Id => oldCpa };
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.concatFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(opp.Name, updatedAcc.AccountNumber, 'CONCAT AFTER_UPDATE should replace the old string value with the new');
+    System.assertEquals(cpa.Name, updatedAcc.AccountNumber, 'CONCAT AFTER_UPDATE should replace the old string value with the new');
   }
 
   @isTest
@@ -1069,12 +1107,12 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
-    Rollup.concatFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT BEFORE_DELETE');
@@ -1090,14 +1128,14 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'test string');
-    Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'hello another string');
-    Opportunity thirdOpp = opp.clone(true, true);
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp, secondOpp, thirdOpp });
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
+    ContactPointAddress secondCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'hello another string');
+    ContactPointAddress thirdCpa = cpa.clone(true, true);
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa, secondCpa, thirdCpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.concatDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
@@ -1117,19 +1155,19 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'second test string', Id = generateId(Opportunity.SObjectType));
-    Opportunity secondOpp = new Opportunity(AccountId = acc.Id, Name = 'third test string', Id = generateId(Opportunity.SObjectType));
-    Opportunity oldOpp = opp.clone(true, true);
-    oldOpp.Name = acc.AccountNumber;
-    Opportunity secondOldOpp = secondOpp.clone(true, true);
-    secondOldOpp.Name = acc.AccountNumber;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'second test string', Id = generateId(ContactPointAddress.SObjectType));
+    ContactPointAddress secondCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'third test string', Id = generateId(ContactPointAddress.SObjectType));
+    ContactPointAddress oldCpa = cpa.clone(true, true);
+    oldCpa.Name = acc.AccountNumber;
+    ContactPointAddress secondoldCpa = secondCpa.clone(true, true);
+    secondoldCpa.Name = acc.AccountNumber;
 
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ opp, secondOpp });
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOldOpp.Id => secondOldOpp };
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa, secondCpa });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ oldCpa.Id => oldCpa, secondoldCpa.Id => secondoldCpa };
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
-    Rollup.concatDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_UPDATE');
@@ -1143,13 +1181,13 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxOnStringsOnInsert() {
-    List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_INSERT STRING');
@@ -1159,13 +1197,13 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxStringsWhenDefaultIsGiven() {
-    List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType, 'ZZZ').runCalc();
+    Rollup.maxFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType, 'ZZZ').runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_INSERT STRING');
@@ -1175,13 +1213,13 @@ private class RollupTests {
 
   @isTest
   static void shouldMinOnStringsOnInsert() {
-    List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A'), new Opportunity(Name = 'Z') };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_INSERT STRING');
@@ -1191,20 +1229,20 @@ private class RollupTests {
 
   @isTest
   static void shouldMinOnStringsOnUpdate() {
-    List<Opportunity> testOpps = new List<Opportunity>{
-      new Opportunity(Name = 'B', Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'B', Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(Name = 'A', Id = generateId(ContactPointAddress.SObjectType))
     };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      testOpps[0].Id => new Opportunity(Id = testOpps[0].Id, Name = ''),
-      testOpps[1].Id => new Opportunity(Id = testOpps[1].Id, Name = 'X')
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      testCpas[0].Id => new ContactPointAddress(Id = testCpas[0].Id, Name = ''),
+      testCpas[1].Id => new ContactPointAddress(Id = testCpas[1].Id, Name = 'X')
     };
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN AFTER_UPDATE STRING');
@@ -1214,17 +1252,17 @@ private class RollupTests {
 
   @isTest
   static void shouldMaxOnStringsOnUpdate() {
-    List<Opportunity> testOpps = new List<Opportunity>{
-      new Opportunity(Name = '', Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = '', Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(Name = 'A', Id = generateId(ContactPointAddress.SObjectType))
     };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(testOpps);
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(testCpas);
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING');
@@ -1240,14 +1278,14 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A', Id = generateId(ContactPointAddress.SObjectType)) };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ testOpps[0].Id => new Opportunity(Id = testOpps[0].Id, Name = 'A') };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ testCpas[0].Id => new ContactPointAddress(Id = testCpas[0].Id, Name = 'A') };
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.minFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_DELETE STRING');
@@ -1262,26 +1300,26 @@ private class RollupTests {
     acc.AccountNumber = 'A';
     update acc;
 
-    Opportunity opp = new Opportunity(StageName = 'test max on delete', CloseDate = System.today(), Name = 'Z', AccountId = acc.Id);
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'Z', ParentId = acc.Id);
+    insert cpa;
     Rollup.defaultControl = null;
     // ensure that if any automation has changed the name, we keep track of it
-    opp = [SELECT Name FROM Opportunity WHERE Id = :opp.Id];
+    cpa = [SELECT Name FROM ContactPointAddress WHERE Id = :cpa.Id];
 
-    List<Opportunity> testOpps = new List<Opportunity>{ new Opportunity(Name = 'A', Id = generateId(Opportunity.SObjectType)) };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A', Id = generateId(ContactPointAddress.SObjectType)) };
 
-    DMLMock mock = loadAccountIdMock(testOpps);
+    DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>(testOpps);
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(testCpas);
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    Boolean originalOppNameGreater = opp.Name > testOpps[0].Name;
+    Boolean originalCpaNameGreater = cpa.Name > testCpas[0].Name;
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_DELETE STRING');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(originalOppNameGreater ? opp.Name : testOpps[0].Name, updatedAcc.AccountNumber, 'MAX BEFORE_DELETE should take the maximum string');
+    System.assertEquals(originalCpaNameGreater ? cpa.Name : testCpas[0].Name, updatedAcc.AccountNumber, 'MAX BEFORE_DELETE should take the maximum string');
   }
 
   @isTest
@@ -1358,31 +1396,25 @@ private class RollupTests {
     acc.AnnualRevenue = 100;
     update acc;
 
-    Opportunity testOpp = new Opportunity(
-      Amount = acc.AnnualRevenue,
-      Name = 'Pre-existing',
-      StageName = 'random',
-      CloseDate = System.today(),
-      AccountId = acc.Id
-    );
-    insert testOpp;
+    ContactPointAddress testCpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Pre-existing', ParentId = acc.Id);
+    insert testCpa;
     Rollup.defaultControl = null;
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 200000, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 200000, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated AVERAGE AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      (testOpp.Amount + opps[0].Amount + opps[1].Amount) / 3,
+      Integer.valueOf((testCpa.PreferenceRank + cpas[0].PreferenceRank + cpas[1].PreferenceRank)) / 3,
       updatedAcc.AnnualRevenue,
       'AVERAGE AFTER_INSERT should take into account all values'
     );
@@ -1395,35 +1427,29 @@ private class RollupTests {
     acc.AnnualRevenue = 100;
     update acc;
 
-    Opportunity testOpp = new Opportunity(
-      Amount = acc.AnnualRevenue,
-      Name = 'Pre-existing',
-      StageName = 'random',
-      CloseDate = System.today(),
-      AccountId = acc.Id
-    );
-    insert testOpp;
+    ContactPointAddress testCpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Pre-existing', ParentId = acc.Id);
+    insert testCpa;
     Rollup.defaultControl = null;
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 200000, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 200000, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 200000, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      opps[0].Id => new Opportunity(Amount = 100000, Id = opps[0].Id),
-      opps[1].Id => new Opportunity(Amount = 100000, Id = opps[1].Id)
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => new ContactPointAddress(PreferenceRank = 100000, Id = cpas[0].Id),
+      cpas[1].Id => new ContactPointAddress(PreferenceRank = 100000, Id = cpas[1].Id)
     };
 
     Test.startTest();
-    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated AVERAGE AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      (testOpp.Amount + opps[0].Amount + opps[1].Amount) / 3,
+      Integer.valueOf((testCpa.PreferenceRank + cpas[0].PreferenceRank + cpas[1].PreferenceRank)) / 3,
       updatedAcc.AnnualRevenue,
       'AVERAGE AFTER_UPDATE should take into account all values, including those from memory'
     );
@@ -1436,35 +1462,43 @@ private class RollupTests {
     acc.AnnualRevenue = 200;
     update acc;
 
-    Opportunity testOppOne = new Opportunity(Amount = 100, Name = 'Pre-existing one', StageName = 'random', CloseDate = System.today(), AccountId = acc.Id);
-    Opportunity testOppTwo = new Opportunity(Amount = 300, Name = 'Pre-existing one', StageName = 'random', CloseDate = System.today(), AccountId = acc.Id);
-    insert new List<Opportunity>{ testOppOne, testOppTwo };
+    ContactPointAddress testCpaOne = new ContactPointAddress(PreferenceRank = 100, Name = 'Pre-existing one', ParentId = acc.Id);
+    ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing one', ParentId = acc.Id);
+    insert new List<ContactPointAddress>{ testCpaOne, testCpaTwo };
     Rollup.defaultControl = null;
 
-    List<Opportunity> opps = new List<Opportunity>{ testOppTwo };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ testCpaTwo };
 
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ testOppOne.Id => testOppOne };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ testCpaOne.Id => testCpaOne };
 
     Test.startTest();
-    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated AVERAGE BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(testOppOne.Amount, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE should take into account only non-deleted values');
+    System.assertEquals(testCpaOne.PreferenceRank, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE should take into account only non-deleted values');
   }
 
   // TODO migrate tests specific to calculating to this format, and the actual testing of functionality to RollupCalculatorTests
   @isTest
   static void shouldRollupForFirst() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today()) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.firstFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'CloseDate').runCalc();
+    Rollup.firstFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AnnualRevenue,
+        Account.SObjectType,
+        'ActiveFromDate'
+      )
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals(true, calcMockWasCalled);
@@ -1473,11 +1507,19 @@ private class RollupTests {
   @isTest
   static void shouldRollupForLast() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today()) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.lastFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'CloseDate').runCalc();
+    Rollup.lastFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AnnualRevenue,
+        Account.SObjectType,
+        'ActiveFromDate'
+      )
+      .runCalc();
     Test.stopTest();
     System.assertEquals(true, calcMockWasCalled);
   }
@@ -1485,11 +1527,12 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForAverage() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5)
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
@@ -1498,11 +1541,12 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForCountDistinct() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Rollup.countDistinctFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5)
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
@@ -1511,11 +1555,12 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForConcatDistinct() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.concatDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a').runCalc();
+    Rollup.concatDistinctFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a')
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
@@ -1524,11 +1569,12 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForConcat() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.concatFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a').runCalc();
+    Rollup.concatFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a')
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
@@ -1537,11 +1583,11 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForCount() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
     Test.stopTest();
 
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
@@ -1550,11 +1596,12 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForFirst() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.firstFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby').runCalc();
+    Rollup.firstFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby')
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
@@ -1563,11 +1610,12 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForLast() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.lastFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby').runCalc();
+    Rollup.lastFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby')
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
@@ -1576,11 +1624,11 @@ private class RollupTests {
   @isTest
   static void shouldPassRecalcValueForMin() {
     RollupCalculator.Factory = new FactoryMock();
-    loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 5) });
+    loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
+    Rollup.minFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5).runCalc();
     Test.stopTest();
 
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
@@ -1590,45 +1638,45 @@ private class RollupTests {
   @isTest
   static void shouldMaxDateOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Max date on insert test');
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'Max date on insert test');
+    insert cpa;
     Rollup.defaultControl = null;
 
-    Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = opp.Id);
-    Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = opp.Id);
+    Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = cpa.Id);
+    Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = cpa.Id);
 
-    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo }, opp.Id);
+    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo }, cpa.Id);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(Task.ActivityDate, Task.WhatId, Opportunity.Id, Opportunity.CloseDate, Opportunity.SObjectType).runCalc();
+    Rollup.maxFromApex(Task.ActivityDate, Task.WhatId, ContactPointAddress.Id, ContactPointAddress.ActiveFromDate, ContactPointAddress.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX DATE AFTER_INSERT');
-    Opportunity updatedOpp = (Opportunity) mock.Records[0];
-    System.assertEquals(taskTwo.ActivityDate, updatedOpp.CloseDate);
+    ContactPointAddress updatedCpa = (ContactPointAddress) mock.Records[0];
+    System.assertEquals(taskTwo.ActivityDate, updatedCpa.ActiveFromDate);
   }
 
   @isTest
   static void shouldMinDateOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Min date on insert test');
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'Min date on insert test');
+    insert cpa;
     Rollup.defaultControl = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50));
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50));
 
-    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo }, opp.Id);
+    DMLMock mock = getTaskMock(new List<Task>{ taskOne, taskTwo }, cpa.Id);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(Task.ActivityDate, Task.WhatId, Opportunity.Id, Opportunity.CloseDate, Opportunity.SObjectType).runCalc();
+    Rollup.minFromApex(Task.ActivityDate, Task.WhatId, ContactPointAddress.Id, ContactPointAddress.ActiveFromDate, ContactPointAddress.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN DATE AFTER_INSERT');
-    Opportunity updatedOpp = (Opportunity) mock.Records[0];
-    System.assertEquals(taskOne.ActivityDate, updatedOpp.CloseDate);
+    ContactPointAddress updatedCpa = (ContactPointAddress) mock.Records[0];
+    System.assertEquals(taskOne.ActivityDate, updatedCpa.ActiveFromDate);
   }
 
   @isTest
@@ -1657,26 +1705,26 @@ private class RollupTests {
   @isTest
   static void shouldMinDateOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Opportunity opp = new Opportunity(StageName = 'something', CloseDate = System.today(), Name = 'Min date on insert test');
-    insert opp;
+    Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
+    insert con;
 
-    Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = opp.Id);
+    Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
     insert taskOne;
     Rollup.defaultControl = null;
 
-    Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = opp.CloseDate.addDays(5), Id = generateId(Task.SObjectType), WhatId = opp.Id);
+    Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = generateId(Task.SObjectType), WhoId = con.Id);
 
-    DMLMock mock = getTaskMock(new List<Task>{ taskTwo }, opp.Id);
+    DMLMock mock = getTaskMock(new List<Task>{ taskTwo }, con.Id);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Task>(new List<Task>{ new Task(Id = taskTwo.Id, ActivityDate = opp.CloseDate) });
+    Rollup.oldRecordsMap = new Map<Id, Task>(new List<Task>{ new Task(Id = taskTwo.Id, ActivityDate = con.BirthDate) });
 
     Test.startTest();
-    Rollup.minFromApex(Task.ActivityDate, Task.WhatId, Opportunity.Id, Opportunity.CloseDate, Opportunity.SObjectType).runCalc();
+    Rollup.minFromApex(Task.ActivityDate, Task.WhoId, Contact.Id, Contact.BirthDate, Contact.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN DATE AFTER_INSERT');
-    Opportunity updatedOpp = (Opportunity) mock.Records[0];
-    System.assertEquals(taskOne.ActivityDate, updatedOpp.CloseDate);
+    Contact updatedCon = (Contact) mock.Records[0];
+    System.assertEquals(taskOne.ActivityDate, updatedCon.BirthDate);
   }
 
   @isTest
@@ -2080,31 +2128,31 @@ private class RollupTests {
     // Unfortunately, these two "tiny" differences means a lot of other code needs to be tested
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
-    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc', Amount = 500, Name = 'test cdc', AccountId = acc.Id);
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc', ParentId = acc.Id);
+    insert cpa;
     Rollup.defaultControl = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'CREATE';
-    header.changedFields = new List<String>{ 'Amount', 'LastModifiedDate' };
-    header.recordIds = new List<Id>{ opp.Id };
-    header.entityName = 'Opportunity';
+    header.changedFields = new List<String>{ 'PreferenceRank', 'LastModifiedDate' };
+    header.recordIds = new List<Id>{ cpa.Id };
+    header.entityName = 'ContactPointAddress';
 
-    OpportunityChangeEvent ev = new OpportunityChangeEvent();
+    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent();
     ev.ChangeEventHeader = header;
-    ev.Amount = 500;
+    ev.PreferenceRank = 500;
 
     DMLMock mock = loadMock(new List<SObject>{ ev });
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
 
@@ -2121,31 +2169,31 @@ private class RollupTests {
   static void shouldWorkForChangeDataEventCaptureTriggersOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
-    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc update', Amount = 500, Name = 'test cdc update', AccountId = acc.Id);
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc update', ParentId = acc.Id);
+    insert cpa;
     Rollup.defaultControl = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'UPDATE';
-    header.changedFields = new List<String>{ 'Amount', 'LastModifiedDate' };
-    header.recordIds = new List<Id>{ opp.Id };
-    header.entityName = 'Opportunity';
+    header.changedFields = new List<String>{ 'PreferenceRank', 'LastModifiedDate' };
+    header.recordIds = new List<Id>{ cpa.Id };
+    header.entityName = 'ContactPointAddress';
 
-    OpportunityChangeEvent ev = new OpportunityChangeEvent();
+    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent();
     ev.ChangeEventHeader = header;
-    ev.Amount = 500;
+    ev.PreferenceRank = 500;
 
     DMLMock mock = loadMock(new List<SObject>{ ev });
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
 
@@ -2165,31 +2213,31 @@ private class RollupTests {
     acc.AnnualRevenue = 10000;
     update acc;
 
-    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test cdc update', Amount = 500, Name = 'test cdc update', AccountId = acc.Id);
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc update', ParentId = acc.Id);
+    insert cpa;
     Rollup.defaultControl = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'DELETE';
-    header.changedFields = new List<String>{ 'Amount', 'LastModifiedDate' };
-    header.recordIds = new List<Id>{ opp.Id };
-    header.entityName = 'Opportunity';
+    header.changedFields = new List<String>{ 'PreferenceRank', 'LastModifiedDate' };
+    header.recordIds = new List<Id>{ cpa.Id };
+    header.entityName = 'ContactPointAddress';
 
-    OpportunityChangeEvent ev = new OpportunityChangeEvent();
+    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent();
     ev.ChangeEventHeader = header;
-    ev.Amount = 500;
+    ev.PreferenceRank = 500;
 
     DMLMock mock = loadMock(new List<SObject>{ ev });
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItem__c = 'Opportunity'
+        CalcItem__c = 'ContactPointAddress'
       )
     };
 
@@ -2199,18 +2247,18 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CDC BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(acc.AnnualRevenue - ev.Amount, updatedAcc.AnnualRevenue);
+    System.assertEquals(acc.AnnualRevenue - ev.PreferenceRank, updatedAcc.AnnualRevenue);
   }
 
   /** Invocable tests */
 
   @isTest
   static void shouldBeInvokedSuccessfullyAfterInsertFromFlow() {
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = loadAccountIdMock(opps);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
+    DMLMock mock = loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'INSERT', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'INSERT', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2219,16 +2267,16 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount');
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank');
   }
 
   @isTest
   static void shouldBeInvokedRegardlessOfCasingFromFlow() {
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = loadAccountIdMock(opps);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
+    DMLMock mock = loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'insert', 'sum'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'insert', 'sum'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2237,17 +2285,21 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'sum AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT from flow should match input Amount');
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT from flow should match input PreferenceRank');
   }
 
   @isTest
   static void shouldBeInvokedSuccessfullyAfterSaveFromFlow() {
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType)) };
-    DMLMock mock = loadAccountIdMock(opps);
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opps[0].Id => new Opportunity(AccountId = opps[0].AccountId, Id = opps[0].Id, Amount = 250) };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
+    };
+    DMLMock mock = loadAccountIdMock(cpas);
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250)
+    };
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'UPDATE', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2256,20 +2308,20 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(750, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for Amount');
+    System.assertEquals(750, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
   }
 
   @isTest
   static void shouldCorrectlyInitializeDefaultsWhenOldRecordsDontExistFromFlow() {
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 1000, Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
-    opps[1].AccountId = null;
+    DMLMock mock = loadAccountIdMock(cpas);
+    cpas[1].ParentId = null;
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'UPDATE', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2278,16 +2330,16 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for Amount');
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
   }
 
   @isTest
   static void shouldBeInvokedSuccessfullyBeforeDeleteFromFlow() {
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = loadAccountIdMock(opps);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
+    DMLMock mock = loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'DELETE', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'DELETE', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2296,25 +2348,25 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM BEFORE_DELETE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract Amount from Account');
+    System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract PreferenceRank from Account');
   }
 
   // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
   @isTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 1000, Name = 'Acme opp', Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(Amount = 500, Name = 'Test name changed opp', Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Name = 'Acme cpa', Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(PreferenceRank = 500, Name = 'Test name changed cpa', Id = generateId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      opps[0].Id => new Opportunity(AccountId = opps[0].AccountId, Id = opps[0].Id, Amount = 250, Name = opps[0].Name),
-      opps[1].Id => new Opportunity(AccountId = opps[1].AccountId, Id = opps[1].Id, Name = 'Name that does not match', Amount = 200)
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
+      cpas[1].Id => new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, Name = 'Name that does not match', PreferenceRank = 200)
     };
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'UPDATE', 'SUM');
-    flowInputs[0].calcItemChangedFields = 'Name, StageName';
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].calcItemChangedFields = 'Name, IsDefault';
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -2329,18 +2381,18 @@ private class RollupTests {
     System.assertEquals(
       300,
       updatedAcc.AnnualRevenue,
-      'SUM AFTER_UPDATE from flow with changed fields should match diff for Amount based off of the Opp with Name changes'
+      'SUM AFTER_UPDATE from flow with changed fields should match diff for PreferenceRank based off of the CPA with Name changes'
     );
   }
 
   @isTest
   static void shouldReportSuccessWhenFlowPassesNoRecords() {
-    List<Opportunity> opps = new List<Opportunity>();
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>();
     Rollup.shouldRun = true;
-    Rollup.records = opps;
+    Rollup.records = cpas;
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(opps, 'INSERT', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'INSERT', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2349,12 +2401,12 @@ private class RollupTests {
 
   @isTest
   static void shouldReportFailureWhenExceptionIsThrown() {
-    List<OpportunityHistory> history = new List<OpportunityHistory>{ new OpportunityHistory() };
+    List<ContactPointAddressHistory> history = new List<ContactPointAddressHistory>{ new ContactPointAddressHistory() };
     Rollup.shouldRun = true;
     Rollup.records = history;
 
     Test.startTest();
-    // prepareFlowTest sets us up for a failure with a field that doesn't exist on OpportunityHistory
+    // prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
     Test.stopTest();
 
@@ -2374,9 +2426,9 @@ private class RollupTests {
 
   @isTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadataForFlow() {
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1000) };
-    DMLMock mock = loadAccountIdMock(opps);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'INSERT', 'SUM');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
+    DMLMock mock = loadAccountIdMock(cpas);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
     flowInputs[0].fullRecalculationDefaultNumberValue = -1001;
 
     Test.startTest();
@@ -2389,7 +2441,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(-1, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input Amount + number override');
+    System.assertEquals(-1, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank + number override');
   }
 
   @isTest
@@ -2429,9 +2481,9 @@ private class RollupTests {
 
   @isTest
   static void shouldOverrideStringBasedDefaultForFlow() {
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Name = 'A') };
-    DMLMock mock = loadAccountIdMock(opps);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(opps, 'INSERT', 'SUM');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A') };
+    DMLMock mock = loadAccountIdMock(cpas);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
     flowInputs[0].fullRecalculationDefaultStringValue = 'Z';
     flowInputs[0].rollupFieldOnOpObject = 'Name';
     flowInputs[0].rollupFieldOnCalcItem = 'Name';
@@ -2491,12 +2543,12 @@ private class RollupTests {
 
   @isTest
   static void shouldRunSuccessfullyAsBatch() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT AFTER_INSERT');
@@ -2510,12 +2562,12 @@ private class RollupTests {
 
   @isTest
   static void shouldAbortWhenOrgDefaultsHaveDisabledRunning() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(0, mock.Records.size(), 'Rollup run should have aborted');
@@ -2523,12 +2575,12 @@ private class RollupTests {
 
   @isTest
   static void shouldAbortWhenspecificControlDisablesRunning() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificControl = new RollupControl__mdt(ShouldAbortRun__c = true);
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(0, mock.Records.size(), 'Rollup run should have aborted');
@@ -2536,12 +2588,12 @@ private class RollupTests {
 
   @isTest
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1, MaxLookupRowsBeforeBatching__c = 0);
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
@@ -2550,12 +2602,12 @@ private class RollupTests {
 
   @isTest
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', MaxLookupRowsBeforeBatching__c = 1000, BatchChunkSize__c = 50);
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
@@ -2564,12 +2616,12 @@ private class RollupTests {
 
   @isTest
   static void shouldRunAsQueueableWhenSpecificControlIsQueueable() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Queueable');
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
@@ -2594,9 +2646,9 @@ private class RollupTests {
 
   @isTest
   static void shouldScheduleSuccessfullyForGoodQuery() {
-    String goodQuery = 'SELECT Id, StageName FROM Opportunity WHERE CreatedDate > YESTERDAY';
+    String goodQuery = 'SELECT Id, Name FROM ContactPointAddress WHERE CreatedDate > YESTERDAY';
 
-    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, 'Opportunity', null);
+    String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, 'ContactPointAddress', null);
 
     System.assertNotEquals(null, jobId);
   }
@@ -2665,18 +2717,18 @@ private class RollupTests {
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Name = 'one', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'two', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'three', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'four', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'five', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'six', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'one', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'two', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'three', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'four', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'five', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'six', ParentId = acc.Id, PreferenceRank = 1)
     };
-    insert opps;
+    insert cpas;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
+    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2688,20 +2740,20 @@ private class RollupTests {
   static void shouldBatchForFullRecalcWhenOverLimits() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Name = 'oneBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'twoBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'threeBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'fourBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'fiveBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'sixBatch', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixBatch', ParentId = acc.Id, PreferenceRank = 1)
     };
-    insert opps;
+    insert cpas;
 
     Rollup.maxQueryRowOverride = 1;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
+    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2715,14 +2767,14 @@ private class RollupTests {
     acc.AnnualRevenue = 60;
     update acc;
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Name = 'oneExisting', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'twoExisting', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneExisting', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoExisting', ParentId = acc.Id, PreferenceRank = 1)
     };
-    insert opps;
+    insert cpas;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', null, null);
+    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2735,14 +2787,26 @@ private class RollupTests {
   static void shouldSuccessfullyExcludeBasedOnWhereCriteriaDuringFullRecalc() {
     Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Name = 'oneName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'twoName', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneName', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoName', ParentId = acc.Id, PreferenceRank = 1)
     };
-    insert opps;
+    insert cpas;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Amount', 'AccountId', 'Id', 'AnnualRevenue', 'Account', 'Opportunity', 'SUM', 'Account.Name != \'' + acc.Name + '\'', null);
+    Rollup.performFullRecalculation(
+      'PreferenceRank',
+      'ParentId',
+      'Id',
+      'AnnualRevenue',
+      'Account',
+      'ContactPointAddress',
+      'SUM',
+      'Parent.Name != \'' +
+      acc.Name +
+      '\'',
+      null
+    );
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
@@ -2753,14 +2817,14 @@ private class RollupTests {
   static void shouldRunSyncWhenFlaggedOnRollupLimit() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{ new Opportunity(Amount = 1), new Opportunity(Amount = 1) };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1), new ContactPointAddress(PreferenceRank = 1) };
 
-    DMLMock mock = loadAccountIdMock(opps);
+    DMLMock mock = loadAccountIdMock(cpas);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
 
     //sepcifically do NOT wrap in Test.startTest() / Test.stopTest() - we need to ensure this happened synchronously
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
@@ -2777,18 +2841,22 @@ private class RollupTests {
     insert oldAcc;
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50, AccountId = acc.Id);
-    Opportunity reparentedOpp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = oldAcc.AnnualRevenue, AccountId = acc.Id);
-    DMLMock mock = loadMock(new List<Opportunity>{ opp, reparentedOpp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
+    ContactPointAddress reparentedCpa = new ContactPointAddress(
+      Id = generateId(ContactPointAddress.SObjectType),
+      PreferenceRank = oldAcc.AnnualRevenue.intValue(),
+      ParentId = acc.Id
+    );
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ cpa, reparentedCpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      opp.Id => new Opportunity(AccountId = acc.Id, Amount = 25),
-      reparentedOpp.Id => new Opportunity(AccountId = oldAcc.Id, Amount = oldAcc.AnnualRevenue)
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25),
+      reparentedCpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue())
     };
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
@@ -2809,19 +2877,25 @@ private class RollupTests {
 
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50, AccountId = acc.Id);
-    DMLMock mock = loadMock(new List<Opportunity>{ opp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(AccountId = oldAcc.Id, Amount = oldAcc.AnnualRevenue) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue())
+    };
 
     Test.startTest();
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(opp.Amount, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+    System.assertEquals(
+      cpa.PreferenceRank,
+      updatedAcc.AnnualRevenue,
+      'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one'
+    );
     Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
@@ -2835,22 +2909,22 @@ private class RollupTests {
     insert oldAcc;
     Rollup.defaultControl = null;
 
-    List<Opportunity> testOpps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, Name = 'X', Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(AccountId = acc.Id, Name = 'Y', Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'X', Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Y', Id = generateId(ContactPointAddress.SObjectType))
     };
 
-    DMLMock mock = loadMock(testOpps);
+    DMLMock mock = loadMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Opportunity firstOpp = testOpps[0].clone(true, true);
-    Opportunity secondOpp = testOpps[1].clone(true, true);
-    secondOpp.AccountId = oldAcc.Id;
+    ContactPointAddress firstCpa = testCpas[0].clone(true, true);
+    ContactPointAddress secondCpa = testCpas[1].clone(true, true);
+    secondCpa.ParentId = oldAcc.Id;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ firstOpp.Id => firstOpp, secondOpp.Id => secondOpp };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ firstCpa.Id => firstCpa, secondCpa.Id => secondCpa };
 
     Test.startTest();
-    Rollup.maxFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.Name, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Name, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING');
@@ -2869,24 +2943,24 @@ private class RollupTests {
     insert oldAcc;
     Rollup.defaultControl = null;
 
-    List<Opportunity> testOpps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, Name = 'X', Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(AccountId = acc.Id, Name = 'X', Id = generateId(Opportunity.SObjectType)),
-      new Opportunity(AccountId = acc.Id, Name = 'Y', Id = generateId(Opportunity.SObjectType))
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'X', Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'X', Id = generateId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Y', Id = generateId(ContactPointAddress.SObjectType))
     };
 
-    DMLMock mock = loadMock(testOpps);
+    DMLMock mock = loadMock(testCpas);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Opportunity firstOpp = testOpps[0].clone(true, true);
-    Opportunity secondOpp = testOpps[1].clone(true, true);
-    Opportunity thirdOpp = testOpps[2].clone(true, true);
-    thirdOpp.AccountId = oldAcc.Id;
+    ContactPointAddress firstCpa = testCpas[0].clone(true, true);
+    ContactPointAddress secondCpa = testCpas[1].clone(true, true);
+    ContactPointAddress thirdCpa = testCpas[2].clone(true, true);
+    thirdCpa.ParentId = oldAcc.Id;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ firstOpp.Id => firstOpp, secondOpp.Id => secondOpp, thirdOpp.Id => thirdOpp };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ firstCpa.Id => firstCpa, secondCpa.Id => secondCpa, thirdCpa.Id => thirdCpa };
 
     Test.startTest();
-    Rollup.countDistinctFromApex(Opportunity.Name, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated COUNT DISTINCT AFTER_UPDATE reparenting STRING: ' + mock.Records);
@@ -2906,18 +2980,22 @@ private class RollupTests {
 
     Rollup.defaultControl = null;
 
-    Opportunity opp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = 50, AccountId = acc.Id);
-    Opportunity reparentedOpp = new Opportunity(Id = generateId(Opportunity.SObjectType), Amount = oldAcc.AnnualRevenue, AccountId = acc.Id);
-    DMLMock mock = loadMock(new List<Opportunity>{ opp, reparentedOpp });
+    ContactPointAddress cpa = new ContactPointAddress(Id = generateId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
+    ContactPointAddress reparentedCpa = new ContactPointAddress(
+      Id = generateId(ContactPointAddress.SObjectType),
+      PreferenceRank = oldAcc.AnnualRevenue.intValue(),
+      ParentId = acc.Id
+    );
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ cpa, reparentedCpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, Opportunity>{
-      opp.Id => new Opportunity(AccountId = acc.Id, Amount = 0, Id = opp.Id),
-      reparentedOpp.Id => new Opportunity(AccountId = oldAcc.Id, Amount = oldAcc.AnnualRevenue, Id = reparentedOpp.Id)
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Id = cpa.Id),
+      reparentedCpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue(), Id = reparentedCpa.Id)
     };
 
     Test.startTest();
-    Rollup.averageFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
@@ -2953,13 +3031,13 @@ private class RollupTests {
   /** Re-queueing */
   @isTest
   static void shouldRequeueRollupsWhenQueryLimitsExceeded() {
-    DMLMock mock = loadAccountIdMock(new List<Opportunity>{ new Opportunity(Amount = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100);
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 0);
 
     Test.startTest();
-    Rollup.countFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
@@ -2970,26 +3048,26 @@ private class RollupTests {
   @isTest
   static void shouldAllowGrandparentRollups() {
     Account acc = [SELECT Id FROM Account];
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
-      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert opps;
+    insert cpas;
 
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
     Rollup.shouldRun = true;
-    Rollup.records = opps;
+    Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3000,17 +3078,17 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   @isTest
   static void shouldAllowGrandparentRollupsFromParent() {
     Account acc = [SELECT Id, OwnerId FROM Account];
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
-      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert opps;
+    insert cpas;
 
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
@@ -3018,14 +3096,14 @@ private class RollupTests {
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe',
+        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe',
         IsRollupStartedFromParent__c = true
       )
     };
@@ -3037,17 +3115,17 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
     Account acc = [SELECT Id, OwnerId FROM Account];
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'One', CloseDate = System.today()),
-      new Opportunity(AccountId = acc.Id, StageName = 'Prospecting', Name = 'Two', CloseDate = System.today())
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert opps;
+    insert cpas;
 
     DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
@@ -3055,17 +3133,17 @@ private class RollupTests {
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
-    Rollup.records = opps;
+    Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3076,7 +3154,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   //** Helpers */
@@ -3084,15 +3162,15 @@ private class RollupTests {
   private static DMLMock loadAccountIdMock(List<SObject> records) {
     Account acc = [SELECT Id FROM Account];
     for (SObject record : records) {
-      record.put('AccountId', acc.Id);
+      record.put('ParentId', acc.Id);
     }
 
     return loadMock(records);
   }
 
-  private static DMLMock getTaskMock(List<SObject> records, Id oppId) {
+  private static DMLMock getTaskMock(List<SObject> records, Id cpaId) {
     for (SObject task : records) {
-      task.put('WhatId', oppId);
+      task.put('WhatId', cpaId);
     }
     return loadMock(records);
   }
@@ -3111,10 +3189,10 @@ private class RollupTests {
 
     Rollup.FlowInput flowInput = new Rollup.FlowInput();
     flowInput.recordsToRollup = records;
-    flowInput.lookupFieldOnCalcItem = 'AccountId';
+    flowInput.lookupFieldOnCalcItem = 'ParentId';
     flowInput.lookupFieldOnOpObject = 'Id';
     flowInput.rollupContext = rollupContext;
-    flowInput.rollupFieldOnCalcItem = 'Amount';
+    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
     flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
     flowInput.rollupSObjectName = 'Account';
     flowInput.rollupOperation = rollupOperation;
