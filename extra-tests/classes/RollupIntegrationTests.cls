@@ -106,7 +106,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     app = [SELECT Objects__c FROM Application__c WHERE Id = :app.Id];
-    System.assertEquals('Lead, Account', app.Objects__c);
+    System.assertEquals('Account, Lead', app.Objects__c);
   }
 
   @isTest
@@ -462,7 +462,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(acc.Name + ', ' + matchingTask.Subject, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
+    System.assertEquals(matchingTask.Subject + ', ' + acc.Name, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
   }
 
   @isTest
@@ -499,9 +499,9 @@ private class RollupIntegrationTests {
 
     Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
     System.assertEquals(
-      acc.Name +
+      matchingTask.Subject +
       ', ' +
-      matchingTask.Subject,
+      acc.Name,
       updatedAcc.Name,
       'Only matching task subject should have been appended via Who.Type requerying'
     );
@@ -539,7 +539,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :lead.Id];
-    System.assertEquals(lead.LastName + ', ' + matchingTask.Subject, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
+    System.assertEquals(matchingTask.Subject + ', ' + lead.LastName, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
   }
 
   @isTest

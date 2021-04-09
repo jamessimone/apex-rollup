@@ -463,7 +463,7 @@ private class RollupCalculatorTests {
       new Map<Id, SObject>()
     );
 
-    System.assertEquals('Hello;World, I know;And;SSK', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
+    System.assertEquals('And;Hello;SSK;World, I know', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
   }
 
   @isTest

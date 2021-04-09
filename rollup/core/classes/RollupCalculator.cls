@@ -678,14 +678,18 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void setReturnValue() {
-      String trimmedDelimiter = this.concatDelimiter.trim();
-      String possibleReturnValue = this.stringVal.normalizeSpace();
-      while (possibleReturnValue.endsWith(trimmedDelimiter)) {
-        possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
-      }
+      if(this.op.name().contains(Rollup.Op.CONCAT.name())) {
+        String trimmedDelimiter = this.concatDelimiter.trim();
+        String possibleReturnValue = this.stringVal.normalizeSpace();
+        while (possibleReturnValue.endsWith(trimmedDelimiter)) {
+          possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
+        }
 
-      this.returnVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
-        .trim();
+        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
+          .trim();
+        this.sortAndConcat();
+      }
+      this.returnVal = this.stringVal;
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
@@ -758,6 +762,12 @@ public without sharing abstract class RollupCalculator {
         return newVal < priorVal || String.isBlank(priorVal);
       }
       return false;
+    }
+
+    private void sortAndConcat() {
+      List<String> values = this.stringVal.split(this.concatDelimiter);
+      values.sort();
+      this.stringVal = String.join(values, this.concatDelimiter);
     }
 
     private Boolean shouldConcat(String newVal) {

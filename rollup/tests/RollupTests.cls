@@ -1103,7 +1103,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      'beginning, test string, something, hello another string',
+      'beginning, hello another string, something, test string',
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_INSERT should only add unique values'
     );
