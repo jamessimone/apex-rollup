@@ -48,6 +48,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected final RollupInvocationPoint invokePoint;
 
   // non-final instance variables
+  private Boolean isRunningAsync = false;
   private Boolean isFullRecalc = false;
   private Boolean isCDCUpdate = false;
   private Boolean isNoOp;
@@ -245,9 +246,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
     } else if (shouldBatch && hasMoreThanOneTarget == false) {
+      this.isRunningAsync = true;
       // safe to batch because the QueryLocator will only return one type of SObject
       return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
     } else {
+      this.isRunningAsync = true;
       return System.enqueueJob(this);
     }
   }
@@ -564,6 +567,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.recordsToRollup,
               flowInput.lookupFieldOnOpObject,
               flowInput.rollupSObjectName,
+              flowInput.lookupFieldOnCalcItem,
               flowInput.grandparentRelationshipFieldPath
             );
             wrapper.setQuery(whereClause + wrapper.getQuery());
@@ -1382,6 +1386,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           calcItems,
           rollupInfo.LookupFieldOnLookupObject__c,
           rollupInfo.LookupObject__c,
+          rollupInfo.LookupFieldOnCalcItem__c,
           rollupInfo.GrandparentRelationshipFieldPath__c
         );
         performFullRecalculationInner(
@@ -1429,70 +1434,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   /** end global-facing section, begin public/private static helpers */
-
-  private static String performFullRecalculationInner(
-    String opFieldOnCalcItem,
-    String lookupFieldOnCalcItem,
-    String lookupFieldOnLookupObject,
-    String rollupFieldOnLookupObject,
-    String lookupSObjectName,
-    String calcItemSObjectName,
-    String operationName,
-    QueryWrapper queryWrapper,
-    String potentialGrandparentRelationshipFieldPath,
-    String potentialConcatDelimiter
-  ) {
-    // just how many items are we talking, here? If it's less than the query limit, we can proceed
-    // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
-    SObjectType calcItemType = getSObjectFromName(calcItemSObjectName).getSObjectType();
-    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=', queryWrapper.getQuery());
-
-    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
-    Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable
-    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
-
-    Rollup__mdt rollupInfo = new Rollup__mdt(
-      RollupFieldOnCalcItem__c = opFieldOnCalcItem,
-      LookupObject__c = lookupSObjectName,
-      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
-      LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
-      RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupOperation__c = operationName,
-      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath,
-      ConcatDelimiter__c = potentialConcatDelimiter
-    );
-    Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
-    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
-    queryFields.addAll(whereEval.getQueryFields());
-    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
-
-    return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval);
-  }
-
-  private static String startFullRecalc(
-    List<Rollup__mdt> matchingMeta,
-    Integer amountOfCalcItems,
-    String queryString,
-    Set<String> objIds,
-    Set<Id> recordIds,
-    SObjectType calcItemType,
-    Evaluator eval
-  ) {
-    // emptyRollup used to call "getMaxQueryRows" below, as well as the default rollupControl.BatchChunkSize__c
-    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
-    if (amountOfCalcItems < emptyRollup.getMaxQueryRows()) {
-      List<SObject> calculationItems = Database.query(queryString);
-      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, RollupInvocationPoint.FROM_LWC);
-      thisRollup.isFullRecalc = true;
-      return thisRollup.runCalc();
-    } else {
-      // batch to get calc items and then batch to rollup
-      return Database.executeBatch(
-        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, matchingMeta, calcItemType, recordIds),
-        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
-      );
-    }
-  }
 
   public static String getQueryString(
     SObjectType sObjectType,
@@ -1616,6 +1557,79 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return matchingMetadata;
   }
 
+  public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
+    Boolean hasExceededLimits =
+      (Limits.getLimitQueries() / 2) < Limits.getQueries() ||
+      control?.MaxQueryRows__c < Limits.getQueryRows() ||
+      (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize() ||
+      control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
+    return hasExceededLimits && isDeferralAllowed;
+  }
+
+  private static String performFullRecalculationInner(
+    String opFieldOnCalcItem,
+    String lookupFieldOnCalcItem,
+    String lookupFieldOnLookupObject,
+    String rollupFieldOnLookupObject,
+    String lookupSObjectName,
+    String calcItemSObjectName,
+    String operationName,
+    QueryWrapper queryWrapper,
+    String potentialGrandparentRelationshipFieldPath,
+    String potentialConcatDelimiter
+  ) {
+    // just how many items are we talking, here? If it's less than the query limit, we can proceed
+    // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
+    SObjectType calcItemType = getSObjectFromName(calcItemSObjectName).getSObjectType();
+    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=', queryWrapper.getQuery());
+
+    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
+    Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable
+    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
+
+    Rollup__mdt rollupInfo = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = opFieldOnCalcItem,
+      LookupObject__c = lookupSObjectName,
+      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
+      LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
+      RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
+      RollupOperation__c = operationName,
+      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath,
+      ConcatDelimiter__c = potentialConcatDelimiter
+    );
+    Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
+    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
+    queryFields.addAll(whereEval.getQueryFields());
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
+
+    return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval);
+  }
+
+  private static String startFullRecalc(
+    List<Rollup__mdt> matchingMeta,
+    Integer amountOfCalcItems,
+    String queryString,
+    Set<String> objIds,
+    Set<Id> recordIds,
+    SObjectType calcItemType,
+    Evaluator eval
+  ) {
+    // emptyRollup used to reference the default RollupControl__mdt.MaxQueryRows__c, as well as BatchChunkSize__c
+    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
+    if (amountOfCalcItems < emptyRollup.rollupControl.MaxQueryRows__c) {
+      List<SObject> calculationItems = Database.query(queryString);
+      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, RollupInvocationPoint.FROM_LWC);
+      thisRollup.isFullRecalc = true;
+      return thisRollup.runCalc();
+    } else {
+      // batch to get calc items and then batch to rollup
+      return Database.executeBatch(
+        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, matchingMeta, calcItemType, recordIds),
+        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
+      );
+    }
+  }
+
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     if (isCDC) {
       return new QueryWrapper();
@@ -1681,12 +1695,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<SObject> calcItems,
     String lookupFieldOnLookupObject,
     String lookupObjectName,
+    String lookupFieldOnCalcItem,
     String grandparentFieldPath
   ) {
     String fieldName = lookupFieldOnLookupObject;
     if (String.isNotBlank(grandparentFieldPath)) {
       lookupObjectName = '';
       fieldName = grandparentFieldPath.substringBeforeLast('.') + '.Id';
+    } else if (lookupFieldOnCalcItem.endsWith('Id') || lookupFieldOnCalcItem.endsWith('__c')) {
+      lookupObjectName = '';
+      fieldName = lookupFieldOnCalcItem;
     }
 
     QueryWrapper wrapper = new QueryWrapper(lookupObjectName, fieldName);
@@ -2048,17 +2066,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return getRollup(rollupInfo, calcItemType, calcItems, oldCalcItems, null, invokePoint);
   }
 
-  protected virtual Integer getMaxQueryRows() {
-    return maxQueryRowOverride != null ? maxQueryRowOverride : Limits.getLimitQueryRows() - Limits.getQueryRows();
-  }
-
   protected void process(List<Rollup> rollups) {
     this.getFieldNamesForRollups(rollups); // populates this.lookupObjectToUniqueFieldNames
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (Rollup rollup : rollups) {
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
-      if (this.hasExceededCurrentRollupQueryLimit(rollup.rollupControl)) {
+      if (hasExceededCurrentRollupLimits(rollup.rollupControl)) {
         this.deferredRollups.add(rollup);
         continue;
       }
@@ -2120,10 +2134,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.processDeferredRollups();
   }
 
-  private Boolean hasExceededCurrentRollupQueryLimit(RollupControl__mdt control) {
-    return Limits.getQueries() >= control?.MaxQueryRows__c && isDeferralAllowed;
-  }
-
   private void processDeferredRollups() {
     if (this.deferredRollups.isEmpty() == false && isDeferralAllowed && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
       stackDepth++;
@@ -2134,12 +2144,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
 
-      if (System.isBatch()) {
+      // swap off on which async process is running to achieve infinite scaling
+      if (System.isQueueable()) {
         Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
-      } else {
+      } else if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
         System.enqueueJob(this);
+      } else {
+        // the end of the line
+        this.throwWithRollupData(this.rollups);
       }
+    } else if (this.deferredRollups.isEmpty() == false) {
+      this.throwWithRollupData(this.deferredRollups);
     }
+  }
+
+  private void throwWithRollupData(List<Rollup> rolls) {
+    List<Rollup__mdt> failedRollupInfo = new List<Rollup__mdt>();
+    for (Rollup roll : rolls) {
+      failedRollupInfo.add(roll.metadata);
+    }
+    throw new AsyncException('Rollup failed to re-queue for: ' + JSON.serialize(failedRollupInfo));
   }
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
@@ -2326,7 +2350,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
-      } else if (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup') {
+      } else if (
+        rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || hasExceededCurrentRollupLimits(rollupSpecificControl) == false && this.isRunningAsync
+      ) {
         this.rollups.remove(index);
         this.syncRollups.add(rollup);
       }

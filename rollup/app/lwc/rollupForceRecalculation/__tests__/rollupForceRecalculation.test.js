@@ -68,7 +68,7 @@ jest.mock(
 
 function setElementValue(element, value) {
   element.value = value;
-  element.dispatchEvent(new CustomEvent('change'));
+  element.dispatchEvent(new CustomEvent('commit'));
 }
 
 describe('Rollup force recalc tests', () => {
