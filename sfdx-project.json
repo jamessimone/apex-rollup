@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.6.0"
+            "versionNumber": "1.2.7.0"
         }
     ],
     "namespace": "",
@@ -12,6 +12,7 @@
     "sourceApiVersion": "51.0",
     "packageAliases": {
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.2.6-0": "04t6g000008GJMsAAO"
+        "apex-rollup@1.2.6-0": "04t6g000008GJMsAAO",
+        "apex-rollup@1.2.7-0": "04t6g000008GJNqAAO"
     }
 }

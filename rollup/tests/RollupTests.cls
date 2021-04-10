@@ -2748,7 +2748,7 @@ private class RollupTests {
     };
     insert cpas;
 
-    Rollup.maxQueryRowOverride = 1;
+    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 1, BatchChunkSize__c = 10);
 
     Test.startTest();
     Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
@@ -3032,14 +3032,33 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100);
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 0);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = -1, BatchChunkSize__c = 1);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status, [SELECT Status, JobType FROM AsyncApexJob]);
+  }
+
+  @isTest
+  static void shouldThrowIfDeferralNotPossible() {
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 0);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = -1, BatchChunkSize__c = 0);
+
+    try {
+      Test.startTest();
+      Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+      Test.stopTest();
+      // a throw should occur within startTest()/stopTest() - the assertion below is uncatchable
+      System.assert(false, 'shouldThrowIfDeferralNotPossible should not make it here');
+    } catch (Exception ex) {
+      System.assertEquals(true, ex.getMessage().contains('Rollup failed to re-queue for'));
+      System.assertNotEquals(true, ex.getMessage().contains('shouldThrowIfDeferralNotPossible should not make it here'));
+    }
   }
 
   /** Grandparent rollups */

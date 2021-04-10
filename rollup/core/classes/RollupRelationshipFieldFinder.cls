@@ -156,9 +156,7 @@ public without sharing class RollupRelationshipFieldFinder {
       this.traversal.isFinished = true;
       return this.traversal;
     } else if (
-      (this.rollupControl.MaxQueryRows__c < Limits.getQueries() ||
-      Limits.getLimitQueryRows() / 4 < Limits.getQueryRows() ||
-      Limits.getLimitHeapSize() / 2 < Limits.getHeapSize()) &&
+      Rollup.hasExceededCurrentRollupLimits(this.rollupControl) &&
       this.isFirstRun == false
       ) {
         // we pop fields off of the list while recursively iterating
