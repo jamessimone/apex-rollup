@@ -46,9 +46,6 @@ public without sharing class RollupRelationshipFieldFinder {
     this.oldRecords = oldRecords;
     this.uniqueFinalFieldNames = uniqueFinalFieldNames;
 
-    if (this.relationshipParts.size() == 1) {
-      this.relationshipParts.add(0, ultimateParent.getDescribe().getName());
-    }
     this.originalParts = new List<String>(this.relationshipParts);
     this.relationshipNameToWhereClauses = new Map<String, List<String>>();
   }
@@ -154,23 +151,33 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   public Traversal getParents(List<SObject> records) {
+
     if (records.isEmpty() || this.relationshipParts.isEmpty()) {
       this.traversal.isFinished = true;
       return this.traversal;
     } else if (
-      this.rollupControl.MaxQueryRows__c < Limits.getQueries() ||
+      (this.rollupControl.MaxQueryRows__c < Limits.getQueries() ||
       Limits.getLimitQueryRows() / 4 < Limits.getQueryRows() ||
-      Limits.getLimitHeapSize() / 2 < Limits.getHeapSize()
-    ) {
-      // we pop fields off of the list while recursively iterating
-      // which means we need to re-add the last field used if we are stopping
-      // due to limits
-      this.relationshipParts.add(0, this.currentRelationshipName);
-      return this.traversal;
-    }
+      Limits.getLimitHeapSize() / 2 < Limits.getHeapSize()) &&
+      this.isFirstRun == false
+      ) {
+        // we pop fields off of the list while recursively iterating
+        // which means we need to re-add the last field used if we are stopping
+        // due to limits
+        this.relationshipParts.add(0, this.currentRelationshipName);
+        return this.traversal;
+      }
 
-    // even before the recursion begins, the List won't be strongly typed
-    SObjectType baseSObjectType = records[0].getSObjectType();
+      // even before the recursion begins, the List won't be strongly typed
+      SObjectType baseSObjectType = records[0].getSObjectType();
+
+      // if we're only going one relationship up, we need to validate that the
+      // parent's relationship name doesn't differ from its SObject name
+      if (this.relationshipParts.size() == 1 && this.isFirstRun) {
+        SObjectField parentField = this.getField(baseSObjectType.getDescribe().fields.getMap(), this.ultimateParent.getDescribe().getName());
+        this.relationshipParts.add(0, parentField.getDescribe().getName());
+      }
+
     if (baseSObjectType == this.ultimateParent) {
       this.prepFinishedObject(records);
       return this.traversal;
@@ -186,6 +193,12 @@ public without sharing class RollupRelationshipFieldFinder {
         return field;
       } else if (field.getDescribe().getName() == relationshipPart) {
         return field;
+      } else if (field.getDescribe().isNamePointing()) {
+        for (SObjectType potentialMatch : field.getDescribe().getReferenceTo()) {
+          if (potentialMatch.getDescribe().getName() == relationshipPart) {
+            return field;
+          }
+        }
       }
     }
     // effectively a throw; if there's no match, nothing else will work

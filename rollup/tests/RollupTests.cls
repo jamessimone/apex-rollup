@@ -2657,17 +2657,16 @@ private class RollupTests {
   @isTest
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
-    Opportunity opp = new Opportunity(
+    Contact con = new Contact(
       AccountId = acc.Id,
       Description = '0'.repeat(256),
-      Name = 'Truncate',
-      StageName = 'Prospecting',
-      CloseDate = System.today()
+      LastName = 'Truncate',
+      Email = 'rollup@gmail.com'
     );
-    insert opp;
+    insert con;
 
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Opportunity', 'CONCAT', null, null);
+    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Contact', 'CONCAT', null, null);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];

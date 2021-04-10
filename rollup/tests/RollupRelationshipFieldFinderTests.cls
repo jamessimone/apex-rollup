@@ -7,26 +7,28 @@ private class RollupRelationshipFieldFinderTests {
     Account parent = new Account(Name = 'Parent relationship between standard objects');
     insert parent;
 
-    Opportunity opp = new Opportunity(AccountId = parent.Id, Name = 'Child opp', StageName = 'Prospecting', CloseDate = System.today());
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child cpa');
+    insert cpa;
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Name', 'Id' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Account.Name',
+      'Parent.Name',
       uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
 
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
-    System.assertEquals(parent, traversal.retrieveParent(opp.Id));
+    System.assertEquals(parent, traversal.retrieveParent(cpa.Id));
 
+    // validates that the relationship field finder works even if a fully qualified path isn't provided if the parent
+    // is "just" the next level up
     finder = new RollupRelationshipFieldFinder(control, 'Name', uniqueFieldNames, Account.SObjectType, new Map<Id, SObject>());
-    traversal = finder.getParents(new List<Opportunity>{ opp });
+    traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
-    System.assertEquals(parent, traversal.retrieveParent(opp.Id));
+    System.assertEquals(parent, traversal.retrieveParent(cpa.Id));
   }
 
   @isTest
