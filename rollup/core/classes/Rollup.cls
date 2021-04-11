@@ -25,6 +25,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   // specially to validate that the buffer is flushed when "processStoredFlowRollups" is called
   @testVisible
   private static List<Rollup> FLOW_ROLLUPS = new List<Rollup>();
+  private static Boolean isRunningAsync = false;
 
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
@@ -48,7 +49,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected final RollupInvocationPoint invokePoint;
 
   // non-final instance variables
-  private Boolean isRunningAsync = false;
   private Boolean isFullRecalc = false;
   private Boolean isCDCUpdate = false;
   private Boolean isNoOp;
@@ -246,11 +246,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
     } else if (shouldBatch && hasMoreThanOneTarget == false) {
-      this.isRunningAsync = true;
+      isRunningAsync = true;
       // safe to batch because the QueryLocator will only return one type of SObject
       return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
     } else {
-      this.isRunningAsync = true;
+      isRunningAsync = true;
       return System.enqueueJob(this);
     }
   }
@@ -2351,7 +2351,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
       } else if (
-        rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || hasExceededCurrentRollupLimits(rollupSpecificControl) == false && this.isRunningAsync
+        rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || hasExceededCurrentRollupLimits(rollupSpecificControl) == false && isRunningAsync
       ) {
         this.rollups.remove(index);
         this.syncRollups.add(rollup);
