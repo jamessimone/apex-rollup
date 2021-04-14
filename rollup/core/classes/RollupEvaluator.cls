@@ -158,7 +158,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<SObjectField> fields = sObjectType.getDescribe().fields.getMap().values();
       for (SObjectField field : fields) {
         String relationshipName = field.getDescribe().getRelationshipName();
-        if (String.isNotBlank(relationshipName)) {
+        if (String.isNotBlank(relationshipName) && relationshipName != 'What' && relationshipName != 'Who') {
           localRelationshipNames.add(relationshipName);
         }
       }

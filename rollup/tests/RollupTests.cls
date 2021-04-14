@@ -3101,11 +3101,11 @@ private class RollupTests {
   @isTest
   static void shouldAllowGrandparentRollupsFromParent() {
     Account acc = [SELECT Id, OwnerId FROM Account];
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, Name = 'One', CloseDate = System.today(), StageName = 'grandParent'),
-      new Opportunity(AccountId = acc.Id, Name = 'Two', CloseDate = System.today(), StageName = 'grandParent')
+    List<Event> events = new List<Event>{
+      new Event(WhatId = acc.Id, Subject = 'One', ActivityDatetime = System.now(), DurationInMinutes = 60),
+      new Event(WhatId = acc.Id, Subject = 'Two', ActivityDatetime = System.now(), DurationInMinutes = 60)
     };
-    insert opps;
+    insert events;
 
     DMLMock mock = new DMLMock();
     Rollup.DML = mock;
@@ -3113,15 +3113,16 @@ private class RollupTests {
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Opportunity',
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe',
-        IsRollupStartedFromParent__c = true
+        GrandparentRelationshipFieldPath__c = 'What.Owner.AboutMe',
+        IsRollupStartedFromParent__c = true,
+        CalcItemWhereClause__c = 'What.Type = \'Account\''
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3132,7 +3133,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(events[0].Subject + ', ' + events[1].Subject, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   @isTest

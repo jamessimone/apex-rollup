@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.8.0"
+            "versionNumber": "1.2.9.0"
         }
     ],
     "namespace": "",

@@ -26,6 +26,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   @testVisible
   private static List<Rollup> FLOW_ROLLUPS = new List<Rollup>();
   private static Boolean isRunningAsync = false;
+  private static Integer SENTINEL_COUNT_VALUE = -1;
 
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
@@ -241,7 +242,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean hasMoreThanOneTarget = false;
     Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget);
 
-    Boolean shouldBatch = shouldRunAsBatch || (orgDefaults.ShouldRunAs__c == 'Batchable' && totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c);
+    Boolean shouldBatch =
+      shouldRunAsBatch ||
+      (orgDefaults.ShouldRunAs__c == 'Batchable' &&
+      totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c) ||
+      totalCountOfRecords == SENTINEL_COUNT_VALUE;
     if (this.syncRollups.isEmpty() == false) {
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
@@ -401,16 +406,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       calcItemType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
-      String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=', null);
-      amountOfCalcItems += getCountFromDb(countQuery, objIds, recordIds);
       queryFields.add(matchingMeta.LookupFieldOnCalcItem__c);
       queryFields.add(matchingMeta.RollupFieldOnCalcItem__c);
       if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
         queryFields.addAll(new RollupEvaluator.WhereFieldEvaluator(matchingMeta.CalcItemWhereClause__c, calcItemType).getQueryFields());
       }
+
+      String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
+      Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
+      if (currentCount == SENTINEL_COUNT_VALUE) {
+        amountOfCalcItems = currentCount;
+        continue;
+      }
+      amountOfCalcItems += currentCount;
     }
 
-    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', null);
+    String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=');
 
     // eval always null via this route, despite having been used to get the relationship fields
     return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, null);
@@ -562,15 +573,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         } else {
           if (flowInput.isRollupStartedFromParent) {
-            String whereClause = String.isNotBlank(flowInput.calcItemWhereClause) ? flowInput.calcItemWhereClause + '\nAND ' : '';
             QueryWrapper wrapper = getParentWhereClause(
               flowInput.recordsToRollup,
               flowInput.lookupFieldOnOpObject,
               flowInput.rollupSObjectName,
               flowInput.lookupFieldOnCalcItem,
-              flowInput.grandparentRelationshipFieldPath
+              flowInput.grandparentRelationshipFieldPath,
+              flowInput.calcItemWhereClause
             );
-            wrapper.setQuery(whereClause + wrapper.getQuery());
             performFullRecalculationInner(
               flowInput.rollupFieldOnCalcItem,
               flowInput.lookupFieldOnCalcItem,
@@ -1387,7 +1397,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           rollupInfo.LookupFieldOnLookupObject__c,
           rollupInfo.LookupObject__c,
           rollupInfo.LookupFieldOnCalcItem__c,
-          rollupInfo.GrandparentRelationshipFieldPath__c
+          rollupInfo.GrandparentRelationshipFieldPath__c,
+          rollupInfo.CalcItemWhereClause__c
         );
         performFullRecalculationInner(
           rollupInfo.RollupFieldOnCalcItem__c,
@@ -1465,6 +1476,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
+    optionalWhereClause = adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
     String baseQuery =
       'SELECT ' +
       String.join(uniqueQueryFieldNames, ',') +
@@ -1616,7 +1628,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   ) {
     // emptyRollup used to reference the default RollupControl__mdt.MaxQueryRows__c, as well as BatchChunkSize__c
     Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
-    if (amountOfCalcItems < emptyRollup.rollupControl.MaxQueryRows__c) {
+    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < emptyRollup.rollupControl.MaxQueryRows__c;
+    if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
       Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, RollupInvocationPoint.FROM_LWC);
       thisRollup.isFullRecalc = true;
@@ -1628,6 +1641,46 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
       );
     }
+  }
+
+  private static String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
+    // you can't filter on Who.Owner or What.Owner - or even select them as fields, for that matter. Instead we have to massage the query to use
+    // TYPEOF instead
+    if (String.isBlank(optionalWhereClause) || hasPolymorphicOwnerClause(optionalWhereClause) == false) {
+      return optionalWhereClause;
+    }
+    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(optionalWhereClause, sObjectType);
+    try {
+      for (String whereClause : whereEval.getWhereClauses()) {
+        if (hasPolymorphicOwnerClause(whereClause) == false) {
+          continue;
+        }
+        String fieldName = whereClause.split(' ')[0];
+        List<String> fieldParts = fieldName.split('\\.');
+        String whoOrWhat = fieldParts.remove(0);
+        String indexer = whoOrWhat + '.Type = \'';
+        String relationshipName = optionalWhereClause.substring(optionalWhereClause.indexOf(indexer) + indexer.length()).substringBeforeLast('\'');
+        String typeOfField = String.join(fieldParts, '.');
+
+        uniqueQueryFieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + typeOfField + ' END');
+
+        optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').trim();
+        optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
+      }
+      // sanitize what's left of the where clause
+      if (optionalWhereClause.endsWith('OR')) {
+        optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
+      } else if (optionalWhereClause.endsWith('AND')) {
+        optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
+      }
+    } catch (Exception ex) {
+      System.debug(LoggingLevel.ERROR, 'An error occurred while formatting where clause: ' + ex.getMessage());
+    }
+    return optionalWhereClause;
+  }
+
+  private static Boolean hasPolymorphicOwnerClause(String whereClause) {
+    return whereClause.contains('What.Owner') || whereClause.contains('Who.Owner');
   }
 
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -1696,7 +1749,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String lookupFieldOnLookupObject,
     String lookupObjectName,
     String lookupFieldOnCalcItem,
-    String grandparentFieldPath
+    String grandparentFieldPath,
+    String potentialWhereClause
   ) {
     String fieldName = lookupFieldOnLookupObject;
     if (String.isNotBlank(grandparentFieldPath)) {
@@ -1714,6 +1768,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         wrapper.addRecordId(lookupId);
       }
     }
+    String whereClause = String.isNotBlank(potentialWhereClause) ? potentialWhereClause + ' AND ' : '';
+    wrapper.setQuery(whereClause + wrapper.getQuery());
     return wrapper;
   }
 
@@ -1725,7 +1781,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (countQuery.contains('ALL ROWS')) {
       countQuery = countQuery.replace('ALL ROWS', '');
     }
-    return Database.countQuery(countQuery);
+
+    try {
+      return Database.countQuery(countQuery);
+    } catch (Exception ex) {
+      // not all queries are valid, particularly those with polymorphic fields referencing parent fields
+      // return a sentinel value instead, to be checked for downstream
+      return SENTINEL_COUNT_VALUE;
+    }
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
@@ -2411,7 +2474,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (hasMoreThanOneTarget == false) {
       for (String countQuery : queryCountsToLookupIds.keySet()) {
         Set<String> objIds = queryCountsToLookupIds.get(countQuery);
-        totalCountOfRecords += getCountFromDb(countQuery, objIds);
+        Integer countForSObject = getCountFromDb(countQuery, objIds);
+        if (countForSObject == SENTINEL_COUNT_VALUE) {
+          totalCountOfRecords = countForSObject;
+          break;
+        } else {
+          totalCountOfRecords += countForSObject;
+        }
       }
     }
     return totalCountOfRecords;
