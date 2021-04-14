@@ -2,7 +2,7 @@ import { createElement } from 'lwc';
 
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
-import RollupForceRecalculation, { NO_PROCESS_ID } from 'c/rollupForceRecalculation';
+import RollupForceRecalculation from 'c/rollupForceRecalculation';
 
 async function assertForTestConditions() {
   const resolvedPromise = Promise.resolve();
@@ -170,7 +170,7 @@ describe('Rollup force recalc tests', () => {
   });
 
   it('succeeds even when no process id', () => {
-    performFullRecalculation.mockResolvedValue(NO_PROCESS_ID);
+    performFullRecalculation.mockResolvedValue('No process Id');
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });

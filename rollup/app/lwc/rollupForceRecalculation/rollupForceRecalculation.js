@@ -5,7 +5,7 @@ import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-export const NO_PROCESS_ID = 'No process Id';
+const NO_PROCESS_ID = 'No process Id';
 
 export default class RollupForceRecalculation extends LightningElement {
   @api rollupData = {
