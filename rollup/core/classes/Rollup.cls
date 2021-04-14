@@ -1523,6 +1523,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           SELECT
             // we have to do transforms on these fields because custom objects/custom fields
             // have references that otherwise won't work with the rest of the code
+            MasterLabel,
+            DeveloperName,
             LookupObject__c,
             LookupObject__r.QualifiedApiName,
             CalcItem__c,

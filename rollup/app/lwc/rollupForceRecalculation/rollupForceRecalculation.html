@@ -16,6 +16,17 @@
             options={rollupMetadataOptions}
             onchange={handleComboChange}
           ></lightning-combobox>
+          <template if:true={selectedMetadataCMDTRecords}>
+            <lightning-datatable
+                key-field="id"
+                class="slds-col slds-form-element slds-form-element_horizontal"
+                data={selectedMetadataCMDTRecords}
+                show-row-number-column
+                row-number-offset={rowOffset}
+                hide-checkbox-column
+                columns={cmdtColumns}>
+            </lightning-datatable>
+          </template>
         </template>
         <template if:false={isCMDTRecalc}>
           <lightning-input
@@ -104,7 +115,7 @@
             name="potentialWhereClause"
           ></lightning-textarea>
         </template>
-        <lightning-button class="slds-col slds-m-top_small" onclick={handleSubmit} label="Start rollup!"></lightning-button>
+        <lightning-button class="slds-col slds-m-top_small" variant="brand" onclick={handleSubmit} label="Start rollup!"></lightning-button>
       </div>
     </lightning-layout>
     <template if:true={isRollingUp}>
