@@ -1,8 +1,13 @@
 import { createElement } from 'lwc';
 
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 import RollupForceRecalculation from 'c/rollupForceRecalculation';
+import { registerLdsTestWireAdapter } from '@salesforce/sfdx-lwc-jest';
+
+const mockGetObjectInfo = require('./data/rollupCMDTWireAdapter.json');
+const getObjectInfoWireAdapter = registerLdsTestWireAdapter(getObjectInfo);
 
 async function assertForTestConditions() {
   const resolvedPromise = Promise.resolve();
@@ -77,6 +82,17 @@ describe('Rollup force recalc tests', () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+  });
+
+  it('sets document title', async () => {
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    return assertForTestConditions(() => {
+      expect(document.title).toEqual('Recalculate Rollup');
+    });
   });
 
   it('sends form data to apex', async () => {
@@ -165,6 +181,47 @@ describe('Rollup force recalc tests', () => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
           expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList });
+        })
+    );
+  });
+
+  it('renders CMDT datatable with selected metadata', async () => {
+    // calling getRollupMetadataByCalcItem.mockResolvedValue() here didn't work
+    // (as it does in the next test) and I have no idea why ...
+
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    // validate that toggle gets checked
+    const toggle = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="cmdt-toggle"]');
+    toggle.dispatchEvent(new CustomEvent('change')); // _like_ a click ...
+
+    expect(fullRecalc.isCMDTRecalc).toBeTruthy();
+
+    getObjectInfoWireAdapter.emit(mockGetObjectInfo);
+
+    // flush to re-render
+    return (
+      Promise.resolve()
+        .then(() => {
+          const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+          combobox.dispatchEvent(
+            new CustomEvent('change', {
+              detail: {
+                value: 'Contact'
+              }
+            })
+          );
+
+          const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+          submitButton.click();
+        })
+        // then flush again ....
+        .then(() => {
+          const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
+          expect(tableRows.length).toBe(mockMetadata.Contact.length);
         })
     );
   });

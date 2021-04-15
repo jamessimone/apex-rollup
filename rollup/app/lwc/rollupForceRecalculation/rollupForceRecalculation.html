@@ -19,10 +19,8 @@
           <template if:true={selectedMetadataCMDTRecords}>
             <lightning-datatable
                 key-field="id"
-                class="slds-col slds-form-element slds-form-element_horizontal"
                 data={selectedMetadataCMDTRecords}
                 show-row-number-column
-                row-number-offset={rowOffset}
                 hide-checkbox-column
                 columns={cmdtColumns}>
             </lightning-datatable>
