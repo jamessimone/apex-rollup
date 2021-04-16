@@ -3132,6 +3132,44 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldAllowGrandparentRollupFromParentWithPolymorphicFields() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
+    };
+    insert cpas;
+
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe',
+        IsRollupStartedFromParent__c = true,
+        CalcItemWhereClause__c = 'ParentId = \'' + acc.Id + '\' OR Parent.Type = \'Account\''
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
+    User updatedUser = (User) mock.Records[0];
+    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
+  @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{

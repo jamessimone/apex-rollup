@@ -2,6 +2,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
   private static final String TRUE_VAL = 'true';
   private static final String FALSE_VAL = 'false';
+  private static final Set<String> POLYMORPHIC_FIELDS = new Set<String>{ 'Owner', 'Type' };
 
   // totally not obvious ranking going on here - it's absolutely imperative that
   // the two-word conditions go first; otherwise replacing will fail on the whole string
@@ -127,7 +128,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             hasRelationshipField &&
             fieldNames.contains(condition.fieldName) == false &&
             condition.fieldName.contains('__c.') == false &&
-            this.validRelationshipNames.contains(condition.fieldName.substringBefore('.'))
+            this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
+            POLYMORPHIC_FIELDS.contains(condition.fieldName.substringBetween('.')) == false &&
+            POLYMORPHIC_FIELDS.contains(condition.fieldName.substringAfter('.')) == false
           ) {
             fieldNames.add(condition.fieldName);
           } else if (hasRelationshipField == false) {
@@ -158,7 +161,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<SObjectField> fields = sObjectType.getDescribe().fields.getMap().values();
       for (SObjectField field : fields) {
         String relationshipName = field.getDescribe().getRelationshipName();
-        if (String.isNotBlank(relationshipName) && relationshipName != 'What' && relationshipName != 'Who') {
+        // filter out polymorphic relationship fields that can't be queried
+        if (
+          String.isNotBlank(relationshipName) &&
+          (relationshipName != 'What' &&
+          relationshipName != 'Who' &&
+          (field.getDescribe().getReferenceTo().size() < 2 ||
+          POLYMORPHIC_FIELDS.contains(relationshipName) == false))
+        ) {
           localRelationshipNames.add(relationshipName);
         }
       }
@@ -533,7 +543,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObject parentSObject = item.getSObject(originalName);
       // the polymorphic "Type" field won't show up in the map of valid fields for an object
       // but if the value's been queried for, it's valid to pass back
-      if(fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type') {
+      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type') {
         return parentSObject.get(fieldNameParts[0]);
       } else if (fieldNameParts.isEmpty() == false) {
         return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);

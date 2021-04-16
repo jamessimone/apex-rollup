@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQGAA4">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQQAA4">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQGAA4">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQQAA4">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>

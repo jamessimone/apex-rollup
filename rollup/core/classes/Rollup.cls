@@ -1633,7 +1633,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
-    // you can't filter on Who.Owner or What.Owner - or even select them as fields, for that matter. Instead we have to massage the query to use
+    // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
     if (String.isBlank(optionalWhereClause) || hasPolymorphicOwnerClause(optionalWhereClause) == false) {
       return optionalWhereClause;
@@ -1657,10 +1657,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
       }
       // sanitize what's left of the where clause
-      if (optionalWhereClause.endsWith('OR')) {
-        optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
-      } else if (optionalWhereClause.endsWith('AND')) {
+      while(optionalWhereClause.endsWith('AND')) {
         optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
+      }
+      while(optionalWhereClause.endsWith('OR')) {
+        optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
       System.debug(LoggingLevel.ERROR, 'An error occurred while formatting where clause: ' + ex.getMessage());
@@ -1669,7 +1670,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static Boolean hasPolymorphicOwnerClause(String whereClause) {
-    return whereClause.contains('What.Owner') || whereClause.contains('Who.Owner');
+    return whereClause.contains('.Owner');
   }
 
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
