@@ -10,20 +10,23 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 ### Package deployment options
 
 <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJNvAAO">
-  <button>Deploy Unmanaged Package to Prod</button>
+  <img alt="Deploy to Salesforce"
+       src="./media/deploy-package-to-prod.png">
 </a>
 
 <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJNvAAO">
-  <button>Deploy Unmanaged Package to Sandbox</button>
+  <img alt="Deploy to Salesforce"
+       src="./media/deploy-package-to-sandbox.png">
 </a>
 
 <br/>
 <br/>
 
 ### Deploy just the source code
+
 <a href="https://githubsfdeploy.herokuapp.com?owner=jamessimone&repo=apex-rollup&ref=main">
   <img alt="Deploy to Salesforce"
-       src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
+       src="./media/deploy-unpackaged-metadata.png">
 </a>
 
 ## Setup
