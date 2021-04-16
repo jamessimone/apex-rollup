@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQQAA4">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQVAA4">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQQAA4">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008GJQVAA4">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -89,6 +89,12 @@ That's it! Now you're ready to configure your rollups using Custom Metadata. `Ro
 One **special** thing to note on the subject of Field Definitions — custom fields/objects referenced in CMDT Field Definition fields are stored in an atypical way, and require the usage of an additional SOQL query as part of `Rollup`'s upfront cost. A typical `Rollup` operation will use `2` SOQL queries per rollup — the query that determines whether or not a job should be queued or batched, and a query to get the `Rollup__mdt` custom metadata. Though it's true that since Spring 21, it's possible to retrieve CMDT straight from the cache without consuming a SOQL query, Custom Metadata Types retrieved from the cache don't have their parent-level fields initialized, which makes it impossible to massage the data into a usable shape within the rest of `Rollup`. Additionally, if your `Calc Item Where Clause` contains a reference to a polymorphic field (like `What.Type` or `Owner.Name` or `What.Type` etc ...), an extra query will be consumed prior to `Rollup` going async to ensure that only matching items are passed along to be rolled up.
 
 If the SOQL queries used by `Rollup` becomes cause for concern, please [submit an issue](/issues) and we can work to address it!
+
+#### Special Considerations For Usage Of The Calc Item Where Clause
+
+In addition to the above, some other considerations when it comes to the where clause:
+
+Any time a polymorphic field is used in your `Calc Item Where Clause`, you must also have a constraint on the parent-level `Type` in order for it to work. If you are filtering on `Task.What`, for example, you must have only a single SObject-parent type as part of your where clause, e.g. `What.Name = 'someName' AND What.Type = 'Account'`.
 
 #### Rollup Custom Metadata Field Breakdown
 
