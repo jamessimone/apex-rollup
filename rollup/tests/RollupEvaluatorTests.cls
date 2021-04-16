@@ -420,6 +420,14 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldReturnOwnerParentFieldsWhenNotPolymorphic() {
+    String queryString = 'Owner.Name = \'someName\'';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Account.SObjectType);
+
+    System.assertEquals(new List<String>{ 'Owner.Name' }, eval.getQueryFields());
+  }
+
+  @isTest
   static void shouldThrowExceptionForImproperlyEnteredWhereClause() {
     assertExceptionContains('= 1', 'Where clause entered incorrectly', null);
   }

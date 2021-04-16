@@ -1,14 +1,15 @@
-import { api, LightningElement, track } from 'lwc';
+import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
-export const NO_PROCESS_ID = 'No process Id';
+const NO_PROCESS_ID = 'No process Id';
 
 export default class RollupForceRecalculation extends LightningElement {
-  @api rollupData = {
+  rollupData = {
     opFieldOnCalcItem: '',
     lookupFieldOnCalcItem: '',
     lookupFieldOnLookupObject: '',
@@ -20,26 +21,51 @@ export default class RollupForceRecalculation extends LightningElement {
     potentialConcatDelimiter: ''
   };
   @api isCMDTRecalc = false;
-  @api rollupMetadataOptions = [];
-  @api selectedMetadata;
+  rollupMetadataOptions = [];
+  selectedMetadata;
+  selectedMetadataCMDTRecords;
 
-  @track isRollingUp = false;
-  @track rollupStatus;
-  @track error = '';
+  isRollingUp = false;
+  rollupStatus;
+  error = '';
+  cmdtColumns = [];
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _hasRendered = false;
   _localMetadata = {};
+  _cmdtFieldNames = [
+    'MasterLabel',
+    'DeveloperName',
+    'RollupOperation__c',
+    'RollupFieldOnCalcItem__c',
+    'LookupFieldOnCalcItem__c',
+    'LookupFieldOnLookupObject__c',
+    'RollupFieldOnLookupObject__c',
+    'LookupObject__c'
+  ];
 
   async renderedCallback() {
     if (!this._hasRendered) {
+      document.title = 'Recalculate Rollup';
       this._hasRendered = true;
       await this._fetchAvailableCMDT();
     }
   }
 
+  @wire(getObjectInfo, { objectApiName: 'Rollup__mdt' })
+  getCMDTObjectInfo({ error, data }) {
+    if (data) {
+      this._cmdtFieldNames.forEach(fieldName => {
+        this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
+      });
+    } else if (error) {
+      this.error = error;
+    }
+  }
+
   handleComboChange(event) {
     this.selectedMetadata = event.detail.value;
+    this.selectedMetadataCMDTRecords = this._localMetadata[event.detail.value];
   }
 
   handleChange(event) {

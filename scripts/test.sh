@@ -27,7 +27,7 @@ sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@
 # Also store test command shared between script branches, below
 scratchOrgAllotment=$(sfdx force:limits:api:display 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
 echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-testInvocation='sfdx force:apex:test:run -n "RollupTests,RollupEvaluatorTests,RollupFieldInitializerTests,RollupCalculatorTests,RollupIntegrationTests,RollupFlowBulkProcessorTests,RollupRelationshipFieldFinderTests" -c -d ./tests/apex -r human -w 20'
+testInvocation='sfdx force:apex:test:run -c -d ./tests/apex -r human -w 20'
 echo "Test command to use: $testInvocation"
 
 if [ $scratchOrgAllotment -gt 0 ]; then

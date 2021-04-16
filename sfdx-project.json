@@ -4,7 +4,9 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.8.0"
+            "versionNumber": "1.2.9.0",
+            "versionDescription": "Removed Opportunity usage from integration tests, fixed bug with Recalculate Rollup App, introduced datatable within app so admins can visualize the rollups that will run per object when using CMDT",
+            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases"
         }
     ],
     "namespace": "",
@@ -14,6 +16,7 @@
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.2.6-0": "04t6g000008GJMsAAO",
         "apex-rollup@1.2.7-0": "04t6g000008GJNqAAO",
-        "apex-rollup@1.2.8-0": "04t6g000008GJNvAAO"
+        "apex-rollup@1.2.8-0": "04t6g000008GJNvAAO",
+        "apex-rollup@1.2.9-0": "04t6g000008GJQVAA4"
     }
 }

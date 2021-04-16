@@ -36,42 +36,42 @@ private class RollupRelationshipFieldFinderTests {
     Account parent = new Account(Name = 'Parent account looking up to User');
     insert parent;
 
-    Opportunity opp = new Opportunity(AccountId = parent.Id, Name = 'Child opp looking up to account', StageName = 'Prospecting', CloseDate = System.today());
-    insert opp;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child looking up to account');
+    insert cpa;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Account.Owner.Name',
+      'Parent.Owner.Name',
       new Set<String>{ 'Name', 'Id' },
       User.SObjectType,
       new Map<Id, SObject>()
     );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
     parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id];
     System.assertEquals(
       [SELECT Id, Name FROM User WHERE Id = :parent.OwnerId][0],
-      traversal.retrieveParent(opp.Id),
+      traversal.retrieveParent(cpa.Id),
       'User should have been retrieved correctly!'
     );
   }
 
   @isTest
   static void shouldBailEarlyIfQueryCountExceedsControlCount() {
-    Account acc = new Account(Name = 'Parent to opp');
+    Account acc = new Account(Name = 'Parent to cpa');
     insert acc;
 
-    Opportunity opp = new Opportunity(AccountId = acc.Id, Name = 'Child opp');
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Child cpa');
     control.MaxQueryRows__c = 1;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Account.Owner.Name',
+      'Parent.Owner.Name',
       new Set<String>{ 'Name', 'Id' },
       User.SObjectType,
       new Map<Id, SObject>()
     );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
     System.assertEquals(false, traversal.getIsFinished(), 'Should have bailed early!');
   }
@@ -96,23 +96,23 @@ private class RollupRelationshipFieldFinderTests {
       }
     }
 
-    Opportunity opp = new Opportunity(AccountId = intermediateTwo.Id, Name = 'Child reparented', StageName = 'Prospecting', CloseDate = System.today());
-    List<Opportunity> opps = new List<Opportunity>{ opp };
-    insert opps;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = intermediateTwo.Id, Name = 'Child reparented');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    insert cpas;
 
-    Map<Id, SObject> oldOpps = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, AccountId = intermediateOne.Id) };
+    Map<Id, SObject> oldCpas = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = intermediateOne.Id) };
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Name', 'Id' };
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Account.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Account.Owner.Name', uniqueFieldNames, User.SObjectType, oldCpas);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    System.assertEquals(false, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should not report false positive!');
-    System.assertEquals(intermediateTwo.Id, traversal.getOldLookupId(opp, 'AccountId'));
+    System.assertEquals(false, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should not report false positive!');
+    System.assertEquals(intermediateTwo.Id, traversal.getOldLookupId(cpa, 'ParentId'));
 
-    finder = new RollupRelationshipFieldFinder(control, 'Account.Name', uniqueFieldNames, Account.SObjectType, oldOpps);
-    traversal = finder.getParents(opps);
+    finder = new RollupRelationshipFieldFinder(control, 'Account.Name', uniqueFieldNames, Account.SObjectType, oldCpas);
+    traversal = finder.getParents(cpas);
 
-    System.assertEquals(true, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should correctly report reparenting if ultimate lookup is different');
+    System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if ultimate lookup is different');
   }
 
   @isTest
@@ -120,24 +120,24 @@ private class RollupRelationshipFieldFinderTests {
     Account intermediateOne = new Account(Name = 'Intermediate 1');
     insert new List<Account>{ intermediateOne };
 
-    Opportunity opp = new Opportunity(AccountId = intermediateOne.Id, Name = 'Child reparented', StageName = 'Prospecting', CloseDate = System.today());
-    List<Opportunity> opps = new List<Opportunity>{ opp };
-    insert opps;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = intermediateOne.Id, Name = 'Child reparented');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    insert cpas;
 
-    Map<Id, SObject> oldOpps = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, AccountId = null) };
+    Map<Id, SObject> oldOpps = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = null) };
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Id', 'Name' };
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Account.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Parent.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    System.assertEquals(true, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should correctly report reparenting if old lookup null');
+    System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if old lookup null');
 
-    oldOpps.put(opp.Id, new Opportunity(Id = opp.Id, AccountId = intermediateOne.Id));
-    opp.AccountId = null;
-    update opp;
+    oldOpps.put(cpa.Id, new ContactPointAddress(Id = cpa.Id, ParentId = intermediateOne.Id));
+    cpa.ParentId = null;
+    update cpa;
 
-    finder = new RollupRelationshipFieldFinder(control, 'Account.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
-    System.assertEquals(true, traversal.isUltimatelyReparented(opp, 'AccountId'), 'Should correctly report reparenting if new lookup is null');
+    finder = new RollupRelationshipFieldFinder(control, 'Parent.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
+    System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if new lookup is null');
   }
 
   @isTest
@@ -146,17 +146,17 @@ private class RollupRelationshipFieldFinderTests {
     Account parentTwo = new Account(Name = 'Parent2');
     insert new List<Account>{ parentOne, parentTwo };
 
-    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'Child1', StageName = 'Prospecting', CloseDate = System.today());
-    Opportunity oppTwo = new Opportunity(AccountId = parentOne.Id, Name = 'Child1', StageName = 'Prospecting', CloseDate = System.today());
-    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
+    ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'Child1');
+    ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentOne.Id, Name = 'Child2');
+    List<ContactPointAddress> opps = new List<ContactPointAddress>{ cpaOne, cpaTwo };
     insert opps;
 
-    Map<Id, SObject> oldOpps = new Map<Id, SObject>{ oppOne.Id => oppOne, oppTwo.Id => new Opportunity(AccountId = parentTwo.Id) };
+    Map<Id, SObject> oldOpps = new Map<Id, SObject>{ cpaOne.Id => cpaOne, cpaTwo.Id => new ContactPointAddress(ParentId = parentTwo.Id) };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Name', new Set<String>{ 'Name', 'Id' }, Account.SObjectType, oldOpps);
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
 
-    System.assertEquals(true, traversal.isUltimatelyReparented(oppTwo, 'AccountId'));
-    System.assertEquals(false, traversal.isUltimatelyReparented(oppOne, 'AccountId'));
+    System.assertEquals(true, traversal.isUltimatelyReparented(cpaTwo, 'ParentId'));
+    System.assertEquals(false, traversal.isUltimatelyReparented(cpaOne, 'ParentId'));
   }
 
   @isTest
@@ -164,10 +164,10 @@ private class RollupRelationshipFieldFinderTests {
     Account parentOne = new Account(Name = 'SoloParent');
     insert parentOne;
 
-    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'FirstParentedChild', StageName = 'Prospecting', CloseDate = System.today());
-    Opportunity oppTwo = new Opportunity(AccountId = parentOne.Id, Name = 'SecondParentedChild', StageName = 'Prospecting', CloseDate = System.today());
-    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
-    insert opps;
+    ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
+    ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentOne.Id, Name = 'SecondParentedChild');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
+    insert cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -176,10 +176,10 @@ private class RollupRelationshipFieldFinderTests {
       Account.SObjectType,
       new Map<Id, SObject>()
     );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    System.assertEquals(parentOne, traversal.retrieveParent(oppOne.Id), 'First opp parent should not be exluded!');
-    System.assertEquals(parentOne, traversal.retrieveParent(oppTwo.Id), 'Second opp should not have been excluded!');
+    System.assertEquals(parentOne, traversal.retrieveParent(cpaOne.Id), 'First opp parent should not be exluded!');
+    System.assertEquals(parentOne, traversal.retrieveParent(cpaTwo.Id), 'Second opp should not have been excluded!');
   }
 
   @isTest
@@ -188,30 +188,30 @@ private class RollupRelationshipFieldFinderTests {
     Account parentTwo = new Account(Name = 'non-match');
     insert new List<Account>{ parentOne, parentTwo };
 
-    Opportunity oppOne = new Opportunity(AccountId = parentOne.Id, Name = 'FirstParentedChild', StageName = 'Prospecting', CloseDate = System.today());
-    Opportunity oppTwo = new Opportunity(AccountId = parentTwo.Id, Name = 'SecondParentedChild', StageName = 'Prospecting', CloseDate = System.today());
-    List<Opportunity> opps = new List<Opportunity>{ oppOne, oppTwo };
-    insert opps;
+    ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
+    ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentTwo.Id, Name = 'SecondParentedChild');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
+    insert cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Account.Name',
+      'Parent.Name',
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,
       new Map<Id, SObject>(),
-      'Account.Name != \'\' AND (Account.Name != \'' +
+      'Parent.Name != \'\' AND (Parent.Name != \'' +
       parentOne.Name +
-      '\' OR Account.AccountNumber = \'' +
+      '\' OR Parent.AccountNumber = \'' +
       parentOne.AccountNumber +
-      '\') AND Account.Name != \'' +
+      '\') AND Parent.Name != \'' +
       parentTwo.Name +
       '\''
     );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     // we don't anticipate it being necessary to return fields used in the where clause; just that records are filtered correctly
     Account expectedAcc = new Account(Id = parentOne.Id, Name = parentOne.Name);
-    System.assertEquals(expectedAcc, traversal.retrieveParent(oppOne.Id), 'First opp parent should not be exluded with nested conditional!');
-    System.assertEquals(null, traversal.retrieveParent(oppTwo.Id), 'Second opp should have been excluded with clause after nested conditional!');
+    System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'First opp parent should not be exluded with nested conditional!');
+    System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second opp should have been excluded with clause after nested conditional!');
   }
 }

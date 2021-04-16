@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
-$testInvocation = 'sfdx force:apex:test:run -n "RollupTests, RollupEvaluatorTests, RollupFieldInitializerTests, RollupCalculatorTests, RollupIntegrationTests, RollupFlowBulkProcessorTests, RollupRelationshipFieldFinderTests" -r human -w 20 -c -d ./tests/apex'
+$testInvocation = 'sfdx force:apex:test:run -r human -w 20 -c -d ./tests/apex'
 
 function Start-Tests() {
   # Run tests
@@ -33,7 +33,7 @@ Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.j
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
 sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
-sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
+sfdx config:set defaultusername=deploy@rollup.com defaultdevhubusername=deploy@rollup.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
@@ -71,6 +71,8 @@ if($scratchOrgAllotment -gt 0) {
     Write-Output "There was an issue with scratch org creation, continuing ..."
     $shouldDeployToSandbox = $true
   }
+} else {
+  $shouldDeployToSandbox = $true
 }
 
 if($shouldDeployToSandbox) {
@@ -80,6 +82,7 @@ if($shouldDeployToSandbox) {
     # Deploy
     Write-Output "Deploying source to sandbox ..."
     sfdx force:source:deploy -p rollup
+    sfdx force:source:deploy -p extra-tests
     Start-Tests
   } catch {
     Reset-SFDX-Json
