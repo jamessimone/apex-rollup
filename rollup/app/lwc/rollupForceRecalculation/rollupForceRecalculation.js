@@ -1,4 +1,4 @@
-import { api, LightningElement, track, wire } from 'lwc';
+import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
@@ -9,7 +9,7 @@ import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 const NO_PROCESS_ID = 'No process Id';
 
 export default class RollupForceRecalculation extends LightningElement {
-  @api rollupData = {
+  rollupData = {
     opFieldOnCalcItem: '',
     lookupFieldOnCalcItem: '',
     lookupFieldOnLookupObject: '',
@@ -21,21 +21,27 @@ export default class RollupForceRecalculation extends LightningElement {
     potentialConcatDelimiter: ''
   };
   @api isCMDTRecalc = false;
-  @api rollupMetadataOptions = [];
-  @api selectedMetadata;
-  @api selectedMetadataCMDTRecords;
+  rollupMetadataOptions = [];
+  selectedMetadata;
+  selectedMetadataCMDTRecords;
 
-  @track isRollingUp = false;
-  @track rollupStatus;
-  @track error = '';
-  @track cmdtColumns = [];
+  isRollingUp = false;
+  rollupStatus;
+  error = '';
+  cmdtColumns = [];
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _hasRendered = false;
   _localMetadata = {};
   _cmdtFieldNames = [
-    'MasterLabel', 'DeveloperName', 'RollupOperation__c', 'RollupFieldOnCalcItem__c', 'LookupFieldOnCalcItem__c',
-    'LookupFieldOnLookupObject__c', 'RollupFieldOnLookupObject__c', 'LookupObject__c'
+    'MasterLabel',
+    'DeveloperName',
+    'RollupOperation__c',
+    'RollupFieldOnCalcItem__c',
+    'LookupFieldOnCalcItem__c',
+    'LookupFieldOnLookupObject__c',
+    'RollupFieldOnLookupObject__c',
+    'LookupObject__c'
   ];
 
   async renderedCallback() {
@@ -47,7 +53,7 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   @wire(getObjectInfo, { objectApiName: 'Rollup__mdt' })
-  getCMDTObjectInfo({error, data}){
+  getCMDTObjectInfo({ error, data }) {
     if (data) {
       this._cmdtFieldNames.forEach(fieldName => {
         this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
