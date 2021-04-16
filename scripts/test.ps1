@@ -71,6 +71,8 @@ if($scratchOrgAllotment -gt 0) {
     Write-Output "There was an issue with scratch org creation, continuing ..."
     $shouldDeployToSandbox = $true
   }
+} else {
+  $shouldDeployToSandbox = $true
 }
 
 if($shouldDeployToSandbox) {
@@ -80,6 +82,7 @@ if($shouldDeployToSandbox) {
     # Deploy
     Write-Output "Deploying source to sandbox ..."
     sfdx force:source:deploy -p rollup
+    sfdx force:source:deploy -p extra-tests
     Start-Tests
   } catch {
     Reset-SFDX-Json
