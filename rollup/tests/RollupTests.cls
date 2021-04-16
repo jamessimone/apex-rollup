@@ -2657,12 +2657,7 @@ private class RollupTests {
   @isTest
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
-    Contact con = new Contact(
-      AccountId = acc.Id,
-      Description = '0'.repeat(256),
-      LastName = 'Truncate',
-      Email = 'rollup@gmail.com'
-    );
+    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(256), LastName = 'Truncate', Email = 'rollup@gmail.com');
     insert con;
 
     Test.startTest();
@@ -2677,33 +2672,33 @@ private class RollupTests {
   static void shouldEnqueueCMDTRecalcWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Name = 'oneCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'twoCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'threeCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'fourCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'fiveCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1),
-      new Opportunity(Name = 'sixCMDT', StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Amount = 1)
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixCMDT', ParentId = acc.Id, PreferenceRank = 1)
     };
-    insert opps;
+    insert cpas;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Opportunity',
-        RollupFieldOnCalcItem__c = 'Amount',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = 'StageName = \'' + opps[0].StageName + '\''
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
       )
     };
 
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(calcItemToMetadata.get('Opportunity'));
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'));
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -3139,11 +3134,11 @@ private class RollupTests {
   @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
     Account acc = [SELECT Id, OwnerId FROM Account];
-    List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(AccountId = acc.Id, Name = 'One', CloseDate = System.today(), StageName = 'grandParent'),
-      new Opportunity(AccountId = acc.Id, Name = 'Two', CloseDate = System.today(), StageName = 'grandParent')
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert opps;
+    insert cpas;
 
     DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
@@ -3151,17 +3146,17 @@ private class RollupTests {
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
-    Rollup.records = opps;
+    Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Opportunity',
+        CalcItem__c = 'ContactPointAddress',
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnCalcItem__c = 'ParentId',
         LookupObject__c = 'User',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+        GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3172,7 +3167,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
-    System.assertEquals(opps[0].Name + ', ' + opps[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
   //** Helpers */

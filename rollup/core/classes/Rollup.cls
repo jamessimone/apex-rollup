@@ -1390,38 +1390,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     for (Rollup__mdt rollupInfo : rollupMetadata) {
-      if (rollupInfo.IsRollupStartedFromParent__c) {
-        shouldReturn = true;
-        QueryWrapper wrapper = getParentWhereClause(
-          calcItems,
-          rollupInfo.LookupFieldOnLookupObject__c,
-          rollupInfo.LookupObject__c,
-          rollupInfo.LookupFieldOnCalcItem__c,
-          rollupInfo.GrandparentRelationshipFieldPath__c,
-          rollupInfo.CalcItemWhereClause__c
-        );
-        performFullRecalculationInner(
-          rollupInfo.RollupFieldOnCalcItem__c,
-          rollupInfo.LookupFieldOnCalcItem__c,
-          rollupInfo.LookupFieldOnLookupObject__c,
-          rollupInfo.RollupFieldOnLookupObject__c,
-          rollupInfo.LookupObject__c,
-          rollupInfo.CalcItem__c,
-          rollupInfo.RollupOperation__c,
-          wrapper,
-          rollupInfo.GrandparentRelationshipFieldPath__c,
-          rollupInfo.ConcatDelimiter__c
-        );
-      } else if (
-        rollupInfo.CalcItem__c != calcItems.getSObjectType().getDescribe().getName() &&
+      Boolean isIntermediateRollupForGrandparent =
+        rollupInfo.CalcItem__c != String.valueOf(calcItems.getSObjectType()) &&
         String.isNotBlank(rollupInfo.GrandparentRelationshipFieldPath__c) &&
-        calcItems.isEmpty() == false
-      ) {
-        // it's a grandparent rollup triggered by an intermediate object
+        calcItems.isEmpty() == false &&
+        rollupInfo.IsRollupStartedFromParent__c == false;
+
+      if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent) {
         shouldReturn = true;
-        // only run if any of the lookup fields have changed! (or if it's CDC, just to be safe ...)
-        QueryWrapper potentialQuery = getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
-        if (potentialQuery.hasQuery || isCDC) {
+        QueryWrapper queryWrapper = isIntermediateRollupForGrandparent == false
+          ? getParentWhereClause(
+              calcItems,
+              rollupInfo.LookupFieldOnLookupObject__c,
+              rollupInfo.LookupObject__c,
+              rollupInfo.LookupFieldOnCalcItem__c,
+              rollupInfo.GrandparentRelationshipFieldPath__c,
+              rollupInfo.CalcItemWhereClause__c
+            )
+          : getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
+        if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
           performFullRecalculationInner(
             rollupInfo.RollupFieldOnCalcItem__c,
             rollupInfo.LookupFieldOnCalcItem__c,
@@ -1430,7 +1417,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             rollupInfo.LookupObject__c,
             rollupInfo.CalcItem__c,
             rollupInfo.RollupOperation__c,
-            potentialQuery,
+            queryWrapper,
             rollupInfo.GrandparentRelationshipFieldPath__c,
             rollupInfo.ConcatDelimiter__c
           );
