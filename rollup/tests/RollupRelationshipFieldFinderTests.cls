@@ -13,7 +13,7 @@ private class RollupRelationshipFieldFinderTests {
     Set<String> uniqueFieldNames = new Set<String>{ 'Name', 'Id' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Parent.Name',
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Name'),
       uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
@@ -25,7 +25,13 @@ private class RollupRelationshipFieldFinderTests {
 
     // validates that the relationship field finder works even if a fully qualified path isn't provided if the parent
     // is "just" the next level up
-    finder = new RollupRelationshipFieldFinder(control, 'Name', uniqueFieldNames, Account.SObjectType, new Map<Id, SObject>());
+    finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
+      uniqueFieldNames,
+      Account.SObjectType,
+      new Map<Id, SObject>()
+    );
     traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
     System.assertEquals(parent, traversal.retrieveParent(cpa.Id));
@@ -41,7 +47,7 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Parent.Owner.Name',
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
       new Set<String>{ 'Name', 'Id' },
       User.SObjectType,
       new Map<Id, SObject>()
@@ -66,7 +72,7 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Parent.Owner.Name',
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
       new Set<String>{ 'Name', 'Id' },
       User.SObjectType,
       new Map<Id, SObject>()
@@ -103,13 +109,25 @@ private class RollupRelationshipFieldFinderTests {
     Map<Id, SObject> oldCpas = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = intermediateOne.Id) };
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Name', 'Id' };
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Account.Owner.Name', uniqueFieldNames, User.SObjectType, oldCpas);
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Account.Owner.Name'),
+      uniqueFieldNames,
+      User.SObjectType,
+      oldCpas
+    );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     System.assertEquals(false, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should not report false positive!');
     System.assertEquals(intermediateTwo.Id, traversal.getOldLookupId(cpa, 'ParentId'));
 
-    finder = new RollupRelationshipFieldFinder(control, 'Account.Name', uniqueFieldNames, Account.SObjectType, oldCpas);
+    finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Account.Name'),
+      uniqueFieldNames,
+      Account.SObjectType,
+      oldCpas
+    );
     traversal = finder.getParents(cpas);
 
     System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if ultimate lookup is different');
@@ -127,7 +145,13 @@ private class RollupRelationshipFieldFinderTests {
     Map<Id, SObject> oldOpps = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = null) };
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Id', 'Name' };
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Parent.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
+      uniqueFieldNames,
+      User.SObjectType,
+      oldOpps
+    );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if old lookup null');
@@ -136,7 +160,13 @@ private class RollupRelationshipFieldFinderTests {
     cpa.ParentId = null;
     update cpa;
 
-    finder = new RollupRelationshipFieldFinder(control, 'Parent.Owner.Name', uniqueFieldNames, User.SObjectType, oldOpps);
+    finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
+      uniqueFieldNames,
+      User.SObjectType,
+      oldOpps
+    );
     System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if new lookup is null');
   }
 
@@ -152,7 +182,13 @@ private class RollupRelationshipFieldFinderTests {
     insert opps;
 
     Map<Id, SObject> oldOpps = new Map<Id, SObject>{ cpaOne.Id => cpaOne, cpaTwo.Id => new ContactPointAddress(ParentId = parentTwo.Id) };
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(control, 'Name', new Set<String>{ 'Name', 'Id' }, Account.SObjectType, oldOpps);
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
+      new Set<String>{ 'Name', 'Id' },
+      Account.SObjectType,
+      oldOpps
+    );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
 
     System.assertEquals(true, traversal.isUltimatelyReparented(cpaTwo, 'ParentId'));
@@ -171,7 +207,7 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Name',
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,
       new Map<Id, SObject>()
@@ -195,17 +231,19 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      'Parent.Name',
+      new Rollup__mdt(
+        GrandparentRelationshipFieldPath__c = 'Parent.Name',
+        CalcItemWhereClause__c = 'Parent.Name != \'\' AND (Parent.Name != \'' +
+          parentOne.Name +
+          '\' OR Parent.AccountNumber = \'' +
+          parentOne.AccountNumber +
+          '\') AND Parent.Name != \'' +
+          parentTwo.Name +
+          '\''
+      ),
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,
-      new Map<Id, SObject>(),
-      'Parent.Name != \'\' AND (Parent.Name != \'' +
-      parentOne.Name +
-      '\' OR Parent.AccountNumber = \'' +
-      parentOne.AccountNumber +
-      '\') AND Parent.Name != \'' +
-      parentTwo.Name +
-      '\''
+      new Map<Id, SObject>()
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 

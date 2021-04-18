@@ -22,29 +22,18 @@ public without sharing class RollupRelationshipFieldFinder {
 
   public RollupRelationshipFieldFinder(
     RollupControl__mdt rollupControl,
-    String relationshipPathName,
-    Set<String> uniqueFinalFieldNames,
-    SObjectType ultimateParent,
-    Map<Id, SObject> oldRecords,
-    String calcItemWhereClause
-  ) {
-    this(rollupControl, relationshipPathName, uniqueFinalFieldNames, ultimateParent, oldRecords);
-    this.calcItemWhereClause = calcItemWhereClause;
-  }
-
-  public RollupRelationshipFieldFinder(
-    RollupControl__mdt rollupControl,
-    String relationshipPathName,
+    Rollup__mdt rollupMetadata,
     Set<String> uniqueFinalFieldNames,
     SObjectType ultimateParent,
     Map<Id, SObject> oldRecords
-  ) {
+    ) {
     this.traversal = new Traversal(this);
-    this.relationshipParts = relationshipPathName.split('\\.');
+    this.relationshipParts = rollupMetadata.GrandparentRelationshipFieldPath__c.split('\\.');
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
     this.oldRecords = oldRecords;
     this.uniqueFinalFieldNames = uniqueFinalFieldNames;
+    this.calcItemWhereClause = rollupMetadata.CalcItemWhereClause__c;
 
     this.originalParts = new List<String>(this.relationshipParts);
     this.relationshipNameToWhereClauses = new Map<String, List<String>>();

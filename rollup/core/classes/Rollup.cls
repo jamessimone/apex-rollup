@@ -424,7 +424,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=');
 
     // eval always null via this route, despite having been used to get the relationship fields
-    return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, null);
+    return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, null, RollupInvocationPoint.FROM_LWC);
   }
 
   @AuraEnabled
@@ -456,7 +456,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       operationName,
       wrapper,
       null,
-      potentialConcatDelimiter
+      potentialConcatDelimiter,
+      RollupInvocationPoint.FROM_LWC
     );
   }
 
@@ -591,7 +592,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.rollupOperation.toUpperCase(),
               wrapper,
               flowInput.grandparentRelationshipFieldPath,
-              flowInput.concatDelimiter
+              flowInput.concatDelimiter,
+              RollupInvocationPoint.FROM_INVOCABLE
             );
             continue;
           }
@@ -1419,7 +1421,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             rollupInfo.RollupOperation__c,
             queryWrapper,
             rollupInfo.GrandparentRelationshipFieldPath__c,
-            rollupInfo.ConcatDelimiter__c
+            rollupInfo.ConcatDelimiter__c,
+            RollupInvocationPoint.FROM_APEX
           );
         }
       }
@@ -1577,7 +1580,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String operationName,
     QueryWrapper queryWrapper,
     String potentialGrandparentRelationshipFieldPath,
-    String potentialConcatDelimiter
+    String potentialConcatDelimiter,
+    RollupInvocationPoint invokePoint
   ) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
@@ -1603,7 +1607,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     queryFields.addAll(whereEval.getQueryFields());
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
-    return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval);
+    return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval, invokePoint);
   }
 
   private static String startFullRecalc(
@@ -1613,20 +1617,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<String> objIds,
     Set<Id> recordIds,
     SObjectType calcItemType,
-    Evaluator eval
+    Evaluator eval,
+    RollupInvocationPoint invokePoint
   ) {
     // emptyRollup used to reference the default RollupControl__mdt.MaxQueryRows__c, as well as BatchChunkSize__c
-    Rollup emptyRollup = new Rollup(RollupInvocationPoint.FROM_LWC);
+    Rollup emptyRollup = new Rollup(invokePoint);
     Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < emptyRollup.rollupControl.MaxQueryRows__c;
     if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
-      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, RollupInvocationPoint.FROM_LWC);
+      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, invokePoint);
       thisRollup.isFullRecalc = true;
       return thisRollup.runCalc();
     } else {
       // batch to get calc items and then batch to rollup
       return Database.executeBatch(
-        new RollupFullBatchRecalculator(queryString, RollupInvocationPoint.FROM_LWC, matchingMeta, calcItemType, recordIds),
+        new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds),
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
       );
     }
@@ -2341,11 +2346,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (rollup.traversal == null) {
         rollup.traversal = new RollupRelationshipFieldFinder(
             rollup.rollupControl,
-            rollup.metadata.GrandparentRelationshipFieldPath__c,
+            rollup.metadata,
             uniqueQueryFieldNames,
             rollup.lookupObj,
-            rollup.oldCalcItems,
-            rollup.metadata.CalcItemWhereClause__c
+            rollup.oldCalcItems
           )
           .getParents(rollup.calcItems);
       } else if (rollup.traversal?.getIsFinished() == false) {
