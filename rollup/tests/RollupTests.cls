@@ -2350,6 +2350,33 @@ private class RollupTests {
     System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract PreferenceRank from Account');
   }
 
+  @isTest
+  static void shouldExcludeNonLinkedItemsAndUseCalcItemWhereClause() {
+    Account acc = [SELECT Id FROM Account];
+    Date today = System.today();
+    // create a cpa not linked to the parent account with a lower PreferenceRank
+    insert new ContactPointAddress(PreferenceRank = 1, ActiveFromDate = today.addDays(-1), Name = 'non-match on account');
+    // inserting the both of these at the same time caused a gack, and I have no idea why ... so singular inserts it is!
+    insert new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today.addDays(-1), ParentId = acc.Id, Name = 'Non match on where clause');
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today, Id = generateId(ContactPointAddress.SObjectType));
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+
+    DMLMock mock = loadAccountIdMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+    flowInputs[0].orderByFirstLast = 'ActiveFromDate';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'Only linked items should be used');
+  }
+
   // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
   @isTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {
