@@ -599,8 +599,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             );
             continue;
           } else if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
-            flowOutput.isSuccess = false;
-            flowOutput.message = 'Order By First/Last field required for ' + rollupOperation + ' operation';
+            throw new IllegalArgumentException('Order By First/Last field required for ' + rollupOperation + ' operation');
           }
 
           SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();

@@ -274,6 +274,17 @@ public without sharing abstract class RollupCalculator {
   protected virtual void setReturnValue() {
   }
 
+  protected List<SObject> winnowItems(List<SObject> items) {
+    List<SObject> temporaryItems = new List<SObject>(items);
+    items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
+    for (SObject item : temporaryItems) {
+      if (this.eval?.matches(item) != false) {
+        items.add(item);
+      }
+    }
+    return items;
+  }
+
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
     String operationName = op.name().contains('_') ? op.name().substringAfter('_') : op.name();
     String alias = operationName.toLowerCase() + 'Field';
@@ -891,14 +902,14 @@ public without sharing abstract class RollupCalculator {
       }
 
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
+      applicableCalcItems = this.winnowItems(applicableCalcItems);
+
       Decimal newSum = 0;
       Decimal currentDenominator = 0;
       for (SObject calcItem : applicableCalcItems) {
-        if (this.eval == null || this.eval.matches(calcItem) == true) {
-          Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
-          newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
-          currentDenominator++;
-        }
+        Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
+        newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
+        currentDenominator++;
       }
 
       Decimal numerator = oldSum + newSum;
@@ -948,6 +959,8 @@ public without sharing abstract class RollupCalculator {
       } else {
         calcItems.addAll(Database.query(queryString));
       }
+
+      calcItems = this.winnowItems(calcItems);
 
       new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? this.returnVal : calcItems[0].get(this.opFieldOnCalcItem);

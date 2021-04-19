@@ -2399,7 +2399,8 @@ private class RollupTests {
     Account acc = [SELECT Id FROM Account];
     Date today = System.today();
 
-    insert new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today.addDays(-1), ParentId = acc.Id, Name = 'match on where clause');
+    // the important part here is that this one SHOULDN'T be first if the passed in calc item is not winnowed properly
+    insert new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today.addDays(1), ParentId = acc.Id, Name = 'match on where clause');
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today, Id = generateId(ContactPointAddress.SObjectType));
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
