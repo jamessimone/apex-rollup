@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RollupToUltimateParent__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When the Lookup Field On Lookup Object is a hierarchy/self-referential lookup field (looks up to the same object as the Lookup Object), check this box to roll all the way up to the ultimate parent in the hierarchy.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>When the Lookup Field On Lookup Object is a hierarchy/self-referential lookup field (looks up to the same object as the Lookup Object), check this box to roll all the way up to the ultimate parent in the hierarchy.</inlineHelpText>
+    <label>Rollup To Ultimate Parent</label>
+    <type>Checkbox</type>
+</CustomField>

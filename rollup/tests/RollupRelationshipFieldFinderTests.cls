@@ -252,4 +252,31 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'First opp parent should not be exluded with nested conditional!');
     System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second opp should have been excluded with clause after nested conditional!');
   }
+
+  @isTest
+  static void shouldTraverseAllTheWayUpWhenMetadataFlagIsEnabled() {
+    Account parentOne = new Account(Name = 'child parent');
+    insert parentOne;
+    Account parentTwo = new Account(Name = 'ultimate parent', ParentId = parentOne.Id);
+    insert parentTwo;
+
+    ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
+    insert cpaOne;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(
+        RollupToUltimateParent__c = true,
+        UltimateParentLookup__c = 'ParentId',
+        GrandparentRelationshipFieldPath__c = 'Parent.Name'
+      ),
+      new Set<String>{ 'Name', 'Id' },
+      Account.SObjectType,
+      new Map<Id, SObject>()
+    );
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpaOne });
+
+    Account expectedAcc = new Account(Id = parentTwo.Id, Name = parentTwo.Name);
+    System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'Ultimate parent should have been used!');
+  }
 }

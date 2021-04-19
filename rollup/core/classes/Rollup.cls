@@ -1527,6 +1527,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             LookupFieldOnLookupObject__r.QualifiedApiName,
             RollupFieldOnLookupObject__c,
             RollupFieldOnLookupObject__r.QualifiedApiName,
+            UltimateParentLookup__c,
+            UltimateParentLookup__r.QualifiedApiName,
             // rest of the fields
             CalcItemWhereClause__c,
             ChangedFieldsOnCalcItem__c,
@@ -1538,7 +1540,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             IsRollupStartedFromParent__c,
             OrderByFirstLast__c,
             RollupControl__c,
-            RollupOperation__c
+            RollupOperation__c,
+            RollupToUltimateParent__c
           FROM Rollup__mdt
         ];
         // do the transforms
@@ -1549,6 +1552,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
+          meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
         }
       }
       if (rollupMetadata != null) {
