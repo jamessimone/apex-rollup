@@ -570,6 +570,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         FlowOutput flowOutput = new FlowOutput();
         flowOutputReturns.add(flowOutput);
 
+        String rollupOperation = flowInput.rollupOperation.toUpperCase();
+
         if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
           continue;
         } else {
@@ -589,13 +591,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
               flowInput.rollupFieldOnOpObject,
               flowInput.rollupSObjectName,
               flowInput.calcItemTypeWhenRollupStartedFromParent,
-              flowInput.rollupOperation.toUpperCase(),
+              rollupOperation,
               wrapper,
               flowInput.grandparentRelationshipFieldPath,
               flowInput.concatDelimiter,
               RollupInvocationPoint.FROM_INVOCABLE
             );
             continue;
+          } else if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
+            flowOutput.isSuccess = false;
+            flowOutput.message = 'Order By First/Last field required for ' + rollupOperation + ' operation';
           }
 
           SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
@@ -605,7 +610,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
             LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
             RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-            RollupOperation__c = rollupContext + flowInput.rollupOperation.toUpperCase(),
+            RollupOperation__c = rollupContext + rollupOperation,
             ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
             FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
             FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
@@ -1666,10 +1671,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
       }
       // sanitize what's left of the where clause
-      while(optionalWhereClause.endsWith('AND')) {
+      while (optionalWhereClause.endsWith('AND')) {
         optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
       }
-      while(optionalWhereClause.endsWith('OR')) {
+      while (optionalWhereClause.endsWith('OR')) {
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
@@ -2229,6 +2234,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
+    Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
     List<SObject> applicableItems = new List<SObject>();
     if (calcItems?.isEmpty() != false) {
       return applicableItems;
@@ -2242,7 +2248,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
         applicableItems.add(calcItem);
-      } else if (rollupMetadata?.RollupOperation__c?.contains(Rollup.Op.AVERAGE.name()) == true) {
+      } else if (alwaysFullRecalcOps.contains(rollupMetadata?.RollupOperation__c)) {
         applicableItems.add(calcItem);
       }
     }

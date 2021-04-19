@@ -942,10 +942,15 @@ public without sharing abstract class RollupCalculator {
       Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField };
       // a full-recalc is always necessary because we don't retain the information about the order by field
       String queryString = Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
-      calcItems.addAll(Database.query(queryString));
+      // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
+      if (this.op.name().contains('DELETE')) {
+        calcItems = Database.query(queryString);
+      } else {
+        calcItems.addAll(Database.query(queryString));
+      }
 
       new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
-      this.returnVal = calcItems[0].get(this.opFieldOnCalcItem);
+      this.returnVal = calcItems.isEmpty() ? this.returnVal : calcItems[0].get(this.opFieldOnCalcItem);
     }
   }
 

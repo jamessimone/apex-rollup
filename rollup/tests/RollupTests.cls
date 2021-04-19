@@ -2377,6 +2377,47 @@ private class RollupTests {
     System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'Only linked items should be used');
   }
 
+  @isTest
+  static void shouldReportErrorWhenOrderByNotIncludedForFirstLast() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'FIRST'
+    );
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(false, flowOutputs[0].isSuccess);
+  }
+
+  @isTest
+  static void shouldStillPerformRollupForFirstLastEvenIfCurrentCalcItemsDoNotMatch() {
+    Account acc = [SELECT Id FROM Account];
+    Date today = System.today();
+
+    insert new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today.addDays(-1), ParentId = acc.Id, Name = 'match on where clause');
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today, Id = generateId(ContactPointAddress.SObjectType));
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+    flowInputs[0].orderByFirstLast = 'ActiveFromDate';
+
+    DMLMock mock = loadAccountIdMock(cpas);
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(5, updatedAcc.AnnualRevenue, 'Queried item should be found and used even if calc item where clause filters out current iterations');
+  }
+
   // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
   @isTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {

@@ -340,6 +340,31 @@ private class RollupCalculatorTests {
     System.assertEquals(16, (Decimal) calc.getReturnValue());
   }
 
+  @isTest
+  static void regressionShouldExcludeCurrentItemsOnFirstLastDelete() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.DELETE_FIRST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, Name = 'b'),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 16, Name = 'a'),
+        new Opportunity(Id = '0066g00003VDGbF003', Amount = 1, Name = 'c')
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(0, calc.getReturnValue(), 'Delete should exclude current values :(');
+  }
+
   // AVERAGE tests
 
   @isTest
