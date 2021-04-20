@@ -23,7 +23,7 @@ global without sharing class RollupFlowBulkProcessor {
 
     for (FlowInput flowInput : flowInputs) {
       Rollup.FlowOutput output = new Rollup.FlowOutput();
-      if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
+      if (flowInput.recordsToRollup?.isEmpty() != false) {
         output.message = 'No records';
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
@@ -56,7 +56,8 @@ global without sharing class RollupFlowBulkProcessor {
             input.isRollupStartedFromParent = meta.IsRollupStartedFromParent__c;
             input.grandparentRelationshipFieldPath = meta.GrandparentRelationshipFieldPath__c;
             input.concatDelimiter = meta.ConcatDelimiter__c;
-            // TODO - add parent/ultimate parent info
+            input.rollupToUltimateParent = meta.RollupToUltimateParent__c;
+            input.ultimateParentField = meta.UltimateParentLookup__c;
             // everything else is supplied from the invocable
             input.rollupContext = flowInput.rollupContext;
             input.recordsToRollup = flowInput.recordsToRollup;

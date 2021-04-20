@@ -539,6 +539,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
     global String grandparentRelationshipFieldPath;
+
+    @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
+    global String ultimateParentField;
+    @InvocableVariable(label='Should rollup to ultimate hierarchy parent' description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups')
+    global Boolean rollupToUltimateParent = false;
   }
 
   global class FlowOutput {
@@ -562,90 +567,90 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<FlowOutput> flowOutputReturns = new List<FlowOutput>();
     List<Rollup> rollups = new List<Rollup>();
 
-    try {
-      FlowInput firstInput = flowInputs.isEmpty() == false ? flowInputs[0] : new FlowInput();
-      String rollupContext = getFlowRollupContext(firstInput);
+    FlowInput firstInput = flowInputs.isEmpty() == false ? flowInputs[0] : new FlowInput();
+    String rollupContext = getFlowRollupContext(firstInput);
 
-      for (FlowInput flowInput : flowInputs) {
-        FlowOutput flowOutput = new FlowOutput();
-        flowOutputReturns.add(flowOutput);
+    for (FlowInput flowInput : flowInputs) {
+      FlowOutput flowOutput = new FlowOutput();
+      flowOutputReturns.add(flowOutput);
 
-        String rollupOperation = flowInput.rollupOperation.toUpperCase();
+      String rollupOperation = flowInput.rollupOperation.toUpperCase();
 
-        if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
-          continue;
-        } else {
-          if (flowInput.isRollupStartedFromParent) {
-            QueryWrapper wrapper = getParentWhereClause(
-              flowInput.recordsToRollup,
-              flowInput.lookupFieldOnOpObject,
-              flowInput.rollupSObjectName,
-              flowInput.lookupFieldOnCalcItem,
-              flowInput.grandparentRelationshipFieldPath,
-              flowInput.calcItemWhereClause
-            );
-            performFullRecalculationInner(
-              flowInput.rollupFieldOnCalcItem,
-              flowInput.lookupFieldOnCalcItem,
-              flowInput.lookupFieldOnOpObject,
-              flowInput.rollupFieldOnOpObject,
-              flowInput.rollupSObjectName,
-              flowInput.calcItemTypeWhenRollupStartedFromParent,
-              rollupOperation,
-              wrapper,
-              flowInput.grandparentRelationshipFieldPath,
-              flowInput.concatDelimiter,
-              RollupInvocationPoint.FROM_INVOCABLE
-            );
-            continue;
-          } else if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
-            throw new IllegalArgumentException('Order By First/Last field required for ' + rollupOperation + ' operation');
-          }
-
-          SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
-          Rollup__mdt rollupMeta = new Rollup__mdt(
-            RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
-            LookupObject__c = flowInput.rollupSObjectName,
-            LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
-            LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
-            RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-            RollupOperation__c = rollupContext + rollupOperation,
-            ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
-            FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-            FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
-            CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-            IsFullRecordSet__c = flowInput.isFullRecordSet,
-            OrderByFirstLast__c = flowInput.orderByFirstLast,
-            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
-            ConcatDelimiter__c = flowInput.concatDelimiter
-          );
-
-          Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
-          if (String.isNotBlank(rollupMeta.LookupFieldOnCalcItem__c)) {
-            uniqueFieldNames.add(rollupMeta.LookupFieldOnCalcItem__c);
-          }
-          if (String.isNotBlank(rollupMeta.RollupFieldOnCalcItem__c)) {
-            uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
-          }
-          Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
-          Rollup roll = getRollup(
-            new List<Rollup__mdt>{ rollupMeta },
-            sObjectType,
+      if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
+        continue;
+      } else {
+        if (flowInput.isRollupStartedFromParent) {
+          QueryWrapper wrapper = getParentWhereClause(
             flowInput.recordsToRollup,
-            oldFlowRecords,
-            null,
+            flowInput.lookupFieldOnOpObject,
+            flowInput.rollupSObjectName,
+            flowInput.lookupFieldOnCalcItem,
+            flowInput.grandparentRelationshipFieldPath,
+            flowInput.calcItemWhereClause
+          );
+          performFullRecalculationInner(
+            flowInput.rollupFieldOnCalcItem,
+            flowInput.lookupFieldOnCalcItem,
+            flowInput.lookupFieldOnOpObject,
+            flowInput.rollupFieldOnOpObject,
+            flowInput.rollupSObjectName,
+            flowInput.calcItemTypeWhenRollupStartedFromParent,
+            rollupOperation,
+            wrapper,
+            flowInput.grandparentRelationshipFieldPath,
+            flowInput.concatDelimiter,
             RollupInvocationPoint.FROM_INVOCABLE
           );
-          if (flowInput.deferProcessing) {
-            FLOW_ROLLUPS.add(roll);
-          } else {
-            rollups.add(roll);
-          }
+          continue;
+        } else if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
+          throw new IllegalArgumentException('Order By First/Last field required for ' + rollupOperation + ' operation');
         }
-        batch(rollups);
+
+        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+        Rollup__mdt rollupMeta = new Rollup__mdt(
+          RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
+          LookupObject__c = flowInput.rollupSObjectName,
+          LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
+          LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
+          RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
+          RollupOperation__c = rollupContext + rollupOperation,
+          ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+          FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+          FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+          CalcItemWhereClause__c = flowInput.calcItemWhereClause,
+          IsFullRecordSet__c = flowInput.isFullRecordSet,
+          OrderByFirstLast__c = flowInput.orderByFirstLast,
+          GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+          ConcatDelimiter__c = flowInput.concatDelimiter,
+          UltimateParentLookup__c = flowInput.ultimateParentField,
+          RollupToUltimateParent__c = flowInput.rollupToUltimateParent
+        );
+
+        Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
+        if (String.isNotBlank(rollupMeta.LookupFieldOnCalcItem__c)) {
+          uniqueFieldNames.add(rollupMeta.LookupFieldOnCalcItem__c);
+        }
+        if (String.isNotBlank(rollupMeta.RollupFieldOnCalcItem__c)) {
+          uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
+        }
+        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
+        Rollup roll = getRollup(
+          new List<Rollup__mdt>{ rollupMeta },
+          sObjectType,
+          flowInput.recordsToRollup,
+          oldFlowRecords,
+          null,
+          RollupInvocationPoint.FROM_INVOCABLE
+        );
+        if (flowInput.deferProcessing) {
+          FLOW_ROLLUPS.add(roll);
+        } else {
+          rollups.add(roll);
+        }
       }
-    } catch (Exception ex) {
-      for (FlowOutput flowOutput : flowOutputReturns) {
+      try {
+        batch(rollups);
+      } catch (Exception ex) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
       }
@@ -2351,7 +2356,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private Map<String, List<SObject>> getCalcItemsByLookupField(Rollup rollup, Set<String> uniqueQueryFieldNames) {
-    if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+    if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
       if (rollup.traversal == null) {
         rollup.traversal = new RollupRelationshipFieldFinder(
             rollup.rollupControl,

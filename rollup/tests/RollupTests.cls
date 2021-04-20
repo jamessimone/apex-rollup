@@ -2387,11 +2387,16 @@ private class RollupTests {
       'FIRST'
     );
 
+    Exception ex;
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
     Test.stopTest();
 
-    System.assertEquals(false, flowOutputs[0].isSuccess);
+    System.assertEquals('Order By First/Last field required for FIRST operation', ex.getMessage());
   }
 
   @isTest
@@ -2473,13 +2478,20 @@ private class RollupTests {
     Rollup.shouldRun = true;
     Rollup.records = history;
 
+    Exception ex;
     Test.startTest();
     // prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
+    } catch(Exception e) {
+      ex = e;
+    }
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
-    System.assertEquals(false, flowOutputs[0].isSuccess);
+    System.assertEquals(
+      'No such column \'ParentId\' on entity \'ContactPointAddressHistory\'. If you are attempting to use a custom field, be sure to append the \'__c\' after the custom field name. Please reference your WSDL or the describe call for the appropriate names.',
+      ex.getMessage()
+    );
   }
 
   @isTest
@@ -3275,6 +3287,44 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
+  @isTest
+  static void shouldRollupEntireHierarchyWhenEnabled() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    Account childAcc = new Account(ParentId = acc.Id, Name = 'Hierarchy Rollup');
+    insert childAcc;
+
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = new List<ContactPointAddress>{ new ContactPointAddress(ParentId = childAcc.Id, Name = 'One') };
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT',
+        RollupToUltimateParent__c = true,
+        UltimateParentLookup__c = 'ParentId',
+        GrandparentRelationshipFieldPath__c = 'Parent.ParentId'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Hierarchy record should have been found!');
+    Account updatedAccount = (Account) mock.Records[0];
+    System.assertEquals(acc.Id, updatedAccount.Id, 'Top-level parent should have been updated: ' + JSON.serialize(updatedAccount));
+    // in alphabetical order ...
+    System.assertEquals('One' + ', ' + acc.Name, updatedAccount.Name);
   }
 
   //** Helpers */

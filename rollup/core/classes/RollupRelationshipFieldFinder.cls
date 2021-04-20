@@ -29,10 +29,12 @@ public without sharing class RollupRelationshipFieldFinder {
     Set<String> uniqueFinalFieldNames,
     SObjectType ultimateParent,
     Map<Id, SObject> oldRecords
-    ) {
+  ) {
     this.traversal = new Traversal(this);
     this.metadata = rollupMetadata;
-    this.relationshipParts = rollupMetadata.GrandparentRelationshipFieldPath__c.split('\\.');
+    this.relationshipParts = String.isNotBlank(rollupMetadata.GrandparentRelationshipFieldPath__c)
+      ? rollupMetadata.GrandparentRelationshipFieldPath__c.split('\\.')
+      : new List<String>();
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
     this.oldRecords = oldRecords;
@@ -144,30 +146,26 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   public Traversal getParents(List<SObject> records) {
-
-    if (records.isEmpty() || this.relationshipParts.isEmpty()) {
+    if (records.isEmpty() || (this.relationshipParts.isEmpty() && this.metadata.RollupToUltimateParent__c == false)) {
       this.traversal.isFinished = true;
       return this.traversal;
-    } else if (
-      Rollup.hasExceededCurrentRollupLimits(this.rollupControl) &&
-      this.isFirstRun == false
-      ) {
-        // we pop fields off of the list while recursively iterating
-        // which means we need to re-add the last field used if we are stopping
-        // due to limits
-        this.relationshipParts.add(0, this.currentRelationshipName);
-        return this.traversal;
-      }
+    } else if (Rollup.hasExceededCurrentRollupLimits(this.rollupControl) && this.isFirstRun == false) {
+      // we pop fields off of the list while recursively iterating
+      // which means we need to re-add the last field used if we are stopping
+      // due to limits
+      this.relationshipParts.add(0, this.currentRelationshipName);
+      return this.traversal;
+    }
 
-      // even before the recursion begins, the List won't be strongly typed
-      SObjectType baseSObjectType = records[0].getSObjectType();
+    // even before the recursion begins, the List won't be strongly typed
+    SObjectType baseSObjectType = records[0].getSObjectType();
 
-      // if we're only going one relationship up, we need to validate that the
-      // parent's relationship name doesn't differ from its SObject name
-      if (this.relationshipParts.size() == 1 && this.isFirstRun) {
-        SObjectField parentField = this.getField(baseSObjectType.getDescribe().fields.getMap(), this.ultimateParent.getDescribe().getName());
-        this.relationshipParts.add(0, parentField.getDescribe().getName());
-      }
+    // if we're only going one relationship up, we need to validate that the
+    // parent's relationship name doesn't differ from its SObject name
+    if (this.relationshipParts.size() == 1 && this.isFirstRun) {
+      SObjectField parentField = this.getField(baseSObjectType.getDescribe().fields.getMap(), this.ultimateParent.getDescribe().getName());
+      this.relationshipParts.add(0, parentField.getDescribe().getName());
+    }
 
     if (baseSObjectType == this.ultimateParent && this.isFinishedWithHierarchyTraversal(records)) {
       this.prepFinishedObject(records);
@@ -218,7 +216,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private Boolean isFinishedWithHierarchyTraversal(List<SObject> records) {
-    if(this.metadata.RollupToUltimateParent__c != true) {
+    if (this.metadata.RollupToUltimateParent__c != true) {
       return true;
     }
 
@@ -287,7 +285,7 @@ public without sharing class RollupRelationshipFieldFinder {
     Set<String> fieldNames = new Set<String>();
     if (nextSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalFieldNames);
-      if(this.metadata.RollupToUltimateParent__c == true) {
+      if (this.metadata.RollupToUltimateParent__c == true) {
         this.populateHierarchicalLookupFields(fieldNames, this.getField(nextFieldMap, this.metadata.UltimateParentLookup__c));
       }
     } else {
