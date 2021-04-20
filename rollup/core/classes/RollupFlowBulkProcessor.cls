@@ -56,6 +56,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.isRollupStartedFromParent = meta.IsRollupStartedFromParent__c;
             input.grandparentRelationshipFieldPath = meta.GrandparentRelationshipFieldPath__c;
             input.concatDelimiter = meta.ConcatDelimiter__c;
+            // TODO - add parent/ultimate parent info
             // everything else is supplied from the invocable
             input.rollupContext = flowInput.rollupContext;
             input.recordsToRollup = flowInput.recordsToRollup;

@@ -255,13 +255,29 @@ private class RollupRelationshipFieldFinderTests {
 
   @isTest
   static void shouldTraverseAllTheWayUpWhenMetadataFlagIsEnabled() {
-    Account parentOne = new Account(Name = 'child parent');
+    Account parentOne = new Account(Name = 'ultimate parent');
     insert parentOne;
-    Account parentTwo = new Account(Name = 'ultimate parent', ParentId = parentOne.Id);
-    insert parentTwo;
+    Account parentTwo = new Account(Name = 'child parent', ParentId = parentOne.Id);
+    // also start another chain of relationships
+    Account secondParent = new Account(Name = 'second child parent', ParentId = parentOne.Id);
+    insert new List<Account>{ parentTwo, secondParent };
 
-    ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
-    insert cpaOne;
+    Account grandChild = new Account(Name = 'grandchild', ParentId = secondParent.Id);
+    insert grandChild;
+
+    Account greatGrandchild = new Account(Name = 'great-grandchild', ParentId = grandChild.Id);
+    insert greatGrandchild;
+
+    Account greatGreatGrandchild = new Account(Name = 'great great grandchild', ParentId = greatGrandchild.Id);
+    insert greatGreatGrandchild;
+
+    Account greatGreatGreatGrandchild = new Account(Name = 'great great great!', ParentId = greatGreatGrandchild.Id);
+    insert greatGreatGreatGrandchild;
+
+    ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentTwo.Id, Name = 'FirstParentedChild');
+    ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = greatGreatGreatGrandchild.Id, Name = 'Second parented child');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
+    insert cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -274,9 +290,10 @@ private class RollupRelationshipFieldFinderTests {
       Account.SObjectType,
       new Map<Id, SObject>()
     );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpaOne });
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    Account expectedAcc = new Account(Id = parentTwo.Id, Name = parentTwo.Name);
+    Account expectedAcc = new Account(Id = parentOne.Id, Name = parentOne.Name);
     System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'Ultimate parent should have been used!');
+    System.assertEquals(expectedAcc, traversal.retrieveParent(cpaTwo.Id), 'Ultimate parent should be found even if 5+ levels deep in hierarchy');
   }
 }

@@ -5,6 +5,7 @@
  * rollup are likely operating using lookups anyway
  */
 public without sharing class RollupRelationshipFieldFinder {
+  private final Rollup__mdt metadata;
   private final List<String> originalParts;
   private final Traversal traversal;
   private final SObjectType ultimateParent;
@@ -20,6 +21,8 @@ public without sharing class RollupRelationshipFieldFinder {
   private Boolean isFirstRun = true;
   private String currentRelationshipName;
 
+  private static final Integer MAX_FOREIGN_KEY_RELATIONSHIP_HOPS = 5;
+
   public RollupRelationshipFieldFinder(
     RollupControl__mdt rollupControl,
     Rollup__mdt rollupMetadata,
@@ -28,6 +31,7 @@ public without sharing class RollupRelationshipFieldFinder {
     Map<Id, SObject> oldRecords
     ) {
     this.traversal = new Traversal(this);
+    this.metadata = rollupMetadata;
     this.relationshipParts = rollupMetadata.GrandparentRelationshipFieldPath__c.split('\\.');
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
@@ -165,7 +169,7 @@ public without sharing class RollupRelationshipFieldFinder {
         this.relationshipParts.add(0, parentField.getDescribe().getName());
       }
 
-    if (baseSObjectType == this.ultimateParent) {
+    if (baseSObjectType == this.ultimateParent && this.isFinishedWithHierarchyTraversal(records)) {
       this.prepFinishedObject(records);
       return this.traversal;
     } else {
@@ -207,17 +211,47 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private void prepFinishedObject(List<SObject> records) {
     this.traversal.isFinished = true;
-    for (SObject record : records) {
-      Set<Id> descendantIds = this.getDescendantIds(record.Id, new Set<Id>());
-      for (Id descendantId : descendantIds) {
-        if (descendantId != record.Id) {
-          this.traversal.lookupIdToFinalRecords.put(descendantId, record);
-        }
-      }
-    }
+    this.populateFinalRecordsMapping(records);
     this.traversal.isFinished = true;
     this.relationshipParts = this.originalParts; // reset to initial state in case outer method is re-called
     this.traversal.lookupIdMap = new Map<Id, List<Id>>(); // try to spare the heap
+  }
+
+  private Boolean isFinishedWithHierarchyTraversal(List<SObject> records) {
+    if(this.metadata.RollupToUltimateParent__c != true) {
+      return true;
+    }
+
+    Boolean allRecordsAreTopOfHierarchy = true;
+    List<SObject> finishedRecords = new List<SObject>();
+    for (Integer index = records.size() - 1; index >= 0; index--) {
+      SObject record = records[index];
+      SObject parentRecord = this.getPotentialUltimateParent(record);
+
+      if (parentRecord.get(this.metadata.UltimateParentLookup__c) == null) {
+        finishedRecords.add(parentRecord);
+        records.remove(index);
+      } else {
+        // hot-swap out the record for the last parent record it was possible to retrieve
+        records[index] = parentRecord;
+        allRecordsAreTopOfHierarchy = false;
+      }
+    }
+    this.populateFinalRecordsMapping(finishedRecords);
+
+    return allRecordsAreTopOfHierarchy;
+  }
+
+  private SObject getPotentialUltimateParent(SObject childRecord) {
+    Map<String, Schema.SObjectField> fieldMap = childRecord.getSObjectType().getDescribe().fields.getMap();
+    SObjectField lookupField = this.getField(fieldMap, this.currentRelationshipName);
+    String relationshipName = lookupField.getDescribe().getRelationshipName();
+    if (childRecord.get(this.metadata.UltimateParentLookup__c) != null && childRecord.getPopulatedFieldsAsMap().containsKey(relationshipName)) {
+      SObject intermediateParent = childRecord.getSObject(relationshipName);
+      this.trackTraversalIds(childRecord.Id, intermediateParent.Id, lookupField, null);
+      return this.getPotentialUltimateParent(intermediateParent);
+    }
+    return childRecord;
   }
 
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
@@ -225,7 +259,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
     // cache the latest records through in case we need to continue later
     this.recommencementRecords = records;
-    this.currentRelationshipName = this.relationshipParts.remove(0);
+    this.currentRelationshipName = baseSObjectType != this.ultimateParent ? this.relationshipParts.remove(0) : this.metadata.UltimateParentLookup__c;
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
 
@@ -233,40 +267,10 @@ public without sharing class RollupRelationshipFieldFinder {
     Id firstId;
     for (SObject record : records) {
       Id lookupId = (Id) record.get(field);
-      if (firstId == null) {
+      if (firstId == null && String.isNotBlank(lookupId)) {
         firstId = lookupId;
       }
-      if (String.isNotBlank(lookupId)) {
-        lookupIds.add(lookupId);
-
-        if (this.traversal.lookupIdMap.containsKey(lookupId)) {
-          this.traversal.lookupIdMap.get(lookupId).add(record.Id);
-        } else {
-          this.traversal.lookupIdMap.put(lookupId, new List<Id>{ record.Id });
-        }
-
-        if (this.isFirstRun) {
-          // we need to keep track of potentially reparented lookups to aid with the note below
-          if (this.oldRecords.containsKey(record.Id)) {
-            Id oldLookupId = (Id) this.oldRecords.get(record.Id).get(field);
-            if (String.isNotBlank(oldLookupId) && oldLookupId != lookupId) {
-              lookupIds.add(oldLookupId);
-              this.traversal.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
-            }
-          }
-          this.traversal.hierarchy.put(lookupId, new List<Id>{ lookupId });
-        } else if (this.traversal.hierarchy.containsKey(record.Id)) {
-          // track the hierarchy of objects to help in determining whether or not something
-          // has ultimately been reparented
-          // for example:
-          // * Object 1 -> Parent 1 -> Grandparent 1 could be updated to
-          // * Object 1 -> Parent 2 -> Grandparent 1
-          // this would "traditionally" be a reparenting situation, but if we are skipping
-          // the intermediate objects for a rollup and the end result is the same, we need
-          // to avoid reporting false positives like this one
-          this.traversal.hierarchy.get(record.Id).add(lookupId);
-        }
-      }
+      this.trackTraversalIds(record.Id, lookupId, field, lookupIds);
     }
     // no matter how far up the chain we are, if we arrive at a point where there are no records, we're done
     if (firstId == null) {
@@ -283,6 +287,9 @@ public without sharing class RollupRelationshipFieldFinder {
     Set<String> fieldNames = new Set<String>();
     if (nextSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalFieldNames);
+      if(this.metadata.RollupToUltimateParent__c == true) {
+        this.populateHierarchicalLookupFields(fieldNames, this.getField(nextFieldMap, this.metadata.UltimateParentLookup__c));
+      }
     } else {
       fieldNames.add(nextFieldToken.getDescribe().getName());
     }
@@ -359,5 +366,68 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     return query;
+  }
+
+  private void trackTraversalIds(Id recordId, Id lookupId, Schema.SObjectField field, Set<Id> lookupIds) {
+    if (String.isNotBlank(lookupId)) {
+      lookupIds?.add(lookupId);
+
+      if (this.traversal.lookupIdMap.containsKey(lookupId)) {
+        this.traversal.lookupIdMap.get(lookupId).add(recordId);
+      } else {
+        this.traversal.lookupIdMap.put(lookupId, new List<Id>{ recordId });
+      }
+
+      if (this.isFirstRun) {
+        // we need to keep track of potentially reparented lookups to aid with the note below
+        if (this.oldRecords.containsKey(recordId)) {
+          Id oldLookupId = (Id) this.oldRecords.get(recordId).get(field);
+          if (String.isNotBlank(oldLookupId) && oldLookupId != lookupId) {
+            lookupIds.add(oldLookupId);
+            this.traversal.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
+          }
+        }
+        this.traversal.hierarchy.put(lookupId, new List<Id>{ lookupId });
+      } else if (this.traversal.hierarchy.containsKey(recordId)) {
+        // track the hierarchy of objects to help in determining whether or not something
+        // has ultimately been reparented
+        // for example:
+        // * Object 1 -> Parent 1 -> Grandparent 1 could be updated to
+        // * Object 1 -> Parent 2 -> Grandparent 1
+        // this would "traditionally" be a reparenting situation, but if we are skipping
+        // the intermediate objects for a rollup and the end result is the same, we need
+        // to avoid reporting false positives like this one
+        this.traversal.hierarchy.get(recordId).add(lookupId);
+      }
+    }
+  }
+
+  private void populateHierarchicalLookupFields(Set<String> queryFieldNames, Schema.SObjectField hierarchyToken) {
+    // we need to re-query the other fields at each hierarchy stage
+    List<String> copiedFieldNamesPerRelationship = new List<String>(queryFieldNames);
+    String relationshipName = hierarchyToken.getDescribe().getRelationshipName();
+    String hierarchyName = hierarchyToken.getDescribe().getName();
+    queryFieldNames.add(hierarchyToken.getDescribe().getName());
+    for (Integer index = 0; index < MAX_FOREIGN_KEY_RELATIONSHIP_HOPS; index++) {
+      String baseOfHierarchy = relationshipName.repeat(index).replace(relationshipName, relationshipName + '.');
+      String repeatedHierarchy = baseOfHierarchy + hierarchyName;
+      queryFieldNames.add(repeatedHierarchy);
+
+      // now add the other fields required per relationship level
+      for (String fieldName : copiedFieldNamesPerRelationship) {
+        queryFieldNames.add(baseOfHierarchy + fieldName);
+      }
+    }
+  }
+
+  private void populateFinalRecordsMapping(List<SObject> records) {
+    for (SObject record : records) {
+      Set<Id> descendantIds = this.getDescendantIds(record.Id, new Set<Id>());
+      for (Id descendantId : descendantIds) {
+        if (descendantId != record.Id) {
+          this.traversal.lookupIdToFinalRecords.put(descendantId, record);
+        }
+      }
+    }
   }
 }
