@@ -75,8 +75,13 @@ private class RollupFlowBulkProcessorTests {
       RollupFieldOnLookupObject__c = 'AnnualRevenue'
     );
 
-    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Exception ex;
+    try {
+      RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    } catch (Exception e) {
+      ex = e;
+    }
 
-    System.assertEquals(false, outputs[0].isSuccess);
+    System.assertEquals(true, ex.getMessage().contains('No such column \'Kaffufle\' on entity \'Opportunity\''));
   }
 }

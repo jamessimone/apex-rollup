@@ -150,6 +150,16 @@
         <field>Rollup__mdt.OrderByFirstLast__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.RollupToUltimateParent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.UltimateParentLookup__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <layoutAssignments>
         <layout>RollupControl__mdt-Rollup Control Layout</layout>
     </layoutAssignments>

@@ -154,7 +154,7 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
-  static void shouldFilerCalcItemsThatContainAndOrStringsThatAreNotFilterConditions() {
+  static void shouldFilterCalcItemsThatContainAndOrStringsThatAreNotFilterConditions() {
     Opportunity oppOne = new Opportunity(Name = 'A or B');
     Opportunity oppTwo = new Opportunity(Name = 'A and B');
 
@@ -226,6 +226,16 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 4.00)), 'Should match since amount equals!');
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 3.00)), 'Should match since amount less than!');
+  }
+
+  @isTest
+  static void shouldWorkForCurrencyZeros() {
+    Account acc = new Account(AnnualRevenue = 0.00);
+    String whereClause = 'AnnualRevenue != 0';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, acc.getSObjectType());
+
+    System.assertNotEquals(true, eval.matches(acc));
   }
 
   @isTest

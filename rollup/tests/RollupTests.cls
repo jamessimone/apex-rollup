@@ -2350,6 +2350,145 @@ private class RollupTests {
     System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract PreferenceRank from Account');
   }
 
+  @isTest
+  static void shouldExcludeNonLinkedItemsAndUseCalcItemWhereClause() {
+    Account acc = [SELECT Id FROM Account];
+    Date today = System.today();
+    // create a cpa not linked to the parent account with a lower PreferenceRank
+    insert new ContactPointAddress(PreferenceRank = 1, ActiveFromDate = today.addDays(-1), Name = 'non-match on account');
+    // inserting the both of these at the same time caused a gack, and I have no idea why ... so singular inserts it is!
+    insert new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today.addDays(-1), ParentId = acc.Id, Name = 'Non match on where clause');
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today, Id = generateId(ContactPointAddress.SObjectType));
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+
+    DMLMock mock = loadAccountIdMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+    flowInputs[0].orderByFirstLast = 'ActiveFromDate';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'Only linked items should be used');
+  }
+
+  @isTest
+  static void shouldReportErrorWhenOrderByNotIncludedForFirstLast() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'FIRST'
+    );
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Order By First/Last field required for FIRST operation', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldReportErrorWhenUltimateParentRollupAndNoLookupField() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].rollupToUltimateParent = true;
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldReportErrorWhenConcatDelimiterSetAndNotConcat() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].concatDelimiter = ';';
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldReportErrorWhenBothOverridesSet() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].fullRecalculationDefaultNumberValue = 1;
+    flowInputs[0].fullRecalculationDefaultStringValue = 'someValue';
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldStillPerformRollupForFirstLastEvenIfCurrentCalcItemsDoNotMatch() {
+    Account acc = [SELECT Id FROM Account];
+    Date today = System.today();
+
+    // the important part here is that this one SHOULDN'T be first if the passed in calc item is not winnowed properly
+    insert new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today.addDays(1), ParentId = acc.Id, Name = 'match on where clause');
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today, Id = generateId(ContactPointAddress.SObjectType));
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+    flowInputs[0].orderByFirstLast = 'ActiveFromDate';
+
+    DMLMock mock = loadAccountIdMock(cpas);
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(5, updatedAcc.AnnualRevenue, 'Queried item should be found and used even if calc item where clause filters out current iterations');
+  }
+
   // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
   @isTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {
@@ -2404,13 +2543,20 @@ private class RollupTests {
     Rollup.shouldRun = true;
     Rollup.records = history;
 
+    Exception ex;
     Test.startTest();
     // prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
+    } catch(Exception e) {
+      ex = e;
+    }
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
-    System.assertEquals(false, flowOutputs[0].isSuccess);
+    System.assertEquals(
+      'No such column \'ParentId\' on entity \'ContactPointAddressHistory\'. If you are attempting to use a custom field, be sure to append the \'__c\' after the custom field name. Please reference your WSDL or the describe call for the appropriate names.',
+      ex.getMessage()
+    );
   }
 
   @isTest
@@ -3206,6 +3352,43 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
+  @isTest
+  static void shouldRollupEntireHierarchyWhenEnabled() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    Account childAcc = new Account(ParentId = acc.Id, Name = 'Hierarchy Rollup');
+    insert childAcc;
+
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = new List<ContactPointAddress>{ new ContactPointAddress(ParentId = childAcc.Id, Name = 'One') };
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT',
+        RollupToUltimateParent__c = true,
+        UltimateParentLookup__c = 'ParentId'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Hierarchy record should have been found!');
+    Account updatedAccount = (Account) mock.Records[0];
+    System.assertEquals(acc.Id, updatedAccount.Id, 'Top-level parent should have been updated: ' + JSON.serialize(updatedAccount));
+    // in alphabetical order ...
+    System.assertEquals('One' + ', ' + acc.Name, updatedAccount.Name);
   }
 
   //** Helpers */

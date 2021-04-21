@@ -4,9 +4,9 @@ public without sharing abstract class RollupCalculator {
 
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField lookupKeyField;
-  protected final String lookupKeyQuery;
   protected final Rollup.Op op;
 
+  protected String lookupKeyQuery;
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
@@ -34,8 +34,9 @@ public without sharing abstract class RollupCalculator {
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
+      RollupCalculator calc;
       if (op.name().contains(Rollup.Op.COUNT_DISTINCT.name())) {
-        return new CountDistinctRollupCalculator(
+        calc = new CountDistinctRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -45,7 +46,7 @@ public without sharing abstract class RollupCalculator {
           lookupKeyField
         );
       } else if (op.name().contains(Rollup.Op.COUNT.name())) {
-        return new CountRollupCalculator(
+        calc = new CountRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -55,7 +56,7 @@ public without sharing abstract class RollupCalculator {
           lookupKeyField
         );
       } else if (op.name().contains(Rollup.Op.AVERAGE.name())) {
-        return new AverageRollupCalculator(
+        calc = new AverageRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -75,9 +76,9 @@ public without sharing abstract class RollupCalculator {
           lookupKeyField
         );
         firstLastCalc.setOrderByField(metadata);
-        return firstLastCalc;
+        calc = firstLastCalc;
       } else if (priorVal instanceof Decimal) {
-        return new DecimalRollupCalculator(
+        calc = new DecimalRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -87,7 +88,7 @@ public without sharing abstract class RollupCalculator {
           lookupKeyField
         );
       } else if (priorVal instanceof String) {
-        return new PicklistRollupCalculator(
+        calc = new PicklistRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -101,7 +102,7 @@ public without sharing abstract class RollupCalculator {
         // not obvious: the order of these else if's is of supreme importance
         // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
         // all Dates test true as Datetimes ...
-        return new DateRollupCalculator(
+        calc = new DateRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -111,7 +112,7 @@ public without sharing abstract class RollupCalculator {
           lookupKeyField
         );
       } else if (priorVal instanceof Time) {
-        return new TimeRollupCalculator(
+        calc = new TimeRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -121,7 +122,7 @@ public without sharing abstract class RollupCalculator {
           lookupKeyField
         );
       } else if (priorval instanceof Datetime) {
-        return new DatetimeRollupCalculator(
+        calc = new DatetimeRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
@@ -133,6 +134,10 @@ public without sharing abstract class RollupCalculator {
       } else {
         throw new IllegalArgumentException('Calculation not defined for: ' + JSON.serialize(priorVal));
       }
+      if (calc != null) {
+        calc.setWhereClause(metadata.CalcItemWhereClause__c);
+      }
+      return calc;
     }
   }
 
@@ -155,6 +160,7 @@ public without sharing abstract class RollupCalculator {
       this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) : priorVal;
     }
     this.lookupKeyQuery = lookupKeyField + ' = \'' + lookupRecordKey + '\'';
+
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -163,8 +169,15 @@ public without sharing abstract class RollupCalculator {
   public void setCDCUpdate(Boolean isCDCUpdate) {
     this.isCDCUpdate = isCDCUpdate;
   }
+
   public void setEvaluator(Rollup.Evaluator eval) {
     this.eval = eval;
+  }
+
+  public void setWhereClause(String potentialWhereClause) {
+    if(String.isNotBlank(potentialWhereClause)) {
+      this.lookupKeyQuery += ' AND (' + potentialWhereClause + ')';
+    }
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -259,6 +272,17 @@ public without sharing abstract class RollupCalculator {
   protected virtual void handleShortCircuit(SObject calcItem) {
   }
   protected virtual void setReturnValue() {
+  }
+
+  protected List<SObject> winnowItems(List<SObject> items) {
+    List<SObject> temporaryItems = new List<SObject>(items);
+    items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
+    for (SObject item : temporaryItems) {
+      if (this.eval?.matches(item) != false) {
+        items.add(item);
+      }
+    }
+    return items;
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
@@ -878,14 +902,14 @@ public without sharing abstract class RollupCalculator {
       }
 
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
+      applicableCalcItems = this.winnowItems(applicableCalcItems);
+
       Decimal newSum = 0;
       Decimal currentDenominator = 0;
       for (SObject calcItem : applicableCalcItems) {
-        if (this.eval == null || this.eval.matches(calcItem) == true) {
-          Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
-          newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
-          currentDenominator++;
-        }
+        Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
+        newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
+        currentDenominator++;
       }
 
       Decimal numerator = oldSum + newSum;
@@ -928,10 +952,18 @@ public without sharing abstract class RollupCalculator {
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField };
       // a full-recalc is always necessary because we don't retain the information about the order by field
-      calcItems.addAll(Database.query(Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=')));
+      String queryString = Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
+      // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
+      if (this.op.name().contains('DELETE')) {
+        calcItems = Database.query(queryString);
+      } else {
+        calcItems.addAll(Database.query(queryString));
+      }
+
+      calcItems = this.winnowItems(calcItems);
 
       new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
-      this.returnVal = calcItems[0].get(this.opFieldOnCalcItem);
+      this.returnVal = calcItems.isEmpty() ? this.returnVal : calcItems[0].get(this.opFieldOnCalcItem);
     }
   }
 
