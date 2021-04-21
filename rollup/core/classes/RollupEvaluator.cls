@@ -444,7 +444,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String storedValue = String.valueOf(this.getFieldValue(item, this.fieldName, this.sObjectType));
       // special case for currency/multi-decimal situations where zero is being compared to
       // but the comparison value has no decimals
-      if (storedValue.replace('.', '').containsOnly('0') && this.values.contains('0')) {
+      if (storedValue?.replace('.', '')?.containsOnly('0') == true && this.values.contains('0')) {
         storedValue = '0';
       }
       switch on this.criteria {

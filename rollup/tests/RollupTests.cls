@@ -2388,15 +2388,80 @@ private class RollupTests {
     );
 
     Exception ex;
-    Test.startTest();
     try {
       List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     } catch (Exception e) {
       ex = e;
     }
-    Test.stopTest();
 
     System.assertEquals('Order By First/Last field required for FIRST operation', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldReportErrorWhenUltimateParentRollupAndNoLookupField() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].rollupToUltimateParent = true;
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldReportErrorWhenConcatDelimiterSetAndNotConcat() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].concatDelimiter = ';';
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldReportErrorWhenBothOverridesSet() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = generateId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].fullRecalculationDefaultNumberValue = 1;
+    flowInputs[0].fullRecalculationDefaultStringValue = 'someValue';
+
+    Exception ex;
+    try {
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex.getMessage());
   }
 
   @isTest
@@ -3310,8 +3375,7 @@ private class RollupTests {
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'CONCAT',
         RollupToUltimateParent__c = true,
-        UltimateParentLookup__c = 'ParentId',
-        GrandparentRelationshipFieldPath__c = 'Parent.ParentId'
+        UltimateParentLookup__c = 'ParentId'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;

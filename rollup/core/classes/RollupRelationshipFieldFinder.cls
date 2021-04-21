@@ -32,9 +32,7 @@ public without sharing class RollupRelationshipFieldFinder {
   ) {
     this.traversal = new Traversal(this);
     this.metadata = rollupMetadata;
-    this.relationshipParts = String.isNotBlank(rollupMetadata.GrandparentRelationshipFieldPath__c)
-      ? rollupMetadata.GrandparentRelationshipFieldPath__c.split('\\.')
-      : new List<String>();
+    this.relationshipParts = this.getRelationshipParts();
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
     this.oldRecords = oldRecords;
@@ -173,6 +171,20 @@ public without sharing class RollupRelationshipFieldFinder {
     } else {
       return this.recurseThroughObjectChain(records, baseSObjectType);
     }
+  }
+
+  private List<String> getRelationshipParts() {
+    List<String> localParts = String.isNotBlank(this.metadata.GrandparentRelationshipFieldPath__c)
+      ? this.metadata.GrandparentRelationshipFieldPath__c.split('\\.')
+      : new List<String>();
+
+      if (localParts.isEmpty() && this.metadata.RollupToUltimateParent__c) {
+        String relationshipName = this.metadata.LookupFieldOnCalcItem__c.replace('__c', '__r').replace('Id', '');
+        localParts.add(relationshipName);
+        localParts.add(this.metadata.UltimateParentLookup__c);
+      }
+
+      return localParts;
   }
 
   private SObjectField getField(Map<String, SObjectField> fieldMap, String relationshipPart) {

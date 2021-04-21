@@ -541,7 +541,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     global String grandparentRelationshipFieldPath;
 
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
-    global String ultimateParentField;
+    global String ultimateParentLookup;
     @InvocableVariable(label='Should rollup to ultimate hierarchy parent' description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups')
     global Boolean rollupToUltimateParent = false;
   }
@@ -602,8 +602,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             RollupInvocationPoint.FROM_INVOCABLE
           );
           continue;
-        } else if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
-          throw new IllegalArgumentException('Order By First/Last field required for ' + rollupOperation + ' operation');
+        } else {
+          // this will throw back up to the Flow engine if the inputs don't pass validation
+          enforceValidationRules(rollupOperation, flowInput);
         }
 
         SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
@@ -622,7 +623,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           OrderByFirstLast__c = flowInput.orderByFirstLast,
           GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
           ConcatDelimiter__c = flowInput.concatDelimiter,
-          UltimateParentLookup__c = flowInput.ultimateParentField,
+          UltimateParentLookup__c = flowInput.ultimateParentLookup,
           RollupToUltimateParent__c = flowInput.rollupToUltimateParent
         );
 
@@ -1647,6 +1648,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds),
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
       );
+    }
+  }
+
+  private static void enforceValidationRules(String rollupOperation, FlowInput flowInput) {
+    if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
+      throw new IllegalArgumentException('Order By First/Last field required for ' + rollupOperation + ' operation');
+    } else if ((flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) || (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)) {
+      throw new IllegalArgumentException('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups');
+    } else if (rollupOperation.contains(Op.CONCAT.name()) == false && String.isNotBlank(flowInput.concatDelimiter)) {
+      throw new IllegalArgumentException('Concat delimiter should only be supplied for CONCAT-based rollups');
+    } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
+      throw new IllegalArgumentException('Only one override - the default string value or number value - can be supplied for each rollup');
     }
   }
 
