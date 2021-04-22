@@ -2311,13 +2311,50 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldCorrectlyInitializeDefaultsWhenOldRecordsDontExistFromFlow() {
+  static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNot() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
+    insert cpa;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      cpa
+    };
+    DMLMock mock = loadAccountIdMock(cpas);
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
+  }
+
+  @isTest
+  static void shouldCorrectlyInitializeDefaultsWhenOldRecordDoesNotHaveRollupFieldFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType)),
       new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
     };
     DMLMock mock = loadAccountIdMock(cpas);
-    cpas[1].ParentId = null;
+
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpas[0].Id => cpas[0], // this one doesn't change, so it won't be counted at the end
+      cpas[1].Id => new ContactPointAddress(Id = cpas[1].Id, ParentId = cpas[1].ParentId) // this one has no default value, so it gets initialized
+    };
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
@@ -2354,7 +2391,7 @@ private class RollupTests {
   static void shouldExcludeNonLinkedItemsAndUseCalcItemWhereClause() {
     Account acc = [SELECT Id FROM Account];
     Date today = System.today();
-    // create a cpa not linked to the parent account with a lower PreferenceRank
+    // create a cpa not linked to the parent account with a higher PreferenceRank
     insert new ContactPointAddress(PreferenceRank = 1, ActiveFromDate = today.addDays(-1), Name = 'non-match on account');
     // inserting the both of these at the same time caused a gack, and I have no idea why ... so singular inserts it is!
     insert new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today.addDays(-1), ParentId = acc.Id, Name = 'Non match on where clause');

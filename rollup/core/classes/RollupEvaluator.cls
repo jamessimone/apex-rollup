@@ -34,7 +34,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     } else if (isChangedFieldEval) {
       secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
-      secondEval = new WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType);
+      secondEval = new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems);
     }
 
     if (eval != null && secondEval != null) {
@@ -61,7 +61,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
       this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
-      this.secondEval = new WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+      this.secondEval = new WhereFieldEvaluator(rollupMetadata, sObjectType, oldCalcItems);
     }
     public CombinedEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
       this.firstEval = firstEval;
@@ -83,11 +83,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     public override Boolean matches(Object calcItem) {
       SObject calcSObject = (SObject) calcItem;
-      SObject oldRecord = oldRecordsMap.get(calcSObject.Id);
-      Boolean matches = this.changedFieldNames.isEmpty() || this.oldRecordsMap == null;
+      SObject oldRecord = oldRecordsMap.containsKey(calcSObject.Id) ? oldRecordsMap.get(calcSObject.Id) : calcSObject;
+      Boolean matches = this.changedFieldNames.isEmpty() && this.oldRecordsMap == null;
       for (String fieldName : this.changedFieldNames) {
         // need to trim because list can be comma-separated with leading/trailing spaces
-        if (calcSObject.get(fieldName.trim()) != oldRecord?.get(fieldName.trim())) {
+        if (calcSObject?.get(fieldName.trim()) != oldRecord?.get(fieldName.trim())) {
           matches = true;
           break;
         }
@@ -102,6 +102,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
     private final List<String> splitWheres;
+    private final Map<Id, SObject> oldRecords;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause;
@@ -113,6 +114,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.whereClause = whereClause;
       this.splitWheres = this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
+    }
+
+    public WhereFieldEvaluator(Rollup__mdt metadata, SObjectType calcItemSObjectType, Map<Id, SObject> oldRecords) {
+      this(metadata.CalcItemWhereClause__c, calcItemSObjectType);
+      this.oldRecords = oldRecords;
     }
 
     public List<String> getWhereClauses() {
@@ -142,6 +148,25 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
+      Boolean matches = calcItem instanceof SObject;
+      if (matches) {
+        matches = this.innerMatches(calcItem);
+
+        if (matches) {
+          return matches;
+        }
+
+        SObject item = (SObject) calcItem;
+        // if the where clause would exclude something, but we're in an update
+        // and the old value wouldn't have been excluded, pass it on through
+        SObject potentialOldItem = this.oldRecords?.isEmpty() == false && this.oldRecords.containsKey(item.Id) ? this.oldRecords.get(item.Id) : item;
+        matches = this.innerMatches(potentialOldItem);
+      }
+
+      return matches;
+    }
+
+    private Boolean innerMatches(Object calcItem) {
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
         for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {

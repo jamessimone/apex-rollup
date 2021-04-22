@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.10.0",
-            "versionDescription": "Bugfixes for FIRST/LAST, validation rules enforced for Invocables, added hierarchical rollup support (either in conjunction with grandparent rollups, or separately)",
+            "versionNumber": "1.2.11.0",
+            "versionDescription": "Fixed an issue with updates and calc item where clauses - a calc item should still qualify for rolling up if the prior value on an update qualifies and the current value is disqualified based on the where clause",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases"
         }
     ],

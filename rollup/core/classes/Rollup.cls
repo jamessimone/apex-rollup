@@ -542,7 +542,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
     global String ultimateParentLookup;
-    @InvocableVariable(label='Should rollup to ultimate hierarchy parent' description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups')
+    @InvocableVariable(
+      label='Should rollup to ultimate hierarchy parent'
+      description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
+    )
     global Boolean rollupToUltimateParent = false;
   }
 
@@ -574,7 +577,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       FlowOutput flowOutput = new FlowOutput();
       flowOutputReturns.add(flowOutput);
 
-      String rollupOperation = flowInput.rollupOperation.toUpperCase();
+      flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
 
       if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
         continue;
@@ -595,7 +598,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             flowInput.rollupFieldOnOpObject,
             flowInput.rollupSObjectName,
             flowInput.calcItemTypeWhenRollupStartedFromParent,
-            rollupOperation,
+            flowInput.rollupOperation,
             wrapper,
             flowInput.grandparentRelationshipFieldPath,
             flowInput.concatDelimiter,
@@ -604,7 +607,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         } else {
           // this will throw back up to the Flow engine if the inputs don't pass validation
-          enforceValidationRules(rollupOperation, flowInput);
+          enforceValidationRules(flowInput);
         }
 
         SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
@@ -614,7 +617,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
           LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
           RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-          RollupOperation__c = rollupContext + rollupOperation,
+          RollupOperation__c = rollupContext + flowInput.rollupOperation,
           ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
           FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
           FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
@@ -1651,12 +1654,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private static void enforceValidationRules(String rollupOperation, FlowInput flowInput) {
-    if ((rollupOperation == 'FIRST' || rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
-      throw new IllegalArgumentException('Order By First/Last field required for ' + rollupOperation + ' operation');
-    } else if ((flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) || (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)) {
+  private static void enforceValidationRules(FlowInput flowInput) {
+    if ((flowInput.rollupOperation == 'FIRST' || flowInput.rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
+      throw new IllegalArgumentException('Order By First/Last field required for ' + flowInput.rollupOperation + ' operation');
+    } else if (
+      (flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) ||
+      (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)
+    ) {
       throw new IllegalArgumentException('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups');
-    } else if (rollupOperation.contains(Op.CONCAT.name()) == false && String.isNotBlank(flowInput.concatDelimiter)) {
+    } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false && String.isNotBlank(flowInput.concatDelimiter)) {
       throw new IllegalArgumentException('Concat delimiter should only be supplied for CONCAT-based rollups');
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
       throw new IllegalArgumentException('Only one override - the default string value or number value - can be supplied for each rollup');
@@ -1857,8 +1863,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (SObject currentRecord : currentRecords) {
       SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
         ? existingOldRecordsMap.get(currentRecord.Id)
-        : getSObjectFromName(sObjectDescribe.getName());
-      existingRecordOrDefault.Id = currentRecord.Id;
+        : currentRecord;
+      System.debug(existingRecordOrDefault);
+
       for (String fieldName : calcItemFields) {
         SObjectField fieldToken = fieldTokensForObject.get(fieldName);
         if (existingRecordOrDefault.get(fieldName) != null || fieldToken.getDescribe().isUpdateable() == false) {
@@ -1867,6 +1874,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           existingRecordOrDefault.put(fieldName, RollupFieldInitializer.Current.getDefaultValue(fieldToken));
         }
       }
+      System.debug(existingRecordOrDefault);
+
       existingOldRecordsMap.put(currentRecord.Id, existingRecordOrDefault);
     }
     return existingOldRecordsMap;
@@ -2252,24 +2261,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
     Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
-    List<SObject> applicableItems = new List<SObject>();
-    if (calcItems?.isEmpty() != false) {
-      return applicableItems;
-    } else {
-      calcItems = this.replaceCalcItemsForPolymorphicWhereClause(rollupMetadata, calcItems);
+    List<SObject> tempItems = new List<SObject>(calcItems);
+    if (tempItems?.isEmpty() != false) {
+      return tempItems;
     }
-    for (SObject calcItem : calcItems) {
-      if (eval?.matches(calcItem) != false) {
-        applicableItems.add(calcItem);
+    calcItems?.clear(); // keep the strongly typed list
+    tempItems = this.replaceCalcItemsForPolymorphicWhereClause(rollupMetadata, tempItems);
+
+    for (SObject item : tempItems) {
+      if (eval?.matches(item) != false) {
+        calcItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
       } else if (rollupMetadata?.IsFullRecordSet__c == true) {
-        applicableItems.add(calcItem);
+        calcItems.add(item);
       } else if (alwaysFullRecalcOps.contains(rollupMetadata?.RollupOperation__c)) {
-        applicableItems.add(calcItem);
+        calcItems.add(item);
       }
     }
-    return applicableItems;
+    return calcItems;
   }
 
   private List<SObject> replaceCalcItemsForPolymorphicWhereClause(Rollup__mdt rollupMetadata, List<SObject> calcItems) {
