@@ -444,6 +444,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String potentialWhereClause,
     String potentialConcatDelimiter
   ) {
+    // TODO - need to be able to supply fullRecalculationDefaultStringValue, fullRecalculationDefaultNumberValue, and orderByFirstLast
+    FlowInput validationRuleWrapper = new FlowInput();
+    validationRuleWrapper.rollupOperation = operationName.toUpperCase();
+    validationRuleWrapper.concatDelimiter = potentialConcatDelimiter;
+    enforceValidationRules(validationRuleWrapper);
+
     QueryWrapper wrapper = new QueryWrapper(lookupSObjectName, lookupFieldOnLookupObject);
     wrapper.setQuery(potentialWhereClause);
     return performFullRecalculationInner(
