@@ -22,6 +22,7 @@ export default class RollupForceRecalculation extends LightningElement {
   };
   @api isCMDTRecalc = false;
   rollupMetadataOptions = [];
+  @api selectedRows = [];
   selectedMetadata;
   selectedMetadataCMDTRecords;
 
@@ -77,6 +78,10 @@ export default class RollupForceRecalculation extends LightningElement {
     this.isCMDTRecalc = !this.isCMDTRecalc;
   }
 
+  handleRowSelect(event) {
+    this.selectedRows = event.detail.selectedRows;
+  }
+
   async _fetchAvailableCMDT() {
     this._localMetadata = await getRollupMetadataByCalcItem();
     Object.keys(this._localMetadata)
@@ -93,12 +98,12 @@ export default class RollupForceRecalculation extends LightningElement {
     try {
       let jobId;
       if (this.isCMDTRecalc) {
-        if (!this.selectedMetadata) {
+        if (!this.selectedMetadata || this.selectedRows.length === 0) {
           this._displayErrorToast('Select a valid option', 'Calc item must be selected!');
           return;
         }
 
-        const localMetas = this._localMetadata[this.selectedMetadata];
+        const localMetas = [...this.selectedRows];
         const matchingMetadata = [];
         // we have to transform the data slightly to conform to what the Apex deserializer expects by removing relationship fields
         for (let localMeta of localMetas) {

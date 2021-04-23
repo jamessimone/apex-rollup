@@ -18,10 +18,11 @@
           ></lightning-combobox>
           <template if:true={selectedMetadataCMDTRecords}>
             <lightning-datatable
-                key-field="id"
+                key-field="Id"
                 data={selectedMetadataCMDTRecords}
                 show-row-number-column
-                hide-checkbox-column
+                selected-rows={selectedRows}
+                onrowselection={handleRowSelect}
                 columns={cmdtColumns}>
             </lightning-datatable>
           </template>
