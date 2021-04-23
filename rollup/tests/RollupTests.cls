@@ -2356,9 +2356,7 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     insert cpa;
 
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      cpa
-    };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
@@ -2594,16 +2592,12 @@ private class RollupTests {
     // prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
     try {
       List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
-    } catch(Exception e) {
+    } catch (Exception e) {
       ex = e;
     }
     Test.stopTest();
 
-    System.assertEquals(
-      'Invalid field PreferenceRank for ContactPointAddressHistory',
-      ex.getMessage(),
-      ex.getMessage() + '\n' + ex.getStacktraceString()
-    );
+    System.assertEquals('Invalid field PreferenceRank for ContactPointAddressHistory', ex.getMessage(), ex.getMessage() + '\n' + ex.getStacktraceString());
   }
 
   @isTest
@@ -2853,8 +2847,18 @@ private class RollupTests {
     Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(256), LastName = 'Truncate', Email = 'rollup@gmail.com');
     insert con;
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'Contact',
+      RollupFieldOnCalcItem__c = 'Description',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'Name',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'CONCAT'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Contact', 'CONCAT', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -2913,8 +2917,18 @@ private class RollupTests {
     };
     insert cpas;
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2938,8 +2952,18 @@ private class RollupTests {
 
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 1, BatchChunkSize__c = 10);
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2959,8 +2983,18 @@ private class RollupTests {
     };
     insert cpas;
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2979,20 +3013,19 @@ private class RollupTests {
     };
     insert cpas;
 
-    Test.startTest();
-    Rollup.performFullRecalculation(
-      'PreferenceRank',
-      'ParentId',
-      'Id',
-      'AnnualRevenue',
-      'Account',
-      'ContactPointAddress',
-      'SUM',
-      'Parent.Name != \'' +
-      acc.Name +
-      '\'',
-      null
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'Parent.Name != \'' + acc.Name + '\''
     );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];

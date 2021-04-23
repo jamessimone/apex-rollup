@@ -434,35 +434,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   @AuraEnabled
   global static String performFullRecalculation(
-    String opFieldOnCalcItem,
-    String lookupFieldOnCalcItem,
-    String lookupFieldOnLookupObject,
-    String rollupFieldOnLookupObject,
-    String lookupSObjectName,
-    String calcItemSObjectName,
-    String operationName,
-    String potentialWhereClause,
-    String potentialConcatDelimiter
+    Rollup__mdt metadata
   ) {
-    // TODO - need to be able to supply fullRecalculationDefaultStringValue, fullRecalculationDefaultNumberValue, and orderByFirstLast
     FlowInput validationRuleWrapper = new FlowInput();
-    validationRuleWrapper.rollupOperation = operationName.toUpperCase();
-    validationRuleWrapper.concatDelimiter = potentialConcatDelimiter;
+    validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
+    validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
+    validationRuleWrapper.fullRecalculationDefaultStringValue = metadata.FullRecalculationDefaultStringValue__c;
+    validationRuleWrapper.fullRecalculationDefaultNumberValue = metadata.FullRecalculationDefaultNumberValue__c;
+    validationRuleWrapper.orderByFirstLast = metadata.OrderByFirstLast__c;
     enforceValidationRules(validationRuleWrapper);
 
-    QueryWrapper wrapper = new QueryWrapper(lookupSObjectName, lookupFieldOnLookupObject);
-    wrapper.setQuery(potentialWhereClause);
+    QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
+    wrapper.setQuery(metadata.CalcItemWhereClause__c);
     return performFullRecalculationInner(
-      opFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnLookupObject,
-      rollupFieldOnLookupObject,
-      lookupSObjectName,
-      calcItemSObjectName,
-      operationName,
+      metadata,
       wrapper,
-      null,
-      potentialConcatDelimiter,
       RollupInvocationPoint.FROM_LWC
     );
   }
@@ -596,31 +582,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       enforceValidationRules(flowInput);
       enforceFlowSpecificRules(flowInput);
 
-      if (flowInput.isRollupStartedFromParent) {
-        QueryWrapper wrapper = getParentWhereClause(
-          flowInput.recordsToRollup,
-          flowInput.lookupFieldOnOpObject,
-          flowInput.rollupSObjectName,
-          flowInput.lookupFieldOnCalcItem,
-          flowInput.grandparentRelationshipFieldPath,
-          flowInput.calcItemWhereClause
-        );
-        performFullRecalculationInner(
-          flowInput.rollupFieldOnCalcItem,
-          flowInput.lookupFieldOnCalcItem,
-          flowInput.lookupFieldOnOpObject,
-          flowInput.rollupFieldOnOpObject,
-          flowInput.rollupSObjectName,
-          flowInput.calcItemTypeWhenRollupStartedFromParent,
-          flowInput.rollupOperation,
-          wrapper,
-          flowInput.grandparentRelationshipFieldPath,
-          flowInput.concatDelimiter,
-          RollupInvocationPoint.FROM_INVOCABLE
-        );
-        continue;
-      }
-
       Rollup__mdt rollupMeta = new Rollup__mdt(
         RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
         LookupObject__c = flowInput.rollupSObjectName,
@@ -639,6 +600,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         UltimateParentLookup__c = flowInput.ultimateParentLookup,
         RollupToUltimateParent__c = flowInput.rollupToUltimateParent
       );
+
+      if (flowInput.isRollupStartedFromParent) {
+        QueryWrapper wrapper = getParentWhereClause(
+          flowInput.recordsToRollup,
+          flowInput.lookupFieldOnOpObject,
+          flowInput.rollupSObjectName,
+          flowInput.lookupFieldOnCalcItem,
+          flowInput.grandparentRelationshipFieldPath,
+          flowInput.calcItemWhereClause
+        );
+        performFullRecalculationInner(
+          rollupMeta,
+          wrapper,
+          RollupInvocationPoint.FROM_INVOCABLE
+        );
+        continue;
+      }
 
       SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
       Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
@@ -1432,16 +1410,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           : getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
         if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
           performFullRecalculationInner(
-            rollupInfo.RollupFieldOnCalcItem__c,
-            rollupInfo.LookupFieldOnCalcItem__c,
-            rollupInfo.LookupFieldOnLookupObject__c,
-            rollupInfo.RollupFieldOnLookupObject__c,
-            rollupInfo.LookupObject__c,
-            rollupInfo.CalcItem__c,
-            rollupInfo.RollupOperation__c,
+            rollupInfo,
             queryWrapper,
-            rollupInfo.GrandparentRelationshipFieldPath__c,
-            rollupInfo.ConcatDelimiter__c,
             RollupInvocationPoint.FROM_APEX
           );
         }
@@ -1595,43 +1565,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String performFullRecalculationInner(
-    String opFieldOnCalcItem,
-    String lookupFieldOnCalcItem,
-    String lookupFieldOnLookupObject,
-    String rollupFieldOnLookupObject,
-    String lookupSObjectName,
-    String calcItemSObjectName,
-    String operationName,
+    Rollup__mdt meta,
     QueryWrapper queryWrapper,
-    String potentialGrandparentRelationshipFieldPath,
-    String potentialConcatDelimiter,
     RollupInvocationPoint invokePoint
   ) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
-    SObjectType calcItemType = getSObjectFromName(calcItemSObjectName).getSObjectType();
-    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, lookupFieldOnLookupObject, '!=', queryWrapper.getQuery());
+    SObjectType calcItemType = getSObjectFromName(meta.CalcItem__c).getSObjectType();
+    String countQuery = getQueryString(calcItemType, new List<String>{ 'Count()' }, meta.LookupFieldOnLookupObject__c, '!=', queryWrapper.getQuery());
 
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Set<Id> recordIds = queryWrapper.recordIds; // also used below, bound to the "queryString" variable
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
 
-    Rollup__mdt rollupInfo = new Rollup__mdt(
-      RollupFieldOnCalcItem__c = opFieldOnCalcItem,
-      LookupObject__c = lookupSObjectName,
-      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem,
-      LookupFieldOnLookupObject__c = lookupFieldOnLookupObject,
-      RollupFieldOnLookupObject__c = rollupFieldOnLookupObject,
-      RollupOperation__c = operationName,
-      GrandparentRelationshipFieldPath__c = potentialGrandparentRelationshipFieldPath,
-      ConcatDelimiter__c = potentialConcatDelimiter
-    );
-    Set<String> queryFields = new Set<String>{ 'Id', opFieldOnCalcItem, lookupFieldOnCalcItem };
+    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c };
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), calcItemType);
     queryFields.addAll(whereEval.getQueryFields());
     String queryString = getQueryString(calcItemType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
-    return startFullRecalc(new List<Rollup__mdt>{ rollupInfo }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval, invokePoint);
+    return startFullRecalc(new List<Rollup__mdt>{ meta }, amountOfCalcItems, queryString, objIds, recordIds, calcItemType, whereEval, invokePoint);
   }
 
   private static String startFullRecalc(
