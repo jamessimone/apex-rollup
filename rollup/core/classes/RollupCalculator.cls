@@ -1042,7 +1042,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public Integer compareTo(Object o) {
-      return sorter.compare(value, ((ComparableItem) o).value);
+      return this.sorter.compare(this.value, ((ComparableItem) o).value);
     }
   }
 }

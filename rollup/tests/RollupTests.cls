@@ -2293,12 +2293,13 @@ private class RollupTests {
       new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
     };
     DMLMock mock = loadAccountIdMock(cpas);
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250)
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250)
     };
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2308,6 +2309,42 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(750, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
+  }
+
+  @isTest
+  static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
+    };
+    DMLMock mock = loadAccountIdMock(cpas);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldThrowValidationErrorOnUpsertFromFlowIfNoOldCalcItems() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
+    };
+    DMLMock mock = loadAccountIdMock(cpas);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPSERT', 'SUM');
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
   }
 
   @isTest
@@ -2322,12 +2359,12 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       cpa
     };
-    DMLMock mock = loadAccountIdMock(cpas);
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
-    };
+    DMLMock mock = loadMock(cpas);
 
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
 
     Test.startTest();
@@ -2341,32 +2378,6 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(0, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
-  }
-
-  @isTest
-  static void shouldCorrectlyInitializeDefaultsWhenOldRecordDoesNotHaveRollupFieldFromFlow() {
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType)),
-      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
-    };
-    DMLMock mock = loadAccountIdMock(cpas);
-
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => cpas[0], // this one doesn't change, so it won't be counted at the end
-      cpas[1].Id => new ContactPointAddress(Id = cpas[1].Id, ParentId = cpas[1].ParentId) // this one has no default value, so it gets initialized
-    };
-
-    Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
-    Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
-
-    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
   }
 
   @isTest
@@ -2535,13 +2546,12 @@ private class RollupTests {
     };
     DMLMock mock = loadAccountIdMock(cpas);
 
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
-      cpas[1].Id => new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, Name = 'Name that does not match', PreferenceRank = 200)
-    };
-
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].calcItemChangedFields = 'Name, IsDefault';
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
+      new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, Name = 'Name that does not match', PreferenceRank = 200)
+    };
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -2578,7 +2588,6 @@ private class RollupTests {
   static void shouldReportFailureWhenExceptionIsThrown() {
     List<ContactPointAddressHistory> history = new List<ContactPointAddressHistory>{ new ContactPointAddressHistory() };
     Rollup.shouldRun = true;
-    Rollup.records = history;
 
     Exception ex;
     Test.startTest();
@@ -2591,8 +2600,9 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(
-      'No such column \'ParentId\' on entity \'ContactPointAddressHistory\'. If you are attempting to use a custom field, be sure to append the \'__c\' after the custom field name. Please reference your WSDL or the describe call for the appropriate names.',
-      ex.getMessage()
+      'Invalid field PreferenceRank for ContactPointAddressHistory',
+      ex.getMessage(),
+      ex.getMessage() + '\n' + ex.getStacktraceString()
     );
   }
 

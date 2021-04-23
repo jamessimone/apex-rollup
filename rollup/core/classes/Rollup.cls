@@ -471,6 +471,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)')
     global List<SObject> recordsToRollup;
 
+    @InvocableVariable(label='Prior records to rollup' description='The old version of the records for update/upsert')
+    global List<SObject> oldRecordsToRollup = new List<SObject>();
+
     @InvocableVariable(label='Rollup target\'s SObject Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
     global String rollupSObjectName;
 
@@ -573,100 +576,98 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     description='Returns a single FlowOutput record with "SUCCESS" as the message if async rollup operation is enqueued successfully, and the encountered error otherwise'
   )
   global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
-    List<FlowOutput> flowOutputReturns = new List<FlowOutput>();
+    List<FlowOutput> flowOutputs = new List<FlowOutput>();
     List<Rollup> rollups = new List<Rollup>();
-
-    FlowInput firstInput = flowInputs.isEmpty() == false ? flowInputs[0] : new FlowInput();
-    String rollupContext = getFlowRollupContext(firstInput);
 
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
-      flowOutputReturns.add(flowOutput);
+      flowOutputs.add(flowOutput);
+
+      if (flowInput.recordsToRollup?.isEmpty() == true) {
+        continue;
+      } else if (flowInput.rollupContext == 'UPSERT') {
+        flowInput.rollupContext = 'UPDATE';
+      }
 
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
+      String rollupContext = getFlowRollupContext(flowInput);
 
-      if (flowInput.recordsToRollup == null || flowInput.recordsToRollup.isEmpty()) {
-        continue;
-      } else {
-        if (flowInput.isRollupStartedFromParent) {
-          QueryWrapper wrapper = getParentWhereClause(
-            flowInput.recordsToRollup,
-            flowInput.lookupFieldOnOpObject,
-            flowInput.rollupSObjectName,
-            flowInput.lookupFieldOnCalcItem,
-            flowInput.grandparentRelationshipFieldPath,
-            flowInput.calcItemWhereClause
-          );
-          performFullRecalculationInner(
-            flowInput.rollupFieldOnCalcItem,
-            flowInput.lookupFieldOnCalcItem,
-            flowInput.lookupFieldOnOpObject,
-            flowInput.rollupFieldOnOpObject,
-            flowInput.rollupSObjectName,
-            flowInput.calcItemTypeWhenRollupStartedFromParent,
-            flowInput.rollupOperation,
-            wrapper,
-            flowInput.grandparentRelationshipFieldPath,
-            flowInput.concatDelimiter,
-            RollupInvocationPoint.FROM_INVOCABLE
-          );
-          continue;
-        } else {
-          // this will throw back up to the Flow engine if the inputs don't pass validation
-          enforceValidationRules(flowInput);
-        }
+      // this will throw back up to the Flow engine if the inputs don't pass validation
+      enforceValidationRules(flowInput);
+      enforceFlowSpecificRules(flowInput);
 
-        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
-        Rollup__mdt rollupMeta = new Rollup__mdt(
-          RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
-          LookupObject__c = flowInput.rollupSObjectName,
-          LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
-          LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
-          RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-          RollupOperation__c = rollupContext + flowInput.rollupOperation,
-          ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
-          FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-          FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
-          CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-          IsFullRecordSet__c = flowInput.isFullRecordSet,
-          OrderByFirstLast__c = flowInput.orderByFirstLast,
-          GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
-          ConcatDelimiter__c = flowInput.concatDelimiter,
-          UltimateParentLookup__c = flowInput.ultimateParentLookup,
-          RollupToUltimateParent__c = flowInput.rollupToUltimateParent
-        );
-
-        Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
-        if (String.isNotBlank(rollupMeta.LookupFieldOnCalcItem__c)) {
-          uniqueFieldNames.add(rollupMeta.LookupFieldOnCalcItem__c);
-        }
-        if (String.isNotBlank(rollupMeta.RollupFieldOnCalcItem__c)) {
-          uniqueFieldNames.add(rollupMeta.RollupFieldOnCalcItem__c);
-        }
-        Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput.recordsToRollup, sObjectType, new List<String>(uniqueFieldNames));
-        Rollup roll = getRollup(
-          new List<Rollup__mdt>{ rollupMeta },
-          sObjectType,
+      if (flowInput.isRollupStartedFromParent) {
+        QueryWrapper wrapper = getParentWhereClause(
           flowInput.recordsToRollup,
-          oldFlowRecords,
-          null,
+          flowInput.lookupFieldOnOpObject,
+          flowInput.rollupSObjectName,
+          flowInput.lookupFieldOnCalcItem,
+          flowInput.grandparentRelationshipFieldPath,
+          flowInput.calcItemWhereClause
+        );
+        performFullRecalculationInner(
+          flowInput.rollupFieldOnCalcItem,
+          flowInput.lookupFieldOnCalcItem,
+          flowInput.lookupFieldOnOpObject,
+          flowInput.rollupFieldOnOpObject,
+          flowInput.rollupSObjectName,
+          flowInput.calcItemTypeWhenRollupStartedFromParent,
+          flowInput.rollupOperation,
+          wrapper,
+          flowInput.grandparentRelationshipFieldPath,
+          flowInput.concatDelimiter,
           RollupInvocationPoint.FROM_INVOCABLE
         );
-        if (flowInput.deferProcessing) {
-          FLOW_ROLLUPS.add(roll);
-        } else {
-          rollups.add(roll);
-        }
+        continue;
       }
-      try {
-        batch(rollups);
-      } catch (Exception ex) {
+
+      Rollup__mdt rollupMeta = new Rollup__mdt(
+        RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
+        LookupObject__c = flowInput.rollupSObjectName,
+        LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
+        LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
+        RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
+        RollupOperation__c = rollupContext + flowInput.rollupOperation,
+        ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+        FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+        FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+        CalcItemWhereClause__c = flowInput.calcItemWhereClause,
+        IsFullRecordSet__c = flowInput.isFullRecordSet,
+        OrderByFirstLast__c = flowInput.orderByFirstLast,
+        GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+        ConcatDelimiter__c = flowInput.concatDelimiter,
+        UltimateParentLookup__c = flowInput.ultimateParentLookup,
+        RollupToUltimateParent__c = flowInput.rollupToUltimateParent
+      );
+
+      SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+      Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
+
+      Rollup roll = getRollup(
+        new List<Rollup__mdt>{ rollupMeta },
+        sObjectType,
+        flowInput.recordsToRollup,
+        oldFlowRecords,
+        null,
+        RollupInvocationPoint.FROM_INVOCABLE
+      );
+      if (flowInput.deferProcessing) {
+        FLOW_ROLLUPS.add(roll);
+      } else {
+        rollups.add(roll);
+      }
+    }
+
+    try {
+      batch(rollups);
+    } catch (Exception ex) {
+      for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
       }
     }
 
-    return flowOutputReturns;
+    return flowOutputs;
   }
 
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
@@ -1675,6 +1676,25 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
+  private static void enforceFlowSpecificRules(FlowInput flowInput) {
+    if (flowInput.rollupContext == 'UPDATE' && flowInput.oldRecordsToRollup?.isEmpty() == true) {
+      throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
+    } else if (flowInput.recordsToRollup?.isEmpty() == false) {
+      SObject firstRecord = flowInput.recordsToRollup[0];
+      SObject lookupItem = getSObjectFromName(
+        flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : flowInput.rollupSObjectName
+      );
+
+      // validate the fields exist on the rollup record
+      (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.rollupFieldOnCalcItem);
+      (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.lookupFieldOnCalcItem);
+
+      // validate that the fields exist on the lookup item
+      (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.rollupFieldOnOpObject);
+      (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
+    }
+  }
+
   private static String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
     // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
@@ -1839,52 +1859,47 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String flowContext = firstInput.rollupContext.toUpperCase();
     if (String.isBlank(flowContext)) {
       flowContext = 'INSERT';
-    } else if (flowContext == 'UPSERT') {
-      flowContext = 'UPDATE';
     }
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
-  private static Map<Id, SObject> getOldFlowRecords(List<SObject> currentRecords, SObjectType sObjectType, List<String> calcItemFields) {
-    if (currentRecords.isEmpty()) {
-      return new Map<Id, SObject>();
-    } else if (oldRecordsMap != null) {
-      return oldRecordsMap;
-    }
-
-    // normally, you could use a shortcut to initialize a Set<Id> like this
-    // by calling new Map<Id, SObject>(currentRecords).keyset() -
-    // but that code path fails if there are null Ids in the list
-    Set<Id> objIds = new Set<Id>();
-    for (SObject currentRecord : currentRecords) {
-      if (currentRecord.Id != null) {
-        objIds.add(currentRecord.Id);
-      }
-    }
-    // we need to do two things: get the old records, and initialize default values for both existing records and the ones that don't have matches in the db
-    DescribeSObjectResult sObjectDescribe = sObjectType.getDescribe();
-    Map<String, SObjectField> fieldTokensForObject = sObjectDescribe.fields.getMap();
-    Map<Id, SObject> existingOldRecordsMap = new Map<Id, SObject>(Database.query(getQueryString(sObjectType, calcItemFields, 'Id', '=')));
-    for (SObject currentRecord : currentRecords) {
-      SObject existingRecordOrDefault = currentRecord.Id != null && existingOldRecordsMap.containsKey(currentRecord.Id)
-        ? existingOldRecordsMap.get(currentRecord.Id)
-        : currentRecord;
-      System.debug(existingRecordOrDefault);
-
-      for (String fieldName : calcItemFields) {
-        SObjectField fieldToken = fieldTokensForObject.get(fieldName);
-        if (existingRecordOrDefault.get(fieldName) != null || fieldToken.getDescribe().isUpdateable() == false) {
-          continue;
-        } else {
-          existingRecordOrDefault.put(fieldName, RollupFieldInitializer.Current.getDefaultValue(fieldToken));
+  private static Map<Id, SObject> getOldFlowRecords(FlowInput flowInput, SObjectType sObjectType) {
+    Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>();
+    if (flowInput.recordsToRollup?.isEmpty() == true || flowInput.rollupContext != 'UPDATE') {
+      return oldFlowRecords;
+    } else if (flowInput.oldRecordsToRollup?.isEmpty() == false) {
+      // normally, you could use a shortcut to initialize a Set<Id> like this
+      // by calling new Map<Id, SObject>(oldRecordsToRollup).keyset() -
+      // but that code path fails if there are null Ids in the list
+      for (SObject oldRecord : flowInput.oldRecordsToRollup) {
+        if (oldRecord == null) {
+          continue; // record-triggered flows set up to run when "A record is created or modified" will pass null in the list if it runs on create - yikes
+        } else if (oldRecord.Id != null) {
+          oldFlowRecords.put(oldRecord.Id, oldRecord);
         }
       }
-      System.debug(existingRecordOrDefault);
 
-      existingOldRecordsMap.put(currentRecord.Id, existingRecordOrDefault);
+      Map<String, SObjectField> fieldTokensForObject = sObjectType.getDescribe().fields.getMap();
+      for (SObject currentRecord : flowInput.recordsToRollup) {
+        Map<String, Object> populatedFields = currentRecord.getPopulatedFieldsAsMap();
+        // this is as close as we can get, at present, to detecting upserts. It won't work for records being inserted with the CreatedDate set to a historical value
+        if (
+          populatedFields.containsKey('CreatedDate') &&
+          populatedFields.containsKey('LastModifiedDate') &&
+          currentRecord.get('CreatedDate') == currentRecord.get('LastModifiedDate')
+        ) {
+          SObjectField rollupFieldOnCalcItem = fieldTokensForObject.get(flowInput.rollupFieldOnCalcItem);
+          if (rollupFieldOnCalcItem != null && rollupFieldOnCalcItem.getDescribe().isUpdateable()) {
+            SObject clonedRecord = currentRecord.clone(true, true);
+            clonedRecord.put(rollupFieldOnCalcItem, RollupFieldInitializer.Current.getDefaultValue(rollupFieldOnCalcItem));
+            oldFlowRecords.put(currentRecord.Id, clonedRecord);
+          }
+        }
+      }
     }
-    return existingOldRecordsMap;
+
+    return oldFlowRecords;
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
