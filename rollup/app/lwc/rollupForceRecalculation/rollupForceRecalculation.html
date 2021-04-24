@@ -17,16 +17,17 @@
             onchange={handleComboChange}
           ></lightning-combobox>
           <template if:true={selectedMetadataCMDTRecords}>
-            <lightning-datatable
-                data-id='datatable'
-                key-field="Id"
-                data={selectedMetadataCMDTRecords}
-                onrowselection={handleRowSelect}
-                max-row-selection={maxRowSelection}
-                show-row-number-column
-                selected-rows={selectedRows}
-                columns={cmdtColumns}>
-            </lightning-datatable>
+            <div>
+              <lightning-datatable
+                  data-id='datatable'
+                  key-field="DeveloperName"
+                  data={selectedMetadataCMDTRecords}
+                  onrowselection={handleRowSelect}
+                  max-row-selection={maxRowSelection}
+                  show-row-number-column
+                  columns={cmdtColumns}>
+              </lightning-datatable>
+          </div>
           </template>
         </template>
         <template if:false={isCMDTRecalc}>

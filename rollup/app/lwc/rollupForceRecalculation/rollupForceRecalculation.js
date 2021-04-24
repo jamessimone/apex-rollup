@@ -23,8 +23,8 @@ export default class RollupForceRecalculation extends LightningElement {
   };
 
   @api isCMDTRecalc = false;
-  @api selectedRows = [];
 
+  selectedRows = [];
   rollupMetadataOptions = [];
   cmdtColumns = [];
 
@@ -72,6 +72,7 @@ export default class RollupForceRecalculation extends LightningElement {
   handleComboChange(event) {
     this.selectedMetadata = event.detail.value;
     this.selectedMetadataCMDTRecords = this._localMetadata[event.detail.value];
+    console.log(JSON.parse(JSON.stringify(this.selectedMetadataCMDTRecords)))
   }
 
   handleChange(event) {
@@ -85,6 +86,7 @@ export default class RollupForceRecalculation extends LightningElement {
 
   handleRowSelect(event) {
     this.selectedRows = event.detail.selectedRows;
+    console.log(JSON.parse(JSON.stringify(this.selectedRows)))
   }
 
   async _fetchAvailableCMDT() {
