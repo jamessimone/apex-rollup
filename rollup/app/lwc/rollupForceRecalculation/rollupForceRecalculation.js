@@ -7,29 +7,34 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
 const NO_PROCESS_ID = 'No process Id';
+const MAX_ROW_SELECTION = 200;
 
 export default class RollupForceRecalculation extends LightningElement {
-  rollupData = {
-    opFieldOnCalcItem: '',
-    lookupFieldOnCalcItem: '',
-    lookupFieldOnLookupObject: '',
-    rollupFieldOnLookupObject: '',
-    lookupSObjectName: '',
-    calcItemSObjectName: '',
-    operationName: '',
-    potentialWhereClause: '',
-    potentialConcatDelimiter: ''
+  metadata = {
+    RollupFieldOnCalcItem__c: '',
+    LookupFieldOnCalcItem__c: '',
+    LookupFieldOnLookupObject__c: '',
+    RollupFieldOnLookupObject__c: '',
+    LookupObject__c: '',
+    CalcItem__c: '',
+    RollupOperation__c: '',
+    CalcItemWhereClause__c: '',
+    ConcatDelimiter__c: ''
   };
+
   @api isCMDTRecalc = false;
-  rollupMetadataOptions = [];
   @api selectedRows = [];
+
+  rollupMetadataOptions = [];
+  cmdtColumns = [];
+
+  maxRowSelection = MAX_ROW_SELECTION;
   selectedMetadata;
   selectedMetadataCMDTRecords;
 
   isRollingUp = false;
   rollupStatus;
   error = '';
-  cmdtColumns = [];
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _hasRendered = false;
@@ -70,7 +75,7 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   handleChange(event) {
-    this.rollupData[event.target.name] = event.target.value;
+    this.metadata[event.target.name] = event.target.value;
   }
 
   handleToggle() {
@@ -117,7 +122,7 @@ export default class RollupForceRecalculation extends LightningElement {
         }
         jobId = await performBulkFullRecalc({ matchingMetadata });
       } else {
-        jobId = await performFullRecalculation(this.rollupData);
+        jobId = await performFullRecalculation(this.metadata);
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {
