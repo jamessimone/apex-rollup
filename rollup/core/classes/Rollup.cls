@@ -42,7 +42,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private final SObjectField opFieldOnLookupObject;
   private final SObjectType lookupObj;
   private final Op op;
-  private final Evaluator eval;
   private final Boolean isBatched;
   private final Id rollupControlId;
   private final Rollup__mdt metadata;
@@ -50,6 +49,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected final RollupInvocationPoint invokePoint;
 
   // non-final instance variables
+  private Evaluator eval;
   private Boolean isFullRecalc = false;
   private Boolean isCDCUpdate = false;
   private Boolean isNoOp;
@@ -220,8 +220,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.invokePoint = invokePoint;
     this.rollupControlId = rollupControlId;
     this.metadata = rollupMetadata;
-    this.calcItems = this.filter(calcItems, eval, rollupMetadata);
-    this.isNoOp = this.calcItems.isEmpty() && rollupMetadata?.IsFullRecordSet__c == false;
+    this.calcItems = this.filter(calcItems);
+    this.isNoOp = this.calcItems.isEmpty() && this.metadata?.IsFullRecordSet__c == false;
   }
 
   global interface Evaluator {
@@ -582,6 +582,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       enforceValidationRules(flowInput);
       enforceFlowSpecificRules(flowInput);
 
+      SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+
       Rollup__mdt rollupMeta = new Rollup__mdt(
         RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
         LookupObject__c = flowInput.rollupSObjectName,
@@ -598,7 +600,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
         ConcatDelimiter__c = flowInput.concatDelimiter,
         UltimateParentLookup__c = flowInput.ultimateParentLookup,
-        RollupToUltimateParent__c = flowInput.rollupToUltimateParent
+        RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
+        CalcItem__c = flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : String.valueOf(sObjectType)
       );
 
       if (flowInput.isRollupStartedFromParent) {
@@ -618,7 +621,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         continue;
       }
 
-      SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
       Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
 
       Rollup roll = getRollup(
@@ -2232,81 +2234,76 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     throw new AsyncException('Rollup failed to re-queue for: ' + JSON.serialize(failedRollupInfo));
   }
 
-  private List<SObject> filter(List<SObject> calcItems, Evaluator eval, Rollup__mdt rollupMetadata) {
+  private List<SObject> filter(List<SObject> calcItems) {
     Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
     List<SObject> tempItems = new List<SObject>(calcItems);
     if (tempItems?.isEmpty() != false) {
       return tempItems;
     }
     calcItems?.clear(); // keep the strongly typed list
-    tempItems = this.replaceCalcItemsForPolymorphicWhereClause(rollupMetadata, tempItems);
+    tempItems = this.replaceCalcItemsForPolymorphicWhereClause(tempItems);
 
     for (SObject item : tempItems) {
-      if (eval?.matches(item) != false) {
+      if (this.eval?.matches(item) != false) {
         calcItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
-      } else if (rollupMetadata?.IsFullRecordSet__c == true) {
+      } else if (this.metadata?.IsFullRecordSet__c == true) {
         calcItems.add(item);
-      } else if (alwaysFullRecalcOps.contains(rollupMetadata?.RollupOperation__c)) {
+      } else if (alwaysFullRecalcOps.contains(this.metadata?.RollupOperation__c)) {
         calcItems.add(item);
       }
     }
     return calcItems;
   }
 
-  private List<SObject> replaceCalcItemsForPolymorphicWhereClause(Rollup__mdt rollupMetadata, List<SObject> calcItems) {
-    final String whatType = 'What.Type';
-    final String whoType = 'Who.Type';
+  private List<SObject> replaceCalcItemsForPolymorphicWhereClause(List<SObject> calcItems) {
+    final String typeField = '.Type';
     final String owner = 'Owner.';
 
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
     SObjectType sObjectType = firstItem.getSObjectType();
-    if (String.isBlank(rollupMetadata?.CalcItemWhereClause__c)) {
+    if (String.isBlank(this.metadata?.CalcItemWhereClause__c)) {
       return calcItems;
     }
-    Boolean hasOwnerClause = rollupMetadata.CalcItemWhereClause__c.contains(owner);
-    Boolean hasPolyMorphicFields = hasOwnerClause || sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
+    Boolean hasOwnerClause = this.metadata.CalcItemWhereClause__c.contains(owner);
+    Boolean hasTypeClause = this.metadata.CalcItemWhereClause__c.contains(typeField);
+    Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
+    Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(this.metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
     if (hasPolyMorphicFields) {
-      Boolean hasWhatClause = rollupMetadata.CalcItemWhereClause__c.contains(whatType);
-      Boolean hasWhoClause = rollupMetadata.CalcItemWhereClause__c.contains(whoType);
 
-      if (hasWhatClause == false && hasWhoClause == false && hasOwnerClause == false) {
+      if (hasTypeClause == false && hasOwnerClause == false) {
         return calcItems;
       }
 
       // the calc item where clause contains at least one polymorphic field, but before re-querying we validate whether or not the fields are already provided
       Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
-      Boolean alreadyHasFields = true;
       Set<String> additionalQueryFields = new Set<String>();
       List<String> optionalWhereClauses = new List<String>();
-      if (hasWhatClause) {
-        alreadyHasFields = populatedFields.containsKey('What');
-      }
-      if (hasWhoClause) {
-        alreadyHasFields = alreadyHasFields && populatedFields.containsKey('Who');
-      }
-      if (hasOwnerClause) {
-        alreadyHasFields = alreadyHasFields && populatedFields.containsKey('Owner');
-      }
-      if (alreadyHasFields) {
-        // hooray! we can early return without re-querying
-        this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, rollupMetadata, sObjectType, whatType, whoType, owner);
-        return calcItems;
-      } else {
-        this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, rollupMetadata, sObjectType, whatType, whoType, owner);
-        additionalQueryFields.addAll(populatedFields.keySet());
-        String queryString = getQueryString(sObjectType, new List<String>(additionalQueryFields), 'Id', '=', String.join(optionalWhereClauses, ' AND '));
-        List<String> objIds = new List<String>();
-        for (SObject record : calcItems) {
-          if (String.isNotBlank(record.Id)) {
-            objIds.add(record.Id);
-          }
+
+      this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner);
+
+      // we have to manually iterate through these fields because the "fieldMap" keySet is all in lowercase because it's ... special
+      // and only responds properly to proper-cased fields when you call the map "containsKey" method - if the field names in the keySet were
+      // proper-cased, we could just call additionalQueryFields.addAll(populatedFields.keySet().removeAll(fieldMap.keySet())) - alas
+      // this awesome one-liner doesn't work for us
+      for (String fieldName : populatedFields.keySet()) {
+        if (fieldMap.containsKey(fieldName)) {
+          additionalQueryFields.add(fieldName);
         }
-        calcItems = Database.query(queryString);
       }
+
+      String queryString = getQueryString(sObjectType, new List<String>(additionalQueryFields), 'Id', '=', String.join(optionalWhereClauses, ' AND '));
+      List<String> objIds = new List<String>();
+      for (SObject record : calcItems) {
+        if (String.isNotBlank(record.Id)) {
+          objIds.add(record.Id);
+        }
+      }
+      calcItems = Database.query(queryString);
+
     }
     return calcItems;
   }
@@ -2314,15 +2311,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private void processWhereClauseForDownstreamEvals(
     List<String> optionalWhereClauses,
     Set<String> additionalQueryFields,
-    Rollup__mdt rollupMetadata,
     SObjectType sObjectType,
-    String whatType,
-    String whoType,
+    String typeField,
     String owner
   ) {
-    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(rollupMetadata.CalcItemWhereClause__c, sObjectType);
+    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(this.metadata.CalcItemWhereClause__c, sObjectType);
+    Boolean hasHadWhereClauseReplacement = false;
     for (String whereClause : whereEval.getWhereClauses()) {
-      if (whereClause.contains(whatType) || whereClause.contains(whoType) || whereClause.contains(owner)) {
+      if (whereClause.contains(typeField) || whereClause.contains(owner)) {
         List<String> splitWheres = whereClause.split(' ');
         if (splitWheres.size() > 0) {
           additionalQueryFields.add(splitWheres[0]);
@@ -2332,9 +2328,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // since primitives are never passed by reference - this is the purpose behind the
         // "additionalQueryFields" - with the fields returned for the matching calc items
         // by the time they make it to any upstream evals, they have the fields necessary to properly match
-        rollupMetadata.CalcItemWhereClause__c = rollupMetadata.CalcItemWhereClause__c.replace(whereClause, '');
+        this.metadata.CalcItemWhereClause__c = this.metadata.CalcItemWhereClause__c.replace(whereClause, '');
+        hasHadWhereClauseReplacement = true;
         optionalWhereClauses.add(whereClause);
       }
+    }
+
+    if (hasHadWhereClauseReplacement && this.eval != null) {
+      this.eval = RollupEvaluator.getEvaluator(null, this.metadata, this.oldCalcItems, sObjectType);
     }
   }
 

@@ -144,6 +144,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
+      System.debug(fieldNames);
       return new List<String>(fieldNames);
     }
 
@@ -541,7 +542,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean hasField = sObjectType.getDescribe().fields.getMap().containsKey(fieldPath);
       if (fieldPath.contains('.') && hasField == false) {
         return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
-      } else if (hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath) || item.get(fieldPath) == null) {
+      } else if (hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath) || hasField && item.get(fieldPath) == null) {
         return item.get(fieldPath);
       }
       return '';
@@ -573,7 +574,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObject parentSObject = item.getSObject(originalName);
       // the polymorphic "Type" field won't show up in the map of valid fields for an object
       // but if the value's been queried for, it's valid to pass back
-      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type') {
+      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type' && parentSObject.getPopulatedFieldsAsMap().containsKey('Type')) {
         return parentSObject.get(fieldNameParts[0]);
       } else if (fieldNameParts.isEmpty() == false) {
         return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
