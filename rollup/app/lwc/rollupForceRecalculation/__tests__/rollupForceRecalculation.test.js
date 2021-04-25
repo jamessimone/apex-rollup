@@ -132,15 +132,18 @@ describe('Rollup force recalc tests', () => {
 
     return assertForTestConditions(() => {
       expect(performFullRecalculation.mock.calls[0][0]).toEqual({
-        RollupFieldOnCalcItem__c: 'FirstName',
-        LookupFieldOnCalcItem__c: 'AccountId',
-        LookupFieldOnLookupObject__c: 'Id',
-        RollupFieldOnLookupObject__c: 'Name',
-        LookupObject__c: 'Account',
-        CalcItem__c: 'Contact',
-        RollupOperation__c: 'CONCAT',
-        CalcItemWhereClause__c: '',
-        ConcatDelimiter__c: ''
+        metadata: {
+          RollupFieldOnCalcItem__c: 'FirstName',
+          LookupFieldOnCalcItem__c: 'AccountId',
+          LookupFieldOnLookupObject__c: 'Id',
+          RollupFieldOnLookupObject__c: 'Name',
+          LookupObject__c: 'Account',
+          CalcItem__c: 'Contact',
+          RollupOperation__c: 'CONCAT',
+          CalcItemWhereClause__c: '',
+          OrderByFirstLast__c: '',
+          ConcatDelimiter__c: ''
+        }
       });
     });
   });

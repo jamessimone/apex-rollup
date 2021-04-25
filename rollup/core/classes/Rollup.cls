@@ -436,6 +436,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   global static String performFullRecalculation(
     Rollup__mdt metadata
   ) {
+    System.debug(metadata);
     FlowInput validationRuleWrapper = new FlowInput();
     validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
     validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;

@@ -17,17 +17,16 @@
             onchange={handleComboChange}
           ></lightning-combobox>
           <template if:true={selectedMetadataCMDTRecords}>
-            <div>
-              <lightning-datatable
-                  data-id='datatable'
-                  key-field="DeveloperName"
-                  data={selectedMetadataCMDTRecords}
-                  onrowselection={handleRowSelect}
-                  max-row-selection={maxRowSelection}
-                  show-row-number-column
-                  columns={cmdtColumns}>
-              </lightning-datatable>
-          </div>
+            <lightning-datatable
+              data-id="datatable"
+              key-field="DeveloperName"
+              data={selectedMetadataCMDTRecords}
+              onrowselection={handleRowSelect}
+              max-row-selection={maxRowSelection}
+              show-row-number-column
+              columns={cmdtColumns}
+            >
+            </lightning-datatable>
           </template>
         </template>
         <template if:false={isCMDTRecalc}>
@@ -107,6 +106,15 @@
             type="text"
             label="Concat Delimiter (Optional)"
             name="ConcatDelimiter__c"
+            oncommit={handleChange}
+          >
+          </lightning-input>
+          <lightning-input
+            data-id="OrderByFirstLast__c"
+            class="slds-col slds-form-element slds-form-element_horizontal"
+            type="text"
+            label="Order By Field For First/Last (Optional)"
+            name="OrderByFirstLast__c"
             oncommit={handleChange}
           >
           </lightning-input>

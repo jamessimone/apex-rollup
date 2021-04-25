@@ -19,6 +19,7 @@ export default class RollupForceRecalculation extends LightningElement {
     CalcItem__c: '',
     RollupOperation__c: '',
     CalcItemWhereClause__c: '',
+    OrderByFirstLast__c: '',
     ConcatDelimiter__c: ''
   };
 
@@ -72,7 +73,6 @@ export default class RollupForceRecalculation extends LightningElement {
   handleComboChange(event) {
     this.selectedMetadata = event.detail.value;
     this.selectedMetadataCMDTRecords = this._localMetadata[event.detail.value];
-    console.log(JSON.parse(JSON.stringify(this.selectedMetadataCMDTRecords)))
   }
 
   handleChange(event) {
@@ -82,11 +82,11 @@ export default class RollupForceRecalculation extends LightningElement {
   handleToggle() {
     this.rollupStatus = null;
     this.isCMDTRecalc = !this.isCMDTRecalc;
+    this.error = '';
   }
 
   handleRowSelect(event) {
     this.selectedRows = event.detail.selectedRows;
-    console.log(JSON.parse(JSON.stringify(this.selectedRows)))
   }
 
   async _fetchAvailableCMDT() {
@@ -106,7 +106,7 @@ export default class RollupForceRecalculation extends LightningElement {
       let jobId;
       if (this.isCMDTRecalc) {
         if (!this.selectedMetadata || this.selectedRows.length === 0) {
-          this._displayErrorToast('Select a valid option', 'Calc item must be selected!');
+          this._displayErrorToast('Select a valid option', 'Calc item(s) must be selected!');
           return;
         }
 
@@ -124,7 +124,7 @@ export default class RollupForceRecalculation extends LightningElement {
         }
         jobId = await performBulkFullRecalc({ matchingMetadata });
       } else {
-        jobId = await performFullRecalculation(this.metadata);
+        jobId = await performFullRecalculation({ metadata: this.metadata });
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {
