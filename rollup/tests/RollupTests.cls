@@ -646,6 +646,30 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldTryToUpsertFromFlow() {
+    Account acc = [SELECT Id FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'Upsert Flow Test');
+    insert cpa; // aping an after-insert action in Flow
+
+    List<ContactPointAddress> cpas = [SELECT Id, ParentId, CreatedDate, LastModifiedDate, PreferenceRank FROM ContactPointAddress];
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPSERT', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{ null }; // sad but true - this is what flow passes for {!$Record__Prior} on upsert
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
+  }
+
+  @isTest
   static void shouldBatchTwoOperations() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;

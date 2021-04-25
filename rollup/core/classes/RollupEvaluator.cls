@@ -144,7 +144,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      System.debug(fieldNames);
       return new List<String>(fieldNames);
     }
 

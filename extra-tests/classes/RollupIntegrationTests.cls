@@ -581,37 +581,4 @@ private class RollupIntegrationTests {
     Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :matchingLead.Id];
     System.assertEquals(matchingLead.LastName, updatedLead.LastName, 'Lead last name should not have been updated');
   }
-
-  @isTest
-  static void shouldTryToUpsertFromFlow() {
-    Account acc = [SELECT Id FROM Account];
-
-    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'Upsert Flow Test');
-    insert cpa; // aping an after-insert action in Flow
-
-    List<ContactPointAddress> cpas = [SELECT Id, ParentId, CreatedDate, LastModifiedDate, PreferenceRank FROM ContactPointAddress];
-
-    Rollup.shouldRun = true;
-    Rollup.FlowInput flowInput = new Rollup.FlowInput();
-    flowInput.recordsToRollup = cpas;
-    flowInput.lookupFieldOnCalcItem = 'ParentId';
-    flowInput.lookupFieldOnOpObject = 'Id';
-    flowInput.rollupContext = 'UPSERT';
-    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
-    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
-    flowInput.rollupSObjectName = 'Account';
-    flowInput.rollupOperation = 'SUM';
-    flowInput.oldRecordsToRollup = new List<ContactPointAddress>{ null }; // sad but true - this is what flow passes for {!$Record__Prior} on upsert
-
-    Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput });
-    Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
-
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
-  }
 }

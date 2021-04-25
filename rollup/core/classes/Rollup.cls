@@ -42,6 +42,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private final SObjectField opFieldOnLookupObject;
   private final SObjectType lookupObj;
   private final Op op;
+  private final Evaluator eval;
   private final Boolean isBatched;
   private final Id rollupControlId;
   private final Rollup__mdt metadata;
@@ -49,7 +50,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   protected final RollupInvocationPoint invokePoint;
 
   // non-final instance variables
-  private Evaluator eval;
   private Boolean isFullRecalc = false;
   private Boolean isCDCUpdate = false;
   private Boolean isNoOp;
@@ -208,7 +208,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Id rollupControlId,
     Rollup__mdt rollupMetadata
   ) {
-    this.eval = eval;
     this.opFieldOnCalcItem = opFieldOnCalcItem;
     this.lookupFieldOnCalcItem = lookupFieldOnCalcItem;
     this.lookupFieldOnLookupObject = lookupFieldOnLookupObject;
@@ -220,7 +219,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.invokePoint = invokePoint;
     this.rollupControlId = rollupControlId;
     this.metadata = rollupMetadata;
-    this.calcItems = this.filter(calcItems);
+    this.calcItems = this.filter(calcItems, eval);
+    // we only need to replace the eval in-situ if downstream calc item where clauses have been updated
+    if (this.calcItems.isEmpty() == false && rollupMetadata.CalcItemWhereClause__c != this.metadata.CalcItemWhereClause__c) {
+      this.eval = RollupEvaluator.getEvaluator(eval, this.metadata, oldCalcItems, this.calcItems[0].getSObjectType());
+    } else {
+      this.eval = eval;
+    }
     this.isNoOp = this.calcItems.isEmpty() && this.metadata?.IsFullRecordSet__c == false;
   }
 
@@ -436,7 +441,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   global static String performFullRecalculation(
     Rollup__mdt metadata
   ) {
-    System.debug(metadata);
     FlowInput validationRuleWrapper = new FlowInput();
     validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
     validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
@@ -1845,7 +1849,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           currentRecord.get('CreatedDate') == currentRecord.get('LastModifiedDate')
         ) {
           SObjectField rollupFieldOnCalcItem = fieldTokensForObject.get(flowInput.rollupFieldOnCalcItem);
-          if (rollupFieldOnCalcItem != null && rollupFieldOnCalcItem.getDescribe().isUpdateable()) {
+          if (rollupFieldOnCalcItem != null && rollupFieldOnCalcItem.getDescribe().isCalculated() == false) {
             SObject clonedRecord = currentRecord.clone(true, true);
             clonedRecord.put(rollupFieldOnCalcItem, RollupFieldInitializer.Current.getDefaultValue(rollupFieldOnCalcItem));
             oldFlowRecords.put(currentRecord.Id, clonedRecord);
@@ -2235,7 +2239,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     throw new AsyncException('Rollup failed to re-queue for: ' + JSON.serialize(failedRollupInfo));
   }
 
-  private List<SObject> filter(List<SObject> calcItems) {
+  private List<SObject> filter(List<SObject> calcItems, Evaluator eval) {
     Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
     List<SObject> tempItems = new List<SObject>(calcItems);
     if (tempItems?.isEmpty() != false) {
@@ -2245,7 +2249,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     tempItems = this.replaceCalcItemsForPolymorphicWhereClause(tempItems);
 
     for (SObject item : tempItems) {
-      if (this.eval?.matches(item) != false) {
+      if (eval?.matches(item) != false) {
         calcItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
@@ -2264,12 +2268,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
-    SObjectType sObjectType = firstItem.getSObjectType();
     if (String.isBlank(this.metadata?.CalcItemWhereClause__c)) {
       return calcItems;
     }
     Boolean hasOwnerClause = this.metadata.CalcItemWhereClause__c.contains(owner);
     Boolean hasTypeClause = this.metadata.CalcItemWhereClause__c.contains(typeField);
+    SObjectType sObjectType = firstItem.getSObjectType();
     Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
     Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(this.metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
@@ -2317,7 +2321,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String owner
   ) {
     RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(this.metadata.CalcItemWhereClause__c, sObjectType);
-    Boolean hasHadWhereClauseReplacement = false;
     for (String whereClause : whereEval.getWhereClauses()) {
       if (whereClause.contains(typeField) || whereClause.contains(owner)) {
         List<String> splitWheres = whereClause.split(' ');
@@ -2325,18 +2328,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           additionalQueryFields.add(splitWheres[0]);
         }
         // "consume" the metadata where clause for downstream evaluators
-        // upstream evaluators will still have the CalcItemWhereClause__c cached
-        // since primitives are never passed by reference - this is the purpose behind the
-        // "additionalQueryFields" - with the fields returned for the matching calc items
-        // by the time they make it to any upstream evals, they have the fields necessary to properly match
         this.metadata.CalcItemWhereClause__c = this.metadata.CalcItemWhereClause__c.replace(whereClause, '');
-        hasHadWhereClauseReplacement = true;
         optionalWhereClauses.add(whereClause);
       }
-    }
-
-    if (hasHadWhereClauseReplacement && this.eval != null) {
-      this.eval = RollupEvaluator.getEvaluator(null, this.metadata, this.oldCalcItems, sObjectType);
     }
   }
 
