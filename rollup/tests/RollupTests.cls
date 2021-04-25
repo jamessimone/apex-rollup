@@ -1204,21 +1204,30 @@ private class RollupTests {
 
   @isTest
   static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, Name FROM Account];
+    String originalAccountName = acc.Name;
+    String somethingElse = 'Something else';
+    acc.Name = acc.Name + ', ' + somethingElse;
+    update acc;
+    Rollup.defaultControl = null;
 
-    ContactPointAddress cpa = new ContactPointAddress(Name = acc.Name, ParentId = acc.Id, PreferenceRank = 0);
-    ContactPointAddress toDelete = new ContactPointAddress(Name = acc.Name, ParentId = acc.Id, PreferenceRank = 1);
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa, toDelete };
+    ContactPointAddress cpa = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 0);
+    ContactPointAddress toDelete = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 1);
+    ContactPointAddress toDeleteTwo = new ContactPointAddress(Name = somethingElse, ParentId = acc.Id, PreferenceRank = 2);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa, toDelete, toDeleteTwo };
     insert cpas;
 
-    DMLMock mock = loadMock(new List<ContactPointAddress>{ toDelete });
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ toDelete, toDeleteTwo });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
     Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Name, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    System.assertEquals(0, mock.Records.size(), 'Account should not be updated - there is still a contact point address with the same name');
+    System.assertEquals(1, mock.Records.size(), 'Account should be updated CONCAT_DISTINCT delete');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(originalAccountName, updatedAcc.Name);
   }
 
   @isTest

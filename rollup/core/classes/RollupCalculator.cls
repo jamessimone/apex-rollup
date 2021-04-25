@@ -10,6 +10,7 @@ public without sharing abstract class RollupCalculator {
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
+  protected Boolean isLastItem = false;
 
   @testVisible
   private static Factory testFactory;
@@ -181,6 +182,7 @@ public without sharing abstract class RollupCalculator {
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     for (Integer index = 0; index < calcItems.size(); index++) {
+      this.isLastItem = index == calcItems.size() - 1;
       SObject calcItem = calcItems[index];
       if (this.shouldShortCircuit) {
         this.handleShortCircuit(calcItem);
@@ -239,7 +241,9 @@ public without sharing abstract class RollupCalculator {
          * for everything in-memory and in the database
          */
         this.isFirstTimeThrough = false;
-        index = 0; // resets the for-loop
+        if (index != 0) {
+          index = 0; // resets the for-loop
+        }
       }
     }
     this.setReturnValue();
@@ -684,6 +688,7 @@ public without sharing abstract class RollupCalculator {
     protected String concatDelimiter = ', ';
     private String stringVal;
     private final Boolean isConcatDistinct;
+    private final Set<Id> concatDistinctIds = new Set<Id>();
 
     public StringRollupCalculator(
       Object priorVal,
@@ -721,14 +726,16 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
-      String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       switch on this.op {
         when UPDATE_MAX, UPDATE_MIN {
+          String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
           if (this.isTrueFor(newVal, this.stringVal)) {
             this.stringVal = newVal;
           }
         }
-        // TODO - handle delete concat? need to test whether or not deleted items come back in query before delete
+        when DELETE_CONCAT_DISTINCT {
+          this.handleConcatDistinctDelete(calcItem);
+        }
       }
     }
 
@@ -749,26 +756,18 @@ public without sharing abstract class RollupCalculator {
 
     public override void handleDeleteConcat(SObject calcItem) {
       String existingVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (existingVal == null) {
-        return;
-      } else if (this.isConcatDistinct) {
-        this.shouldShortCircuit = true;
-        Set<Id> objIds = new Set<Id>{ calcItem.Id };
-        String query = Rollup.getQueryString(
-          calcItem.getSObjectType(),
-          new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
-          'Id',
-          '!=',
-          this.lookupKeyQuery
-        );
-        List<SObject> relatedItems = Database.query(query);
-        this.stringVal = '';
-        for (SObject relatedItem : relatedItems) {
-          this.handleConcat(relatedItem);
-        }
+      if (String.isBlank(existingVal)) {
         return;
       }
-      this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
+      else if (this.isConcatDistinct && this.isLastItem == false) {
+        this.shouldShortCircuit = true;
+        this.concatDistinctIds.add(calcItem.Id);
+      } else if (this.isConcatDistinct && this.isLastItem) {
+        this.handleConcatDistinctDelete(calcItem);
+      }
+       else {
+        this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
+      }
     }
 
     public override void handleMin(SObject calcItem) {
@@ -848,6 +847,29 @@ public without sharing abstract class RollupCalculator {
         return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
       }
       return existingVal += replacementVal + this.concatDelimiter;
+    }
+
+    private void handleConcatDistinctDelete(SObject calcItem) {
+      this.concatDistinctIds.add(calcItem.Id);
+      // we have to wait till it's the last iteration; this is what ensures that all of the deleted
+      // items are accounted for in concatDistinctIds (for proper exclusion)
+      if (this.isLastItem) {
+        Set<Id> objIds = this.concatDistinctIds;
+        String query = Rollup.getQueryString(
+          calcItem.getSObjectType(),
+          new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
+          'Id',
+          '!=',
+          this.lookupKeyQuery
+        );
+        // we do a replace first, in case this is a reparenting operation
+        this.stringVal = this.replaceWithDelimiter(this.stringVal, (String)calcItem.get(this.opFieldOnCalcItem), '');
+        List<SObject> relatedItems = Database.query(query);
+        // reset the value entirely; this is a full recalc
+        for (SObject relatedItem : relatedItems) {
+          this.handleConcat(relatedItem);
+        }
+      }
     }
   }
 

@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "versionNumber": "1.2.12.0",
-            "versionDescription": "",
-            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases"
+            "versionDescription": "CONCAT_DISTINCT bugfix for deletions, Full Recalc application updates",
+            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
     "namespace": "",
