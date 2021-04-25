@@ -160,7 +160,6 @@ public without sharing abstract class RollupCalculator {
       this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) : priorVal;
     }
     this.lookupKeyQuery = lookupKeyField + ' = \'' + lookupRecordKey + '\'';
-
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -175,7 +174,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   public void setWhereClause(String potentialWhereClause) {
-    if(String.isNotBlank(potentialWhereClause)) {
+    if (String.isNotBlank(potentialWhereClause)) {
       this.lookupKeyQuery += ' AND (' + potentialWhereClause + ')';
     }
   }
@@ -684,6 +683,8 @@ public without sharing abstract class RollupCalculator {
   private virtual class StringRollupCalculator extends RollupCalculator {
     protected String concatDelimiter = ', ';
     private String stringVal;
+    private final Boolean isConcatDistinct;
+
     public StringRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -699,17 +700,20 @@ public without sharing abstract class RollupCalculator {
       if (String.isNotBlank(customConcatDelimiter)) {
         this.concatDelimiter = customConcatDelimiter + ' ';
       }
+      this.isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
     }
 
     protected override void setReturnValue() {
-      if(this.op.name().contains(Rollup.Op.CONCAT.name())) {
+      if (this.op.name().contains(Rollup.Op.CONCAT.name())) {
         String trimmedDelimiter = this.concatDelimiter.trim();
         String possibleReturnValue = this.stringVal.normalizeSpace();
         while (possibleReturnValue.endsWith(trimmedDelimiter)) {
           possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
         }
 
-        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
+        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter)
+            ? possibleReturnValue.substring(1, possibleReturnValue.length())
+            : possibleReturnValue)
           .trim();
         this.sortAndConcat();
       }
@@ -724,6 +728,7 @@ public without sharing abstract class RollupCalculator {
             this.stringVal = newVal;
           }
         }
+        // TODO - handle delete concat? need to test whether or not deleted items come back in query before delete
       }
     }
 
@@ -745,6 +750,22 @@ public without sharing abstract class RollupCalculator {
     public override void handleDeleteConcat(SObject calcItem) {
       String existingVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       if (existingVal == null) {
+        return;
+      } else if (this.isConcatDistinct) {
+        this.shouldShortCircuit = true;
+        Set<Id> objIds = new Set<Id>{ calcItem.Id };
+        String query = Rollup.getQueryString(
+          calcItem.getSObjectType(),
+          new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
+          'Id',
+          '!=',
+          this.lookupKeyQuery
+        );
+        List<SObject> relatedItems = Database.query(query);
+        this.stringVal = '';
+        for (SObject relatedItem : relatedItems) {
+          this.handleConcat(relatedItem);
+        }
         return;
       }
       this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
@@ -796,11 +817,10 @@ public without sharing abstract class RollupCalculator {
 
     private Boolean shouldConcat(String newVal) {
       Boolean shouldConcat = false;
-      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       Boolean hasVal = String.isNotBlank(newVal);
-      if (isConcatDistinct == false && hasVal) {
+      if (this.isConcatDistinct == false && hasVal) {
         shouldConcat = true;
-      } else if (isConcatDistinct && hasVal) {
+      } else if (this.isConcatDistinct && hasVal) {
         List<String> existingVals = this.stringVal.split(this.concatDelimiter);
         Boolean matches = false;
         for (String existingVal : existingVals) {

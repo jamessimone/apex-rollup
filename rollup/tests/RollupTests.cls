@@ -1203,6 +1203,25 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(Name = acc.Name, ParentId = acc.Id, PreferenceRank = 0);
+    ContactPointAddress toDelete = new ContactPointAddress(Name = acc.Name, ParentId = acc.Id, PreferenceRank = 1);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa, toDelete };
+    insert cpas;
+
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ toDelete });
+    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Name, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(0, mock.Records.size(), 'Account should not be updated - there is still a contact point address with the same name');
+  }
+
+  @isTest
   static void shouldMaxOnStringsOnInsert() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
