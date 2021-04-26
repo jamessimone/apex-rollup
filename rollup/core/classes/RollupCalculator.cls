@@ -864,7 +864,6 @@ public without sharing abstract class RollupCalculator {
           this.lookupKeyQuery
         );
         List<SObject> relatedItems = Database.query(query);
-        // reset the value entirely; this is a full recalc
         for (SObject relatedItem : relatedItems) {
           this.handleConcat(relatedItem);
         }
