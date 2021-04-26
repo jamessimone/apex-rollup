@@ -646,6 +646,30 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldTryToUpsertFromFlow() {
+    Account acc = [SELECT Id FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'Upsert Flow Test');
+    insert cpa; // aping an after-insert action in Flow
+
+    List<ContactPointAddress> cpas = [SELECT Id, ParentId, CreatedDate, LastModifiedDate, PreferenceRank FROM ContactPointAddress];
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPSERT', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{ null }; // sad but true - this is what flow passes for {!$Record__Prior} on upsert
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
+  }
+
+  @isTest
   static void shouldBatchTwoOperations() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1176,6 +1200,34 @@ private class RollupTests {
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_UPDATE should be the distinct combo of the old and new strings'
     );
+  }
+
+  @isTest
+  static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, Name FROM Account];
+    String originalAccountName = acc.Name;
+    String somethingElse = 'Something else';
+    acc.Name = acc.Name + ', ' + somethingElse;
+    update acc;
+    Rollup.defaultControl = null;
+
+    ContactPointAddress cpa = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 0);
+    ContactPointAddress toDelete = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 1);
+    ContactPointAddress toDeleteTwo = new ContactPointAddress(Name = somethingElse, ParentId = acc.Id, PreferenceRank = 2);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa, toDelete, toDeleteTwo };
+    insert cpas;
+
+    DMLMock mock = loadMock(new List<ContactPointAddress>{ toDelete, toDeleteTwo });
+    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Name, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Account should be updated CONCAT_DISTINCT delete');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(originalAccountName, updatedAcc.Name);
   }
 
   @isTest
@@ -2293,12 +2345,13 @@ private class RollupTests {
       new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
     };
     DMLMock mock = loadAccountIdMock(cpas);
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250)
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250)
     };
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
@@ -2311,6 +2364,42 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
+    };
+    DMLMock mock = loadAccountIdMock(cpas);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
+  }
+
+  @isTest
+  static void shouldThrowValidationErrorOnUpsertFromFlowIfNoOldCalcItems() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
+    };
+    DMLMock mock = loadAccountIdMock(cpas);
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPSERT', 'SUM');
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
+  }
+
+  @isTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNot() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
@@ -2319,15 +2408,13 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     insert cpa;
 
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      cpa
-    };
-    DMLMock mock = loadAccountIdMock(cpas);
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
-    };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
 
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
 
     Test.startTest();
@@ -2341,32 +2428,6 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(0, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
-  }
-
-  @isTest
-  static void shouldCorrectlyInitializeDefaultsWhenOldRecordDoesNotHaveRollupFieldFromFlow() {
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType)),
-      new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
-    };
-    DMLMock mock = loadAccountIdMock(cpas);
-
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => cpas[0], // this one doesn't change, so it won't be counted at the end
-      cpas[1].Id => new ContactPointAddress(Id = cpas[1].Id, ParentId = cpas[1].ParentId) // this one has no default value, so it gets initialized
-    };
-
-    Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'UPDATE', 'SUM'));
-    Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
-
-    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
   }
 
   @isTest
@@ -2535,13 +2596,12 @@ private class RollupTests {
     };
     DMLMock mock = loadAccountIdMock(cpas);
 
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpas[0].Id => new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
-      cpas[1].Id => new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, Name = 'Name that does not match', PreferenceRank = 200)
-    };
-
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].calcItemChangedFields = 'Name, IsDefault';
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
+      new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, Name = 'Name that does not match', PreferenceRank = 200)
+    };
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -2578,22 +2638,18 @@ private class RollupTests {
   static void shouldReportFailureWhenExceptionIsThrown() {
     List<ContactPointAddressHistory> history = new List<ContactPointAddressHistory>{ new ContactPointAddressHistory() };
     Rollup.shouldRun = true;
-    Rollup.records = history;
 
     Exception ex;
     Test.startTest();
     // prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
     try {
       List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
-    } catch(Exception e) {
+    } catch (Exception e) {
       ex = e;
     }
     Test.stopTest();
 
-    System.assertEquals(
-      'No such column \'ParentId\' on entity \'ContactPointAddressHistory\'. If you are attempting to use a custom field, be sure to append the \'__c\' after the custom field name. Please reference your WSDL or the describe call for the appropriate names.',
-      ex.getMessage()
-    );
+    System.assertEquals('Invalid field PreferenceRank for ContactPointAddressHistory', ex.getMessage(), ex.getMessage() + '\n' + ex.getStacktraceString());
   }
 
   @isTest
@@ -2843,8 +2899,18 @@ private class RollupTests {
     Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(256), LastName = 'Truncate', Email = 'rollup@gmail.com');
     insert con;
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'Contact',
+      RollupFieldOnCalcItem__c = 'Description',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'Name',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'CONCAT'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('Description', 'AccountId', 'Id', 'Name', 'Account', 'Contact', 'CONCAT', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -2903,8 +2969,18 @@ private class RollupTests {
     };
     insert cpas;
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2928,8 +3004,18 @@ private class RollupTests {
 
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 1, BatchChunkSize__c = 10);
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2949,8 +3035,18 @@ private class RollupTests {
     };
     insert cpas;
 
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM'
+    );
+
     Test.startTest();
-    Rollup.performFullRecalculation('PreferenceRank', 'ParentId', 'Id', 'AnnualRevenue', 'Account', 'ContactPointAddress', 'SUM', null, null);
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -2969,20 +3065,19 @@ private class RollupTests {
     };
     insert cpas;
 
-    Test.startTest();
-    Rollup.performFullRecalculation(
-      'PreferenceRank',
-      'ParentId',
-      'Id',
-      'AnnualRevenue',
-      'Account',
-      'ContactPointAddress',
-      'SUM',
-      'Parent.Name != \'' +
-      acc.Name +
-      '\'',
-      null
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'Parent.Name != \'' + acc.Name + '\''
     );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];

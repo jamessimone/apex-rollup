@@ -18,7 +18,15 @@ private class RollupFlowBulkProcessorTests {
     input.recordsToRollup = new List<SObject>{ new Contact() };
     input.rollupContext = 'INSERT';
 
-    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(RollupOperation__c = 'SUM', CalcItem__c = 'Contact', LookupObject__c = 'Account');
+    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(
+      RollupOperation__c = 'CONCAT',
+      CalcItem__c = 'Contact',
+      LookupObject__c = 'Account',
+      RollupFieldOnCalcItem__c = 'FirstName',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'Name'
+    );
 
     List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
@@ -82,6 +90,12 @@ private class RollupFlowBulkProcessorTests {
       ex = e;
     }
 
-    System.assertEquals(true, ex.getMessage().contains('No such column \'Kaffufle\' on entity \'Opportunity\''));
+    System.assertEquals(
+      true,
+      ex.getMessage().contains('Invalid field Kaffufle for Opportunity'),
+      ex.getMessage() +
+      '\n' +
+      ex.getStackTraceString()
+    );
   }
 }

@@ -7,28 +7,35 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
 const NO_PROCESS_ID = 'No process Id';
+const MAX_ROW_SELECTION = 200;
 
 export default class RollupForceRecalculation extends LightningElement {
-  rollupData = {
-    opFieldOnCalcItem: '',
-    lookupFieldOnCalcItem: '',
-    lookupFieldOnLookupObject: '',
-    rollupFieldOnLookupObject: '',
-    lookupSObjectName: '',
-    calcItemSObjectName: '',
-    operationName: '',
-    potentialWhereClause: '',
-    potentialConcatDelimiter: ''
+  metadata = {
+    RollupFieldOnCalcItem__c: '',
+    LookupFieldOnCalcItem__c: '',
+    LookupFieldOnLookupObject__c: '',
+    RollupFieldOnLookupObject__c: '',
+    LookupObject__c: '',
+    CalcItem__c: '',
+    RollupOperation__c: '',
+    CalcItemWhereClause__c: '',
+    OrderByFirstLast__c: '',
+    ConcatDelimiter__c: ''
   };
+
   @api isCMDTRecalc = false;
+
+  selectedRows = [];
   rollupMetadataOptions = [];
+  cmdtColumns = [];
+
+  maxRowSelection = MAX_ROW_SELECTION;
   selectedMetadata;
   selectedMetadataCMDTRecords;
 
   isRollingUp = false;
   rollupStatus;
   error = '';
-  cmdtColumns = [];
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _hasRendered = false;
@@ -69,12 +76,17 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   handleChange(event) {
-    this.rollupData[event.target.name] = event.target.value;
+    this.metadata[event.target.name] = event.target.value;
   }
 
   handleToggle() {
     this.rollupStatus = null;
     this.isCMDTRecalc = !this.isCMDTRecalc;
+    this.error = '';
+  }
+
+  handleRowSelect(event) {
+    this.selectedRows = event.detail.selectedRows;
   }
 
   async _fetchAvailableCMDT() {
@@ -93,12 +105,12 @@ export default class RollupForceRecalculation extends LightningElement {
     try {
       let jobId;
       if (this.isCMDTRecalc) {
-        if (!this.selectedMetadata) {
-          this._displayErrorToast('Select a valid option', 'Calc item must be selected!');
+        if (!this.selectedMetadata || this.selectedRows.length === 0) {
+          this._displayErrorToast('Select a valid option', 'Calc item(s) must be selected!');
           return;
         }
 
-        const localMetas = this._localMetadata[this.selectedMetadata];
+        const localMetas = [...this.selectedRows];
         const matchingMetadata = [];
         // we have to transform the data slightly to conform to what the Apex deserializer expects by removing relationship fields
         for (let localMeta of localMetas) {
@@ -112,7 +124,7 @@ export default class RollupForceRecalculation extends LightningElement {
         }
         jobId = await performBulkFullRecalc({ matchingMetadata });
       } else {
-        jobId = await performFullRecalculation(this.rollupData);
+        jobId = await performFullRecalculation({ metadata: this.metadata });
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {

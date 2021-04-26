@@ -10,6 +10,7 @@ public without sharing abstract class RollupCalculator {
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
+  protected Boolean isLastItem = false;
 
   @testVisible
   private static Factory testFactory;
@@ -160,7 +161,6 @@ public without sharing abstract class RollupCalculator {
       this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) : priorVal;
     }
     this.lookupKeyQuery = lookupKeyField + ' = \'' + lookupRecordKey + '\'';
-
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -175,13 +175,14 @@ public without sharing abstract class RollupCalculator {
   }
 
   public void setWhereClause(String potentialWhereClause) {
-    if(String.isNotBlank(potentialWhereClause)) {
+    if (String.isNotBlank(potentialWhereClause)) {
       this.lookupKeyQuery += ' AND (' + potentialWhereClause + ')';
     }
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     for (Integer index = 0; index < calcItems.size(); index++) {
+      this.isLastItem = index == calcItems.size() - 1;
       SObject calcItem = calcItems[index];
       if (this.shouldShortCircuit) {
         this.handleShortCircuit(calcItem);
@@ -240,7 +241,9 @@ public without sharing abstract class RollupCalculator {
          * for everything in-memory and in the database
          */
         this.isFirstTimeThrough = false;
-        index = 0; // resets the for-loop
+        if (index != 0) {
+          index = 0; // resets the for-loop
+        }
       }
     }
     this.setReturnValue();
@@ -684,6 +687,9 @@ public without sharing abstract class RollupCalculator {
   private virtual class StringRollupCalculator extends RollupCalculator {
     protected String concatDelimiter = ', ';
     private String stringVal;
+    private final Boolean isConcatDistinct;
+    private final Set<Id> concatDistinctIds = new Set<Id>();
+
     public StringRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -699,17 +705,23 @@ public without sharing abstract class RollupCalculator {
       if (String.isNotBlank(customConcatDelimiter)) {
         this.concatDelimiter = customConcatDelimiter + ' ';
       }
+      this.isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
     }
 
     protected override void setReturnValue() {
-      if(this.op.name().contains(Rollup.Op.CONCAT.name())) {
+      if (this.op.name().contains(Rollup.Op.CONCAT.name())) {
         String trimmedDelimiter = this.concatDelimiter.trim();
         String possibleReturnValue = this.stringVal.normalizeSpace();
         while (possibleReturnValue.endsWith(trimmedDelimiter)) {
           possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
         }
+        while (possibleReturnValue.startsWith(trimmedDelimiter)) {
+          possibleReturnValue = possibleReturnValue.substringAfter(trimmedDelimiter).trim();
+        }
 
-        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter) ? possibleReturnValue.substring(1, possibleReturnValue.length()) : possibleReturnValue)
+        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter)
+            ? possibleReturnValue.substring(1, possibleReturnValue.length())
+            : possibleReturnValue)
           .trim();
         this.sortAndConcat();
       }
@@ -717,12 +729,15 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
-      String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       switch on this.op {
         when UPDATE_MAX, UPDATE_MIN {
+          String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
           if (this.isTrueFor(newVal, this.stringVal)) {
             this.stringVal = newVal;
           }
+        }
+        when DELETE_CONCAT_DISTINCT {
+          this.handleConcatDistinctDelete(calcItem);
         }
       }
     }
@@ -744,10 +759,14 @@ public without sharing abstract class RollupCalculator {
 
     public override void handleDeleteConcat(SObject calcItem) {
       String existingVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      if (existingVal == null) {
+      if (String.isBlank(existingVal)) {
         return;
+      } else if (this.isConcatDistinct) {
+        this.shouldShortCircuit = true;
+        this.handleConcatDistinctDelete(calcItem);
+      } else {
+        this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
       }
-      this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
     }
 
     public override void handleMin(SObject calcItem) {
@@ -796,11 +815,10 @@ public without sharing abstract class RollupCalculator {
 
     private Boolean shouldConcat(String newVal) {
       Boolean shouldConcat = false;
-      Boolean isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
       Boolean hasVal = String.isNotBlank(newVal);
-      if (isConcatDistinct == false && hasVal) {
+      if (this.isConcatDistinct == false && hasVal) {
         shouldConcat = true;
-      } else if (isConcatDistinct && hasVal) {
+      } else if (this.isConcatDistinct && hasVal) {
         List<String> existingVals = this.stringVal.split(this.concatDelimiter);
         Boolean matches = false;
         for (String existingVal : existingVals) {
@@ -828,6 +846,28 @@ public without sharing abstract class RollupCalculator {
         return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
       }
       return existingVal += replacementVal + this.concatDelimiter;
+    }
+
+    private void handleConcatDistinctDelete(SObject calcItem) {
+      // we do a replace first, in case this is a reparenting operation
+      this.stringVal = this.replaceWithDelimiter(this.stringVal, (String) calcItem.get(this.opFieldOnCalcItem), '');
+      this.concatDistinctIds.add(calcItem.Id);
+      // we have to wait till it's the last iteration; this is what ensures that all of the deleted
+      // items are accounted for in concatDistinctIds (for proper exclusion)
+      if (this.isLastItem) {
+        Set<Id> objIds = this.concatDistinctIds;
+        String query = Rollup.getQueryString(
+          calcItem.getSObjectType(),
+          new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
+          'Id',
+          '!=',
+          this.lookupKeyQuery
+        );
+        List<SObject> relatedItems = Database.query(query);
+        for (SObject relatedItem : relatedItems) {
+          this.handleConcat(relatedItem);
+        }
+      }
     }
   }
 
@@ -1042,7 +1082,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public Integer compareTo(Object o) {
-      return sorter.compare(value, ((ComparableItem) o).value);
+      return this.sorter.compare(this.value, ((ComparableItem) o).value);
     }
   }
 }

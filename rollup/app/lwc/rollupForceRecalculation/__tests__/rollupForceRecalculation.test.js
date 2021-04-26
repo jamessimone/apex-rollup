@@ -106,25 +106,25 @@ describe('Rollup force recalc tests', () => {
     expect(toggle).not.toBeNull();
     expect(fullRecalc.isCMDTRecalc).toBeFalsy();
 
-    const calcItemSObjectName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="calcItemSObjectName"]');
+    const calcItemSObjectName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="CalcItem__c"]');
     setElementValue(calcItemSObjectName, 'Contact');
 
-    const opFieldOnCalcItem = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="opFieldOnCalcItem"]');
+    const opFieldOnCalcItem = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="RollupFieldOnCalcItem__c"]');
     setElementValue(opFieldOnCalcItem, 'FirstName');
 
-    const lookupFieldOnCalcItem = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="lookupFieldOnCalcItem"]');
+    const lookupFieldOnCalcItem = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="LookupFieldOnCalcItem__c"]');
     setElementValue(lookupFieldOnCalcItem, 'AccountId');
 
-    const lookupFieldOnLookupObject = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="lookupFieldOnLookupObject"]');
+    const lookupFieldOnLookupObject = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="LookupFieldOnLookupObject__c"]');
     setElementValue(lookupFieldOnLookupObject, 'Id');
 
-    const rollupFieldOnLookupObject = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="rollupFieldOnLookupObject"]');
+    const rollupFieldOnLookupObject = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="RollupFieldOnLookupObject__c"]');
     setElementValue(rollupFieldOnLookupObject, 'Name');
 
-    const lookupSObjectName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="lookupSObjectName"]');
+    const lookupSObjectName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="LookupObject__c"]');
     setElementValue(lookupSObjectName, 'Account');
 
-    const operationName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="operationName"]');
+    const operationName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="RollupOperation__c"]');
     setElementValue(operationName, 'CONCAT');
 
     const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
@@ -132,15 +132,18 @@ describe('Rollup force recalc tests', () => {
 
     return assertForTestConditions(() => {
       expect(performFullRecalculation.mock.calls[0][0]).toEqual({
-        opFieldOnCalcItem: 'FirstName',
-        lookupFieldOnCalcItem: 'AccountId',
-        lookupFieldOnLookupObject: 'Id',
-        rollupFieldOnLookupObject: 'Name',
-        lookupSObjectName: 'Account',
-        calcItemSObjectName: 'Contact',
-        operationName: 'CONCAT',
-        potentialWhereClause: '',
-        potentialConcatDelimiter: ''
+        metadata: {
+          RollupFieldOnCalcItem__c: 'FirstName',
+          LookupFieldOnCalcItem__c: 'AccountId',
+          LookupFieldOnLookupObject__c: 'Id',
+          RollupFieldOnLookupObject__c: 'Name',
+          LookupObject__c: 'Account',
+          CalcItem__c: 'Contact',
+          RollupOperation__c: 'CONCAT',
+          CalcItemWhereClause__c: '',
+          OrderByFirstLast__c: '',
+          ConcatDelimiter__c: ''
+        }
       });
     });
   });
@@ -172,11 +175,16 @@ describe('Rollup force recalc tests', () => {
               }
             })
           );
+        })
+        // flush to get the datatable to render post selection
+        .then(() => {
+          const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
+          datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
 
           const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
           submitButton.click();
         })
-        // then flush again ....
+        // flush again to handle the click action ....
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
@@ -186,9 +194,6 @@ describe('Rollup force recalc tests', () => {
   });
 
   it('renders CMDT datatable with selected metadata', async () => {
-    // calling getRollupMetadataByCalcItem.mockResolvedValue() here didn't work
-    // (as it does in the next test) and I have no idea why ...
-
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });

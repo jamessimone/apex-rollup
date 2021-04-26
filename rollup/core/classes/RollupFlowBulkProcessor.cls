@@ -9,6 +9,8 @@ global without sharing class RollupFlowBulkProcessor {
   global class FlowInput {
     @InvocableVariable(label='Records to rollup')
     global List<SObject> recordsToRollup;
+    @InvocableVariable(label='Prior records to rollup')
+    global List<SObject> oldRecordsToRollup = new List<SObject>();
     @InvocableVariable(label='Rollup Context' required=true)
     global String rollupContext;
     @InvocableVariable(label='Defer processing?')
@@ -61,6 +63,7 @@ global without sharing class RollupFlowBulkProcessor {
             // everything else is supplied from the invocable
             input.rollupContext = flowInput.rollupContext;
             input.recordsToRollup = flowInput.recordsToRollup;
+            input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
             input.deferProcessing = flowInput.deferProcessing;
             input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
             rollupFlowInputs.add(input);
