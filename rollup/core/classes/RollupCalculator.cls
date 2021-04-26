@@ -715,6 +715,9 @@ public without sharing abstract class RollupCalculator {
         while (possibleReturnValue.endsWith(trimmedDelimiter)) {
           possibleReturnValue = possibleReturnValue.substringBeforeLast(trimmedDelimiter).trim();
         }
+        while (possibleReturnValue.startsWith(trimmedDelimiter)) {
+          possibleReturnValue = possibleReturnValue.substringAfter(trimmedDelimiter).trim();
+        }
 
         this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter)
             ? possibleReturnValue.substring(1, possibleReturnValue.length())
@@ -758,14 +761,10 @@ public without sharing abstract class RollupCalculator {
       String existingVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       if (String.isBlank(existingVal)) {
         return;
-      }
-      else if (this.isConcatDistinct && this.isLastItem == false) {
+      } else if (this.isConcatDistinct) {
         this.shouldShortCircuit = true;
-        this.concatDistinctIds.add(calcItem.Id);
-      } else if (this.isConcatDistinct && this.isLastItem) {
         this.handleConcatDistinctDelete(calcItem);
-      }
-       else {
+      } else {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
       }
     }
@@ -850,6 +849,8 @@ public without sharing abstract class RollupCalculator {
     }
 
     private void handleConcatDistinctDelete(SObject calcItem) {
+      // we do a replace first, in case this is a reparenting operation
+      this.stringVal = this.replaceWithDelimiter(this.stringVal, (String) calcItem.get(this.opFieldOnCalcItem), '');
       this.concatDistinctIds.add(calcItem.Id);
       // we have to wait till it's the last iteration; this is what ensures that all of the deleted
       // items are accounted for in concatDistinctIds (for proper exclusion)
@@ -862,8 +863,6 @@ public without sharing abstract class RollupCalculator {
           '!=',
           this.lookupKeyQuery
         );
-        // we do a replace first, in case this is a reparenting operation
-        this.stringVal = this.replaceWithDelimiter(this.stringVal, (String)calcItem.get(this.opFieldOnCalcItem), '');
         List<SObject> relatedItems = Database.query(query);
         // reset the value entirely; this is a full recalc
         for (SObject relatedItem : relatedItems) {

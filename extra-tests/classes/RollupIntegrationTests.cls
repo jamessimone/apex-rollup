@@ -466,7 +466,7 @@ private class RollupIntegrationTests {
   }
 
   @isTest
-  static void shouldAvoidRequeryingIfPolymorphicFieldsAreIncluded() {
+  static void shouldWorkEvenIfPolymorphicFieldsAreIncluded() {
     Account acc = new Account(Name = 'Matching type');
     insert acc;
 
