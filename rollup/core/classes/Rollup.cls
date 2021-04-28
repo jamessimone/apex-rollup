@@ -2241,25 +2241,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval) {
     Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
-    List<SObject> tempItems = new List<SObject>(calcItems);
-    if (tempItems?.isEmpty() != false) {
-      return tempItems;
+    List<SObject> matchingItems = new List<SObject>();
+    if (calcItems?.isEmpty() != false) {
+      return matchingItems;
     }
-    calcItems?.clear(); // keep the strongly typed list
-    tempItems = this.replaceCalcItemsForPolymorphicWhereClause(tempItems);
+    calcItems = this.replaceCalcItemsForPolymorphicWhereClause(calcItems);
 
-    for (SObject item : tempItems) {
+    for (SObject item : calcItems) {
       if (eval?.matches(item) != false) {
-        calcItems.add(item);
+        matchingItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
       } else if (this.metadata?.IsFullRecordSet__c == true) {
-        calcItems.add(item);
+        matchingItems.add(item);
       } else if (alwaysFullRecalcOps.contains(this.metadata?.RollupOperation__c)) {
-        calcItems.add(item);
+        matchingItems.add(item);
       }
     }
-    return calcItems;
+    return matchingItems;
   }
 
   private List<SObject> replaceCalcItemsForPolymorphicWhereClause(List<SObject> calcItems) {
