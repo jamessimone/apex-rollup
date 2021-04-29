@@ -28,6 +28,7 @@ private class RollupTests {
   static Rollup__mdt testMetadata;
   static String testLookupRecordKey;
   static SObjectField testLookupKeyField;
+  static Rollup.Op rollupOp;
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
       Object priorVal,
@@ -53,7 +54,7 @@ private class RollupTests {
   public class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
-      super(0, Rollup.Op.First, null, null, null, null, null);
+      super(0, rollupOp, null, null, null, null, null);
       calcMockWasCalled = true;
     }
   }
@@ -1536,6 +1537,7 @@ private class RollupTests {
   // TODO migrate tests specific to calculating to this format, and the actual testing of functionality to RollupCalculatorTests
   @isTest
   static void shouldRollupForFirst() {
+    rollupOp = Rollup.Op.FIRST;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today()) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1557,6 +1559,7 @@ private class RollupTests {
 
   @isTest
   static void shouldRollupForLast() {
+    rollupOp = Rollup.Op.LAST;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today()) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1577,6 +1580,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForAverage() {
+    rollupOp = Rollup.Op.AVERAGE;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1591,6 +1595,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForCountDistinct() {
+    rollupOp = Rollup.Op.COUNT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1605,6 +1610,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForConcatDistinct() {
+    rollupOp = Rollup.Op.CONCAT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1619,6 +1625,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForConcat() {
+    rollupOp = Rollup.Op.CONCAT;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1633,6 +1640,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForCount() {
+    rollupOp = Rollup.Op.COUNT;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1646,6 +1654,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForFirst() {
+    rollupOp = Rollup.Op.FIRST;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1660,6 +1669,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForLast() {
+    rollupOp = Rollup.Op.LAST;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1674,6 +1684,7 @@ private class RollupTests {
 
   @isTest
   static void shouldPassRecalcValueForMin() {
+    rollupOp = Rollup.Op.MIN;
     RollupCalculator.Factory = new FactoryMock();
     loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;

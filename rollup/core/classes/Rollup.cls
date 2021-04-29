@@ -1,4 +1,4 @@
-global without sharing virtual class Rollup implements Database.Batchable<SObject> {
+global without sharing virtual class Rollup implements Database.Batchable<SObject>, System.Comparable {
   /**
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
    * but this keeps things much simpler
@@ -24,9 +24,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   // in this case, we promote the visiblity of this variable for tests
   // specially to validate that the buffer is flushed when "processStoredFlowRollups" is called
   @testVisible
-  private static List<Rollup> FLOW_ROLLUPS = new List<Rollup>();
+  private static List<Rollup> CACHED_ROLLUPS = new List<Rollup>();
   private static Boolean isRunningAsync = false;
   private static Integer SENTINEL_COUNT_VALUE = -1;
+  private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
 
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
@@ -222,7 +223,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.calcItems = this.filter(calcItems, eval);
     // we only need to replace the eval in-situ if downstream calc item where clauses have been updated
     if (this.calcItems.isEmpty() == false && rollupMetadata.CalcItemWhereClause__c != this.metadata.CalcItemWhereClause__c) {
-      this.eval = RollupEvaluator.getEvaluator(eval, this.metadata, oldCalcItems, this.calcItems[0].getSObjectType());
+      this.eval = RollupEvaluator.getEvaluator(eval, this.metadata, oldCalcItems, this.calcItems.getSObjectType());
     } else {
       this.eval = eval;
     }
@@ -231,6 +232,32 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   global interface Evaluator {
     Boolean matches(Object calcItem);
+  }
+
+  public Integer compareTo(Object otherRollup) {
+    if ((otherRollup instanceof Rollup) == false) {
+      return 1;
+    }
+
+    Rollup that = (Rollup) otherRollup;
+    Boolean thisDelete = this.op.name().contains('DELETE');
+    Boolean thatDelete = that.op.name().contains('DELETE');
+    Boolean thisUpdate = this.op.name().contains('UPDATE');
+    Boolean thatUpdate = that.op.name().contains('UPDATE');
+    Boolean thisInsert = thisDelete == false && thisUpdate == false;
+    Boolean thatInsert = thatDelete == false && thatUpdate == false;
+
+    // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
+    if (thisInsert && (thatUpdate || thatDelete)) {
+      return -1;
+    } else if ((thisUpdate || thisDelete) && thatInsert) {
+      return 1;
+    } else if (thatUpdate && thisDelete) {
+      return 1;
+    } else if (thisUpdate && thatDelete) {
+      return -1;
+    }
+    return 0;
   }
 
   public String runCalc() {
@@ -438,9 +465,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   @AuraEnabled
-  global static String performFullRecalculation(
-    Rollup__mdt metadata
-  ) {
+  global static String performFullRecalculation(Rollup__mdt metadata) {
     FlowInput validationRuleWrapper = new FlowInput();
     validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
     validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
@@ -451,11 +476,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
     wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    return performFullRecalculationInner(
-      metadata,
-      wrapper,
-      RollupInvocationPoint.FROM_LWC
-    );
+    return performFullRecalculationInner(metadata, wrapper, RollupInvocationPoint.FROM_LWC);
   }
 
   global class FlowInput {
@@ -618,11 +639,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           flowInput.grandparentRelationshipFieldPath,
           flowInput.calcItemWhereClause
         );
-        performFullRecalculationInner(
-          rollupMeta,
-          wrapper,
-          RollupInvocationPoint.FROM_INVOCABLE
-        );
+        performFullRecalculationInner(rollupMeta, wrapper, RollupInvocationPoint.FROM_INVOCABLE);
         continue;
       }
 
@@ -637,7 +654,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         RollupInvocationPoint.FROM_INVOCABLE
       );
       if (flowInput.deferProcessing) {
-        FLOW_ROLLUPS.add(roll);
+        CACHED_ROLLUPS.add(roll);
       } else {
         rollups.add(roll);
       }
@@ -1416,14 +1433,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             )
           : getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
         if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
-          performFullRecalculationInner(
-            rollupInfo,
-            queryWrapper,
-            RollupInvocationPoint.FROM_APEX
-          );
+          performFullRecalculationInner(rollupInfo, queryWrapper, RollupInvocationPoint.FROM_APEX);
         }
       }
-      rollupInfo.RollupOperation__c = rollupContext + rollupInfo.RollupOperation__c;
+
+      // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
+      // we need to reset the CMDT to the correct base operation prior to appending the new context
+      rollupInfo.RollupOperation__c =
+        rollupContext +
+        (rollupInfo.RollupOperation__c.contains('UPDATE_') || rollupInfo.RollupOperation__c.contains('DELETE_')
+          ? rollupInfo.RollupOperation__c.substringAfter('_')
+          : rollupInfo.RollupOperation__c);
+    }
+
+    if (shouldReturn == false) {
+      SObjectType calcItemSObjectType = calcItems.getSObjectType();
+      if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
+        CACHED_APEX_OPERATIONS.get(calcItemSObjectType).add(apexContext);
+      } else {
+        CACHED_APEX_OPERATIONS.put(calcItemSObjectType, new Set<TriggerOperation>{ apexContext });
+      }
     }
 
     return shouldReturn
@@ -1493,8 +1522,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public static void processStoredFlowRollups() {
-    batch(FLOW_ROLLUPS);
-    FLOW_ROLLUPS.clear();
+    batch(CACHED_ROLLUPS);
+    CACHED_ROLLUPS.clear();
   }
 
   private static List<Rollup__mdt> cachedMetadata;
@@ -1571,11 +1600,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return hasExceededLimits && isDeferralAllowed;
   }
 
-  private static String performFullRecalculationInner(
-    Rollup__mdt meta,
-    QueryWrapper queryWrapper,
-    RollupInvocationPoint invokePoint
-  ) {
+  private static String performFullRecalculationInner(Rollup__mdt meta, QueryWrapper queryWrapper, RollupInvocationPoint invokePoint) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType calcItemType = getSObjectFromName(meta.CalcItem__c).getSObjectType();
@@ -2140,6 +2165,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   protected void process(List<Rollup> rollups) {
+    if (CACHED_APEX_OPERATIONS.isEmpty() == false && CACHED_ROLLUPS.isEmpty() == false) {
+      rollups.addAll(CACHED_ROLLUPS);
+      CACHED_ROLLUPS.clear();
+      rollups.sort();
+    }
     this.getFieldNamesForRollups(rollups); // populates this.lookupObjectToUniqueFieldNames
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
@@ -2241,10 +2271,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private List<SObject> filter(List<SObject> calcItems, Evaluator eval) {
     Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
-    List<SObject> matchingItems = new List<SObject>();
-    if (calcItems?.isEmpty() != false) {
+    List<SObject> matchingItems = calcItems == null ? new List<SObject>() : calcItems.clone();
+    if (matchingItems.isEmpty()) {
       return matchingItems;
     }
+    matchingItems.clear(); // retains the strong-typing on the list for downstream calls to List.getSbjectType()
     calcItems = this.replaceCalcItemsForPolymorphicWhereClause(calcItems);
 
     for (SObject item : calcItems) {
@@ -2274,10 +2305,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean hasTypeClause = this.metadata.CalcItemWhereClause__c.contains(typeField);
     SObjectType sObjectType = firstItem.getSObjectType();
     Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
-    Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(this.metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
+    Boolean hasPolyMorphicFields =
+      hasOwnerClause ||
+      hasTypeClause ||
+      fieldMap.get(this.metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
     if (hasPolyMorphicFields) {
-
       if (hasTypeClause == false && hasOwnerClause == false) {
         return calcItems;
       }
@@ -2307,7 +2340,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
       calcItems = Database.query(queryString);
-
     }
     return calcItems;
   }
@@ -2410,13 +2442,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       RollupControl__mdt rollupSpecificControl = getSingleControlOrDefault(controlWhereField, controlWhereValue, specificControl);
       rollup.rollupControl = rollupSpecificControl;
 
+      Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
+      Boolean couldRunSync =
+        (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || hasExceededCurrentRollupLimits(rollupSpecificControl) == false) && isRunningAsync;
+
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
-      } else if (
-        rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || hasExceededCurrentRollupLimits(rollupSpecificControl) == false && isRunningAsync
-      ) {
+      } else if (couldRunSync && shouldRunSyncDeferred == false) {
         this.rollups.remove(index);
         this.syncRollups.add(rollup);
+      } else if (couldRunSync && shouldRunSyncDeferred) {
+        this.rollups.remove(index);
+        CACHED_ROLLUPS.add(rollup);
       }
 
       // you can increase the default limits, but it would be too messy to try to rank the individual rollup operations in a batched context
@@ -2427,6 +2464,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         rollupSpecificControl.MaxParentRowsUpdatedAtOnce__c = orgDefaults.MaxParentRowsUpdatedAtOnce__c;
       }
     }
+  }
+
+  private Boolean getShouldRunSyncDeferred(Rollup roll) {
+    SObjectType calcItemType = roll.calcItems.getSObjectType();
+    if (roll.isNoOp || CACHED_APEX_OPERATIONS.containsKey(calcItemType) == false) {
+      return false;
+    }
+    Set<TriggerOperation> apexOperations = CACHED_APEX_OPERATIONS.get(calcItemType);
+    if (apexOperations.contains(TriggerOperation.AFTER_INSERT) && roll.op.name().contains('UPDATE')) {
+      return true;
+    } else if (
+      (apexOperations.contains(TriggerOperation.AFTER_INSERT) || apexOperations.contains(TriggerOperation.AFTER_UPDATE)) && roll.op.name().contains('DELETE')
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   private Integer getLookupRecordsCount(Boolean hasMoreThanOneTarget) {
