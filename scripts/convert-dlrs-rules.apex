@@ -66,12 +66,10 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     customMetadata.values.add(customField);
   }
 
-  System.debug(LoggingLevel.INFO, 'customMetadata==' + JSON.serialize(customMetadata));
-
   deployment.addMetadata(customMetadata);
 }
 
 // Deploy the converted Rollup__mdt CMDT records - these will be treated like an upsert based on DeveloperName
-System.debug('Deployment metadata==' + JSON.serialize(deployment));
+System.debug(LoggingLevel.INFO, 'Deployment metadata==' + JSON.serialize(deployment));
 Id jobId = Metadata.Operations.enqueueDeployment(deployment, null);
-System.debug('Deployment Job ID: ' + jobId);
+System.debug(LoggingLevel.INFO, 'Deployment Job ID: ' + jobId);
