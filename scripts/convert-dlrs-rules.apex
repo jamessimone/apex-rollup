@@ -1,4 +1,4 @@
-// This script converts any DLRS rules (stored in dlrs__LookupRollupSummary2__mdt) to Rollup__mdt records and deploys them to the current org
+// This script converts all DLRS rules (stored in dlrs__LookupRollupSummary2__mdt) to Rollup__mdt records and deploys them to the current org
 
 // Use the org defaults for all converted rules
 static final RollupControl__mdt ROLLUP_CONTROL = [SELECT Id, DeveloperName FROM RollupControl__mdt WHERE DeveloperName = 'Org_Defaults'];
@@ -12,12 +12,28 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
   customMetadata.fullName = customMetadataTypePrefix + '.' + dlrsRule.get('DeveloperName');
   customMetadata.label = (String) dlrsRule.get('MasterLabel');
 
+  String operation;
+  switch on dlrsRule.dlrs__AggregateOperation__c {
+    when 'Concatenate' {
+      operation = 'CONCAT';
+    }
+    when 'Concatenate Distinct' {
+      operation = 'CONCAT_DISTINCT';
+    }
+    when 'Count Distinct' {
+      operation = 'COUNT_DISTINCT';
+    }
+    when else {
+      operation = dlrsRule.dlrs__AggregateOperation__c;
+    }
+  }
+
   // This code uses instances of Metadata.CustomMetadataValue for the deployment - not instances of Rollup__mdt
   // So, use a map & field tokens to store the expected values - Salesforce will store the data as Rollup__mdt records when deployed
   Map<String, Object> fieldValuesToCopy = new Map<String, Object>{
     Schema.Rollup__mdt.CalcItem__c.getDescribe().getName() => dlrsRule.dlrs__ChildObject__c,
     Schema.Rollup__mdt.CalcItemWhereClause__c.getDescribe().getName() => dlrsRule.dlrs__RelationshipCriteria__c,
-    Schema.Rollup__mdt.ConcatDelimiter__c.getDescribe().getName() => dlrsRule.dlrs__ConcatenateDelimiter__c,
+    Schema.Rollup__mdt.ConcatDelimiter__c.getDescribe().getName() => operation.startsWith('CONCAT') ? dlrsRule.dlrs__ConcatenateDelimiter__c : null,
     Schema.Rollup__mdt.LookupFieldOnCalcItem__c.getDescribe().getName() => dlrsRule.dlrs__RelationshipField__c,
     Schema.Rollup__mdt.LookupFieldOnLookupObject__c.getDescribe().getName() => 'Id',
     Schema.Rollup__mdt.LookupObject__c.getDescribe().getName() => dlrsRule.dlrs__ParentObject__c,
@@ -25,7 +41,7 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     Schema.Rollup__mdt.RollupControl__c.getDescribe().getName() => ROLLUP_CONTROL.DeveloperName,
     Schema.Rollup__mdt.RollupFieldOnCalcItem__c.getDescribe().getName() => dlrsRule.dlrs__FieldToAggregate__c,
     Schema.Rollup__mdt.RollupFieldOnLookupObject__c.getDescribe().getName() => dlrsRule.dlrs__AggregateResultField__c,
-    Schema.Rollup__mdt.RollupOperation__c.getDescribe().getName() => dlrsRule.dlrs__AggregateOperation__c
+    Schema.Rollup__mdt.RollupOperation__c.getDescribe().getName() => operation.toUpperCase()
 
     // Additional DLRS fields that are not supported/used by Rollup
     // dlrs__Active__c
