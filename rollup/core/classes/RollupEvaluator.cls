@@ -23,14 +23,28 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     ' excludes ' => ' !includes '
   };
 
+  private static Map<String, RecursiveTracker> OPERATION_TO_RECURSION_TRACKER {
+    get {
+      if (OPERATION_TO_RECURSION_TRACKER == null) {
+        OPERATION_TO_RECURSION_TRACKER = new Map<String, RecursiveTracker>();
+      }
+      return OPERATION_TO_RECURSION_TRACKER;
+    }
+    private set;
+  }
+
   public abstract Boolean matches(Object calcItem);
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
     Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
     Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
+    Boolean isUpdate = metadata.RollupOperation__c.contains('UPDATE');
     RollupEvaluator secondEval;
-    if (isChangedFieldEval && isWhereClauseEval) {
-      secondEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
+    if (isChangedFieldEval && isWhereClauseEval && isUpdate) {
+      secondEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
+      secondEval = new DualEvaluator(new RecursiveUpdateEvaluator(metadata), secondEval);
+    } else if (isWhereClauseEval && isChangedFieldEval) {
+      secondEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
     } else if (isChangedFieldEval) {
       secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
@@ -38,7 +52,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     if (eval != null && secondEval != null) {
-      return new CombinedEvaluator(eval, secondEval);
+      return new DualEvaluator(eval, secondEval);
     } else if (eval == null && secondEval != null) {
       return secondEval;
     }
@@ -55,15 +69,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return new SObjectChangedFieldEvaluator(changedFieldNames, oldCalcItems);
   }
 
-  private class CombinedEvaluator extends RollupEvaluator {
+  private class DualEvaluator extends RollupEvaluator {
     private final Rollup.Evaluator firstEval;
     private final Rollup.Evaluator secondEval;
 
-    public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
+    public DualEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
       this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
       this.secondEval = new WhereFieldEvaluator(rollupMetadata, sObjectType, oldCalcItems);
     }
-    public CombinedEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
+    public DualEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
       this.firstEval = firstEval;
       this.secondEval = secondEval;
     }
@@ -580,6 +594,47 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       } else {
         return parentSObject.get(originalName);
       }
+    }
+  }
+
+  private class RecursiveTracker {
+    public Set<Id> addedItems = new Set<Id>();
+    public Set<SObject> calcItems = new Set<SObject>();
+  }
+
+  private class RecursiveUpdateEvaluator extends RollupEvaluator {
+    private final Rollup__mdt metadata;
+
+    public RecursiveUpdateEvaluator(Rollup__mdt metadata) {
+      this.metadata = metadata;
+
+      if (OPERATION_TO_RECURSION_TRACKER.containsKey(metadata.RollupOperation__c) == false) {
+        OPERATION_TO_RECURSION_TRACKER.put(metadata.RollupOperation__c, new RecursiveTracker());
+      }
+    }
+
+    // TODO - are we able to handle the false positives from lookup field changing but ultimate parent NOT changing?
+    // for now we can just return true if the GrandparentRelationshipFieldPath__c is not blank ...
+    public override Boolean matches(Object item) {
+      if (item instanceOf SObject) {
+        SObject calcItem = (SObject) item;
+        // only populate the item with the rollup field and lookup field
+        SObject clonedItem = calcItem.getSObjectType().newSObject(calcItem.Id);
+        clonedItem.put(this.metadata.LookupFieldOnCalcItem__c, calcItem.get(this.metadata.LookupFieldOnCalcItem__c));
+        clonedItem.put(this.metadata.RollupFieldOnCalcItem__c, calcItem.get(this.metadata.RollupFieldOnCalcItem__c));
+        RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+
+        if (recursionTracker.addedItems.contains(clonedItem.Id) == false) {
+          recursionTracker.addedItems.add(clonedItem.Id);
+          recursionTracker.calcItems.add(clonedItem);
+          return true;
+        } else if(recursionTracker.calcItems.contains(clonedItem) == false) {
+          return false;
+        }
+      }
+
+      // always return a match, otherwise
+      return true;
     }
   }
 }
