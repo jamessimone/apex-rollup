@@ -2444,7 +2444,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
-        (rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || hasExceededCurrentRollupLimits(rollupSpecificControl) == false) && isRunningAsync;
+        rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || (hasExceededCurrentRollupLimits(rollupSpecificControl) == false) && isRunningAsync;
 
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
