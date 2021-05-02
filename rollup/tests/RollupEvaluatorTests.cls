@@ -388,6 +388,27 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldReturnChangedFieldEval() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50);
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.Amount = 25;
+
+    Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', Amount = 15);
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'Amount', RollupOperation__c = Rollup.Op.SUM.name());
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should match since amount changed');
+    System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match amount did not change');
+  }
+
+  @isTest
   static void shouldReturnDualEvaluatorWhenEvalIsPassedAndCalcItemWhereClause() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50);
     Opportunity oldOpp = opp.clone(true, true);
@@ -493,6 +514,20 @@ private class RollupEvaluatorTests {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive twice!');
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive thrice!');
+
+    eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive');
   }
 
@@ -512,6 +547,18 @@ private class RollupEvaluatorTests {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+
+   eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and grandparent field path filled out');
   }
 
@@ -531,6 +578,18 @@ private class RollupEvaluatorTests {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+
+    eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and ultimate parent field true');
   }
 
@@ -551,6 +610,17 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new AlwaysTrueEval(),
       rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
+
+    RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
       new Map<Id, SObject>{ oldOpp.Id => oldOpp },
       Opportunity.SObjectType
     );
@@ -580,6 +650,14 @@ private class RollupEvaluatorTests {
     );
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+
+    eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
 
@@ -603,6 +681,14 @@ private class RollupEvaluatorTests {
     );
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+
+    eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
     System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on calc item where clause');
   }
@@ -626,6 +712,14 @@ private class RollupEvaluatorTests {
     );
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+
+    eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
     System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and full record set');
   }
 

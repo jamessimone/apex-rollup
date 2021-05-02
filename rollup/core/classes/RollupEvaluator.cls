@@ -605,6 +605,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private class RecursiveTracker {
+    public RecursiveTracker() {
+      this.stackCount = 0;
+    }
+    public Integer stackCount;
     public Set<Id> addedIds = new Set<Id>();
     public Set<SObject> calcItems = new Set<SObject>();
   }
@@ -617,12 +621,20 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
       if (OPERATION_TO_RECURSION_TRACKER.containsKey(metadata.RollupOperation__c) == false) {
         OPERATION_TO_RECURSION_TRACKER.put(metadata.RollupOperation__c, new RecursiveTracker());
+      } else {
+        RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+        tracker.stackCount = tracker.stackCount + 1;
       }
     }
 
     // at some point, it's possible that this will be revisited, but for now we'll keep the recursion tracking only for vanilla rollups
     public override Boolean matches(Object item) {
-      if (item instanceOf SObject && String.isBlank(this.metadata.GrandparentRelationshipFieldPath__c) && this.metadata.RollupToUltimateParent__c == false) {
+      if (
+        item instanceof SObject &&
+        String.isBlank(this.metadata.GrandparentRelationshipFieldPath__c) &&
+        this.metadata.RollupToUltimateParent__c == false &&
+        OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadata.RollupOperation__c)
+      ) {
         SObject calcItem = (SObject) item;
         // only populate the item with the rollup field and lookup field
         SObject clonedItem = calcItem.getSObjectType().newSObject(calcItem.Id);
@@ -630,13 +642,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         clonedItem.put(this.metadata.RollupFieldOnCalcItem__c, calcItem.get(this.metadata.RollupFieldOnCalcItem__c));
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
 
-        // TODO - detect reparenting
-
         if (recursionTracker.addedIds.contains(clonedItem.Id) == false) {
           recursionTracker.addedIds.add(clonedItem.Id);
           recursionTracker.calcItems.add(clonedItem);
           return true;
-        } else if(recursionTracker.calcItems.contains(clonedItem) && this.metadata.IsFullRecordSet__c == false) {
+        } else if(recursionTracker.stackCount == 0) {
+          return true;
+        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(clonedItem) && this.metadata.IsFullRecordSet__c == false) {
           // we'll have to forego the chance of detecting recursion for Full Record Set rollups
           // because they're the only ones that get matched twice in Rollup
           return false;
