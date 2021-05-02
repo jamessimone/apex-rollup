@@ -556,7 +556,77 @@ private class RollupEvaluatorTests {
     );
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
-    System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and all other conditions true');
+    System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
+  }
+
+  @isTest
+  static void shouldWorkWithChangedFieldsAndRecursionDetection() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name', AccountId = '0016g000000000000X');
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.StageName = 'Old Name';
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      ChangedFieldsOnCalcItem__c = 'StageName',
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId'
+    );
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
+  }
+
+  @isTest
+  static void shouldWorkWithCalcItemWhereClauseAndRecursionDetection() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
+    Opportunity nonMatchingOpp = new Opportunity(Id = '0066g000000000000Y', Amount = 15, AccountId = '0016g000000000000X');
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      CalcItemWhereClause__c = 'Amount > 20',
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId'
+    );
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
+    System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on calc item where clause');
+  }
+
+  @isTest
+  static void shouldBailOnRecursionDetectionForFullRecordSetRollup() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      IsFullRecordSet__c = true
+    );
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and full record set');
   }
 
   private class AlwaysTrueEval implements Rollup.Evaluator {

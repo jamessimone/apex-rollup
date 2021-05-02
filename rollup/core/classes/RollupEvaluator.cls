@@ -39,10 +39,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
     Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
     Boolean isUpdate = metadata.RollupOperation__c.contains('UPDATE');
-    System.debug(isChangedFieldEval);
-    System.debug(isWhereClauseEval);
-    System.debug(isUpdate);
     RollupEvaluator secondEval;
+
     if (isChangedFieldEval && isWhereClauseEval && isUpdate) {
       RollupEvaluator dualEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
       secondEval = new DualEvaluator(new RecursiveUpdateEvaluator(metadata), dualEval);
@@ -632,14 +630,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         clonedItem.put(this.metadata.RollupFieldOnCalcItem__c, calcItem.get(this.metadata.RollupFieldOnCalcItem__c));
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
 
-        System.debug(recursionTracker.addedIds);
-        System.debug(recursionTracker.addedIds.contains(clonedItem.Id) == false);
-        System.debug(recursionTracker.calcItems.contains(clonedItem) == false);
+        // TODO - detect reparenting
+
         if (recursionTracker.addedIds.contains(clonedItem.Id) == false) {
           recursionTracker.addedIds.add(clonedItem.Id);
           recursionTracker.calcItems.add(clonedItem);
           return true;
-        } else if(recursionTracker.calcItems.contains(clonedItem)) {
+        } else if(recursionTracker.calcItems.contains(clonedItem) && this.metadata.IsFullRecordSet__c == false) {
+          // we'll have to forego the chance of detecting recursion for Full Record Set rollups
+          // because they're the only ones that get matched twice in Rollup
           return false;
         }
       }
