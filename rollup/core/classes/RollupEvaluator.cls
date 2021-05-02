@@ -42,14 +42,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     RollupEvaluator secondEval;
 
     if (isChangedFieldEval && isWhereClauseEval && isUpdate) {
-      RollupEvaluator dualEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
-      secondEval = new DualEvaluator(new RecursiveUpdateEvaluator(metadata), dualEval);
+      RollupEvaluator dualEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
+      secondEval = new CombinedEvaluator(new RecursiveUpdateEvaluator(metadata), dualEval);
     } else if (isChangedFieldEval && isWhereClauseEval && isUpdate == false) {
-      secondEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
+      secondEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
     } else if (isChangedFieldEval && isUpdate) {
-      secondEval = new DualEvaluator(getChangedFieldEval(metadata, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
+      secondEval = new CombinedEvaluator(getChangedFieldEval(metadata, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
     } else if (isWhereClauseEval && isUpdate) {
-      secondEval = new DualEvaluator(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
+      secondEval = new CombinedEvaluator(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
     } else if (isChangedFieldEval) {
       secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
@@ -59,7 +59,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     if (eval != null && secondEval != null) {
-      return new DualEvaluator(eval, secondEval);
+      return new CombinedEvaluator(eval, secondEval);
     } else if (eval == null && secondEval != null) {
       return secondEval;
     }
@@ -76,15 +76,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return new SObjectChangedFieldEvaluator(changedFieldNames, oldCalcItems);
   }
 
-  private class DualEvaluator extends RollupEvaluator {
+  private class CombinedEvaluator extends RollupEvaluator {
     private final Rollup.Evaluator firstEval;
     private final Rollup.Evaluator secondEval;
 
-    public DualEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
+    public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
       this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
       this.secondEval = new WhereFieldEvaluator(rollupMetadata, sObjectType, oldCalcItems);
     }
-    public DualEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
+    public CombinedEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
       this.firstEval = firstEval;
       this.secondEval = secondEval;
     }
@@ -646,7 +646,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           recursionTracker.addedIds.add(clonedItem.Id);
           recursionTracker.calcItems.add(clonedItem);
           return true;
-        } else if(recursionTracker.stackCount == 0) {
+        } else if (recursionTracker.stackCount == 0) {
           return true;
         } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(clonedItem) && this.metadata.IsFullRecordSet__c == false) {
           // we'll have to forego the chance of detecting recursion for Full Record Set rollups

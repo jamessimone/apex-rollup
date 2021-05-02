@@ -1471,8 +1471,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   ) {
     DescribeSObjectResult sObjectToken = sObjectType.getDescribe();
     Map<String, SObjectField> baseFields = sObjectToken.fields.getMap();
-    for (Integer index = 0; index < uniqueQueryFieldNames.size(); index++) {
+    for (Integer index = uniqueQueryFieldNames.size() - 1; index >= 0; index--) {
       String uniqueFieldName = uniqueQueryFieldNames[index];
+      if (String.isBlank(uniqueFieldName)) {
+        uniqueQueryFieldNames.remove(index);
+      }
       String paredFieldName = getParedFieldName(uniqueFieldName);
       // ensure that the base relationship name field is transformed appropriately
       if (baseFields.containsKey(paredFieldName + 'Id') || baseFields.containsKey(paredFieldName + '__c')) {
