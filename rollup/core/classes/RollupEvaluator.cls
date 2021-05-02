@@ -39,16 +39,25 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
     Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
     Boolean isUpdate = metadata.RollupOperation__c.contains('UPDATE');
+    System.debug(isChangedFieldEval);
+    System.debug(isWhereClauseEval);
+    System.debug(isUpdate);
     RollupEvaluator secondEval;
     if (isChangedFieldEval && isWhereClauseEval && isUpdate) {
+      RollupEvaluator dualEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
+      secondEval = new DualEvaluator(new RecursiveUpdateEvaluator(metadata), dualEval);
+    } else if (isChangedFieldEval && isWhereClauseEval && isUpdate == false) {
       secondEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
-      secondEval = new DualEvaluator(new RecursiveUpdateEvaluator(metadata), secondEval);
-    } else if (isWhereClauseEval && isChangedFieldEval) {
-      secondEval = new DualEvaluator(metadata, oldCalcItems, sObjectType);
+    } else if (isChangedFieldEval && isUpdate) {
+      secondEval = new DualEvaluator(getChangedFieldEval(metadata, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
+    } else if (isWhereClauseEval && isUpdate) {
+      secondEval = new DualEvaluator(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
     } else if (isChangedFieldEval) {
       secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
       secondEval = new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems);
+    } else if (isUpdate) {
+      secondEval = new RecursiveUpdateEvaluator(metadata);
     }
 
     if (eval != null && secondEval != null) {
@@ -598,7 +607,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private class RecursiveTracker {
-    public Set<Id> addedItems = new Set<Id>();
+    public Set<Id> addedIds = new Set<Id>();
     public Set<SObject> calcItems = new Set<SObject>();
   }
 
@@ -613,10 +622,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    // TODO - are we able to handle the false positives from lookup field changing but ultimate parent NOT changing?
-    // for now we can just return true if the GrandparentRelationshipFieldPath__c is not blank ...
+    // at some point, it's possible that this will be revisited, but for now we'll keep the recursion tracking only for vanilla rollups
     public override Boolean matches(Object item) {
-      if (item instanceOf SObject) {
+      if (item instanceOf SObject && String.isBlank(this.metadata.GrandparentRelationshipFieldPath__c) && this.metadata.RollupToUltimateParent__c == false) {
         SObject calcItem = (SObject) item;
         // only populate the item with the rollup field and lookup field
         SObject clonedItem = calcItem.getSObjectType().newSObject(calcItem.Id);
@@ -624,16 +632,19 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         clonedItem.put(this.metadata.RollupFieldOnCalcItem__c, calcItem.get(this.metadata.RollupFieldOnCalcItem__c));
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
 
-        if (recursionTracker.addedItems.contains(clonedItem.Id) == false) {
-          recursionTracker.addedItems.add(clonedItem.Id);
+        System.debug(recursionTracker.addedIds);
+        System.debug(recursionTracker.addedIds.contains(clonedItem.Id) == false);
+        System.debug(recursionTracker.calcItems.contains(clonedItem) == false);
+        if (recursionTracker.addedIds.contains(clonedItem.Id) == false) {
+          recursionTracker.addedIds.add(clonedItem.Id);
           recursionTracker.calcItems.add(clonedItem);
           return true;
-        } else if(recursionTracker.calcItems.contains(clonedItem) == false) {
+        } else if(recursionTracker.calcItems.contains(clonedItem)) {
           return false;
         }
       }
 
-      // always return a match, otherwise
+      // don't be restrictive if it isn't recursive
       return true;
     }
   }

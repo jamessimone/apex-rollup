@@ -338,7 +338,11 @@ private class RollupEvaluatorTests {
 
     Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', StageName = 'Same', Amount = 25);
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c = 'Amount > 20');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      ChangedFieldsOnCalcItem__c = 'StageName',
+      CalcItemWhereClause__c = 'Amount > 20',
+      RollupOperation__c = Rollup.Op.SUM.name()
+    );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
@@ -356,7 +360,11 @@ private class RollupEvaluatorTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.AccountId = '0013g000000000000Z';
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId', CalcItemWhereClause__c = 'Amount > 20');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      LookupFieldOnCalcItem__c = 'AccountId',
+      CalcItemWhereClause__c = 'Amount > 20',
+      RollupOperation__c = Rollup.Op.SUM.name()
+    );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(null, rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
@@ -368,7 +376,7 @@ private class RollupEvaluatorTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.AccountId = '0013g000000000000Z';
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId', RollupOperation__c = Rollup.Op.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new AlwaysTrueEval(),
@@ -387,7 +395,7 @@ private class RollupEvaluatorTests {
 
     Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', Amount = 15);
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20', RollupOperation__c = Rollup.Op.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new AlwaysTrueEval(),
@@ -408,7 +416,11 @@ private class RollupEvaluatorTests {
 
     Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', StageName = 'Same', Amount = 25);
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'StageName', CalcItemWhereClause__c = 'Amount > 20');
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      ChangedFieldsOnCalcItem__c = 'StageName',
+      CalcItemWhereClause__c = 'Amount > 20',
+      RollupOperation__c = Rollup.Op.SUM.name()
+    );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new AlwaysTrueEval(),
@@ -464,6 +476,87 @@ private class RollupEvaluatorTests {
 
     System.assertNotEquals(null, ex);
     System.assertEquals(true, ex.getMessage().contains(expectedException));
+  }
+
+  @isTest
+  static void shouldFilterRecursiveUpdates() {
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive');
+  }
+
+  @isTest
+  static void shouldNotFilterRecursiveUpdatesWhenGrandparentRelationshipFieldFilledOut() {
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        GrandparentRelationshipFieldPath__c = 'Some.Field.Path'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and grandparent field path filled out');
+  }
+
+  @isTest
+  static void shouldNotFilterRecursiveUpdatesWhenRollupToUltimateParentIsTrue() {
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        RollupToUltimateParent__c = true
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and ultimate parent field true');
+  }
+
+  @isTest
+  static void shouldWorkWithTripleEvaluator() {
+    Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name', AccountId = '0016g000000000000X');
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.StageName = 'Old Name';
+
+    Rollup__mdt rollupMetadata = new Rollup__mdt(
+      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      ChangedFieldsOnCalcItem__c = 'StageName',
+      CalcItemWhereClause__c = 'Amount > 20',
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId'
+    );
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new AlwaysTrueEval(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+    System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and all other conditions true');
   }
 
   private class AlwaysTrueEval implements Rollup.Evaluator {
