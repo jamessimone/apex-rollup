@@ -76,7 +76,7 @@ public without sharing abstract class RollupCalculator {
           lookupRecordKey,
           lookupKeyField
         );
-        firstLastCalc.setOrderByField(metadata);
+        firstLastCalc.setMetadata(metadata);
         calc = firstLastCalc;
       } else if (priorVal instanceof Decimal) {
         calc = new DecimalRollupCalculator(
@@ -967,6 +967,7 @@ public without sharing abstract class RollupCalculator {
 
   private class FirstLastRollupCalculator extends RollupCalculator {
     private String orderByField;
+    private String lookupFieldOnCalcItem;
 
     public FirstLastRollupCalculator(
       Object priorVal,
@@ -980,8 +981,9 @@ public without sharing abstract class RollupCalculator {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
     }
 
-    public void setOrderByField(Rollup__mdt metadata) {
+    public void setMetadata(Rollup__mdt metadata) {
       this.orderByField = metadata.OrderByFirstLast__c;
+      this.lookupFieldOnCalcItem = metadata.LookupFieldOnCalcItem__c;
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -990,7 +992,7 @@ public without sharing abstract class RollupCalculator {
       }
       SObjectType sObjectType = calcItems[0].getSObjectType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField };
+      Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField, this.lookupFieldOnCalcItem };
       // a full-recalc is always necessary because we don't retain the information about the order by field
       String queryString = Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
       // we have to exclude the current items on delete, otherwise they'll be incorrectly considered

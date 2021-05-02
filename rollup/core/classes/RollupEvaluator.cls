@@ -23,18 +23,39 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     ' excludes ' => ' !includes '
   };
 
+  private static Map<String, RecursiveTracker> OPERATION_TO_RECURSION_TRACKER {
+    get {
+      if (OPERATION_TO_RECURSION_TRACKER == null) {
+        OPERATION_TO_RECURSION_TRACKER = new Map<String, RecursiveTracker>();
+      }
+      return OPERATION_TO_RECURSION_TRACKER;
+    }
+    private set;
+  }
+
   public abstract Boolean matches(Object calcItem);
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
     Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
     Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
+    Boolean isUpdate = metadata.RollupOperation__c.contains('UPDATE');
     RollupEvaluator secondEval;
-    if (isChangedFieldEval && isWhereClauseEval) {
+
+    if (isChangedFieldEval && isWhereClauseEval && isUpdate) {
+      RollupEvaluator dualEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
+      secondEval = new CombinedEvaluator(new RecursiveUpdateEvaluator(metadata), dualEval);
+    } else if (isChangedFieldEval && isWhereClauseEval && isUpdate == false) {
       secondEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
+    } else if (isChangedFieldEval && isUpdate) {
+      secondEval = new CombinedEvaluator(getChangedFieldEval(metadata, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
+    } else if (isWhereClauseEval && isUpdate) {
+      secondEval = new CombinedEvaluator(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
     } else if (isChangedFieldEval) {
       secondEval = getChangedFieldEval(metadata, oldCalcItems);
     } else if (isWhereClauseEval) {
       secondEval = new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems);
+    } else if (isUpdate) {
+      secondEval = new RecursiveUpdateEvaluator(metadata);
     }
 
     if (eval != null && secondEval != null) {
@@ -580,6 +601,62 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       } else {
         return parentSObject.get(originalName);
       }
+    }
+  }
+
+  private class RecursiveTracker {
+    public RecursiveTracker() {
+      this.stackCount = 0;
+    }
+    public Integer stackCount;
+    public Set<Id> addedIds = new Set<Id>();
+    public Set<SObject> calcItems = new Set<SObject>();
+  }
+
+  private class RecursiveUpdateEvaluator extends RollupEvaluator {
+    private final Rollup__mdt metadata;
+
+    public RecursiveUpdateEvaluator(Rollup__mdt metadata) {
+      this.metadata = metadata;
+
+      if (OPERATION_TO_RECURSION_TRACKER.containsKey(metadata.RollupOperation__c) == false) {
+        OPERATION_TO_RECURSION_TRACKER.put(metadata.RollupOperation__c, new RecursiveTracker());
+      } else {
+        RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+        tracker.stackCount = tracker.stackCount + 1;
+      }
+    }
+
+    // at some point, it's possible that this will be revisited, but for now we'll keep the recursion tracking only for vanilla rollups
+    public override Boolean matches(Object item) {
+      if (
+        item instanceof SObject &&
+        String.isBlank(this.metadata.GrandparentRelationshipFieldPath__c) &&
+        this.metadata.RollupToUltimateParent__c == false &&
+        OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadata.RollupOperation__c)
+      ) {
+        SObject calcItem = (SObject) item;
+        // only populate the item with the rollup field and lookup field
+        SObject clonedItem = calcItem.getSObjectType().newSObject(calcItem.Id);
+        clonedItem.put(this.metadata.LookupFieldOnCalcItem__c, calcItem.get(this.metadata.LookupFieldOnCalcItem__c));
+        clonedItem.put(this.metadata.RollupFieldOnCalcItem__c, calcItem.get(this.metadata.RollupFieldOnCalcItem__c));
+        RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+
+        if (recursionTracker.addedIds.contains(clonedItem.Id) == false) {
+          recursionTracker.addedIds.add(clonedItem.Id);
+          recursionTracker.calcItems.add(clonedItem);
+          return true;
+        } else if (recursionTracker.stackCount == 0) {
+          return true;
+        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(clonedItem) && this.metadata.IsFullRecordSet__c == false) {
+          // we'll have to forego the chance of detecting recursion for Full Record Set rollups
+          // because they're the only ones that get matched twice in Rollup
+          return false;
+        }
+      }
+
+      // don't be restrictive if it isn't recursive
+      return true;
     }
   }
 }
