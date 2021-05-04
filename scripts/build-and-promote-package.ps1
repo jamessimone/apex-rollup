@@ -15,6 +15,10 @@ function Get-SFDX-Project-JSON {
   Get-Content -Path ./sfdx-project.json | ConvertFrom-Json
 }
 
+function Get-Package-JSON {
+  Get-Content -Path ./package.json | ConvertFrom-Json
+}
+
 function Update-Last-Substring {
   param(
       [string]$str,
@@ -35,10 +39,14 @@ if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
 $sfdxProjectJson = Get-SFDX-Project-JSON
 $currentPackageVersion = $sfdxProjectJson.packageDirectories.versionNumber
 
+Write-Output "Current package version number: $currentPackageVersion"
+
 # Cache the prior package version Id to replace in the README
 $priorPackageVersionId = $null
+$priorPackageVersionNumber = $null;
 try {
-  $priorPackageVersionId = $sfdxProjectJson.packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion.Trim(".0"))
+  $priorPackageVersionNumber = $currentPackageVersion.Trim(".0")
+  $priorPackageVersionId = $sfdxProjectJson.packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
 } catch {
   # if there hasn't been a current version of the package, get the previous version and its associated package Id
   $currentPackageNumber = ([int]($currentPackageVersion | Select-String -Pattern \S\S.0).Matches.Value)
@@ -50,6 +58,7 @@ try {
 }
 
 Write-Output "Prior package version: $priorPackageVersionId"
+Write-Output "Prior package version number: $priorPackageVersionNumber"
 
 # Create package version
 
@@ -59,14 +68,31 @@ $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
 sfdx force:package:version:create -d rollup -x -w 10 -e $packageVersionNotes -c --releasenotesurl "https://github.com/jamessimone/apex-rollup/releases/latest"
 
 # Now that sfdx-project.json has been updated, grab the latest package version
-$currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion.Trim(".0"))
+$currentPackageVersionId = $null
+try {
+  $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion.Trim(".0"))
+} catch {
+  $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
+}
 
 Write-Output "New package version: $currentPackageVersionId"
 
 if($currentPackageVersionId -ne $priorPackageVersionId) {
   $readmePath = "./README.md"
   ((Get-Content -path $readmePath -Raw) -replace $priorPackageVersionId, $currentPackageVersionId) | Set-Content -Path $readmePath -NoNewline
+
   git add $readmePath
+}
+
+$packageJson = Get-Package-JSON
+if ($packageJson.version -ne $currentPackageVersion) {
+  Write-Output "Bumping package.json version to: $currentPackageVersion"
+
+  $packageJson.version = $currentPackageVersion
+  $packagePath = "./package.json"
+  ConvertTo-Json -InputObject $packageJson | Set-Content -Path $packagePath -NoNewline
+
+  git add $packagePath
 }
 
 # promote package on merge to main
