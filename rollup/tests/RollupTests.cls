@@ -2839,7 +2839,7 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', BatchChunkSize__c = 1, MaxLookupRowsBeforeBatching__c = 0);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE, BatchChunkSize__c = 1, MaxLookupRowsBeforeBatching__c = 0);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2853,7 +2853,7 @@ private class RollupTests {
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = 'Batchable', MaxLookupRowsBeforeBatching__c = 1000, BatchChunkSize__c = 50);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE, MaxLookupRowsBeforeBatching__c = 1000, BatchChunkSize__c = 50);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2867,7 +2867,7 @@ private class RollupTests {
   static void shouldRunAsQueueableWhenSpecificControlIsQueueable() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Queueable');
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.QUEUEABLE);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3001,7 +3001,10 @@ private class RollupTests {
 
   @isTest
   static void shouldBatchForFullRecalcWhenOverLimits() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 5; // validate that the pre-existing value is cleared
+    update acc;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'oneBatch', ParentId = acc.Id, PreferenceRank = 1),
@@ -3013,7 +3016,7 @@ private class RollupTests {
     };
     insert cpas;
 
-    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 1, BatchChunkSize__c = 10);
+    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 1, BatchChunkSize__c = 10);
 
     Rollup__mdt meta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',
@@ -3318,7 +3321,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100);
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = -1, BatchChunkSize__c = 1);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxLookupRowsBeforeBatching__c = -1, BatchChunkSize__c = 1);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3333,7 +3336,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 0);
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = -1, BatchChunkSize__c = 0);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxLookupRowsBeforeBatching__c = -1, BatchChunkSize__c = 0);
 
     try {
       Test.startTest();
@@ -3470,9 +3473,9 @@ private class RollupTests {
     insert cpas;
 
     DMLMock mock = new DMLMock();
-    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
+    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxQueryRows__c = 2);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxNumberOfQueries__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;

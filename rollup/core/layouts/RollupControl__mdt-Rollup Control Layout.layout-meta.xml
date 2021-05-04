@@ -51,7 +51,7 @@
         <layoutColumns>
             <layoutItems>
                 <behavior>Edit</behavior>
-                <field>MaxQueryRows__c</field>
+                <field>MaxNumberOfQueries__c</field>
             </layoutItems>
         </layoutColumns>
         <layoutColumns>

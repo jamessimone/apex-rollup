@@ -1,7 +1,6 @@
 public class RollupFullBatchRecalculator extends Rollup {
   private final String queryString;
   private final List<Rollup__mdt> rollupInfo;
-  private final SObjectType calcItemType;
   private final Set<Id> recordIds;
 
   public RollupFullBatchRecalculator(
@@ -12,6 +11,7 @@ public class RollupFullBatchRecalculator extends Rollup {
     Set<Id> recordIds
   ) {
     super(invokePoint);
+    this.calcItemType = calcItemType;
     this.queryString = queryString;
     this.rollupInfo = rollupInfo;
     this.recordIds = recordIds;
@@ -32,7 +32,9 @@ public class RollupFullBatchRecalculator extends Rollup {
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.getDelegatedRollup(this.rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(calcItems), this.invokePoint).runCalc();
+    Rollup roll = this.getDelegatedRollup(this.rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(calcItems), this.invokePoint);
+    roll.isFullRecalc = true;
+    roll.runCalc();
   }
 
   public override void finish(Database.BatchableContext bc) {

@@ -36,35 +36,28 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   public abstract Boolean matches(Object calcItem);
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    Boolean isChangedFieldEval = String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c);
-    Boolean isWhereClauseEval = String.isNotBlank(metadata.CalcItemWhereClause__c);
-    Boolean isUpdate = metadata.RollupOperation__c.contains('UPDATE');
-    RollupEvaluator secondEval;
+    List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? new AlwaysTrue() : eval };
 
-    if (isChangedFieldEval && isWhereClauseEval && isUpdate) {
-      RollupEvaluator dualEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
-      secondEval = new CombinedEvaluator(new RecursiveUpdateEvaluator(metadata), dualEval);
-    } else if (isChangedFieldEval && isWhereClauseEval && isUpdate == false) {
-      secondEval = new CombinedEvaluator(metadata, oldCalcItems, sObjectType);
-    } else if (isChangedFieldEval && isUpdate) {
-      secondEval = new CombinedEvaluator(getChangedFieldEval(metadata, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
-    } else if (isWhereClauseEval && isUpdate) {
-      secondEval = new CombinedEvaluator(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems), new RecursiveUpdateEvaluator(metadata));
-    } else if (isChangedFieldEval) {
-      secondEval = getChangedFieldEval(metadata, oldCalcItems);
-    } else if (isWhereClauseEval) {
-      secondEval = new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems);
-    } else if (isUpdate) {
-      secondEval = new RecursiveUpdateEvaluator(metadata);
+    if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
+      evals.add(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems));
+    }
+    if (String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c)) {
+      evals.add(getChangedFieldEval(metadata, oldCalcItems));
+    }
+    if (metadata.RollupOperation__c?.contains('UPDATE') == true) {
+      evals.add(new RecursiveUpdateEvaluator(metadata));
     }
 
-    if (eval != null && secondEval != null) {
-      return new CombinedEvaluator(eval, secondEval);
-    } else if (eval == null && secondEval != null) {
-      return secondEval;
-    }
+    return getCombinedEvals(evals);
+  }
 
-    return eval;
+  private static Rollup.Evaluator getCombinedEvals(List<Rollup.Evaluator> evals) {
+    Rollup.Evaluator eval = evals.remove(0);
+    if (evals.isEmpty()) {
+      return eval;
+    } else {
+      return new CombinedEvaluator(eval, getCombinedEvals(evals));
+    }
   }
 
   private static RollupEvaluator getChangedFieldEval(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems) {
@@ -76,14 +69,17 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return new SObjectChangedFieldEvaluator(changedFieldNames, oldCalcItems);
   }
 
+  @testVisible
+  private class AlwaysTrue extends RollupEvaluator {
+    public override Boolean matches(Object calcItem) {
+      return true;
+    }
+  }
+
   private class CombinedEvaluator extends RollupEvaluator {
     private final Rollup.Evaluator firstEval;
     private final Rollup.Evaluator secondEval;
 
-    public CombinedEvaluator(Rollup__mdt rollupMetadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-      this.firstEval = getChangedFieldEval(rollupMetadata, oldCalcItems);
-      this.secondEval = new WhereFieldEvaluator(rollupMetadata, sObjectType, oldCalcItems);
-    }
     public CombinedEvaluator(Rollup.Evaluator firstEval, Rollup.Evaluator secondEval) {
       this.firstEval = firstEval;
       this.secondEval = secondEval;
@@ -605,10 +601,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private class RecursiveTracker {
-    public RecursiveTracker() {
-      this.stackCount = 0;
-    }
-    public Integer stackCount;
+    public Integer stackCount = 0;
     public Set<Id> addedIds = new Set<Id>();
     public Set<SObject> calcItems = new Set<SObject>();
   }
@@ -629,6 +622,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     // at some point, it's possible that this will be revisited, but for now we'll keep the recursion tracking only for vanilla rollups
     public override Boolean matches(Object item) {
+      Boolean matches = true;
       if (
         item instanceof SObject &&
         String.isBlank(this.metadata.GrandparentRelationshipFieldPath__c) &&
@@ -645,18 +639,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (recursionTracker.addedIds.contains(clonedItem.Id) == false) {
           recursionTracker.addedIds.add(clonedItem.Id);
           recursionTracker.calcItems.add(clonedItem);
-          return true;
-        } else if (recursionTracker.stackCount == 0) {
-          return true;
-        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(clonedItem) && this.metadata.IsFullRecordSet__c == false) {
-          // we'll have to forego the chance of detecting recursion for Full Record Set rollups
-          // because they're the only ones that get matched twice in Rollup
-          return false;
+        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(clonedItem)) {
+          matches = false;
         }
       }
 
-      // don't be restrictive if it isn't recursive
-      return true;
+      return matches;
     }
   }
 }
