@@ -64,7 +64,7 @@ $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Objec
 Write-Output "New package version: $currentPackageVersionId"
 
 if($currentPackageVersionId -ne $priorPackageVersionId) {
-  $readmePath = ".\README.md"
+  $readmePath = "./README.md"
   ((Get-Content -path $readmePath -Raw) -replace $priorPackageVersionId, $currentPackageVersionId) | Set-Content -Path $readmePath -NoNewline
   git add $readmePath
 }
@@ -80,6 +80,7 @@ git add ./sfdx-project.json
 
 git config --global user.name "James Simone"
 git config --global user.email "16430727+jamessimone@users.noreply.github.com"
+git remote set-url --push origin https://jamessimone:$GITHUB_TOKEN@github.com/jamessimone/apex-rollup
 
 git commit -m "Bumping package version from Github Action"
-git push origin head
+git push

@@ -84,3 +84,4 @@ jobs:
         run: '. ./scripts/build-and-promote-package.ps1'
         env:
           SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
