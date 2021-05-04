@@ -15,8 +15,8 @@
         <value xsi:type="xsd:double">5000.0</value>
     </values>
     <values>
-        <field>MaxQueryRows__c</field>
-        <value xsi:type="xsd:double">100.0</value>
+        <field>MaxNumberOfQueries__c</field>
+        <value xsi:type="xsd:double">50.0</value>
     </values>
     <values>
         <field>MaxRollupRetries__c</field>

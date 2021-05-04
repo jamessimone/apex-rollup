@@ -1,6 +1,6 @@
 @isTest
 private class RollupRelationshipFieldFinderTests {
-  static RollupControl__mdt control = new RollupControl__mdt(MaxQueryRows__c = 10000);
+  static RollupControl__mdt control = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 10000);
 
   @isTest
   static void shouldFindParentRelationshipBetweenStandardObjects() {
@@ -68,7 +68,7 @@ private class RollupRelationshipFieldFinderTests {
     insert acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Child cpa');
-    control.MaxQueryRows__c = 1;
+    control.MaxNumberOfQueries__c = 1;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,

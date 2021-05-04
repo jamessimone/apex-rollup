@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>MaxQueryRows__c</fullName>
+    <fullName>MaxNumberOfQueries__c</fullName>
     <defaultValue>100</defaultValue>
     <description>Configure this number to decide how many queries Rollup is allowed to issue before restarting in another context. Consider the downstream query needs when your parent objects are updated when configuring this field. By safely requeueing Rollup in conjunction with this number, we ensure no query limit is ever hit.</description>
     <externalId>false</externalId>
     <fieldManageability>DeveloperControlled</fieldManageability>
     <inlineHelpText>Configure this number to decide how many queries Rollup is allowed to issue before restarting in another context. Consider the downstream query needs when your parent objects are updated when configuring this field</inlineHelpText>
-    <label>Max Query Rows</label>
+    <label>Max Number Of Queries</label>
     <precision>18</precision>
     <required>false</required>
     <scale>0</scale>

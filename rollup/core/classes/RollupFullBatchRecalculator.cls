@@ -1,7 +1,6 @@
 public class RollupFullBatchRecalculator extends Rollup {
   private final String queryString;
   private final List<Rollup__mdt> rollupInfo;
-  private final SObjectType calcItemType;
   private final Set<Id> recordIds;
 
   public RollupFullBatchRecalculator(

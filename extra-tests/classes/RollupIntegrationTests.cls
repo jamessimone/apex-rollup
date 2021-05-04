@@ -213,7 +213,7 @@ private class RollupIntegrationTests {
     insert appLogs;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
-      new RollupControl__mdt(MaxQueryRows__c = 1000),
+      new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000),
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'),
       new Set<String>{ 'Id', 'Name' },
       Account.SObjectType,

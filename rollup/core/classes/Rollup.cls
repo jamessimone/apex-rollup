@@ -185,7 +185,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       innerRollup.calcItemType,
       op,
       innerRollup.oldCalcItems,
-      null, // eval gets assigned later
+      null, // eval gets assigned below
       innerRollup.invokePoint,
       innerRollup.rollupControlId,
       innerRollup.metadata
@@ -284,7 +284,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     Boolean shouldBatch =
       shouldRunAsBatch ||
-      (orgDefaults.ShouldRunAs__c == 'Batchable' &&
+      (orgDefaults.ShouldRunAs__c == RollupShouldRunAsPicklist.Instance.BATCHABLE &&
       totalCountOfRecords >= orgDefaults.MaxLookupRowsBeforeBatching__c) ||
       totalCountOfRecords == SENTINEL_COUNT_VALUE;
     if (this.syncRollups.isEmpty() == false) {
@@ -1607,8 +1607,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
     Boolean hasExceededLimits =
-      (Limits.getLimitQueries() / 2) < Limits.getQueries() ||
-      control?.MaxQueryRows__c < Limits.getQueryRows() ||
+      control?.MaxNumberOfQueries__c < Limits.getQueries() ||
+      control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows() ||
       (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize() ||
       control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
     return hasExceededLimits && isDeferralAllowed;
@@ -1642,9 +1642,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Evaluator eval,
     RollupInvocationPoint invokePoint
   ) {
-    // emptyRollup used to reference the default RollupControl__mdt.MaxQueryRows__c, as well as BatchChunkSize__c
+    // emptyRollup used to reference the default RollupControl__mdt.MaxLookupRowsBeforeBatching__c, as well as BatchChunkSize__c
     Rollup emptyRollup = new Rollup(invokePoint);
-    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < emptyRollup.rollupControl.MaxQueryRows__c;
+    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < emptyRollup.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
       Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, invokePoint);
@@ -2156,12 +2156,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       sensibleDefault = new RollupControl__mdt(
         DeveloperName = CONTROL_ORG_DEFAULTS,
         BatchChunkSize__c = 2000,
-        MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
+        MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
         MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
         MaxRollupRetries__c = 100,
-        MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
+        MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
         ShouldAbortRun__c = false,
-        ShouldRunAs__c = 'Queueable'
+        ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.QUEUEABLE
       );
     } else {
       sensibleDefault = sensibleDefault.clone(true, true);
@@ -2220,9 +2220,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupItemKeys.remove(lookupId);
           // this way, the updated values are persisted for each field, and the default values are initialized
           SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
-          if (updatedLookupObject.get(rollup.opFieldOnLookupObject) == null || this.isFullRecalc) {
-            updatedLookupObject.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
-          }
+          this.resetLookupFieldsForNullOrFullRecalcs(updatedLookupObject, rollup);
           localLookupItems.add(updatedLookupObject);
         }
       }
@@ -2444,12 +2442,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return lookupFieldToCalcItems;
   }
 
-  protected void initializeRollupFieldDefaults(List<SObject> lookupItems, Rollup rollup) {
+  private void initializeRollupFieldDefaults(List<SObject> lookupItems, Rollup rollup) {
     // prior to returning, we need to ensure the default value for the rollup field is set
     for (SObject lookupItem : lookupItems) {
-      if (lookupItem.get(rollup.opFieldOnLookupObject) == null || rollup.isFullRecalc) {
-        lookupItem.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
-      }
+      this.resetLookupFieldsForNullOrFullRecalcs(lookupItem, rollup);
+    }
+  }
+
+  private void resetLookupFieldsForNullOrFullRecalcs(SObject lookupItem, Rollup rollup) {
+    if (lookupItem.get(rollup.opFieldOnLookupObject) == null || rollup.isFullRecalc) {
+      lookupItem.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
     }
   }
 
@@ -2465,7 +2467,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
-        rollupSpecificControl.ShouldRunAs__c == 'Synchronous Rollup' || (hasExceededCurrentRollupLimits(rollupSpecificControl) == false) && isRunningAsync;
+        rollupSpecificControl.ShouldRunAs__c == RollupShouldRunAsPicklist.Instance.SYNCHRONOUS || (hasExceededCurrentRollupLimits(rollupSpecificControl) == false) && isRunningAsync;
 
       if (rollupSpecificControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
