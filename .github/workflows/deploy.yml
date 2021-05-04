@@ -61,9 +61,12 @@ jobs:
       # Store secret for dev hub
       - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
         shell: bash
-        run: 'echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt'
+        run: |
+         echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
+         echo ${{ env.PACKAGING_SFDX_URL }} > ./PACKAGING_SFDX_URL.txt
         env:
           DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
+          PACKAGING_SFDX_URL: ${{ secrets.PACKAGING_SFDX_URL }}
 
       - name: 'Deploy & Test'
         shell: pwsh
@@ -74,3 +77,10 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: 'Package & Promote'
+        shell: pwsh
+        if: ${{ env.SHOULD_CREATE_AND_PROMOTE == '1' }}
+        run: '. ./scripts/build-and-promote-package.ps1'
+        env:
+          SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
