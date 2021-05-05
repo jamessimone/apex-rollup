@@ -379,7 +379,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId', RollupOperation__c = Rollup.Op.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
-      new RollupEvaluator.AlwaysTrue(),
+      new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp },
       Opportunity.SObjectType
@@ -398,7 +398,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'Amount', RollupOperation__c = Rollup.Op.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
-      new RollupEvaluator.AlwaysTrue(),
+      new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
       Opportunity.SObjectType
@@ -419,7 +419,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20', RollupOperation__c = Rollup.Op.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
-      new RollupEvaluator.AlwaysTrue(),
+      new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
       Opportunity.SObjectType
@@ -444,7 +444,7 @@ private class RollupEvaluatorTests {
     );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
-      new RollupEvaluator.AlwaysTrue(),
+      new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
       Opportunity.SObjectType
@@ -608,7 +608,7 @@ private class RollupEvaluatorTests {
     );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
-      new RollupEvaluator.AlwaysTrue(),
+      new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp },
       Opportunity.SObjectType
@@ -643,7 +643,7 @@ private class RollupEvaluatorTests {
     );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
-      new RollupEvaluator.AlwaysTrue(),
+      new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp },
       Opportunity.SObjectType
@@ -651,7 +651,7 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
-    eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrue(), rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
+    eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
@@ -668,11 +668,11 @@ private class RollupEvaluatorTests {
       LookupFieldOnCalcItem__c = 'AccountId'
     );
 
-    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrue(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
-    eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrue(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
+    eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
     System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on calc item where clause');
