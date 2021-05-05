@@ -34,6 +34,20 @@ function Update-Last-Substring {
   return $str.Remove(($lastIndex = $str.LastIndexOf($substr)),$substr.Length).Insert($lastIndex,$newstr)
 }
 
+function Get-Latest-Package-Id {
+  param(
+    $currentPackageVersion,
+    $priorPackageVersionNumber
+  )
+  $currentPackageVersionId = $null
+  try {
+    $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion.Trim(".0"))
+  } catch {
+    $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
+  }
+  return $currentPackageVersionId
+}
+
 if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
   sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
   sfdx force:config:set defaultdevhubusername=packaging-org
@@ -65,53 +79,54 @@ try {
 Write-Output "Prior package version: $priorPackageVersionId"
 Write-Output "Prior package version number: $priorPackageVersionNumber"
 
-# Create package version
+# Create/promote package version
 
-Write-Output "Creating new package version"
-
-$packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
-sfdx force:package:version:create -d rollup -x -w 10 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
-
-# Now that sfdx-project.json has been updated, grab the latest package version
-$currentPackageVersionId = $null
-try {
-  $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion.Trim(".0"))
-} catch {
-  $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
-}
-
-Write-Output "New package version: $currentPackageVersionId"
-
-if($currentPackageVersionId -ne $priorPackageVersionId) {
-  $readmePath = "./README.md"
-  ((Get-Content -path $readmePath -Raw) -replace $priorPackageVersionId, $currentPackageVersionId) | Set-Content -Path $readmePath -NoNewline
-
-  git add $readmePath
-}
-
-$packageJson = Get-Package-JSON
-if ($packageJson.version -ne $currentPackageVersion) {
-  Write-Output "Bumping package.json version to: $currentPackageVersion"
-
-  $packageJson.version = $currentPackageVersion
-  $packagePath = "./package.json"
-  ConvertTo-Json -InputObject $packageJson | Set-Content -Path $packagePath -NoNewline
-
-  git add $packagePath
-}
-
-# promote package on merge to main
 $currentBranch = Get-Current-Git-Branch
 if($currentBranch -eq "main") {
   Write-Output "Promoting package version"
-  sfdx force:package:version:promote -p $currentPackageVersionId -n
+  $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
+  try {
+    sfdx force:package:version:promote -p $currentPackageVersionId -n
+  } catch {
+    # Make the assumption that the only reason "promote" would fail is if an unrelated change (like changing this script)
+    # triggered a build with an already-promoted package version
+  }
+} else {
+  # main is a push-protected branch; only create new package versions as part of PRs against main
+  Write-Output "Creating new package version"
+
+  $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
+  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 10 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
+
+  # Now that sfdx-project.json has been updated, grab the latest package version
+  $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
+
+  Write-Output "New package version: $currentPackageVersionId"
+
+  if($currentPackageVersionId -ne $priorPackageVersionId) {
+    $readmePath = "./README.md"
+    ((Get-Content -path $readmePath -Raw) -replace $priorPackageVersionId, $currentPackageVersionId) | Set-Content -Path $readmePath -NoNewline
+
+    git add $readmePath
+  }
+
+  $packageJson = Get-Package-JSON
+  if ($packageJson.version -ne $currentPackageVersion) {
+    Write-Output "Bumping package.json version to: $currentPackageVersion"
+
+    $packageJson.version = $currentPackageVersion
+    $packagePath = "./package.json"
+    ConvertTo-Json -InputObject $packageJson | Set-Content -Path $packagePath -NoNewline
+
+    git add $packagePath
+  }
+
+  git add ./sfdx-project.json
+
+  git config --global user.name "James Simone"
+  git config --global user.email "16430727+jamessimone@users.noreply.github.com"
+  git remote set-url --push origin https://jamessimone:$GITHUB_TOKEN@github.com/jamessimone/apex-rollup
+
+  git commit -m "Bumping package version from Github Action"
+  git push
 }
-
-git add ./sfdx-project.json
-
-git config --global user.name "James Simone"
-git config --global user.email "16430727+jamessimone@users.noreply.github.com"
-git remote set-url --push origin https://jamessimone:$GITHUB_TOKEN@github.com/jamessimone/apex-rollup
-
-git commit -m "Bumping package version from Github Action"
-git push
