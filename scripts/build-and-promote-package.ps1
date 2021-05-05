@@ -1,3 +1,8 @@
+# This script is invoked by the Github Action on pull requests / merges to main
+# It relies on two pieces of information being set manually in your sfdx-project.json:
+# the versionDescription and versionNumber for the default package. Using those two pieces of information,
+# this script generates a new package version Id per unique Action run, and promotes that package on merges to main
+# it also updates the Ids referenced in the README, and bumps the package version number in the package.json file
 $ErrorActionPreference = 'Stop'
 
 function Get-Current-Git-Branch() {
@@ -65,7 +70,7 @@ Write-Output "Prior package version number: $priorPackageVersionNumber"
 Write-Output "Creating new package version"
 
 $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
-sfdx force:package:version:create -d rollup -x -w 10 -e $packageVersionNotes -c --releasenotesurl "https://github.com/jamessimone/apex-rollup/releases/latest"
+sfdx force:package:version:create -d rollup -x -w 10 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
 
 # Now that sfdx-project.json has been updated, grab the latest package version
 $currentPackageVersionId = $null

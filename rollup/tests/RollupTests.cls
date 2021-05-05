@@ -2846,6 +2846,8 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
+    Account acc = (Account) mock.Records[0];
+    System.assertEquals(1, acc.AnnualRevenue);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
   }
 
@@ -2860,6 +2862,8 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
+    Account acc = (Account) mock.Records[0];
+    System.assertEquals(1, acc.AnnualRevenue);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
@@ -3016,7 +3020,7 @@ private class RollupTests {
     };
     insert cpas;
 
-    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 1, BatchChunkSize__c = 10);
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, BatchChunkSize__c = 10, ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE);
 
     Rollup__mdt meta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',

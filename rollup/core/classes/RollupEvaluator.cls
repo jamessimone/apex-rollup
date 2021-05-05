@@ -3,6 +3,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static final String TRUE_VAL = 'true';
   private static final String FALSE_VAL = 'false';
   private static final Set<String> POLYMORPHIC_FIELDS = new Set<String>{ 'Owner', 'Type' };
+  private static final AlwaysTrueEvaluator ALWAYS_TRUE_SINGLETON = new AlwaysTrueEvaluator();
 
   // totally not obvious ranking going on here - it's absolutely imperative that
   // the two-word conditions go first; otherwise replacing will fail on the whole string
@@ -36,7 +37,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   public abstract Boolean matches(Object calcItem);
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? new AlwaysTrue() : eval };
+    List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? ALWAYS_TRUE_SINGLETON : eval };
 
     if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
       evals.add(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems));
@@ -70,7 +71,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   @testVisible
-  private class AlwaysTrue extends RollupEvaluator {
+  private class AlwaysTrueEvaluator extends RollupEvaluator {
     public override Boolean matches(Object calcItem) {
       return true;
     }
