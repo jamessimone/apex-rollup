@@ -2442,6 +2442,39 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldUpdateToActualFirstIfCurrentItemShouldBeExcludedAndOldOneWouldNot() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
+    ContactPointAddress cpaTwo = new ContactPointAddress(PreferenceRank = 1, Name = 'Second', ParentId = acc.Id);
+    insert new List<ContactPointAddress>{ cpa, cpaTwo };
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa }; // only pass cpa, which would be excluded normally (except for the PreferenceRank being set below to another val)
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'FIRST');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+    flowInputs[0].orderByFirstLast = 'Name';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'FIRST AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(cpaTwo.PreferenceRank, updatedAcc.AnnualRevenue, 'FIRST AFTER_UPDATE from flow should correctly recalculate and exclude current item');
+  }
+
+  @isTest
   static void shouldBeInvokedSuccessfullyBeforeDeleteFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     DMLMock mock = loadAccountIdMock(cpas);
@@ -2495,6 +2528,7 @@ private class RollupTests {
       'INSERT',
       'FIRST'
     );
+    flowInputs[0].rollupFieldOnCalcItem = null;
 
     Exception ex;
     try {

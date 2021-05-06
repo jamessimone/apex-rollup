@@ -40,7 +40,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? ALWAYS_TRUE_SINGLETON : eval };
 
     if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
-      evals.add(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems));
+      evals.add(new WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType));
     }
     if (String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c)) {
       evals.add(getChangedFieldEval(metadata, oldCalcItems));
@@ -134,11 +134,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
     }
 
-    public WhereFieldEvaluator(Rollup__mdt metadata, SObjectType calcItemSObjectType, Map<Id, SObject> oldRecords) {
-      this(metadata.CalcItemWhereClause__c, calcItemSObjectType);
-      this.oldRecords = oldRecords;
-    }
-
     public List<String> getWhereClauses() {
       return new List<String>(this.splitWheres);
     }
@@ -169,16 +164,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
         matches = this.innerMatches(calcItem);
-
-        if (matches) {
-          return matches;
-        }
-
-        SObject item = (SObject) calcItem;
-        // if the where clause would exclude something, but we're in an update
-        // and the old value wouldn't have been excluded, pass it on through
-        SObject potentialOldItem = this.oldRecords?.isEmpty() == false && this.oldRecords.containsKey(item.Id) ? this.oldRecords.get(item.Id) : item;
-        matches = this.innerMatches(potentialOldItem);
       }
 
       return matches;

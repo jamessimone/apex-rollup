@@ -982,7 +982,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public void setMetadata(Rollup__mdt metadata) {
-      this.orderByField = metadata.OrderByFirstLast__c;
+      this.orderByField = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
       this.lookupFieldOnCalcItem = metadata.LookupFieldOnCalcItem__c;
     }
 

@@ -39,49 +39,66 @@ jobs:
       - name: 'Checkout source code'
         uses: actions/checkout@v2
 
-      - name: 'Setup node'
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-
-      - name: 'Install NPM'
-        run: npm install
-
-      - name: 'Run LWC Unit Tests'
-        run: npm test
-
-      # Install Salesforce CLI
-      - name: Install Salesforce CLI
+      # Actions checks out in detached head state, but we want to re-commit to the source branch further downstream
+      - name: Prepare repository
         run: |
-          wget https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz
-          mkdir sfdx-cli
-          tar xJf sfdx-linux-amd64.tar.xz -C sfdx-cli --strip-components 1
-          ./sfdx-cli/install
+          echo $GITHUB_EVENT_NAME
+          echo $GITHUB_HEAD_REF
+          git checkout $GITHUB_HEAD_REF
 
-      # Store secret for dev hub
-      - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
-        shell: bash
-        run: |
-         echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
-         echo ${{ env.PACKAGING_SFDX_URL }} > ./PACKAGING_SFDX_URL.txt
-        env:
-          DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
-          PACKAGING_SFDX_URL: ${{ secrets.PACKAGING_SFDX_URL }}
+      # - name: 'Setup node'
+      #   uses: actions/setup-node@v2
+      #   with:
+      #     node-version: '14'
 
-      - name: 'Deploy & Test'
-        shell: pwsh
-        run: '. ./scripts/test.ps1'
+      # - name: 'Install NPM'
+      #   run: npm install
 
-      # Upload code coverage data
-      - name: 'Upload code coverage for Apex to Codecov.io'
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+      # - name: 'Run LWC Unit Tests'
+      #   run: npm test
 
-      - name: 'Package & Promote'
-        shell: pwsh
-        if: ${{ env.SHOULD_CREATE_AND_PROMOTE == '1' }}
-        run: '. ./scripts/build-and-promote-package.ps1'
-        env:
-          SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # # Install Salesforce CLI
+      # - name: Install Salesforce CLI
+      #   run: |
+      #     wget https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz
+      #     mkdir sfdx-cli
+      #     tar xJf sfdx-linux-amd64.tar.xz -C sfdx-cli --strip-components 1
+      #     ./sfdx-cli/install
+
+      # # Store secret for dev hub
+      # - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
+      #   shell: bash
+      #   run: |
+      #    echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
+      #    echo ${{ env.PACKAGING_SFDX_URL }} > ./PACKAGING_SFDX_URL.txt
+      #   env:
+      #     DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
+      #     PACKAGING_SFDX_URL: ${{ secrets.PACKAGING_SFDX_URL }}
+
+      # - name: 'Deploy & Test'
+      #   shell: pwsh
+      #   run: '. ./scripts/test.ps1'
+
+      # # Upload code coverage data
+      # - name: 'Upload code coverage for Apex to Codecov.io'
+      #   uses: codecov/codecov-action@v1
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+
+      # - name: 'Package & Promote'
+      #   shell: pwsh
+      #   if: ${{ env.SHOULD_CREATE_AND_PROMOTE == '1' }}
+      #   run: '. ./scripts/build-and-promote-package.ps1'
+      #   env:
+      #     SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
+
+      # - name: 'Re-commit updated package version (if necessary)'
+      #   env:
+      #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     git config --global user.name "James Simone"
+      #     git config --global user.email "16430727+jamessimone@users.noreply.github.com"
+      #     git remote set-url --push origin https://jamessimone:$GITHUB_TOKEN@github.com/jamessimone/apex-rollup
+      #     git commit -m "Bumping package version from Github Action"
+      #     git push
+

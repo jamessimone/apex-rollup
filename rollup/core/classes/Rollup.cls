@@ -1659,7 +1659,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static void enforceValidationRules(FlowInput flowInput) {
-    if ((flowInput.rollupOperation == 'FIRST' || flowInput.rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
+    if ((flowInput.rollupOperation == 'FIRST' || flowInput.rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast) && String.isBlank(flowInput.rollupFieldOnCalcItem)) {
       throw new IllegalArgumentException('Order By First/Last field required for ' + flowInput.rollupOperation + ' operation');
     } else if (
       (flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) ||
@@ -2188,7 +2188,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
 
     for (SObject item : calcItems) {
-      if (results.eval.matches(item)) {
+      // if the where clause would exclude something, but we're in an update
+      // and the old value wouldn't have been excluded, pass it on through
+      // to be handled further downstream
+      SObject potentialOldItem = oldCalcItems?.isEmpty() == false && oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
+      if (results.eval.matches(item) || results.eval.matches(potentialOldItem)) {
         matchingItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
