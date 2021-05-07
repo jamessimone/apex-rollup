@@ -88,9 +88,10 @@ jobs:
           SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
 
       - name: 'Re-commit updated package version (if necessary)'
-        if: ${{ github.ref != 'refs/heads/main' }}
+        if: ${{ github.ref != 'refs/heads/main' && env.SHOULD_CREATE_AND_PROMOTE == '1' }}
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
         run: |
           git config --global user.name "James Simone"
           git config --global user.email "16430727+jamessimone@users.noreply.github.com"
