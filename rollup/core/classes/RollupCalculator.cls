@@ -5,8 +5,9 @@ public without sharing abstract class RollupCalculator {
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField lookupKeyField;
   protected final Rollup.Op op;
+  protected final Rollup__mdt metadata;
+  protected final String lookupKeyQuery;
 
-  protected String lookupKeyQuery;
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
@@ -37,64 +38,22 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       if (op.name().contains(Rollup.Op.COUNT_DISTINCT.name())) {
-        calc = new CountDistinctRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new CountDistinctRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (op.name().contains(Rollup.Op.COUNT.name())) {
-        calc = new CountRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new CountRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (op.name().contains(Rollup.Op.AVERAGE.name())) {
-        calc = new AverageRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new AverageRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (op.name().contains(Rollup.Op.FIRST.name()) || op.name().contains(Rollup.Op.LAST.name())) {
-        FirstLastRollupCalculator firstLastCalc = new FirstLastRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
-        firstLastCalc.setMetadata(metadata);
-        calc = firstLastCalc;
+        calc = new FirstLastRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (priorVal instanceof Decimal) {
-        calc = new DecimalRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new DecimalRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (priorVal instanceof String) {
         calc = new PicklistRollupCalculator(
           priorVal,
           op,
           opFieldOnCalcItem,
           opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultStringValue__c,
+          metadata,
           lookupRecordKey,
           lookupKeyField,
           metadata.ConcatDelimiter__c
@@ -103,40 +62,13 @@ public without sharing abstract class RollupCalculator {
         // not obvious: the order of these else if's is of supreme importance
         // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
         // all Dates test true as Datetimes ...
-        calc = new DateRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new DateRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (priorVal instanceof Time) {
-        calc = new TimeRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new TimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else if (priorval instanceof Datetime) {
-        calc = new DatetimeRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata.FullRecalculationDefaultNumberValue__c,
-          lookupRecordKey,
-          lookupKeyField
-        );
+        calc = new DatetimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       } else {
         throw new IllegalArgumentException('Calculation not defined for: ' + JSON.serialize(priorVal));
-      }
-      if (calc != null) {
-        calc.setWhereClause(metadata.CalcItemWhereClause__c);
       }
       return calc;
     }
@@ -148,19 +80,27 @@ public without sharing abstract class RollupCalculator {
     SObjectField opFieldOnCalcItem,
     SObjectField opFieldOnLookupObject,
     Object defaultVal,
+    Rollup__mdt metadata,
     String lookupRecordKey,
     SObjectField lookupKeyField
   ) {
     this.opFieldOnCalcItem = opFieldOnCalcItem;
     this.lookupKeyField = lookupKeyField;
     this.op = op;
+    this.metadata = metadata;
 
     if (defaultVal != null) {
       this.returnVal = defaultVal;
     } else {
       this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) : priorVal;
     }
-    this.lookupKeyQuery = lookupKeyField + ' = \'' + lookupRecordKey + '\'';
+    this.lookupKeyQuery = lookupKeyField +
+      ' = \'' +
+      lookupRecordKey +
+      '\'' +
+      (String.isBlank(metadata.CalcItemWhereClause__c)
+      ? ''
+      : ' AND (' + metadata.CalcItemWhereClause__c + ')');
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -172,12 +112,6 @@ public without sharing abstract class RollupCalculator {
 
   public void setEvaluator(Rollup.Evaluator eval) {
     this.eval = eval;
-  }
-
-  public void setWhereClause(String potentialWhereClause) {
-    if (String.isNotBlank(potentialWhereClause)) {
-      this.lookupKeyQuery += ' AND (' + potentialWhereClause + ')';
-    }
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -288,6 +222,10 @@ public without sharing abstract class RollupCalculator {
     return items;
   }
 
+  protected SObjectType getCalcItemType() {
+    return ((SObject) Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
+  }
+
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
     String operationName = op.name().contains('_') ? op.name().substringAfter('_') : op.name();
     String alias = operationName.toLowerCase() + 'Field';
@@ -313,11 +251,11 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
       this.distinctValues = new Set<Object>();
       if (this.returnVal != RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject)) {
         this.distinctValues.add(this.returnVal);
@@ -385,11 +323,11 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
       this.returnDecimal = (Decimal) this.returnVal;
     }
 
@@ -538,11 +476,19 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      super(((Datetime) priorVal).getTime(), op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(
+        ((Datetime) priorVal).getTime(),
+        op,
+        opFieldOnCalcItem,
+        opFieldOnLookupObject,
+        metadata,
+        lookupRecordKey,
+        lookupKeyField
+      );
     }
 
     public virtual override Object getReturnValue() {
@@ -587,7 +533,7 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
@@ -596,7 +542,7 @@ public without sharing abstract class RollupCalculator {
         op,
         opFieldOnCalcItem,
         opFieldOnLookupObject,
-        defaultVal,
+        metadata,
         lookupRecordKey,
         lookupKeyField
       );
@@ -613,7 +559,7 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
@@ -622,7 +568,7 @@ public without sharing abstract class RollupCalculator {
         op,
         opFieldOnCalcItem,
         opFieldOnLookupObject,
-        defaultVal,
+        metadata,
         lookupRecordKey,
         lookupKeyField
       );
@@ -650,11 +596,11 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
       // cache existing value to ensure we don't dip below 0 in "getReturnValue"
       this.existingValue = Integer.valueOf(this.returnVal);
     }
@@ -695,12 +641,12 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField,
       String customConcatDelimiter
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultStringValue__c, metadata, lookupRecordKey, lookupKeyField);
       this.stringVal = (String) this.returnVal;
       if (String.isNotBlank(customConcatDelimiter)) {
         this.concatDelimiter = customConcatDelimiter + ' ';
@@ -879,12 +825,21 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField,
       String customConcatDelimiter
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField, customConcatDelimiter);
+      super(
+        priorVal,
+        op,
+        opFieldOnCalcItem,
+        opFieldOnLookupObject,
+        metadata,
+        lookupRecordKey,
+        lookupKeyField,
+        customConcatDelimiter
+      );
       this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
       this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
       if (this.rollupFieldController.isMultiSelectPicklist()) {
@@ -917,20 +872,14 @@ public without sharing abstract class RollupCalculator {
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      Decimal average = (Decimal) this.returnVal;
-      if (calcItems.isEmpty()) {
-        return;
-      }
-
-      // the List isn't strongly typed at this point, otherwise we could avoid this shameful statement
-      SObjectType sObjectType = calcItems[0].getSobjectType();
+      SObjectType sObjectType = this.getCalcItemType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       String query = Rollup.getQueryString(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
@@ -952,13 +901,11 @@ public without sharing abstract class RollupCalculator {
         currentDenominator++;
       }
 
-      Decimal numerator = oldSum + newSum;
       Decimal denominator = countOfPreExistingItems + currentDenominator;
-
-      // Can't divide by 0, so just return null
-      if (denominator == 0) {
-        average = null;
-      } else {
+      Decimal average = null;
+      // We can't do the division if the denominator is 0
+      if (denominator != 0) {
+        Decimal numerator = oldSum + newSum;
         average = numerator / denominator;
       }
       this.returnVal = average;
@@ -967,34 +914,39 @@ public without sharing abstract class RollupCalculator {
 
   private class FirstLastRollupCalculator extends RollupCalculator {
     private String orderByField;
-    private String lookupFieldOnCalcItem;
 
     public FirstLastRollupCalculator(
       Object priorVal,
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
-      Object defaultVal,
+      Rollup__mdt metadata,
       String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, defaultVal, lookupRecordKey, lookupKeyField);
-    }
-
-    public void setMetadata(Rollup__mdt metadata) {
+      super(
+        priorVal,
+        op,
+        opFieldOnCalcItem,
+        opFieldOnLookupObject,
+        // first/last could possibly use either default value
+        (metadata.FullRecalculationDefaultNumberValue__c != null
+          ? (Object) metadata.FullRecalculationDefaultNumberValue__c
+          : (Object) metadata.FullRecalculationDefaultStringValue__c),
+        metadata,
+        lookupRecordKey,
+        lookupKeyField
+      );
       this.orderByField = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
-      this.lookupFieldOnCalcItem = metadata.LookupFieldOnCalcItem__c;
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      if (calcItems.isEmpty()) {
-        return;
-      }
-      SObjectType sObjectType = calcItems[0].getSObjectType();
+      SObjectType sObjectType = this.getCalcItemType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField, this.lookupFieldOnCalcItem };
+      Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField, this.metadata.LookupFieldOnCalcItem__c };
       // a full-recalc is always necessary because we don't retain the information about the order by field
       String queryString = Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
+
       // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
       if (this.op.name().contains('DELETE')) {
         calcItems = Database.query(queryString);
@@ -1005,7 +957,7 @@ public without sharing abstract class RollupCalculator {
       calcItems = this.winnowItems(calcItems);
 
       new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
-      this.returnVal = calcItems.isEmpty() ? this.returnVal : calcItems[0].get(this.opFieldOnCalcItem);
+      this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
     }
   }
 

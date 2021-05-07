@@ -34,6 +34,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static Integer stackDepth = 0;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
+  private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{ Op.FIRST.name(), Op.LAST.name(), Op.AVERAGE.name() };
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -1954,6 +1955,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Rollup batchRollup = new RollupAsyncProcessor(rollupInvokePoint);
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
     Map<String, SObjectField> fieldNameToField = describeForSObject.fields.getMap();
+
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
@@ -1971,6 +1973,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       rollupMetadata.LookupFieldOnCalcItem__c = calcLookupField.getDescribe().getName();
       rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
       rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
+
+      if (rollupMetadata.IsFullRecordSet__c == false && ALWAYS_FULL_RECALC_OPS.contains(getBareOperationName(rollupMetadata.RollupOperation__c))) {
+        rollupMetadata.IsFullRecordSet__c = true;
+      }
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2176,7 +2182,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static FilterResults filter(List<SObject> calcItems, Map<Id, SObject> oldCalcItems, Evaluator eval, Rollup__mdt metadata, SObjectType calcItemType) {
     FilterResults results = new FilterResults();
-    Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
     List<SObject> matchingItems = calcItems == null ? new List<SObject>() : calcItems.clone();
     results.matchingItems = matchingItems;
     if (matchingItems.isEmpty()) {
@@ -2197,8 +2202,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
       } else if (metadata?.IsFullRecordSet__c == true) {
-        matchingItems.add(item);
-      } else if (alwaysFullRecalcOps.contains(metadata?.RollupOperation__c)) {
         matchingItems.add(item);
       }
     }
@@ -2274,6 +2277,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClauses.add(whereClause);
       }
     }
+  }
+
+  private static String getBareOperationName(String fullOpName) {
+    return fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
   }
 
   /** End static section, begin protected + private instance methods */
@@ -2637,7 +2644,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         }
 
-        String currentOp = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
+        String currentOp = getBareOperationName(rollup.op.name());
         String deleteOpName = 'DELETE_' + currentOp;
         Op deleteOp = opNameToOp.get(deleteOpName);
         Rollup oldLookupsRollup = new Rollup(rollup, deleteOp, reparentedCalcItems);

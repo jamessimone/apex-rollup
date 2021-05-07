@@ -54,7 +54,7 @@ private class RollupTests {
   public class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
-      super(0, rollupOp, null, null, null, null, null);
+      super(0, rollupOp, null, null, null, new Rollup__mdt(), null, null);
       calcMockWasCalled = true;
     }
   }
@@ -2412,12 +2412,14 @@ private class RollupTests {
 
   @isTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNot() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     insert cpa;
+    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2443,6 +2445,7 @@ private class RollupTests {
 
   @isTest
   static void shouldUpdateToActualFirstIfCurrentItemShouldBeExcludedAndOldOneWouldNot() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -2450,6 +2453,7 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     ContactPointAddress cpaTwo = new ContactPointAddress(PreferenceRank = 1, Name = 'Second', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ cpa, cpaTwo };
+    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa }; // only pass cpa, which would be excluded normally (except for the PreferenceRank being set below to another val)
     DMLMock mock = loadMock(cpas);
@@ -2472,6 +2476,67 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'FIRST AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(cpaTwo.PreferenceRank, updatedAcc.AnnualRevenue, 'FIRST AFTER_UPDATE from flow should correctly recalculate and exclude current item');
+  }
+
+  @isTest
+  static void shouldProperlyDeleteFirstIfCurrentItemIsOnlyItemAndItIsExcluded() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'First Delete', ParentId = acc.Id);
+    insert cpa;
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'DELETE', 'FIRST');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank.format();
+    flowInputs[0].orderByFirstLast = 'Name';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'FIRST BEFORE_DELETE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'FIRST BEFORE_DELETE from flow should correctly null out');
+  }
+
+  @isTest
+  static void shouldProperlyDeleteForAverageIfCurrentItemIsOnlyItemAndItIsExcluded() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Average Delete', ParentId = acc.Id);
+    insert cpa;
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'DELETE', 'AVERAGE');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank.format();
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'AVERAGE AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE from flow should correctly null out');
   }
 
   @isTest

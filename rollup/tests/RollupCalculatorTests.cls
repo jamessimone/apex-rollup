@@ -1,11 +1,11 @@
 @isTest
 private class RollupCalculatorTests {
-  // TODO - refactor RollupTests so that the different *calculator type*-based tests live here instead
+  // TODO - refactor RollupTests so that the different *calculator type*-based tests live here instead when DML is not required
 
   /** FIRST / LAST operations */
   @isTest
-  static void shouldReturnDefaultWhenNoCalcItemsFirst() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+  static void shouldReturnNullWhenNoCalcItemsFirst() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -18,30 +18,12 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
 
-    System.assertEquals(0, (Decimal) calc.getReturnValue());
-  }
-
-  @isTest
-  static void shouldReturnDefaultWhenNoCalcItemsAverage() {
-    Rollup__mdt metadata = new Rollup__mdt();
-    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
-      0,
-      Rollup.Op.Average,
-      Opportunity.Amount,
-      Account.AnnualRevenue,
-      metadata,
-      '0011g00003VDGbF002',
-      Account.Id
-    );
-
-    calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
-
-    System.assertEquals(0, (Decimal) calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   @isTest
   static void shouldReturnFirstValueBasedOnMetadataField() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -68,7 +50,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnLastValueBasedOnMetadataField() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.LAST,
@@ -93,7 +75,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnFirstValueIfOtherOrderByValueIsNull() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -118,7 +100,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnMiddleValueWhenFirstAndLastAreNull() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -143,7 +125,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnFirstValueWhenMiddleAndLastAreNull() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -168,7 +150,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -193,7 +175,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldNotSortAtAllIfOrderByValuesAreNull() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -217,7 +199,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnFirstString() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -242,7 +224,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnLastString() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.LAST,
@@ -267,7 +249,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnFirstNumber() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Amount');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Amount', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -292,7 +274,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void shouldReturnLastNumber() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Amount');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Amount', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.LAST,
@@ -317,7 +299,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void regressionShouldRollupFirstLastWithQueriedOrderBy() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -342,7 +324,7 @@ private class RollupCalculatorTests {
 
   @isTest
   static void regressionShouldExcludeCurrentItemsOnFirstLastDelete() {
-    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name');
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.DELETE_FIRST,
@@ -362,14 +344,32 @@ private class RollupCalculatorTests {
       new Map<Id, SObject>()
     );
 
-    System.assertEquals(0, calc.getReturnValue(), 'Delete should exclude current values :(');
+    System.assertEquals(null, calc.getReturnValue(), 'Delete should exclude current values :(');
   }
 
   // AVERAGE tests
 
   @isTest
+  static void shouldReturnDefaultWhenNoCalcItemsAverage() {
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.Average,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Account.Id
+    );
+
+    calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
+
+    System.assertEquals(null, calc.getReturnValue());
+  }
+
+  @isTest
   static void shouldNotTryToAverageNull() {
-    Rollup__mdt metadata = new Rollup__mdt();
+    Rollup__mdt metadata = new Rollup__mdt(CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.AVERAGE,
@@ -624,7 +624,7 @@ private class RollupCalculatorTests {
 
   private class RollupCalcEmptyMock extends RollupCalculator {
     public RollupCalcEmptyMock() {
-      super(0, Rollup.Op.LAST, null, null, null, null, null);
+      super(0, Rollup.Op.LAST, null, null, null, new Rollup__mdt(), null, null);
     }
   }
 }
