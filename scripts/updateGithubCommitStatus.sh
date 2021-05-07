@@ -14,4 +14,4 @@ curl \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$latestSha \
-  -d '{"state":"success", "description": "Bumping package version", "context": "Github Action"}'
+  -d '{"state":"success", "description": "Build success!", "context": "scratch-org-test"}'
