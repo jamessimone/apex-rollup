@@ -672,7 +672,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     try {
-      batch(rollups);
+      batch(rollups, RollupInvocationPoint.FROM_INVOCABLE);
     } catch (Exception ex) {
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
@@ -697,9 +697,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global static void batch(List<Rollup> rollups) {
-    Rollup batchRollup = new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX);
-    flattenBatches(batchRollup, rollups);
-    batchRollup.runCalc();
+    batch(rollups, RollupInvocationPoint.FROM_APEX);
   }
 
   global static Rollup averageFromApex(
@@ -1536,7 +1534,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public static void processStoredFlowRollups() {
-    batch(CACHED_ROLLUPS);
+    batch(CACHED_ROLLUPS, RollupInvocationPoint.FROM_INVOCABLE);
     CACHED_ROLLUPS.clear();
   }
 
@@ -1656,6 +1654,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds),
         emptyRollup.rollupControl.BatchChunkSize__c.intValue()
       );
+    }
+  }
+
+  private static void batch(List<Rollup> rollups, RollupInvocationPoint invokePoint) {
+    Rollup batchRollup = new RollupAsyncProcessor(invokePoint);
+    flattenBatches(batchRollup, rollups);
+    batchRollup.runCalc();
+  }
+
+  private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
+    for (Rollup rollup : rollups) {
+      if (rollup.rollups.isEmpty() == false) {
+        // recurse through lists until there aren't any more nested rollups
+        flattenBatches(outerRollup, rollup.rollups);
+      } else {
+        loadRollups(rollup, outerRollup);
+      }
     }
   }
 
@@ -1839,17 +1854,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return SENTINEL_COUNT_VALUE;
-    }
-  }
-
-  private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
-    for (Rollup rollup : rollups) {
-      if (rollup.rollups.isEmpty() == false) {
-        // recurse through lists until there aren't any more nested rollups
-        flattenBatches(outerRollup, rollup.rollups);
-      } else {
-        loadRollups(rollup, outerRollup);
-      }
     }
   }
 
