@@ -124,7 +124,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Rollup To Ultimate Parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
 - `Ultimate Parent Lookup` (optional) - specify the API Name of the field on the `Lookup Object` using the dropdown that contains the hierarchy relationship. On Account, for example, this would be `Parent Account ID`. Must be filled out if `Rollup To Ultimate Parent` is checked.
 
-You can perform have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
+You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
 #### Notes On The Use Of CMDT To Control Your Rollups
 
