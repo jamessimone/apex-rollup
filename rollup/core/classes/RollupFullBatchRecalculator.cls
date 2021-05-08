@@ -32,12 +32,12 @@ public class RollupFullBatchRecalculator extends Rollup {
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    Rollup roll = this.getDelegatedRollup(this.rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(calcItems), this.invokePoint);
+    Rollup roll = this.getDelegatedRollup(this.rollupInfo, calcItems, new Map<Id, SObject>(calcItems));
     roll.isFullRecalc = true;
     roll.runCalc();
   }
 
   public override void finish(Database.BatchableContext bc) {
-    System.debug('Rollup recalculation batched');
+    this.log('RollupFullBatchRecalculator finished');
   }
 }

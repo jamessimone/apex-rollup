@@ -734,7 +734,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1, IsRollupLoggingEnabled__c = true);
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();

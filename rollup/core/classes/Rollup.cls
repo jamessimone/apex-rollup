@@ -268,12 +268,28 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return 0;
   }
 
+  public override String toString() {
+    Map<String, String> props = new Map<String, String> {
+      'Invocation Point' => this.invokePoint.name(),
+      'Calc Items' => JSON.serializePretty(this.calcItems),
+      'Old Calc Items' => JSON.serializePretty(this.oldCalcItems),
+      'Rollup Metadata' => JSON.serializePretty(this.metadata),
+      'Rollup Control' => JSON.serializePretty(this.rollupControl)
+    };
+    String baseString = '';
+    for (String key : props.keySet()) {
+      baseString += key + ': ' + props.get(key) + '\n';
+    }
+    return baseString.removeEnd('\n');
+  }
+
   public String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     this.ingestRollupControlData();
 
     this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
+      this.log('aborting run, no-op');
       return 'No process Id';
     }
 
@@ -286,15 +302,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) ||
       totalCountOfRecords == SENTINEL_COUNT_VALUE;
     if (this.syncRollups.isEmpty() == false) {
+      this.log('about to process sync rollups');
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
     } else if (shouldBatch && hasMoreThanOneTarget == false && System.isBatch() == false) {
+      this.log('about to batch');
       isRunningAsync = true;
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
       return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
     } else {
+      this.log('about to queue');
       isRunningAsync = true;
       return System.enqueueJob(this);
     }
@@ -322,6 +341,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       objIds.addAll(this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(sObjectType)).keySet());
     }
     String query = getQueryString(sObjectType, new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)), lookupFieldForLookupObject, '=');
+    this.log('starting batch with query: ', query);
     return Database.getQueryLocator(query);
   }
 
@@ -334,7 +354,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public virtual void finish(Database.BatchableContext context) {
-    System.debug('Rollup: batch finished successfully');
+    this.log('batch finished successfully');
   }
 
   private class RollupAsyncSaver implements System.Queueable {
@@ -1544,18 +1564,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static List<Rollup__mdt> cachedMetadata;
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     List<SObject> matchingMetadata;
-    // CMDT is read-only when returned from the cache
-    // use "deepClone" to get access to mutable versions
-    // of the CMDT records. We also need to clean up the Entity Definition / Field Definition
+    // We need to clean up the Entity Definition / Field Definition
     // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
       if (cachedMetadata == null) {
         cachedMetadata = [
           SELECT
-            // we have to do transforms on these fields because custom objects/custom fields
-            // have references that otherwise won't work with the rest of the code
             MasterLabel,
             DeveloperName,
+            // we have to do transforms on these fields because custom objects/custom fields
+            // have references that otherwise won't work with the rest of the code
             LookupObject__c,
             LookupObject__r.QualifiedApiName,
             CalcItem__c,
@@ -1601,6 +1619,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
       matchingMetadata = cachedMetadata.clone();
     } else if (metadataType == RollupControl__mdt.SObjectType) {
+      // CMDT is read-only when returned from the cache
+      // use "deepClone" to get access to mutable versions of the CMDT records.
       matchingMetadata = RollupControl__mdt.getAll().deepClone().values();
     }
     return matchingMetadata;
@@ -2292,14 +2312,32 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   /** End static section, begin protected + private instance methods */
 
+  private void log(String logString, Object logObject) {
+    if (this.rollupControl?.IsrollupLoggingEnabled__c == true) {
+      String appended;
+      if (logObject instanceOf String) {
+        appended = (String) logObject;
+      } else if (logObject instanceof Rollup) {
+        appended = logObject.toString();
+      } else if (logObject != null) {
+        appended = JSON.serializePretty(logObject);
+      } else {
+        appended = '';
+      }
+      System.debug('Rollup: ' + logString + appended);
+    }
+  }
+
+  protected void log(String logString) {
+    this.log(logString, null);
+  }
+
   protected Rollup getDelegatedRollup(
     List<Rollup__mdt> rollupInfo,
-    SObjectType calcItemType,
     List<SObject> calcItems,
-    Map<Id, SObject> oldCalcItems,
-    RollupInvocationPoint invokePoint
+    Map<Id, SObject> oldCalcItems
   ) {
-    return getRollup(rollupInfo, calcItemType, calcItems, oldCalcItems, null, invokePoint);
+    return getRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
   }
 
   protected void process(List<Rollup> rollups) {
@@ -2312,6 +2350,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (Rollup rollup : rollups) {
+      this.log('starting async rollup for: ', rollup);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
       if (hasExceededCurrentRollupLimits(rollup.rollupControl)) {
         this.deferredRollups.add(rollup);
@@ -2585,6 +2624,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     for (SObject lookupRecord : lookupItems) {
+      this.log('lookup record prior to rolling up: ', lookupRecord);
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> localCalcItems = calcItemsByLookupField.get(key);
@@ -2637,6 +2677,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
+        this.log('lookup record after rolling up: ', lookupRecord);
       }
     }
 
@@ -2656,6 +2697,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Op deleteOp = opNameToOp.get(deleteOpName);
         Rollup oldLookupsRollup = new Rollup(rollup, deleteOp, reparentedCalcItems);
 
+        this.log('reparenting operation: ', oldLookupsRollup);
+        this.log('Reparented item prior to reparenting rollup: ', lookupRecord);
+
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
 
@@ -2663,6 +2707,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
+        this.log('Reparented item after reparenting rollup: ', lookupRecord);
       }
     }
 
