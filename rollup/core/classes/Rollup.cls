@@ -1424,6 +1424,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     for (Rollup__mdt rollupInfo : rollupMetadata) {
+      if (String.isBlank(rollupInfo.CalcItem__c)) {
+        rollupInfo.CalcItem__c = String.valueOf(calcItemSObjectType);
+      }
       Boolean isIntermediateRollupForGrandparent =
         rollupInfo.CalcItem__c != String.valueOf(calcItemSObjectType) &&
         String.isNotBlank(rollupInfo.GrandparentRelationshipFieldPath__c) &&
