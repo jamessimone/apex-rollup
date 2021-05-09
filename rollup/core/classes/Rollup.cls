@@ -121,6 +121,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
+  private static Rollup ROLLUP_LOGGER {
+    get {
+      if (ROLLUP_LOGGER == null) {
+        ROLLUP_LOGGER = new Rollup(RollupInvocationPoint.FROM_STATIC_LOGGER);
+      }
+      return ROLLUP_LOGGER;
+    }
+    set;
+  }
+
   public enum Op {
     SUM,
     UPDATE_SUM,
@@ -164,7 +174,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     FROM_INVOCABLE,
     FROM_SCHEDULED,
     FROM_LWC,
-    FROM_ERROR
+    FROM_STATIC_LOGGER
   }
 
   protected Rollup(RollupInvocationPoint invokePoint) {
@@ -621,6 +631,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputs = new List<FlowOutput>();
     List<Rollup> rollups = new List<Rollup>();
+    RollupInvocationPoint fromInvocable = RollupInvocationPoint.FROM_INVOCABLE;
 
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
@@ -671,7 +682,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           flowInput.grandparentRelationshipFieldPath,
           flowInput.calcItemWhereClause
         );
-        performFullRecalculationInner(rollupMeta, wrapper, RollupInvocationPoint.FROM_INVOCABLE);
+        performFullRecalculationInner(rollupMeta, wrapper, fromInvocable);
         continue;
       }
 
@@ -683,19 +694,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         flowInput.recordsToRollup,
         oldFlowRecords,
         null,
-        RollupInvocationPoint.FROM_INVOCABLE
+        fromInvocable
       );
       if (flowInput.deferProcessing) {
+        staticLogMessage('deferring processing for rollup', roll.rollups);
         CACHED_ROLLUPS.add(roll);
       } else {
+        staticLogMessage('adding invocable rollup to list', roll.rollups);
         rollups.add(roll);
       }
     }
 
     try {
-      batch(rollups, RollupInvocationPoint.FROM_INVOCABLE);
+      if (rollups.isEmpty() == false) {
+        batch(rollups, fromInvocable);
+      }
     } catch (Exception ex) {
-      staticLog('an error occurred during invocable action', ex);
+      staticLogException('an error occurred during invocable action', ex);
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
@@ -1561,6 +1576,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public static void processStoredFlowRollups() {
+    staticLogMessage('processing deferred flow rollups', CACHED_ROLLUPS);
     batch(CACHED_ROLLUPS, RollupInvocationPoint.FROM_INVOCABLE);
     CACHED_ROLLUPS.clear();
   }
@@ -1723,7 +1739,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     if (String.isNotBlank(errorMessage)) {
       Exception ex = new IllegalArgumentException(errorMessage);
-      staticLog('an error occurred while validating flow inputs', ex);
+      staticLogException('an error occurred while validating flow inputs', ex);
       throw ex;
     }
   }
@@ -1747,7 +1763,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
       }
     } catch (Exception ex) {
-      staticLog('an error occurred while validating flow-specific rules', ex);
+      staticLogException('an error occurred while validating flow-specific rules', ex);
       throw ex;
     }
   }
@@ -1784,7 +1800,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
-      staticLog('an error occurred while formatting where clause', ex);
+      staticLogException('an error occurred while formatting where clause', ex);
     }
     return optionalWhereClause;
   }
@@ -1895,7 +1911,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     try {
       return Database.countQuery(countQuery);
     } catch (Exception ex) {
-      staticLog('an error occurred while trying to get count query:\n' + countQuery, ex);
+      staticLogException('an error occurred while trying to get count query:\n' + countQuery, ex);
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return SENTINEL_COUNT_VALUE;
@@ -2332,9 +2348,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
   }
 
-  private static void staticLog(String customizedError, Exception ex) {
-    Rollup errorRoll = new Rollup(RollupInvocationPoint.FROM_ERROR);
-    errorRoll.log(customizedError + '\n' + ex.getMessage());
+  private static void staticLogException(String customizedError, Exception ex) {
+    ROLLUP_LOGGER.log(customizedError + '\n' + ex.getMessage());
+  }
+
+  private static void staticLogMessage(String customMessage, Object logObject) {
+    ROLLUP_LOGGER.log(customMessage, logObject);
   }
 
   /** End static section, begin protected + private instance methods */
@@ -2344,6 +2363,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       String appended;
       if (logObject instanceof String) {
         appended = (String) logObject;
+      } else if (logObject instanceof List<Rollup>) {
+        appended = '';
+        List<Rollup> rolls = (List<Rollup>) logObject;
+        for (Rollup roll : rolls) {
+          appended += roll.toString() + '\n';
+        }
+        appended.removeEnd('\n');
       } else if (logObject instanceof Rollup) {
         appended = logObject.toString();
       } else if (logObject != null) {
