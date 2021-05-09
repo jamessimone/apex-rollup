@@ -96,7 +96,7 @@ if($currentBranch -eq "main") {
   Write-Output "Creating new package version"
 
   $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
-  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 30 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl -b $currentBranch
+  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 30 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
   git add ./sfdx-project.json
 
   # Now that sfdx-project.json has been updated, grab the latest package version
