@@ -697,10 +697,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         fromInvocable
       );
       if (flowInput.deferProcessing) {
-        staticLogMessage('deferring processing for rollup', roll.rollups);
+        staticLogMessage('deferring processing for rollup', roll);
         CACHED_ROLLUPS.add(roll);
       } else {
-        staticLogMessage('adding invocable rollup to list', roll.rollups);
+        staticLogMessage('adding invocable rollup to list', roll);
         rollups.add(roll);
       }
     }
@@ -2349,7 +2349,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static void staticLogException(String customizedError, Exception ex) {
-    ROLLUP_LOGGER.log(customizedError + '\n' + ex.getMessage());
+    ROLLUP_LOGGER.log(customizedError, ex);
   }
 
   private static void staticLogMessage(String customMessage, Object logObject) {
@@ -2359,28 +2359,42 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   /** End static section, begin protected + private instance methods */
 
   private void log(String logString, Object logObject) {
-    if (this.rollupControl?.IsrollupLoggingEnabled__c == true) {
-      String appended;
-      if (logObject instanceof String) {
-        appended = (String) logObject;
-      } else if (logObject instanceof List<Rollup>) {
-        appended = '';
-        List<Rollup> rolls = (List<Rollup>) logObject;
-        for (Rollup roll : rolls) {
-          appended += roll.toString() + '\n';
-        }
-        appended.removeEnd('\n');
-      } else if (logObject instanceof Rollup) {
-        appended = logObject.toString();
-      } else if (logObject != null) {
-        appended = JSON.serializePretty(logObject);
-      } else {
-        appended = '';
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      String appended = this.getLogStringFromObject(logObject);
+      List<String> messages = new List<String>{ logString };
+      if (String.isNotBlank(appended)) {
+        messages.add(appended);
       }
-      // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using the new DMLException().getStackTraceString()
-      // works to re-create the stacktrace if it didn't already exist
-      System.debug('Rollup: ' + logString + appended + '\n' + new DMLException().getStackTraceString());
+      // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
+      // works to re-create the stacktrace for all of the calling code
+      messages.add(new DMLException().getStackTraceString());
+      System.debug('Rollup: ' + String.join(messages, '\n') + '\n');
     }
+  }
+
+  private String getLogStringFromObject(Object logObject) {
+    String appended = '';
+    if (logObject instanceof String) {
+      appended = (String) logObject;
+    } else if (logObject instanceof List<Rollup>) {
+      List<Rollup> rolls = (List<Rollup>) logObject;
+      for (Rollup roll : rolls) {
+        appended += this.getLogStringFromObject(roll) + '\n';
+      }
+    } else if (logObject instanceof Rollup) {
+      Rollup roll = (Rollup) logObject;
+      if (roll.isBatched && roll.rollups.isEmpty() == false) {
+        appended = this.getLogStringFromObject(roll.rollups);
+      } else {
+        appended = logObject.toString();
+      }
+    } else if (logObject instanceof Exception) {
+      Exception ex = (Exception) logObject;
+      appended = ex.getMessage();
+    } else if (logObject != null) {
+      appended = JSON.serializePretty(logObject);
+    }
+    return appended.removeEnd('\n');
   }
 
   protected void log(String logString) {
@@ -2705,7 +2719,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
           if (newLookup != priorLookup && rollup.traversal == null) {
             this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-          } else if (rollup.traversal != null && rollup.traversal.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName())) {
+          } else if (rollup.traversal?.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName()) == true) {
             // slightly different, but with the same end result
             // note that when the reparented record is not null
             // it should be the same as the current "lookupRecord"
