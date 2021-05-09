@@ -2376,6 +2376,8 @@ private class RollupTests {
 
   @isTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
+    // testing for static log entries, as well
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
     };
