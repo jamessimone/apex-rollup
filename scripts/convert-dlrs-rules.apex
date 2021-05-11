@@ -7,7 +7,13 @@ static final RollupControl__mdt ROLLUP_CONTROL = [SELECT Id, DeveloperName FROM 
 String customMetadataTypePrefix = Schema.Rollup__mdt.SObjectType.getDescribe().getName().replace('__mdt', '');
 Metadata.DeployContainer deployment = new Metadata.DeployContainer();
 for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.getAll().values()) {
-
+    if(!dlrsRule.dlrs__Active__c){
+      continue;
+      }
+    List<String> invalidChildren = new List<String>{'Event','Task','User'};
+    if(invalidchildren.contains(dlrsRule.dlrs__ChildObject__c)){
+        continue;
+    }
   Metadata.CustomMetadata customMetadata = new Metadata.CustomMetadata();
   customMetadata.fullName = customMetadataTypePrefix + '.' + dlrsRule.get('DeveloperName');
   customMetadata.label = (String) dlrsRule.get('MasterLabel');
