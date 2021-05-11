@@ -96,5 +96,3 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
         run: 'sh ./scripts/updateGithubCommitStatus.sh'
-
-
