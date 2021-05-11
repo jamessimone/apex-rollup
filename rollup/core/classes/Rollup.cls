@@ -108,7 +108,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
-  private static Map<String, Op> opNameToOp {
+  public static Map<String, Op> opNameToOp {
     get {
       if (opNameToOp == null) {
         opNameToOp = new Map<String, Op>();
@@ -696,7 +696,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         null,
         fromInvocable
       );
-      if (flowInput.deferProcessing) {
+      if (flowInput.deferProcessing == true) {
         staticLogMessage('deferring processing for rollup', roll);
         CACHED_ROLLUPS.add(roll);
       } else {
@@ -2392,6 +2392,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Exception ex = (Exception) logObject;
       appended = ex.getMessage();
     } else if (logObject != null) {
+      // not all objects implement toString, unfortunately,
+      // and we don't want this to throw. Blob.toString throws,
+      // for example - let's just serializePretty and move on
       appended = JSON.serializePretty(logObject);
     }
     return appended.removeEnd('\n');
