@@ -40,7 +40,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? ALWAYS_TRUE_SINGLETON : eval };
 
     if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
-      evals.add(new WhereFieldEvaluator(metadata, sObjectType, oldCalcItems));
+      evals.add(new WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType));
     }
     if (String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c)) {
       evals.add(getChangedFieldEval(metadata, oldCalcItems));
@@ -134,11 +134,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
     }
 
-    public WhereFieldEvaluator(Rollup__mdt metadata, SObjectType calcItemSObjectType, Map<Id, SObject> oldRecords) {
-      this(metadata.CalcItemWhereClause__c, calcItemSObjectType);
-      this.oldRecords = oldRecords;
-    }
-
     public List<String> getWhereClauses() {
       return new List<String>(this.splitWheres);
     }
@@ -169,16 +164,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
         matches = this.innerMatches(calcItem);
-
-        if (matches) {
-          return matches;
-        }
-
-        SObject item = (SObject) calcItem;
-        // if the where clause would exclude something, but we're in an update
-        // and the old value wouldn't have been excluded, pass it on through
-        SObject potentialOldItem = this.oldRecords?.isEmpty() == false && this.oldRecords.containsKey(item.Id) ? this.oldRecords.get(item.Id) : item;
-        matches = this.innerMatches(potentialOldItem);
       }
 
       return matches;
@@ -604,7 +589,42 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private class RecursiveTracker {
     public Integer stackCount = 0;
     public Set<Id> addedIds = new Set<Id>();
-    public Set<SObject> calcItems = new Set<SObject>();
+    public Set<RollupItem> calcItems = new Set<RollupItem>();
+  }
+
+  private class RollupItem {
+    private RollupItem(SObject item, Rollup__mdt metadata) {
+      this.lookupKey = (String) item.get(metadata.LookupFieldOnCalcItem__c);
+      this.rollupValue = item.get(metadata.RollupFieldOnCalcItem__c);
+      this.Id = item.Id;
+    }
+
+    private final String lookupKey;
+    private final Object rollupValue;
+    private final Id Id;
+
+    public Boolean equals(Object thatItem) {
+      if (thatItem instanceof RollupItem) {
+        RollupItem that = (RollupItem) thatItem;
+        return this.lookupKey == that.lookupKey && this.rollupValue == that.rollupValue && this.Id == that.Id;
+      }
+
+      return false;
+    }
+
+    public Integer hashCode() {
+      Integer hashToReturn;
+      Integer idHash = this.Id == null ? 0 : ((Object) this.Id).hashCode();
+      Integer lookupHash = String.isBlank(this.lookupKey) ? 1 : this.lookupKey.hashCode();
+      Integer valHash = this.rollupValue == null ? 2 : this.rollupValue.hashCode();
+      try {
+        hashToReturn = idHash + lookupHash + valHash;
+      } catch (Exception ex) {
+        // in the event the integer overflows
+        hashToReturn = idHash + valHash - lookupHash;
+      }
+      return hashToReturn;
+    }
   }
 
   private class RecursiveUpdateEvaluator extends RollupEvaluator {
@@ -632,15 +652,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       ) {
         SObject calcItem = (SObject) item;
         // only populate the item with the rollup field and lookup field
-        SObject clonedItem = calcItem.getSObjectType().newSObject(calcItem.Id);
-        clonedItem.put(this.metadata.LookupFieldOnCalcItem__c, calcItem.get(this.metadata.LookupFieldOnCalcItem__c));
-        clonedItem.put(this.metadata.RollupFieldOnCalcItem__c, calcItem.get(this.metadata.RollupFieldOnCalcItem__c));
+        RollupItem rollupItem = new RollupItem(calcItem, this.metadata);
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
 
-        if (recursionTracker.addedIds.contains(clonedItem.Id) == false) {
-          recursionTracker.addedIds.add(clonedItem.Id);
-          recursionTracker.calcItems.add(clonedItem);
-        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(clonedItem)) {
+        if (recursionTracker.addedIds.contains(rollupItem.Id) == false) {
+          recursionTracker.addedIds.add(rollupItem.Id);
+          recursionTracker.calcItems.add(rollupItem);
+        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(rollupItem)) {
           matches = false;
         }
       }

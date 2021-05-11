@@ -96,7 +96,8 @@ if($currentBranch -eq "main") {
   Write-Output "Creating new package version"
 
   $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
-  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 10 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
+  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 30 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
+  git add ./sfdx-project.json
 
   # Now that sfdx-project.json has been updated, grab the latest package version
   $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
@@ -120,13 +121,4 @@ if($currentBranch -eq "main") {
 
     git add $packagePath
   }
-
-  git add ./sfdx-project.json
-
-  git config --global user.name "James Simone"
-  git config --global user.email "16430727+jamessimone@users.noreply.github.com"
-  git remote set-url --push origin https://jamessimone:$GITHUB_TOKEN@github.com/jamessimone/apex-rollup
-
-  git commit -m "Bumping package version from Github Action"
-  git push
 }

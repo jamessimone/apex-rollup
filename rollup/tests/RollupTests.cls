@@ -54,7 +54,7 @@ private class RollupTests {
   public class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
-      super(0, rollupOp, null, null, null, null, null);
+      super(0, rollupOp, null, null, null, new Rollup__mdt(), null, null);
       calcMockWasCalled = true;
     }
   }
@@ -637,7 +637,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -662,7 +662,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -734,7 +734,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1, IsRollupLoggingEnabled__c = true);
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2090,7 +2090,7 @@ private class RollupTests {
     insert cpe;
 
     ContactPointAddress cp1 = new ContactPointAddress(
-      BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
+      BestTimeToContactEndTime = cpe.BestTimeToContactEndTime,
       Name = cpe.EmailDomain,
       Id = generateId(ContactPointAddress.SObjectType)
     );
@@ -2323,7 +2323,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'INSERT', 'SUM'));
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2341,7 +2341,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'insert', 'sum'));
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2365,7 +2365,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2376,6 +2376,8 @@ private class RollupTests {
 
   @isTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
+    // testing for static log entries, as well
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = generateId(ContactPointAddress.SObjectType))
     };
@@ -2411,13 +2413,119 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNot() {
+  static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCount() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 2;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'Count Non-match', ParentId = acc.Id);
+    ContactPointAddress matchingCpa = new ContactPointAddress(PreferenceRank = 1, Name = 'Count match', ParentId = acc.Id);
+    insert new List<ContactPointAddress>{ cpa, matchingCpa };
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'COUNT');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'COUNT AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE from flow should correctly perform full recalc');
+  }
+
+  @isTest
+  static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCountDistinct() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 3;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'Count Non-match', ParentId = acc.Id);
+    ContactPointAddress matchingCpa = new ContactPointAddress(PreferenceRank = 1, Name = 'Count distinct match', ParentId = acc.Id);
+    ContactPointAddress secondMatchingCpa = matchingCpa.clone();
+    secondMatchingCpa.Name = 'Second Count Distinct Match';
+    insert new List<ContactPointAddress>{ cpa, matchingCpa, secondMatchingCpa };
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'COUNT_DISTINCT');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'COUNT_DISTINCT AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE from flow should correctly perform full recalc');
+  }
+
+  @isTest
+  static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotSum() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 2;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'Sum non-match', ParentId = acc.Id);
+    ContactPointAddress matchingCpa = new ContactPointAddress(PreferenceRank = 15, Name = 'sum match', ParentId = acc.Id);
+    insert new List<ContactPointAddress>{ cpa, matchingCpa };
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(matchingCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
+  }
+
+  @isTest
+  static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotFirst() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     insert cpa;
+    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2432,13 +2540,109 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should get nulled out if no other matching items');
+  }
+
+  @isTest
+  static void shouldUpdateToActualFirstIfCurrentItemShouldBeExcludedAndOldOneWouldNot() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
+    ContactPointAddress cpaTwo = new ContactPointAddress(PreferenceRank = 1, Name = 'Second', ParentId = acc.Id);
+    insert new List<ContactPointAddress>{ cpa, cpaTwo };
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa }; // only pass cpa, which would be excluded normally (except for the PreferenceRank being set below to another val)
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'FIRST');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+    };
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
+    flowInputs[0].orderByFirstLast = 'Name';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'FIRST AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(cpaTwo.PreferenceRank, updatedAcc.AnnualRevenue, 'FIRST AFTER_UPDATE from flow should correctly recalculate and exclude current item');
+  }
+
+  @isTest
+  static void shouldProperlyDeleteFirstIfCurrentItemIsOnlyItemAndItIsExcluded() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'First Delete', ParentId = acc.Id);
+    insert cpa;
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'DELETE', 'FIRST');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank.format();
+    flowInputs[0].orderByFirstLast = 'Name';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'FIRST BEFORE_DELETE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'FIRST BEFORE_DELETE from flow should correctly null out');
+  }
+
+  @isTest
+  static void shouldProperlyDeleteForAverageIfCurrentItemIsOnlyItemAndItIsExcluded() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 250;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Average Delete', ParentId = acc.Id);
+    insert cpa;
+    Rollup.defaultControl = null;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
+    DMLMock mock = loadMock(cpas);
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'DELETE', 'AVERAGE');
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank.format();
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'AVERAGE AFTER_UPDATE from flow did not update accounts');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE from flow should correctly null out');
   }
 
   @isTest
@@ -2450,7 +2654,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'DELETE', 'SUM'));
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2495,6 +2699,7 @@ private class RollupTests {
       'INSERT',
       'FIRST'
     );
+    flowInputs[0].rollupFieldOnCalcItem = null;
 
     Exception ex;
     try {
@@ -2618,7 +2823,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2641,7 +2846,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'INSERT', 'SUM'));
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals(true, flowOutputs[0].isSuccess);
   }
 
@@ -2684,7 +2889,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2719,7 +2924,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput });
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2741,7 +2946,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
@@ -2779,7 +2984,7 @@ private class RollupTests {
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput });
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow ouputs were not provided');
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 

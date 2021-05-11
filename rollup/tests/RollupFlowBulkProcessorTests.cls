@@ -39,8 +39,10 @@ private class RollupFlowBulkProcessorTests {
 
   @isTest
   static void shouldProcessDeferredFlowRollups() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupFlowBulkProcessorTests');
     insert acc;
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, AccountId = acc.Id) };

@@ -581,4 +581,47 @@ private class RollupIntegrationTests {
     Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :matchingLead.Id];
     System.assertEquals(matchingLead.LastName, updatedLead.LastName, 'Lead last name should not have been updated');
   }
+
+  @isTest
+  static void shouldNotBlowUpForRecursiveCheckOnFormulaFields() {
+    String oppId = Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12);
+    Opportunity opp = new Opportunity(
+      Amount = 15,
+      AccountId = Account.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      Id = oppId
+    );
+    List<Opportunity> opps = new List<Opportunity>{ opp };
+    Formula.recalculateFormulas(opps); // sets the AmountFormula__c field on the opp
+
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'AmountFormula__c',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(true, eval.matches(opp), 'Should match when not recursive');
+
+    // re-initialize to trigger recursion detection
+    eval = RollupEvaluator.getEvaluator(
+      null,
+      new Rollup__mdt(
+        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupFieldOnCalcItem__c = 'AmountFormula__c',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
+
+    System.assertEquals(false, eval.matches(opp), 'Should not match when recursive!');
+
+    opp.Id = oppId.removeEnd('0') + '1';
+
+    System.assertEquals(true, eval.matches(opp), 'Should match recursively if values do not match');
+  }
 }

@@ -34,6 +34,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private static Integer stackDepth = 0;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
+  private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{ Op.FIRST.name(), Op.LAST.name(), Op.AVERAGE.name() };
 
   private final List<SObject> calcItems;
   private final Map<Id, SObject> oldCalcItems;
@@ -107,7 +108,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
-  private static Map<String, Op> opNameToOp {
+  public static Map<String, Op> opNameToOp {
     get {
       if (opNameToOp == null) {
         opNameToOp = new Map<String, Op>();
@@ -116,6 +117,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
       return opNameToOp;
+    }
+    set;
+  }
+
+  private static Rollup ROLLUP_LOGGER {
+    get {
+      if (ROLLUP_LOGGER == null) {
+        ROLLUP_LOGGER = new Rollup(RollupInvocationPoint.FROM_STATIC_LOGGER);
+      }
+      return ROLLUP_LOGGER;
     }
     set;
   }
@@ -162,7 +173,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     FROM_APEX,
     FROM_INVOCABLE,
     FROM_SCHEDULED,
-    FROM_LWC
+    FROM_LWC,
+    FROM_STATIC_LOGGER
   }
 
   protected Rollup(RollupInvocationPoint invokePoint) {
@@ -267,12 +279,28 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return 0;
   }
 
+  public override String toString() {
+    Map<String, String> props = new Map<String, String>{
+      'Invocation Point' => this.invokePoint.name(),
+      'Calc Items' => JSON.serializePretty(this.calcItems),
+      'Old Calc Items' => JSON.serializePretty(this.oldCalcItems),
+      'Rollup Metadata' => JSON.serializePretty(this.metadata),
+      'Rollup Control' => JSON.serializePretty(this.rollupControl)
+    };
+    String baseString = '';
+    for (String key : props.keySet()) {
+      baseString += key + ': ' + props.get(key) + '\n';
+    }
+    return baseString.removeEnd('\n');
+  }
+
   public String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     this.ingestRollupControlData();
 
     this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
+      this.log('aborting run, no-op');
       return 'No process Id';
     }
 
@@ -285,15 +313,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) ||
       totalCountOfRecords == SENTINEL_COUNT_VALUE;
     if (this.syncRollups.isEmpty() == false) {
+      this.log('about to process sync rollups');
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
     } else if (shouldBatch && hasMoreThanOneTarget == false && System.isBatch() == false) {
+      this.log('about to batch');
       isRunningAsync = true;
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
       return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
     } else {
+      this.log('about to queue');
       isRunningAsync = true;
       return System.enqueueJob(this);
     }
@@ -321,6 +352,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       objIds.addAll(this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(sObjectType)).keySet());
     }
     String query = getQueryString(sObjectType, new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)), lookupFieldForLookupObject, '=');
+    this.log('starting batch with query: ', query);
     return Database.getQueryLocator(query);
   }
 
@@ -333,7 +365,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public virtual void finish(Database.BatchableContext context) {
-    System.debug('Rollup: batch finished successfully');
+    this.log('batch finished successfully');
   }
 
   private class RollupAsyncSaver implements System.Queueable {
@@ -599,6 +631,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputs = new List<FlowOutput>();
     List<Rollup> rollups = new List<Rollup>();
+    RollupInvocationPoint fromInvocable = RollupInvocationPoint.FROM_INVOCABLE;
 
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
@@ -649,7 +682,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           flowInput.grandparentRelationshipFieldPath,
           flowInput.calcItemWhereClause
         );
-        performFullRecalculationInner(rollupMeta, wrapper, RollupInvocationPoint.FROM_INVOCABLE);
+        performFullRecalculationInner(rollupMeta, wrapper, fromInvocable);
         continue;
       }
 
@@ -661,18 +694,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         flowInput.recordsToRollup,
         oldFlowRecords,
         null,
-        RollupInvocationPoint.FROM_INVOCABLE
+        fromInvocable
       );
-      if (flowInput.deferProcessing) {
+      if (flowInput.deferProcessing == true) {
+        staticLogMessage('deferring processing for rollup', roll);
         CACHED_ROLLUPS.add(roll);
       } else {
+        staticLogMessage('adding invocable rollup to list', roll);
         rollups.add(roll);
       }
     }
 
     try {
-      batch(rollups);
+      if (rollups.isEmpty() == false) {
+        batch(rollups, fromInvocable);
+      }
     } catch (Exception ex) {
+      staticLogException('an error occurred during invocable action', ex);
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
@@ -696,9 +734,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global static void batch(List<Rollup> rollups) {
-    Rollup batchRollup = new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX);
-    flattenBatches(batchRollup, rollups);
-    batchRollup.runCalc();
+    batch(rollups, RollupInvocationPoint.FROM_APEX);
   }
 
   global static Rollup averageFromApex(
@@ -1366,6 +1402,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
     rollupToReturn.isCDCUpdate = apexContext == TriggerOperation.AFTER_UPDATE;
+    // we're already async, so let's not waste any more time
+    rollupToReturn.rollupControl.ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.SYNCHRONOUS;
     rollupToReturn.runCalc();
   }
 
@@ -1425,6 +1463,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     for (Rollup__mdt rollupInfo : rollupMetadata) {
+      if (String.isBlank(rollupInfo.CalcItem__c)) {
+        rollupInfo.CalcItem__c = String.valueOf(calcItemSObjectType);
+      }
       Boolean isIntermediateRollupForGrandparent =
         rollupInfo.CalcItem__c != String.valueOf(calcItemSObjectType) &&
         String.isNotBlank(rollupInfo.GrandparentRelationshipFieldPath__c) &&
@@ -1535,25 +1576,24 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public static void processStoredFlowRollups() {
-    batch(CACHED_ROLLUPS);
+    staticLogMessage('processing deferred flow rollups', CACHED_ROLLUPS);
+    batch(CACHED_ROLLUPS, RollupInvocationPoint.FROM_INVOCABLE);
     CACHED_ROLLUPS.clear();
   }
 
   private static List<Rollup__mdt> cachedMetadata;
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     List<SObject> matchingMetadata;
-    // CMDT is read-only when returned from the cache
-    // use "deepClone" to get access to mutable versions
-    // of the CMDT records. We also need to clean up the Entity Definition / Field Definition
+    // We need to clean up the Entity Definition / Field Definition
     // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
       if (cachedMetadata == null) {
         cachedMetadata = [
           SELECT
-            // we have to do transforms on these fields because custom objects/custom fields
-            // have references that otherwise won't work with the rest of the code
             MasterLabel,
             DeveloperName,
+            // we have to do transforms on these fields because custom objects/custom fields
+            // have references that otherwise won't work with the rest of the code
             LookupObject__c,
             LookupObject__r.QualifiedApiName,
             CalcItem__c,
@@ -1599,6 +1639,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
       matchingMetadata = cachedMetadata.clone();
     } else if (metadataType == RollupControl__mdt.SObjectType) {
+      // CMDT is read-only when returned from the cache
+      // use "deepClone" to get access to mutable versions of the CMDT records.
       matchingMetadata = RollupControl__mdt.getAll().deepClone().values();
     }
     return matchingMetadata;
@@ -1658,37 +1700,71 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
+  private static void batch(List<Rollup> rollups, RollupInvocationPoint invokePoint) {
+    Rollup batchRollup = new RollupAsyncProcessor(invokePoint);
+    flattenBatches(batchRollup, rollups);
+    batchRollup.runCalc();
+  }
+
+  private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
+    for (Rollup rollup : rollups) {
+      if (rollup.rollups.isEmpty() == false) {
+        // recurse through lists until there aren't any more nested rollups
+        flattenBatches(outerRollup, rollup.rollups);
+      } else {
+        loadRollups(rollup, outerRollup);
+      }
+    }
+  }
+
   private static void enforceValidationRules(FlowInput flowInput) {
-    if ((flowInput.rollupOperation == 'FIRST' || flowInput.rollupOperation == 'LAST') && String.isBlank(flowInput.orderByFirstLast)) {
-      throw new IllegalArgumentException('Order By First/Last field required for ' + flowInput.rollupOperation + ' operation');
+    String errorMessage;
+    if (
+      (flowInput.rollupOperation == 'FIRST' ||
+      flowInput.rollupOperation == 'LAST') &&
+      String.isBlank(flowInput.orderByFirstLast) &&
+      String.isBlank(flowInput.rollupFieldOnCalcItem)
+    ) {
+      errorMessage = 'Order By First/Last field required for ' + flowInput.rollupOperation + ' operation';
     } else if (
       (flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) ||
       (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)
     ) {
-      throw new IllegalArgumentException('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups');
+      errorMessage = 'Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false && String.isNotBlank(flowInput.concatDelimiter)) {
-      throw new IllegalArgumentException('Concat delimiter should only be supplied for CONCAT-based rollups');
+      errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups';
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
-      throw new IllegalArgumentException('Only one override - the default string value or number value - can be supplied for each rollup');
+      errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
+    }
+
+    if (String.isNotBlank(errorMessage)) {
+      Exception ex = new IllegalArgumentException(errorMessage);
+      staticLogException('an error occurred while validating flow inputs', ex);
+      throw ex;
     }
   }
 
   private static void enforceFlowSpecificRules(FlowInput flowInput) {
-    if (flowInput.rollupContext == 'UPDATE' && flowInput.oldRecordsToRollup?.isEmpty() == true) {
-      throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
-    } else if (flowInput.recordsToRollup?.isEmpty() == false) {
-      SObject firstRecord = flowInput.recordsToRollup[0];
-      SObject lookupItem = getSObjectFromName(
-        flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : flowInput.rollupSObjectName
-      );
+    try {
+      if (flowInput.rollupContext == 'UPDATE' && flowInput.oldRecordsToRollup?.isEmpty() == true) {
+        throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
+      } else if (flowInput.recordsToRollup?.isEmpty() == false) {
+        SObject firstRecord = flowInput.recordsToRollup[0];
+        SObject lookupItem = getSObjectFromName(
+          flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : flowInput.rollupSObjectName
+        );
 
-      // validate the fields exist on the rollup record
-      (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.rollupFieldOnCalcItem);
-      (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.lookupFieldOnCalcItem);
+        // validate the fields exist on the rollup record
+        (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.rollupFieldOnCalcItem);
+        (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.lookupFieldOnCalcItem);
 
-      // validate that the fields exist on the lookup item
-      (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.rollupFieldOnOpObject);
-      (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
+        // validate that the fields exist on the lookup item
+        (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.rollupFieldOnOpObject);
+        (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
+      }
+    } catch (Exception ex) {
+      staticLogException('an error occurred while validating flow-specific rules', ex);
+      throw ex;
     }
   }
 
@@ -1724,7 +1800,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
-      System.debug(LoggingLevel.ERROR, 'An error occurred while formatting where clause: ' + ex.getMessage());
+      staticLogException('an error occurred while formatting where clause', ex);
     }
     return optionalWhereClause;
   }
@@ -1835,20 +1911,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     try {
       return Database.countQuery(countQuery);
     } catch (Exception ex) {
+      staticLogException('an error occurred while trying to get count query:\n' + countQuery, ex);
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return SENTINEL_COUNT_VALUE;
-    }
-  }
-
-  private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
-    for (Rollup rollup : rollups) {
-      if (rollup.rollups.isEmpty() == false) {
-        // recurse through lists until there aren't any more nested rollups
-        flattenBatches(outerRollup, rollup.rollups);
-      } else {
-        loadRollups(rollup, outerRollup);
-      }
     }
   }
 
@@ -1954,6 +2020,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Rollup batchRollup = new RollupAsyncProcessor(rollupInvokePoint);
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
     Map<String, SObjectField> fieldNameToField = describeForSObject.fields.getMap();
+
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
@@ -1971,6 +2038,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       rollupMetadata.LookupFieldOnCalcItem__c = calcLookupField.getDescribe().getName();
       rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
       rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
+
+      if (rollupMetadata.IsFullRecordSet__c == false && ALWAYS_FULL_RECALC_OPS.contains(getBareOperationName(rollupMetadata.RollupOperation__c))) {
+        rollupMetadata.IsFullRecordSet__c = true;
+      }
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2176,7 +2247,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static FilterResults filter(List<SObject> calcItems, Map<Id, SObject> oldCalcItems, Evaluator eval, Rollup__mdt metadata, SObjectType calcItemType) {
     FilterResults results = new FilterResults();
-    Set<String> alwaysFullRecalcOps = new Set<String>{ 'FIRST', 'LAST', 'AVERAGE' };
     List<SObject> matchingItems = calcItems == null ? new List<SObject>() : calcItems.clone();
     results.matchingItems = matchingItems;
     if (matchingItems.isEmpty()) {
@@ -2188,13 +2258,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
 
     for (SObject item : calcItems) {
-      if (results.eval.matches(item)) {
+      // if the where clause would exclude something, but we're in an update
+      // and the old value wouldn't have been excluded, pass it on through
+      // to be handled further downstream
+      SObject potentialOldItem = oldCalcItems?.isEmpty() == false && oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
+      if (results.eval.matches(item) || results.eval.matches(potentialOldItem)) {
         matchingItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
       } else if (metadata?.IsFullRecordSet__c == true) {
-        matchingItems.add(item);
-      } else if (alwaysFullRecalcOps.contains(metadata?.RollupOperation__c)) {
         matchingItems.add(item);
       }
     }
@@ -2272,16 +2344,68 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
+  private static String getBareOperationName(String fullOpName) {
+    return fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
+  }
+
+  private static void staticLogException(String customizedError, Exception ex) {
+    ROLLUP_LOGGER.log(customizedError, ex);
+  }
+
+  private static void staticLogMessage(String customMessage, Object logObject) {
+    ROLLUP_LOGGER.log(customMessage, logObject);
+  }
+
   /** End static section, begin protected + private instance methods */
 
-  protected Rollup getDelegatedRollup(
-    List<Rollup__mdt> rollupInfo,
-    SObjectType calcItemType,
-    List<SObject> calcItems,
-    Map<Id, SObject> oldCalcItems,
-    RollupInvocationPoint invokePoint
-  ) {
-    return getRollup(rollupInfo, calcItemType, calcItems, oldCalcItems, null, invokePoint);
+  private void log(String logString, Object logObject) {
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      String appended = this.getLogStringFromObject(logObject);
+      List<String> messages = new List<String>{ logString };
+      if (String.isNotBlank(appended)) {
+        messages.add(appended);
+      }
+      // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
+      // works to re-create the stacktrace for all of the calling code
+      messages.add(new DMLException().getStackTraceString());
+      System.debug('Rollup: ' + String.join(messages, '\n') + '\n');
+    }
+  }
+
+  private String getLogStringFromObject(Object logObject) {
+    String appended = '';
+    if (logObject instanceof String) {
+      appended = (String) logObject;
+    } else if (logObject instanceof List<Rollup>) {
+      List<Rollup> rolls = (List<Rollup>) logObject;
+      for (Rollup roll : rolls) {
+        appended += this.getLogStringFromObject(roll) + '\n';
+      }
+    } else if (logObject instanceof Rollup) {
+      Rollup roll = (Rollup) logObject;
+      if (roll.isBatched && roll.rollups.isEmpty() == false) {
+        appended = this.getLogStringFromObject(roll.rollups);
+      } else {
+        appended = logObject.toString();
+      }
+    } else if (logObject instanceof Exception) {
+      Exception ex = (Exception) logObject;
+      appended = ex.getMessage();
+    } else if (logObject != null) {
+      // not all objects implement toString, unfortunately,
+      // and we don't want this to throw. Blob.toString throws,
+      // for example - let's just serializePretty and move on
+      appended = JSON.serializePretty(logObject);
+    }
+    return appended.removeEnd('\n');
+  }
+
+  protected void log(String logString) {
+    this.log(logString, null);
+  }
+
+  protected Rollup getDelegatedRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    return getRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
   }
 
   protected void process(List<Rollup> rollups) {
@@ -2294,6 +2418,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (Rollup rollup : rollups) {
+      this.log('starting async rollup for: ', rollup);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
       if (hasExceededCurrentRollupLimits(rollup.rollupControl)) {
         this.deferredRollups.add(rollup);
@@ -2567,6 +2692,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     for (SObject lookupRecord : lookupItems) {
+      this.log('lookup record prior to rolling up: ', lookupRecord);
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> localCalcItems = calcItemsByLookupField.get(key);
@@ -2596,7 +2722,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
           if (newLookup != priorLookup && rollup.traversal == null) {
             this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-          } else if (rollup.traversal != null && rollup.traversal.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName())) {
+          } else if (rollup.traversal?.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName()) == true) {
             // slightly different, but with the same end result
             // note that when the reparented record is not null
             // it should be the same as the current "lookupRecord"
@@ -2619,6 +2745,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
+        this.log('lookup record after rolling up: ', lookupRecord);
       }
     }
 
@@ -2633,10 +2760,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         }
 
-        String currentOp = rollup.op.name().contains('_') ? rollup.op.name().substringAfter('_') : rollup.op.name();
+        String currentOp = getBareOperationName(rollup.op.name());
         String deleteOpName = 'DELETE_' + currentOp;
         Op deleteOp = opNameToOp.get(deleteOpName);
         Rollup oldLookupsRollup = new Rollup(rollup, deleteOp, reparentedCalcItems);
+
+        this.log('reparenting operation: ', oldLookupsRollup);
+        this.log('Reparented item prior to reparenting rollup: ', lookupRecord);
 
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
@@ -2645,6 +2775,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
+        this.log('Reparented item after reparenting rollup: ', lookupRecord);
       }
     }
 

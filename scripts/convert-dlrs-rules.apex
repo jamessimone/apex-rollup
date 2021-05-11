@@ -6,7 +6,14 @@ static final RollupControl__mdt ROLLUP_CONTROL = [SELECT Id, DeveloperName FROM 
 // Prepare the converted Rollup__mdt CMDT records for deployment
 String customMetadataTypePrefix = Schema.Rollup__mdt.SObjectType.getDescribe().getName().replace('__mdt', '');
 Metadata.DeployContainer deployment = new Metadata.DeployContainer();
+
+// Field/Entity Definition particles in CMDT don't currently support these three objects
+List<String> invalidChildren = new List<String>{ 'Event', 'Task', 'User' };
+
 for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.getAll().values()) {
+  if (dlrsRule.dlrs__Active__c == false || invalidchildren.contains(dlrsRule.dlrs__ChildObject__c)) {
+    continue;
+  }
 
   Metadata.CustomMetadata customMetadata = new Metadata.CustomMetadata();
   customMetadata.fullName = customMetadataTypePrefix + '.' + dlrsRule.get('DeveloperName');

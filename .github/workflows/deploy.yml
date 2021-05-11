@@ -38,6 +38,8 @@ jobs:
       # Checkout the code
       - name: 'Checkout source code'
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: 'Setup node'
         uses: actions/setup-node@v2
@@ -78,10 +80,19 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      #  Only create new package versions if a PR is pointed to main or we are merging to main
       - name: 'Package & Promote'
         shell: pwsh
-        if: ${{ env.SHOULD_CREATE_AND_PROMOTE == '1' }}
+        if: ${{ env.SHOULD_CREATE_AND_PROMOTE == '1' && github.actor == github.event.repository.owner.login && (github.base_ref == 'main' || github.ref == 'refs/heads/main') }}
         run: '. ./scripts/build-and-promote-package.ps1'
         env:
           SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Package versions are only created automatically within PRs that are pointed to main
+      # so those are the only times we need to update the README /sfdx-project.json and package.json
+      - name: 'Re-commit updated package version (if necessary)'
+        if: ${{ github.ref != 'refs/heads/main' && env.SHOULD_CREATE_AND_PROMOTE == '1' && github.actor == github.event.repository.owner.login && github.base_ref == 'main' }}
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
+        run: 'sh ./scripts/updateGithubCommitStatus.sh'

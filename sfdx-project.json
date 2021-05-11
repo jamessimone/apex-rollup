@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.16.0",
-            "versionDescription": "Slight performance improvements",
+            "versionNumber": "1.2.17.0",
+            "versionDescription": "Fix too-permissiveness for some update operations in RollupEvaluator",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
@@ -24,6 +24,7 @@
         "apex-rollup@1.2.13-0": "04t6g000008GJeUAAW",
         "apex-rollup@1.2.14-0": "04t6g000008GJjQAAW",
         "apex-rollup@1.2.15-0": "04t6g000008GJlbAAG",
-        "apex-rollup@1.2.16-0": "04t6g000008GJm0AAG"
+        "apex-rollup@1.2.16-0": "04t6g000008GJm0AAG",
+        "apex-rollup@1.2.17-0": "04t6g000008nt3WAAQ"
     }
 }
