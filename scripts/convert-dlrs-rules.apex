@@ -11,7 +11,7 @@ Metadata.DeployContainer deployment = new Metadata.DeployContainer();
 List<String> invalidChildren = new List<String>{ 'Event', 'Task', 'User' };
 
 for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.getAll().values()) {
-  if (dlrsRule.dlrs__Active__c == false || invalidchildren.contains(dlrsRule.dlrs__ChildObject__c)) {
+  if (dlrsRule.dlrs__Active__c == false || invalidChildren.contains(dlrsRule.dlrs__ChildObject__c)) {
     continue;
   }
 
