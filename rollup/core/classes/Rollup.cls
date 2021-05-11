@@ -696,7 +696,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         null,
         fromInvocable
       );
-      if (flowInput.deferProcessing) {
+      if (flowInput.deferProcessing == true) {
         staticLogMessage('deferring processing for rollup', roll);
         CACHED_ROLLUPS.add(roll);
       } else {
