@@ -697,10 +697,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         fromInvocable
       );
       if (flowInput.deferProcessing == true) {
-        staticLogMessage('deferring processing for rollup', roll);
+        ROLLUP_LOGGER.log('deferring processing for rollup', roll);
         CACHED_ROLLUPS.add(roll);
       } else {
-        staticLogMessage('adding invocable rollup to list', roll);
+        ROLLUP_LOGGER.log('adding invocable rollup to list', roll);
         rollups.add(roll);
       }
     }
@@ -710,7 +710,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         batch(rollups, fromInvocable);
       }
     } catch (Exception ex) {
-      staticLogException('an error occurred during invocable action', ex);
+       ROLLUP_LOGGER.log('an error occurred during invocable action', ex);
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
@@ -1576,7 +1576,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public static void processStoredFlowRollups() {
-    staticLogMessage('processing deferred flow rollups', CACHED_ROLLUPS);
+    ROLLUP_LOGGER.log('processing deferred flow rollups', CACHED_ROLLUPS);
     batch(CACHED_ROLLUPS, RollupInvocationPoint.FROM_INVOCABLE);
     CACHED_ROLLUPS.clear();
   }
@@ -1739,7 +1739,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     if (String.isNotBlank(errorMessage)) {
       Exception ex = new IllegalArgumentException(errorMessage);
-      staticLogException('an error occurred while validating flow inputs', ex);
+       ROLLUP_LOGGER.log('an error occurred while validating flow inputs', ex);
       throw ex;
     }
   }
@@ -1763,7 +1763,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
       }
     } catch (Exception ex) {
-      staticLogException('an error occurred while validating flow-specific rules', ex);
+       ROLLUP_LOGGER.log('an error occurred while validating flow-specific rules', ex);
       throw ex;
     }
   }
@@ -1800,7 +1800,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
-      staticLogException('an error occurred while formatting where clause', ex);
+       ROLLUP_LOGGER.log('an error occurred while formatting where clause', ex);
     }
     return optionalWhereClause;
   }
@@ -1911,7 +1911,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     try {
       return Database.countQuery(countQuery);
     } catch (Exception ex) {
-      staticLogException('an error occurred while trying to get count query:\n' + countQuery, ex);
+       ROLLUP_LOGGER.log('an error occurred while trying to get count query:\n' + countQuery, ex);
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return SENTINEL_COUNT_VALUE;
@@ -2348,14 +2348,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
   }
 
-  private static void staticLogException(String customizedError, Exception ex) {
-    ROLLUP_LOGGER.log(customizedError, ex);
-  }
-
-  private static void staticLogMessage(String customMessage, Object logObject) {
-    ROLLUP_LOGGER.log(customMessage, logObject);
-  }
-
   /** End static section, begin protected + private instance methods */
 
   private void log(String logString, Object logObject) {
@@ -2491,8 +2483,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.deferredRollups.clear();
 
       // swap off on which async process is running to achieve infinite scaling
-      if (System.isQueueable()) {
-        Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
+      if (System.isQueueable() || shouldRunAsBatch) {
+        Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
       } else if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
         System.enqueueJob(this);
       } else {

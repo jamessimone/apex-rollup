@@ -584,10 +584,10 @@ private class RollupIntegrationTests {
 
   @isTest
   static void shouldNotBlowUpForRecursiveCheckOnFormulaFields() {
-    String oppId = Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12);
+    String oppId = RollupTestUtils.createId(Opportunity.SObjectType);
     Opportunity opp = new Opportunity(
       Amount = 15,
-      AccountId = Account.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      AccountId = RollupTestUtils.createId(Account.SObjectType),
       Id = oppId
     );
     List<Opportunity> opps = new List<Opportunity>{ opp };
@@ -620,7 +620,7 @@ private class RollupIntegrationTests {
 
     System.assertEquals(false, eval.matches(opp), 'Should not match when recursive!');
 
-    opp.Id = oppId.removeEnd('0') + '1';
+    opp.Id = oppId.substring(0, oppId.length() - 1) + 'Y';
 
     System.assertEquals(true, eval.matches(opp), 'Should match recursively if values do not match');
   }
