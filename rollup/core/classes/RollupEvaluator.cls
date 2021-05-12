@@ -589,42 +589,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private class RecursiveTracker {
     public Integer stackCount = 0;
     public Set<Id> addedIds = new Set<Id>();
-    public Set<RollupItem> calcItems = new Set<RollupItem>();
-  }
-
-  private class RollupItem {
-    private RollupItem(SObject item, Rollup__mdt metadata) {
-      this.lookupKey = (String) item.get(metadata.LookupFieldOnCalcItem__c);
-      this.rollupValue = item.get(metadata.RollupFieldOnCalcItem__c);
-      this.Id = item.Id;
-    }
-
-    private final String lookupKey;
-    private final Object rollupValue;
-    private final Id Id;
-
-    public Boolean equals(Object thatItem) {
-      if (thatItem instanceof RollupItem) {
-        RollupItem that = (RollupItem) thatItem;
-        return this.lookupKey == that.lookupKey && this.rollupValue == that.rollupValue && this.Id == that.Id;
-      }
-
-      return false;
-    }
-
-    public Integer hashCode() {
-      Integer hashToReturn;
-      Integer idHash = this.Id == null ? 0 : ((Object) this.Id).hashCode();
-      Integer lookupHash = String.isBlank(this.lookupKey) ? 1 : this.lookupKey.hashCode();
-      Integer valHash = this.rollupValue == null ? 2 : this.rollupValue.hashCode();
-      try {
-        hashToReturn = idHash + lookupHash + valHash;
-      } catch (Exception ex) {
-        // in the event the integer overflows
-        hashToReturn = idHash + valHash - lookupHash;
-      }
-      return hashToReturn;
-    }
+    public Set<RollupRecursionItem> recursionItems = new Set<RollupRecursionItem>();
   }
 
   private class RecursiveUpdateEvaluator extends RollupEvaluator {
@@ -652,13 +617,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       ) {
         SObject calcItem = (SObject) item;
         // only populate the item with the rollup field and lookup field
-        RollupItem rollupItem = new RollupItem(calcItem, this.metadata);
+        RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata);
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
 
         if (recursionTracker.addedIds.contains(rollupItem.Id) == false) {
           recursionTracker.addedIds.add(rollupItem.Id);
-          recursionTracker.calcItems.add(rollupItem);
-        } else if (recursionTracker.stackCount > 0 && recursionTracker.calcItems.contains(rollupItem)) {
+          recursionTracker.recursionItems.add(rollupItem);
+        } else if (recursionTracker.stackCount > 0 && recursionTracker.recursionItems.contains(rollupItem)) {
           matches = false;
         }
       }

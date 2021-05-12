@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.17.0",
-            "versionDescription": "Fix too-permissiveness for some update operations in RollupEvaluator",
+            "versionNumber": "1.2.18.0",
+            "versionDescription": "Fix hashCode implementation for recursive checks. Removed some duplicate methods from Rollup.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
