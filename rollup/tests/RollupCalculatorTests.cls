@@ -571,7 +571,7 @@ private class RollupCalculatorTests {
       Opportunity.Name,
       QuickText.Channel,
       new Rollup__mdt(),
-      QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(QuickText.SObjectType),
       QuickText.Name
     );
 
@@ -597,7 +597,7 @@ private class RollupCalculatorTests {
       QuickText.Channel,
       Opportunity.Name,
       metadata,
-      Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(Opportunity.SObjectType),
       QuickText.Name
     );
 
@@ -630,7 +630,7 @@ private class RollupCalculatorTests {
       ContactPointAddress.BestTimeToContactEndTime,
       ContactPointAddress.BestTimeToContactEndTime,
       metadata,
-      ContactPointAddress.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(ContactPointAddress.SObjectType),
       ContactPointAddress.Id
     );
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator(metadata.CalcItemWhereClause__c, ContactPointAddress.SObjectType));
@@ -656,13 +656,13 @@ private class RollupCalculatorTests {
       Task.ActivityDate, // not a "MIN"-able field in SOQL; crucial for this test
       Opportunity.CloseDate,
       metadata,
-      Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(Opportunity.SObjectType),
       Task.WhatId
     );
 
     // the important things here: the current date is greater than both the passed in date (the "current" value on the lookup object)
     // AND that the "current" value matches what's on the old item
-    Task t = new Task(ActivityDate = today.addDays(1), Id = Task.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12));
+    Task t = new Task(ActivityDate = today.addDays(1), Id = RollupTestUtils.createId(Task.SObjectType));
 
     calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
 
@@ -683,7 +683,7 @@ private class RollupCalculatorTests {
       ContactPointAddress.BestTimeToContactEndTime,
       ContactPointAddress.BestTimeToContactEndTime,
       metadata,
-      ContactPointAddress.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(ContactPointAddress.SObjectType),
       ContactPointAddress.Id
     );
 
@@ -709,7 +709,7 @@ private class RollupCalculatorTests {
       ContactPointAddress.BestTimeToContactEndTime,
       ContactPointAddress.BestTimeToContactEndTime,
       metadata,
-      ContactPointAddress.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(ContactPointAddress.SObjectType),
       ContactPointAddress.Id
     );
 
@@ -735,13 +735,13 @@ private class RollupCalculatorTests {
       Task.ActivityDate, // not a "MAX"-able field in SOQL; crucial for this test
       Opportunity.CloseDate,
       metadata,
-      Opportunity.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+      RollupTestUtils.createId(Opportunity.SObjectType),
       Task.WhatId
     );
 
     // the important things here: the current date is less than both the passed in date (the "current" value on the lookup object)
     // AND that the "current" value matches what's on the old item
-    Task t = new Task(ActivityDate = today.addDays(-1), Id = Task.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12));
+    Task t = new Task(ActivityDate = today.addDays(-1), Id = RollupTestUtils.createId(Task.SObjectType));
 
     calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
 
@@ -765,7 +765,7 @@ private class RollupCalculatorTests {
         Opportunity.Name,
         QuickText.Channel,
         new Rollup__mdt(),
-        QuickText.SObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12),
+        RollupTestUtils.createId(QuickText.SObjectType),
         QuickText.Name
       );
     } catch (Exception e) {
