@@ -2483,8 +2483,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.deferredRollups.clear();
 
       // swap off on which async process is running to achieve infinite scaling
-      if (System.isQueueable()) {
-        Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
+      if (System.isQueueable() || shouldRunAsBatch) {
+        Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
       } else if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
         System.enqueueJob(this);
       } else {
