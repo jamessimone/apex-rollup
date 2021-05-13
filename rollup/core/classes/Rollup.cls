@@ -1473,7 +1473,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     if (shouldRunFromTrigger() == false) {
-      return new Rollup(RollupInvocationPoint.FROM_APEX);
+      return new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX);
     }
 
     String rollupContext;
@@ -1541,7 +1541,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     return shouldReturn
-      ? new Rollup(RollupInvocationPoint.FROM_APEX)
+      ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX)
       : getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_APEX);
   }
 
@@ -1717,9 +1717,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Evaluator eval,
     RollupInvocationPoint invokePoint
   ) {
-    // emptyRollup used to reference the default RollupControl__mdt.MaxLookupRowsBeforeBatching__c, as well as BatchChunkSize__c
-    Rollup emptyRollup = new Rollup(invokePoint);
-    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < emptyRollup.rollupControl.MaxLookupRowsBeforeBatching__c;
+    // ROLLUP_LOGGER used to reference the default RollupControl__mdt.MaxLookupRowsBeforeBatching__c, as well as BatchChunkSize__c
+    ROLLUP_LOGGER.log('Starting full recalc');
+    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < ROLLUP_LOGGER.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
       Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, invokePoint);
@@ -1729,7 +1729,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // batch to get calc items and then batch to rollup
       return Database.executeBatch(
         new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds),
-        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
+        ROLLUP_LOGGER.rollupControl.BatchChunkSize__c.intValue()
       );
     }
   }
@@ -2040,7 +2040,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     RollupInvocationPoint rollupInvokePoint
   ) {
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
-      return new Rollup(rollupInvokePoint);
+      return new RollupAsyncProcessor(rollupInvokePoint);
     }
     if (sObjectType == null) {
       sObjectType = calcItems[0].getSObjectType();
