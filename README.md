@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt4PAAQ">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt5DAAQ">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt4PAAQ">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt5DAAQ">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -754,9 +754,11 @@ Note that you're still selecting `Opportunity` as the `Calc Item` within your Ro
 
 Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
 
-## Commit History & Contributions
+## Commit History
 
 This repository comes after the result of [dozens of commits](https://github.com/jamessimone/apex-mocks-stress-test/commits/rollup) on my working repository. You can view the full history of the evolution of `Rollup` there.
+
+## Contributing
 
 On the subject of contributing ([also covered in the Contributing doc](./Contributing.md)), I'm open to collaborating! Please make sure you install this repo's dependencies using NPM or Yarn:
 
@@ -765,6 +767,17 @@ yarn
 # or
 npm -i
 ```
+
+### Ensure All Rollup Files Are Installed
+
+Whether you are developing on a sandbox or a new scratch org, please be sure to also deploy the `extra-tests` directory. I've included helper scripts to aid in programmatically testing only `Rollup`'s test classes when developing in a sandbox within the `package.json` file - one need only invoke the tests like such on the command line:
+
+- `yarn test`
+- or `npm run test`
+
+Within a scratch org, validating that all of the tests run is as simple as invoking `sfdx force:apex:test:run -w 10`.
+
+### Style Guidelines
 
 I use Prettier in conjunction with the `prettier-apex` plugin for formatting Apex. There are (hopefully) minor stylistic choices that I have made and hope any contributors will respect when modifying the code:
 

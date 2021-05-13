@@ -285,7 +285,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       'Calc Items' => JSON.serializePretty(this.calcItems),
       'Old Calc Items' => JSON.serializePretty(this.oldCalcItems),
       'Rollup Metadata' => JSON.serializePretty(this.metadata),
-      'Rollup Control' => JSON.serializePretty(this.rollupControl)
+      'Rollup Control' => JSON.serializePretty(this.rollupControl),
+      'Is Full Recalc' => String.valueOf(this.isFullRecalc)
     };
     String baseString = '';
     for (String key : props.keySet()) {
@@ -307,27 +308,46 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean hasMoreThanOneTarget = false;
     Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget);
 
-    Boolean shouldBatch =
+    shouldRunAsBatch =
       shouldRunAsBatch ||
-      (this.rollupControl.ShouldRunAs__c == RollupShouldRunAsPicklist.Instance.BATCHABLE &&
+      hasMoreThanOneTarget == false && ((this.rollupControl.ShouldRunAs__c == RollupShouldRunAsPicklist.Instance.BATCHABLE &&
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) ||
-      totalCountOfRecords == SENTINEL_COUNT_VALUE;
+      totalCountOfRecords == SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
       this.log('about to process sync rollups');
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
-    } else if (shouldBatch && hasMoreThanOneTarget == false && System.isBatch() == false) {
-      this.log('about to batch');
-      isRunningAsync = true;
+    } else {
+      return this.getAsyncRollup().beginAsyncRollup();
+    }
+  }
+
+  protected Rollup getAsyncRollup() {
+    // swap off on which async process is running to achieve infinite scaling
+    isRunningAsync = true;
+    Boolean canEnqueue = Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
+    Boolean isAsyncInnerClass = this instanceof RollupAsyncProcessor;
+    Rollup roll;
+    if (shouldRunAsBatch && System.isBatch() == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
-      return Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
+      roll = new Rollup(this);
+    } else if (canEnqueue && System.isQueueable() == false && isAsyncInnerClass == false) {
+      roll = new RollupAsyncProcessor(this);
+    } else if (canEnqueue && isAsyncInnerClass) {
+      roll = this;
     } else {
-      this.log('about to queue');
-      isRunningAsync = true;
-      return System.enqueueJob(this);
+      // the end of the line
+      this.throwWithRollupData(this.rollups);
     }
+
+    return roll;
+  }
+
+  protected virtual String beginAsyncRollup() {
+    this.log('about to start batch');
+    return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
   protected virtual List<SObject> getExistingLookupItems(Set<String> objIds, Rollup rollup, Set<String> uniqueQueryFieldNames) {
@@ -380,7 +400,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private class RollupAsyncProcessor extends Rollup implements System.Queueable {
-    public RollupAsyncProcessor(
+    private RollupAsyncProcessor(
       List<SObject> calcItems,
       SObjectField opFieldOnCalcItem,
       SObjectField lookupFieldOnCalcItem,
@@ -412,8 +432,21 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       );
     }
 
-    public RollupAsyncProcessor(RollupInvocationPoint rollupInvokePoint) {
+    private RollupAsyncProcessor(RollupInvocationPoint rollupInvokePoint) {
       super(rollupInvokePoint);
+    }
+
+    private RollupAsyncProcessor(Rollup roll) {
+      super(roll);
+    }
+
+    protected override String beginAsyncRollup() {
+      this.log('about to queue');
+      return System.enqueueJob(this);
+    }
+
+    public override void finish(Database.BatchableContext nullContextDontUse) {
+      this.log('queueable finished successfully');
     }
 
     protected override List<SObject> getExistingLookupItems(Set<String> objIds, Rollup rollup, Set<String> uniqueQueryFieldNames) {
@@ -443,6 +476,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public void execute(System.QueueableContext qc) {
       this.process(this.rollups);
+      this.finish(null);
     }
   }
 
@@ -1683,9 +1717,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Evaluator eval,
     RollupInvocationPoint invokePoint
   ) {
-    // emptyRollup used to reference the default RollupControl__mdt.MaxLookupRowsBeforeBatching__c, as well as BatchChunkSize__c
-    Rollup emptyRollup = new Rollup(invokePoint);
-    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < emptyRollup.rollupControl.MaxLookupRowsBeforeBatching__c;
+    // ROLLUP_LOGGER used to reference the default RollupControl__mdt.MaxLookupRowsBeforeBatching__c, as well as BatchChunkSize__c
+    ROLLUP_LOGGER.log('Starting full recalc');
+    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < ROLLUP_LOGGER.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
       Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, invokePoint);
@@ -1695,7 +1729,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // batch to get calc items and then batch to rollup
       return Database.executeBatch(
         new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds),
-        emptyRollup.rollupControl.BatchChunkSize__c.intValue()
+        ROLLUP_LOGGER.rollupControl.BatchChunkSize__c.intValue()
       );
     }
   }
@@ -2222,27 +2256,30 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return getSensibleControlDefault();
   }
 
+  private static RollupControl__mdt cachedOrgDefault;
   private static RollupControl__mdt getSensibleControlDefault() {
     if (defaultControl != null) {
       return defaultControl;
+    } else if (cachedOrgDefault == null) {
+      RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
+      if (sensibleDefault == null) {
+        // this *should* be impossible, since the record is included on install, but ...
+        sensibleDefault = new RollupControl__mdt(
+          DeveloperName = CONTROL_ORG_DEFAULTS,
+          BatchChunkSize__c = 2000,
+          MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
+          MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
+          MaxRollupRetries__c = 100,
+          MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
+          ShouldAbortRun__c = false,
+          ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.QUEUEABLE
+        );
+      } else {
+        sensibleDefault = sensibleDefault.clone(true, true);
+      }
+      cachedOrgDefault = sensibleDefault;
     }
-    RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
-    if (sensibleDefault == null) {
-      // this *should* be impossible, since the record is included on install, but ...
-      sensibleDefault = new RollupControl__mdt(
-        DeveloperName = CONTROL_ORG_DEFAULTS,
-        BatchChunkSize__c = 2000,
-        MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
-        MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
-        MaxRollupRetries__c = 100,
-        MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
-        ShouldAbortRun__c = false,
-        ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.QUEUEABLE
-      );
-    } else {
-      sensibleDefault = sensibleDefault.clone(true, true);
-    }
-    return sensibleDefault;
+    return cachedOrgDefault;
   }
 
   private static FilterResults filter(List<SObject> calcItems, Map<Id, SObject> oldCalcItems, Evaluator eval, Rollup__mdt metadata, SObjectType calcItemType) {
@@ -2257,6 +2294,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
 
+    // while we iterate through calcItems, the only possible mutation to that array is through "replaceCalcItemsForPolymorphicWhereClause"
+    // otherwise, for custom evaluators / where clauses / calc item changed fields, etc ... mutating the initial "calcItems" passed in would
+    // mean inadvertently filtering the items for other rollups on the same child SObject type. For this reason, we use the cloned "matchingItems"
+    // list to avoid unintended side-effects
     for (SObject item : calcItems) {
       // if the where clause would exclude something, but we're in an update
       // and the old value wouldn't have been excluded, pass it on through
@@ -2396,8 +2437,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     this.log(logString, null);
   }
 
-  protected Rollup getDelegatedRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    return getRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
+  protected void processDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    isRunningAsync = true; // the first rollup can immediately start rolling up, instead of dispatching to a queueable / another batchable
+    Rollup roll = getRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
+    roll.isFullRecalc = true;
+    roll.runCalc();
   }
 
   protected void process(List<Rollup> rollups) {
@@ -2482,15 +2526,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
 
-      // swap off on which async process is running to achieve infinite scaling
-      if (System.isQueueable() || shouldRunAsBatch) {
-        Database.executeBatch(new Rollup(this), this.rollupControl.BatchChunkSize__c.intValue());
-      } else if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
-        System.enqueueJob(this);
-      } else {
-        // the end of the line
-        this.throwWithRollupData(this.rollups);
-      }
+      this.getAsyncRollup().beginAsyncRollup();
     } else if (this.deferredRollups.isEmpty() == false) {
       this.throwWithRollupData(this.deferredRollups);
     }
@@ -2501,7 +2537,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (Rollup roll : rolls) {
       failedRollupInfo.add(roll.metadata);
     }
-    throw new AsyncException('Rollup failed to re-queue for: ' + JSON.serialize(failedRollupInfo));
+    String exceptionString = 'rollup failed to re-queue for: ';
+    this.log(exceptionString, failedRollupInfo);
+    throw new AsyncException(exceptionString + JSON.serialize(failedRollupInfo));
   }
 
   private void getFieldNamesForRollups(List<Rollup> rollups) {
@@ -2579,6 +2617,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     RollupControl__mdt orgDefaults = this.rollupControl;
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       Rollup rollup = this.rollups[index];
+      rollup.isFullRecalc = this.isFullRecalc;
 
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
@@ -2632,7 +2671,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     SObjectType targetType;
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
     for (Rollup rollup : this.rollups) {
-      rollup.isFullRecalc = this.isFullRecalc;
       if (targetType == null) {
         targetType = rollup.lookupObj;
       } else if (rollup.lookupObj != targetType) {
