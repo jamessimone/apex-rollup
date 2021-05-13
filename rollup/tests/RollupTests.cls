@@ -480,6 +480,50 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEqualsNonDestructively() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    DMLMock mock = loadAccountIdMock(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(Name = 'RollupZ', PreferenceRank = 2),
+        new ContactPointAddress(Name = 'RollupZZ', PreferenceRank = 1)
+      }
+    );
+
+    Rollup__mdt firstMeta = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = 'Name',
+      LookupObject__c = 'Account',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'Name',
+      RollupOperation__c = 'MAX',
+      CalcItemWhereClause__c = 'Name = \'RollupZ\'',
+      CalcItem__c = 'ContactPointAddress'
+    );
+
+    Rollup__mdt secondMeta = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupObject__c = 'Account',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      RollupOperation__c = 'SUM',
+      CalcItem__c = 'ContactPointAddress'
+    );
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{ firstMeta, secondMeta };
+
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on exclusion metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
+    System.assertEquals(3, updatedAcc.AnnualRevenue);
+  }
+
+  @isTest
   static void shouldResetRollupValueWhenNoItemsMatchAndToggleIsSupplied() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -1106,7 +1150,11 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'second test string', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    ContactPointAddress cpa = new ContactPointAddress(
+      ParentId = acc.Id,
+      Name = 'second test string',
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
     ContactPointAddress oldCpa = cpa.clone(true, true);
     oldCpa.Name = acc.AccountNumber;
 
@@ -1179,8 +1227,16 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'second test string', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
-    ContactPointAddress secondCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'third test string', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    ContactPointAddress cpa = new ContactPointAddress(
+      ParentId = acc.Id,
+      Name = 'second test string',
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
+    ContactPointAddress secondCpa = new ContactPointAddress(
+      ParentId = acc.Id,
+      Name = 'third test string',
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
     ContactPointAddress oldCpa = cpa.clone(true, true);
     oldCpa.Name = acc.AccountNumber;
     ContactPointAddress secondoldCpa = secondCpa.clone(true, true);
@@ -1330,7 +1386,9 @@ private class RollupTests {
     update acc;
     Rollup.defaultControl = null;
 
-    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)) };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'A', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+    };
 
     DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -1358,7 +1416,9 @@ private class RollupTests {
     // ensure that if any automation has changed the name, we keep track of it
     cpa = [SELECT Name FROM ContactPointAddress WHERE Id = :cpa.Id];
 
-    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)) };
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'A', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+    };
 
     DMLMock mock = loadAccountIdMock(testCpas);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -2672,7 +2732,11 @@ private class RollupTests {
     // inserting the both of these at the same time caused a gack, and I have no idea why ... so singular inserts it is!
     insert new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today.addDays(-1), ParentId = acc.Id, Name = 'Non match on where clause');
 
-    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    ContactPointAddress cpa = new ContactPointAddress(
+      PreferenceRank = 5,
+      ActiveFromDate = today,
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
 
     DMLMock mock = loadAccountIdMock(cpas);
@@ -2786,7 +2850,11 @@ private class RollupTests {
     // the important part here is that this one SHOULDN'T be first if the passed in calc item is not winnowed properly
     insert new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today.addDays(1), ParentId = acc.Id, Name = 'match on where clause');
 
-    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, ActiveFromDate = today, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    ContactPointAddress cpa = new ContactPointAddress(
+      PreferenceRank = 0,
+      ActiveFromDate = today,
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
@@ -3044,7 +3112,11 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE, BatchChunkSize__c = 1, MaxLookupRowsBeforeBatching__c = 0);
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE,
+      BatchChunkSize__c = 1,
+      MaxLookupRowsBeforeBatching__c = 0
+    );
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3060,7 +3132,11 @@ private class RollupTests {
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE, MaxLookupRowsBeforeBatching__c = 1000, BatchChunkSize__c = 50);
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE,
+      MaxLookupRowsBeforeBatching__c = 1000,
+      BatchChunkSize__c = 50
+    );
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3225,7 +3301,12 @@ private class RollupTests {
     };
     insert cpas;
 
-    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, BatchChunkSize__c = 10, ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE);
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 1,
+      BatchChunkSize__c = 10,
+      ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE,
+      IsRollupLoggingEnabled__c = true
+    );
 
     Rollup__mdt meta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',
@@ -3544,7 +3625,7 @@ private class RollupTests {
   static void shouldThrowIfDeferralNotPossible() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 0);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 0, IsRollupLoggingEnabled__c = true);
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxLookupRowsBeforeBatching__c = -1, BatchChunkSize__c = 0);
 
     try {
@@ -3554,7 +3635,7 @@ private class RollupTests {
       // a throw should occur within startTest()/stopTest() - the assertion below is uncatchable
       System.assert(false, 'shouldThrowIfDeferralNotPossible should not make it here');
     } catch (Exception ex) {
-      System.assertEquals(true, ex.getMessage().contains('Rollup failed to re-queue for'));
+      System.assertEquals(true, ex.getMessage().contains('rollup failed to re-queue for'), ex.getMessage());
       System.assertNotEquals(true, ex.getMessage().contains('shouldThrowIfDeferralNotPossible should not make it here'));
     }
   }

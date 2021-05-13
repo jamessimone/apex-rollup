@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.18.0",
-            "versionDescription": "Fix hashCode implementation for recursive checks. Removed some duplicate methods from Rollup.",
+            "versionNumber": "1.2.19.0",
+            "versionDescription": "Make deferred rollup operations even safer by consolidating logic for when a Rollup is queued, batched, or run synchronously.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
