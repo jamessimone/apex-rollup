@@ -1,6 +1,12 @@
 @isTest
 private class RollupCalculatorTests {
   // TODO - refactor RollupTests so that the different *calculator type*-based tests live here instead when DML is not required
+  // or only *light* DML is required
+
+  @TestSetup
+  static void setup() {
+    insert new Account(Name = 'RollupCalculatorTests');
+  }
 
   /** FIRST / LAST operations */
   @isTest
@@ -347,6 +353,32 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue(), 'Delete should exclude current values :(');
   }
 
+  @isTest
+  static void regressionShouldIncludeCalcItemWhereClauseInQueryFieldsFirst() {
+    Account acc = [SELECT Id FROM Account];
+    Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'ContactPointAddress', CalcItemWhereClause__c = 'PreferenceRank != 0');
+
+    ContactPointAddress first = new ContactPointAddress(Name = 'a', ParentId = acc.Id, PreferenceRank = 1);
+    insert first;
+
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'b', PreferenceRank = 1, ParentId = acc.Id, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.FIRST,
+      ContactPointAddress.NAME,
+      Account.Description,
+      metadata,
+      acc.Id,
+      ContactPointAddress.ParentId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator(metadata.CalcItemWhereClause__c, ContactPointAddress.SObjectType));
+
+    calc.performRollup(new List<ContactPointAddress>{ cpa }, new Map<Id, SObject>());
+
+    System.assertEquals(first.Name, calc.getReturnValue(), 'First should properly query');
+  }
+
   // AVERAGE tests
 
   @isTest
@@ -552,13 +584,7 @@ private class RollupCalculatorTests {
     Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
     calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
 
-    System.assertEquals(
-      distinct +
-      '; ' +
-      nonDistinctOpp.Name,
-      (String) calc.getReturnValue(),
-      'distinct values should be concatenated with custom delimiter!'
-    );
+    System.assertEquals(distinct + '; ' + nonDistinctOpp.Name, (String) calc.getReturnValue(), 'distinct values should be concatenated with custom delimiter!');
   }
 
   // PICKLIST tests
@@ -637,13 +663,12 @@ private class RollupCalculatorTests {
 
     ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = max, Name = 'Min time');
 
-    calc.performRollup(new List<ContactPointAddress>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12)) });
-
-    System.assertEquals(
-      null,
-      calc.getReturnValue(),
-      'Should be nulled out if no matching minimum'
+    calc.performRollup(
+      new List<ContactPointAddress>{ cpa },
+      new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12)) }
     );
+
+    System.assertEquals(null, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
   }
 
   @isTest
@@ -666,11 +691,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
 
-    System.assertEquals(
-      t.ActivityDate,
-      calc.getReturnValue(),
-      'Should be nulled out if no matching minimum'
-    );
+    System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
   }
 
   @isTest
@@ -691,13 +712,8 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<ContactPointAddress>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(BestTimeToContactEndTime = max) });
 
-    System.assertEquals(
-      cpa.BestTimeToContactEndTime,
-      calc.getReturnValue(),
-      'Should be nulled out if no matching minimum'
-    );
+    System.assertEquals(cpa.BestTimeToContactEndTime, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
   }
-
 
   @isTest
   static void shouldCorrectlyUpdateMinIfOnlyMatchingItemChanges() {
@@ -718,11 +734,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<ContactPointAddress>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(BestTimeToContactEndTime = max) });
 
-    System.assertEquals(
-      cpa.BestTimeToContactEndTime,
-      calc.getReturnValue(),
-      'Should correctly return min if only one matching item'
-    );
+    System.assertEquals(cpa.BestTimeToContactEndTime, calc.getReturnValue(), 'Should correctly return min if only one matching item');
   }
 
   @isTest
@@ -745,11 +757,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
 
-    System.assertEquals(
-      t.ActivityDate,
-      calc.getReturnValue(),
-      'Should be nulled out if no matching maximum'
-    );
+    System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should be nulled out if no matching maximum');
   }
 
   // Factory tests

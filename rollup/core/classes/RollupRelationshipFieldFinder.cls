@@ -320,7 +320,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(this.calcItemWhereClause, sObjectType);
+    RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(this.calcItemWhereClause, sObjectType);
     for (String whereClause : eval.getWhereClauses()) {
       // each where clause should begin with the field name:
       // "AccountId = 'someId'" - so by splitting on the space,
