@@ -86,7 +86,7 @@ if($currentBranch -eq "main") {
   Write-Output "Promoting package version"
   $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
   try {
-    # sfdx force:package:version:promote -p $currentPackageVersionId -n
+    sfdx force:package:version:promote -p $currentPackageVersionId -n
   } catch {
     # Make the assumption that the only reason "promote" would fail is if an unrelated change (like changing this script)
     # triggered a build with an already-promoted package version
@@ -96,7 +96,7 @@ if($currentBranch -eq "main") {
   Write-Output "Creating new package version"
 
   $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
-  # sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 30 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
+  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 30 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
   git add ./sfdx-project.json
 
   # Now that sfdx-project.json has been updated, grab the latest package version
