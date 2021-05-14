@@ -951,7 +951,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private class FirstLastRollupCalculator extends RollupCalculator {
-    private String orderByField;
+    private final String orderByField;
 
     public FirstLastRollupCalculator(
       Object priorVal,
@@ -982,6 +982,7 @@ public without sharing abstract class RollupCalculator {
       SObjectType sObjectType = this.getCalcItemType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField, this.metadata.LookupFieldOnCalcItem__c };
+      queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
       // a full-recalc is always necessary because we don't retain the information about the order by field
       String queryString = Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 

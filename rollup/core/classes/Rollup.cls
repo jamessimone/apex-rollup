@@ -254,29 +254,29 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public Integer compareTo(Object otherRollup) {
-    if ((otherRollup instanceof Rollup) == false) {
-      return 1;
+    Integer numberToReturn = 1;
+    if (otherRollup instanceof Rollup) {
+      Rollup that = (Rollup) otherRollup;
+      Boolean thisDelete = this.op.name().contains('DELETE');
+      Boolean thatDelete = that.op.name().contains('DELETE');
+      Boolean thisUpdate = this.op.name().contains('UPDATE');
+      Boolean thatUpdate = that.op.name().contains('UPDATE');
+      Boolean thisInsert = thisDelete == false && thisUpdate == false;
+      Boolean thatInsert = thatDelete == false && thatUpdate == false;
+
+      // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
+      if (thisInsert && (thatUpdate || thatDelete)) {
+        numberToReturn = -1;
+      } else if ((thisUpdate || thisDelete) && thatInsert) {
+        numberToReturn = 1;
+      } else if (thatUpdate && thisDelete) {
+        numberToReturn = 1;
+      } else if (thisUpdate && thatDelete) {
+        numberToReturn = -1;
+      }
     }
 
-    Rollup that = (Rollup) otherRollup;
-    Boolean thisDelete = this.op.name().contains('DELETE');
-    Boolean thatDelete = that.op.name().contains('DELETE');
-    Boolean thisUpdate = this.op.name().contains('UPDATE');
-    Boolean thatUpdate = that.op.name().contains('UPDATE');
-    Boolean thisInsert = thisDelete == false && thisUpdate == false;
-    Boolean thatInsert = thatDelete == false && thatUpdate == false;
-
-    // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
-    if (thisInsert && (thatUpdate || thatDelete)) {
-      return -1;
-    } else if ((thisUpdate || thisDelete) && thatInsert) {
-      return 1;
-    } else if (thatUpdate && thisDelete) {
-      return 1;
-    } else if (thisUpdate && thatDelete) {
-      return -1;
-    }
-    return 0;
+    return numberToReturn;
   }
 
   public override String toString() {
@@ -516,7 +516,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       queryFields.add(matchingMeta.LookupFieldOnCalcItem__c);
       queryFields.add(matchingMeta.RollupFieldOnCalcItem__c);
       if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
-        queryFields.addAll(new RollupEvaluator.WhereFieldEvaluator(matchingMeta.CalcItemWhereClause__c, childType).getQueryFields());
+        queryFields.addAll(RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType).getQueryFields());
       }
 
       String countQuery = getQueryString(childType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
@@ -1700,7 +1700,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
 
     Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c };
-    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(queryWrapper.toString(), childType);
+    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(queryWrapper.toString(), childType);
     queryFields.addAll(whereEval.getQueryFields());
     String queryString = getQueryString(childType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
@@ -1808,7 +1808,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (String.isBlank(optionalWhereClause) || hasPolymorphicOwnerClause(optionalWhereClause) == false) {
       return optionalWhereClause;
     }
-    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(optionalWhereClause, sObjectType);
+    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType);
     try {
       for (String whereClause : whereEval.getWhereClauses()) {
         if (hasPolymorphicOwnerClause(whereClause) == false) {
@@ -2261,7 +2261,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (defaultControl != null) {
       return defaultControl;
     } else if (cachedOrgDefault == null) {
-      RollupControl__mdt sensibleDefault = RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
+      // hack for additional code coverage; use one of the testVisible variables to test getting the below defaults instead
+      RollupControl__mdt sensibleDefault = records != null ? null : RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
       if (sensibleDefault == null) {
         // this *should* be impossible, since the record is included on install, but ...
         sensibleDefault = new RollupControl__mdt(
@@ -2371,7 +2372,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String owner,
     Rollup__mdt metadata
   ) {
-    RollupEvaluator.WhereFieldEvaluator whereEval = new RollupEvaluator.WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType);
+    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, sObjectType);
     for (String whereClause : whereEval.getWhereClauses()) {
       if (whereClause.contains(typeField) || whereClause.contains(owner)) {
         List<String> splitWheres = whereClause.split(' ');

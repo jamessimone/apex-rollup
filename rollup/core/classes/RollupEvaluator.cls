@@ -34,13 +34,27 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private set;
   }
 
+  private static Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
+
   public abstract Boolean matches(Object calcItem);
+
+  public static WhereFieldEvaluator getWhereEval(String calcItemWhereClause, SObjectType calcItemType) {
+    String key = calcItemWhereClause + calcItemType;
+    WhereFieldEvaluator eval;
+    if (CACHED_WHERE_EVALS.containsKey(key)) {
+      eval = CACHED_WHERE_EVALS.get(key);
+    } else {
+      eval = new WhereFieldEvaluator(calcItemWhereClause, calcItemType);
+      CACHED_WHERE_EVALS.put(key, eval);
+    }
+    return eval;
+  }
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
     List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? ALWAYS_TRUE_SINGLETON : eval };
 
     if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
-      evals.add(new WhereFieldEvaluator(metadata.CalcItemWhereClause__c, sObjectType));
+      evals.add(getWhereEval(metadata.CalcItemWhereClause__c, sObjectType));
     }
     if (String.isNotBlank(metadata.ChangedFieldsOnCalcItem__c)) {
       evals.add(getChangedFieldEval(metadata, oldCalcItems));
