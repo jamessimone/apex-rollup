@@ -9,17 +9,13 @@ Metadata.DeployContainer deployment = new Metadata.DeployContainer();
 
 // Field/Entity Definition particles in CMDT don't currently support these three objects
 List<String> invalidChildren = new List<String>{ 'Event', 'Task', 'User' };
-
+List<Map<String,String>> unmigrateableRules = new List<Map<String,String>>();
 for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.getAll().values()) {
-  if (dlrsRule.dlrs__Active__c == false || invalidChildren.contains(dlrsRule.dlrs__ChildObject__c)) {
+  if (dlrsRule.dlrs__Active__c == false) {
+    //we won't migrate inactive rules
     continue;
   }
-
-  Metadata.CustomMetadata customMetadata = new Metadata.CustomMetadata();
-  customMetadata.fullName = customMetadataTypePrefix + '.' + dlrsRule.get('DeveloperName');
-  customMetadata.label = (String) dlrsRule.get('MasterLabel');
-
-  String operation;
+   String operation;
   switch on dlrsRule.dlrs__AggregateOperation__c {
     when 'Concatenate' {
       operation = 'CONCAT';
@@ -34,6 +30,37 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
       operation = dlrsRule.dlrs__AggregateOperation__c;
     }
   }
+   if(invalidChildren.contains(dlrsRule.dlrs__ChildObject__c)){
+    //we will debug a list of unmigrateable rules to assist with the creation of the flow actions
+    Map<String,String> unmigratableRule = new Map<String,String>();
+    if(dlrsRule.dlrs__RelationshipCriteria__c != null){
+      unmigratableRule.put('SOQL Where Clause To Exclude Calc Items',dlrsRule.dlrs__RelationshipCriteria__c);
+    }
+    unmigratableRule.put('Records to rollup','Same as Prior records to rollup');
+    unmigratableRule.put('Prior records to rollup','provide the collection of child records (assuming rollup not from parent record else collection of parent records)');
+    if(dlrsRule.dlrs__FieldToOrderBy__c != null){
+    unmigratableRule.put('Order By (First/Last)',dlrsRule.dlrs__FieldToOrderBy__c);
+    }
+    if(operation.startsWith('CONCAT')){
+      unmigratableRule.put('Concat Delimiter',dlrsRule.dlrs__ConcatenateDelimiter__c );
+    }
+    unmigratableRule.put('Rollup target\'s SObject Name',dlrsRule.dlrs__ParentObject__c);    
+    unmigratableRule.put('Rollup Operation',operation.toUpperCase());
+    unmigratableRule.put('Rollup Object Field',dlrsRule.dlrs__AggregateResultField__c);   
+    unmigratableRule.put('Rollup Context','INSERT / UPDATE / UPSERT / DELETE: see documentation');
+    unmigratableRule.put('Lookup Field On Rollup Object','Id');
+    unmigratableRule.put('Lookup Field On Calc Item',dlrsRule.dlrs__RelationshipField__c);
+    unmigratableRule.put('Calc Item Rollup Field',dlrsRule.dlrs__FieldToAggregate__c);
+    unmigratableRule.put('Object for \"Prior records to rollup\"',dlrsRule.dlrs__ChildObject__c);
+    unmigratableRule.put('Action label',(String) dlrsRule.get('MasterLabel'));
+    unmigrateableRules.add(unmigratableRule);
+    continue;
+   }
+  Metadata.CustomMetadata customMetadata = new Metadata.CustomMetadata();
+  customMetadata.fullName = customMetadataTypePrefix + '.' + dlrsRule.get('DeveloperName');
+  customMetadata.label = (String) dlrsRule.get('MasterLabel');
+
+ 
 
   // This code uses instances of Metadata.CustomMetadataValue for the deployment - not instances of Rollup__mdt
   // So, use a map & field tokens to store the expected values - Salesforce will store the data as Rollup__mdt records when deployed
@@ -80,3 +107,8 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
 System.debug(LoggingLevel.INFO, 'Deployment metadata==' + JSON.serialize(deployment));
 Id jobId = Metadata.Operations.enqueueDeployment(deployment, null);
 System.debug(LoggingLevel.INFO, 'Deployment Job ID: ' + jobId);
+
+system.debug('the following rules could not be migrated, please create flow actions for them based on the trigger object');
+for(Map<String,String> rule: unmigrateableRules){
+  system.debug(JSON.serializePretty(rule));
+}
