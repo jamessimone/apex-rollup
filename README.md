@@ -168,9 +168,9 @@ Invoking the `Rollup` process from a Flow, in particular, is a joy; with a Recor
 
 This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups — be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow. As long as you can manipulate data to correspond to the shape of an existing SObject's fields, they don't even have to exist; you could have an Autolaunched flow rolling up records when invoked from a REST API so long as the data you're consuming contains a String/Id matching something on the "parent" rollup object.
 
-#### Perform Rollup on records Invocable Action
+**Special note as of v1.2.12** - a second collection variable, `Prior records to Rollup` is now included by default on both rollup invocable actions. This variable is only necessary to include for UPDATE / UPSERT contexts, but the _type_ for the collection must be set regardless of whether or not you use it. If your flow is currently locked because you are upgrading from a version prior to `v1.2.12` and the `Object for "Prior records to rollup" (input)` dropdown is locked, [read more about migrating without having to delete and recreate your existing action nodes](#using-sfdx-to-update-your-flow-xml).
 
-**Special note as of v1.2.12** - a second collection variable, `Prior records to Rollup` is now included by default on both invocable actions. This is only necessary for UPDATE / UPSERT contexts.
+#### Perform Rollup on records Invocable Action
 
 Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builder using the `Perform Rollup on records` action:
 
@@ -225,6 +225,35 @@ Unfortunately, the "Description" section for Invocable fields does not show up a
 #### Considerations For Scheduled Flows
 
 In order to prevent blowing through the Flow Interview limit for each day, it's important to note that the use of `Rollup` with a specific SObject in the scheduled flow's start node will run a flow interview for _every_ record retrieved. However, if the scheduled flow is run without a specific SObject having been selected in the start node, the process is bulkified successfully and you only consume a single flow interview per batch of records.
+
+#### Using SFDX To Update Your Flow XML
+
+<div id="using-sfdx-to-update-your-flow-xml"></div>
+
+if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreate it/them when updating from a version that lacked the `Prior Records To Rollup` collection variable. Follow these steps to painlessly update (this example will assume your flow uses the `Case` object:
+
+1. Pull down your flow's latest XML definition using `sfdx force:source:retrieve -m "Flow"`
+2. Search for `<dataTypeMappings>`. You should see something like this:
+
+```xml
+<dataTypeMappings>
+    <typeName>T__recordsToRollup</typeName>
+    <typeValue>Case</typeValue>
+</dataTypeMappings>
+```
+3. Copy and paste, updating the `<typeName>` section to include a new reference to `T__oldRecordsToRollup`:
+
+```xml
+<dataTypeMappings>
+    <typeName>T__recordsToRollup</typeName>
+    <typeValue>Case</typeValue>
+</dataTypeMappings>
+<dataTypeMappings>
+    <typeName>T__oldRecordsToRollup</typeName>
+    <typeValue>Case</typeValue>
+</dataTypeMappings>
+```
+4. Push the updated flow definition back up to your sandbox/scratch org. That's it - you're done!
 
 ### Calculating Rollups After Install
 
