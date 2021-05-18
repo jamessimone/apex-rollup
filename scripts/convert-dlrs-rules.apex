@@ -32,14 +32,18 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
   }
   if (invalidChildren.contains(dlrsRule.dlrs__ChildObject__c)) {
     //we will debug a list of unmigrateable rules to assist with the creation of the flow actions
+
     Map<String, String> unmigratableRule = new Map<String, String>();
     if (dlrsRule.dlrs__RelationshipCriteria__c != null) {
       unmigratableRule.put('SOQL Where Clause To Exclude Calc Items', dlrsRule.dlrs__RelationshipCriteria__c);
     }
-    unmigratableRule.put('Records to rollup', 'Same as Prior records to rollup');
+    unmigratableRule.put(
+      'Records to rollup',
+      'Provide the collection of child records (assuming rollup not from parent record else collection of parent records)'
+    );
     unmigratableRule.put(
       'Prior records to rollup',
-      'provide the collection of child records (assuming rollup not from parent record else collection of parent records)'
+      'A collection variable with {!$Record__Prior} in it, when using after update or after create and update flows'
     );
     if (dlrsRule.dlrs__FieldToOrderBy__c != null) {
       unmigratableRule.put('Order By (First/Last)', dlrsRule.dlrs__FieldToOrderBy__c);
