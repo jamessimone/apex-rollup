@@ -3113,7 +3113,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
       BatchChunkSize__c = 1,
       MaxLookupRowsBeforeBatching__c = 0
     );
@@ -3133,7 +3133,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
       MaxLookupRowsBeforeBatching__c = 1000,
       BatchChunkSize__c = 50
     );
@@ -3152,7 +3152,7 @@ private class RollupTests {
   static void shouldRunAsQueueableWhenSpecificControlIsQueueable() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.QUEUEABLE);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3304,7 +3304,7 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
       BatchChunkSize__c = 10,
-      ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
       IsRollupLoggingEnabled__c = true
     );
 

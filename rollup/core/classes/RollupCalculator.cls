@@ -631,7 +631,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private class CountRollupCalculator extends DecimalRollupCalculator {
-    private final Integer existingValue;
     public CountRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -642,8 +641,6 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      // cache existing value to ensure we don't dip below 0 in "getReturnValue"
-      this.existingValue = Integer.valueOf(this.returnVal);
     }
 
     public override Object getReturnValue() {
@@ -968,6 +965,8 @@ public without sharing abstract class RollupCalculator {
         opFieldOnCalcItem,
         opFieldOnLookupObject,
         // first/last could possibly use either default value
+        // we also have to cast to Object to avoid the compilation error:
+        // "Incompatible types in ternary operator: String, Decimal"
         (metadata.FullRecalculationDefaultNumberValue__c != null
           ? (Object) metadata.FullRecalculationDefaultNumberValue__c
           : (Object) metadata.FullRecalculationDefaultStringValue__c),
@@ -1020,16 +1019,19 @@ public without sharing abstract class RollupCalculator {
       Object potentialFirstVal = objOne.get(this.orderByField);
       Object potentialSecondVal = objTwo.get(this.orderByField);
 
-      // nulls last
+      // nulls last; return early if everything is null OR if the values match
       if (potentialFirstVal == null && potentialSecondVal != null) {
         returnVal = this.moveTowardFrontOfList;
       } else if (potentialSecondVal == null && potentialFirstVal != null) {
         returnVal = this.moveTowardBackOfList;
-      } else if (potentialFirstVal == null && potentialSecondVal == null) {
+      } else if ((potentialFirstVal == null && potentialSecondVal == null) || (potentialFirstVal == potentialSecondVal)) {
         return returnVal;
       }
 
-      if (potentialFirstVal instanceof Datetime && potentialFirstVal != potentialSecondVal) {
+      // otherwise, cast to one of the three most basic types in order to call the equality comparators
+      // all times / dates/ and datetimes will respond true to instanceof Datetime
+      // all numbers will respond true to instanceof Decimal
+      if (potentialFirstVal instanceof Datetime) {
         Datetime firstVal = (Datetime) potentialFirstVal;
         Datetime secondVal = (Datetime) potentialSecondVal;
 

@@ -310,7 +310,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     shouldRunAsBatch =
       shouldRunAsBatch ||
-      hasMoreThanOneTarget == false && ((this.rollupControl.ShouldRunAs__c == RollupShouldRunAsPicklist.Instance.BATCHABLE &&
+      hasMoreThanOneTarget == false && ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.BATCHABLE &&
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) ||
       totalCountOfRecords == SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
@@ -1437,7 +1437,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // the performance downsides should be negligible, given that we're already within an async context
     rollupToReturn.isCDCUpdate = apexContext == TriggerOperation.AFTER_UPDATE;
     // we're already async, so let's not waste any more time
-    rollupToReturn.rollupControl.ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.SYNCHRONOUS;
+    rollupToReturn.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS;
     rollupToReturn.runCalc();
   }
 
@@ -2273,7 +2273,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           MaxRollupRetries__c = 100,
           MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
           ShouldAbortRun__c = false,
-          ShouldRunAs__c = RollupShouldRunAsPicklist.Instance.QUEUEABLE
+          ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE
         );
       } else {
         sensibleDefault = sensibleDefault.clone(true, true);
@@ -2622,7 +2622,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
-        rollup.rollupControl.ShouldRunAs__c == RollupShouldRunAsPicklist.Instance.SYNCHRONOUS ||
+        rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS ||
         (hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync;
 
       if (rollup.rollupControl.ShouldAbortRun__c || orgDefaults.ShouldAbortRun__c) {

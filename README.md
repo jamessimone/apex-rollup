@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt5NAAQ">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt6kAAA">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt5NAAQ">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nt6kAAA">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -33,17 +33,21 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 As of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), `Rollup` now ships with a custom hierarchy setting, `Rollup Settings`, which you will have to create an Org Wide Default entry for by going to:
 
-- Setup
-- Custom Settings
-- Click `Manage` next to the `Rollup Settings` entry
-- Click `New` at the top to enter the Org Wide Defaults section - check off the `Is Enabled` field (it should be enabled by default) and click `Save`
+1. Setup
+2. Custom Settings
+3. Click `Manage` next to the `Rollup Settings` entry
+4. Click `New` at the top to enter the Org Wide Defaults section - check off the `Is Enabled` field (it should be enabled by default) and click `Save`
 
 While you can still enable/disable individual rollups from running with the use of the `Rollup Control` CMDT (more details on that further on in the Readme), using a custom setting allows for several features that CMDT-based solutions currently lack:
 
 - ease of installation/upgrade. Previously some users had issues when installing/upgrading due to pre-existing automation in their orgs interfering with the `Rollup` tests
 - granularity of control. Want to disable rollups from running for a specific user or profile? Easy as pie!
 
-If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex script [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and all DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org. Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
+### Migrating from DLRS
+
+If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex script [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org.
+There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-custom-metadata), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
+Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
 
 ## Usage
 
@@ -128,6 +132,8 @@ You can have as many rollups as you'd like per object/trigger — all operations
 
 #### Notes On The Use Of CMDT To Control Your Rollups
 
+<div id="notes-on-custom-metadata"></div>
+
 There are two limitations to Entity Definition relationships that currently exist:
 
 1. They cannot refer to the User object
@@ -168,9 +174,9 @@ Invoking the `Rollup` process from a Flow, in particular, is a joy; with a Recor
 
 This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups — be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow. As long as you can manipulate data to correspond to the shape of an existing SObject's fields, they don't even have to exist; you could have an Autolaunched flow rolling up records when invoked from a REST API so long as the data you're consuming contains a String/Id matching something on the "parent" rollup object.
 
-#### Perform Rollup on records Invocable Action
+**Special note as of v1.2.12** - a second collection variable, `Prior records to Rollup` is now included by default on both rollup invocable actions. This variable is only necessary to include for UPDATE / UPSERT contexts, but the _type_ for the collection must be set regardless of whether or not you use it. If your flow is currently locked because you are upgrading from a version prior to `v1.2.12` and the `Object for "Prior records to rollup" (input)` dropdown is locked, [read more about migrating without having to delete and recreate your existing action nodes](#using-sfdx-to-update-your-flow-xml).
 
-**Special note as of v1.2.12** - a second collection variable, `Prior records to Rollup` is now included by default on both invocable actions. This is only necessary for UPDATE / UPSERT contexts.
+#### Perform Rollup on records Invocable Action
 
 Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builder using the `Perform Rollup on records` action:
 
@@ -225,6 +231,35 @@ Unfortunately, the "Description" section for Invocable fields does not show up a
 #### Considerations For Scheduled Flows
 
 In order to prevent blowing through the Flow Interview limit for each day, it's important to note that the use of `Rollup` with a specific SObject in the scheduled flow's start node will run a flow interview for _every_ record retrieved. However, if the scheduled flow is run without a specific SObject having been selected in the start node, the process is bulkified successfully and you only consume a single flow interview per batch of records.
+
+#### Using SFDX To Update Your Flow XML
+
+<div id="using-sfdx-to-update-your-flow-xml"></div>
+
+if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreate it/them when updating from a version that lacked the `Prior Records To Rollup` collection variable. Follow these steps to painlessly update (this example will assume your flow uses the `Case` object:
+
+1. Pull down your flow's latest XML definition using `sfdx force:source:retrieve -m "Flow"`
+2. Search for `<dataTypeMappings>`. You should see something like this:
+
+```xml
+<dataTypeMappings>
+    <typeName>T__recordsToRollup</typeName>
+    <typeValue>Case</typeValue>
+</dataTypeMappings>
+```
+3. Copy and paste, updating the `<typeName>` section to include a new reference to `T__oldRecordsToRollup`:
+
+```xml
+<dataTypeMappings>
+    <typeName>T__recordsToRollup</typeName>
+    <typeValue>Case</typeValue>
+</dataTypeMappings>
+<dataTypeMappings>
+    <typeName>T__oldRecordsToRollup</typeName>
+    <typeValue>Case</typeValue>
+</dataTypeMappings>
+```
+4. Push the updated flow definition back up to your sandbox/scratch org. That's it - you're done!
 
 ### Calculating Rollups After Install
 

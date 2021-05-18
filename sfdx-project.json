@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.20.0",
-            "versionDescription": "Fix Calc Item Where Clause issue with FIRST/LAST operations, start caching RollupEvaluator.WhereFieldEvaluator for better performance",
+            "versionNumber": "1.2.21.0",
+            "versionDescription": "Update DLRS migration script, cleanup within RollupCalculator.cls, deprecated RollupShouldRunAsPicklist.cls in favor of RollupMetaPicklists.cls",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
@@ -28,6 +28,7 @@
         "apex-rollup@1.2.17-0": "04t6g000008nt3WAAQ",
         "apex-rollup@1.2.18-0": "04t6g000008nt4PAAQ",
         "apex-rollup@1.2.19-0": "04t6g000008nt5DAAQ",
-        "apex-rollup@1.2.20-0": "04t6g000008nt5NAAQ"
+        "apex-rollup@1.2.20-0": "04t6g000008nt5NAAQ",
+        "apex-rollup@1.2.21-0": "04t6g000008nt6kAAA"
     }
 }
