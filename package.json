@@ -9,9 +9,9 @@
   "author": "james.simone",
   "license": "MIT",
   "devDependencies": {
-    "@salesforce/sfdx-lwc-jest": "latest",
-    "prettier": "2.2.1",
-    "prettier-plugin-apex": "1.8.0"
+    "prettier-plugin-apex": "latest",
+    "prettier": "latest",
+    "@salesforce/sfdx-lwc-jest": "latest"
   },
   "scripts": {
     "test": "npm run testApex && npm run testLWC",
