@@ -46,7 +46,7 @@ While you can still enable/disable individual rollups from running with the use 
 ### Migrating from DLRS
 
 If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex script [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org.
-There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#Notes On The Use Of CMDT To Control Your Rollups), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#Flow / Process Builder Invocable).
+There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-CMDT), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
 Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
 
 ## Usage
@@ -131,6 +131,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
 #### Notes On The Use Of CMDT To Control Your Rollups
+
+<div id="notes-on-CMDT"></div>
 
 There are two limitations to Entity Definition relationships that currently exist:
 
