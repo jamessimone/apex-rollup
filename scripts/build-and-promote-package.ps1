@@ -13,6 +13,9 @@ function Get-Apex-Rollup-Package-Alias {
   param (
     $packageVersion
   )
+  if ($packageVersion.EndsWith(".0")) {
+    $packageVersion = $packageVersion.Substring(0, $packageVersion.length - 2);
+  }
   return "apex-rollup@$packageVersion-0"
 }
 
@@ -41,7 +44,7 @@ function Get-Latest-Package-Id {
   )
   $currentPackageVersionId = $null
   try {
-    $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion.Trim(".0"))
+    $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $currentPackageVersion)
   } catch {
     $currentPackageVersionId = (Get-SFDX-Project-JSON).packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
   }
@@ -64,7 +67,7 @@ Write-Output "Current package version number: $currentPackageVersion"
 $priorPackageVersionId = $null
 $priorPackageVersionNumber = $null;
 try {
-  $priorPackageVersionNumber = $currentPackageVersion.Trim(".0")
+  $priorPackageVersionNumber = $currentPackageVersion
   $priorPackageVersionId = $sfdxProjectJson.packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
 } catch {
   # if there hasn't been a current version of the package, get the previous version and its associated package Id
@@ -72,7 +75,7 @@ try {
   $currentPackageNumberString = $currentPackageNumber.ToString()
   $priorPackageVersionString = ($currentPackageNumber - 1).ToString()
 
-  $priorPackageVersionNumber = (Update-Last-Substring $currentPackageVersion $currentPackageNumberString $priorPackageVersionString).Trim(".0")
+  $priorPackageVersionNumber = (Update-Last-Substring $currentPackageVersion $currentPackageNumberString $priorPackageVersionString)
   $priorPackageVersionId = $sfdxProjectJson.packageAliases | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
 }
 
