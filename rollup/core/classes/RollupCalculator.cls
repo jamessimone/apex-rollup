@@ -799,6 +799,11 @@ public without sharing abstract class RollupCalculator {
 
     private void sortAndConcat() {
       List<String> values = this.stringVal.split(this.concatDelimiter);
+      for (Integer index = values.size() -1; index >= 0; index--) {
+        if (String.isBlank(values[index])) {
+          values.remove(index);
+        }
+      }
       values.sort();
       this.stringVal = String.join(values, this.concatDelimiter);
     }
@@ -835,7 +840,7 @@ public without sharing abstract class RollupCalculator {
       if (existingVal.contains(matchingVal)) {
         return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
       }
-      return existingVal += replacementVal + this.concatDelimiter;
+      return existingVal += this.concatDelimiter + replacementVal;
     }
 
     private void handleConcatDistinctDelete(SObject calcItem) {

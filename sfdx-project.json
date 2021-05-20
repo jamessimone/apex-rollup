@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.21.0",
-            "versionDescription": "Update DLRS migration script, cleanup within RollupCalculator.cls, deprecated RollupShouldRunAsPicklist.cls in favor of RollupMetaPicklists.cls",
+            "versionNumber": "1.2.22.0",
+            "versionDescription": "Concat calculator properly applies delimiter on mixed updates, thanks to Katherine West!",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
@@ -29,6 +29,7 @@
         "apex-rollup@1.2.18-0": "04t6g000008nt4PAAQ",
         "apex-rollup@1.2.19-0": "04t6g000008nt5DAAQ",
         "apex-rollup@1.2.20-0": "04t6g000008nt5NAAQ",
-        "apex-rollup@1.2.21-0": "04t6g000008nt6kAAA"
+        "apex-rollup@1.2.21-0": "04t6g000008nt6kAAA",
+        "apex-rollup@1.2.22-0": "04t6g000008SgCUAA0"
     }
 }
