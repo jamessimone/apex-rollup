@@ -1260,6 +1260,45 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldConcatDistinctOnUpdateWhereOnlyNewItemIsAdded() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AccountNumber FROM Account];
+    acc.AccountNumber = 'first test string again';
+    update acc;
+    Rollup.defaultControl = null;
+
+    ContactPointAddress cpa = new ContactPointAddress(
+      ParentId = acc.Id,
+      Name = acc.AccountNumber,
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
+    ContactPointAddress secondCpa = new ContactPointAddress(
+      ParentId = acc.Id,
+      Name = 'third test string',
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
+    ContactPointAddress secondoldCpa = secondCpa.clone(true, true);
+    secondoldCpa.Name = 'some other string';
+
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa, secondCpa });
+
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => cpa, secondoldCpa.Id => secondoldCpa };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_UPDATE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(
+      'first test string again, third test string',
+      updatedAcc.AccountNumber,
+      'CONCAT_DISTINCT AFTER_UPDATE should be the distinct combo of the old and new strings'
+    );
+  }
+
+  @isTest
   static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, Name FROM Account];
