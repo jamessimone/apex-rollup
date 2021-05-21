@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.22.0",
-            "versionDescription": "Concat calculator properly applies delimiter on mixed updates, thanks to Katherine West!",
+            "versionNumber": "1.2.23.0",
+            "versionDescription": "Closed final scalability loophole with Rollup and query limits, added parent recalc flexipage button",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],

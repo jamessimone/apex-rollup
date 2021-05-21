@@ -1,10 +1,11 @@
 import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
-import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+
+import { getRollupMetadata } from "c/utils"
 
 const NO_PROCESS_ID = 'No process Id';
 const MAX_ROW_SELECTION = 200;
@@ -90,9 +91,8 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   async _fetchAvailableCMDT() {
-    this._localMetadata = await getRollupMetadataByCalcItem();
+    this._localMetadata = await getRollupMetadata();
     Object.keys(this._localMetadata)
-      .sort()
       .forEach(localMeta => {
         this.rollupMetadataOptions.push({ label: localMeta, value: localMeta });
       });
@@ -111,18 +111,8 @@ export default class RollupForceRecalculation extends LightningElement {
         }
 
         const localMetas = [...this.selectedRows];
-        const matchingMetadata = [];
-        // we have to transform the data slightly to conform to what the Apex deserializer expects by removing relationship fields
-        for (let localMeta of localMetas) {
-          const copiedMetadata = {};
-          Object.keys(localMeta).forEach(key => {
-            if (key.indexOf('__r') === -1) {
-              copiedMetadata[key] = localMeta[key];
-            }
-          });
-          matchingMetadata.push(copiedMetadata);
-        }
-        jobId = await performBulkFullRecalc({ matchingMetadata });
+
+        jobId = await performBulkFullRecalc({ matchingMetadata: localMetas });
       } else {
         jobId = await performFullRecalculation({ metadata: this.metadata });
       }

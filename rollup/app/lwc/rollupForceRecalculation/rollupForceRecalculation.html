@@ -5,19 +5,20 @@
       Alternatively, you can select a single Calc Item based off of your CMDT rollup records and have the recalculation run for all CMDT associated with that
       SObject type:
     </div>
-    <lightning-input data-id="cmdt-toggle" type="toggle" label="Run off of CMDT?" onchange={handleToggle}></lightning-input>
+    <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" type="toggle" label="Run off of CMDT?" onchange={handleToggle}></lightning-input>
     <lightning-layout vertical-align="center">
       <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
         <template if:true={isCMDTRecalc}>
           <lightning-combobox
-            name="Select Calc Item"
-            label="Select Calc Item"
-            value={selectedMetadata}
-            options={rollupMetadataOptions}
-            onchange={handleComboChange}
+          name="Select Calc Item"
+          label="Select Calc Item"
+          value={selectedMetadata}
+          options={rollupMetadataOptions}
+          onchange={handleComboChange}
           ></lightning-combobox>
           <template if:true={selectedMetadataCMDTRecords}>
             <lightning-datatable
+              class="slds-m-top_large"
               data-id="datatable"
               key-field="DeveloperName"
               data={selectedMetadataCMDTRecords}
