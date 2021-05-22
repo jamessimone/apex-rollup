@@ -1,6 +1,7 @@
 import { api, LightningElement } from 'lwc';
+import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 
-import { getRollupMetadata } from "c/utils"
+import { getRollupMetadata } from 'c/utils';
 
 export default class RecalculateParentRollupFlexipage extends LightningElement {
   @api recordId;
@@ -13,15 +14,30 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
 
   async connectedCallback() {
     try {
-      const metadata = await getRollupMetadata()
+      const metadata = await getRollupMetadata();
       this._fillValidMetadata(metadata);
-    } catch(_) {
+    } catch (err) {
+      console.error(err);
       this.isValid = false;
     }
   }
 
-  handleClick() {
+  async handleClick() {
     this.isRecalculating = true;
+
+    if (this._matchingMetas.length > 0) {
+      try {
+        await performBulkFullRecalc({ matchingMetadata: this._matchingMetas, invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
+        // record detail pages / components still based on Aura need a little kickstart to properly show the updated values
+        if(!!window["$A"]) {
+          eval("$A.get('e.force:refreshView').fire();");
+        }
+      } catch(err) {
+        console.error(err)
+      }
+    }
+
+    this.isRecalculating = false;
   }
 
   _fillValidMetadata(metadata) {
@@ -32,9 +48,23 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
         // parent recordId
         if (rollupMetadata.LookupObject__c === this.objectApiName) {
           this.isValid = true;
-
+          this._addMatchingMetadata(rollupMetadata);
         }
-      })
-    })
+      });
+    });
+  }
+
+  _addMatchingMetadata(metadata) {
+    const equalsParent =
+      metadata.LookupFieldOnCalcItem__c +
+      " = '" +
+      this.recordId +
+      "'";
+    if (metadata.CalcItemWhereClause__c && metadata.CalcItemWhereClause__c.length > 0) {
+      metadata.CalcItemWhereClause__c = '(' + metadata.CalcItemWhereClause__c + ')' + ' AND ' + equalsParent;
+    } else {
+      metadata.CalcItemWhereClause__c = equalsParent;
+    }
+    this._matchingMetas.push(metadata);
   }
 }

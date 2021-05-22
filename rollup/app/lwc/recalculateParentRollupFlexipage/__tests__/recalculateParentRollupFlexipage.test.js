@@ -1,13 +1,24 @@
 import { createElement } from 'lwc';
+import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 
-import RecalculateParentRollupFlexipage from "c/recalculateParentRollupFlexipage"
-import { mockMetadata } from "../../__mockData__"
+import RecalculateParentRollupFlexipage from 'c/recalculateParentRollupFlexipage';
+import { mockMetadata } from '../../__mockData__';
 
 jest.mock(
   '@salesforce/apex/Rollup.getRollupMetadataByCalcItem',
   () => {
     return {
       default: () => mockMetadata
+    };
+  },
+  { virtual: true }
+);
+
+jest.mock(
+  '@salesforce/apex/Rollup.performBulkFullRecalc',
+  () => {
+    return {
+      default: jest.fn()
     };
   },
   { virtual: true }
@@ -25,35 +36,61 @@ describe('recalc parent rollup from flexipage tests', () => {
     jest.clearAllMocks();
   });
 
-  it('should not render anything if object api name has no match for parent in retrieved metadata', () => {
+  it('should not render anything if object api name has no match for parent in retrieved metadata', async () => {
     const fakeObjectName = 'Lead';
     expect(mockMetadata[fakeObjectName]).toBeFalsy();
 
-    const parentRecalcButton = createElement('c-recalculate-parent-rollup-flexipage', {
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
-    parentRecalcButton.objectApiName = fakeObjectName;
-    document.body.appendChild(parentRecalcButton);
+    parentRecalcEl.objectApiName = fakeObjectName;
+    document.body.appendChild(parentRecalcEl);
 
     return flushPromises().then(() => {
-      expect(parentRecalcButton.shadowRoot.querySelector('div')).toBeFalsy();
-    })
-  })
+      expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeFalsy();
+    });
+  });
 
-  it('should render if object api name matches parent in retrieved metadata', () => {
-    const parentRecalcButton = createElement('c-recalculate-parent-rollup-flexipage', {
+  it('should render if object api name matches parent in retrieved metadata', async () => {
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
 
-    parentRecalcButton.objectApiName = mockMetadata[Object.keys(mockMetadata)[0]][0].LookupObject__c
-    document.body.appendChild(parentRecalcButton);
+    parentRecalcEl.objectApiName = mockMetadata[Object.keys(mockMetadata)[0]][0].LookupObject__c;
+    document.body.appendChild(parentRecalcEl);
 
     return flushPromises().then(() => {
-      expect(parentRecalcButton.shadowRoot.querySelector('div')).toBeTruthy();
-    })
-  })
+      expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeTruthy();
+    });
+  });
 
-  it('should send CMDT to apex with parent record id when clicked', () => {
-    expect(true).toBeFalsy();
-  })
-})
+  it('should send CMDT to apex with parent record id when clicked', async () => {
+    const FAKE_RECORD_ID = '00100000000001';
+
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
+      is: RecalculateParentRollupFlexipage
+    });
+
+    const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
+    delete matchingMetadata[0]['CalcItem__r.QualifiedApiName'];
+    parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
+    parentRecalcEl.recordId = FAKE_RECORD_ID;
+
+    document.body.appendChild(parentRecalcEl);
+
+    return flushPromises()
+      .then(() => {
+        parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
+      })
+      .then(() => {
+        expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeTruthy();
+      })
+      .then(() => {
+        // once recalc has finished ...
+        // we need to validate that what was sent includes our custom rollup invocation point
+        matchingMetadata[0].CalcItemWhereClause__c = "AccountId = '" + FAKE_RECORD_ID + "'";
+        expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
+        expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata, invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
+      });
+  });
+});

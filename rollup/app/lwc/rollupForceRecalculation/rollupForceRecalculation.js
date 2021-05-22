@@ -5,7 +5,7 @@ import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalcu
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
-import { getRollupMetadata } from "c/utils"
+import { getRollupMetadata } from 'c/utils';
 
 const NO_PROCESS_ID = 'No process Id';
 const MAX_ROW_SELECTION = 200;
@@ -39,7 +39,6 @@ export default class RollupForceRecalculation extends LightningElement {
   error = '';
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
-  _hasRendered = false;
   _localMetadata = {};
   _cmdtFieldNames = [
     'MasterLabel',
@@ -52,12 +51,9 @@ export default class RollupForceRecalculation extends LightningElement {
     'LookupObject__c'
   ];
 
-  async renderedCallback() {
-    if (!this._hasRendered) {
-      document.title = 'Recalculate Rollup';
-      this._hasRendered = true;
-      await this._fetchAvailableCMDT();
-    }
+  async connectedCallback() {
+    document.title = 'Recalculate Rollup';
+    await this._fetchAvailableCMDT();
   }
 
   @wire(getObjectInfo, { objectApiName: 'Rollup__mdt' })
@@ -92,10 +88,10 @@ export default class RollupForceRecalculation extends LightningElement {
 
   async _fetchAvailableCMDT() {
     this._localMetadata = await getRollupMetadata();
-    Object.keys(this._localMetadata)
-      .forEach(localMeta => {
-        this.rollupMetadataOptions.push({ label: localMeta, value: localMeta });
-      });
+
+    Object.keys(this._localMetadata).forEach(localMeta => {
+      this.rollupMetadataOptions.push({ label: localMeta, value: localMeta });
+    });
   }
 
   async handleSubmit(event) {
@@ -112,7 +108,7 @@ export default class RollupForceRecalculation extends LightningElement {
 
         const localMetas = [...this.selectedRows];
 
-        jobId = await performBulkFullRecalc({ matchingMetadata: localMetas });
+        jobId = await performBulkFullRecalc({ matchingMetadata: localMetas, invokePointName: 'FROM_LWC' });
       } else {
         jobId = await performFullRecalculation({ metadata: this.metadata });
       }

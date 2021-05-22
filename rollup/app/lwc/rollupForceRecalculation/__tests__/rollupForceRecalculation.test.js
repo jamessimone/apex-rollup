@@ -4,7 +4,7 @@ import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalcu
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 import { registerLdsTestWireAdapter } from '@salesforce/sfdx-lwc-jest';
 
-import { mockMetadata } from "../../__mockData__"
+import { mockMetadata } from '../../__mockData__';
 import RollupForceRecalculation from 'c/rollupForceRecalculation';
 
 const mockGetObjectInfo = require('./data/rollupCMDTWireAdapter.json');
@@ -149,18 +149,19 @@ describe('Rollup force recalc tests', () => {
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
     // flush to re-render, post-click
-    return assertForTestConditions(() => {
-      const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
-      combobox.dispatchEvent(
-        new CustomEvent('change', {
-          detail: {
-            value: 'Contact'
-          }
-        })
-      );
-      flushPromises()
-        // flush to get the datatable to render post selection
+    return (
+      flushPromises().then(() => {
+        const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+        combobox.dispatchEvent(
+          new CustomEvent('change', {
+            detail: {
+              value: 'Contact'
+            }
+          })
+        );
+      })
         .then(() => {
+          // flush to get the datatable to render post selection
           const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
           datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
 
@@ -171,9 +172,9 @@ describe('Rollup force recalc tests', () => {
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList });
-        });
-    });
+          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList, invokePointName: "FROM_LWC" });
+        })
+    );
   });
 
   it('renders CMDT datatable with selected metadata', async () => {
@@ -191,7 +192,7 @@ describe('Rollup force recalc tests', () => {
     getObjectInfoWireAdapter.emit(mockGetObjectInfo);
 
     // flush to re-render
-    return Promise.resolve().then(() => {
+    return flushPromises().then(() => {
       const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
       combobox.dispatchEvent(
         new CustomEvent('change', {
@@ -201,16 +202,18 @@ describe('Rollup force recalc tests', () => {
         })
       );
 
-      flushPromises()
-        .then(() => {
-          const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
-          submitButton.click();
-        })
-        // then flush again ....
-        .then(() => {
-          const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
-          expect(tableRows.length).toBe(mockMetadata.Contact.length);
-        });
+      return (
+        flushPromises()
+          .then(() => {
+            const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+            submitButton.click();
+          })
+          // then flush again ....
+          .then(() => {
+            const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
+            expect(tableRows.length).toBe(mockMetadata.Contact.length);
+          })
+      );
     });
   });
 

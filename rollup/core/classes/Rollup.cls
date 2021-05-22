@@ -50,7 +50,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private final RollupControl__mdt rollupControl;
 
   protected final SObjectType calcItemType;
-  protected final RollupInvocationPoint invokePoint;
+  protected final InvocationPoint invokePoint;
 
   // non-final instance variables
   protected Boolean isFullRecalc = false;
@@ -121,10 +121,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     set;
   }
 
+  private static Map<String, InvocationPoint> invokeNameToInvokePoint {
+    get {
+      if (invokeNameToInvokePoint == null) {
+        invokeNameToInvokePoint = new Map<String, InvocationPoint>();
+        for (InvocationPoint invocation : InvocationPoint.values()) {
+          invokeNameToInvokePoint.put(invocation.name(), invocation);
+        }
+      }
+      return invokeNameToInvokePoint;
+    }
+    set;
+  }
+
   private static Rollup ROLLUP_LOGGER {
     get {
       if (ROLLUP_LOGGER == null) {
-        ROLLUP_LOGGER = new Rollup(RollupInvocationPoint.FROM_STATIC_LOGGER);
+        ROLLUP_LOGGER = new Rollup(InvocationPoint.FROM_STATIC_LOGGER);
       }
       return ROLLUP_LOGGER;
     }
@@ -169,15 +182,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public Evaluator eval { get; set; }
   }
 
-  public enum RollupInvocationPoint {
+  global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,
     FROM_SCHEDULED,
     FROM_LWC,
+    FROM_SINGULAR_PARENT_RECALC_LWC,
     FROM_STATIC_LOGGER
   }
 
-  protected Rollup(RollupInvocationPoint invokePoint) {
+  protected Rollup(InvocationPoint invokePoint) {
     this.isBatched = true;
     // a batch only becomes valid if other Rollups are added to it
     this.isNoOp = true;
@@ -224,7 +238,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Op op,
     Map<Id, SObject> oldCalcItems,
     Evaluator eval,
-    RollupInvocationPoint invokePoint,
+    InvocationPoint invokePoint,
     RollupControl__mdt rollupControl,
     Rollup__mdt rollupMetadata
   ) {
@@ -411,7 +425,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Op operation,
       Map<Id, SObject> oldCalcItems,
       Evaluator eval,
-      RollupInvocationPoint rollupInvokePoint,
+      InvocationPoint rollupInvokePoint,
       RollupControl__mdt rollupControl,
       Rollup__mdt metadata
     ) {
@@ -432,7 +446,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       );
     }
 
-    private RollupAsyncProcessor(RollupInvocationPoint rollupInvokePoint) {
+    private RollupAsyncProcessor(InvocationPoint rollupInvokePoint) {
       super(rollupInvokePoint);
     }
 
@@ -504,7 +518,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   @AuraEnabled
-  global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata) {
+  global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
+    InvocationPoint localInvokePoint = invokeNameToInvokePoint.get(invokePointName);
+
     Integer amountOfCalcItems = 0;
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
     Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
@@ -531,7 +547,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     String queryString = getQueryString(childType, new List<String>(queryFields), 'Id', '!=');
 
     // eval always null via this route, despite having been used to get the relationship fields
-    return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, RollupInvocationPoint.FROM_LWC);
+    return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint);
   }
 
   @AuraEnabled
@@ -551,7 +567,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
     wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    return performFullRecalculationInner(metadata, wrapper, RollupInvocationPoint.FROM_LWC);
+    return performFullRecalculationInner(metadata, wrapper, InvocationPoint.FROM_LWC);
   }
 
   global class FlowInput {
@@ -665,7 +681,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputs = new List<FlowOutput>();
     List<Rollup> rollups = new List<Rollup>();
-    RollupInvocationPoint fromInvocable = RollupInvocationPoint.FROM_INVOCABLE;
+    InvocationPoint fromInvocable = InvocationPoint.FROM_INVOCABLE;
 
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
@@ -769,7 +785,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global static void batch(List<Rollup> rollups) {
-    batch(rollups, RollupInvocationPoint.FROM_APEX);
+    batch(rollups, InvocationPoint.FROM_APEX);
   }
 
   global static Rollup averageFromApex(
@@ -1474,7 +1490,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     if (shouldRunFromTrigger() == false) {
-      return new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX);
+      return new RollupAsyncProcessor(InvocationPoint.FROM_APEX);
     }
 
     String rollupContext;
@@ -1520,7 +1536,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             )
           : getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
         if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
-          performFullRecalculationInner(rollupInfo, queryWrapper, RollupInvocationPoint.FROM_APEX);
+          performFullRecalculationInner(rollupInfo, queryWrapper, InvocationPoint.FROM_APEX);
         }
       }
 
@@ -1542,8 +1558,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     return shouldReturn
-      ? new RollupAsyncProcessor(RollupInvocationPoint.FROM_APEX)
-      : getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, RollupInvocationPoint.FROM_APEX);
+      ? new RollupAsyncProcessor(InvocationPoint.FROM_APEX)
+      : getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX);
   }
 
   /** end global-facing section, begin public/private static helpers */
@@ -1612,7 +1628,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   public static void processStoredFlowRollups() {
     ROLLUP_LOGGER.log('processing deferred flow rollups', CACHED_ROLLUPS);
-    batch(CACHED_ROLLUPS, RollupInvocationPoint.FROM_INVOCABLE);
+    batch(CACHED_ROLLUPS, InvocationPoint.FROM_INVOCABLE);
     CACHED_ROLLUPS.clear();
   }
 
@@ -1690,7 +1706,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return hasExceededLimits && isDeferralAllowed;
   }
 
-  private static String performFullRecalculationInner(Rollup__mdt meta, QueryWrapper queryWrapper, RollupInvocationPoint invokePoint) {
+  private static String performFullRecalculationInner(Rollup__mdt meta, QueryWrapper queryWrapper, InvocationPoint invokePoint) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     SObjectType childType = getSObjectFromName(meta.CalcItem__c).getSObjectType();
@@ -1716,7 +1732,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<Id> recordIds,
     SObjectType calcItemType,
     Evaluator eval,
-    RollupInvocationPoint invokePoint
+    InvocationPoint invokePoint
   ) {
     // ROLLUP_LOGGER used to reference the default RollupControl__mdt.MaxLookupRowsBeforeBatching__c, as well as BatchChunkSize__c
     ROLLUP_LOGGER.log('Starting full recalc');
@@ -1735,7 +1751,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private static void batch(List<Rollup> rollups, RollupInvocationPoint invokePoint) {
+  private static void batch(List<Rollup> rollups, InvocationPoint invokePoint) {
     Rollup batchRollup = new RollupAsyncProcessor(invokePoint);
     flattenBatches(batchRollup, rollups);
     batchRollup.runCalc();
@@ -2038,7 +2054,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<SObject> calcItems,
     Map<Id, SObject> oldCalcItems,
     Evaluator eval,
-    RollupInvocationPoint rollupInvokePoint
+    InvocationPoint rollupInvokePoint
   ) {
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return new RollupAsyncProcessor(rollupInvokePoint);
@@ -2086,6 +2102,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         String controlKey = getRollupControlKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupSObjectType, rollupFieldOnOpObject);
         localControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, Rollup.specificControl);
       }
+      setControlToSyncForSingularParentRecalcs(localControl, rollupInvokePoint);
 
       FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType);
 
@@ -2123,7 +2140,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String getRollupControlKey(
-    RollupInvocationPoint invokePoint,
+    InvocationPoint invokePoint,
     SObjectField rollupFieldOnCalcItem,
     SObjectType lookupSObjectType,
     SObjectField rollupFieldOnOpObject
@@ -2137,6 +2154,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       rollupFieldOnOpObject +
       '_rollup')
       .toLowerCase();
+  }
+
+  private static void setControlToSyncForSingularParentRecalcs(RollupControl__mdt control, InvocationPoint invokePoint) {
+    if (invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
+      control.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS;
+    }
   }
 
   private static Boolean shouldRunFromTrigger() {
@@ -2206,7 +2229,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Rollup batchRollup,
     Evaluator eval,
     RollupControl__mdt rollupControl,
-    RollupInvocationPoint invokePoint,
+    InvocationPoint invokePoint,
     Rollup__mdt rollupMetadata
   ) {
     Rollup rollup = new RollupAsyncProcessor(
@@ -2884,7 +2907,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public void execute(SchedulableContext sc) {
       List<Rollup__mdt> metadata = getRollupMetadataBySObject(this.rollupObject);
       List<SObject> calcItems = Database.query(this.query);
-      getRollup(metadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, RollupInvocationPoint.FROM_SCHEDULED).runCalc();
+      getRollup(metadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, InvocationPoint.FROM_SCHEDULED).runCalc();
     }
   }
 }

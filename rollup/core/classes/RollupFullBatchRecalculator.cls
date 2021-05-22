@@ -5,7 +5,7 @@ public class RollupFullBatchRecalculator extends Rollup {
 
   public RollupFullBatchRecalculator(
     String queryString,
-    RollupInvocationPoint invokePoint,
+    InvocationPoint invokePoint,
     List<Rollup__mdt> rollupInfo,
     SObjectType calcItemType,
     Set<Id> recordIds
