@@ -556,7 +556,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   global class FlowInput {
     @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)')
-    global List<SObject> recordsToRollup;
+    global List<SObject> recordsToRollup = new List<SObject>();
 
     @InvocableVariable(label='Prior records to rollup' description='The old version of the records for update/upsert')
     global List<SObject> oldRecordsToRollup = new List<SObject>();
@@ -671,7 +671,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       FlowOutput flowOutput = new FlowOutput();
       flowOutputs.add(flowOutput);
 
-      if (flowInput.recordsToRollup?.isEmpty() == true) {
+      if (flowInput.recordsToRollup?.isEmpty() != false) {
+        flowOutput.message = 'No records to rollup, returning early';
         continue;
       } else if (flowInput.rollupContext == 'UPSERT') {
         flowInput.rollupContext = 'UPDATE';

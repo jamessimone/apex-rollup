@@ -2512,6 +2512,17 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldGracefullyExitIfCalcItemsAreNull() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(null, 'INSERT', 'CONCAT');
+
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+
+    System.assertEquals(1, flowOutputs.size());
+    System.assertEquals('No records to rollup, returning early', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+  }
+
+  @isTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCount() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
