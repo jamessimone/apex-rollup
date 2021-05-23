@@ -17,7 +17,6 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
       const metadata = await getRollupMetadata();
       this._fillValidMetadata(metadata);
     } catch (err) {
-      console.error(err);
       this.isValid = false;
     }
   }
@@ -47,11 +46,12 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
         // build up a list of matching metas and append to their CalcItemWhereClause__c the
         // parent recordId
         if (rollupMetadata.LookupObject__c === this.objectApiName) {
-          this.isValid = true;
           this._addMatchingMetadata(rollupMetadata);
         }
       });
     });
+
+    this.isValid = this._matchingMetas.length > 0;
   }
 
   _addMatchingMetadata(metadata) {

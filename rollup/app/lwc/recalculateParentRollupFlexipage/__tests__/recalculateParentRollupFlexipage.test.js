@@ -64,7 +64,22 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
   });
 
+  // instead of passing the mock down through several promise layers
+  // we'll keep it in the outer scope
+  const mockFunction = jest.fn();
+
   it('should send CMDT to apex with parent record id when clicked', async () => {
+    // set up pseudo-Aura on global window
+    Object.defineProperty(global.window, '$A', {
+      value: {
+        get() {
+          return {
+            fire: mockFunction
+          };
+        }
+      }
+    });
+
     const FAKE_RECORD_ID = '00100000000001';
 
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
@@ -91,6 +106,9 @@ describe('recalc parent rollup from flexipage tests', () => {
         matchingMetadata[0].CalcItemWhereClause__c = "AccountId = '" + FAKE_RECORD_ID + "'";
         expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
         expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata, invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
+
+        // validate that aura refresh was called
+        expect(mockFunction).toHaveBeenCalled();
       });
   });
 });
