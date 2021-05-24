@@ -3840,6 +3840,55 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldPartiallyDeferRollupCalculationWhenOverLimits() {
+    Rollup.specificControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account secondParent = new Account(Name = 'Second parent');
+    insert secondParent;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One', PreferenceRank = 1),
+      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two', PreferenceRank = 1)
+    };
+    insert cpas;
+
+    DMLMock mock = new DMLMock();
+    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 1, MaxRollupRetries__c = 100, MaxNumberOfQueries__c = 1, IsRollupLoggingEnabled__c = true);
+    // start as synchronous rollup to allow for one deferral
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
+
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = cpas;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        // use one of the full recalc operations - one SOQL per parent object will get us to defer
+        // between lookup items
+        RollupOperation__c = 'AVERAGE'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    // validate that queueable ran in addition to sync job
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals(2, mock.Records.size(), 'Both parent items should have been updated!');
+
+    for (Account updatedAcc : (List<Account>) mock.Records) {
+      System.assertEquals(1, updatedAcc.AnnualRevenue, 'Average annual revenue should have been set for both records!');
+    }
+  }
+
+  @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{

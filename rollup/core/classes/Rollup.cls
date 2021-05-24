@@ -2472,7 +2472,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (Rollup rollup : rollups) {
-      this.log('starting async rollup for: ', rollup);
+      this.log('starting rollup for: ', rollup);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
       if (hasExceededCurrentRollupLimits(rollup.rollupControl)) {
         this.deferredRollups.add(rollup);
@@ -2760,6 +2760,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private List<SObject> getUpdatedLookupItemsByRollup(Rollup rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
+    Set<SObject> unprocessedCalcItems = new Set<SObject>();
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
@@ -2767,7 +2768,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> localCalcItems = calcItemsByLookupField.get(key);
 
-        this.deferCalculationsWhenApproachingLimits(rollup, localCalcItems, lookupItems, index);
+        if (hasExceededCurrentRollupLimits(this.rollupControl)) {
+          unprocessedCalcItems.addAll(localCalcItems);
+          lookupItems.remove(index);
+          continue;
+        }
+
         this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
         // Check for changed values
@@ -2783,12 +2789,26 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, rollup);
+    this.deferCalculationsWhenApproachingLimits(rollup, unprocessedCalcItems);
 
     return recordsToUpdate.values();
   }
 
-  private void deferCalculationsWhenApproachingLimits(Rollup roll, List<SObject> localCalcItems, List<SObject> lookupItems, Integer index) {
-    // TODO - finish this to fix #107
+  private void deferCalculationsWhenApproachingLimits(Rollup roll, Set<SObject> unprocessedCalcItems) {
+    // remove the calc items that were successfully processed -
+    // they're the ones that aren't in the unprocessed Set
+    for (Integer index = roll.calcItems.size() - 1; index >= 0; index--) {
+      SObject calcItem = roll.calcItems[index];
+      if (unprocessedCalcItems.contains(calcItem) == false) {
+        roll.calcItems.remove(index);
+      }
+    }
+    // if all of the calc items have been processed, we're golden - no need to proceed
+    // otherwise, the newly trimmed-down Rollup will get picked up downstream for
+    // reprocessing!
+    if (roll.calcItems.isEmpty() == false) {
+      this.deferredRollups.add(roll);
+    }
   }
 
   private void winnowCalcItemsAndCheckReparenting(Rollup roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
