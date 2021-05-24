@@ -1417,8 +1417,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
     for (Rollup__mdt rollupInfo : matchingMetadata) {
-      uniqueFieldNames.add(getParedFieldName(rollupInfo.LookupFieldOnCalcItem__c));
-      uniqueFieldNames.add(getParedFieldName(rollupInfo.ROllupFieldOnCalcItem__c));
+      uniqueFieldNames.add(rollupInfo.LookupFieldOnCalcItem__c);
+      uniqueFieldNames.add(rollupInfo.ROllupFieldOnCalcItem__c);
     }
 
     // it would have been nice if this was an enum!
@@ -1578,21 +1578,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (String.isBlank(uniqueFieldName)) {
         uniqueQueryFieldNames.remove(index);
       }
-      String paredFieldName = getParedFieldName(uniqueFieldName);
       // ensure that the base relationship name field is transformed appropriately
-      if (baseFields.containsKey(paredFieldName + 'Id') || baseFields.containsKey(paredFieldName + '__c')) {
-        SObjectField baseField = baseFields.get(paredFieldName + 'Id') == null ? baseFields.get(paredFieldName + '__c') : baseFields.get(paredFieldName + 'Id');
+      if (baseFields.containsKey(uniqueFieldName + 'Id') || baseFields.containsKey(uniqueFieldName + '__c')) {
+        SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null ? baseFields.get(uniqueFieldName + '__c') : baseFields.get(uniqueFieldName + 'Id');
         DescribeFieldResult fieldToken = baseField.getDescribe();
         if (fieldToken.getType() == DisplayType.REFERENCE && uniqueQueryFieldNames.contains(fieldToken.getName()) == false) {
           uniqueQueryFieldNames[index] = fieldToken.getName();
         }
       } else if (
-        baseFields.containsKey(uniqueFieldName) == false &&
-        baseFields.containsKey(paredFieldName) &&
+        baseFields.containsKey(uniqueFieldName) &&
         sObjectToken.getName() == uniqueFieldName.substringBefore('.') &&
-        uniqueQueryFieldNames.contains(paredFieldName) == false
+        uniqueQueryFieldNames.contains(uniqueFieldName) == false
       ) {
-        uniqueQueryFieldNames[index] = paredFieldName;
+        uniqueQueryFieldNames[index] = uniqueFieldName;
       }
     }
     // again noting the coupling for consumers of this method
@@ -1987,9 +1985,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // by calling new Map<Id, SObject>(oldRecordsToRollup).keyset() -
       // but that code path fails if there are null Ids in the list
       for (SObject oldRecord : flowInput.oldRecordsToRollup) {
-        if (oldRecord == null) {
-          continue; // record-triggered flows set up to run when "A record is created or modified" will pass null in the list if it runs on create - yikes
-        } else if (oldRecord.Id != null) {
+        // record-triggered flows set up to run when "A record is created or modified"
+        // will pass null in the list if it runs on create - yikes. use safe navigation
+        // to access the Id and avoid a null pointer exception
+        if (oldRecord?.Id != null) {
           oldFlowRecords.put(oldRecord.Id, oldRecord);
         }
       }
@@ -2128,12 +2127,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
     Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
-    String paredFieldName = getParedFieldName(desiredField);
-    if (fieldNameToField.containsKey(paredFieldName)) {
-      return fieldNameToField.get(paredFieldName);
-    } else if (fieldNameToField.containsKey(paredFieldName + 'Id')) {
+    if (fieldNameToField.containsKey(desiredField)) {
+      return fieldNameToField.get(desiredField);
+    } else if (fieldNameToField.containsKey(desiredField + 'Id')) {
       // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
-      return fieldNameToField.get(paredFieldName + 'Id');
+      return fieldNameToField.get(desiredField + 'Id');
     }
 
     return null;
@@ -2207,13 +2205,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static SObject getSObjectFromName(String sObjectName) {
     return ((SObject) Type.forName(sObjectName).newInstance());
-  }
-
-  private static String getParedFieldName(String fullFieldName) {
-    if (String.isBlank(fullFieldName)) {
-      return '';
-    }
-    return fullFieldName.contains('.') ? fullFieldName.substringAfter('.') : fullFieldName;
   }
 
   private static Rollup loadRollups(
@@ -2439,6 +2430,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       for (Rollup roll : rolls) {
         appended += this.getLogStringFromObject(roll) + '\n';
       }
+      appended = appended.removeEnd('\n');
     } else if (logObject instanceof Rollup) {
       Rollup roll = (Rollup) logObject;
       if (roll.isBatched && roll.rollups.isEmpty() == false) {
@@ -2455,7 +2447,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // for example - let's just serializePretty and move on
       appended = JSON.serializePretty(logObject);
     }
-    return appended.removeEnd('\n');
+    return appended;
   }
 
   protected void log(String logString) {
