@@ -1,35 +1,33 @@
 import { createElement } from 'lwc';
-
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
-import RollupForceRecalculation from 'c/rollupForceRecalculation';
 import { registerLdsTestWireAdapter } from '@salesforce/sfdx-lwc-jest';
+
+import { mockMetadata } from '../../__mockData__';
+import RollupForceRecalculation from 'c/rollupForceRecalculation';
 
 const mockGetObjectInfo = require('./data/rollupCMDTWireAdapter.json');
 const getObjectInfoWireAdapter = registerLdsTestWireAdapter(getObjectInfo);
 
-async function assertForTestConditions() {
+function assertForTestConditions() {
   const resolvedPromise = Promise.resolve();
   return resolvedPromise.then.apply(resolvedPromise, arguments);
 }
 
-// when you use a preconfigured variable outside of a jest test as the return
-// for a mock, it's required for that prop to be prefixed with the word "mock"
-const mockMetadata = {
-  Contact: [
-    {
-      CalcItem__c: 'Contact',
-      LookupFieldOnCalcItem__c: 'AccountId',
-      LookupFieldOnLookupObject__c: 'Id',
-      LookupObject__c: 'Account',
-      RollupFieldOnCalcItem__c: 'FirstName',
-      RollupFieldOnLookupObject__c: 'Name',
-      RollupOperation__c: 'CONCAT',
-      'CalcItem__r.QualifiedApiName': 'Something we expect to be removed'
-    }
-  ]
-};
+function flushPromises() {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+jest.mock(
+  '@salesforce/apex/Rollup.getRollupMetadataByCalcItem',
+  () => {
+    return {
+      default: () => mockMetadata
+    };
+  },
+  { virtual: true }
+);
 
 jest.mock(
   '@salesforce/apex/Rollup.performFullRecalculation',
@@ -56,16 +54,6 @@ jest.mock(
   () => {
     return {
       default: () => jest.fn()
-    };
-  },
-  { virtual: true }
-);
-
-jest.mock(
-  '@salesforce/apex/Rollup.getRollupMetadataByCalcItem',
-  () => {
-    return {
-      default: () => mockMetadata
     };
   },
   { virtual: true }
@@ -148,10 +136,7 @@ describe('Rollup force recalc tests', () => {
     });
   });
 
-  it('sends CMDT data to apex with relationship names removed', async () => {
-    // calling getRollupMetadataByCalcItem.mockResolvedValue() here didn't work
-    // (as it does in the next test) and I have no idea why ...
-
+  it('sends CMDT data to apex', async () => {
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });
@@ -163,21 +148,20 @@ describe('Rollup force recalc tests', () => {
 
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
-    // flush to re-render
+    // flush to re-render, post-click
     return (
-      Promise.resolve()
+      flushPromises().then(() => {
+        const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+        combobox.dispatchEvent(
+          new CustomEvent('change', {
+            detail: {
+              value: 'Contact'
+            }
+          })
+        );
+      })
         .then(() => {
-          const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
-          combobox.dispatchEvent(
-            new CustomEvent('change', {
-              detail: {
-                value: 'Contact'
-              }
-            })
-          );
-        })
-        // flush to get the datatable to render post selection
-        .then(() => {
+          // flush to get the datatable to render post selection
           const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
           datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
 
@@ -188,7 +172,7 @@ describe('Rollup force recalc tests', () => {
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList });
+          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList, invokePointName: "FROM_LWC" });
         })
     );
   });
@@ -208,27 +192,29 @@ describe('Rollup force recalc tests', () => {
     getObjectInfoWireAdapter.emit(mockGetObjectInfo);
 
     // flush to re-render
-    return (
-      Promise.resolve()
-        .then(() => {
-          const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
-          combobox.dispatchEvent(
-            new CustomEvent('change', {
-              detail: {
-                value: 'Contact'
-              }
-            })
-          );
+    return flushPromises().then(() => {
+      const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+      combobox.dispatchEvent(
+        new CustomEvent('change', {
+          detail: {
+            value: 'Contact'
+          }
+        })
+      );
 
-          const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
-          submitButton.click();
-        })
-        // then flush again ....
-        .then(() => {
-          const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
-          expect(tableRows.length).toBe(mockMetadata.Contact.length);
-        })
-    );
+      return (
+        flushPromises()
+          .then(() => {
+            const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+            submitButton.click();
+          })
+          // then flush again ....
+          .then(() => {
+            const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
+            expect(tableRows.length).toBe(mockMetadata.Contact.length);
+          })
+      );
+    });
   });
 
   it('succeeds even when no process id', () => {

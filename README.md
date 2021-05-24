@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgCUAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgDcAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgCUAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgDcAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -55,8 +55,9 @@ You have several different options when it comes to making use of `Rollup`:
 
 - The Custom Metadata-driven solution: install with _one line of code_
 - From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
-- [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 - [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
+- [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
+- [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 
 ### CMDT-based Rollup Solution:
 
@@ -275,6 +276,21 @@ Use the included app and permission set (`See Rollup App`) permission set to unc
 
 In either case, if you fill out the form values _or_ start the full recalculation via your selected CMDT records, the screen will lock until the rollup recalculation has finished. There's a small piece of text at the bottom with information about what the recalculation job's status is, and the screen will only unlock after it has either finished, failed, or been manually aborted by you.
 
+### Using The Parent Record Recalc Button
+
+<div id="parent-record-recalc-button"></div>
+
+There is an included Lightning Web Component (LWC) that will show up in the "Custom" section of the Lightning App Builder under the heading `Recalc Rollups Button`. As promised, you can drop this button anywhere on a parent SObject's record flexipage to enable users to recalculate the rollups just for that parent on the fly:
+
+![Example of the parent record flexipage recalc button](./media/example-parent-record-flexipage-button.png 'Example of the parent record flexipage recalc button')
+
+**Special notes on the recalc button**
+
+- It relies on your rollups being configured using the `Rollup__mdt` CMDT. Unfortunately this means that it won't work for User/Task/Event-based rollups, or Rollups that are configured via the base Invocable Action (which uses text fields instead of `Rollup__mdt` records)
+- The button will not display on the flexipage at all until at least one `Rollup__mdt.LookupObject__c` field matches the SObject whose record flexipage you're dropping the button on
+- The button _will_ display even if a given parent record has no matching children associated with the rollup(s) in question.
+- This particular rollup runs synchronously, so it won't eat into your Asynchronous Job limits for the day; it also refreshes any Aura/page-layout sections of the page (LWC-based sections of the page should update automatically).
+
 ### Scheduled Jobs
 
 <div id="scheduled-jobs"></div>
@@ -351,6 +367,8 @@ Rollup.batch(
   Rollup.average(Opportunity.CloseDate, Opportunity.Id, Lead.ConvertedDate, Lead.ConvertedOpportunityId, Lead.SObjectType)
 )
 ```
+
+**Note** - the invocable-based Apex methods are not documented here. I have only changed an invocable method's signature twice in the history of this project, but because it _has_ happened, it probably will happen again. Otherwise, the APIs represented here are stable; I can't promise the same of the Invocable methods, but you are free to use them so long as you keep in mind that you may need to update any methods calling the static Invocable methods (outside of Flow/PB) if they are referenced within your Apex code.
 
 The following methods are exposed:
 
@@ -690,7 +708,30 @@ Rollup.sumFromApex(
 ).runCalc();
 ```
 
-It's that simple. Note that in order for custom Apex solutions that don't use the `batch` static method on `Rollup` to properly start, the `runCalc()` method must also be called. That is, if you only have one rollup operation per object, you'll _always_ need to call `runCalc()` when invoking `Rollup` from a trigger.
+It's that simple. Note that in order for custom Apex solutions that don't use the `batch` static method on `Rollup` to properly start, the `runCalc()` method must also be called. That is, if you only have one rollup operation per object, you'll _always_ need to call `runCalc()` when invoking `Rollup` from a trigger:
+
+```java
+// these two methods are functionally the same
+// but the non-batched method has to call "runCalc"
+
+Rollup.batch(
+  Rollup.sumFromApex(
+    Opportunity.Amount
+    Opportunity.AccountId,
+    Account.Id,
+    Account.AnnualRevenue,
+    Account.SObjectType
+  )
+);
+
+Rollup.sumFromApex(
+  Opportunity.Amount
+  Opportunity.AccountId,
+  Account.Id,
+  Account.AnnualRevenue,
+  Account.SObjectType
+).runCalc();
+```
 
 On the subject of the `defaultRecalculationValue` arguments - if you are making use of a custom Evaluator but **don't** need to specify the default, you can always pass `null` for this parameter.
 
@@ -726,13 +767,13 @@ trigger OpportunityTrigger on Opportunity(before update, after update, before in
 
 ## Special Considerations
 
-While pains have been taken to create a solution that's truly one-sized-fits-all, any professional working in the Salesforce ecosystem knows that it's difficult to make that the case for any product or service — even something open-source and forever-free, like `Rollup`. All of that is to say that while I have tested the hell out of `Rollup` and have used it already in production, your mileage may vary depending on what you're trying to do.
+While pains have been taken to create a solution that's truly one-sized-fits-all, any professional working in the Salesforce ecosystem knows that it's difficult to make that the case for any product or service — even something open-source and forever-free, like `Rollup`. All of that is to say that while I have tested the hell out of `Rollup` and have used it extensively in production, your mileage may vary depending on what you're trying to do.
 
 Some operations that are explicitly not supported within the SOQL aggregate functions (like `SELECT MIN(ActivityDate) FROM Task`) are possible when using `Rollup`. Another example would be `MAX` or `MIN` operations on multi-select picklists. I don't know _why_ you would want to do that ... but you can!
 
 ### Picklists
 
-Picklists are a loaded topic in Salesforce. They're not only dropdowns, but the order is supposed to matter! MIN/MAXING on a picklist is supposed to return the deepest possible entry in the picklist (for MAX), or the closest to the top of the picklist (for MIN). If you've studied the aggregate function documentation thoroughly in the Salesforce Developer Docs, this will comes as no surprise - but because the ranking system for picklist differs from the ranking system for other pieces of text, I thought to call it out specifically.
+Picklists are a loaded topic in Salesforce. They're not only dropdowns, but the order is supposed to matter! MIN/MAX'ing on a picklist is supposed to return the deepest possible entry in the picklist (for MAX), or the closest to the top of the picklist (for MIN). If you've studied the aggregate function documentation thoroughly in the Salesforce Developer Docs, this will comes as no surprise - but because the ranking system for picklist differs from the ranking system for other pieces of text, I thought to call it out specifically.
 
 ### Recalculations
 

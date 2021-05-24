@@ -35,7 +35,7 @@ private class RollupIntegrationTests {
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountIdText__c',
         LookupFieldOnLookupObject__c = 'AccountIdText__c',
-        RollupFieldOnLookupObject__c = 'Account.AnnualRevenue',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
         CalcItem__c = 'Opportunity'
       )

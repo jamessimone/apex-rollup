@@ -2512,6 +2512,17 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldGracefullyExitIfCalcItemsAreNull() {
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(null, 'INSERT', 'CONCAT');
+
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+
+    System.assertEquals(1, flowOutputs.size());
+    System.assertEquals('No records to rollup, returning early', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+  }
+
+  @isTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCount() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -3282,12 +3293,48 @@ private class RollupTests {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'));
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+  }
+
+  @isTest
+  static void shouldRunRollupSyncWhenFiredFromParentRecalcInvocation() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneCMDTSync', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoCMDTSync', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeCMDTSync', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourCMDTSync', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveCMDTSync', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixCMDTSync', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+      )
+    };
+
+    Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
+
+    // specifically don't wrap in start/stopTest to prove it ran sync
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
   }
 
   @isTest
@@ -3542,9 +3589,9 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING');
-    Account updatedAcc = (Account) mock.Records[0];
+    Account updatedAcc = (Account) mock.Records[1];
     System.assertEquals('Y', updatedAcc.Name, 'MAX AFTER_UPDATE should take the maximum string');
-    Account updatedOldAcc = (Account) mock.Records[1];
+    Account updatedOldAcc = (Account) mock.Records[0];
     System.assertEquals('', updatedOldAcc.Name, 'MAX AFTER_UPDATE should be empty after reparenting');
   }
 
@@ -3790,6 +3837,55 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+  }
+
+  @isTest
+  static void shouldPartiallyDeferRollupCalculationWhenOverLimits() {
+    Rollup.specificControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account secondParent = new Account(Name = 'Second parent');
+    insert secondParent;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One', PreferenceRank = 1),
+      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two', PreferenceRank = 1)
+    };
+    insert cpas;
+
+    DMLMock mock = new DMLMock();
+    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 1, MaxRollupRetries__c = 100, MaxNumberOfQueries__c = 1, IsRollupLoggingEnabled__c = true);
+    // start as synchronous rollup to allow for one deferral
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
+
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = cpas;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        // use one of the full recalc operations - one SOQL per parent object will get us to defer
+        // between lookup items
+        RollupOperation__c = 'AVERAGE'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    // validate that queueable ran in addition to sync job
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals(2, mock.Records.size(), 'Both parent items should have been updated!');
+
+    for (Account updatedAcc : (List<Account>) mock.Records) {
+      System.assertEquals(1, updatedAcc.AnnualRevenue, 'Average annual revenue should have been set for both records!');
+    }
   }
 
   @isTest

@@ -18,15 +18,17 @@ private class RollupFlowBulkProcessorTests {
     input.recordsToRollup = new List<SObject>{ new Contact() };
     input.rollupContext = 'INSERT';
 
-    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(
-      RollupOperation__c = 'CONCAT',
-      CalcItem__c = 'Contact',
-      LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'FirstName',
-      LookupFieldOnCalcItem__c = 'AccountId',
-      LookupFieldOnLookupObject__c = 'Id',
-      RollupFieldOnLookupObject__c = 'Name'
-    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'Contact',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'FirstName',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name'
+      )
+    };
 
     List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
@@ -48,15 +50,17 @@ private class RollupFlowBulkProcessorTests {
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, AccountId = acc.Id) };
     input.rollupContext = 'INSERT';
 
-    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(
-      RollupOperation__c = 'SUM',
-      CalcItem__c = 'Opportunity',
-      LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'Amount',
-      LookupFieldOnCalcItem__c = 'AccountId',
-      LookupFieldOnLookupObject__c = 'Id',
-      RollupFieldOnLookupObject__c = 'AnnualRevenue'
-    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      )
+    };
 
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
@@ -75,15 +79,17 @@ private class RollupFlowBulkProcessorTests {
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
     input.rollupContext = 'INSERT';
 
-    RollupFlowBulkProcessor.testMetadata = new Rollup__mdt(
-      RollupOperation__c = 'SUM',
-      CalcItem__c = 'Opportunity',
-      LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'Kaffufle', // this obviously doesn't exist
-      LookupFieldOnCalcItem__c = 'AccountId',
-      LookupFieldOnLookupObject__c = 'Id',
-      RollupFieldOnLookupObject__c = 'AnnualRevenue'
-    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Kaffufle', // this obviously doesn't exist
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      )
+    };
 
     Exception ex;
     try {
@@ -92,12 +98,6 @@ private class RollupFlowBulkProcessorTests {
       ex = e;
     }
 
-    System.assertEquals(
-      true,
-      ex.getMessage().contains('Invalid field Kaffufle for Opportunity'),
-      ex.getMessage() +
-      '\n' +
-      ex.getStackTraceString()
-    );
+    System.assertEquals(true, ex.getMessage().contains('Invalid field Kaffufle for Opportunity'), ex.getMessage() + '\n' + ex.getStackTraceString());
   }
 }

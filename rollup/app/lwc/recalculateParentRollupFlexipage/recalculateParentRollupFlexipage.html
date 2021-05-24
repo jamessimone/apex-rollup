@@ -1,0 +1,12 @@
+<template>
+  <template if:true={isValid}>
+    <div class="slds-m-bottom_large">
+      <template if:true={isRecalculating}>
+        <lightning-spinner size="small" alternative-text="Recalculating ..."></lightning-spinner>
+      </template>
+      <template if:false={isRecalculating}>
+        <lightning-button onclick={handleClick} title="Recalculate Parent Rollup" label="Recalculate Rollups"></lightning-button>
+      </template>
+    </div>
+  </template>
+</template>

@@ -1,6 +1,4 @@
 global without sharing class RollupFlowBulkProcessor {
-  @testVisible
-  private static Rollup__mdt testMetadata;
 
   private RollupFlowBulkProcessor() {
     // only used for invocable
@@ -29,15 +27,13 @@ global without sharing class RollupFlowBulkProcessor {
         output.message = 'No records';
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
-        if (testMetadata != null) {
-          rollupMetadata.add(testMetadata);
-        }
 
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
-        String sObjectName = flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
+        String sObjectName = flowInput.recordsToRollup == null ? '' : flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
         List<Rollup.FlowInput> rollupFlowInputs = new List<Rollup.FlowInput>();
         for (Rollup__mdt meta : rollupMetadata) {
           if (
+            flowInput.recordsToRollup == null ||
             meta.CalcItem__c == sObjectName ||
             String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent) && flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
           ) {
@@ -73,8 +69,8 @@ global without sharing class RollupFlowBulkProcessor {
         }
 
         List<Rollup.FlowOutput> innerOutputs = Rollup.performRollup(rollupFlowInputs);
-        for(Rollup.FlowOutput innerOutput : innerOutputs) {
-          if(innerOutput.isSuccess == false) {
+        for (Rollup.FlowOutput innerOutput : innerOutputs) {
+          if (innerOutput.isSuccess == false) {
             output.isSuccess = false;
             output.message = innerOutput.message;
           }
