@@ -278,9 +278,11 @@ In either case, if you fill out the form values _or_ start the full recalculatio
 
 ### Using The Parent Record Recalc Button
 
-<div id ="parent-record-recalc-button"></div>
+<div id="parent-record-recalc-button"></div>
 
-There is an included Lightning Web Component (LWC) that will show up in the "Custom"  section of the Lightning App Builder under the heading `recalculateParentRollupFlexipage`. As promised, you can drop this button anywhere on a parent SObject's record flexipage to enable users to recalculate the rollups just for that parent on the fly.
+There is an included Lightning Web Component (LWC) that will show up in the "Custom"  section of the Lightning App Builder under the heading `recalculateParentRollupFlexipage`. As promised, you can drop this button anywhere on a parent SObject's record flexipage to enable users to recalculate the rollups just for that parent on the fly:
+
+![Example of the parent record flexipage recalc button](./media/example-parent-record-flexipage-button.png 'Example of the parent record flexipage recalc button')
 
 **Special notes on the recalc button**
 
