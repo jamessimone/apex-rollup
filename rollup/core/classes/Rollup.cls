@@ -182,6 +182,15 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     public Evaluator eval { get; set; }
   }
 
+  @testVisible
+  private virtual class DMLHelper {
+    public virtual void doUpdate(List<SObject> recordsToUpdate) {
+      Database.DMLOptions dmlOptions = new Database.DMLOptions();
+      dmlOptions.AllowFieldTruncation = true;
+      Database.update(recordsToUpdate, dmlOptions);
+    }
+  }
+
   global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,
@@ -324,9 +333,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     shouldRunAsBatch =
       shouldRunAsBatch ||
-      hasMoreThanOneTarget == false && ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.BATCHABLE &&
-      totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) ||
-      totalCountOfRecords == SENTINEL_COUNT_VALUE);
+      hasMoreThanOneTarget == false &&
+      ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.BATCHABLE &&
+      totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
       this.log('about to process sync rollups');
       this.process(this.syncRollups);
@@ -739,14 +748,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
 
-      Rollup roll = getRollup(
-        new List<Rollup__mdt>{ rollupMeta },
-        sObjectType,
-        flowInput.recordsToRollup,
-        oldFlowRecords,
-        null,
-        fromInvocable
-      );
+      Rollup roll = getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
       if (flowInput.deferProcessing == true) {
         ROLLUP_LOGGER.log('deferring processing for rollup', roll);
         CACHED_ROLLUPS.add(roll);
@@ -761,7 +763,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         batch(rollups, fromInvocable);
       }
     } catch (Exception ex) {
-       ROLLUP_LOGGER.log('an error occurred during invocable action', ex);
+      ROLLUP_LOGGER.log('an error occurred during invocable action', ex);
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
@@ -1580,7 +1582,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
       // ensure that the base relationship name field is transformed appropriately
       if (baseFields.containsKey(uniqueFieldName + 'Id') || baseFields.containsKey(uniqueFieldName + '__c')) {
-        SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null ? baseFields.get(uniqueFieldName + '__c') : baseFields.get(uniqueFieldName + 'Id');
+        SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null
+          ? baseFields.get(uniqueFieldName + '__c')
+          : baseFields.get(uniqueFieldName + 'Id');
         DescribeFieldResult fieldToken = baseField.getDescribe();
         if (fieldToken.getType() == DisplayType.REFERENCE && uniqueQueryFieldNames.contains(fieldToken.getName()) == false) {
           uniqueQueryFieldNames[index] = fieldToken.getName();
@@ -1788,7 +1792,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     if (String.isNotBlank(errorMessage)) {
       Exception ex = new IllegalArgumentException(errorMessage);
-       ROLLUP_LOGGER.log('an error occurred while validating flow inputs', ex);
+      ROLLUP_LOGGER.log('an error occurred while validating flow inputs', ex);
       throw ex;
     }
   }
@@ -1812,7 +1816,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
       }
     } catch (Exception ex) {
-       ROLLUP_LOGGER.log('an error occurred while validating flow-specific rules', ex);
+      ROLLUP_LOGGER.log('an error occurred while validating flow-specific rules', ex);
       throw ex;
     }
   }
@@ -1849,7 +1853,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
-       ROLLUP_LOGGER.log('an error occurred while formatting where clause', ex);
+      ROLLUP_LOGGER.log('an error occurred while formatting where clause', ex);
     }
     return optionalWhereClause;
   }
@@ -1960,7 +1964,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     try {
       return Database.countQuery(countQuery);
     } catch (Exception ex) {
-       ROLLUP_LOGGER.log('an error occurred while trying to get count query:\n' + countQuery, ex);
+      ROLLUP_LOGGER.log('an error occurred while trying to get count query:\n' + countQuery, ex);
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return SENTINEL_COUNT_VALUE;
@@ -2462,12 +2466,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   protected void process(List<Rollup> rollups) {
-    if (CACHED_APEX_OPERATIONS.isEmpty() == false && CACHED_ROLLUPS.isEmpty() == false) {
-      rollups.addAll(CACHED_ROLLUPS);
-      CACHED_ROLLUPS.clear();
-      rollups.sort();
-    }
+    this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
     this.getFieldNamesForRollups(rollups); // populates this.lookupObjectToUniqueFieldNames
+
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (Rollup rollup : rollups) {
@@ -2494,24 +2495,49 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         grandparentRollups.put(rollup.lookupObj, rollup.traversal);
       }
 
-      List<SObject> localLookupItems = new List<SObject>();
-      Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
-      for (String lookupId : calcItemsByLookupField.keySet()) {
-        if (updatedLookupRecords.containsKey(lookupId)) {
-          lookupItemKeys.remove(lookupId);
-          // this way, the updated values are persisted for each field, and the default values are initialized
-          SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
-          this.resetLookupFieldsForNullOrFullRecalcs(updatedLookupObject, rollup);
-          localLookupItems.add(updatedLookupObject);
-        }
-      }
-      localLookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj)));
+      List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, rollup);
       List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, localLookupItems);
       for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
       }
     }
 
+    this.splitUpdates(updatedLookupRecords);
+
+    DML.doUpdate(updatedLookupRecords.values());
+
+    this.processDeferredRollups();
+  }
+
+  private void handleMultipleDMLRollupsEnqueuedInTheSameTransaction(List<Rollup> rolls) {
+    // if items are inserted, updated, deleted (etc ...)
+    // all in the same transaction, they can be introduced out of order
+    // (e.g. the update rollup appears first in the list)
+    // this sort restores the rollups to their proper ordering
+    if (CACHED_APEX_OPERATIONS.isEmpty() == false && CACHED_ROLLUPS.isEmpty() == false) {
+      rolls.addAll(CACHED_ROLLUPS);
+      CACHED_ROLLUPS.clear();
+      rolls.sort();
+    }
+  }
+
+  private List<SObject> getLookupItems(Map<String, List<SObject>> calcItemsByLookupField, Map<String, SObject> updatedLookupRecords, Rollup roll) {
+    List<SObject> localLookupItems = new List<SObject>();
+    Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
+    for (String lookupId : calcItemsByLookupField.keySet()) {
+      if (updatedLookupRecords.containsKey(lookupId)) {
+        lookupItemKeys.remove(lookupId);
+        // this way, the updated values are persisted for each field, and the default values are initialized
+        SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
+        this.resetLookupFieldsForNullOrFullRecalcs(updatedLookupObject, roll);
+        localLookupItems.add(updatedLookupObject);
+      }
+    }
+    localLookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
+    return localLookupItems;
+  }
+
+  private void splitUpdates(Map<String, SObject> updatedLookupRecords) {
     if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size()) {
       Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
       Integer removalIndex = 0;
@@ -2527,10 +2553,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
       System.enqueueJob(new RollupAsyncSaver(asyncUpdateList));
     }
-
-    DML.doUpdate(updatedLookupRecords.values());
-
-    this.processDeferredRollups();
   }
 
   private void processDeferredRollups() {
@@ -2738,54 +2760,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private List<SObject> getUpdatedLookupItemsByRollup(Rollup rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
-    for (SObject lookupRecord : lookupItems) {
-      this.log('lookup record prior to rolling up: ', lookupRecord);
+
+    for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
+      SObject lookupRecord = lookupItems[index];
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> localCalcItems = calcItemsByLookupField.get(key);
 
-        for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
-          SObject calcItem = localCalcItems[index];
-          if (rollup.eval.matches(calcItem) == false && rollup.metadata?.IsFullRecordSet__c == true) {
-            // technically it should only be possible for a calc item that doesn't match
-            // to still exist if it is a Full Record Set operation; this gives people the chance
-            // to reset rollup values if none of the records passed in match the eval criteria
-            localCalcItems.remove(index);
-            continue;
-          }
-          // Check for reparented records
-          SObject oldCalcItem = rollup.oldCalcItems.get(calcItem.Id);
-
-          if (oldCalcItem == null) {
-            continue;
-          }
-
-          String priorLookup = (String) oldCalcItem.get(rollup.lookupFieldOnCalcItem);
-          // if the lookup wasn't previously populated, there's nothing to update
-          if (String.isBlank(priorLookup)) {
-            continue;
-          }
-          Object newLookup = calcItem.get(rollup.lookupFieldOnCalcItem);
-
-          if (newLookup != priorLookup && rollup.traversal == null) {
-            this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-          } else if (rollup.traversal?.isUltimatelyReparented(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName()) == true) {
-            // slightly different, but with the same end result
-            // note that when the reparented record is not null
-            // it should be the same as the current "lookupRecord"
-            SObject reparentedRecord = rollup.traversal.retrieveParent(oldCalcItem.Id);
-            if (reparentedRecord != null) {
-              priorLookup = (String) reparentedRecord.get(rollup.lookupFieldOnLookupObject);
-              if (String.isNotBlank(priorLookup)) {
-                Id oldLookupId = rollup.traversal.getOldLookupId(calcItem, rollup.lookupFieldOnCalcItem.getDescribe().getName());
-                oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, rollup);
-                this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-              }
-            }
-          }
-        }
+        this.deferCalculationsWhenApproachingLimits(rollup, localCalcItems, lookupItems, index);
+        this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
         // Check for changed values
+        this.log('lookup record prior to rolling up: ', lookupRecord);
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         if (priorVal != newVal) {
@@ -2796,53 +2782,56 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    // Remove the value from the old parent record when re-parenting has occurred
-    for (SObject lookupRecord : lookupItems) {
-      String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
-      if (oldLookupItems.containsKey(key)) {
-        // Yes, old parent record has already had a new rollup established in memory
-        List<SObject> reparentedCalcItems = oldLookupItems.get(key);
-
-        if (reparentedCalcItems.isEmpty()) {
-          continue;
-        }
-
-        String currentOp = getBareOperationName(rollup.op.name());
-        String deleteOpName = 'DELETE_' + currentOp;
-        Op deleteOp = opNameToOp.get(deleteOpName);
-        Rollup oldLookupsRollup = new Rollup(rollup, deleteOp, reparentedCalcItems);
-
-        this.log('reparenting operation: ', oldLookupsRollup);
-        this.log('Reparented item prior to reparenting rollup: ', lookupRecord);
-
-        Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
-
-        if (priorVal != newVal) {
-          lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
-          recordsToUpdate.put(key, lookupRecord);
-        }
-        this.log('Reparented item after reparenting rollup: ', lookupRecord);
-      }
-    }
+    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, rollup);
 
     return recordsToUpdate.values();
   }
 
-  private Object getRollupVal(Rollup roll, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
-    RollupCalculator rollupCalc = RollupCalculator.Factory.getCalculator(
-      priorVal,
-      roll.op,
-      roll.opFieldOnCalcItem,
-      roll.opFieldOnLookupObject,
-      roll.metadata,
-      lookupRecordKey,
-      lookupKeyField
-    );
-    rollupCalc.setEvaluator(roll.eval);
-    rollupCalc.setCDCUpdate(this.isCDCUpdate);
-    rollupCalc.performRollup(calcItems, roll.oldCalcItems);
-    return rollupCalc.getReturnValue();
+  private void deferCalculationsWhenApproachingLimits(Rollup roll, List<SObject> localCalcItems, List<SObject> lookupItems, Integer index) {
+    // TODO - finish this to fix #107
+  }
+
+  private void winnowCalcItemsAndCheckReparenting(Rollup roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
+    for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
+      SObject calcItem = localCalcItems[index];
+      if (roll.eval.matches(calcItem) == false && roll.metadata?.IsFullRecordSet__c == true) {
+        // technically it should only be possible for a calc item that doesn't match
+        // to still exist if it is a Full Record Set operation; this gives people the chance
+        // to reset rollup values if none of the records passed in match the eval criteria
+        localCalcItems.remove(index);
+        continue;
+      }
+      // Check for reparented records
+      SObject oldCalcItem = roll.oldCalcItems.get(calcItem.Id);
+
+      if (oldCalcItem == null) {
+        continue;
+      }
+
+      String priorLookup = (String) oldCalcItem.get(roll.lookupFieldOnCalcItem);
+      // if the lookup wasn't previously populated, there's nothing to update
+      if (String.isBlank(priorLookup)) {
+        continue;
+      }
+      Object newLookup = calcItem.get(roll.lookupFieldOnCalcItem);
+
+      if (newLookup != priorLookup && roll.traversal == null) {
+        this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+      } else if (roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName()) == true) {
+        // slightly different, but with the same end result
+        // note that when the reparented record is not null
+        // it should be the same as the current "lookupRecord"
+        SObject reparentedRecord = roll.traversal.retrieveParent(oldCalcItem.Id);
+        if (reparentedRecord != null) {
+          priorLookup = (String) reparentedRecord.get(roll.lookupFieldOnLookupObject);
+          if (String.isNotBlank(priorLookup)) {
+            Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName());
+            oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, roll);
+            this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+          }
+        }
+      }
+    }
   }
 
   private void populateOldLookupItems(String priorLookup, SObject oldCalcItem, Map<String, List<SObject>> oldLookupItems) {
@@ -2871,12 +2860,55 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return oldCalcItem;
   }
 
-  @testVisible
-  private virtual class DMLHelper {
-    public virtual void doUpdate(List<SObject> recordsToUpdate) {
-      Database.DMLOptions dmlOptions = new Database.DMLOptions();
-      dmlOptions.AllowFieldTruncation = true;
-      Database.update(recordsToUpdate, dmlOptions);
+  private Object getRollupVal(Rollup roll, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
+    RollupCalculator rollupCalc = RollupCalculator.Factory.getCalculator(
+      priorVal,
+      roll.op,
+      roll.opFieldOnCalcItem,
+      roll.opFieldOnLookupObject,
+      roll.metadata,
+      lookupRecordKey,
+      lookupKeyField
+    );
+    rollupCalc.setEvaluator(roll.eval);
+    rollupCalc.setCDCUpdate(this.isCDCUpdate);
+    rollupCalc.performRollup(calcItems, roll.oldCalcItems);
+    return rollupCalc.getReturnValue();
+  }
+
+  private void removeRolledUpValuesFromReparentedRecords(
+    List<SObject> lookupItems,
+    Map<String, List<SObject>> oldLookupItems,
+    Map<String, SObject> recordsToUpdate,
+    Rollup roll
+  ) {
+    for (SObject lookupRecord : lookupItems) {
+      String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
+      if (oldLookupItems.containsKey(key)) {
+        // Yes, old parent record has already had a new rollup established in memory
+        List<SObject> reparentedCalcItems = oldLookupItems.get(key);
+
+        if (reparentedCalcItems.isEmpty()) {
+          continue;
+        }
+
+        String currentOp = getBareOperationName(roll.op.name());
+        String deleteOpName = 'DELETE_' + currentOp;
+        Op deleteOp = opNameToOp.get(deleteOpName);
+        Rollup oldLookupsRollup = new Rollup(roll, deleteOp, reparentedCalcItems);
+
+        this.log('reparenting operation: ', oldLookupsRollup);
+        this.log('Reparented item prior to reparenting rollup: ', lookupRecord);
+
+        Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
+        Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, roll.lookupFieldOnCalcItem);
+
+        if (priorVal != newVal) {
+          lookupRecord.put(roll.opFieldOnLookupObject, newVal);
+          recordsToUpdate.put(key, lookupRecord);
+        }
+        this.log('Reparented item after reparenting rollup: ', lookupRecord);
+      }
     }
   }
 

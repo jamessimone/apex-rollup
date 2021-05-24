@@ -3589,9 +3589,9 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated MAX AFTER_UPDATE STRING');
-    Account updatedAcc = (Account) mock.Records[0];
+    Account updatedAcc = (Account) mock.Records[1];
     System.assertEquals('Y', updatedAcc.Name, 'MAX AFTER_UPDATE should take the maximum string');
-    Account updatedOldAcc = (Account) mock.Records[1];
+    Account updatedOldAcc = (Account) mock.Records[0];
     System.assertEquals('', updatedOldAcc.Name, 'MAX AFTER_UPDATE should be empty after reparenting');
   }
 
