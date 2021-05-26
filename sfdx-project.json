@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.23.0",
-            "versionDescription": "Closed final scalability loophole with Rollup and query limits, added parent recalc flexipage button",
+            "versionNumber": "1.2.24.0",
+            "versionDescription": "Fixed issue with String-based COUNT rollups, more separation of concerns work",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],

@@ -250,7 +250,7 @@ public without sharing abstract class RollupCalculator {
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
     String operationName = op.name().contains('_') ? op.name().substringAfter('_') : op.name();
     String alias = operationName.toLowerCase() + 'Field';
-    String query = Rollup.getQueryString(
+    String query = RollupQueryBuilder.Current.getQuery(
       sObjectType,
       new List<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias },
       'Id',
@@ -272,7 +272,7 @@ public without sharing abstract class RollupCalculator {
       this.isRecursiveRecalc = true; // now we're cooking with gas
 
       List<SObject> allOtherItems = Database.query(
-        Rollup.getQueryString(
+        RollupQueryBuilder.Current.getQuery(
           sObjectType,
           new List<String>{ this.metadata.LookupFieldOnCalcItem__c, String.valueOf(this.opFieldOnCalcItem) },
           'Id',
@@ -361,7 +361,8 @@ public without sharing abstract class RollupCalculator {
         queryFields.add('COUNT(Id)');
       }
       String query =
-        Rollup.getQueryString(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) + (isGroupable ? (' GROUP BY ' + this.opFieldOnCalcItem) : '');
+        RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
+        (isGroupable ? (' GROUP BY ' + this.opFieldOnCalcItem) : '');
       List<SObject> results = Database.query(query);
       for (SObject res : results) {
         // have to use the String representation of the this.opFieldOnCalcItem to avoid:
@@ -657,14 +658,14 @@ public without sharing abstract class RollupCalculator {
     protected override Decimal getNumericChangedValue(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
 
-      Object newVal = calcItem.get(this.opFieldOnCalcItem);
+      // for a reparenting, the item counts towards the new record on an update
       if (this.isReparented(calcItem, oldCalcItem)) {
-        return (Decimal) newVal;
+        return 1;
       }
 
       Object priorCalcVal = oldCalcItem.get(this.opFieldOnCalcItem);
       // for updates, we have to decrement the count if the value has been cleared out
-      return newVal == null && priorCalcVal != null ? -1 : 0;
+      return calcItem.get(this.opFieldOnCalcItem) == null && priorCalcVal != null ? -1 : 0;
     }
   }
 
@@ -799,7 +800,7 @@ public without sharing abstract class RollupCalculator {
 
     private void sortAndConcat() {
       List<String> values = this.stringVal.split(this.concatDelimiter);
-      for (Integer index = values.size() -1; index >= 0; index--) {
+      for (Integer index = values.size() - 1; index >= 0; index--) {
         if (String.isBlank(values[index])) {
           values.remove(index);
         }
@@ -851,7 +852,7 @@ public without sharing abstract class RollupCalculator {
       // items are accounted for in concatDistinctIds (for proper exclusion)
       if (this.isLastItem) {
         Set<Id> objIds = this.concatDistinctIds;
-        String query = Rollup.getQueryString(
+        String query = RollupQueryBuilder.Current.getQuery(
           calcItem.getSObjectType(),
           new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
           'Id',
@@ -922,7 +923,7 @@ public without sharing abstract class RollupCalculator {
       SObjectType sObjectType = this.getCalcItemType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
-      String query = Rollup.getQueryString(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
+      String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
       Integer countOfPreExistingItems = isArchivable ? Database.query(query).size() : Database.countQuery(query);
 
       Decimal oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, objIds, sObjectType);
@@ -988,7 +989,7 @@ public without sharing abstract class RollupCalculator {
       Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField, this.metadata.LookupFieldOnCalcItem__c };
       queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
       // a full-recalc is always necessary because we don't retain the information about the order by field
-      String queryString = Rollup.getQueryString(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
+      String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
       // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
       if (this.op.name().contains('DELETE')) {

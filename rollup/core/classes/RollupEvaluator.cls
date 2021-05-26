@@ -386,7 +386,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private void logError(Exception ex) {
-      System.debug(LoggingLevel.ERROR, 'RollupEvaluator: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
+      RollupLogger.Instance.log('an error occurred in RollupEvaluator: ', ex);
     }
   }
 
