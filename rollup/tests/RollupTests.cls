@@ -2475,7 +2475,6 @@ private class RollupTests {
 
   @isTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
-    // testing for static log entries, as well
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
@@ -3596,7 +3595,7 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldCorrectlyReparentForCountDistinct() {
+  static void shouldCorrectlyReparentForStringsCountDistinct() {
     Account acc = [SELECT Id FROM Account];
 
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
@@ -3629,6 +3628,48 @@ private class RollupTests {
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
     Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
+  }
+
+  @isTest
+  static void shouldCorrectlyReparentForStringCount() {
+    Account acc = [SELECT Id FROM Account];
+
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');
+    insert oldAcc;
+    Rollup.defaultControl = null;
+
+    // the first two items will be false positives; records whose values haven't changed over the course of the update
+    // of interest to us will be the last record, whose ParentId we'll show as the oldAcc's in oldRecordsMap to trigger a
+    // reparenting
+    List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'X', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Y', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
+      new ContactPointAddress(ParentId = acc.Id, Name = 'Z', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+    };
+
+    DMLMock mock = loadMock(testCpas);
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    ContactPointAddress firstCpa = testCpas[0].clone(true, true);
+    ContactPointAddress secondCpa = testCpas[1].clone(true, true);
+    ContactPointAddress thirdCpa = testCpas[2].clone(true, true);
+    thirdCpa.ParentId = oldAcc.Id;
+
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ firstCpa.Id => firstCpa, secondCpa.Id => secondCpa, thirdCpa.Id => thirdCpa };
+
+    Test.startTest();
+    Rollup.countFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'Records should have been populated COUNT AFTER_UPDATE reparenting STRING: ' + mock.Records);
+    for (Account updatedAcc : (List<Account>) mock.Records) {
+      if (updatedAcc.Id == acc.Id) {
+        System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE should only count updated entries reparented to it');
+      } else if (updatedAcc.Id == oldAcc.Id) {
+        System.assertEquals(0, updatedAcc.AnnualRevenue, 'Old account should have had its annual revenue decremented');
+      }
+    }
   }
 
   @isTest
@@ -3666,29 +3707,6 @@ private class RollupTests {
     Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(oldAcc.Id, updatedOldAcc.Id);
     System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
-  }
-
-  /** Queries */
-  @isTest
-  static void shouldQueryAllTasks() {
-    String queryString = Rollup.getQueryString(Task.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
-
-    // validate the query
-    Set<String> objIds = new Set<String>();
-    Database.query(queryString);
-
-    System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
-  }
-
-  @isTest
-  static void shouldQueryAllEvents() {
-    String queryString = Rollup.getQueryString(Event.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
-
-    // validate the query
-    Set<String> objIds = new Set<String>();
-    Database.query(queryString);
-
-    System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
   }
 
   /** Re-queueing */
@@ -3853,7 +3871,12 @@ private class RollupTests {
     insert cpas;
 
     DMLMock mock = new DMLMock();
-    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 1, MaxRollupRetries__c = 100, MaxNumberOfQueries__c = 1, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(
+      BatchChunkSize__c = 1,
+      MaxRollupRetries__c = 100,
+      MaxNumberOfQueries__c = 1,
+      IsRollupLoggingEnabled__c = true
+    );
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
 

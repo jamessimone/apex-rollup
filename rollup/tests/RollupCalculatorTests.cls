@@ -439,9 +439,9 @@ private class RollupCalculatorTests {
       Opportunity.AccountId
     );
     Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = '0016g00003VDGbF001');
-    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ opp.Id => new Opportunity(AccountId = '0016g00003VDGbF002', Amount = 1) });
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ opp.Id => new Opportunity(AccountId = '0016g00003VDGbF002') });
 
-    System.assertEquals(opp.Amount, (Decimal) calc.getReturnValue(), 'New value should be returned on reparenting update!');
+    System.assertEquals(1, (Decimal) calc.getReturnValue(), 'If record is reparented, it should count towards count for new record!');
   }
 
   @isTest
