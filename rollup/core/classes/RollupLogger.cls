@@ -1,5 +1,5 @@
 public class RollupLogger extends Rollup {
-  public RollupLogger() {
+  private RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
   }
 
