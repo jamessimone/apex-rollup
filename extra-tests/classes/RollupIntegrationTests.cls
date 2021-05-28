@@ -624,4 +624,41 @@ private class RollupIntegrationTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should match recursively if values do not match');
   }
+
+  @isTest
+  static void shouldCorrectlyMaxFromTriggerOnMerge() {
+    // this test relies on AccountTrigger.trigger having AFTER DELETE set up
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'MAX'
+      )
+    };
+
+    // you can only merge contacts / accounts / leads / cases
+    Account parent = [SELECT Id FROM Account];
+    Account parentToMerge = new Account(Name = 'Second parent');
+    insert parentToMerge;
+
+    List<ContactPointAddress> rollupChildren = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2)
+    };
+
+    // we don't even need the parent account's annual revenue to be set; rather
+    // we need to validate that post merge, the rollup is recalculated correctly
+    insert rollupChildren;
+
+    Test.startTest();
+    Database.MergeResult res = Database.merge(parent, parentToMerge.Id, true);
+    Test.stopTest();
+
+    parent = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    System.assertEquals(2, parent.AnnualRevenue, 'Merge should have triggered rollup');
+  }
 }

@@ -551,7 +551,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=');
 
-    // eval always null via this route, despite having been used to get the relationship fields
     return startFullRecalc(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint);
   }
 
@@ -1486,13 +1485,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     apexContext = null;
   }
 
-  private static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+  global static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     if (shouldRunFromTrigger() == false) {
       return new RollupAsyncProcessor(InvocationPoint.FROM_APEX);
     }
 
     String rollupContext;
     Boolean shouldReturn = false;
+    Set<String> mergedParentIds = new Set<String>();
 
     switch on apexContext {
       when AFTER_UPDATE {
@@ -1505,13 +1505,17 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         /** for AFTER_INSERT, the base operation name will always be used */
         rollupContext = '';
       }
+      when AFTER_DELETE {
+        reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds);
+      }
       when else {
         shouldReturn = true;
       }
     }
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
-    for (Rollup__mdt rollupInfo : rollupMetadata) {
+    for (Integer index = rollupMetadata.size() - 1; index >= 0; index--) {
+      Rollup__mdt rollupInfo = rollupMetadata[index];
       if (String.isBlank(rollupInfo.CalcItem__c)) {
         rollupInfo.CalcItem__c = String.valueOf(calcItemSObjectType);
       }
@@ -1519,10 +1523,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         rollupInfo.CalcItem__c != String.valueOf(calcItemSObjectType) &&
         String.isNotBlank(rollupInfo.GrandparentRelationshipFieldPath__c) &&
         calcItems.isEmpty() == false &&
-        rollupInfo.IsRollupStartedFromParent__c == false;
+        rollupInfo.IsRollupStartedFromParent__c == false &&
+        rollupInfo.LookupObject__c != String.valueOf(calcItemSObjectType);
 
       if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent) {
-        shouldReturn = true;
         QueryWrapper queryWrapper = isIntermediateRollupForGrandparent == false
           ? getParentWhereClause(
               calcItems,
@@ -1534,8 +1538,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
             )
           : getIntermediateGrandparentQueryWrapper(rollupInfo.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
         if (rollupInfo.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
+          rollupMetadata.remove(index);
           performFullRecalculationInner(rollupInfo, queryWrapper, InvocationPoint.FROM_APEX);
         }
+      } else if (mergedParentIds.isEmpty() == false) {
+        QueryWrapper wrapper = new QueryWrapper('', rollupInfo.LookupFieldOnCalcItem__c);
+        for (String mergedParentId : mergedParentIds) {
+          wrapper.addRecordId(mergedParentId);
+        }
+        rollupMetadata.remove(index);
+        performFullRecalculationInner(rollupInfo, wrapper, InvocationPoint.FROM_APEX);
       }
 
       // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
@@ -1546,6 +1558,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           ? rollupInfo.RollupOperation__c.substringAfter('_')
           : rollupInfo.RollupOperation__c);
     }
+    shouldReturn = rollupMetadata.isEmpty();
 
     if (shouldReturn == false) {
       if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
@@ -1928,6 +1941,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
           continue;
         }
+      } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE && sObjectName == meta.LookupObject__c) {
+        continue;
       } else if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
         rollupMetadatas.remove(index);
       } else if (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c) {
@@ -2071,14 +2086,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (Trigger.operationType != null && isCDC == false) {
       apexContext = Trigger.operationType;
     }
-    // there are only four allowed trigger operations that qualify
-    if (
-      shouldRun &&
-      apexContext != TriggerOperation.AFTER_INSERT &&
-      apexContext != TriggerOperation.AFTER_UPDATE &&
-      apexContext != TriggerOperation.BEFORE_DELETE &&
-      apexContext != TriggerOperation.AFTER_UNDELETE
-    ) {
+    Set<TriggerOperation> validTriggerOps = new Set<TriggerOperation>{
+      TriggerOperation.AFTER_INSERT,
+      TriggerOperation.AFTER_UPDATE,
+      TriggerOperation.BEFORE_DELETE,
+      TriggerOperation.AFTER_DELETE,
+      TriggerOperation.AFTER_UNDELETE
+    };
+    if (shouldRun && validTriggerOps.contains(apexContext) == false) {
       shouldRun = false;
     }
     // an undelete behaviors **strictly** the same as an insert
@@ -2109,6 +2124,53 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static SObject getSObjectFromName(String sObjectName) {
     return ((SObject) Type.forName(sObjectName).newInstance());
+  }
+
+  private static void reparentAndGetMergedRecordIds(List<SObject> calcItems, List<Rollup__mdt> rollupMetadata, Set<String> mergedParentIds) {
+    String mergeFieldIndicator = 'MasterRecordId';
+    // titled objIds because it's used as a bind variable in SOQL below
+    Set<String> objIds = new Set<String>();
+    Map<Id, Id> mergedIdToCurrentParentId = new Map<Id, Id>();
+    for (SObject record : calcItems) {
+      Map<String, Object> populatedFields = record.getPopulatedFieldsAsMap();
+      if (populatedFields.containsKey(mergeFieldIndicator) && populatedFields.get(mergeFieldIndicator) != null) {
+        String mergedFieldValue = String.valueOf(populatedFields.get(mergeFieldIndicator));
+        objIds.add(record.Id);
+        mergedIdToCurrentParentId.put(record.Id, Id.valueOf(mergedFieldValue));
+        mergedParentIds.add(mergedFieldValue);
+      }
+    }
+
+    if (objIds.isEmpty()) {
+      return;
+    }
+
+    // only M/D relationships specifically set to reparent do so automatically
+    // for everything else - there's rollup
+    List<SObject> recordsToUpdate = new List<SObject>();
+    Set<SObjectType> updatedChildTypes = new Set<SObjectType>();
+    for (Rollup__mdt meta : rollupMetadata) {
+      if (meta.LookupObject__c != String.valueOf(calcItems.getSObjectType())) {
+        continue;
+      }
+
+      SObjectType calcItemSObject = getSObjectFromName(meta.CalcItem__c).getSObjectType();
+
+      // SOQL in a for loop - with the caveat that it's once per child object of any given parent
+      if (updatedChildTypes.contains(calcItemSObject) == false) {
+        updatedChildTypes.add(calcItemSObject);
+
+        List<SObject> recordsToReparent = Database.query(
+          RollupQueryBuilder.Current.getQuery(calcItemSObject, new List<String>{ 'Id', meta.LookupFieldOnCalcItem__c }, meta.LookupFieldOnCalcItem__c, '=')
+        );
+
+        for (SObject childToReparent : recordsToReparent) {
+          childToReparent.put(meta.LookupFieldOnCalcItem__c, mergedIdToCurrentParentId.get((Id)childToReparent.get(meta.LookupFieldOnCalcItem__c)));
+          recordsToUpdate.add(childToReparent);
+        }
+      }
+    }
+    DML.doUpdate(recordsToUpdate);
   }
 
   private static Rollup loadRollups(

@@ -347,7 +347,7 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
       rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => new Opportunity(Id = secondOpp.Id, StageName = secondOpp.StageName, Amount = 15) },
       Opportunity.SObjectType
     );
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
@@ -400,7 +400,8 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      // second opp can't be passed by reference since we do a referential equality check in the changed field eval
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => new Opportunity(Id = secondOpp.Id, Amount = secondOpp.Amount, Name = 'Something else') },
       Opportunity.SObjectType
     );
 
@@ -446,7 +447,7 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => secondOpp },
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => new Opportunity(Id = secondOpp.Id, StageName = secondOpp.StageName, Amount = secondOpp.Amount, Name = 'Something else' ) },
       Opportunity.SObjectType
     );
 

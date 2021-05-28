@@ -119,9 +119,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean matches = this.changedFieldNames.isEmpty() && this.oldRecordsMap == null;
       for (String fieldName : this.changedFieldNames) {
         // need to trim because list can be comma-separated with leading/trailing spaces
-        if (calcSObject?.get(fieldName.trim()) != oldRecord?.get(fieldName.trim())) {
-          matches = true;
-          break;
+        if (calcSObject.getPopulatedFieldsAsMap().containsKey(fieldName)) {
+          if (calcSObject == oldRecord || calcSObject?.get(fieldName.trim()) != oldRecord?.get(fieldName.trim())) {
+            matches = true;
+            break;
+          }
         }
       }
       return matches;

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.24.0",
-            "versionDescription": "Fixed issue with String-based COUNT rollups, more separation of concerns work",
+            "versionNumber": "1.2.25.0",
+            "versionDescription": "Adding merge functionality for parent records, record-triggered flow bugfixes",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],

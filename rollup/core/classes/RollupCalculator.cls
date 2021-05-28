@@ -407,6 +407,8 @@ public without sharing abstract class RollupCalculator {
 
       if (this.isReparented(calcItem, oldCalcItem)) {
         return newVal;
+      } else if (this.eval?.matches(calcItem) == true && this.eval?.matches(oldCalcItem) == false) {
+        return newVal;
       }
 
       Decimal oldVal = this.getNumericValue(oldCalcItem);
@@ -663,9 +665,14 @@ public without sharing abstract class RollupCalculator {
         return 1;
       }
 
-      Object priorCalcVal = oldCalcItem.get(this.opFieldOnCalcItem);
       // for updates, we have to decrement the count if the value has been cleared out
-      return calcItem.get(this.opFieldOnCalcItem) == null && priorCalcVal != null ? -1 : 0;
+      Decimal retVal = 0;
+      if (calcItem.get(this.opFieldOnCalcItem) == null && oldCalcItem.get(this.opFieldOnCalcItem) != null) {
+        retVal = -1;
+      } else if (this.eval?.matches(oldCalcItem) == false && this.eval?.matches(calcItem) == true) {
+        retVal = 1;
+      }
+      return retVal;
     }
   }
 

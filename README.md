@@ -53,13 +53,15 @@ Please note that this script does not delete the existing DLRS rules, nor does i
 
 You have several different options when it comes to making use of `Rollup`:
 
-- The Custom Metadata-driven solution: install with _one line of code_
+- The [Custom Metadata-driven solution](#cmdt-based-rollup): install with _one line of code_
 - From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
 - [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
 - [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
 - [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 
 ### CMDT-based Rollup Solution:
+
+<div id="cmdt-based-rollup"></div>
 
 All you need is one line of code in any trigger where you'd like to perform rollups to a "parent" object. If you were taking values from your Opportunity records and rolling some of them up to the Account, this single line would be put into your `Opportunity.trigger` file or within your Opportunity Handler class:
 
@@ -72,7 +74,8 @@ Rollup.runFromTrigger();
 Let me repeat: you **must** have the following contexts listed on your trigger:
 
 ```java
-trigger ExampleTrigger on Opportunity(after insert, after update, before delete, after undelete) {
+trigger ExampleTrigger on Opportunity(after insert, after update, before delete, after delete, after undelete) {
+  // after delete is required ONLY if your org does Account / Contact / Lead / Case merges
   Rollup.runFromTrigger();
   // etc. You can invoke the above from your handler if you have one
 }
@@ -83,6 +86,7 @@ To be clear - the following trigger contexts are necessary when using `runFromTr
 - after insert
 - after update
 - before delete
+- after delete (**only necessary if your org does Account/Contact/Lead/Case merges** - repeated from the above comment). For more info please see [setting Rollup up to handle parent-level merges](#parent-level-merges)
 - after undelete
 
 This means that if you are invoking `Rollup.runFromTrigger();` from any other context (be it a quick action, LWC, Aura or wherever), nothing will happen; there won't be an error, but a rollup also won't be performed. For more information on one-off rollups, please see <a href="#calculating-rollup-after-install">Calculating Rollups After Install</a>.
@@ -140,7 +144,7 @@ There are two limitations to Entity Definition relationships that currently exis
 1. They cannot refer to the User object
 2. They cannot refer to the Task/Event objects
 
-For rollups referring to these objects, you can use either the Invocable or the static methods exposed on `Rollup` from Apex to roll values up.
+For rollups referring to these objects, you can use either the Invocable or the static methods exposed on `Rollup` from Apex to roll values up. For a specialized use-case for this, please see [setting Rollup up to handle parent-level merges](#parent-level-merges)
 
 #### Establishing Org Limits For Rollup Operations
 
@@ -392,6 +396,11 @@ public static void runFromCDCTrigger()
 // if you are actually using this from WITHIN a trigger, the second argument should
 // ALWAYS be the "Trigger.operationType" static variable
 global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext)
+
+// for more info on how this method differs from the one above it, check out the "Parent Level Merges" section!
+// for anything OTHER than merge situations or rollups starting from Task, Event, or User, use of this method
+// is an anti-pattern
+global static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems)
 
 // imperatively from Apex with arguments taking the place of values previously supplied by CMDT
 // can be used in conjunction with "batch" to group rollup operations (as seen in the example preceding this section)
@@ -802,7 +811,7 @@ Rollup.batch(
   Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
 )
 
-// this should be avoided. It ** could ** potentially lead to a chunking error when updating all of the rollup fields
+// this should be avoided. It ** could ** potentially lead to a chunking error when updating all of the parent-level items
 Rollup.batch(
   Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
   Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
@@ -812,6 +821,44 @@ Rollup.batch(
   Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
 );
 ```
+
+### Parent Level Merges
+
+<div id="parent-level-merges"></div>
+
+Merging is possible on the following Salesforce standard objects: Account, Case, Contact, and Lead. If these objects serve as parent-level records within your rollups, you'll need to have _at the very least_ an Apex trigger looking at `after delete` on the associated object where merges are being performed:
+
+```java
+trigger ContactTrigger on Contact(after delete) {
+  Rollup.runFromTrigger();
+}
+```
+
+If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex. To that effect, your corresponding `ContactTrigger` (or method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
+
+```java
+trigger ContactTrigger on Contact(after delete) {
+  Rollup__mdt rollupMetadata = new Rollup__mdt(
+    CalcItem__c = 'Task',
+    RollupFieldOnCalcItem__c = 'Subject', // just for example
+    LookupFieldOnCalcItem__c = 'WhoId',
+    LookupFieldOnRollupObject__c = 'Id',
+    RollupFieldOnLookupObject__c = 'Description',
+    LookupObject__c = 'Contact',
+    RollupOperation__c = 'FIRST',
+    OrderByFirstLast__c = 'ActivityDate',
+    CalcItemWhereClause__c = 'Subject = \'Hello world!\''
+  );
+
+  Rollup.runFromApex(
+    new List<Rollup__mdt>{ rollupMetadata },
+    null, // custom eval argument, doesn't need to be set if you're passing in a CalcItemWhereClause__c above
+    Trigger.old,
+    Trigger.oldMap
+  );
+}
+```
+Note that if you are also rolling values up from (in this example), Contact to a parent of Contact - like Account - _and_ you were using Apex to invoke `Rollup`, you would also need the additional trigger contexts listed in the [CMDT-based rollup section](#cmdt-based-rollup) - you would also need to modify the `Trigger.old`, `Trigger.oldMap` to conditionally pass the right variables depending on the trigger context.
 
 ### Change Data Capture (CDC)
 
