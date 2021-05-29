@@ -625,8 +625,10 @@ private class RollupIntegrationTests {
     System.assertEquals(true, eval.matches(opp), 'Should match recursively if values do not match');
   }
 
+  // TODO need invocable test
+  // for multiple rollups and full recalc too
   @isTest
-  static void shouldCorrectlyMaxFromTriggerOnMerge() {
+  static void shouldCorrectlyRollupFromTriggerOnMerge() {
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -637,6 +639,15 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupOperation__c = 'CONCAT'
       )
     };
 
@@ -658,7 +669,8 @@ private class RollupIntegrationTests {
     Database.MergeResult res = Database.merge(parent, parentToMerge.Id, true);
     Test.stopTest();
 
-    parent = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT Id, Description, AnnualRevenue FROM Account WHERE Id = :parent.Id];
     System.assertEquals(2, parent.AnnualRevenue, 'Merge should have triggered rollup');
+    System.assertEquals(rollupChildren[0].Name + ', ' + rollupChildren[1].Name, parent.Description, 'Second rollup should also have run');
   }
 }

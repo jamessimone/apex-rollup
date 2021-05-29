@@ -54,8 +54,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   // non-final instance variables
   protected Boolean isFullRecalc = false;
+  protected Boolean isNoOp;
   private Boolean isCDCUpdate = false;
-  private Boolean isNoOp;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
   private RollupRelationshipFieldFinder.Traversal traversal;
@@ -352,7 +352,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean canEnqueue = Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
     Boolean isAsyncInnerClass = this instanceof RollupAsyncProcessor;
     Rollup roll;
-    if (shouldRunAsBatch && System.isBatch() == false) {
+    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullBatchRecalculator) {
+      roll = this.rollups[0];
+    } else if (shouldRunAsBatch && System.isBatch() == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
@@ -2395,7 +2397,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     for (Rollup rollup : rollups) {
       RollupLogger.Instance.log('starting rollup for: ', rollup);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
-      if (hasExceededCurrentRollupLimits(rollup.rollupControl)) {
+      if (hasExceededCurrentRollupLimits(rollup.rollupControl) || rollup instanceof RollupFullBatchRecalculator) {
         this.deferredRollups.add(rollup);
         continue;
       }
