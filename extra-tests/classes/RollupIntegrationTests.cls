@@ -325,7 +325,7 @@ private class RollupIntegrationTests {
   }
 
   @isTest
-  static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdated() {
+  static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromApex() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
@@ -370,8 +370,55 @@ private class RollupIntegrationTests {
     Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
     Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
 
-    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup!');
-    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again!');
+    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - apex');
+    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - apex');
+  }
+
+  @isTest
+  static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromFlow() {
+    Account greatGrandparent = new Account(Name = 'Great-grandparent Flow');
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent Flow');
+    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent Flow', Account__c = greatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent Flow', Account__c = secondGreatGrandparent.Id);
+    List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
+    insert parentApps;
+
+    Application__c parent = new Application__c(Name = 'Parent-level Flow', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level Flow', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting Flow');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux Flow', Application__c = parent.Id);
+    insert new List<ApplicationLog__c>{ child, secondChild };
+
+    Rollup.shouldRun = true;
+    Rollup.FlowInput input = new Rollup.FlowInput();
+    input.recordsToRollup = parentApps;
+    input.calcItemTypeWhenRollupStartedFromParent = 'ApplicationLog__c';
+    input.rollupFieldOnCalcItem = 'Name';
+    input.lookupFieldOnCalcItem = 'Application__c';
+    input.rollupSObjectName = 'Account';
+    input.lookupFieldOnOpObject = 'Id';
+    input.rollupFieldOnOpObject = 'Name';
+    input.rollupOperation = 'CONCAT_DISTINCT';
+    input.rollupContext = 'UPDATE';
+    input.grandparentRelationshipFieldPath = 'Application__r.ParentApplication__r.Account__r.Name';
+    input.oldRecordsToRollup = new List<ParentApplication__c>{
+      new ParentApplication__c(Id = grandParent.Id, Account__c = secondGreatGrandparent.Id),
+      new ParentApplication__c(Id = secondGrandparent.Id, Account__c = greatGrandparent.Id)
+    };
+
+    Test.startTest();
+    Rollup.performRollup(new List<Rollup.FlowInput>{ input });
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+
+    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - flow');
+    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - flow');
   }
 
   @isTest

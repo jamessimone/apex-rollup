@@ -51,4 +51,9 @@ private class RollupRecursionItemTests {
 
     System.assertNotEquals(true, recursionItems.contains(nonMatchingItem));
   }
+
+  @isTest
+  static void shouldNotReportTrueIfSamePropsButDifferentCalcItemWhereFields() {
+    System.assert(false, 'Fix me!');
+  }
 }
