@@ -1,6 +1,5 @@
 @isTest
 private class RollupRecursionItemTests {
-
   @isTest
   static void shouldReportFalseForNonRollupRecursionItemEquals() {
     RollupRecursionItem recursionItem = new RollupRecursionItem(null, new Rollup__mdt());
@@ -54,6 +53,19 @@ private class RollupRecursionItemTests {
 
   @isTest
   static void shouldNotReportTrueIfSamePropsButDifferentCalcItemWhereFields() {
-    System.assert(false, 'Fix me!');
+    Account acc = new Account(Name = 'Hi', Id = RollupTestUtils.createId(Account.SObjectType), Description = 'Some description');
+    Rollup__mdt meta = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = 'Name',
+      LookupFieldOnCalcItem__c = 'Id',
+      CalcItemWhereClause__c = 'Description != \'' + acc.Description + '\''
+    );
+
+    RollupRecursionItem item = new RollupRecursionItem(acc, meta);
+
+    Account clonedAccount = acc.clone(true, true);
+    clonedAccount.Description = 'Some other description';
+    RollupRecursionItem secondItem = new RollupRecursionItem(clonedAccount, meta);
+
+    System.assertNotEquals(item, secondItem);
   }
 }

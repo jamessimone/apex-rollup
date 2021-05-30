@@ -7,8 +7,7 @@
             "versionNumber": "1.2.25.0",
             "versionDescription": "Correcting issues with recursion detection & merging of parent-level records support",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
-        },
-        {"path": "extra-tests"}
+        }
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",

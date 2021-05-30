@@ -742,6 +742,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (flowInput.deferProcessing == true) {
         RollupLogger.Instance.log('deferring processing for rollup', rollups);
         CACHED_ROLLUPS.addAll(rollups);
+        rollups.clear();
       } else {
         RollupLogger.Instance.log('adding invocable rollup to list', rollups);
         rollups.addAll(rollups);
@@ -1524,7 +1525,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     if (rollupMetadata.isEmpty() == false) {
-      rollups.add(getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX));
+      rollups.addAll(getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX).rollups);
     }
 
     flattenBatches(batchRollup, rollups);
@@ -1722,9 +1723,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
     for (Rollup rollup : rollups) {
+      System.debug(rollup);
       if (rollup.rollups.isEmpty() == false) {
         for (Rollup innerRoll : rollup.rollups) {
-          innerRoll.isFullRecalc = rollup.isFullRecalc;
+          innerRoll.isFullRecalc = rollup.isFullRecalc || innerRoll.isFullRecalc;
         }
         // recurse through lists until there aren't any more nested rollups
         flattenBatches(outerRollup, rollup.rollups);
@@ -2640,15 +2642,20 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // because you can only return one list of SObjects from a batch job's QueryLocator
     SObjectType targetType;
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
-    for (Rollup rollup : this.rollups) {
+
+    for (Rollup roll : this.rollups) {
       if (targetType == null) {
-        targetType = rollup.lookupObj;
-      } else if (rollup.lookupObj != targetType) {
+        targetType = roll.lookupObj;
+      } else if (roll.lookupObj != targetType) {
         hasMoreThanOneTarget = true;
-      } else if (String.isNotBlank(rollup.metadata?.GrandparentRelationshipFieldPath__c)) {
+      }
+
+      if (String.isNotBlank(roll.metadata?.GrandparentRelationshipFieldPath__c)) {
         // getting the count for grandparent (or greater) relationships will be handled further
         // downstream; for our purposes, it isn't useful to try to get all of the records while
         // we're still in a sync context
+        continue;
+      } else if (roll.calcItems?.isEmpty() != false) {
         continue;
       }
 
@@ -2657,17 +2664,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
 
       Set<String> uniqueIds = new Set<String>();
-      for (SObject calcItem : rollup.calcItems) {
-        String lookupKey = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
+
+      for (SObject calcItem : roll.calcItems) {
+        String lookupKey = (String) calcItem.get(roll.lookupFieldOnCalcItem);
         if (String.isNotBlank(lookupKey)) {
           uniqueIds.add(lookupKey);
         }
       }
 
       String countQuery = RollupQueryBuilder.Current.getQuery(
-        rollup.lookupObj,
+        roll.lookupObj,
         new List<String>{ 'Count()' },
-        String.valueOf(rollup.lookupFieldOnLookupObject),
+        String.valueOf(roll.lookupFieldOnLookupObject),
         '='
       );
       if (queryCountsToLookupIds.containsKey(countQuery)) {
