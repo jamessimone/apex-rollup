@@ -323,7 +323,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     this.ingestRollupControlData();
 
-    this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
+    if (this.isNoOp) {
+      this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
+    }
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
       return 'No process Id';
     }
@@ -351,9 +353,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Boolean canEnqueue = Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
     Boolean isAsyncInnerClass = this instanceof RollupAsyncProcessor;
     Rollup roll;
+    // deferred rollups delay the full batch recalc
+    // till all the others have gone
     if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullBatchRecalculator) {
       roll = this.rollups[0];
-    } else if(this instanceof RollupFullBatchRecalculator) {
+    } else if (this instanceof RollupFullBatchRecalculator) {
       roll = this;
     } else if (shouldRunAsBatch && System.isBatch() == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
@@ -1725,10 +1729,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
     for (Rollup rollup : rollups) {
-      System.debug(rollup);
       if (rollup.rollups.isEmpty() == false) {
         for (Rollup innerRoll : rollup.rollups) {
-          innerRoll.isFullRecalc = rollup.isFullRecalc || innerRoll.isFullRecalc;
+          innerRoll.isFullRecalc = rollup.isFullRecalc;
         }
         // recurse through lists until there aren't any more nested rollups
         flattenBatches(outerRollup, rollup.rollups);
