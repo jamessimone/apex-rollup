@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsMergeReparentingEnabled__c</fullName>
+    <defaultValue>true</defaultValue>
+    <description>If checked, Rollup will automatically reparent children records when a parent record is merged. If you have pre-existing merge handling, please uncheck this option!</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>If checked, Rollup will automatically reparent children records when a parent record is merged. If you have pre-existing merge handling, please uncheck this option!</inlineHelpText>
+    <label>Is Merge Reparenting Enabled</label>
+    <type>Checkbox</type>
+</CustomField>

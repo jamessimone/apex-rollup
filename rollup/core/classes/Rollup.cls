@@ -1509,7 +1509,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         rollupContext = '';
       }
       when AFTER_DELETE {
-        reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds);
+        reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds, batchRollup.rollupControl);
       }
       when else {
         shouldReturn = true;
@@ -2143,7 +2143,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return ((SObject) Type.forName(sObjectName).newInstance());
   }
 
-  private static void reparentAndGetMergedRecordIds(List<SObject> calcItems, List<Rollup__mdt> rollupMetadata, Set<String> mergedParentIds) {
+  private static void reparentAndGetMergedRecordIds(
+    List<SObject> calcItems,
+    List<Rollup__mdt> rollupMetadata,
+    Set<String> mergedParentIds,
+    RollupControl__mdt control
+  ) {
     String mergeFieldIndicator = 'MasterRecordId';
     // titled objIds because it's used as a bind variable in SOQL below
     Set<String> objIds = new Set<String>();
@@ -2158,7 +2163,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    if (objIds.isEmpty()) {
+    if (objIds.isEmpty() || control.IsMergeReparentingEnabled__c == false) {
       return;
     }
 

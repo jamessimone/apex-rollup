@@ -18,6 +18,10 @@
                 <behavior>Edit</behavior>
                 <field>TriggerOrInvocableName__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>IsMergeReparentingEnabled__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
