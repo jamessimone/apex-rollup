@@ -2933,7 +2933,7 @@ private class RollupTests {
     flowInputs[0].calcItemChangedFields = 'Name, IsDefault';
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
-      new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, Name = 'Name that does not match', PreferenceRank = 200)
+      new ContactPointAddress(ParentId = cpas[1].ParentId, Id = cpas[1].Id, PreferenceRank = 200, Name = 'Name that does not match')
     };
 
     Test.startTest();

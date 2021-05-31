@@ -11,6 +11,7 @@ public class RollupFullBatchRecalculator extends Rollup {
     Set<Id> recordIds
   ) {
     super(invokePoint);
+    this.isNoOp = false;
     this.calcItemType = calcItemType;
     this.queryString = queryString;
     this.rollupInfo = rollupInfo;

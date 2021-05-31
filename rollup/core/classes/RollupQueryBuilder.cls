@@ -91,7 +91,7 @@ public without sharing class RollupQueryBuilder {
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType);
     try {
       for (String whereClause : whereEval.getWhereClauses()) {
-        if (this.hasPolymorphicOwnerClause(whereClause) == false) {
+        if (this.hasPolymorphicOwnerClause(whereClause) == false || uniqueQueryFieldNames.contains('Count()')) {
           continue;
         }
         String fieldName = whereClause.split(' ')[0];

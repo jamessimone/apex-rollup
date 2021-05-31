@@ -1,8 +1,9 @@
 public without sharing class RollupRecursionItem {
-  public final String lookupKey;
-  public final Object rollupValue;
   public final Id Id;
 
+  private final String lookupKey;
+  private final Object rollupValue;
+  private final List<Object> additionalValues = new List<Object>();
   private final Hasher hasher;
 
   public RollupRecursionItem(SObject item, Rollup__mdt metadata) {
@@ -13,6 +14,17 @@ public without sharing class RollupRecursionItem {
       .add(this.lookupKey)
       .add(this.rollupValue)
       .add(this.Id);
+    Map<String, Object> fieldsToValues = item?.getPopulatedFieldsAsMap();
+    if (fieldsToValues != null && String.isNotBlank(metadata.CalcItemWhereClause__c)) {
+      List<String> whereFields = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, item?.getSObjectType()).getQueryFields();
+      for (String whereField : whereFields) {
+        if (fieldsToValues.containsKey(whereField)) {
+          Object whereVal = fieldsToValues.get(whereField);
+          this.additionalValues.add(whereVal);
+          this.hasher.add(whereVal);
+        }
+      }
+    }
   }
 
   // need to define both "equals" and "hashCode" so that a Set<RollupRecursionItem> can use "contains"
@@ -20,7 +32,7 @@ public without sharing class RollupRecursionItem {
   public Boolean equals(Object thatItem) {
     if (thatItem instanceof RollupRecursionItem) {
       RollupRecursionItem that = (RollupRecursionItem) thatItem;
-      return this.lookupKey == that.lookupKey && this.rollupValue == that.rollupValue && this.Id == that.Id;
+      return this.lookupKey == that.lookupKey && this.rollupValue == that.rollupValue && this.Id == that.Id && this.additionalValues == that.additionalValues;
     }
 
     return false;

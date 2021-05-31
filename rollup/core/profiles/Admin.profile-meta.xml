@@ -77,6 +77,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>RollupControl__mdt.IsMergeReparentingEnabled__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>RollupControl__mdt.MaxLookupRowsBeforeBatching__c</field>
         <readable>true</readable>
     </fieldPermissions>
