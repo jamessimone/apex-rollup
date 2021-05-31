@@ -672,8 +672,6 @@ private class RollupIntegrationTests {
     System.assertEquals(true, eval.matches(opp), 'Should match recursively if values do not match');
   }
 
-  // TODO need invocable test
-  // for multiple rollups and full recalc too
   @isTest
   static void shouldCorrectlyRollupFromTriggerOnMerge() {
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up

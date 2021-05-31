@@ -353,6 +353,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Rollup roll;
     if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullBatchRecalculator) {
       roll = this.rollups[0];
+    } else if(this instanceof RollupFullBatchRecalculator) {
+      roll = this;
     } else if (shouldRunAsBatch && System.isBatch() == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
@@ -552,7 +554,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=');
 
-    return buildFullRecalcRollup(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint).beginAsyncRollup();
+    return buildFullRecalcRollup(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint).runCalc();
   }
 
   @AuraEnabled
@@ -572,7 +574,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
     wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    return getFullRecalcRollup(metadata, wrapper, InvocationPoint.FROM_LWC).beginAsyncRollup();
+    return getFullRecalcRollup(metadata, wrapper, InvocationPoint.FROM_LWC).runCalc();
   }
 
   global class FlowInput {
