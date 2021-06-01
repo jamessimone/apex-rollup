@@ -843,7 +843,7 @@ trigger ContactTrigger on Contact(after delete) {
     CalcItem__c = 'Task',
     RollupFieldOnCalcItem__c = 'Subject', // just for example
     LookupFieldOnCalcItem__c = 'WhoId',
-    LookupFieldOnRollupObject__c = 'Id',
+    LookupFieldOnLookupObject__c = 'Id',
     RollupFieldOnLookupObject__c = 'Description',
     LookupObject__c = 'Contact',
     RollupOperation__c = 'FIRST',

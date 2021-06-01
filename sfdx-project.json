@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.25.0",
-            "versionDescription": "Correcting issues with recursion detection & merging of parent-level records support",
+            "versionNumber": "1.2.26.0",
+            "versionDescription": "Prevent downstream rollups from running on merge full recalculations",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],

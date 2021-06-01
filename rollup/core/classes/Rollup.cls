@@ -2192,7 +2192,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
     }
+    // prevent downstream rollups from running on this code path; we are already in the midst
+    // of calculating each of the parent record's new rollup values
+    RollupControl__mdt earlyExitControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    defaultControl = earlyExitControl;
+    specificControl = earlyExitControl;
+
     DML.doUpdate(recordsToUpdate);
+
+    defaultControl = null;
+    specificControl = null;
   }
 
   private static Rollup loadRollups(
