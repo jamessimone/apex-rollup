@@ -835,11 +835,14 @@ trigger ContactTrigger on Contact(after delete) {
 }
 ```
 
-If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex. To that effect, your corresponding `ContactTrigger` (or method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
+If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex. To that effect, your corresponding `ContactTrigger` (or after delete method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
 
 ```java
 trigger ContactTrigger on Contact(after delete) {
-  Rollup__mdt rollupMetadata = new Rollup__mdt(
+  // each of these records should directly correspond to the equivalent invocable Rollup action
+  // this is because merge-related rollups will bypass your record-triggered flows and do the work
+  // directly within the Apex trigger
+  Rollup__mdt taskMetadata = new Rollup__mdt(
     CalcItem__c = 'Task',
     RollupFieldOnCalcItem__c = 'Subject', // just for example
     LookupFieldOnCalcItem__c = 'WhoId',
@@ -850,16 +853,51 @@ trigger ContactTrigger on Contact(after delete) {
     OrderByFirstLast__c = 'ActivityDate',
     CalcItemWhereClause__c = 'Subject = \'Hello world!\''
   );
+  // create a Rollup__mdt rollup record, properly filled out, for each invocable you have set up
+  // unfortunately, if your parent-level object has rollups configured within Rollup__mdt metadata AND
+  // Task / Event / User, you'll need to write out each of them here and pass them into the "runFromApex"
+  // method below. Otherwise, you can simple use the "runFromTrigger" method above if all of your rollups
+  // for this parent-level object are configured strictly within Rollup__mdt records
+  Rollup__mdt eventMetadata = new Rollup__mdt(
+    CalcItem__c = 'Event',
+    RollupFieldOnCalcItem__c = 'Subject',
+    LookupFieldOnCalcItem__c = 'WhoId',
+    LookupFieldOnLookupObject__c = 'Id',
+    RollupFieldOnLookupObject__c = 'Description',
+    LookupObject__c = 'Contact',
+    RollupOperation__c = 'CONCAT_DISTINCT'
+  );
 
   Rollup.runFromApex(
-    new List<Rollup__mdt>{ rollupMetadata },
-    null, // custom eval argument, doesn't need to be set if you're passing in a CalcItemWhereClause__c above
+    new List<Rollup__mdt>{ taskMetadata, eventMetadata },
+    null, // custom eval argument, doesn't need to be set unless you have some complicated, Apex-based filtering logic necessary
     Trigger.old,
     Trigger.oldMap
-  );
+  ).runCalc();
 }
 ```
-Note that if you are also rolling values up from (in this example), Contact to a parent of Contact - like Account - _and_ you were using Apex to invoke `Rollup`, you would also need the additional trigger contexts listed in the [CMDT-based rollup section](#cmdt-based-rollup) - you would also need to modify the `Trigger.old`, `Trigger.oldMap` to conditionally pass the right variables depending on the trigger context.
+Note that if you are also rolling values up from (in this example), Contact to a parent of Contact - like Account - _and_ you were using Apex to invoke `Rollup`, you would also need the additional trigger contexts listed in the [CMDT-based rollup section](#cmdt-based-rollup) - you might also need to switch on `Trigger.operationType` and only pass `Trigger.old` and `Trigger.oldMap` for `TriggerOperation.AFTER_DELETE`:
+
+```java
+trigger ContactTrigger on Contact(before insert, after insert, before update, after update, before delete, after delete, after undelete) {
+  // assuming the taskMetadata and eventMetadata variables have been declared,
+  // as in the example above
+  switch on Trigger.operationType {
+    when AFTER_DELETE {
+      Rollup.runFromApex(
+        new List<Rollup__mdt>{ taskMetadata, eventMetadata },
+        null,
+        Trigger.old,
+        Trigger.oldMap
+      ).runCalc();
+    }
+    when else {
+      // assuming you have CMDT-based rollups for Contact as the child
+      Rollup.runFromTrigger();
+    }
+  }
+}
+```
 
 ### Change Data Capture (CDC)
 
