@@ -856,7 +856,7 @@ trigger ContactTrigger on Contact(after delete) {
   // create a Rollup__mdt rollup record, properly filled out, for each invocable you have set up
   // unfortunately, if your parent-level object has rollups configured within Rollup__mdt metadata AND
   // Task / Event / User, you'll need to write out each of them here and pass them into the "runFromApex"
-  // method below. Otherwise, you can simple use the "runFromTrigger" method above if all of your rollups
+  // method below. Otherwise, you can simply use the "runFromTrigger" method above if all of your rollups
   // for this parent-level object are configured strictly within Rollup__mdt records
   Rollup__mdt eventMetadata = new Rollup__mdt(
     CalcItem__c = 'Event',
