@@ -674,6 +674,8 @@ private class RollupIntegrationTests {
 
   @isTest
   static void shouldCorrectlyRollupFromTriggerOnMerge() {
+    Account parent = [SELECT Id, Name FROM Account];
+
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -683,7 +685,9 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupOperation__c = 'MAX'
+        RollupOperation__c = 'MAX',
+        // validate calc item where clause works
+        CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',
@@ -693,11 +697,20 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Description',
         RollupOperation__c = 'CONCAT'
+      ),
+      // should be filtered out
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'User',
+        LookupFieldOnCalcItem__c = 'OwnerId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Username',
+        RollupOperation__c = 'CONCAT'
       )
     };
 
     // you can only merge contacts / accounts / leads / cases
-    Account parent = [SELECT Id FROM Account];
     Account parentToMerge = new Account(Name = 'Second parent');
     insert parentToMerge;
 

@@ -310,7 +310,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       'Old Calc Items' => JSON.serializePretty(this.oldCalcItems),
       'Rollup Metadata' => JSON.serializePretty(this.metadata),
       'Rollup Control' => JSON.serializePretty(this.rollupControl),
-      'Is Full Recalc' => String.valueOf(this.isFullRecalc)
+      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
+      'Is No Op' => String.valueOf(this.isNoOp)
     };
     String baseString = '';
     for (String key : props.keySet()) {
@@ -739,7 +740,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
       List<Rollup__mdt> metas = new List<Rollup__mdt>{ rollupMeta };
       Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
-      processCustomMetadata(rollups, metas, flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), rollupContext);
+      processCustomMetadata(rollups, metas, flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), rollupContext, fromInvocable);
 
       if (metas.isEmpty() == false) {
         rollups.add(getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable));
@@ -1521,7 +1522,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     List<Rollup> rollups = new List<Rollup>();
-    processCustomMetadata(rollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext);
+    processCustomMetadata(rollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX);
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
@@ -1626,7 +1627,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     List<SObject> calcItems,
     Map<Id, SObject> oldCalcItems,
     Set<String> mergedParentIds,
-    String rollupContext
+    String rollupContext,
+    InvocationPoint invokePoint
   ) {
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     for (Integer index = metas.size() - 1; index >= 0; index--) {
@@ -1655,15 +1657,22 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           : getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
         if (meta.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
           metas.remove(index);
-          rollups.add(getFullRecalcRollup(meta, queryWrapper, InvocationPoint.FROM_APEX));
+          rollups.add(getFullRecalcRollup(meta, queryWrapper, invokePoint));
+          continue;
         }
-      } else if (mergedParentIds.isEmpty() == false) {
-        QueryWrapper wrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
-        for (String mergedParentId : mergedParentIds) {
-          wrapper.addRecordId(mergedParentId);
+      } else if (apexContext == TriggerOperation.AFTER_DELETE) {
+        if (mergedParentIds.isEmpty() == false) {
+          QueryWrapper wrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
+          for (String mergedParentId : mergedParentIds) {
+            wrapper.addRecordId(mergedParentId);
+          }
+          if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
+            wrapper.setQuery(meta.CalcItemWhereClause__c + ' AND ' + wrapper.getQuery());
+          }
+          rollups.add(getFullRecalcRollup(meta, wrapper, invokePoint));
         }
         metas.remove(index);
-        rollups.add(getFullRecalcRollup(meta, wrapper, InvocationPoint.FROM_APEX));
+        continue;
       }
 
       // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
@@ -2192,7 +2201,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         }
       }
     }
+    // prevent downstream rollups from running on this code path; we are already in the midst
+    // of calculating each of the parent record's new rollup values
+    RollupControl__mdt earlyExitControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    defaultControl = earlyExitControl;
+    specificControl = earlyExitControl;
+
     DML.doUpdate(recordsToUpdate);
+
+    defaultControl = null;
+    specificControl = null;
   }
 
   private static Rollup loadRollups(
