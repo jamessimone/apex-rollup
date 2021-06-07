@@ -519,6 +519,26 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue(), 'Count should be returned if item was previously excluded but now isn\t!');
   }
 
+  @isTest
+  static void shouldAllowIncrementOnUpdateIfOldValueIsDefault() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.UPDATE_COUNT,
+      Opportunity.Name,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'Something else', AccountId = '0011g00003VDGbF002');
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.Name = ''; // string default
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ oldOpp.Id => oldOpp });
+    System.assertEquals(1, calc.getReturnValue(), 'Count should be recorded properly if old value was default and new value exists');
+  }
+
   // SUM tests
 
   @isTest
