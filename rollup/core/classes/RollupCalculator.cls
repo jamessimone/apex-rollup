@@ -667,8 +667,13 @@ public without sharing abstract class RollupCalculator {
 
       // for updates, we have to decrement the count if the value has been cleared out
       Decimal retVal = 0;
-      if (calcItem.get(this.opFieldOnCalcItem) == null && oldCalcItem.get(this.opFieldOnCalcItem) != null) {
+      Object current = calcItem.get(this.opFieldOnCalcItem);
+      Object prior = oldCalcItem.get(this.opFieldOnCalcItem);
+      Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
+      if (current == null && prior != null) {
         retVal = -1;
+      } else if(current != defaultVal && prior == defaultVal) {
+        retVal = 1;
       } else if (this.eval?.matches(oldCalcItem) == false && this.eval?.matches(calcItem) == true) {
         retVal = 1;
       }
