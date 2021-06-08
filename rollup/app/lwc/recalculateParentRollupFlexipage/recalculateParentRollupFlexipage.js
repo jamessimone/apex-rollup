@@ -1,7 +1,7 @@
 import { api, LightningElement } from 'lwc';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
 
-import { getRollupMetadata } from 'c/utils';
+import { getRollupMetadata } from 'c/rollupUtils';
 
 export default class RecalculateParentRollupFlexipage extends LightningElement {
   @api recordId;

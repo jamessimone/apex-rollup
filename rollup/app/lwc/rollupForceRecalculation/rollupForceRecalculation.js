@@ -5,7 +5,7 @@ import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalcu
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
-import { getRollupMetadata } from 'c/utils';
+import { getRollupMetadata } from 'c/rollupUtils';
 
 const NO_PROCESS_ID = 'No process Id';
 const MAX_ROW_SELECTION = 200;
