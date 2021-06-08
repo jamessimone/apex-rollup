@@ -1,4 +1,4 @@
-import { getRollupMetadata } from "c/utils"
+import { getRollupMetadata } from "c/rollupUtils"
 import { mockMetadata } from "../../__mockData__"
 
 jest.mock(
