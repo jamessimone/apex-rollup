@@ -672,7 +672,7 @@ public without sharing abstract class RollupCalculator {
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
       if (current == null && prior != null) {
         retVal = -1;
-      } else if(current != defaultVal && prior == defaultVal) {
+      } else if (current != defaultVal && prior == defaultVal) {
         retVal = 1;
       } else if (this.eval?.matches(oldCalcItem) == false && this.eval?.matches(calcItem) == true) {
         retVal = 1;
@@ -966,8 +966,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private class FirstLastRollupCalculator extends RollupCalculator {
-    private final String orderByField;
-
     public FirstLastRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -992,13 +990,17 @@ public without sharing abstract class RollupCalculator {
         lookupRecordKey,
         lookupKeyField
       );
-      this.orderByField = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
+      this.metadata.OrderByFirstLast__c = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       SObjectType sObjectType = this.getCalcItemType();
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.orderByField, this.metadata.LookupFieldOnCalcItem__c };
+      Set<String> queryFields = new Set<String>{
+        String.valueOf(this.opFieldOnCalcItem),
+        this.metadata.OrderByFirstLast__c,
+        this.metadata.LookupFieldOnCalcItem__c
+      };
       queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
       // a full-recalc is always necessary because we don't retain the information about the order by field
       String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
@@ -1012,7 +1014,7 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems);
 
-      new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
+      new FirstLastSorter(this.op, this.metadata.OrderByFirstLast__c).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
     }
   }

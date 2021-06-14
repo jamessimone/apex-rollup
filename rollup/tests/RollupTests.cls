@@ -3337,6 +3337,38 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldCorrectlyQueryOrderByFieldForBulkRecalc() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneLast', ParentId = acc.Id, PreferenceRank = 2),
+      new ContactPointAddress(Name = 'twoLast', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'LAST',
+        OrderByFirstLast__c = 'PreferenceRank'
+      )
+    };
+
+    Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
+
+    // specifically don't wrap in start/stopTest to prove it ran sync
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+
+    acc = [SELECT Name FROM Account];
+    System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
+  }
+
+  @isTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
@@ -3471,6 +3503,35 @@ private class RollupTests {
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
+  }
+
+  @isTest
+  static void shouldCorrectlyQueryOrderByFieldForFullRecalcFirst() {
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneName', ParentId = acc.Id, PreferenceRank = 3),
+      new ContactPointAddress(Name = 'twoName', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'Name',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'Name',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'FIRST',
+      OrderByFirstLast__c = 'PreferenceRank'
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Name FROM Account];
+    System.assertEquals(cpas[1].Name, updatedAcc.Name, 'Should have taken first based on PreferenceRank');
   }
 
   @isTest
