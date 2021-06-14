@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.28.0",
-            "versionDescription": "Fix namespacing issue",
+            "versionNumber": "1.2.29.0",
+            "versionDescription": "Consolidate how query fields are filled within Rollup to fix FIRST/LAST issue",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],

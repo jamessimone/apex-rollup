@@ -538,23 +538,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
     Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
     SObjectType childType; // always the same for this route, so we can just take whatever the last assignment is
-    Set<String> queryFields = new Set<String>{ 'Id' };
+    Set<String> queryFields = new Set<String>();
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       childType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
-      queryFields.add(matchingMeta.LookupFieldOnCalcItem__c);
-      queryFields.add(matchingMeta.RollupFieldOnCalcItem__c);
-      if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
-        queryFields.addAll(RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType).getQueryFields());
-      }
+      queryFields.addAll(getQueryFieldsFromMetadata(matchingMeta, RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType)));
 
       String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
       Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
       if (currentCount == SENTINEL_COUNT_VALUE) {
         amountOfCalcItems = currentCount;
-        continue;
+      } else {
+        amountOfCalcItems += currentCount;
       }
-      amountOfCalcItems += currentCount;
     }
 
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=');
@@ -1415,10 +1411,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       return;
     }
 
-    Set<String> uniqueFieldNames = new Set<String>{ 'Id' };
+    Set<String> uniqueFieldNames = new Set<String>();
     for (Rollup__mdt rollupInfo : matchingMetadata) {
-      uniqueFieldNames.add(rollupInfo.LookupFieldOnCalcItem__c);
-      uniqueFieldNames.add(rollupInfo.ROllupFieldOnCalcItem__c);
+      uniqueFieldNames.addAll(getQueryFieldsFromMetadata(rollupInfo, RollupEvaluator.getWhereEval(rollupInfo.CalcItemWhereClause__c, sObjectType)));
     }
 
     // it would have been nice if this was an enum!
@@ -1434,18 +1429,18 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    // non-obvious coupling between objIds and the "fullQuery" below
+    // non-obvious coupling between objIds and the "queryString" below
     List<Id> objIds = new List<Id>();
     for (SObject cdcRecord : cdcRecords) {
       uniqueFieldNames.addAll(header.changedfields);
       objIds.add(header.getRecordIds()[0]);
     }
 
-    String fullQuery = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
+    String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
     // getting the items back from the database before putting them into the map is an important step
     // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
     // anything for .getSObjectType() - which we need, further downstream
-    List<SObject> cdcCalcItems = Database.query(fullQuery);
+    List<SObject> cdcCalcItems = Database.query(queryString);
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
     Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcCalcItems, cdcCalcItemsMap);
@@ -1685,6 +1680,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
+  private static Set<String> getQueryFieldsFromMetadata(Rollup__mdt meta, RollupEvaluator.WhereFieldEvaluator eval) {
+    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c, meta.OrderByFirstLast__c };
+    queryFields.addAll(eval.getQueryFields());
+    return queryFields;
+  }
+
   private static Rollup getFullRecalcRollup(Rollup__mdt meta, QueryWrapper queryWrapper, InvocationPoint invokePoint) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
@@ -1701,9 +1702,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<Id> recordIds = queryWrapper.recordIds;
     Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
 
-    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c };
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(queryWrapper.toString(), childType);
-    queryFields.addAll(whereEval.getQueryFields());
+    Set<String> queryFields = getQueryFieldsFromMetadata(meta, whereEval);
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
     return buildFullRecalcRollup(new List<Rollup__mdt>{ meta }, amountOfCalcItems, queryString, objIds, recordIds, childType, whereEval, invokePoint);

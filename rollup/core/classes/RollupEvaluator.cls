@@ -142,8 +142,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       whereClause = whereClause == null ? '' : whereClause;
       this.originalWhereClause = whereClause;
 
-      for (String conditionKey : CONDITION_MAP.keySet()) {
-        whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
+      if (String.isNotBlank(whereClause)) {
+        for (String conditionKey : CONDITION_MAP.keySet()) {
+          whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
+        }
       }
       this.whereClause = whereClause;
       this.splitWheres = this.createConditions(calcItemSObjectType);
