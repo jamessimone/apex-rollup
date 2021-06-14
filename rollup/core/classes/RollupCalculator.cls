@@ -1014,7 +1014,7 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems);
 
-      new FirstLastSorter(this.op, this.orderByField).sort(calcItems);
+      new FirstLastSorter(this.op, this.metadata.OrderByFirstLast__c).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
     }
   }
