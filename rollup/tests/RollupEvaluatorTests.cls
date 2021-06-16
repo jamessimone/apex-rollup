@@ -209,6 +209,58 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForGreaterThanDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate > ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(false, eval.matches(oppTwo), 'Second close date should not match since it is not greater: ' + oppTwo.CloseDate);
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate >= ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate < ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(false, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate <= ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
   static void shouldWorkForLessThanConditions() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);
