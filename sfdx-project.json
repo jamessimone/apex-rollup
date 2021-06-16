@@ -4,14 +4,14 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.29.0",
-            "versionDescription": "Consolidate how query fields are filled within Rollup to fix FIRST/LAST issue",
+            "versionNumber": "1.2.30.0",
+            "versionDescription": "Bugfixes for Calc Item Where Clause equality checks, single parent recalc button bugfix",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "51.0",
+    "sourceApiVersion": "52.0",
     "packageAliases": {
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.2.6-0": "04t6g000008GJMsAAO",

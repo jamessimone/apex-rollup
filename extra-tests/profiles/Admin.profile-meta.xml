@@ -71,12 +71,12 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>RollupParent__c.TextField__c</field>
+        <field>RollupParent__c.NumberField__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>RollupParent__c.NumberField__c</field>
+        <field>RollupParent__c.TextField__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <userLicense>Salesforce</userLicense>
