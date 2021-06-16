@@ -103,7 +103,7 @@ describe('recalc parent rollup from flexipage tests', () => {
       .then(() => {
         // once recalc has finished ...
         // we need to validate that what was sent includes our custom rollup invocation point
-        matchingMetadata[0].CalcItemWhereClause__c = "AccountId = '" + FAKE_RECORD_ID + "'";
+        matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
         expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
         expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata, invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
 

@@ -3,6 +3,8 @@ import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc
 
 import { getRollupMetadata } from 'c/rollupUtils';
 
+const DELIMITER = ' ||| ';
+
 export default class RecalculateParentRollupFlexipage extends LightningElement {
   @api recordId;
   @api objectApiName;
@@ -60,10 +62,11 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
       " = '" +
       this.recordId +
       "'";
+
     if (metadata.CalcItemWhereClause__c && metadata.CalcItemWhereClause__c.length > 0) {
-      metadata.CalcItemWhereClause__c = '(' + metadata.CalcItemWhereClause__c + ')' + ' AND ' + equalsParent;
+      metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c + DELIMITER + equalsParent;
     } else {
-      metadata.CalcItemWhereClause__c = equalsParent;
+      metadata.CalcItemWhereClause__c = DELIMITER + equalsParent;
     }
     this._matchingMetas.push(metadata);
   }

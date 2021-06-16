@@ -3323,7 +3323,7 @@ private class RollupTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank + ' ||| ParentId = \'' + acc.Id + '\''
       )
     };
 
@@ -3355,7 +3355,8 @@ private class RollupTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'LAST',
-        OrderByFirstLast__c = 'PreferenceRank'
+        OrderByFirstLast__c = 'PreferenceRank',
+        CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
       )
     };
 

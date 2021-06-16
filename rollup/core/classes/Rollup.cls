@@ -539,12 +539,28 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
     SObjectType childType; // always the same for this route, so we can just take whatever the last assignment is
     Set<String> queryFields = new Set<String>();
+    String potentialWhereClause = '';
+    String delimiter = ' ||| ';
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
+      if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
+        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
+        potentialWhereClause = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length());
+      }
+      if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) && localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
+        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c.substringBeforeLast(delimiter);
+      }
+
       childType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
       queryFields.addAll(getQueryFieldsFromMetadata(matchingMeta, RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType)));
 
-      String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
+      String countQuery = RollupQueryBuilder.Current.getQuery(
+        childType,
+        new List<String>{ 'Count()' },
+        matchingMeta.LookupFieldOnLookupObject__c,
+        '!=',
+        matchingMeta.CalcItemWhereClause__c
+      );
       Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
       if (currentCount == SENTINEL_COUNT_VALUE) {
         amountOfCalcItems = currentCount;
@@ -553,7 +569,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
 
-    String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=');
+    String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', potentialWhereClause);
 
     return buildFullRecalcRollup(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint).runCalc();
   }
