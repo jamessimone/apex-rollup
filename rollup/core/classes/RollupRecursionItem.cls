@@ -12,7 +12,7 @@ public without sharing class RollupRecursionItem {
     this.rollupValue = item?.get(metadata.RollupFieldOnCalcItem__c);
     this.Id = item?.Id;
     this.stackCount = stackCount;
-    this.hasher = new Hasher().add(this.lookupKey).add(this.rollupValue).add(this.Id).add(this.stackCount);
+    this.hasher = new Hasher().add(this.lookupKey).add(this.rollupValue).add(this.Id);
     Map<String, Object> fieldsToValues = item?.getPopulatedFieldsAsMap();
     if (fieldsToValues != null && String.isNotBlank(metadata.CalcItemWhereClause__c)) {
       List<String> whereFields = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, item?.getSObjectType()).getQueryFields();
@@ -35,6 +35,7 @@ public without sharing class RollupRecursionItem {
         this.rollupValue == that.rollupValue &&
         this.Id == that.Id &&
         this.additionalValues == that.additionalValues &&
+        // only match if everything else is true AND the stackCount has increased
         this.stackCount != that.stackCount;
     }
 

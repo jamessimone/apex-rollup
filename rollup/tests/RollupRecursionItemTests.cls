@@ -13,9 +13,9 @@ private class RollupRecursionItemTests {
     Rollup__mdt meta = new Rollup__mdt(RollupFieldOnCalcItem__c = 'Name', LookupFieldOnCalcItem__c = 'Id');
 
     RollupRecursionItem item = new RollupRecursionItem(acc, meta, 0);
-    RollupRecursionItem secondItem = new RollupRecursionItem(acc, meta, 0);
+    RollupRecursionItem secondItem = new RollupRecursionItem(acc, meta, 1);
 
-    System.assertEquals(item, secondItem, 'Items with the same properties should match!');
+    System.assertEquals(item, secondItem, 'Items with the same properties in different iterations should match!');
 
     acc.Name = 'Hello';
     item = new RollupRecursionItem(acc, meta, 0);
@@ -28,7 +28,7 @@ private class RollupRecursionItemTests {
     Rollup__mdt meta = new Rollup__mdt(RollupFieldOnCalcItem__c = 'Name', LookupFieldOnCalcItem__c = 'Id');
 
     RollupRecursionItem item = new RollupRecursionItem(new Account(), meta, 0);
-    RollupRecursionItem secondItem = new RollupRecursionItem(new Account(), meta, 0);
+    RollupRecursionItem secondItem = new RollupRecursionItem(new Account(), meta, 1);
 
     System.assertEquals(item, secondItem, 'Null properties should receive matching hash!');
 
@@ -40,13 +40,13 @@ private class RollupRecursionItemTests {
   static void shouldUseHashCodeWhenPerformingSetEquality() {
     Rollup__mdt meta = new Rollup__mdt(LookupFieldOnCalcItem__c = 'Id', RollupFieldOnCalcItem__c = 'Name');
     RollupRecursionItem item = new RollupRecursionItem(null, meta, 0);
-    RollupRecursionItem secondItem = new RollupRecursionItem(null, meta, 0);
+    RollupRecursionItem secondItem = new RollupRecursionItem(null, meta, 1);
 
     Set<RollupRecursionItem> recursionItems = new Set<RollupRecursionItem>{ item };
 
     System.assertEquals(true, recursionItems.contains(secondItem));
 
-    RollupRecursionItem nonMatchingItem = new RollupRecursionItem(new Account(Name = 'Test hashing'), meta, 0);
+    RollupRecursionItem nonMatchingItem = new RollupRecursionItem(new Account(Name = 'Test hashing'), meta, 1);
 
     System.assertNotEquals(true, recursionItems.contains(nonMatchingItem));
   }
