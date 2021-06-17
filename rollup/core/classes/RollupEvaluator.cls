@@ -640,7 +640,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
   private class RecursiveTracker {
     public Integer stackCount = 0;
-    public Set<Id> addedIds = new Set<Id>();
     public Set<RollupRecursionItem> recursionItems = new Set<RollupRecursionItem>();
   }
 
@@ -654,11 +653,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         OPERATION_TO_RECURSION_TRACKER.put(metadata.RollupOperation__c, new RecursiveTracker());
       } else {
         RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
-        tracker.stackCount = tracker.stackCount + 1;
+        tracker.stackCount++;
       }
     }
 
-    // at some point, it's possible that this will be revisited, but for now we'll keep the recursion tracking only for vanilla rollups
+    // at some point, it's possible that this will be revisited, but for now recursion detection
+    // for grandparent / ultimate parent rollups is not supported
     public override Boolean matches(Object item) {
       Boolean matches = true;
       if (
@@ -668,12 +668,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadata.RollupOperation__c)
       ) {
         SObject calcItem = (SObject) item;
-        // only populate the item with the rollup field and lookup field
-        RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata);
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+        RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata, recursionTracker.stackCount);
 
-        if (recursionTracker.addedIds.contains(rollupItem.Id) == false) {
-          recursionTracker.addedIds.add(rollupItem.Id);
+        if (recursionTracker.recursionItems.contains(rollupItem) == false) {
           recursionTracker.recursionItems.add(rollupItem);
         } else if (recursionTracker.stackCount > 0 && recursionTracker.recursionItems.contains(rollupItem)) {
           matches = false;

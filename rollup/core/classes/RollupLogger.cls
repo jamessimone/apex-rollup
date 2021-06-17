@@ -9,6 +9,13 @@ public class RollupLogger extends Rollup {
     this.log(logString, null);
   }
 
+  public interface IRollupLogger {
+    void log(String logString, LoggingLevel logLevel);
+    void log(String logString, Id recordId, LoggingLevel logLevel);
+    void log(String logString, SObject record, LoggingLevel logLevel);
+    void save();
+  }
+
   public void log(String logString, Object logObject) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
       String appended = this.getLogStringFromObject(logObject);

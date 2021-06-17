@@ -56,6 +56,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>RollupChild__c.DateField__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>RollupChild__c.TextField__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -67,6 +72,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RollupChild__c.RollupParent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupParent__c.DateField__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

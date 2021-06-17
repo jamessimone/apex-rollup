@@ -1006,10 +1006,11 @@ public without sharing abstract class RollupCalculator {
       String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
       // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
+      List<SObject> additionalItems = Database.query(queryString);
       if (this.op.name().contains('DELETE')) {
-        calcItems = Database.query(queryString);
+        calcItems = additionalItems;
       } else {
-        calcItems.addAll(Database.query(queryString));
+        calcItems.addAll(additionalItems);
       }
 
       calcItems = this.winnowItems(calcItems);

@@ -1,19 +1,18 @@
 public without sharing class RollupRecursionItem {
   public final Id Id;
 
+  private final Integer stackCount;
   private final String lookupKey;
   private final Object rollupValue;
   private final List<Object> additionalValues = new List<Object>();
   private final Hasher hasher;
 
-  public RollupRecursionItem(SObject item, Rollup__mdt metadata) {
+  public RollupRecursionItem(SObject item, Rollup__mdt metadata, Integer stackCount) {
     this.lookupKey = (String) item?.get(metadata.LookupFieldOnCalcItem__c);
     this.rollupValue = item?.get(metadata.RollupFieldOnCalcItem__c);
     this.Id = item?.Id;
-    this.hasher = new Hasher()
-      .add(this.lookupKey)
-      .add(this.rollupValue)
-      .add(this.Id);
+    this.stackCount = stackCount;
+    this.hasher = new Hasher().add(this.lookupKey).add(this.rollupValue).add(this.Id).add(this.stackCount);
     Map<String, Object> fieldsToValues = item?.getPopulatedFieldsAsMap();
     if (fieldsToValues != null && String.isNotBlank(metadata.CalcItemWhereClause__c)) {
       List<String> whereFields = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, item?.getSObjectType()).getQueryFields();
@@ -32,7 +31,11 @@ public without sharing class RollupRecursionItem {
   public Boolean equals(Object thatItem) {
     if (thatItem instanceof RollupRecursionItem) {
       RollupRecursionItem that = (RollupRecursionItem) thatItem;
-      return this.lookupKey == that.lookupKey && this.rollupValue == that.rollupValue && this.Id == that.Id && this.additionalValues == that.additionalValues;
+      return this.lookupKey == that.lookupKey &&
+        this.rollupValue == that.rollupValue &&
+        this.Id == that.Id &&
+        this.additionalValues == that.additionalValues &&
+        this.stackCount != that.stackCount;
     }
 
     return false;

@@ -327,6 +327,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     if (this.isNoOp) {
       this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
     }
+
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
       return 'No process Id';
     }
@@ -2340,8 +2341,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // if the where clause would exclude something, but we're in an update
       // and the old value wouldn't have been excluded, pass it on through
       // to be handled further downstream
-      SObject potentialOldItem = oldCalcItems?.isEmpty() == false && oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
-      if (results.eval.matches(item) || results.eval.matches(potentialOldItem)) {
+      SObject potentialOldItem = oldCalcItems?.isEmpty() == false && oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : null;
+      if (results.eval.matches(item) || potentialOldItem != null && results.eval.matches(potentialOldItem)) {
         matchingItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
@@ -2492,7 +2493,9 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // (e.g. the update rollup appears first in the list)
     // this sort restores the rollups to their proper ordering
     if (CACHED_APEX_OPERATIONS.isEmpty() == false && CACHED_ROLLUPS.isEmpty() == false) {
-      rolls.addAll(CACHED_ROLLUPS);
+      for (Integer index = 0; index < CACHED_ROLLUPS.size(); index++) {
+        rolls.add(CACHED_ROLLUPS[index]);
+      }
       CACHED_ROLLUPS.clear();
       rolls.sort();
     }
@@ -2803,7 +2806,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   private void winnowCalcItemsAndCheckReparenting(Rollup roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
       SObject calcItem = localCalcItems[index];
-      if (roll.eval.matches(calcItem) == false && roll.metadata?.IsFullRecordSet__c == true) {
+      if (roll.metadata?.IsFullRecordSet__c == true && roll.eval.matches(calcItem) == false) {
         // technically it should only be possible for a calc item that doesn't match
         // to still exist if it is a Full Record Set operation; this gives people the chance
         // to reset rollup values if none of the records passed in match the eval criteria

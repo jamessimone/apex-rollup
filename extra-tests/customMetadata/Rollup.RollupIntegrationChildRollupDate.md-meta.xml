@@ -68,7 +68,7 @@
     </values>
     <values>
         <field>RollupOperation__c</field>
-        <value xsi:type="xsd:string">FIRST</value>
+        <value xsi:type="xsd:string">LAST</value>
     </values>
     <values>
         <field>RollupToUltimateParent__c</field>
