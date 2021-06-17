@@ -2749,6 +2749,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Set<SObject> unprocessedCalcItems = new Set<SObject>();
+    RollupSObjectUpdater updater = new RollupSObjectUpdater(rollup.opFieldOnLookupObject);
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
@@ -2769,7 +2770,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         if (priorVal != newVal) {
-          lookupRecord.put(rollup.opFieldOnLookupObject, newVal);
+          updater.updateField(lookupRecord, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
         RollupLogger.Instance.log('lookup record after rolling up: ', lookupRecord);
