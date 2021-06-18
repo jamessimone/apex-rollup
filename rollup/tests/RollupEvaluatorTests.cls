@@ -234,6 +234,33 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
+
+  @isTest
+  static void shouldWorkForGreaterThanStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'B');
+
+    String whereClause = 'Name > ' + oppOne.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'B');
+
+    String whereClause = 'Name >= ' + oppOne.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
   @isTest
   static void shouldWorkForLessThanDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
@@ -257,6 +284,32 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
     System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'B');
+
+    String whereClause = 'Name < ' + oppTwo.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(false, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'A');
+
+    String whereClause = 'Name <= ' + oppTwo.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
     System.assertEquals(true, eval.matches(oppTwo));
   }
 

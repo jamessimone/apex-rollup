@@ -551,14 +551,18 @@ private class RollupCalculatorTests {
       Opportunity.AccountId
     );
 
+    // use two calc items to ensure full recalc AND for loop in calculator are hit
     Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'Something else', AccountId = '0011g00003VDGbF002');
+    Opportunity two = new Opportunity(Id = '0066g00003VDGbF002', Name = 'matching', AccountId = '0011g00003VDGbF002');
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.Name = 'matching';
+    Opportunity secondOldOpp = two.clone(true, true);
+    secondOldOpp.Name = '';
     calc.setEvaluator(RollupEvaluator.getWhereEval('Name = \'' + oldOpp.Name + '\'', Opportunity.SObjectType));
 
-    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ oldOpp.Id => oldOpp });
+    calc.performRollup(new List<Opportunity>{ opp, two }, new Map<Id, SObject>{ oldOpp.Id => oldOpp, two.Id => secondOldOpp });
 
-    System.assertEquals(0, calc.getReturnValue(), 'Count should properly decrement when old item matches and new one does not');
+    System.assertEquals(1, calc.getReturnValue(), 'Count should properly decrement when old item matches and new one does not');
   }
 
   // SUM tests

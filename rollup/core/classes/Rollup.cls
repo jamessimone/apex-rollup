@@ -1633,6 +1633,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return hasExceededLimits && isDeferralAllowed;
   }
 
+  public static String getBaseOperationName(String fullOpName) {
+    Set<String> operationsWithUnderscores = new Set<String>{
+      Op.COUNT_DISTINCT.name(),
+      Op.CONCAT_DISTINCT.name()
+    };
+    return operationsWithUnderscores.contains(fullOpName) == false && fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
+  }
+
   private static void processCustomMetadata(
     List<Rollup> rollups,
     List<Rollup__mdt> metas,
@@ -2051,7 +2059,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
       rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
 
-      if (rollupMetadata.IsFullRecordSet__c == false && ALWAYS_FULL_RECALC_OPS.contains(getBareOperationName(rollupMetadata.RollupOperation__c))) {
+      if (rollupMetadata.IsFullRecordSet__c == false && ALWAYS_FULL_RECALC_OPS.contains(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
 
@@ -2428,10 +2436,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         optionalWhereClauses.add(whereClause);
       }
     }
-  }
-
-  private static String getBareOperationName(String fullOpName) {
-    return fullOpName != Op.COUNT_DISTINCT.name() && fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
   }
 
   /** End static section, begin protected + private instance methods */
@@ -2902,7 +2906,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           continue;
         }
 
-        String currentOp = getBareOperationName(roll.op.name());
+        String currentOp = getBaseOperationName(roll.op.name());
         String deleteOpName = 'DELETE_' + currentOp;
         Op deleteOp = opNameToOp.get(deleteOpName);
         Rollup oldLookupsRollup = new Rollup(roll, deleteOp, reparentedCalcItems);

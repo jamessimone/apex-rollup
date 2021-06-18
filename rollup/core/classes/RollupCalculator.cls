@@ -239,6 +239,9 @@ public without sharing abstract class RollupCalculator {
       SObject potentialOldItem = oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
       if (this.eval?.matches(item) != false) {
         items.add(item);
+      } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
+        // TODO - handle old item matching, new item not matching situation for other operations
+        items.add(item);
       }
     }
 
@@ -250,7 +253,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
-    String operationName = this.getBaseOperationName(op);
+    String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
     String query = RollupQueryBuilder.Current.getQuery(
       sObjectType,
@@ -283,7 +286,7 @@ public without sharing abstract class RollupCalculator {
         )
       );
 
-      Rollup.Op baseOp = Rollup.opNameToOp.get(this.getBaseOperationName(op));
+      Rollup.Op baseOp = Rollup.opNameToOp.get(Rollup.getBaseOperationName(op.name()));
       RollupCalculator calc = Factory.getCalculator(
         this.returnVal,
         baseOp,
@@ -297,10 +300,6 @@ public without sharing abstract class RollupCalculator {
       this.returnVal = calc.getReturnValue();
     }
     return this.returnVal;
-  }
-
-  private String getBaseOperationName(Rollup.Op op) {
-    return op == Rollup.Op.COUNT_DISTINCT || op.name().contains('_') == false ? op.name() : op.name().substringAfter('_');
   }
 
   private class CountDistinctRollupCalculator extends RollupCalculator {
@@ -809,12 +808,13 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected virtual Boolean isTrueFor(String newVal, String priorVal) {
+      Boolean isTrueFor = false;
       if (this.op.name().contains(Rollup.Op.MAX.name())) {
-        return newVal > priorVal || String.isBlank(priorVal);
+        isTrueFor = newVal > priorVal || String.isBlank(priorVal);
       } else if (this.op.name().contains(Rollup.Op.MIN.name())) {
-        return newVal < priorVal || String.isBlank(priorVal);
+        isTrueFor = newVal < priorVal || String.isBlank(priorVal);
       }
-      return false;
+      return isTrueFor;
     }
 
     private void sortAndConcat() {
