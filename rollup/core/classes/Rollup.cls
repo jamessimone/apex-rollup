@@ -2341,8 +2341,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // if the where clause would exclude something, but we're in an update
       // and the old value wouldn't have been excluded, pass it on through
       // to be handled further downstream
-      SObject potentialOldItem = oldCalcItems?.isEmpty() == false && oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : null;
-      if (results.eval.matches(item) || potentialOldItem != null && results.eval.matches(potentialOldItem)) {
+      SObject potentialOldItem = oldCalcItems?.isEmpty() == false && oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
+      if (results.eval.matches(item) || results.eval.matches(potentialOldItem)) {
         matchingItems.add(item);
         // metadata shouldn't be null, but it's good to check; unfortunately, if(null) throws so we
         // have to do this EXTRA explicit check
@@ -2493,9 +2493,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // (e.g. the update rollup appears first in the list)
     // this sort restores the rollups to their proper ordering
     if (CACHED_APEX_OPERATIONS.isEmpty() == false && CACHED_ROLLUPS.isEmpty() == false) {
-      for (Integer index = 0; index < CACHED_ROLLUPS.size(); index++) {
-        rolls.add(CACHED_ROLLUPS[index]);
-      }
+      rolls.addAll(CACHED_ROLLUPS);
       CACHED_ROLLUPS.clear();
       rolls.sort();
     }

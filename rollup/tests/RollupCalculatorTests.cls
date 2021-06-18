@@ -539,6 +539,28 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue(), 'Count should be recorded properly if old value was default and new value exists');
   }
 
+  @isTest
+  static void shouldDecrementIfOldCalcItemMatchesAndNewOneDoesNot() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      1,
+      Rollup.Op.UPDATE_COUNT,
+      Opportunity.Name,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'Something else', AccountId = '0011g00003VDGbF002');
+    Opportunity oldOpp = opp.clone(true, true);
+    oldOpp.Name = 'matching';
+    calc.setEvaluator(RollupEvaluator.getWhereEval('Name = \'' + oldOpp.Name + '\'', Opportunity.SObjectType));
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ oldOpp.Id => oldOpp });
+
+    System.assertEquals(0, calc.getReturnValue(), 'Count should properly decrement when old item matches and new one does not');
+  }
+
   // SUM tests
 
   @isTest

@@ -121,7 +121,7 @@ public without sharing abstract class RollupCalculator {
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     this.shouldTriggerFullRecalc = calcItems.isEmpty() == false;
-    List<SObject> localCalcItems = this.winnowItems(calcItems);
+    List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
@@ -232,14 +232,16 @@ public without sharing abstract class RollupCalculator {
   protected virtual void setReturnValue() {
   }
 
-  protected List<SObject> winnowItems(List<SObject> items) {
+  protected List<SObject> winnowItems(List<SObject> items, Map<Id, SObject> oldCalcItems) {
     List<SObject> temporaryItems = new List<SObject>(items);
     items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
     for (SObject item : temporaryItems) {
+      SObject potentialOldItem = oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
       if (this.eval?.matches(item) != false) {
         items.add(item);
       }
     }
+
     return items;
   }
 
@@ -248,7 +250,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
-    String operationName = op.name().contains('_') ? op.name().substringAfter('_') : op.name();
+    String operationName = this.getBaseOperationName(op);
     String alias = operationName.toLowerCase() + 'Field';
     String query = RollupQueryBuilder.Current.getQuery(
       sObjectType,
@@ -281,20 +283,24 @@ public without sharing abstract class RollupCalculator {
         )
       );
 
-      Rollup.Op baseOp = op == Rollup.Op.COUNT_DISTINCT || op.name().contains('_') == false ? op : Rollup.opNameToOp.get(op.name().substringAfter('_'));
+      Rollup.Op baseOp = Rollup.opNameToOp.get(this.getBaseOperationName(op));
       RollupCalculator calc = Factory.getCalculator(
         this.returnVal,
         baseOp,
-        opFieldOnCalcItem,
-        opFieldOnLookupObject,
-        metadata,
-        lookupRecordKey,
-        lookupKeyField
+        this.opFieldOnCalcItem,
+        this.opFieldOnLookupObject,
+        this.metadata,
+        this.lookupRecordKey,
+        this.lookupKeyField
       );
       calc.performRollup(allOtherItems, new Map<Id, SObject>());
       this.returnVal = calc.getReturnValue();
     }
     return this.returnVal;
+  }
+
+  private String getBaseOperationName(Rollup.Op op) {
+    return op == Rollup.Op.COUNT_DISTINCT || op.name().contains('_') == false ? op.name() : op.name().substringAfter('_');
   }
 
   private class CountDistinctRollupCalculator extends RollupCalculator {
@@ -417,8 +423,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public virtual override Object getReturnValue() {
-      Object potentialReturnValue = this.returnVal;
-      if (potentialReturnValue == RollupFieldInitializer.Current.maximumLongValue || potentialReturnValue == RollupFieldInitializer.Current.minimumLongValue) {
+      if (this.returnVal == RollupFieldInitializer.Current.maximumLongValue || this.returnVal == RollupFieldInitializer.Current.minimumLongValue) {
         this.returnVal = 0;
       }
       return this.returnVal;
@@ -676,6 +681,8 @@ public without sharing abstract class RollupCalculator {
         retVal = 1;
       } else if (this.eval?.matches(oldCalcItem) == false && this.eval?.matches(calcItem) == true) {
         retVal = 1;
+      } else if (this.eval?.matches(oldCalcItem) == true && this.eval?.matches(calcItem) == false) {
+        retVal = -1;
       }
       return retVal;
     }
@@ -944,7 +951,7 @@ public without sharing abstract class RollupCalculator {
       }
 
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
-      applicableCalcItems = this.winnowItems(applicableCalcItems);
+      applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
 
       Decimal newSum = 0;
       Decimal currentDenominator = 0;
@@ -1013,7 +1020,7 @@ public without sharing abstract class RollupCalculator {
         calcItems.addAll(additionalItems);
       }
 
-      calcItems = this.winnowItems(calcItems);
+      calcItems = this.winnowItems(calcItems, oldCalcItems);
 
       new FirstLastSorter(this.op, this.metadata.OrderByFirstLast__c).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
