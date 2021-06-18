@@ -2431,7 +2431,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   private static String getBareOperationName(String fullOpName) {
-    return fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
+    return fullOpName != Op.COUNT_DISTINCT.name() && fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
   }
 
   /** End static section, begin protected + private instance methods */
