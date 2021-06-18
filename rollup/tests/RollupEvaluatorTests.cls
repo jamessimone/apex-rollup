@@ -209,6 +209,111 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForGreaterThanDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate > ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(false, eval.matches(oppTwo), 'Second close date should not match since it is not greater: ' + oppTwo.CloseDate);
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate >= ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+
+  @isTest
+  static void shouldWorkForGreaterThanStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'B');
+
+    String whereClause = 'Name > ' + oppOne.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'B');
+
+    String whereClause = 'Name >= ' + oppOne.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate < ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(false, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualDates() {
+    Opportunity oppOne = new Opportunity(CloseDate = System.today());
+    Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
+
+    String whereClause = 'CloseDate <= ' + oppTwo.CloseDate;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'B');
+
+    String whereClause = 'Name < ' + oppTwo.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(false, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualStrings() {
+    Opportunity oppOne = new Opportunity(Name = 'A');
+    Opportunity oppTwo = new Opportunity(Name = 'A');
+
+    String whereClause = 'Name <= ' + oppTwo.Name;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(oppOne));
+    System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
   static void shouldWorkForLessThanConditions() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);
@@ -615,18 +720,15 @@ private class RollupEvaluatorTests {
       Opportunity.SObjectType
     );
 
-    RollupEvaluator.getEvaluator(
+    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
+
+    eval = RollupEvaluator.getEvaluator(
       null,
-      new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
-        RollupFieldOnCalcItem__c = 'Amount',
-        LookupFieldOnCalcItem__c = 'AccountId'
-      ),
+      rollupMetadata,
       new Map<Id, SObject>{ oldOpp.Id => oldOpp },
       Opportunity.SObjectType
     );
 
-    System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
 

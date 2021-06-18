@@ -487,7 +487,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObject item = (SObject) o;
       Boolean isEqual = true;
 
-      String storedValue = String.valueOf(this.getFieldValue(item, this.fieldName, this.sObjectType));
+      Object originalValue = this.getFieldValue(item, this.fieldName, this.sObjectType);
+      String storedValue = String.valueOf(originalValue);
       // special case for currency/multi-decimal situations where zero is being compared to
       // but the comparison value has no decimals
       if (storedValue?.replace('.', '')?.containsOnly('0') == true && this.values.contains('0')) {
@@ -518,24 +519,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
         // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
         // greater than / less than routes, but we test for it first just to be triple-sure
-        when '>', '>=' {
+        when '>', '>=', '<', '<=' {
           if (this.values.size() != 1) {
             throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
           } else if (storedValue == null) {
             isEqual = false;
           } else {
-            isEqual = this.criteria.endsWith('=') ? storedValue >= this.values[0] : storedValue > this.values[0];
+            isEqual = this.getGreaterOrLessThan(this.values[0], originalValue);
           }
         }
-        when '<', '<=' {
-          if (this.values.size() != 1) {
-            throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
-          } else if (storedValue == null) {
-            isEqual = false;
-          } else {
-            isEqual = this.criteria.endsWith('=') ? storedValue <= this.values[0] : storedValue < this.values[0];
-          }
-        }
+
         when 'includes', '!includes' {
           isEqual = false;
           for (String value : this.values) {
@@ -602,11 +595,51 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         return parentSObject.get(originalName);
       }
     }
+
+    private Boolean getGreaterOrLessThan(Object comparisonValue, Object storedValue) {
+      // storedValue is still strongly typed, so it just needs to be cast to the appropriate type
+      // find me a language where equality operations are strongly typed so that we can avoid the
+      // conditionals below!
+      Boolean isLessThan = this.criteria.startsWith('<');
+      Boolean isEqualTo = this.criteria.endsWith('=');
+      String comparisonText = String.valueOf(comparisonValue);
+
+      // covers Time / Date / Datetime
+      if (storedValue instanceof Datetime) {
+        Datetime comparisonDate = Datetime.valueOfGmt(comparisonText);
+        Datetime storedDate = (Datetime) storedValue;
+
+        if (isLessThan) {
+          return isEqualTo ? storedDate <= comparisonDate : storedDate < comparisonDate;
+        } else {
+          return isEqualTo ? storedDate >= comparisonDate : storedDate > comparisonDate;
+        }
+      }
+      // covers Double / Integer / Decimal / Long
+      else if (storedValue instanceof Decimal) {
+        Decimal comparisonDecimal = Decimal.valueOf(comparisonText);
+        Decimal storedDecimal = (Decimal) storedValue;
+
+        if (isLessThan) {
+          return isEqualTo ? storedDecimal <= comparisonDecimal : storedDecimal < comparisonDecimal;
+        } else {
+          return isEqualTo ? storedDecimal >= comparisonDecimal : storedDecimal > comparisonDecimal;
+        }
+      }
+      // covers pretty much anything else
+      else {
+        String storedText = String.valueOf(storedValue);
+        if (isLessThan) {
+          return isEqualTo ? storedText <= comparisonText : storedText < comparisonText;
+        } else {
+          return isEqualTo ? storedText >= comparisonText : storedText > comparisonText;
+        }
+      }
+    }
   }
 
   private class RecursiveTracker {
     public Integer stackCount = 0;
-    public Set<Id> addedIds = new Set<Id>();
     public Set<RollupRecursionItem> recursionItems = new Set<RollupRecursionItem>();
   }
 
@@ -620,11 +653,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         OPERATION_TO_RECURSION_TRACKER.put(metadata.RollupOperation__c, new RecursiveTracker());
       } else {
         RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
-        tracker.stackCount = tracker.stackCount + 1;
+        tracker.stackCount++;
       }
     }
 
-    // at some point, it's possible that this will be revisited, but for now we'll keep the recursion tracking only for vanilla rollups
+    // at some point, it's possible that this will be revisited, but for now recursion detection
+    // for grandparent / ultimate parent rollups is not supported
     public override Boolean matches(Object item) {
       Boolean matches = true;
       if (
@@ -634,12 +668,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadata.RollupOperation__c)
       ) {
         SObject calcItem = (SObject) item;
-        // only populate the item with the rollup field and lookup field
-        RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata);
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+        RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata, recursionTracker.stackCount);
 
-        if (recursionTracker.addedIds.contains(rollupItem.Id) == false) {
-          recursionTracker.addedIds.add(rollupItem.Id);
+        if (recursionTracker.recursionItems.contains(rollupItem) == false) {
           recursionTracker.recursionItems.add(rollupItem);
         } else if (recursionTracker.stackCount > 0 && recursionTracker.recursionItems.contains(rollupItem)) {
           matches = false;

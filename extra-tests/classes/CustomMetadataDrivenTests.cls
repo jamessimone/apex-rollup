@@ -63,4 +63,26 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(childOne.TextField__c, parent.TextField__c);
     System.assertEquals(childOne.NumberField__c, parent.NumberField__c);
   }
+
+  @isTest
+  static void regressionUpdatingEvalCriteriaShouldNotExcludeItemOnMultipleUpdatePath() {
+    // DateField__c rollup relies on NumberField > 0
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+    RollupChild__c childOne = new RollupChild__c(Name = 'Child one', DateField__c = System.today().addDays(3), RollupParent__c = parent.Id, NumberField__c = 0);
+
+    Test.startTest();
+
+    insert childOne;
+    childOne.DateField__c = childOne.DateField__c.addDays(-1);
+    update childOne;
+
+    // begin recursive update, but with a Calc Item Where Clause field change
+    childOne.NumberField__c = 1;
+    update childOne;
+
+    Test.stopTest();
+
+    parent = [SELECT DateField__c FROM RollupParent__c WHERE Id = :parent.Id];
+    System.assertEquals(childOne.DateField__c, parent.DateField__c);
+  }
 }

@@ -121,7 +121,7 @@ public without sharing abstract class RollupCalculator {
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     this.shouldTriggerFullRecalc = calcItems.isEmpty() == false;
-    List<SObject> localCalcItems = this.winnowItems(calcItems);
+    List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
@@ -232,14 +232,19 @@ public without sharing abstract class RollupCalculator {
   protected virtual void setReturnValue() {
   }
 
-  protected List<SObject> winnowItems(List<SObject> items) {
+  protected List<SObject> winnowItems(List<SObject> items, Map<Id, SObject> oldCalcItems) {
     List<SObject> temporaryItems = new List<SObject>(items);
     items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
     for (SObject item : temporaryItems) {
+      SObject potentialOldItem = oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
       if (this.eval?.matches(item) != false) {
+        items.add(item);
+      } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
+        // TODO - handle old item matching, new item not matching situation for other operations
         items.add(item);
       }
     }
+
     return items;
   }
 
@@ -248,7 +253,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
-    String operationName = op.name().contains('_') ? op.name().substringAfter('_') : op.name();
+    String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
     String query = RollupQueryBuilder.Current.getQuery(
       sObjectType,
@@ -281,15 +286,15 @@ public without sharing abstract class RollupCalculator {
         )
       );
 
-      Rollup.Op baseOp = op == Rollup.Op.COUNT_DISTINCT || op.name().contains('_') == false ? op : Rollup.opNameToOp.get(op.name().substringAfter('_'));
+      Rollup.Op baseOp = Rollup.opNameToOp.get(Rollup.getBaseOperationName(op.name()));
       RollupCalculator calc = Factory.getCalculator(
         this.returnVal,
         baseOp,
-        opFieldOnCalcItem,
-        opFieldOnLookupObject,
-        metadata,
-        lookupRecordKey,
-        lookupKeyField
+        this.opFieldOnCalcItem,
+        this.opFieldOnLookupObject,
+        this.metadata,
+        this.lookupRecordKey,
+        this.lookupKeyField
       );
       calc.performRollup(allOtherItems, new Map<Id, SObject>());
       this.returnVal = calc.getReturnValue();
@@ -417,8 +422,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public virtual override Object getReturnValue() {
-      Object potentialReturnValue = this.returnVal;
-      if (potentialReturnValue == RollupFieldInitializer.Current.maximumLongValue || potentialReturnValue == RollupFieldInitializer.Current.minimumLongValue) {
+      if (this.returnVal == RollupFieldInitializer.Current.maximumLongValue || this.returnVal == RollupFieldInitializer.Current.minimumLongValue) {
         this.returnVal = 0;
       }
       return this.returnVal;
@@ -676,6 +680,8 @@ public without sharing abstract class RollupCalculator {
         retVal = 1;
       } else if (this.eval?.matches(oldCalcItem) == false && this.eval?.matches(calcItem) == true) {
         retVal = 1;
+      } else if (this.eval?.matches(oldCalcItem) == true && this.eval?.matches(calcItem) == false) {
+        retVal = -1;
       }
       return retVal;
     }
@@ -802,12 +808,13 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected virtual Boolean isTrueFor(String newVal, String priorVal) {
+      Boolean isTrueFor = false;
       if (this.op.name().contains(Rollup.Op.MAX.name())) {
-        return newVal > priorVal || String.isBlank(priorVal);
+        isTrueFor = newVal > priorVal || String.isBlank(priorVal);
       } else if (this.op.name().contains(Rollup.Op.MIN.name())) {
-        return newVal < priorVal || String.isBlank(priorVal);
+        isTrueFor = newVal < priorVal || String.isBlank(priorVal);
       }
-      return false;
+      return isTrueFor;
     }
 
     private void sortAndConcat() {
@@ -944,7 +951,7 @@ public without sharing abstract class RollupCalculator {
       }
 
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
-      applicableCalcItems = this.winnowItems(applicableCalcItems);
+      applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
 
       Decimal newSum = 0;
       Decimal currentDenominator = 0;
@@ -1006,13 +1013,14 @@ public without sharing abstract class RollupCalculator {
       String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
       // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
+      List<SObject> additionalItems = Database.query(queryString);
       if (this.op.name().contains('DELETE')) {
-        calcItems = Database.query(queryString);
+        calcItems = additionalItems;
       } else {
-        calcItems.addAll(Database.query(queryString));
+        calcItems.addAll(additionalItems);
       }
 
-      calcItems = this.winnowItems(calcItems);
+      calcItems = this.winnowItems(calcItems, oldCalcItems);
 
       new FirstLastSorter(this.op, this.metadata.OrderByFirstLast__c).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
