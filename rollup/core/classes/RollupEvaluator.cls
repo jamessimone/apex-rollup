@@ -528,7 +528,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             isEqual = this.getGreaterOrLessThan(this.values[0], originalValue);
           }
         }
-
         when 'includes', '!includes' {
           isEqual = false;
           for (String value : this.values) {
@@ -604,19 +603,53 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean isEqualTo = this.criteria.endsWith('=');
       String comparisonText = String.valueOf(comparisonValue);
 
-      // covers Time / Date / Datetime
-      if (storedValue instanceof Datetime) {
-        Datetime comparisonDate = Datetime.valueOfGmt(comparisonText);
-        Datetime storedDate = (Datetime) storedValue;
+      if (storedValue instanceof Date) {
+        Date comparisonDate = Date.valueOf(comparisonText);
+        Date storedDate = (Date) storedValue;
 
         if (isLessThan) {
           return isEqualTo ? storedDate <= comparisonDate : storedDate < comparisonDate;
         } else {
           return isEqualTo ? storedDate >= comparisonDate : storedDate > comparisonDate;
         }
-      }
-      // covers Double / Integer / Decimal / Long
-      else if (storedValue instanceof Decimal) {
+      } else if (storedValue instanceof Time) {
+        List<String> timeDigits = comparisonText.substringBefore('Z').split(':');
+        List<String> secondDigits = timeDigits[2].split('\\.');
+        Time comparisonTime = Time.newInstance(
+          Integer.valueOf(timeDigits[0]),
+          Integer.valueOf(timeDigits[1]),
+          Integer.valueOf(secondDigits[0]),
+          Integer.valueOf(secondDigits[1])
+        );
+        Time storedTime = (Time) storedValue;
+
+        if (isLessThan) {
+          return isEqualTo ? storedTime <= comparisonTime : storedTime < comparisonTime;
+        } else {
+          return isEqualTo ? storedTime >= comparisonTime : storedTime > comparisonTime;
+        }
+      } else if (storedValue instanceof Datetime) {
+        Datetime comparisonDate = Datetime.valueOfGmt(comparisonText);
+        Datetime storedDate = (Datetime) storedValue;
+
+        // SOQL doesn't return the milliseconds Time parts of a stored Datetime
+        // so for storedDate we have to go even further
+        storedDate = Datetime.newInstanceGmt(
+          storedDate.yearGmt(),
+          storedDate.monthGmt(),
+          storedDate.dayGmt(),
+          storedDate.hourGmt(),
+          storedDate.minuteGmt(),
+          storedDate.secondGmt()
+        );
+
+        if (isLessThan) {
+          return isEqualTo ? storedDate <= comparisonDate : storedDate < comparisonDate;
+        } else {
+          return isEqualTo ? storedDate >= comparisonDate : storedDate > comparisonDate;
+        }
+      } else if (storedValue instanceof Decimal) {
+        // covers Double / Integer / Decimal / Long
         Decimal comparisonDecimal = Decimal.valueOf(comparisonText);
         Decimal storedDecimal = (Decimal) storedValue;
 
@@ -625,9 +658,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         } else {
           return isEqualTo ? storedDecimal >= comparisonDecimal : storedDecimal > comparisonDecimal;
         }
-      }
-      // covers pretty much anything else
-      else {
+      } else {
+        // covers pretty much anything else
         String storedText = String.valueOf(storedValue);
         if (isLessThan) {
           return isEqualTo ? storedText <= comparisonText : storedText < comparisonText;

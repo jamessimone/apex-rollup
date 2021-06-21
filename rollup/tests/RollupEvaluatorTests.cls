@@ -189,7 +189,7 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
-  static void shouldWorkForGreaterThanConditions() {
+  static void shouldWorkForGreaterThanNumbers() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);
     Opportunity oppThree = new Opportunity(Amount = 3.01);
@@ -222,6 +222,31 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForGreaterThanDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(2));
+
+    String whereClause = 'ActivityDateTime > ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(evOne));
+    System.assertEquals(true, eval.matches(evTwo));
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime > ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(false, eval.matches(cpa));
+    System.assertEquals(true, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
   static void shouldWorkForGreaterThanOrEqualDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -234,6 +259,30 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualsTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime >= ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(true, eval.matches(cpa));
+    System.assertEquals(true, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualsDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
+
+    String whereClause = 'ActivityDateTime >= ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(evOne));
+    System.assertEquals(false, eval.matches(evTwo));
+  }
 
   @isTest
   static void shouldWorkForGreaterThanStrings() {
@@ -275,6 +324,31 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForLessThanTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime < ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(false, eval.matches(cpa));
+    System.assertEquals(false, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
+
+    String whereClause = 'ActivityDateTime < ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(evOne));
+    System.assertEquals(true, eval.matches(evTwo));
+  }
+
+  @isTest
   static void shouldWorkForLessThanOrEqualDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -285,6 +359,31 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(false, eval.matches(oppOne));
     System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime <= ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(true, eval.matches(cpa));
+    System.assertEquals(false, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualsDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
+
+    String whereClause = 'ActivityDateTime <= ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(evOne));
+    System.assertEquals(true, eval.matches(evTwo));
   }
 
   @isTest
