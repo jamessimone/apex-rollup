@@ -329,6 +329,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
+      RollupLogger.Instance.save();
       return 'No process Id';
     }
 
@@ -341,7 +342,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.BATCHABLE &&
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
-      RollupLogger.Instance.log('about to process sync rollups');
+      RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
+      RollupLogger.Instance.save();
       this.process(this.syncRollups);
       return 'Running rollups flagged to go synchronously';
     } else {
@@ -379,7 +381,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   protected virtual String beginAsyncRollup() {
-    RollupLogger.Instance.log('about to start batch');
+    RollupLogger.Instance.log('about to start batch', LoggingLevel.DEBUG);
+    RollupLogger.Instance.save();
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
@@ -410,7 +413,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       lookupFieldForLookupObject,
       '='
     );
-    RollupLogger.Instance.log('starting batch with query: ', query);
+    RollupLogger.Instance.log('starting batch with query: ', query, LoggingLevel.DEBUG);
+    RollupLogger.Instance.save();
     return Database.getQueryLocator(query);
   }
 
@@ -420,10 +424,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     this.lookupItems = lookupItems;
     this.process(this.rollups);
+    RollupLogger.Instance.save();
   }
 
   public virtual void finish(Database.BatchableContext context) {
-    RollupLogger.Instance.log('batch finished successfully');
+    RollupLogger.Instance.log('batch finished successfully', LoggingLevel.DEBUG);
+    RollupLogger.Instance.save();
   }
 
   private class RollupAsyncProcessor extends Rollup implements System.Queueable {
@@ -468,7 +474,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
 
     protected override String beginAsyncRollup() {
-      RollupLogger.Instance.log('about to queue');
+      RollupLogger.Instance.log('about to queue', LoggingLevel.DEBUG);
+      RollupLogger.Instance.save();
       return System.enqueueJob(this);
     }
 
@@ -504,7 +511,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     public void execute(System.QueueableContext qc) {
       this.process(this.rollups);
-      RollupLogger.Instance.log('queueable finished successfully');
+      RollupLogger.Instance.log('queueable finished successfully', LoggingLevel.DEBUG);
+      RollupLogger.Instance.save();
     }
   }
 
@@ -760,11 +768,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
 
       if (flowInput.deferProcessing == true) {
-        RollupLogger.Instance.log('deferring processing for rollup', rollups);
+        RollupLogger.Instance.log('deferring processing for rollup', rollups, LoggingLevel.DEBUG);
         CACHED_ROLLUPS.addAll(rollups);
         rollups.clear();
       } else {
-        RollupLogger.Instance.log('adding invocable rollup to list', rollups);
+        RollupLogger.Instance.log('adding invocable rollup to list', rollups, LoggingLevel.DEBUG);
         rollups.addAll(rollups);
       }
     }
@@ -774,12 +782,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         batch(rollups, fromInvocable);
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred during invocable action', ex);
+      RollupLogger.Instance.log('an error occurred during invocable action', ex, LoggingLevel.ERROR);
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
       }
     }
+    RollupLogger.Instance.save();
 
     return flowOutputs;
   }
@@ -1554,7 +1563,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   /** end global-facing section, begin public/private static helpers */
 
   public static void processStoredFlowRollups() {
-    RollupLogger.Instance.log('processing deferred flow rollups', CACHED_ROLLUPS);
+    RollupLogger.Instance.log('processing deferred flow rollups', CACHED_ROLLUPS, LoggingLevel.DEBUG);
     batch(CACHED_ROLLUPS, InvocationPoint.FROM_INVOCABLE);
     CACHED_ROLLUPS.clear();
   }
@@ -1744,7 +1753,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Evaluator eval,
     InvocationPoint invokePoint
   ) {
-    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < RollupLogger.Instance.rollupControl.MaxLookupRowsBeforeBatching__c;
+    Rollup instance = new Rollup(invokePoint);
+    Boolean shouldQueue = amountOfCalcItems != SENTINEL_COUNT_VALUE && amountOfCalcItems < instance.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
       Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, invokePoint);
@@ -1797,7 +1807,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
     if (String.isNotBlank(errorMessage)) {
       Exception ex = new IllegalArgumentException(errorMessage);
-      RollupLogger.Instance.log('an error occurred while validating flow inputs', ex);
+      RollupLogger.Instance.log('an error occurred while validating flow inputs', ex, LoggingLevel.ERROR);
+      RollupLogger.Instance.save();
       throw ex;
     }
   }
@@ -1821,7 +1832,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while validating flow-specific rules', ex);
+      RollupLogger.Instance.log('an error occurred while validating flow-specific rules', ex, LoggingLevel.ERROR);
+      RollupLogger.Instance.save();
       throw ex;
     }
   }
@@ -1930,7 +1942,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     try {
       return Database.countQuery(countQuery);
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + countQuery, ex);
+      RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + countQuery, ex, LoggingLevel.WARN);
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return SENTINEL_COUNT_VALUE;
@@ -2454,7 +2466,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (Rollup rollup : rollups) {
-      RollupLogger.Instance.log('starting rollup for: ', rollup);
+      RollupLogger.Instance.log('starting rollup for: ', rollup, LoggingLevel.DEBUG);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
       if (hasExceededCurrentRollupLimits(rollup.rollupControl) || rollup instanceof RollupFullBatchRecalculator) {
         this.deferredRollups.add(rollup);
@@ -2559,7 +2571,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       failedRollupInfo.add(roll.metadata);
     }
     String exceptionString = 'rollup failed to re-queue for: ';
-    RollupLogger.Instance.log(exceptionString, failedRollupInfo);
+    RollupLogger.Instance.log(exceptionString, failedRollupInfo, LoggingLevel.ERROR);
     throw new AsyncException(exceptionString + JSON.serialize(failedRollupInfo));
   }
 
@@ -2771,14 +2783,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
         // Check for changed values
-        RollupLogger.Instance.log('lookup record prior to rolling up: ', lookupRecord);
+        RollupLogger.Instance.log('lookup record prior to rolling up: ', lookupRecord, LoggingLevel.DEBUG);
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
         if (priorVal != newVal) {
           updater.updateField(lookupRecord, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
-        RollupLogger.Instance.log('lookup record after rolling up: ', lookupRecord);
+        RollupLogger.Instance.log('lookup record after rolling up: ', lookupRecord, LoggingLevel.DEBUG);
       }
     }
 
@@ -2911,8 +2923,8 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         Op deleteOp = opNameToOp.get(deleteOpName);
         Rollup oldLookupsRollup = new Rollup(roll, deleteOp, reparentedCalcItems);
 
-        RollupLogger.Instance.log('reparenting operation: ', oldLookupsRollup);
-        RollupLogger.Instance.log('Reparented item prior to reparenting rollup: ', lookupRecord);
+        RollupLogger.Instance.log('reparenting operation: ', oldLookupsRollup, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log('Reparented item prior to reparenting rollup: ', lookupRecord, LoggingLevel.DEBUG);
 
         Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, roll.lookupFieldOnCalcItem);
@@ -2921,7 +2933,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           lookupRecord.put(roll.opFieldOnLookupObject, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
-        RollupLogger.Instance.log('Reparented item after reparenting rollup: ', lookupRecord);
+        RollupLogger.Instance.log('Reparented item after reparenting rollup: ', lookupRecord, LoggingLevel.DEBUG);
       }
     }
   }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RollupLoggerName__c</fullName>
+    <description>If filled out and Is Rollup Logging Enabled is checked off, Rollup will use the class with the name provided here to log. The class must conform to the IRollupLogger interface; check the README for more info. If left blank and logging is enabled, rollup log info will only be stored in the Apex debug logs.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>If filled out and Is Rollup Logging Enabled is checked off, Rollup will use the class with the name provided here to log. The class must conform to the IRollupLogger interface; check the README for more info.</inlineHelpText>
+    <label>Rollup Logger Name</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

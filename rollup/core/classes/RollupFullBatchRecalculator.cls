@@ -37,6 +37,7 @@ public class RollupFullBatchRecalculator extends Rollup {
   }
 
   public override void finish(Database.BatchableContext bc) {
-    RollupLogger.Instance.log('RollupFullBatchRecalculator finished');
+    RollupLogger.Instance.log('RollupFullBatchRecalculator finished', LoggingLevel.DEBUG);
+    RollupLogger.Instance.save();
   }
 }
