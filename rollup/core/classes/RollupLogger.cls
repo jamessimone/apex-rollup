@@ -73,14 +73,14 @@ public class RollupLogger extends Rollup implements IRollupLogger {
 
   private static IRollupLogger getRollupLogger() {
     IRollupLogger loggerInstance;
-    if (SELF.rollupControl.IsRollupLoggingEnabled__c == false) {
-      loggerInstance = SELF;
-    } else if (String.isNotBlank(SELF.rollupControl.RollupLoggerName__c)) {
+    if (String.isNotBlank(SELF.rollupControl.RollupLoggerName__c)) {
       try {
         loggerInstance = (IRollupLogger) Type.forName(SELF.rollupControl.RollupLoggerName__c).newInstance();
       } catch (Exception ex) {
         loggerInstance = SELF;
       }
+    } else {
+      loggerInstance = SELF;
     }
     return loggerInstance;
   }
