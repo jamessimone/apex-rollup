@@ -857,7 +857,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {
-      if (existingVal.contains(matchingVal)) {
+      if (String.isNotBlank(matchingVal) && existingVal.contains(matchingVal)) {
         return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
       }
       return existingVal += this.concatDelimiter + replacementVal;
