@@ -604,44 +604,35 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   global class FlowInput {
-    @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)')
-    global List<SObject> recordsToRollup = new List<SObject>();
-
-    @InvocableVariable(label='Prior records to rollup' description='The old version of the records for update/upsert')
-    global List<SObject> oldRecordsToRollup = new List<SObject>();
-
-    @InvocableVariable(label='Rollup target\'s SObject Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
-    global String rollupSObjectName;
-
-    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT, CONCAT_DISTINCT, FIRST, LAST' required=true)
-    global String rollupOperation;
-
-    @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
-    global String rollupContext;
-
-    @InvocableVariable(label='Calc Item Rollup Field' description='The API Name of the field on each of the records passed in to consider.' required=true)
+    @InvocableVariable(label='Calc Item Calc Field' description='The API Name of the field on each of the records passed in to rollup.' required=true)
     global String rollupFieldOnCalcItem;
-
     @InvocableVariable(
-      label='Rollup Object Field'
-      description='The API Name of the field on the target object where the rollup value will be stored'
-      required=true
-    )
-    global String rollupFieldOnOpObject;
-
-    @InvocableVariable(
-      label='Lookup Field On Calc Item'
+      label='Calc Item Lookup Field'
       description='The API Name of the field on the record to rollup that matches a field on the object where the rollup will be stored'
       required=true
     )
     global String lookupFieldOnCalcItem;
 
+    @InvocableVariable(label='Rollup Object API Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
+    global String rollupSObjectName;
+
     @InvocableVariable(
-      label='Lookup Field On Rollup Object'
+      label='Rollup Object Calc Field'
+      description='The API Name of the field on the target object where the rollup value will be stored'
+      required=true
+    )
+    global String rollupFieldOnOpObject;
+    @InvocableVariable(
+      label='Rollup Object Lookup Field'
       description='The API Name of the field on the SObject matching the value found in "lookupFieldOnCalcItem" where the rollup will be stored'
       required=true
     )
     global String lookupFieldOnOpObject;
+
+    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT, CONCAT_DISTINCT, FIRST, LAST' required=true)
+    global String rollupOperation;
+    @InvocableVariable(label='Rollup Operation Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
+    global String rollupContext;
 
     // optional fields
     @InvocableVariable(
@@ -649,6 +640,12 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
+    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    global String calcItemTypeWhenRollupStartedFromParent;
+    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
+    global String concatDelimiter;
+    @InvocableVariable(label='Defer processing')
+    global Boolean deferProcessing = false;
 
     @InvocableVariable(
       label='Full Recalculation Default Number Value'
@@ -660,38 +657,36 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
     )
     global String fullRecalculationDefaultStringValue;
-    @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
-    global String calcItemWhereClause;
 
+    @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
+    global String grandparentRelationshipFieldPath;
     @InvocableVariable(
       label='Is Full Record Set'
       description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
     )
     global Boolean isFullRecordSet;
-
-    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
-    global String orderByFirstLast;
-    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
-    global String concatDelimiter;
-
-    @InvocableVariable(label='Defer processing')
-    global Boolean deferProcessing = false;
-
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
-    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
-    global String calcItemTypeWhenRollupStartedFromParent;
+    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
+    global String orderByFirstLast;
 
-    @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
-    global String grandparentRelationshipFieldPath;
+    // these are listed with the optional properties because otherwise Flow builders always have to check for null after using a Get Records
+    // element with filter conditions; the Flow engine otherwise isn't satisfied because Get Records returns null instead of an empty list
+    // and null isn't a valid collection variable reference for a required field
+    @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)')
+    global List<SObject> recordsToRollup = new List<SObject>();
+    @InvocableVariable(label='Prior records to rollup' description='The old version of the records for update/upsert')
+    global List<SObject> oldRecordsToRollup = new List<SObject>();
 
-    @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
-    global String ultimateParentLookup;
     @InvocableVariable(
       label='Should rollup to ultimate hierarchy parent'
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent = false;
+    @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
+    global String calcItemWhereClause;
+    @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
+    global String ultimateParentLookup;
   }
 
   global class FlowOutput {

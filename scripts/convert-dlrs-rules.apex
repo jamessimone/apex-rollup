@@ -44,9 +44,7 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     // build up a list of unmigrateable rules to assist with the creation of the flow actions
 
     Map<String, String> unmigratableRule = new Map<String, String>();
-    if (dlrsRule.dlrs__RelationshipCriteria__c != null) {
-      unmigratableRule.put('SOQL Where Clause To Exclude Calc Items', dlrsRule.dlrs__RelationshipCriteria__c);
-    }
+    unmigratableRule.put('Action label', customMetadata.label);
     unmigratableRule.put(
       'Records to rollup',
       'Provide the collection of rollup records (if the rollup starts from parent records, set Is Rollup Started From Parent to {!$GlobalConstant.True})'
@@ -55,21 +53,24 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
       'Prior records to rollup',
       'A collection variable with {!$Record__Prior} in it, when using after update or after create and update flows'
     );
-    if (dlrsRule.dlrs__FieldToOrderBy__c != null) {
-      unmigratableRule.put('Order By (First/Last)', dlrsRule.dlrs__FieldToOrderBy__c);
-    }
+    unmigratableRule.put('Object for \"Prior records to rollup\" and \"Records to rollup\"', dlrsRule.dlrs__ChildObject__c);
+
+    unmigratableRule.put('Calc Item Calc Field', dlrsRule.dlrs__FieldToAggregate__c);
+    unmigratableRule.put('Calc Item Lookup Field', dlrsRule.dlrs__RelationshipField__c);
+    unmigratableRule.put('Rollup Object API Name', dlrsRule.dlrs__ParentObject__c);
+    unmigratableRule.put('Rollup Object Calc Field', dlrsRule.dlrs__AggregateResultField__c);
+    unmigratableRule.put('Rollup Object Lookup Field', 'Id');
+    unmigratableRule.put('Rollup Operation', operation.toUpperCase());
+    unmigratableRule.put('Rollup Operation Context', 'INSERT / UPDATE / UPSERT / DELETE: see README for more info');
     if (operation.startsWith('CONCAT')) {
       unmigratableRule.put('Concat Delimiter', dlrsRule.dlrs__ConcatenateDelimiter__c);
     }
-    unmigratableRule.put('Rollup target\'s SObject Name', dlrsRule.dlrs__ParentObject__c);
-    unmigratableRule.put('Rollup Operation', operation.toUpperCase());
-    unmigratableRule.put('Rollup Object Field', dlrsRule.dlrs__AggregateResultField__c);
-    unmigratableRule.put('Rollup Context', 'INSERT / UPDATE / UPSERT / DELETE: see README for more info');
-    unmigratableRule.put('Lookup Field On Rollup Object', 'Id');
-    unmigratableRule.put('Lookup Field On Calc Item', dlrsRule.dlrs__RelationshipField__c);
-    unmigratableRule.put('Calc Item Rollup Field', dlrsRule.dlrs__FieldToAggregate__c);
-    unmigratableRule.put('Object for \"Prior records to rollup\"', dlrsRule.dlrs__ChildObject__c);
-    unmigratableRule.put('Action label', customMetadata.label);
+    if (dlrsRule.dlrs__FieldToOrderBy__c != null) {
+      unmigratableRule.put('Order By (First/Last)', dlrsRule.dlrs__FieldToOrderBy__c);
+    }
+    if (dlrsRule.dlrs__RelationshipCriteria__c != null) {
+      unmigratableRule.put('SOQL Where Clause To Exclude Calc Items', dlrsRule.dlrs__RelationshipCriteria__c);
+    }
     unmigrateableRules.add(unmigratableRule);
   } else {
     // This code uses instances of Metadata.CustomMetadataValue for the deployment - not instances of Rollup__mdt
