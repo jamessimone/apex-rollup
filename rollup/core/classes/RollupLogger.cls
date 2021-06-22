@@ -1,10 +1,10 @@
-public class RollupLogger extends Rollup implements IRollupLogger {
+public class RollupLogger extends Rollup implements ILogger {
   private static final RollupLogger SELF = new RollupLogger();
   private RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
   }
 
-  public static IRollupLogger Instance {
+  public static ILogger Instance {
     get {
       if (Instance == null) {
         Instance = getRollupLogger();
@@ -18,7 +18,7 @@ public class RollupLogger extends Rollup implements IRollupLogger {
     this.log(logString, null, logLevel);
   }
 
-  public interface IRollupLogger {
+  public interface ILogger {
     void log(String logString, LoggingLevel logLevel);
     void log(String logString, Object logObject, LoggingLevel logLevel);
     void save();
@@ -71,11 +71,11 @@ public class RollupLogger extends Rollup implements IRollupLogger {
     return appended;
   }
 
-  private static IRollupLogger getRollupLogger() {
-    IRollupLogger loggerInstance;
+  private static ILogger getRollupLogger() {
+    ILogger loggerInstance;
     if (String.isNotBlank(SELF.rollupControl.RollupLoggerName__c)) {
       try {
-        loggerInstance = (IRollupLogger) Type.forName(SELF.rollupControl.RollupLoggerName__c).newInstance();
+        loggerInstance = (ILogger) Type.forName(SELF.rollupControl.RollupLoggerName__c).newInstance();
       } catch (Exception ex) {
         loggerInstance = SELF;
       }
