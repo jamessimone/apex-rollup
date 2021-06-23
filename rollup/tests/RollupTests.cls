@@ -2474,6 +2474,54 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldAllowForSuccessiveInvocablesToBeCalledInSameTransaction() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct'),
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'again')
+    };
+
+    DMLMock mock = loadAccountIdMock(cpas);
+
+    Account reparentedAcc = new Account(Name = 'ReparentMultipleDMLInvocableRollup');
+    insert reparentedAcc;
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
+    flowInputs[0].deferProcessing = true;
+    Rollup.performRollup(flowInputs);
+
+    Rollup.FlowInput flowInput = flowInputs[0];
+    flowInput.rollupFieldOnCalcItem = 'Name';
+    flowInput.rollupFieldOnOpObject = 'Description';
+    flowInput.rollupOperation = 'CONCAT_DISTINCT';
+    Rollup.performRollup(flowInputs);
+
+    // now that the inserts have been queued, let's do the updates
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>(cpas);
+    cpas[0].ParentId = reparentedAcc.Id;
+    flowInput.rollupContext = 'UPDATE';
+    Rollup.performRollup(flowInputs);
+    flowInput.rollupOperation = 'SUM';
+    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
+    flowInput.rollupFieldOnOpObject = 'Description';
+    Rollup.performRollup(flowInputs);
+
+    // simulate multiple DML situations
+    Test.startTest();
+    Rollup.processStoredFlowRollups();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'Enqueued rollups did not properly update old account and reparented Account');
+    Account updatedReparentAcc = (Account) mock.Records[0];
+    System.assertEquals(cpas[0].Name, updatedReparentAcc.Description);
+    System.assertEquals(cpas[0].PreferenceRank, updatedReparentAcc.AnnualRevenue);
+
+    Account updatedAcc = (Account) mock.Records[1];
+    System.assertNotEquals(updatedAcc.Id, reparentedAcc.Id);
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
+    System.assertEquals(cpas[1].Name, updatedAcc.Description, 'CONCAT_DISTINCT AFTER_UPDATE from flow should match diff for reparented Name');
+  }
+
+  @isTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2507,7 +2555,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
+    System.assertEquals('Prior records to rollup collection required for rollup context: UPSERT', ex.getMessage());
   }
 
   @isTest

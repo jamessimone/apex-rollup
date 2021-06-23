@@ -278,7 +278,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   }
 
   public Integer compareTo(Object otherRollup) {
-    Integer numberToReturn = 1;
+    Integer numberToReturn = 0;
     if (otherRollup instanceof Rollup) {
       Rollup that = (Rollup) otherRollup;
       Boolean thisDelete = this.op.name().contains('DELETE');
@@ -328,9 +328,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
     }
 
+    String rollupProcessId = 'No process Id';
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
       RollupLogger.Instance.save();
-      return 'No process Id';
+      return rollupProcessId;
     }
 
     Boolean hasMoreThanOneTarget = false;
@@ -343,12 +344,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
-      RollupLogger.Instance.save();
       this.process(this.syncRollups);
-      return 'Running rollups flagged to go synchronously';
+      rollupProcessId = 'Running rollups flagged to go synchronously';
     } else {
-      return this.getAsyncRollup().beginAsyncRollup();
+      rollupProcessId = this.getAsyncRollup().beginAsyncRollup();
     }
+    RollupLogger.Instance.save();
+    return rollupProcessId;
   }
 
   protected Rollup getAsyncRollup() {
@@ -718,18 +720,23 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       if (flowInput.recordsToRollup?.isEmpty() != false) {
         flowOutput.message = 'No records to rollup, returning early';
         continue;
-      } else if (flowInput.rollupContext == 'UPSERT') {
-        flowInput.rollupContext = 'UPDATE';
       }
-
-      flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
-      String rollupContext = getFlowRollupContext(flowInput);
+      System.debug(flowInput.recordsToRollup);
+      System.debug('OLD FLOW RECORDS PASSSED IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+      System.debug(flowInput.oldRecordsToRollup);
+      SObject firstRecord = flowInput.recordsToRollup[0];
       // flow collections are not strongly typed, so we grab from the first record
-      SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+      SObjectType sObjectType = firstRecord.getSObjectType();
 
       // this will throw back up to the Flow engine if the inputs don't pass validation
       enforceValidationRules(flowInput);
       enforceFlowSpecificRules(flowInput, sObjectType);
+
+      flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
+      System.debug(flowInput);
+      Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
+      System.debug(oldFlowRecords);
+      String rollupContext = getFlowRollupContext(flowInput, firstRecord, oldFlowRecords);
 
       Rollup__mdt rollupMeta = new Rollup__mdt(
         RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
@@ -755,20 +762,19 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       );
 
       List<Rollup__mdt> metas = new List<Rollup__mdt>{ rollupMeta };
-      Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
       processCustomMetadata(rollups, metas, flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), rollupContext, fromInvocable);
 
+      // TODO - populate corresponding CACHED_APEX_OPERATIONS to properly enforce staggered order of operations for invocables fired with multiple DML
+      // statements in the same transaction
       if (metas.isEmpty() == false) {
-        rollups.add(getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable));
-      }
-
-      if (flowInput.deferProcessing == true) {
-        RollupLogger.Instance.log('deferring processing for rollup', rollups, LoggingLevel.DEBUG);
-        CACHED_ROLLUPS.addAll(rollups);
-        rollups.clear();
-      } else {
-        RollupLogger.Instance.log('adding invocable rollup to list', rollups, LoggingLevel.DEBUG);
-        rollups.addAll(rollups);
+        Rollup roll = getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
+        if (flowInput.deferProcessing) {
+          RollupLogger.Instance.log('deferring processing for rollup', rollups, LoggingLevel.DEBUG);
+          CACHED_ROLLUPS.addAll(roll.rollups);
+        } else {
+          RollupLogger.Instance.log('adding invocable rollup to list', rollups, LoggingLevel.DEBUG);
+          rollups.addAll(roll.rollups);
+        }
       }
     }
 
@@ -784,6 +790,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       }
     }
     RollupLogger.Instance.save();
+    collapseCachedRollups();
 
     return flowOutputs;
   }
@@ -1541,11 +1548,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     processCustomMetadata(rollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX);
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
-    if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
-      CACHED_APEX_OPERATIONS.get(calcItemSObjectType).add(apexContext);
-    } else {
-      CACHED_APEX_OPERATIONS.put(calcItemSObjectType, new Set<TriggerOperation>{ apexContext });
-    }
+    populateCachedApexOperations(calcItemSObjectType, apexContext);
 
     if (rollupMetadata.isEmpty() == false) {
       rollups.addAll(getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX).rollups);
@@ -1558,9 +1561,10 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
   /** end global-facing section, begin public/private static helpers */
 
   public static void processStoredFlowRollups() {
-    RollupLogger.Instance.log('processing deferred flow rollups', CACHED_ROLLUPS, LoggingLevel.DEBUG);
-    batch(CACHED_ROLLUPS, InvocationPoint.FROM_INVOCABLE);
+    RollupLogger.Instance.log('processing deferred flow rollups', LoggingLevel.DEBUG);
+    List<Rollup> rollupsToProcess = new List<Rollup>(CACHED_ROLLUPS);
     CACHED_ROLLUPS.clear();
+    batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
   }
 
   private static List<Rollup__mdt> cachedMetadata;
@@ -1810,7 +1814,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static void enforceFlowSpecificRules(FlowInput flowInput, SObjectType sObjectType) {
     try {
-      if (flowInput.rollupContext == 'UPDATE' && flowInput.oldRecordsToRollup?.isEmpty() == true) {
+      if ((flowInput.rollupContext == 'UPDATE' || flowInput.rollupContext == 'UPSERT') && flowInput.oldRecordsToRollup?.isEmpty() == true) {
         throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
       } else if (String.isBlank(flowInput.grandparentRelationshipFieldPath)) {
         SObject firstRecord = flowInput.recordsToRollup[0];
@@ -1944,18 +1948,34 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
   }
 
-  private static String getFlowRollupContext(FlowInput firstInput) {
+  private static String getFlowRollupContext(FlowInput firstInput, SObject firstRecord, Map<Id, SObject> oldFlowRecords) {
     String flowContext = firstInput.rollupContext.toUpperCase();
-    if (String.isBlank(flowContext)) {
+    if (String.isBlank(flowContext) || flowContext == 'UPSERT' && oldFlowRecords.containsKey(firstRecord.Id) == false) {
       flowContext = 'INSERT';
+    } else if (flowContext == 'UPSERT') {
+      flowContext = 'UPDATE';
     }
+
+    TriggerOperation matchingOperation;
+    switch on flowContext {
+      when 'INSERT' {
+        matchingOperation = TriggerOperation.AFTER_INSERT;
+      }
+      when 'UPDATE' {
+        matchingOperation = TriggerOperation.AFTER_UPDATE;
+      }
+      when 'DELETE' {
+        matchingOperation = TriggerOperation.BEFORE_DELETE;
+      }
+    }
+    populateCachedApexOperations(firstRecord.getSObjectType(), matchingOperation);
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
   private static Map<Id, SObject> getOldFlowRecords(FlowInput flowInput, SObjectType sObjectType) {
     Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>();
-    if (flowInput.recordsToRollup?.isEmpty() == true || flowInput.rollupContext != 'UPDATE') {
+    if (flowInput.recordsToRollup?.isEmpty() == true || (flowInput.rollupContext != 'UPDATE' && flowInput.rollupContext != 'UPSERT')) {
       return oldFlowRecords;
     } else if (flowInput.oldRecordsToRollup?.isEmpty() == false) {
       // normally, you could use a shortcut to initialize a Set<Id> like this
@@ -1963,33 +1983,38 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       // but that code path fails if there are null Ids in the list
       for (SObject oldRecord : flowInput.oldRecordsToRollup) {
         // record-triggered flows set up to run when "A record is created or modified"
-        // will pass null in the list if it runs on create - yikes. use safe navigation
-        // to access the Id and avoid a null pointer exception
+        // will pass null in the list if it runs on create - yikes.
         if (oldRecord?.Id != null) {
           oldFlowRecords.put(oldRecord.Id, oldRecord);
-        }
-      }
-
-      Map<String, SObjectField> fieldTokensForObject = sObjectType.getDescribe().fields.getMap();
-      for (SObject currentRecord : flowInput.recordsToRollup) {
-        Map<String, Object> populatedFields = currentRecord.getPopulatedFieldsAsMap();
-        // this is as close as we can get, at present, to detecting upserts. It won't work for records being inserted with the CreatedDate set to a historical value
-        if (
-          populatedFields.containsKey('CreatedDate') &&
-          populatedFields.containsKey('LastModifiedDate') &&
-          currentRecord.get('CreatedDate') == currentRecord.get('LastModifiedDate')
-        ) {
-          SObjectField rollupFieldOnCalcItem = fieldTokensForObject.get(flowInput.rollupFieldOnCalcItem);
-          if (rollupFieldOnCalcItem != null && rollupFieldOnCalcItem.getDescribe().isCalculated() == false) {
-            SObject clonedRecord = currentRecord.clone(true, true);
-            clonedRecord.put(rollupFieldOnCalcItem, RollupFieldInitializer.Current.getDefaultValue(rollupFieldOnCalcItem));
-            oldFlowRecords.put(currentRecord.Id, clonedRecord);
-          }
         }
       }
     }
 
     return oldFlowRecords;
+  }
+
+  private static void collapseCachedRollups() {
+    Map<String, Rollup> rollupOperationToRollup = new Map<String, Rollup>();
+    for (Integer index = CACHED_ROLLUPS.size() -1; index >= 0; index--) {
+      Rollup cachedRollup = CACHED_ROLLUPS[index];
+      if (rollupOperationToRollup.containsKey(cachedRollup.metadata.RollupOperation__c)) {
+        Rollup matchingRollup = rollupOperationToRollup.get(cachedRollup.metadata.RollupOperation__c);
+        matchingRollup.calcItems.addAll(cachedRollup.calcItems);
+        matchingRollup.oldCalcItems.putAll(cachedRollup.oldCalcItems);
+      } else {
+        rollupOperationToRollup.put(cachedRollup.metadata.RollupOperation__c, cachedRollup);
+      }
+    }
+    CACHED_ROLLUPS.clear();
+    CACHED_ROLLUPS.addAll(rollupOperationToRollup.values());
+  }
+
+  private static void populateCachedApexOperations(SObjectType calcItemSObjectType, TriggerOperation triggerContext) {
+    if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
+      CACHED_APEX_OPERATIONS.get(calcItemSObjectType).add(triggerContext);
+    } else {
+      CACHED_APEX_OPERATIONS.put(calcItemSObjectType, new Set<TriggerOperation>{ triggerContext });
+    }
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
@@ -2503,11 +2528,13 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     // all in the same transaction, they can be introduced out of order
     // (e.g. the update rollup appears first in the list)
     // this sort restores the rollups to their proper ordering
-    if (CACHED_APEX_OPERATIONS.isEmpty() == false && CACHED_ROLLUPS.isEmpty() == false) {
-      rolls.addAll(CACHED_ROLLUPS);
-      CACHED_ROLLUPS.clear();
-      rolls.sort();
+    for (Rollup cachedRoll : CACHED_ROLLUPS) {
+      if (cachedRoll.isNoOp == false) {
+        rolls.add(cachedRoll);
+      }
     }
+    CACHED_ROLLUPS.clear();
+    rolls.sort();
   }
 
   private List<SObject> getLookupItems(Map<String, List<SObject>> calcItemsByLookupField, Map<String, SObject> updatedLookupRecords, Rollup roll) {
