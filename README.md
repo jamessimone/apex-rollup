@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgTRAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgUPAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgTRAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgUPAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -167,6 +167,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Batch Chunk Size` - (defaults to 2000) - The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default for batch jobs.
 - `Is Rollup Logging Enabled` - (defaults to false) - Check this box in order to debug your rollups. Debug information is included in a few mission-critical pieces of Rollup to provide you with more information about where exactly an error might be occurring, should you encounter one.
 - `Is Merge Reparenting Enabled` - (defaults to true) - By default, if there is an `after delete` trigger context for Account / Case / Contact / Lead where Rollup is being used and one or more of those records is merged, Rollup goes and updates any children records from the old lookup to the new lookup automatically prior to recalculating rollup values. If you have pre-existing merge handling covered in your org by some other means, you should disable this checkbox and ensure that Rollup is only called _after_ your pre-existing merge handling has run.
+- `Rollup Logger Name` - (optional) - By default, if `Is Rollup Logging Enabled` is checked, logs associated with Rollup can be seen by keeping the Salesforce Developer Console open while inserting/updating records, or by starting a Debug Trace for a user. You also have the option of customizing how logs are displayed/stored. For more information, see the [Rollup Logging](#rollup-logging) section.
 
 ### Flow / Process Builder Invocable
 
@@ -911,6 +912,27 @@ trigger OpportunityChangeEventTrigger on OpportunityChangeEvent (after insert) {
 ```
 
 Note that you're still selecting `Opportunity` as the `Calc Item` within your Rollup metadata record in this example; in fact, you cannot select `OpportunityChangeEvent`, so hopefully that was already clear. This means that people interested in using CDC should view it as an either/or option when compared to invoking `Rollup` from a standard, synchronous trigger. Additionally, that means reparenting that occurs at the calculation item level (the child object in the rollup operation) is not yet a supported feature of `Rollup` for CDC-based rollup actions — because the underlying object has already been updated in the database, and because CDC events only contain the new values for changed fields (instead of the new & old values). It's a TBD-type situation if this will ever be supported.
+
+### Rollup Logging
+<div id="rollup-logging"></div>
+
+If logging to the debug logs is enough for your purposes, the default logger need never be changed. However, if you want to customize things further, or log errors to a custom object, you can do so! The included `RollupLogger` class also includes an interface:
+
+```java
+public class RollupLogger {
+
+  public interface ILogger {
+    void log(String logString, LoggingLevel logLevel);
+    void log(String logString, Object logObject, LoggingLevel logLevel);
+    void save();
+  }
+}
+```
+
+You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers are included in separate unmanaged packages:
+
+1. [Nebula Logger](https://github.com/jongpie/NebulaLogger)
+2. A lightweight custom logger that's also part of this repository; it's just bundled separately
 
 ### Multi-Currency Orgs
 

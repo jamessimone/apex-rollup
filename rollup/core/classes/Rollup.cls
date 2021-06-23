@@ -721,9 +721,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
         flowOutput.message = 'No records to rollup, returning early';
         continue;
       }
-      System.debug(flowInput.recordsToRollup);
-      System.debug('OLD FLOW RECORDS PASSSED IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-      System.debug(flowInput.oldRecordsToRollup);
       SObject firstRecord = flowInput.recordsToRollup[0];
       // flow collections are not strongly typed, so we grab from the first record
       SObjectType sObjectType = firstRecord.getSObjectType();
@@ -733,9 +730,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       enforceFlowSpecificRules(flowInput, sObjectType);
 
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
-      System.debug(flowInput);
       Map<Id, SObject> oldFlowRecords = getOldFlowRecords(flowInput, sObjectType);
-      System.debug(oldFlowRecords);
       String rollupContext = getFlowRollupContext(flowInput, firstRecord, oldFlowRecords);
 
       Rollup__mdt rollupMeta = new Rollup__mdt(
@@ -1993,6 +1988,14 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     return oldFlowRecords;
   }
 
+  private static void populateCachedApexOperations(SObjectType calcItemSObjectType, TriggerOperation triggerContext) {
+    if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
+      CACHED_APEX_OPERATIONS.get(calcItemSObjectType).add(triggerContext);
+    } else {
+      CACHED_APEX_OPERATIONS.put(calcItemSObjectType, new Set<TriggerOperation>{ triggerContext });
+    }
+  }
+
   private static void collapseCachedRollups() {
     Map<String, Rollup> rollupOperationToRollup = new Map<String, Rollup>();
     for (Integer index = CACHED_ROLLUPS.size() -1; index >= 0; index--) {
@@ -2007,14 +2010,6 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
     }
     CACHED_ROLLUPS.clear();
     CACHED_ROLLUPS.addAll(rollupOperationToRollup.values());
-  }
-
-  private static void populateCachedApexOperations(SObjectType calcItemSObjectType, TriggerOperation triggerContext) {
-    if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
-      CACHED_APEX_OPERATIONS.get(calcItemSObjectType).add(triggerContext);
-    } else {
-      CACHED_APEX_OPERATIONS.put(calcItemSObjectType, new Set<TriggerOperation>{ triggerContext });
-    }
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
