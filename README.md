@@ -402,11 +402,11 @@ global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupC
 // for more info on how this method differs from the one above it, check out the "Parent Level Merges" section!
 // for anything OTHER than merge situations or rollups starting from Task, Event, or User, use of this method
 // is an anti-pattern
-global static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems)
+global static RollupAsyncProcessor runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems)
 
 // imperatively from Apex with arguments taking the place of values previously supplied by CMDT
 // can be used in conjunction with "batch" to group rollup operations (as seen in the example preceding this section)
-global static Rollup averageFromApex(
+global static RollupAsyncProcessor averageFromApex(
   SObjectField averageFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -414,7 +414,7 @@ global static Rollup averageFromApex(
   SObjectType lookupSobjectType
 )
 
-global static Rollup averageFromApex(
+global static RollupAsyncProcessor averageFromApex(
   SObjectField averageFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -423,7 +423,7 @@ global static Rollup averageFromApex(
   Decimal defaultRecalculationValue
 )
 
-global static Rollup averageFromApex(
+global static RollupAsyncProcessor averageFromApex(
   SObjectField averageFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -433,7 +433,7 @@ global static Rollup averageFromApex(
   Evaluator eval
 )
 
-global static Rollup countDistinctFromApex(
+global static RollupAsyncProcessor countDistinctFromApex(
   SObjectField countDistinctFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -441,7 +441,7 @@ global static Rollup countDistinctFromApex(
   SObjectType lookupSobjectType
 )
 
-global static Rollup countDistinctFromApex(
+global static RollupAsyncProcessor countDistinctFromApex(
   SObjectField countDistinctFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -450,7 +450,7 @@ global static Rollup countDistinctFromApex(
   Decimal defaultRecalculationValue
 )
 
-global static Rollup countDistinctFromApex(
+global static RollupAsyncProcessor countDistinctFromApex(
   SObjectField countDistinctFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -460,7 +460,7 @@ global static Rollup countDistinctFromApex(
   Evaluator eval
 )
 
-global static Rollup concatDistinctFromApex(
+global static RollupAsyncProcessor concatDistinctFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -468,7 +468,7 @@ global static Rollup concatDistinctFromApex(
   SObjectType lookupSobjectType
 )
 
-global static Rollup concatDistinctFromApex(
+global static RollupAsyncProcessor concatDistinctFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -477,7 +477,7 @@ global static Rollup concatDistinctFromApex(
   String defaultRecalculationValue
 )
 
-global static Rollup concatDistinctFromApex(
+global static RollupAsyncProcessor concatDistinctFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -487,7 +487,7 @@ global static Rollup concatDistinctFromApex(
   Evaluator eval
 )
 
-global static Rollup concatFromApex(
+global static RollupAsyncProcessor concatFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -495,7 +495,7 @@ global static Rollup concatFromApex(
   SObjectType lookupSobjectType
 )
 
-global static Rollup concatFromApex(
+global static RollupAsyncProcessor concatFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -504,7 +504,7 @@ global static Rollup concatFromApex(
   String defaultRecalculationValue
 )
 
-global static Rollup concatFromApex(
+global static RollupAsyncProcessor concatFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -514,7 +514,7 @@ global static Rollup concatFromApex(
   Evaluator eval
 )
 
-global static Rollup countFromApex(
+global static RollupAsyncProcessor countFromApex(
   SObjectField countFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -522,7 +522,7 @@ global static Rollup countFromApex(
   SObjectType lookupSobjectType
 )
 
-global static Rollup countFromApex(
+global static RollupAsyncProcessor countFromApex(
   SObjectField countFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -531,7 +531,7 @@ global static Rollup countFromApex(
   Decimal defaultRecalculationValue
 )
 
-global static Rollup countFromApex(
+global static RollupAsyncProcessor countFromApex(
   SObjectField countFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -541,7 +541,7 @@ global static Rollup countFromApex(
   Evaluator eval
 )
 
-global static Rollup firstFromApex(
+global static RollupAsyncProcessor firstFromApex(
   SObjectField firstFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -550,7 +550,7 @@ global static Rollup firstFromApex(
   String orderByFirstLast
 )
 
-global static Rollup firstFromApex(
+global static RollupAsyncProcessor firstFromApex(
   SObjectField firstFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -560,7 +560,7 @@ global static Rollup firstFromApex(
   String orderByFirstLast
 )
 
-global static Rollup firstFromApex(
+global static RollupAsyncProcessor firstFromApex(
   SObjectField firstFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -571,7 +571,7 @@ global static Rollup firstFromApex(
   Evaluator eval
 )
 
-global static Rollup lastFromApex(
+global static RollupAsyncProcessor lastFromApex(
   SObjectField lastFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -580,7 +580,7 @@ global static Rollup lastFromApex(
   String orderByFirstLast
 )
 
-global static Rollup lastFromApex(
+global static RollupAsyncProcessor lastFromApex(
   SObjectField lastFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -590,7 +590,7 @@ global static Rollup lastFromApex(
   String orderByFirstLast
 )
 
-global static Rollup lastFromApex(
+global static RollupAsyncProcessor lastFromApex(
   SObjectField lastFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -601,7 +601,7 @@ global static Rollup lastFromApex(
   Evaluator eval
 )
 
-global static Rollup maxFromApex(
+global static RollupAsyncProcessor maxFromApex(
   SObjectField maxFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -609,7 +609,7 @@ global static Rollup maxFromApex(
   SObjectType lookupSobjectType,
 )
 
-global static Rollup maxFromApex(
+global static RollupAsyncProcessor maxFromApex(
   SObjectField maxFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -618,7 +618,7 @@ global static Rollup maxFromApex(
   Object defaultRecalculationValue // can be a string or a number for max
 )
 
-global static Rollup maxFromApex(
+global static RollupAsyncProcessor maxFromApex(
   SObjectField maxFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -628,7 +628,7 @@ global static Rollup maxFromApex(
   Evaluator eval
 )
 
-global static Rollup minFromApex(
+global static RollupAsyncProcessor minFromApex(
   SObjectField minFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -636,7 +636,7 @@ global static Rollup minFromApex(
   SObjectType lookupSobjectType,
 )
 
-global static Rollup minFromApex(
+global static RollupAsyncProcessor minFromApex(
   SObjectField minFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -645,7 +645,7 @@ global static Rollup minFromApex(
   Object defaultRecalculationValue // can be a string or a number for min
 )
 
-global static Rollup minFromApex(
+global static RollupAsyncProcessor minFromApex(
   SObjectField minFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -655,7 +655,7 @@ global static Rollup minFromApex(
   Evaluator eval
 )
 
-global static Rollup sumFromApex(
+global static RollupAsyncProcessor sumFromApex(
   SObjectField sumFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -663,7 +663,7 @@ global static Rollup sumFromApex(
   SObjectType lookupSobjectType,
 )
 
-global static Rollup sumFromApex(
+global static RollupAsyncProcessor sumFromApex(
   SObjectField sumFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
@@ -672,7 +672,7 @@ global static Rollup sumFromApex(
   Decimal defaultRecalculationValue
 )
 
-global static Rollup sumFromApex(
+global static RollupAsyncProcessor sumFromApex(
   SObjectField sumFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
