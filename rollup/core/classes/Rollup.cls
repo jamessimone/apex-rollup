@@ -1998,10 +1998,11 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
 
   private static void collapseCachedRollups() {
     Map<String, Rollup> rollupOperationToRollup = new Map<String, Rollup>();
-    for (Integer index = CACHED_ROLLUPS.size() -1; index >= 0; index--) {
+    for (Integer index = CACHED_ROLLUPS.size() - 1; index >= 0; index--) {
       Rollup cachedRollup = CACHED_ROLLUPS[index];
-      if (rollupOperationToRollup.containsKey(cachedRollup.metadata.RollupOperation__c)) {
-        Rollup matchingRollup = rollupOperationToRollup.get(cachedRollup.metadata.RollupOperation__c);
+      String rollupKey = cachedRollup.metadata.RollupOperation__c + cachedRollup.metadata.LookupObject__c + cachedRollup.metadata.LookupFieldOnLookupObject__c;
+      if (rollupOperationToRollup.containsKey(rollupKey)) {
+        Rollup matchingRollup = rollupOperationToRollup.get(rollupKey);
         for (SObject calcItem : cachedRollup.calcItems) {
           if (matchingRollup.calcItems.contains(calcItem) == false) {
             matchingRollup.calcItems.add(calcItem);
@@ -2013,7 +2014,7 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
           }
         }
       } else {
-        rollupOperationToRollup.put(cachedRollup.metadata.RollupOperation__c, cachedRollup);
+        rollupOperationToRollup.put(rollupKey, cachedRollup);
       }
     }
     CACHED_ROLLUPS.clear();
