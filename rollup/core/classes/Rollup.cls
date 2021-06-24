@@ -2002,8 +2002,16 @@ global without sharing virtual class Rollup implements Database.Batchable<SObjec
       Rollup cachedRollup = CACHED_ROLLUPS[index];
       if (rollupOperationToRollup.containsKey(cachedRollup.metadata.RollupOperation__c)) {
         Rollup matchingRollup = rollupOperationToRollup.get(cachedRollup.metadata.RollupOperation__c);
-        matchingRollup.calcItems.addAll(cachedRollup.calcItems);
-        matchingRollup.oldCalcItems.putAll(cachedRollup.oldCalcItems);
+        for (SObject calcItem : cachedRollup.calcItems) {
+          if (matchingRollup.calcItems.contains(calcItem) == false) {
+            matchingRollup.calcItems.add(calcItem);
+          }
+        }
+        for (Id oldId : cachedRollup.oldCalcItems.keySet()) {
+          if (matchingRollup.oldCalcItems.containsKey(oldId) == false) {
+            matchingRollup.oldCalcItems.put(oldId, cachedRollup.oldCalcItems.get(oldId));
+          }
+        }
       } else {
         rollupOperationToRollup.put(cachedRollup.metadata.RollupOperation__c, cachedRollup);
       }

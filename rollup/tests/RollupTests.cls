@@ -1633,7 +1633,6 @@ private class RollupTests {
     System.assertEquals(testCpaOne.PreferenceRank, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE should take into account only non-deleted values');
   }
 
-  // TODO migrate tests specific to calculating to this format, and the actual testing of functionality to RollupCalculatorTests
   @isTest
   static void shouldRollupForFirst() {
     rollupOp = Rollup.Op.FIRST;

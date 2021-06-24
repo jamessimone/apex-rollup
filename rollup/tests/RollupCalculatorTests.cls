@@ -1,7 +1,7 @@
 @isTest
 private class RollupCalculatorTests {
-  // TODO - refactor RollupTests so that the different *calculator type*-based tests live here instead when DML is not required
-  // or only *light* DML is required
+  // use these tests when DML is not required, or only *light* DML is necessary
+  // otherwise use RollupTests for the full picture
 
   @TestSetup
   static void setup() {
