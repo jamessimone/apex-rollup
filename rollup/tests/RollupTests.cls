@@ -96,7 +96,7 @@ private class RollupTests {
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
-    RollupAsyncProcessor rollup = Rollup.sumFromApex(
+    Rollup rollup = Rollup.sumFromApex(
       ContactPointAddress.PreferenceRank,
       ContactPointAddress.ParentId,
       Account.Id,
@@ -122,7 +122,7 @@ private class RollupTests {
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
-    RollupAsyncProcessor rollup = Rollup.sumFromApex(
+    Rollup rollup = Rollup.sumFromApex(
       ContactPointAddress.PreferenceRank,
       ContactPointAddress.ParentId,
       Account.Id,
@@ -150,7 +150,7 @@ private class RollupTests {
     );
     Rollup.apexContext = TriggerOperation.AFTER_UNDELETE;
 
-    RollupAsyncProcessor rollup = Rollup.sumFromApex(
+    Rollup rollup = Rollup.sumFromApex(
       ContactPointAddress.PreferenceRank,
       ContactPointAddress.ParentId,
       Account.Id,

@@ -1,5 +1,4 @@
 global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, System.Comparable {
-
   private final SObjectField opFieldOnCalcItem;
   private final SObjectField lookupFieldOnCalcItem;
   private final SObjectField lookupFieldOnLookupObject;
@@ -7,6 +6,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private final SObjectType lookupObj;
   private final Evaluator eval;
   private final Op op;
+
+  private final List<RollupAsyncProcessor> deferredRollups = new List<RollupAsyncProcessor>();
+  private final List<RollupAsyncProcessor> syncRollups = new List<RollupAsyncProcessor>();
+
+  protected final List<SObject> calcItems;
+  protected final Map<Id, SObject> oldCalcItems;
+  protected final Rollup__mdt metadata;
+  protected final SObjectType calcItemType;
 
   private RollupRelationshipFieldFinder.Traversal traversal;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
@@ -17,6 +24,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static Boolean isRunningAsync = false;
   @testVisible
   private static Boolean shouldRunAsBatch = false;
+
+  private class RollupAsyncSaver implements System.Queueable {
+    private final List<SObject> records;
+    public RollupAsyncSaver(List<SObject> records) {
+      this.records = records;
+    }
+
+    public void execute(QueueableContext context) {
+      new DMLHelper().doUpdate(this.records);
+    }
+  }
 
   public static RollupAsyncProcessor getProcessor(
     List<SObject> calcItems,
@@ -52,6 +70,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public RollupAsyncProcessor(InvocationPoint invokePoint) {
     super(invokePoint);
+    this.isBatched = true;
+    // a batch only becomes valid if other Rollups are added to it
+    this.isNoOp = true;
   }
 
   public RollupAsyncProcessor(RollupAsyncProcessor innerRollup, Op op, List<SObject> calcItems) {
@@ -162,17 +183,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return baseString.removeEnd('\n');
   }
 
-  private class RollupAsyncSaver implements System.Queueable {
-    private final List<SObject> records;
-    public RollupAsyncSaver(List<SObject> records) {
-      this.records = records;
-    }
-
-    public void execute(QueueableContext context) {
-      new DMLHelper().doUpdate(this.records);
-    }
-  }
-
   public virtual Database.QueryLocator start(Database.BatchableContext context) {
     /**
      * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
@@ -214,7 +224,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupLogger.Instance.save();
   }
 
-  public String runCalc() {
+  public override String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     this.ingestRollupControlData();
 
@@ -247,6 +257,31 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return rollupProcessId;
   }
 
+  public static void flatten(List<RollupAsyncProcessor> stackedRollups) {
+    Map<String, RollupAsyncProcessor> rollupOperationToRollup = new Map<String, RollupAsyncProcessor>();
+    for (RollupAsyncProcessor stackedRollup : stackedRollups) {
+      // If the hashed contents are the same, we can't collapse
+      // the two rollup operations, and instead have to juggle the updated values for the parent in memory
+      String rollupKey = stackedRollup.getHashedContents();
+      if (rollupOperationToRollup.containsKey(rollupKey)) {
+        RollupAsyncProcessor matchingRollup = rollupOperationToRollup.get(rollupKey);
+        for (SObject calcItem : stackedRollup.calcItems) {
+          if (matchingRollup.calcItems.contains(calcItem) == false) {
+            matchingRollup.calcItems.add(calcItem);
+          }
+        }
+        for (Id oldId : stackedRollup.oldCalcItems.keySet()) {
+          if (matchingRollup.oldCalcItems.containsKey(oldId) == false) {
+            matchingRollup.oldCalcItems.put(oldId, stackedRollup.oldCalcItems.get(oldId));
+          }
+        }
+      } else {
+        rollupOperationToRollup.put(rollupKey, stackedRollup);
+      }
+    }
+    stackedRollups.clear();
+    stackedRollups.addAll(rollupOperationToRollup.values());
+  }
 
   protected RollupAsyncProcessor getAsyncRollup() {
     // swap off on which async process is running to achieve infinite scaling
@@ -423,6 +458,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.processDeferredRollups();
   }
 
+  private String getHashedContents() {
+    // the only thing that necessarily makes a rollup unique is the sum total of the metadata behind it
+    // as well as the calc items driving that calculation.
+    // you could have multiple rollups with different calc item where clauses all rolling up to the same field
+    // even worse - in situations where multiple DML operations are enqueued in the same transaction
+    // the same calc items by Id might differ slightly by field value.
+    return JSON.serialize(this.metadata) + this.calcItems?.hashCode();
+  }
+
   private void handleMultipleDMLRollupsEnqueuedInTheSameTransaction(List<Rollup> rolls) {
     // if items are inserted, updated, deleted (etc ...)
     // all in the same transaction, they can be introduced out of order
@@ -437,7 +481,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     rolls.sort();
   }
 
-  private List<SObject> getLookupItems(Map<String, List<SObject>> calcItemsByLookupField, Map<String, SObject> updatedLookupRecords, RollupAsyncProcessor roll) {
+  private List<SObject> getLookupItems(
+    Map<String, List<SObject>> calcItemsByLookupField,
+    Map<String, SObject> updatedLookupRecords,
+    RollupAsyncProcessor roll
+  ) {
     List<SObject> localLookupItems = new List<SObject>();
     Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
     for (String lookupId : calcItemsByLookupField.keySet()) {
@@ -487,14 +535,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private void throwWithRollupData(List<RollupAsyncProcessor> rolls) {
-    List<Rollup__mdt> failedRollupInfo = new List<Rollup__mdt>();
-    for (RollupAsyncProcessor roll : rolls) {
-      failedRollupInfo.add(roll.metadata);
-    }
+  private void throwWithRollupData(List<Rollup> rolls) {
     String exceptionString = 'rollup failed to re-queue for: ';
-    RollupLogger.Instance.log(exceptionString, failedRollupInfo, LoggingLevel.ERROR);
-    throw new AsyncException(exceptionString + JSON.serialize(failedRollupInfo));
+    RollupLogger.Instance.log(exceptionString, rolls, LoggingLevel.ERROR);
+    throw new AsyncException(exceptionString + rolls);
   }
 
   private void getFieldNamesForRollups(List<RollupAsyncProcessor> rollups) {
@@ -684,7 +728,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return totalCountOfRecords;
   }
 
-  private List<SObject> getUpdatedLookupItemsByRollup(RollupAsyncProcessor rollup, Map<String, List<SObject>> calcItemsByLookupField, List<SObject> lookupItems) {
+  private List<SObject> getUpdatedLookupItemsByRollup(
+    RollupAsyncProcessor rollup,
+    Map<String, List<SObject>> calcItemsByLookupField,
+    List<SObject> lookupItems
+  ) {
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Set<SObject> unprocessedCalcItems = new Set<SObject>();
