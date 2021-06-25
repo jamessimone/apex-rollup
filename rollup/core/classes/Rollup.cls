@@ -3,9 +3,6 @@ global without sharing virtual class Rollup {
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
    * but this keeps things much simpler
    */
-  public static Boolean isRunningAsync = false;
-  public static Boolean shouldRunAsBatch = false;
-
   @testVisible
   private static Boolean shouldRun = false;
   @testVisible
@@ -25,10 +22,9 @@ global without sharing virtual class Rollup {
   @testVisible
   private static List<RollupAsyncProcessor> CACHED_ROLLUPS = new List<RollupAsyncProcessor>();
 
-  public static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
-
+  private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
   private static Boolean isCDC = false;
-  public static Boolean isDeferralAllowed = true;
+  private static Boolean isDeferralAllowed = true;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
   private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{ Op.FIRST.name(), Op.LAST.name(), Op.AVERAGE.name() };
 
@@ -52,6 +48,7 @@ global without sharing virtual class Rollup {
    * It's more palatable in Apex than in many other languages, as a matter of fact -
    * this is because the @testVisible annotation enforces for us the override only being possible while testing
    */
+  @testVisible
   private static DMLHelper DML {
     get {
       if (DML == null) {
@@ -203,6 +200,18 @@ global without sharing virtual class Rollup {
     return CACHED_ROLLUPS;
   }
 
+  protected Map<SObjectType, Set<TriggerOperation>> getCachedApexOperations() {
+    return CACHED_APEX_OPERATIONS;
+  }
+
+  protected Boolean getIsDeferralAllowed() {
+    return isDeferralAllowed;
+  }
+
+  protected void setIsDeferralAllowed(Boolean value) {
+    isDeferralAllowed = value;
+  }
+
   protected RollupAsyncProcessor getAsyncRollup(
     List<Rollup__mdt> rollupOperations,
     SObjectType sObjectType,
@@ -212,6 +221,10 @@ global without sharing virtual class Rollup {
     InvocationPoint rollupInvokePoint
   ) {
     return getRollup(rollupOperations, sObjectType, calcItems, oldCalcItems, eval, rollupInvokePoint);
+  }
+
+  protected DMLHelper getDML() {
+    return DML;
   }
 
   /**
@@ -1691,9 +1704,14 @@ global without sharing virtual class Rollup {
 
   private static void collapseCachedRollups() {
     Map<String, RollupAsyncProcessor> rollupOperationToRollup = new Map<String, RollupAsyncProcessor>();
-    for (Integer index = CACHED_ROLLUPS.size() - 1; index >= 0; index--) {
-      RollupAsyncProcessor cachedRollup = CACHED_ROLLUPS[index];
-      String rollupKey = cachedRollup.metadata.RollupOperation__c + cachedRollup.metadata.LookupObject__c + cachedRollup.metadata.LookupFieldOnLookupObject__c;
+    for (RollupAsyncProcessor cachedRollup : CACHED_ROLLUPS) {
+      // the only thing that necessarily makes a rollup unique is the sum total of the metadata behind it
+      // as well as the calc items driving that calculation.
+      // you could have multiple rollups with different calc item where clauses all rolling up to the same field
+      // even worse - in situations where multiple DML operations are enqueued in the same transaction
+      // the same calc items by Id might differ slightly by field value. In that case, we can't collapse
+      // the two rollup operations, and instead have to juggle the updated values for the parent in memory
+      String rollupKey = JSON.serialize(cachedRollup.metadata) + cachedRollup.calcItems.hashCode();
       if (rollupOperationToRollup.containsKey(rollupKey)) {
         RollupAsyncProcessor matchingRollup = rollupOperationToRollup.get(rollupKey);
         for (SObject calcItem : cachedRollup.calcItems) {

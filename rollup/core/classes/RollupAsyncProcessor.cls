@@ -14,6 +14,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
   private static Integer stackDepth = 0;
+  private static Boolean isRunningAsync = false;
+  @testVisible
+  private static Boolean shouldRunAsBatch = false;
 
   public static RollupAsyncProcessor getProcessor(
     List<SObject> calcItems,
@@ -30,7 +33,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupControl__mdt rollupControl,
     Rollup__mdt metadata
   ) {
-    return new RollupAsyncProcessor.QueueableProcessor(
+    return new QueueableProcessor(
       calcItems,
       opFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -371,32 +374,32 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
-    for (RollupAsyncProcessor rollup : rollups) {
-      RollupLogger.Instance.log('starting rollup for: ', rollup, LoggingLevel.DEBUG);
+    for (RollupAsyncProcessor roll : rollups) {
+      RollupLogger.Instance.log('starting rollup for: ', roll, LoggingLevel.DEBUG);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
-      if (hasExceededCurrentRollupLimits(rollup.rollupControl) || rollup instanceof RollupFullBatchRecalculator) {
-        this.deferredRollups.add(rollup);
+      if (hasExceededCurrentRollupLimits(roll.rollupControl) || roll instanceof RollupFullBatchRecalculator) {
+        this.deferredRollups.add(roll);
         continue;
       }
 
-      if (grandparentRollups.containsKey(rollup.lookupObj) && rollup.traversal == null) {
-        rollup.traversal = grandparentRollups.get(rollup.lookupObj);
+      if (grandparentRollups.containsKey(roll.lookupObj) && roll.traversal == null) {
+        roll.traversal = grandparentRollups.get(roll.lookupObj);
       }
 
-      Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj));
+      Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj));
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
-      if (rollup.traversal?.getIsFinished() == false) {
-        this.deferredRollups.add(rollup);
+      if (roll.traversal?.getIsFinished() == false) {
+        this.deferredRollups.add(roll);
         continue;
-      } else if (rollup.traversal != null && grandparentRollups.containsKey(rollup.lookupObj) == false) {
+      } else if (roll.traversal != null && grandparentRollups.containsKey(roll.lookupObj) == false) {
         // cache the traversal for any future callers - because we queried for ALL unique grand(or greater)parent fields
         // we don't need to re-traverse the whole object chain again if there are other grandparent rollups in the list
-        grandparentRollups.put(rollup.lookupObj, rollup.traversal);
+        grandparentRollups.put(roll.lookupObj, roll.traversal);
       }
 
-      List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, rollup);
-      List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(rollup, calcItemsByLookupField, localLookupItems);
+      List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
+      List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems);
       for (SObject updatedRecord : updatedParentRecords) {
         updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
       }
@@ -404,7 +407,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     this.splitUpdates(updatedLookupRecords);
 
-    DML.doUpdate(updatedLookupRecords.values());
+    this.getDML().doUpdate(updatedLookupRecords.values());
 
     this.processDeferredRollups();
   }
@@ -435,7 +438,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         localLookupItems.add(updatedLookupObject);
       }
     }
-    localLookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
+    localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
     return localLookupItems;
   }
 
@@ -458,10 +461,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void processDeferredRollups() {
-    if (this.deferredRollups.isEmpty() == false && isDeferralAllowed && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
+    if (this.deferredRollups.isEmpty() == false && this.getIsDeferralAllowed() && stackDepth < this.rollupControl?.MaxRollupRetries__c) {
       stackDepth++;
       // tragic, but necessary due to limits on requeueing allowed during testing
-      isDeferralAllowed = Test.isRunningTest() == false && this.rollupControl.MaxRollupRetries__c > stackDepth;
+      this.setIsDeferralAllowed(Test.isRunningTest() == false && this.rollupControl.MaxRollupRetries__c > stackDepth);
 
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);
@@ -589,10 +592,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean getShouldRunSyncDeferred(RollupAsyncProcessor roll) {
-    if (roll.isNoOp || CACHED_APEX_OPERATIONS.containsKey(roll.calcItemType) == false) {
+    if (roll.isNoOp || this.getCachedApexOperations().containsKey(roll.calcItemType) == false) {
       return false;
     }
-    Set<TriggerOperation> apexOperations = CACHED_APEX_OPERATIONS.get(roll.calcItemType);
+    Set<TriggerOperation> apexOperations = this.getCachedApexOperations().get(roll.calcItemType);
     if (apexOperations.contains(TriggerOperation.AFTER_INSERT) && roll.op.name().contains('UPDATE')) {
       return true;
     } else if (
