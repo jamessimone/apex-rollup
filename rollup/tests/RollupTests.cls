@@ -3211,8 +3211,7 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
       BatchChunkSize__c = 1,
-      MaxLookupRowsBeforeBatching__c = 0,
-      MaxRollupRetries__c = 1
+      MaxLookupRowsBeforeBatching__c = 1
     );
 
     Test.startTest();

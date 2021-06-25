@@ -36,6 +36,32 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
+  public static void flatten(List<RollupAsyncProcessor> stackedRollups) {
+    Map<String, RollupAsyncProcessor> rollupOperationToRollup = new Map<String, RollupAsyncProcessor>();
+    for (RollupAsyncProcessor stackedRollup : stackedRollups) {
+      // If the hashed contents are the same, we can't collapse
+      // the two rollup operations, and instead have to juggle the updated values for the parent in memory
+      String rollupKey = stackedRollup.getHashedContents();
+      if (rollupOperationToRollup.containsKey(rollupKey)) {
+        RollupAsyncProcessor matchingRollup = rollupOperationToRollup.get(rollupKey);
+        for (SObject calcItem : stackedRollup.calcItems) {
+          if (matchingRollup.calcItems.contains(calcItem) == false) {
+            matchingRollup.calcItems.add(calcItem);
+          }
+        }
+        for (Id oldId : stackedRollup.oldCalcItems.keySet()) {
+          if (matchingRollup.oldCalcItems.containsKey(oldId) == false) {
+            matchingRollup.oldCalcItems.put(oldId, stackedRollup.oldCalcItems.get(oldId));
+          }
+        }
+      } else {
+        rollupOperationToRollup.put(rollupKey, stackedRollup);
+      }
+    }
+    stackedRollups.clear();
+    stackedRollups.addAll(rollupOperationToRollup.values());
+  }
+
   public static RollupAsyncProcessor getProcessor(
     List<SObject> calcItems,
     SObjectField opFieldOnCalcItem,
@@ -255,32 +281,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     RollupLogger.Instance.save();
     return rollupProcessId;
-  }
-
-  public static void flatten(List<RollupAsyncProcessor> stackedRollups) {
-    Map<String, RollupAsyncProcessor> rollupOperationToRollup = new Map<String, RollupAsyncProcessor>();
-    for (RollupAsyncProcessor stackedRollup : stackedRollups) {
-      // If the hashed contents are the same, we can't collapse
-      // the two rollup operations, and instead have to juggle the updated values for the parent in memory
-      String rollupKey = stackedRollup.getHashedContents();
-      if (rollupOperationToRollup.containsKey(rollupKey)) {
-        RollupAsyncProcessor matchingRollup = rollupOperationToRollup.get(rollupKey);
-        for (SObject calcItem : stackedRollup.calcItems) {
-          if (matchingRollup.calcItems.contains(calcItem) == false) {
-            matchingRollup.calcItems.add(calcItem);
-          }
-        }
-        for (Id oldId : stackedRollup.oldCalcItems.keySet()) {
-          if (matchingRollup.oldCalcItems.containsKey(oldId) == false) {
-            matchingRollup.oldCalcItems.put(oldId, stackedRollup.oldCalcItems.get(oldId));
-          }
-        }
-      } else {
-        rollupOperationToRollup.put(rollupKey, stackedRollup);
-      }
-    }
-    stackedRollups.clear();
-    stackedRollups.addAll(rollupOperationToRollup.values());
   }
 
   protected RollupAsyncProcessor getAsyncRollup() {
