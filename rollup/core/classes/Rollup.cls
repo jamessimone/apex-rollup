@@ -161,17 +161,6 @@ global without sharing virtual class Rollup {
     }
   }
 
-  public class RollupAsyncSaver implements System.Queueable {
-    private final List<SObject> records;
-    public RollupAsyncSaver(List<SObject> records) {
-      this.records = records;
-    }
-
-    public void execute(QueueableContext context) {
-      new DMLHelper().doUpdate(this.records);
-    }
-  }
-
   global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,

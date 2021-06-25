@@ -162,6 +162,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return baseString.removeEnd('\n');
   }
 
+  private class RollupAsyncSaver implements System.Queueable {
+    private final List<SObject> records;
+    public RollupAsyncSaver(List<SObject> records) {
+      this.records = records;
+    }
+
+    public void execute(QueueableContext context) {
+      new DMLHelper().doUpdate(this.records);
+    }
+  }
+
   public virtual Database.QueryLocator start(Database.BatchableContext context) {
     /**
      * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
