@@ -777,7 +777,7 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 50, Name = 'MaxParentRows');
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.shouldRunAsBatch = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1, IsRollupLoggingEnabled__c = true);
 
     Test.startTest();
@@ -3163,7 +3163,7 @@ private class RollupTests {
   static void shouldRunSuccessfullyAsBatch() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.shouldRunAsBatch = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3211,7 +3211,7 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
       BatchChunkSize__c = 1,
-      MaxLookupRowsBeforeBatching__c = 0
+      MaxLookupRowsBeforeBatching__c = 1
     );
 
     Test.startTest();
@@ -4061,7 +4061,7 @@ private class RollupTests {
 
   @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrievedWithBatch() {
-    Rollup.shouldRunAsBatch = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),

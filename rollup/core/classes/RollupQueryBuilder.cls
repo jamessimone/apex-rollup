@@ -3,6 +3,7 @@ public without sharing class RollupQueryBuilder {
   }
 
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
+  public static final Integer SENTINEL_COUNT_VALUE = -1;
 
   /**
    * @return String `queryString` - returns a query string with "objIds" expected as a bind variable

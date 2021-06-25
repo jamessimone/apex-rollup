@@ -52,6 +52,16 @@ jobs:
       - name: 'Run LWC Unit Tests'
         run: npm run test:lwc
 
+      - name: 'Upload code coverage for LWC to Codecov.io'
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: LWC
+
+      - name: 'Delete LWC test files after codecov upload'
+        run: |
+          rm coverage/ -rf
+
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
@@ -74,17 +84,12 @@ jobs:
         shell: pwsh
         run: '. ./scripts/test.ps1'
 
-      # Upload code coverage data
-      - name: 'Upload code coverage for Apex to Codecov.io'
+      # Upload Apex code coverage data
+      - name: 'Upload Apex code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: Apex
-      - name: 'Upload code coverage for LWC to Codecov.io'
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: LWC
 
       #  Only create new package versions if a PR is pointed to main or we are merging to main
       - name: 'Package & Promote'

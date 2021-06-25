@@ -1,4 +1,4 @@
-public class RollupFullBatchRecalculator extends Rollup {
+public class RollupFullBatchRecalculator extends RollupAsyncProcessor {
   private final String queryString;
   private final List<Rollup__mdt> rollupInfo;
   private final Set<Id> recordIds;
