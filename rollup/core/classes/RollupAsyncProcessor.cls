@@ -92,7 +92,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       innerRollup.metadata
     );
 
-    this.rollups = innerRollup.rollups;
+    this.rollups.addAll(innerRollup.rollups);
     this.isNoOp = this.rollups.isEmpty() && innerRollup.metadata?.IsFullRecordSet__c == false;
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isCDCUpdate = innerRollup.isCDCUpdate;

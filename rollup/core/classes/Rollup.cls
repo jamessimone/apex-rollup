@@ -20,7 +20,7 @@ global without sharing virtual class Rollup {
   @testVisible
   private static Integer maxQueryRowOverride;
   @testVisible
-  private static List<RollupAsyncProcessor> CACHED_ROLLUPS = new List<RollupAsyncProcessor>();
+  private static final List<RollupAsyncProcessor> CACHED_ROLLUPS = new List<RollupAsyncProcessor>();
 
   private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
   private static Boolean isCDC = false;
@@ -31,6 +31,7 @@ global without sharing virtual class Rollup {
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
   protected final Boolean isBatched;
+  protected final List<RollupAsyncProcessor> rollups = new List<RollupAsyncProcessor>();
 
   // non-final instance variables
   protected Boolean isFullRecalc = false;
@@ -51,16 +52,6 @@ global without sharing virtual class Rollup {
         DML = new DMLHelper();
       }
       return DML;
-    }
-    set;
-  }
-
-  protected List<RollupAsyncProcessor> rollups {
-    get {
-      if (rollups == null) {
-        rollups = new List<RollupAsyncProcessor>();
-      }
-      return rollups;
     }
     set;
   }
