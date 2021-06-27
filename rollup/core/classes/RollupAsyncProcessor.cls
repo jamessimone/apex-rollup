@@ -38,24 +38,38 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public static void flatten(List<RollupAsyncProcessor> stackedRollups) {
     Map<String, RollupAsyncProcessor> rollupOperationToRollup = new Map<String, RollupAsyncProcessor>();
+    Integer counter = 0;
+    Map<String, List<String>> operationToProcessedRecords = new Map<String, List<String>>();
     for (RollupAsyncProcessor stackedRollup : stackedRollups) {
       // If the hashed contents are the same, we can't collapse
       // the two rollup operations, and instead have to juggle the updated values for the parent in memory
       String rollupKey = stackedRollup.getHashedContents();
+      Boolean shouldAddSameRollupOperation = false;
+
       if (rollupOperationToRollup.containsKey(rollupKey)) {
         RollupAsyncProcessor matchingRollup = rollupOperationToRollup.get(rollupKey);
-        for (SObject calcItem : stackedRollup.calcItems) {
-          if (matchingRollup.calcItems.contains(calcItem) == false) {
-            matchingRollup.calcItems.add(calcItem);
+        for (Integer index = stackedRollup.calcItems.size() - 1; index >= 0; index--) {
+          SObject calcItem = stackedRollup.calcItems[index];
+          if (matchingRollup.calcItems.contains(calcItem) == false && operationToProcessedRecords.containsKey(rollupKey) == false) {
+            doBookkeepingOnCachedItems(matchingRollup, stackedRollup, operationToProcessedRecords, calcItem, rollupKey, index);
+          } else if (
+            matchingRollup.calcItems.contains(calcItem) == false &&
+            operationToProcessedRecords.containsKey(rollupKey) &&
+            operationToProcessedRecords.get(rollupKey).contains(calcItem.Id) == false
+          ) {
+            doBookkeepingOnCachedItems(matchingRollup, stackedRollup, operationToProcessedRecords, calcItem, rollupKey, index);
           }
         }
-        for (Id oldId : stackedRollup.oldCalcItems.keySet()) {
-          if (matchingRollup.oldCalcItems.containsKey(oldId) == false) {
-            matchingRollup.oldCalcItems.put(oldId, stackedRollup.oldCalcItems.get(oldId));
-          }
+
+        if (stackedRollup.calcItems.isEmpty() == false) {
+          shouldAddSameRollupOperation = true;
         }
       } else {
         rollupOperationToRollup.put(rollupKey, stackedRollup);
+      }
+      if (shouldAddSameRollupOperation) {
+        counter++;
+        rollupOperationToRollup.put(rollupKey + counter, stackedRollup);
       }
     }
     stackedRollups.clear();
@@ -454,6 +468,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.splitUpdates(updatedLookupRecords);
 
     this.getDML().doUpdate(updatedLookupRecords.values());
+    System.debug(this.getDML());
 
     this.processDeferredRollups();
   }
@@ -464,7 +479,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // you could have multiple rollups with different calc item where clauses all rolling up to the same field
     // even worse - in situations where multiple DML operations are enqueued in the same transaction
     // the same calc items by Id might differ slightly by field value.
-    return JSON.serialize(this.metadata) + this.calcItems?.hashCode();
+    return String.valueOf(this.metadata);
   }
 
   private void handleMultipleDMLRollupsEnqueuedInTheSameTransaction(List<Rollup> rolls) {
@@ -905,6 +920,29 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
         RollupLogger.Instance.log('Reparented item after reparenting rollup: ', lookupRecord, LoggingLevel.DEBUG);
       }
+    }
+  }
+
+  private static void doBookkeepingOnCachedItems(
+    RollupAsyncProcessor matchingRollup,
+    RollupAsyncProcessor stackedRollup,
+    Map<String, List<String>> operationToProcessedRecords,
+    SObject calcItem,
+    String rollupKey,
+    Integer index
+  ) {
+    List<String> processedRecords = operationToProcessedRecords.containsKey(rollupKey)
+      ? operationToProcessedRecords.get(rollupKey)
+      : new List<String>{ calcItem.Id };
+    operationToProcessedRecords.put(rollupKey, processedRecords);
+    Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(matchingRollup.calcItems);
+    idToCalcItem.put(calcItem.Id, calcItem);
+    matchingRollup.calcItems.clear();
+    matchingRollup.calcItems.addAll(idToCalcItem.values());
+    stackedRollup.calcItems.remove(index);
+
+    if (stackedRollup.oldCalcItems.isEmpty() == false && stackedRollup.oldCalcItems.containsKey(calcItem.Id) == false) {
+      matchingRollup.oldCalcItems.put(calcItem.Id, stackedRollup.oldCalcItems.get(calcItem.Id));
     }
   }
 }

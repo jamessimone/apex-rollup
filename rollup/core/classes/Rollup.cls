@@ -281,25 +281,25 @@ global without sharing virtual class Rollup {
     )
     global String lookupFieldOnCalcItem;
 
-    @InvocableVariable(label='RollupAsyncProcessor Object API Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
+    @InvocableVariable(label='Rollup Object API Name' description='The API Name of the SObject where the rollup value will be stored.' required=true)
     global String rollupSObjectName;
 
     @InvocableVariable(
-      label='RollupAsyncProcessor Object Calc Field'
+      label='Rollup Object Calc Field'
       description='The API Name of the field on the target object where the rollup value will be stored'
       required=true
     )
     global String rollupFieldOnOpObject;
     @InvocableVariable(
-      label='RollupAsyncProcessor Object Lookup Field'
+      label='Rollup Object Lookup Field'
       description='The API Name of the field on the SObject matching the value found in "lookupFieldOnCalcItem" where the rollup will be stored'
       required=true
     )
     global String lookupFieldOnOpObject;
 
-    @InvocableVariable(label='RollupAsyncProcessor Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT, CONCAT_DISTINCT, FIRST, LAST' required=true)
+    @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT, CONCAT_DISTINCT, FIRST, LAST' required=true)
     global String rollupOperation;
-    @InvocableVariable(label='RollupAsyncProcessor Operation Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
+    @InvocableVariable(label='Rollup Operation Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
     global String rollupContext;
 
     // optional fields
@@ -308,7 +308,7 @@ global without sharing virtual class Rollup {
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
-    @InvocableVariable(label='Calc Item Type When RollupAsyncProcessor Started From Parent')
+    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
     @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
     global String concatDelimiter;
@@ -333,7 +333,7 @@ global without sharing virtual class Rollup {
       description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
     )
     global Boolean isFullRecordSet;
-    @InvocableVariable(label='Is RollupAsyncProcessor Started From Parent' description='If the calc records are the parent records, set this to true')
+    @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
     @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
     global String orderByFirstLast;
@@ -426,14 +426,22 @@ global without sharing virtual class Rollup {
       processCustomMetadata(rollups, metas, flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), rollupContext, fromInvocable);
 
       if (metas.isEmpty() == false) {
-        RollupAsyncProcessor roll = getRollup(new List<Rollup__mdt>{ rollupMeta }, sObjectType, flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
+        RollupAsyncProcessor batchedRollup = getRollup(
+          new List<Rollup__mdt>{ rollupMeta },
+          sObjectType,
+          flowInput.recordsToRollup,
+          oldFlowRecords,
+          null,
+          fromInvocable
+        );
+        String logMessage = 'adding invocable rollup to list';
         if (flowInput.deferProcessing) {
-          RollupLogger.Instance.log('deferring processing for rollup', rollups, LoggingLevel.DEBUG);
-          CACHED_ROLLUPS.addAll(roll.rollups);
+          logMessage = 'deferring processing for rollup';
+          CACHED_ROLLUPS.addAll(batchedRollup.rollups);
         } else {
-          RollupLogger.Instance.log('adding invocable rollup to list', rollups, LoggingLevel.DEBUG);
-          rollups.addAll(roll.rollups);
+          rollups.addAll(batchedRollup.rollups);
         }
+        RollupLogger.Instance.log(logMessage, batchedRollup.rollups, LoggingLevel.DEBUG);
       }
     }
 

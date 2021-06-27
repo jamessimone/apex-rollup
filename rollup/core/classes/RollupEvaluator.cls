@@ -671,21 +671,28 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private class RecursiveTracker {
+    public String requestId = getCurrentTransactionId();
     public Integer stackCount = 0;
     public Set<RollupRecursionItem> recursionItems = new Set<RollupRecursionItem>();
   }
 
   private class RecursiveUpdateEvaluator extends RollupEvaluator {
     private final Rollup__mdt metadata;
+    private final String metadataKey;
 
     public RecursiveUpdateEvaluator(Rollup__mdt metadata) {
       this.metadata = metadata;
+      this.metadataKey = String.valueOf(metadata);
 
-      if (OPERATION_TO_RECURSION_TRACKER.containsKey(metadata.RollupOperation__c) == false) {
-        OPERATION_TO_RECURSION_TRACKER.put(metadata.RollupOperation__c, new RecursiveTracker());
+      if (OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadataKey) == false) {
+        OPERATION_TO_RECURSION_TRACKER.put(this.metadataKey, new RecursiveTracker());
       } else {
-        RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
-        tracker.stackCount++;
+        RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadataKey);
+        String currentRequestId = getCurrentTransactionId();
+        if (tracker.requestId != currentRequestId) {
+          tracker.requestId = currentRequestId;
+          tracker.stackCount++;
+        }
       }
     }
 
@@ -697,10 +704,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         item instanceof SObject &&
         String.isBlank(this.metadata.GrandparentRelationshipFieldPath__c) &&
         this.metadata.RollupToUltimateParent__c == false &&
-        OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadata.RollupOperation__c)
+        OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadataKey)
       ) {
         SObject calcItem = (SObject) item;
-        RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadata.RollupOperation__c);
+        RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadataKey);
         RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata, recursionTracker.stackCount);
 
         if (recursionTracker.recursionItems.contains(rollupItem) == false) {
@@ -712,5 +719,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
       return matches;
     }
+  }
+
+  @testVisible
+  static String stubRequestId;
+  private static String getCurrentTransactionId() {
+    return stubRequestId != null ? stubRequestId : Request.getCurrent().getRequestId();
   }
 }

@@ -61,6 +61,18 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldFilterCalcItemsForNotEqualsNumbers() {
+    Opportunity notZero = new Opportunity(Amount = 10);
+    Opportunity zero = new Opportunity(Amount = 0);
+    String whereClause = 'Amount != 0';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, zero.getSObjectType());
+
+    System.assertEquals(true, eval.matches(notZero), String.valueOf(notZero.Amount) + ' should not = 0');
+    System.assertNotEquals(true, eval.matches(zero), '0 should  be excluded since opp amount = ' + zero.Amount);
+  }
+
+  @isTest
   static void shouldNotFilterCalcItemsBasedOnWhereClauseWithInOrNotIn() {
     Account acc = new Account(Name = 'Something & Something Else');
     Account two = new Account(Name = 'Vertical/Backslash');
@@ -651,7 +663,10 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => new Opportunity(Id = secondOpp.Id, StageName = secondOpp.StageName, Amount = secondOpp.Amount, Name = 'Something else' ) },
+      new Map<Id, SObject>{
+        oldOpp.Id => oldOpp,
+        secondOpp.Id => new Opportunity(Id = secondOpp.Id, StageName = secondOpp.StageName, Amount = secondOpp.Amount, Name = 'Something else')
+      },
       Opportunity.SObjectType
     );
 
@@ -721,6 +736,8 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive twice!');
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive thrice!');
+
+    RollupEvaluator.stubRequestId = 'somethingElse';
 
     eval = RollupEvaluator.getEvaluator(
       null,
@@ -821,12 +838,8 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
-    eval = RollupEvaluator.getEvaluator(
-      null,
-      rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
-      Opportunity.SObjectType
-    );
+    RollupEvaluator.stubRequestId = 'somethingElse';
+    eval = RollupEvaluator.getEvaluator(null, rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
@@ -853,7 +866,13 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
-    eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
+    RollupEvaluator.stubRequestId = 'somethingElse';
+    eval = RollupEvaluator.getEvaluator(
+      new RollupEvaluator.AlwaysTrueEvaluator(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
@@ -870,10 +889,16 @@ private class RollupEvaluatorTests {
       LookupFieldOnCalcItem__c = 'AccountId'
     );
 
-    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new RollupEvaluator.AlwaysTrueEvaluator(),
+      rollupMetadata,
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
+    RollupEvaluator.stubRequestId = 'somethingElse';
     eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');

@@ -3979,7 +3979,6 @@ private class RollupTests {
     };
     insert cpas;
 
-    DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
       MaxRollupRetries__c = 100,
@@ -3989,7 +3988,6 @@ private class RollupTests {
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
 
-    Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -4013,9 +4011,10 @@ private class RollupTests {
 
     // validate that queueable ran in addition to sync job
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
-    System.assertEquals(2, mock.Records.size(), 'Both parent items should have been updated!');
+    List<Account> updatedAccounts = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, updatedAccounts.size(), 'Both parent items should have been updated!');
 
-    for (Account updatedAcc : (List<Account>) mock.Records) {
+    for (Account updatedAcc : updatedAccounts) {
       System.assertEquals(1, updatedAcc.AnnualRevenue, 'Average annual revenue should have been set for both records!');
     }
   }

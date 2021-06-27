@@ -4,6 +4,7 @@ public without sharing class RollupRecursionItem {
   private final Integer stackCount;
   private final String lookupKey;
   private final Object rollupValue;
+  private final String uniqueOperation;
   private final List<Object> additionalValues = new List<Object>();
   private final Hasher hasher;
 
@@ -12,7 +13,8 @@ public without sharing class RollupRecursionItem {
     this.rollupValue = item?.get(metadata.RollupFieldOnCalcItem__c);
     this.Id = item?.Id;
     this.stackCount = stackCount;
-    this.hasher = new Hasher().add(this.lookupKey).add(this.rollupValue).add(this.Id);
+    this.uniqueOperation = metadata.RollupOperation__c + metadata.CalcItemWhereClause__c;
+    this.hasher = new Hasher().add(this.lookupKey).add(this.rollupValue).add(this.Id).add(this.uniqueOperation);
     Map<String, Object> fieldsToValues = item?.getPopulatedFieldsAsMap();
     if (fieldsToValues != null && String.isNotBlank(metadata.CalcItemWhereClause__c)) {
       List<String> whereFields = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, item?.getSObjectType()).getQueryFields();
@@ -35,6 +37,7 @@ public without sharing class RollupRecursionItem {
         this.rollupValue == that.rollupValue &&
         this.Id == that.Id &&
         this.additionalValues == that.additionalValues &&
+        this.uniqueOperation == that.uniqueOperation &&
         // only match if everything else is true AND the stackCount has increased
         this.stackCount != that.stackCount;
     }

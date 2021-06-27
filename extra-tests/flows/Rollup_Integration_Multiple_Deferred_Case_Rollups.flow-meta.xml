@@ -4,7 +4,7 @@
         <name>Commit_deferred_rollups</name>
         <label>Commit deferred rollups</label>
         <locationX>176</locationX>
-        <locationY>911</locationY>
+        <locationY>1031</locationY>
         <actionName>RollupFlowBulkSaver</actionName>
         <actionType>apex</actionType>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
@@ -13,7 +13,7 @@
         <name>Count_Cases</name>
         <label>Count Cases</label>
         <locationX>176</locationX>
-        <locationY>791</locationY>
+        <locationY>911</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -116,21 +116,15 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>deferProcessing</name>
-            <value>
-                <booleanValue>true</booleanValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
             <name>lookupFieldOnCalcItem</name>
             <value>
                 <stringValue>AccountId</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
-            <name>lookupFieldOnOpObject</name>
+            <name>deferProcessing</name>
             <value>
-                <stringValue>Id</stringValue>
+                <booleanValue>true</booleanValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -146,9 +140,9 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupContext</name>
+            <name>rollupSObjectName</name>
             <value>
-                <stringValue>UPSERT</stringValue>
+                <stringValue>Account</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -158,15 +152,21 @@
             </value>
         </inputParameters>
         <inputParameters>
+            <name>lookupFieldOnOpObject</name>
+            <value>
+                <stringValue>Id</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
             <name>rollupOperation</name>
             <value>
                 <stringValue>CONCAT_DISTINCT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupSObjectName</name>
+            <name>rollupContext</name>
             <value>
-                <stringValue>Account</stringValue>
+                <stringValue>UPSERT</stringValue>
             </value>
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
@@ -197,21 +197,15 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>deferProcessing</name>
-            <value>
-                <booleanValue>true</booleanValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
             <name>lookupFieldOnCalcItem</name>
             <value>
                 <stringValue>AccountId</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
-            <name>lookupFieldOnOpObject</name>
+            <name>deferProcessing</name>
             <value>
-                <stringValue>Id</stringValue>
+                <booleanValue>true</booleanValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -227,9 +221,9 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupContext</name>
+            <name>rollupSObjectName</name>
             <value>
-                <stringValue>UPSERT</stringValue>
+                <stringValue>Account</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -239,15 +233,108 @@
             </value>
         </inputParameters>
         <inputParameters>
+            <name>lookupFieldOnOpObject</name>
+            <value>
+                <stringValue>Id</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
             <name>rollupOperation</name>
             <value>
                 <stringValue>SUM</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
+            <name>rollupContext</name>
+            <value>
+                <stringValue>UPSERT</stringValue>
+            </value>
+        </inputParameters>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <actionCalls>
+        <name>Rollup_Last_Date</name>
+        <label>Rollup Last Date</label>
+        <locationX>176</locationX>
+        <locationY>791</locationY>
+        <actionName>Rollup</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Count_Cases</targetReference>
+        </connector>
+        <dataTypeMappings>
+            <typeName>T__oldRecordsToRollup</typeName>
+            <typeValue>Case</typeValue>
+        </dataTypeMappings>
+        <dataTypeMappings>
+            <typeName>T__recordsToRollup</typeName>
+            <typeValue>Case</typeValue>
+        </dataTypeMappings>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>rollupFieldOnCalcItem</name>
+            <value>
+                <stringValue>DateField__c</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>lookupFieldOnCalcItem</name>
+            <value>
+                <stringValue>AccountId</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>deferProcessing</name>
+            <value>
+                <booleanValue>true</booleanValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>oldRecordsToRollup</name>
+            <value>
+                <elementReference>PriorCases</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>recordsToRollup</name>
+            <value>
+                <elementReference>Cases</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
             <name>rollupSObjectName</name>
             <value>
                 <stringValue>Account</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>rollupFieldOnOpObject</name>
+            <value>
+                <stringValue>DateField__c</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>lookupFieldOnOpObject</name>
+            <value>
+                <stringValue>Id</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>rollupOperation</name>
+            <value>
+                <stringValue>LAST</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>rollupContext</name>
+            <value>
+                <stringValue>UPSERT</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>calcItemWhereClause</name>
+            <value>
+                <stringValue>Amount__c != 0</stringValue>
             </value>
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
@@ -260,7 +347,7 @@
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
-            <targetReference>Count_Cases</targetReference>
+            <targetReference>Rollup_Last_Date</targetReference>
         </connector>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
