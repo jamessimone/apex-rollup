@@ -3469,7 +3469,7 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
       BatchChunkSize__c = 10,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE, // validate that it still batches
       IsRollupLoggingEnabled__c = true
     );
 

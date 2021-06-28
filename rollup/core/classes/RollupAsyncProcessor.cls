@@ -18,6 +18,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private RollupRelationshipFieldFinder.Traversal traversal;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
+  private RollupAsyncProcessor fullRecalcProcessor;
 
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
   private static Integer stackDepth = 0;
@@ -425,7 +426,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     isRunningAsync = true; // the first rollup can immediately start rolling up, instead of dispatching to a queueable / another batchable
     RollupAsyncProcessor roll = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
     roll.isFullRecalc = true;
+    roll.fullRecalcProcessor = this;
     roll.runCalc();
+  }
+
+  protected virtual void retrieveAdditionalCalcItems(List<SObject> localCalcItems, String lookupKey, String lookupFieldOnCalcItem, Rollup__mdt meta) {
+    this.fullRecalcProcessor?.retrieveAdditionalCalcItems(localCalcItems, lookupKey, lookupFieldOnCalcItem, meta);
+  }
+
+  protected virtual Boolean shouldBypassUpdatingLookupItems(String lookupKey) {
+    return this.fullRecalcProcessor?.shouldBypassUpdatingLookupItems(lookupKey) == true;
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
@@ -757,10 +767,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
         List<SObject> localCalcItems = calcItemsByLookupField.get(key);
+        this.retrieveAdditionalCalcItems(localCalcItems, key, String.valueOf(rollup.lookupFieldOnCalcItem), rollup.metadata);
 
         if (hasExceededCurrentRollupLimits(this.rollupControl)) {
           unprocessedCalcItems.addAll(localCalcItems);
           lookupItems.remove(index);
+          continue;
+        } else if (this.shouldBypassUpdatingLookupItems(key)) {
+          // if a prior batch of full recalc rollups was executing against calc items and the total number of child items exceeded
+          // the batch chunk size, that particular iteration pulls the rest of the child items and sets the parent's fields accordingly
           continue;
         }
 

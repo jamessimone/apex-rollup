@@ -34,7 +34,6 @@ public without sharing class RollupQueryBuilder {
       } else {
         lowerCaseFieldNames.add(lowerCaseField);
       }
-
       // ensure that the base relationship name field is transformed appropriately
       if (baseFields.containsKey(uniqueFieldName + 'Id') || baseFields.containsKey(uniqueFieldName + '__c')) {
         SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null
@@ -52,6 +51,13 @@ public without sharing class RollupQueryBuilder {
         uniqueQueryFieldNames[index] = uniqueFieldName;
       }
     }
+
+    for (SObjectField fieldToken : baseFields.values()) {
+      if (fieldToken.getDescribe().getRelationshipName() != null && uniqueQueryFieldNames.contains(fieldToken.getDescribe().getRelationshipName())) {
+        uniqueQueryFieldNames.remove(uniqueQueryFieldNames.indexOf(fieldToken.getDescribe().getRelationshipName()));
+      }
+    }
+
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
@@ -66,9 +72,14 @@ public without sharing class RollupQueryBuilder {
       equality +
       ' :objIds';
     if (String.isNotBlank(optionalWhereClause)) {
-      if (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR')) {
+      // sanitize what's left of the where clause
+      while (optionalWhereClause.trim().endsWith('AND') || optionalWhereClause.trim().endsWith('OR')) {
+        optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
+        optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
+      }
+      if (optionalWhereClause.length() > 0 && (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR'))) {
         baseQuery += optionalWhereClause;
-      } else {
+      } else if (optionalWhereClause.length() > 0) {
         baseQuery += '\nAND ' + optionalWhereClause;
       }
     }
@@ -106,13 +117,6 @@ public without sharing class RollupQueryBuilder {
 
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').trim();
         optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
-      }
-      // sanitize what's left of the where clause
-      while (optionalWhereClause.endsWith('AND')) {
-        optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
-      }
-      while (optionalWhereClause.endsWith('OR')) {
-        optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
     } catch (Exception ex) {
       RollupLogger.Instance.log('exception occurred while building query: ', ex, LoggingLevel.ERROR);
