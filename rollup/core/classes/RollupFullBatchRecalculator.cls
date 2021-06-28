@@ -1,4 +1,4 @@
-public class RollupFullBatchRecalculator extends RollupAsyncProcessor {
+public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements Database.Stateful {
   private final String queryString;
   private final List<Rollup__mdt> rollupInfo;
   private final Set<Id> recordIds;
@@ -31,7 +31,7 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor {
      * them to the overall Rollup framework while breaking us out of the query limits
      * it has to be it's own class - Database.Batchable does not support inner classes
      * being batched, even if the inner class is just extending the functionality of its
-     * parent class
+     * parent class.
      */
     this.processDelegatedFullRecalcRollup(this.rollupInfo, calcItems, new Map<Id, SObject>(calcItems));
   }

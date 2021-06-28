@@ -468,7 +468,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.splitUpdates(updatedLookupRecords);
 
     this.getDML().doUpdate(updatedLookupRecords.values());
-    System.debug(this.getDML());
 
     this.processDeferredRollups();
   }

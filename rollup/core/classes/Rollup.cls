@@ -1383,6 +1383,14 @@ global without sharing virtual class Rollup {
     return queryFields;
   }
 
+  private static String getFullRecalcQueryString(List<Rollup__mdt> metas) {
+    List<String> orderByFields = new List<String>();
+    for (Rollup__mdt meta : metas) {
+      orderByFields.add(meta.LookupFieldOnCalcItem__c);
+    }
+    return '\nORDER BY ' + String.join(orderByFields, ',');
+  }
+
   private static RollupAsyncProcessor getFullRecalcRollup(Rollup__mdt meta, QueryWrapper queryWrapper, InvocationPoint invokePoint) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
@@ -1426,6 +1434,7 @@ global without sharing virtual class Rollup {
       thisRollup.isFullRecalc = true;
       return thisRollup;
     } else {
+      String queryWithOrderBy = queryString + getFullRecalcQueryString(matchingMeta);
       return new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds);
     }
   }
