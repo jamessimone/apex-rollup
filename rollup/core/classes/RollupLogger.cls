@@ -1,7 +1,16 @@
 public class RollupLogger extends Rollup implements ILogger {
-  private static final RollupLogger SELF = new RollupLogger();
   private RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
+  }
+
+  private static RollupLogger SELF {
+    get {
+      if (SELF == null) {
+        SELF = new RollupLogger();
+      }
+      return SELF;
+    }
+    set;
   }
 
   public static ILogger Instance {

@@ -52,12 +52,6 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
-    for (SObjectField fieldToken : baseFields.values()) {
-      if (fieldToken.getDescribe().getRelationshipName() != null && uniqueQueryFieldNames.contains(fieldToken.getDescribe().getRelationshipName())) {
-        uniqueQueryFieldNames.remove(uniqueQueryFieldNames.indexOf(fieldToken.getDescribe().getRelationshipName()));
-      }
-    }
-
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
