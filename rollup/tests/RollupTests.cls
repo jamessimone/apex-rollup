@@ -3480,7 +3480,8 @@ private class RollupTests {
       LookupFieldOnLookupObject__c = 'Id',
       RollupFieldOnLookupObject__c = 'AnnualRevenue',
       LookupObject__c = 'Account',
-      RollupOperation__c = 'SUM'
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'Name != \'\''
     );
 
     Test.startTest();

@@ -47,24 +47,29 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   }
 
   protected override void retrieveAdditionalCalcItems(List<SObject> localCalcItems, String lookupKey, String lookupFieldOnCalcItem, Rollup__mdt meta) {
-    if (this.lookupKeyToCachedChildren.containsKey(lookupKey) == false && localCalcItems.isEmpty() == false) {
-      RollupLogger.Instance.log('Querying to ensure we have all calc items for parent: ' + lookupKey, LoggingLevel.DEBUG);
+    if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) || meta.RollupToUltimateParent__c ) {
+      // grandparent / hierarchy rollups unsupported
+      return;
+    } else if (this.lookupKeyToCachedChildren.containsKey(lookupKey) == false && localCalcItems.isEmpty() == false) {
+      RollupLogger.Instance.log('querying to ensure we have all calc items for parent: ' + lookupKey, LoggingLevel.DEBUG);
       Set<Id> objIds = new Map<Id, SObject>(localCalcItems).keySet();
-      Set<String> populatedFieldNames = localCalcItems[0].getPopulatedFieldsAsMap().keySet();
-      String lookupClause = lookupFieldOnCalcItem + ' = \'' + lookupKey + '\'';
-      String whereClause = '';
-      if (String.isBlank(meta.GrandparentRelationshipFieldPath__c) && meta.RollupToUltimateParent__c == false) {
-        whereClause = String.isBlank(meta.CalcItemWhereClause__c) ? lookupClause : whereClause + ' AND (' + lookupClause + ')';
-      }
-      String query = RollupQueryBuilder.Current.getQuery(localCalcItems[0].getSObjectType(), new List<String>(populatedFieldNames), 'Id', '!=', whereClause);
+      // the fields used in all calc item where clauses and for all the included rollups are already
+      // in existence in the larger query string that's spawned this batch process
+      // reconstituting any necessary fields from there allows us to cache the calc items by lookupKey, instead of
+      // by something more tenuous (like the stringified value of the Rollup__mdt record passed)
+      List<String> populatedFieldNames = this.queryString.split('\\n')[0].substringAfter('SELECT ').split(',');
 
+      String whereClause =  lookupFieldOnCalcItem + ' = \'' + lookupKey + '\'';
+      String query = RollupQueryBuilder.Current.getQuery(localCalcItems[0].getSObjectType(), populatedFieldNames, 'Id', '!=', whereClause);
       List<SObject> additionalCalcItems = Database.query(query);
-      RollupLogger.Instance.log('Number of additionally retrieved records: ' + additionalCalcItems.size(), LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('number of additionally retrieved records: ' + additionalCalcItems.size(), LoggingLevel.DEBUG);
+
       CachedCalcItems cache = new CachedCalcItems();
       cache.additionalCalcItems = additionalCalcItems;
       cache.retrievedInBatchId = this.currentBatchId;
       this.lookupKeyToCachedChildren.put(lookupKey, cache);
     }
+
     if (this.lookupKeyToCachedChildren.containsKey(lookupKey)) {
       localCalcItems.addAll(this.lookupKeyToCachedChildren.get(lookupKey).additionalCalcItems);
     }
