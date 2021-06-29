@@ -929,7 +929,7 @@ public class RollupLogger {
 }
 ```
 
-You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers will be included in the next release (`v1.2.32`) as separate unmanaged packages:
+You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers will be included in the next release (`v1.2.33`) as separate unmanaged packages:
 
 1. [Nebula Logger](https://github.com/jongpie/NebulaLogger)
 2. A lightweight custom logger that's also part of this repository; it's just bundled separately
