@@ -37,6 +37,8 @@ public class RollupLoggerTests {
   static void shouldGracefullRecoverFromErrors() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, RollupLoggerName__c = 'made up');
 
+    RollupLogger.Instance.save();
+
     System.assert(true, 'Should make it here');
   }
 

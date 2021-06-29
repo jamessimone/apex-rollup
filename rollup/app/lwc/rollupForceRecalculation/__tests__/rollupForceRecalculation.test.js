@@ -2,18 +2,12 @@ import { createElement } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
 import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
-import { registerLdsTestWireAdapter } from '@salesforce/sfdx-lwc-jest';
+import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 
 import { mockMetadata } from '../../__mockData__';
 import RollupForceRecalculation from 'c/rollupForceRecalculation';
 
 const mockGetObjectInfo = require('./data/rollupCMDTWireAdapter.json');
-const getObjectInfoWireAdapter = registerLdsTestWireAdapter(getObjectInfo);
-
-function assertForTestConditions() {
-  const resolvedPromise = Promise.resolve();
-  return resolvedPromise.then.apply(resolvedPromise, arguments);
-}
 
 function flushPromises() {
   return new Promise(resolve => setTimeout(resolve, 0));
@@ -49,15 +43,15 @@ jest.mock(
   { virtual: true }
 );
 
-jest.mock(
-  '@salesforce/apex/Rollup.getBatchRollupStatus',
-  () => {
-    return {
-      default: () => jest.fn()
-    };
-  },
-  { virtual: true }
-);
+// jest.mock(
+//   '@salesforce/apex/Rollup.getBatchRollupStatus',
+//   () => {
+//     return {
+//       default: () => jest.fn()
+//     };
+//   },
+//   { virtual: true }
+// );
 
 function setElementValue(element, value) {
   element.value = value;
@@ -78,7 +72,7 @@ describe('Rollup force recalc tests', () => {
     });
     document.body.appendChild(fullRecalc);
 
-    return assertForTestConditions(() => {
+    return flushPromises().then(() => {
       expect(document.title).toEqual('Recalculate Rollup');
     });
   });
@@ -118,7 +112,7 @@ describe('Rollup force recalc tests', () => {
     const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
     submitButton.click();
 
-    return assertForTestConditions(() => {
+    return flushPromises().then(() => {
       expect(performFullRecalculation.mock.calls[0][0]).toEqual({
         metadata: {
           RollupFieldOnCalcItem__c: 'FirstName',
@@ -189,7 +183,7 @@ describe('Rollup force recalc tests', () => {
 
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
-    getObjectInfoWireAdapter.emit(mockGetObjectInfo);
+    getObjectInfo.emit(mockGetObjectInfo);
 
     // flush to re-render
     return flushPromises().then(() => {
@@ -217,8 +211,28 @@ describe('Rollup force recalc tests', () => {
     });
   });
 
-  it('succeeds even when no process id', () => {
-    performFullRecalculation.mockResolvedValue('No process Id');
+  it('sets error when CMDT is not returned', () => {
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    const toggle = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="cmdt-toggle"]');
+    toggle.dispatchEvent(new CustomEvent('change')); // _like_ a click ...
+
+    expect(fullRecalc.isCMDTRecalc).toBeTruthy();
+
+    getObjectInfo.emitError();
+
+    return flushPromises().then(() => {
+
+      const errorDiv = fullRecalc.shadowRoot.querySelector('div[data-id="rollupError"]')
+      expect(errorDiv).toBeTruthy();
+    })
+  })
+
+  it('succeeds even when exception is thrown', () => {
+    performFullRecalculation.mockRejectedValue('error!');
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });
@@ -228,7 +242,52 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     let hasError = false;
-    return assertForTestConditions()
+    return flushPromises()
+      .catch(() => {
+        hasError = true;
+      })
+      .finally(() => {
+        expect(hasError).toBeFalsy();
+      });
+  });
+
+  it('succeeds even when no process id', () => {
+    performFullRecalculation.mockResolvedValue('No process Id');
+
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+    submitButton.click();
+
+    let hasError = false;
+    return flushPromises()
+      .catch(() => {
+        hasError = true;
+      })
+      .finally(() => {
+        expect(hasError).toBeFalsy();
+      });
+  });
+
+  it('polls when process Id given', () => {
+    // simulate second poll receiving one of the completed values
+    getBatchRollupStatus.mockResolvedValueOnce('test').mockResolvedValueOnce('Completed');
+    performFullRecalculation.mockResolvedValueOnce('someProcessId');
+
+    performBulkFullRecalc.mock
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+    submitButton.click();
+
+    let hasError = false;
+    return flushPromises()
       .catch(() => {
         hasError = true;
       })

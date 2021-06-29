@@ -11,7 +11,7 @@
   "devDependencies": {
     "prettier-plugin-apex": "latest",
     "prettier": "latest",
-    "@salesforce/sfdx-lwc-jest": "latest"
+    "@salesforce/sfdx-lwc-jest": "0.12.5"
   },
   "scripts": {
     "test": "npm run test:apex && npm run test:lwc",

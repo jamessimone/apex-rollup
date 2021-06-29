@@ -137,7 +137,7 @@
       <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus}</b></div>
     </template>
     <template if:true={error}>
-      <div class="slds-m-top_small">There was an error performing your rollup: {error}</div>
+      <div data-id="rollupError" class="slds-m-top_small">There was an error performing your rollup: {error}</div>
     </template>
   </div>
 </template>
