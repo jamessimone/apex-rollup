@@ -1,7 +1,7 @@
 @isTest
 private class RollupCalculatorTests {
-  // TODO - refactor RollupTests so that the different *calculator type*-based tests live here instead when DML is not required
-  // or only *light* DML is required
+  // use these tests when DML is not required, or only *light* DML is necessary
+  // otherwise use RollupTests for the full picture
 
   @TestSetup
   static void setup() {
@@ -671,6 +671,25 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
 
     System.assertEquals(distinct + '; ' + nonDistinctOpp.Name, (String) calc.getReturnValue(), 'distinct values should be concatenated with custom delimiter!');
+  }
+
+  @isTest
+  static void regressionShouldNotBlowUpOnNullPriorValueConcat() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      '',
+      Rollup.Op.UPDATE_CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = null, AccountId = '0016g00003VDGbF001');
+    Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non', AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>{ opp.Id => opp });
+
+    System.assertEquals(nonDistinctOpp.Name, (String) calc.getReturnValue(), 'should not blow up on null!');
   }
 
   // PICKLIST tests

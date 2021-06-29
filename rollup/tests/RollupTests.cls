@@ -777,7 +777,7 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 50, Name = 'MaxParentRows');
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.shouldRunAsBatch = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1, IsRollupLoggingEnabled__c = true);
 
     Test.startTest();
@@ -1633,7 +1633,6 @@ private class RollupTests {
     System.assertEquals(testCpaOne.PreferenceRank, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE should take into account only non-deleted values');
   }
 
-  // TODO migrate tests specific to calculating to this format, and the actual testing of functionality to RollupCalculatorTests
   @isTest
   static void shouldRollupForFirst() {
     rollupOp = Rollup.Op.FIRST;
@@ -2474,6 +2473,54 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldAllowForSuccessiveInvocablesToBeCalledInSameTransaction() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct'),
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'again')
+    };
+
+    DMLMock mock = loadAccountIdMock(cpas);
+
+    Account reparentedAcc = new Account(Name = 'ReparentMultipleDMLInvocableRollup');
+    insert reparentedAcc;
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
+    flowInputs[0].deferProcessing = true;
+    Rollup.performRollup(flowInputs);
+
+    Rollup.FlowInput flowInput = flowInputs[0];
+    flowInput.rollupFieldOnCalcItem = 'Name';
+    flowInput.rollupFieldOnOpObject = 'Description';
+    flowInput.rollupOperation = 'CONCAT_DISTINCT';
+    Rollup.performRollup(flowInputs);
+
+    // now that the inserts have been queued, let's do the updates
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>(cpas);
+    cpas[0].ParentId = reparentedAcc.Id;
+    flowInput.rollupContext = 'UPDATE';
+    Rollup.performRollup(flowInputs);
+    flowInput.rollupOperation = 'SUM';
+    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
+    flowInput.rollupFieldOnOpObject = 'Description';
+    Rollup.performRollup(flowInputs);
+
+    // simulate multiple DML situations
+    Test.startTest();
+    Rollup.processStoredFlowRollups();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'Enqueued rollups did not properly update old account and reparented Account');
+    Account updatedReparentAcc = (Account) mock.Records[0];
+    System.assertEquals(cpas[0].Name, updatedReparentAcc.Description);
+    System.assertEquals(cpas[0].PreferenceRank, updatedReparentAcc.AnnualRevenue);
+
+    Account updatedAcc = (Account) mock.Records[1];
+    System.assertNotEquals(updatedAcc.Id, reparentedAcc.Id);
+    System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
+    System.assertEquals(cpas[1].Name, updatedAcc.Description, 'CONCAT_DISTINCT AFTER_UPDATE from flow should match diff for reparented Name');
+  }
+
+  @isTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2507,7 +2554,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
+    System.assertEquals('Prior records to rollup collection required for rollup context: UPSERT', ex.getMessage());
   }
 
   @isTest
@@ -3116,7 +3163,7 @@ private class RollupTests {
   static void shouldRunSuccessfullyAsBatch() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.shouldRunAsBatch = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3164,7 +3211,7 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
       BatchChunkSize__c = 1,
-      MaxLookupRowsBeforeBatching__c = 0
+      MaxLookupRowsBeforeBatching__c = 1
     );
 
     Test.startTest();
@@ -3422,7 +3469,7 @@ private class RollupTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
       BatchChunkSize__c = 10,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE, // validate that it still batches
       IsRollupLoggingEnabled__c = true
     );
 
@@ -3433,7 +3480,8 @@ private class RollupTests {
       LookupFieldOnLookupObject__c = 'Id',
       RollupFieldOnLookupObject__c = 'AnnualRevenue',
       LookupObject__c = 'Account',
-      RollupOperation__c = 'SUM'
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'Name != \'\''
     );
 
     Test.startTest();
@@ -3932,7 +3980,6 @@ private class RollupTests {
     };
     insert cpas;
 
-    DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
       MaxRollupRetries__c = 100,
@@ -3942,7 +3989,6 @@ private class RollupTests {
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
 
-    Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -3966,9 +4012,10 @@ private class RollupTests {
 
     // validate that queueable ran in addition to sync job
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
-    System.assertEquals(2, mock.Records.size(), 'Both parent items should have been updated!');
+    List<Account> updatedAccounts = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, updatedAccounts.size(), 'Both parent items should have been updated!');
 
-    for (Account updatedAcc : (List<Account>) mock.Records) {
+    for (Account updatedAcc : updatedAccounts) {
       System.assertEquals(1, updatedAcc.AnnualRevenue, 'Average annual revenue should have been set for both records!');
     }
   }
@@ -4014,7 +4061,7 @@ private class RollupTests {
 
   @isTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrievedWithBatch() {
-    Rollup.shouldRunAsBatch = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),

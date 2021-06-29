@@ -133,10 +133,10 @@ export default class RollupForceRecalculation extends LightningElement {
     const statusPromise = new Promise(resolve => {
       let timeoutId;
       if (this._resolvedBatchStatuses.includes(this.rollupStatus) == false) {
-        timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), 3000);
+        timeoutId = setTimeout(this._getBatchJobStatus(jobId), 3000);
       } else {
         this.isRollingUp = false;
-        clearInterval(timeoutId);
+        clearTimeout(timeoutId);
         resolve();
       }
     });

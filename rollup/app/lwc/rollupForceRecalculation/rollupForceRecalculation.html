@@ -45,7 +45,7 @@
             data-id="RollupFieldOnCalcItem__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
-            label="API Name of the rollup field on calc item"
+            label="Calc Item Calc Field"
             name="RollupFieldOnCalcItem__c"
             oncommit={handleChange}
             required
@@ -55,28 +55,8 @@
             data-id="LookupFieldOnCalcItem__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
-            label="API Name of the lookup field on calc item"
+            label="Calc Item Lookup Field"
             name="LookupFieldOnCalcItem__c"
-            oncommit={handleChange}
-            required
-          >
-          </lightning-input>
-          <lightning-input
-            data-id="LookupFieldOnLookupObject__c"
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
-            label="API Name of the lookup field on the lookup object"
-            name="LookupFieldOnLookupObject__c"
-            oncommit={handleChange}
-            required
-          >
-          </lightning-input>
-          <lightning-input
-            data-id="RollupFieldOnLookupObject__c"
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
-            label="API Name of the rollup field on the lookup object"
-            name="RollupFieldOnLookupObject__c"
             oncommit={handleChange}
             required
           >
@@ -85,8 +65,28 @@
             data-id="LookupObject__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
-            label="Lookup SObject API Name"
+            label="Rollup Object API Name"
             name="LookupObject__c"
+            oncommit={handleChange}
+            required
+          >
+          </lightning-input>
+          <lightning-input
+            data-id="RollupFieldOnLookupObject__c"
+            class="slds-col slds-form-element slds-form-element_horizontal"
+            type="text"
+            label="Rollup Object Calc Field"
+            name="RollupFieldOnLookupObject__c"
+            oncommit={handleChange}
+            required
+          >
+          </lightning-input>
+          <lightning-input
+            data-id="LookupFieldOnLookupObject__c"
+            class="slds-col slds-form-element slds-form-element_horizontal"
+            type="text"
+            label="Rollup Object Lookup Field"
+            name="LookupFieldOnLookupObject__c"
             oncommit={handleChange}
             required
           >
@@ -114,7 +114,7 @@
             data-id="OrderByFirstLast__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
             type="text"
-            label="Order By Field For First/Last (Optional)"
+            label="Order By (First/Last) (Optional)"
             name="OrderByFirstLast__c"
             oncommit={handleChange}
           >
@@ -122,7 +122,7 @@
           <lightning-textarea
             class="slds-col slds-form-element slds-form-element_horizontal"
             onchange={handleChange}
-            label="Where Clause SOQL Filters (Optional)"
+            label="SOQL Where Clause To Exclude Calc Items (Optional)"
             name="CalcItemWhereClause__c"
           ></lightning-textarea>
         </template>
@@ -137,7 +137,7 @@
       <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus}</b></div>
     </template>
     <template if:true={error}>
-      <div class="slds-m-top_small">There was an error performing your rollup: {error}</div>
+      <div data-id="rollupError" class="slds-m-top_small">There was an error performing your rollup: {error}</div>
     </template>
   </div>
 </template>

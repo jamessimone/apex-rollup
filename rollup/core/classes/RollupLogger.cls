@@ -1,15 +1,39 @@
-public class RollupLogger extends Rollup {
+public class RollupLogger extends Rollup implements ILogger {
   private RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
   }
 
-  public static final RollupLogger Instance = new RollupLogger();
-
-  public void log(String logString) {
-    this.log(logString, null);
+  private static RollupLogger SELF {
+    get {
+      if (SELF == null) {
+        SELF = new RollupLogger();
+      }
+      return SELF;
+    }
+    set;
   }
 
-  public void log(String logString, Object logObject) {
+  public static ILogger Instance {
+    get {
+      if (Instance == null) {
+        Instance = getRollupLogger();
+      }
+      return Instance;
+    }
+    private set;
+  }
+
+  public void log(String logString, LoggingLevel logLevel) {
+    this.log(logString, null, logLevel);
+  }
+
+  public interface ILogger {
+    void log(String logString, LoggingLevel logLevel);
+    void log(String logString, Object logObject, LoggingLevel logLevel);
+    void save();
+  }
+
+  public void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
       String appended = this.getLogStringFromObject(logObject);
       List<String> messages = new List<String>{ logString };
@@ -19,8 +43,12 @@ public class RollupLogger extends Rollup {
       // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
       // works to re-create the stacktrace for all of the calling code
       messages.add(new DMLException().getStackTraceString());
-      System.debug('Rollup: ' + String.join(messages, '\n') + '\n');
+      System.debug(logLevel, 'Rollup: ' + String.join(messages, '\n') + '\n');
     }
+  }
+
+  public void save() {
+    // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
   private String getLogStringFromObject(Object logObject) {
@@ -50,5 +78,19 @@ public class RollupLogger extends Rollup {
       appended = JSON.serializePretty(logObject);
     }
     return appended;
+  }
+
+  private static ILogger getRollupLogger() {
+    ILogger loggerInstance;
+    if (String.isNotBlank(SELF.rollupControl.RollupLoggerName__c)) {
+      try {
+        loggerInstance = (ILogger) Type.forName(SELF.rollupControl.RollupLoggerName__c).newInstance();
+      } catch (Exception ex) {
+        loggerInstance = SELF;
+      }
+    } else {
+      loggerInstance = SELF;
+    }
+    return loggerInstance;
   }
 }

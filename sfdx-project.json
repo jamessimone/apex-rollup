@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.30.0",
-            "versionDescription": "Bugfixes for Calc Item Where Clause equality checks, single parent recalc button bugfix",
+            "versionNumber": "1.2.31.0",
+            "versionDescription": "Beginning of Rollup Logger extension work, CONCAT bugfix, many invocable improvements, full batch recalculator bugfix",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
@@ -38,6 +38,7 @@
         "apex-rollup@1.2.27-0": "04t6g000008SgImAAK",
         "apex-rollup@1.2.28-0": "04t6g000008SgIwAAK",
         "apex-rollup@1.2.29-0": "04t6g000008SgLWAA0",
-        "apex-rollup@1.2.30-0": "04t6g000008SgSsAAK"
+        "apex-rollup@1.2.30-0": "04t6g000008SgSsAAK",
+        "apex-rollup@1.2.31-0": "04t6g000008SgaiAAC"
     }
 }

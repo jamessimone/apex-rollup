@@ -68,10 +68,6 @@ public virtual class RollupFieldInitializer {
          * in the list, instead of by the actual text values
          * */
         List<Schema.PicklistEntry> picklistVals = fieldDescribe.getPicklistValues();
-        if (picklistVals.isEmpty()) {
-          this.activeVals.add('');
-          return;
-        }
 
         for (Integer index = 0; index < picklistVals.size(); index++) {
           PicklistEntry picklist = picklistVals[index];
@@ -85,8 +81,6 @@ public virtual class RollupFieldInitializer {
     private void doBookkeepingOnPicklist(PicklistEntry picklist) {
       if (picklist.isDefaultValue() && this.activeVals.isEmpty()) {
         this.activeVals.add(picklist.getValue());
-      } else if (picklist.isDefaultValue() && this.activeVals.isEmpty() == false) {
-        this.activeVals.add(0, picklist.getValue());
       } else if (picklist.isActive()) {
         this.activeVals.add(picklist.getValue());
       }

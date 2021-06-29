@@ -651,9 +651,10 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override Object getReturnValue() {
+      this.setReturnValue();
       // we shouldn't encourage negative counts. it's totally possible as a rollup is implemented and updates happen before
       // inserts or deletes, but it doesn't really make sense in the context of tracking
-      Integer potentialReturnVal = Integer.valueOf((Decimal) super.getReturnValue());
+      Integer potentialReturnVal = ((Decimal) super.getReturnValue()).intValue();
       return potentialReturnVal < 0 ? 0 : potentialReturnVal;
     }
 
@@ -857,7 +858,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {
-      if (existingVal.contains(matchingVal)) {
+      if (String.isNotBlank(matchingVal) && existingVal.contains(matchingVal)) {
         return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
       }
       return existingVal += this.concatDelimiter + replacementVal;

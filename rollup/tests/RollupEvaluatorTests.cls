@@ -61,6 +61,18 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldFilterCalcItemsForNotEqualsNumbers() {
+    Opportunity notZero = new Opportunity(Amount = 10);
+    Opportunity zero = new Opportunity(Amount = 0);
+    String whereClause = 'Amount != 0';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, zero.getSObjectType());
+
+    System.assertEquals(true, eval.matches(notZero), String.valueOf(notZero.Amount) + ' should not = 0');
+    System.assertNotEquals(true, eval.matches(zero), '0 should  be excluded since opp amount = ' + zero.Amount);
+  }
+
+  @isTest
   static void shouldNotFilterCalcItemsBasedOnWhereClauseWithInOrNotIn() {
     Account acc = new Account(Name = 'Something & Something Else');
     Account two = new Account(Name = 'Vertical/Backslash');
@@ -189,7 +201,7 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
-  static void shouldWorkForGreaterThanConditions() {
+  static void shouldWorkForGreaterThanNumbers() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);
     Opportunity oppThree = new Opportunity(Amount = 3.01);
@@ -222,6 +234,31 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForGreaterThanDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(2));
+
+    String whereClause = 'ActivityDateTime > ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(evOne));
+    System.assertEquals(true, eval.matches(evTwo));
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime > ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(false, eval.matches(cpa));
+    System.assertEquals(true, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
   static void shouldWorkForGreaterThanOrEqualDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -234,6 +271,30 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualsTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime >= ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(true, eval.matches(cpa));
+    System.assertEquals(true, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
+  static void shouldWorkForGreaterThanOrEqualsDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
+
+    String whereClause = 'ActivityDateTime >= ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(evOne));
+    System.assertEquals(false, eval.matches(evTwo));
+  }
 
   @isTest
   static void shouldWorkForGreaterThanStrings() {
@@ -275,6 +336,31 @@ private class RollupEvaluatorTests {
   }
 
   @isTest
+  static void shouldWorkForLessThanTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime < ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(false, eval.matches(cpa));
+    System.assertEquals(false, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
+
+    String whereClause = 'ActivityDateTime < ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(false, eval.matches(evOne));
+    System.assertEquals(true, eval.matches(evTwo));
+  }
+
+  @isTest
   static void shouldWorkForLessThanOrEqualDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -285,6 +371,31 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(false, eval.matches(oppOne));
     System.assertEquals(true, eval.matches(oppTwo));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualTimes() {
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
+
+    String whereClause = 'BestTimeToContactEndTime <= ' + cpa.BestTimeToContactEndTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, cpa.getSObjectType());
+
+    System.assertEquals(true, eval.matches(cpa));
+    System.assertEquals(false, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
+  }
+
+  @isTest
+  static void shouldWorkForLessThanOrEqualsDatetimes() {
+    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
+
+    String whereClause = 'ActivityDateTime <= ' + evOne.ActivityDateTime;
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
+
+    System.assertEquals(true, eval.matches(evOne));
+    System.assertEquals(true, eval.matches(evTwo));
   }
 
   @isTest
@@ -552,7 +663,10 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
       rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp, secondOpp.Id => new Opportunity(Id = secondOpp.Id, StageName = secondOpp.StageName, Amount = secondOpp.Amount, Name = 'Something else' ) },
+      new Map<Id, SObject>{
+        oldOpp.Id => oldOpp,
+        secondOpp.Id => new Opportunity(Id = secondOpp.Id, StageName = secondOpp.StageName, Amount = secondOpp.Amount, Name = 'Something else')
+      },
       Opportunity.SObjectType
     );
 
@@ -622,6 +736,8 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive twice!');
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive thrice!');
+
+    RollupEvaluator.stubRequestId = 'somethingElse';
 
     eval = RollupEvaluator.getEvaluator(
       null,
@@ -722,12 +838,8 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
-    eval = RollupEvaluator.getEvaluator(
-      null,
-      rollupMetadata,
-      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
-      Opportunity.SObjectType
-    );
+    RollupEvaluator.stubRequestId = 'somethingElse';
+    eval = RollupEvaluator.getEvaluator(null, rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
@@ -754,7 +866,13 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
-    eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
+    RollupEvaluator.stubRequestId = 'somethingElse';
+    eval = RollupEvaluator.getEvaluator(
+      new RollupEvaluator.AlwaysTrueEvaluator(),
+      rollupMetadata,
+      new Map<Id, SObject>{ oldOpp.Id => oldOpp },
+      Opportunity.SObjectType
+    );
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
@@ -771,10 +889,16 @@ private class RollupEvaluatorTests {
       LookupFieldOnCalcItem__c = 'AccountId'
     );
 
-    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
+    Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
+      new RollupEvaluator.AlwaysTrueEvaluator(),
+      rollupMetadata,
+      new Map<Id, SObject>(),
+      Opportunity.SObjectType
+    );
 
     System.assertEquals(true, eval.matches(opp), 'Should return true when not recursive!');
 
+    RollupEvaluator.stubRequestId = 'somethingElse';
     eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
