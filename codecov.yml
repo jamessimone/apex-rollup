@@ -8,5 +8,23 @@ coverage:
                 round: down
                 precision: 2
                 if_ci_failed: success
+            apex:
+                target: 90 # otherwise any regression in code coverage fails the build
+                threshold: 2%
+                range: 75...100
+                round: down
+                precision: 2
+                if_ci_failed: success
+                flags:
+                  - Apex
+            lwc:
+                target: 90 # otherwise any regression in code coverage fails the build
+                threshold: 2%
+                range: 75...100
+                round: down
+                precision: 2
+                if_ci_failed: success
+                flags:
+                  - LWC
         patch: off
 github_checks: false
