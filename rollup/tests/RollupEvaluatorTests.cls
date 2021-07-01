@@ -904,4 +904,15 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
     System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on calc item where clause');
   }
+
+  @isTest
+  static void shouldWorkForNotEqualNull() {
+    Opportunity opp = new Opportunity(AccountId = '0016g000000000000X');
+    String whereClause = 'AccountId != null';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(true, eval.matches(opp), 'Opp should match since it has account Id');
+    System.assertNotEquals(true, eval.matches(new Opportunity()), 'Opp should not match since AccountId is null');
+  }
 }
