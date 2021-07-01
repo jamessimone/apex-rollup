@@ -81,8 +81,8 @@ public without sharing class RollupRelationshipFieldFinder {
       this.finder.getParents(this.finder.recommencementRecords);
     }
 
-    public Map<String, List<SObject>> getParentLookupToRecords() {
-      Map<String, List<SObject>> parentToLookupRecords = new Map<String, List<SObject>>();
+    public Map<String, Rollup.CalcItemBag> getParentLookupToRecords() {
+      Map<String, Rollup.CalcItemBag> parentToLookupRecords = new Map<String, Rollup.CalcItemBag>();
       if (this.isAbortedEarly) {
         return parentToLookupRecords;
       }
@@ -92,9 +92,9 @@ public without sharing class RollupRelationshipFieldFinder {
           continue;
         }
         if (parentToLookupRecords.containsKey(parentRecord.Id)) {
-          parentToLookupRecords.get(parentRecord.Id).add(record);
+          parentToLookupRecords.get(parentRecord.Id).originals.add(record);
         } else {
-          parentToLookupRecords.put(parentRecord.Id, new List<SObject>{ record });
+          parentToLookupRecords.put(parentRecord.Id, new Rollup.CalcItemBag(new List<SObject>{ record }));
         }
       }
       return parentToLookupRecords;
