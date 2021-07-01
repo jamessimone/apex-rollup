@@ -45,9 +45,10 @@ While you can still enable/disable individual rollups from running with the use 
 
 ### Migrating from DLRS
 
-If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex script [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org.
-There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-custom-metadata), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
-Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
+If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex scripts:
+
+1. [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org. There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-custom-metadata), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
+2. [scripts/deactivate-converted-dlrs-rules.apex](scripts/deactivate-converted-dlrs-rules.apex). Once you've converted your `dlrs__LookupRollupSummary2__mdt` records into `Rollup__mdt` records, you can run this script to deactivate any converted DLRS rules in the current org. Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
 
 ## Usage
 
@@ -254,6 +255,7 @@ if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreat
     <typeValue>Case</typeValue>
 </dataTypeMappings>
 ```
+
 3. Copy and paste, updating the `<typeName>` section to include a new reference to `T__oldRecordsToRollup`:
 
 ```xml
@@ -266,6 +268,7 @@ if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreat
     <typeValue>Case</typeValue>
 </dataTypeMappings>
 ```
+
 4. Push the updated flow definition back up to your sandbox/scratch org. That's it - you're done!
 
 ### Calculating Rollups After Install
@@ -877,6 +880,7 @@ trigger ContactTrigger on Contact(after delete) {
   ).runCalc();
 }
 ```
+
 Note that if you are also rolling values up from (in this example), Contact to a parent of Contact - like Account - _and_ you were using Apex to invoke `Rollup`, you would also need the additional trigger contexts listed in the [CMDT-based rollup section](#cmdt-based-rollup) - you might also need to switch on `Trigger.operationType` and only pass `Trigger.old` and `Trigger.oldMap` for `TriggerOperation.AFTER_DELETE`:
 
 ```java
@@ -914,6 +918,7 @@ trigger OpportunityChangeEventTrigger on OpportunityChangeEvent (after insert) {
 Note that you're still selecting `Opportunity` as the `Calc Item` within your Rollup metadata record in this example; in fact, you cannot select `OpportunityChangeEvent`, so hopefully that was already clear. This means that people interested in using CDC should view it as an either/or option when compared to invoking `Rollup` from a standard, synchronous trigger. Additionally, that means reparenting that occurs at the calculation item level (the child object in the rollup operation) is not yet a supported feature of `Rollup` for CDC-based rollup actions — because the underlying object has already been updated in the database, and because CDC events only contain the new values for changed fields (instead of the new & old values). It's a TBD-type situation if this will ever be supported.
 
 ### Rollup Logging
+
 <div id="rollup-logging"></div>
 
 If logging to the debug logs is enough for your purposes, the default logger need never be changed. However, if you want to customize things further, or log errors to a custom object, you can do so! The included `RollupLogger` class also includes an interface:
