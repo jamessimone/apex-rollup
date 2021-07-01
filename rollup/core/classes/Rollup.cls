@@ -120,6 +120,16 @@ global without sharing virtual class Rollup {
     public Evaluator eval { get; set; }
   }
 
+  public class CalcItemBag {
+    public CalcItemBag(List<SObject> originals) {
+      this.originals = originals;
+      this.additional = originals.clone(); // retain SObjectType info
+      this.additional.clear();
+    }
+    public final List<SObject> originals;
+    public final List<SObject> additional;
+  }
+
   public virtual class DMLHelper {
     public virtual void doUpdate(List<SObject> recordsToUpdate) {
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
@@ -231,18 +241,20 @@ global without sharing virtual class Rollup {
       childType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
       queryFields.addAll(getQueryFieldsFromMetadata(matchingMeta, RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType)));
 
-      String countQuery = RollupQueryBuilder.Current.getQuery(
-        childType,
-        new List<String>{ 'Count()' },
-        matchingMeta.LookupFieldOnLookupObject__c,
-        '!=',
-        matchingMeta.CalcItemWhereClause__c
-      );
-      Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
-      if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-        amountOfCalcItems = currentCount;
-      } else {
-        amountOfCalcItems += currentCount;
+      if (amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
+        String countQuery = RollupQueryBuilder.Current.getQuery(
+          childType,
+          new List<String>{ 'Count()' },
+          matchingMeta.LookupFieldOnLookupObject__c,
+          '!=',
+          matchingMeta.CalcItemWhereClause__c
+        );
+        Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
+        if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
+          amountOfCalcItems = currentCount;
+        } else {
+          amountOfCalcItems += currentCount;
+        }
       }
     }
 
@@ -1211,17 +1223,17 @@ global without sharing virtual class Rollup {
       return batchRollup;
     }
 
-    List<Rollup> rollups = new List<Rollup>();
-    processCustomMetadata(rollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX);
+    List<Rollup> localRollups = new List<Rollup>();
+    processCustomMetadata(localRollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX);
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     populateCachedApexOperations(calcItemSObjectType, apexContext);
 
     if (rollupMetadata.isEmpty() == false) {
-      rollups.addAll(getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX).rollups);
+      localRollups.addAll(getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX).rollups);
     }
 
-    flattenBatches(batchRollup, rollups);
+    flattenBatches(batchRollup, localRollups);
     return batchRollup;
   }
 

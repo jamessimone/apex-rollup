@@ -17,6 +17,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private RollupRelationshipFieldFinder.Traversal traversal;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
+  private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
   private RollupAsyncProcessor fullRecalcProcessor;
 
@@ -430,8 +431,29 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     roll.runCalc();
   }
 
-  protected virtual void retrieveAdditionalCalcItems(List<SObject> localCalcItems, String lookupKey, String lookupFieldOnCalcItem, Rollup__mdt meta) {
-    this.fullRecalcProcessor?.retrieveAdditionalCalcItems(localCalcItems, lookupKey, lookupFieldOnCalcItem, meta);
+  protected virtual void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+    // TODO - incorporate grandparent rollups into this, as well
+    if (rollup.isFullRecalc == false || String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+      return;
+    }
+    Set<String> objIds = new Set<String>();
+    for (Rollup.CalcItemBag bag : lookupToCalcItems.values()) {
+      for (SObject calcItem : bag.originals) {
+        objIds.add(calcItem.Id);
+      }
+    }
+
+    Set<String> lookupKeys = lookupToCalcItems.keySet();
+    String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
+    String query = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)), 'Id', '!=', whereClause);
+    List<SObject> additionalCalcItems = Database.query(query);
+
+    for (SObject additionalCalcItem : additionalCalcItems) {
+      String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
+      if (lookupToCalcItems.containsKey(lookupKey)) {
+        lookupToCalcItems.get(lookupKey).additional.add(additionalCalcItem);
+      }
+    }
   }
 
   protected virtual Boolean shouldBypassUpdatingLookupItems(String lookupKey) {
@@ -456,7 +478,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         roll.traversal = grandparentRollups.get(roll.lookupObj);
       }
 
-      Map<String, List<SObject>> calcItemsByLookupField = this.getCalcItemsByLookupField(roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj));
+      Map<String, Rollup.CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj));
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (roll.traversal?.getIsFinished() == false) {
@@ -506,7 +528,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private List<SObject> getLookupItems(
-    Map<String, List<SObject>> calcItemsByLookupField,
+    Map<String, Rollup.CalcItemBag> calcItemsByLookupField,
     Map<String, SObject> updatedLookupRecords,
     RollupAsyncProcessor roll
   ) {
@@ -567,18 +589,31 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private void getFieldNamesForRollups(List<RollupAsyncProcessor> rollups) {
     this.lookupObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
+    this.calcObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
     for (RollupAsyncProcessor rollup : rollups) {
+      if (rollup.lookupObj == null) {
+        continue;
+      }
       String rollupField = rollup.opFieldOnLookupObject.getDescribe().getName();
       String lookupfield = rollup.lookupFieldOnLookupObject.getDescribe().getName();
-      if (lookupObjectToUniqueFieldNames.containsKey(rollup.lookupObj)) {
-        lookupObjectToUniqueFieldNames.get(rollup.lookupObj).addAll(new List<String>{ rollupField, lookupField });
+      if (this.lookupObjectToUniqueFieldNames.containsKey(rollup.lookupObj)) {
+        this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj).addAll(new List<String>{ rollupField, lookupField });
       } else {
-        lookupObjectToUniqueFieldNames.put(rollup.lookupObj, new Set<String>{ rollupField, lookupfield });
+        this.lookupObjectToUniqueFieldNames.put(rollup.lookupObj, new Set<String>{ rollupField, lookupfield });
+      }
+
+      List<String> whereFields = RollupEvaluator.getWhereEval(rollup.metadata.CalcItemWhereClause__c, rollup.calcItemType).getQueryFields();
+      whereFields.addAll(new List<String>{ rollup.opFieldOnCalcItem.getDescribe().getName(), rollup.lookupFieldOnCalcItem.getDescribe().getName() });
+      if (this.calcObjectToUniqueFieldNames.containsKey(rollup.calcItemType)) {
+        this.calcObjectToUniqueFieldNames.get(rollup.calcItemType).addAll(whereFields);
+      } else {
+        this.calcObjectToUniqueFieldNames.put(rollup.calcItemType, new Set<String>(whereFields));
       }
     }
   }
 
-  private Map<String, List<SObject>> getCalcItemsByLookupField(RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
+  private Map<String, Rollup.CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
+    Map<String, Rollup.CalcItemBag> lookupFieldToCalcItems = new Map<String, Rollup.CalcItemBag>();
     if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
       if (rollup.traversal == null) {
         rollup.traversal = new RollupRelationshipFieldFinder(
@@ -592,15 +627,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (rollup.traversal?.getIsFinished() == false) {
         rollup.traversal.recommence();
       }
-      return rollup.traversal.getIsFinished() ? rollup.traversal.getParentLookupToRecords() : new Map<String, List<SObject>>();
+      return rollup.traversal.getIsFinished() ? rollup.traversal.getParentLookupToRecords() : lookupFieldToCalcItems;
     }
-    Map<String, List<SObject>> lookupFieldToCalcItems = new Map<String, List<SObject>>();
     for (SObject calcItem : rollup.calcItems) {
       String key = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
       if (lookupFieldToCalcItems.containsKey(key) == false) {
-        lookupFieldToCalcItems.put(key, new List<SObject>{ calcItem });
+        lookupFieldToCalcItems.put(key, new Rollup.CalcItemBag(new List<SObject>{ calcItem }));
       } else {
-        lookupFieldToCalcItems.get(key).add(calcItem);
+        lookupFieldToCalcItems.get(key).originals.add(calcItem);
       }
 
       // if the lookup key differs from what it was on the old calc item,
@@ -614,9 +648,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
 
         if (lookupFieldToCalcItems.containsKey(oldKey) == false) {
-          lookupFieldToCalcItems.put(oldKey, new List<SObject>{ potentialOldCalcItem });
+          lookupFieldToCalcItems.put(oldKey, new Rollup.CalcItemBag(new List<SObject>{ potentialOldCalcItem }));
         } else {
-          lookupFieldToCalcItems.get(oldKey).add(potentialOldCalcItem);
+          lookupFieldToCalcItems.get(oldKey).originals.add(potentialOldCalcItem);
         }
       }
     }
@@ -754,20 +788,29 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private List<SObject> getUpdatedLookupItemsByRollup(
     RollupAsyncProcessor rollup,
-    Map<String, List<SObject>> calcItemsByLookupField,
+    Map<String, Rollup.CalcItemBag> calcItemsByLookupField,
     List<SObject> lookupItems
   ) {
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Set<SObject> unprocessedCalcItems = new Set<SObject>();
     RollupSObjectUpdater updater = new RollupSObjectUpdater(rollup.opFieldOnLookupObject);
+    this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
-        List<SObject> localCalcItems = calcItemsByLookupField.get(key);
-        this.retrieveAdditionalCalcItems(localCalcItems, key, String.valueOf(rollup.lookupFieldOnCalcItem), rollup.metadata);
+        Rollup.CalcItemBag bag = calcItemsByLookupField.get(key);
+        // You might find yourself looking at this, wondering what the point of the bag is if we're just going to combine
+        // the two lists here and move on with our lives. And, in truth, it serves little purpose at the moment - but it will
+        // in the future! This is because the AVERAGE / COUNT_DISTINCT / FIRST / LAST operations are ALWAYS full recalc operations -
+        // they're just not labeled as such at the moment by the rollup.isFullRecalc property, a fact that has always bothered me.
+        // those full recalc operations can be completely bulkified by completing the torch-passing of CalcItemBag downstream.
+        // for the moment, though, I'd like to release these changes to test them out as the fix for the issues in:
+        // https://github.com/jamessimone/apex-rollup/issues/132
+        List<SObject> localCalcItems = bag.originals;
+        localCalcItems.addAll(bag.additional);
 
         if (hasExceededCurrentRollupLimits(this.rollupControl)) {
           unprocessedCalcItems.addAll(localCalcItems);

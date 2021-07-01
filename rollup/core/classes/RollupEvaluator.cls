@@ -477,9 +477,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             val = TRUE_VAL;
           } else if (val.equalsIgnoreCase(FALSE_VAL)) {
             val = FALSE_VAL;
+          } else if (val == 'null') {
+            val = null;
           }
-          this.values.add(val.trim().replace('%', ''));
+          this.values.add(val?.trim()?.replace('%', ''));
         }
+      }
+      if (this.hasValues == null) {
+        this.hasValues = false;
       }
     }
 
@@ -488,18 +493,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean isEqual = true;
 
       Object originalValue = this.getFieldValue(item, this.fieldName, this.sObjectType);
-      String storedValue = String.valueOf(originalValue);
+      String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
       // special case for currency/multi-decimal situations where zero is being compared to
       // but the comparison value has no decimals
       if (storedValue?.replace('.', '')?.containsOnly('0') == true && this.values.contains('0')) {
         storedValue = '0';
       }
       switch on this.criteria {
-        when '=' {
-          isEqual = this.values.contains(storedValue) || this.hasValues == null && String.isBlank(storedValue);
-        }
-        when '!=' {
-          isEqual = this.values.contains(storedValue) == false || (String.isBlank(storedValue) && this.hasValues);
+        when '=', '!=' {
+          isEqual = this.values.contains(storedValue) || this.hasValues == false && String.isBlank(storedValue);
+          isEqual = this.criteria == '!=' ? !isEqual : isEqual;
         }
         when 'like', '!like' {
           // like/not like have to be handled separately because it's the storedValue
