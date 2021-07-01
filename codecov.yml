@@ -9,3 +9,4 @@ coverage:
                 precision: 2
                 if_ci_failed: success
         patch: off
+github_checks: false
