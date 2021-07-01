@@ -2,7 +2,8 @@ coverage:
     status:
         project:
             default:
-                base: 90 # otherwise any regression in code coverage fails the build
+                target: 90 # otherwise any regression in code coverage fails the build
+                threshold: 2%
                 range: 75...100
                 round: down
                 precision: 2
