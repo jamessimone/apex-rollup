@@ -632,24 +632,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           return isEqualTo ? storedTime >= comparisonTime : storedTime > comparisonTime;
         }
       } else if (storedValue instanceof Datetime) {
-        Datetime comparisonDate = Datetime.valueOfGmt(comparisonText);
-        Datetime storedDate = (Datetime) storedValue;
-
-        // SOQL doesn't return the milliseconds Time parts of a stored Datetime
-        // so for storedDate we have to go even further
-        storedDate = Datetime.newInstanceGmt(
-          storedDate.yearGmt(),
-          storedDate.monthGmt(),
-          storedDate.dayGmt(),
-          storedDate.hourGmt(),
-          storedDate.minuteGmt(),
-          storedDate.secondGmt()
-        );
+        Datetime comparisonDatetime = Datetime.valueOfGmt(comparisonText);
+        Datetime storedDatetime = RollupFieldInitializer.Current.getApexCompliantDatetime((Datetime) storedValue);
 
         if (isLessThan) {
-          return isEqualTo ? storedDate <= comparisonDate : storedDate < comparisonDate;
+          return isEqualTo ? storedDatetime <= comparisonDatetime : storedDatetime < comparisonDatetime;
         } else {
-          return isEqualTo ? storedDate >= comparisonDate : storedDate > comparisonDate;
+          return isEqualTo ? storedDatetime >= comparisonDatetime : storedDatetime > comparisonDatetime;
         }
       } else if (storedValue instanceof Decimal) {
         // covers Double / Integer / Decimal / Long

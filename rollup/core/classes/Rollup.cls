@@ -26,7 +26,7 @@ global without sharing virtual class Rollup {
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
-  private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{ Op.FIRST.name(), Op.LAST.name(), Op.AVERAGE.name() };
+  private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{ Op.FIRST.name(), Op.LAST.name(), Op.AVERAGE.name(), Op.CONCAT_DISTINCT.name() };
 
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
@@ -1756,7 +1756,7 @@ global without sharing virtual class Rollup {
       rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
       rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
 
-      if (rollupMetadata.IsFullRecordSet__c == false && ALWAYS_FULL_RECALC_OPS.contains(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
+      if (rollupMetadata.IsFullRecordSet__c != true && ALWAYS_FULL_RECALC_OPS.contains(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
 

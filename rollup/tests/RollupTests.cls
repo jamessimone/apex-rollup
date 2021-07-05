@@ -555,7 +555,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'IsFullRecordSet__c should force account to reset its rollup value AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Full record set flag should force empty match set to still update lookup item');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'Full record set flag should force empty match set to still update lookup item');
   }
 
   @isTest
@@ -1295,6 +1295,52 @@ private class RollupTests {
       'first test string again, third test string',
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_UPDATE should be the distinct combo of the old and new strings'
+    );
+  }
+
+  @isTest
+  static void shouldConcatDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
+    // TODO - replicate this test for count/count_distinct
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AccountNumber FROM Account];
+    acc.AccountNumber = 'test update';
+    update acc;
+    Rollup.defaultControl = null;
+
+    ContactPointAddress cpa = new ContactPointAddress(
+      ParentId = acc.Id,
+      Name = acc.AccountNumber,
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
+
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
+
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = 'something else') };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress',
+        CalcItemWhereClause__c = 'Name != \'' + acc.AccountNumber + '\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_UPDATE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(
+      null,
+      updatedAcc.AccountNumber,
+      'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items'
     );
   }
 
