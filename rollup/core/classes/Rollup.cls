@@ -242,13 +242,7 @@ global without sharing virtual class Rollup {
       queryFields.addAll(getQueryFieldsFromMetadata(matchingMeta, RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType)));
 
       if (amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-        String countQuery = RollupQueryBuilder.Current.getQuery(
-          childType,
-          new List<String>{ 'Count()' },
-          matchingMeta.LookupFieldOnLookupObject__c,
-          '!=',
-          matchingMeta.CalcItemWhereClause__c
-        );
+        String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
         Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
         if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
           amountOfCalcItems = currentCount;
