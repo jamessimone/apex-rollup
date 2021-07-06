@@ -125,11 +125,15 @@ public without sharing abstract class RollupCalculator {
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
+      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
       // it's only a full recalc situation if there are no items left after winnowing
       // otherwise, for even one item in the list, this should cause "shouldTriggerFullRecalc" to evaluate to false
       if (this.shouldTriggerFullRecalc) {
-        this.shouldTriggerFullRecalc = this.shouldTriggerFullRecalc && this.eval?.matches(calcItem) == false;
+        this.shouldTriggerFullRecalc =
+          this.shouldTriggerFullRecalc &&
+          (this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == true);
       }
+
       if (this.shouldShortCircuit) {
         this.handleShortCircuit(calcItem);
         continue;
@@ -303,7 +307,6 @@ public without sharing abstract class RollupCalculator {
         calc.performRollup(allOtherItems, new Map<Id, SObject>());
         this.returnVal = calc.getReturnValue();
       }
-
     }
     return this.returnVal;
   }

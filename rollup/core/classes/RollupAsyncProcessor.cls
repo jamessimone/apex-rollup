@@ -19,7 +19,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
-  private RollupAsyncProcessor fullRecalcProcessor;
 
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
   private static Integer stackDepth = 0;
@@ -427,7 +426,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     isRunningAsync = true; // the first rollup can immediately start rolling up, instead of dispatching to a queueable / another batchable
     RollupAsyncProcessor roll = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
     roll.isFullRecalc = true;
-    roll.fullRecalcProcessor = this;
     roll.runCalc();
   }
 
@@ -436,28 +434,33 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (rollup.isFullRecalc == false || String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
       return;
     }
+
     Set<String> objIds = new Set<String>();
-    for (Rollup.CalcItemBag bag : lookupToCalcItems.values()) {
-      for (SObject calcItem : bag.originals) {
-        objIds.add(calcItem.Id);
+    for (String lookupKey : lookupToCalcItems.keySet()) {
+      Rollup.CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+      if (bag.hasQueriedForAdditionalItems == false) {
+        bag.hasQueriedForAdditionalItems = true;
+        for (SObject calcItem : bag.originals) {
+          objIds.add(calcItem.Id);
+        }
       }
     }
 
-    Set<String> lookupKeys = lookupToCalcItems.keySet();
-    String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
-    String query = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)), 'Id', '!=', whereClause);
-    List<SObject> additionalCalcItems = Database.query(query);
+    if (objIds.isEmpty() == false) {
+      Set<String> lookupKeys = lookupToCalcItems.keySet();
+      String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
+      String query = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)), 'Id', '!=', whereClause);
+      List<SObject> additionalCalcItems = Database.query(query);
 
-    for (SObject additionalCalcItem : additionalCalcItems) {
-      String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
-      if (lookupToCalcItems.containsKey(lookupKey)) {
-        lookupToCalcItems.get(lookupKey).additional.add(additionalCalcItem);
+      for (SObject additionalCalcItem : additionalCalcItems) {
+        String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
+        if (lookupToCalcItems.containsKey(lookupKey)) {
+          Rollup.CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+          bag.additional.add(additionalCalcItem);
+        }
       }
     }
-  }
 
-  protected virtual Boolean shouldBypassUpdatingLookupItems(String lookupKey) {
-    return this.fullRecalcProcessor?.shouldBypassUpdatingLookupItems(lookupKey) == true;
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
@@ -815,10 +818,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         if (hasExceededCurrentRollupLimits(this.rollupControl)) {
           unprocessedCalcItems.addAll(localCalcItems);
           lookupItems.remove(index);
-          continue;
-        } else if (this.shouldBypassUpdatingLookupItems(key)) {
-          // if a prior batch of full recalc rollups was executing against calc items and the total number of child items exceeded
-          // the batch chunk size, that particular iteration pulls the rest of the child items and sets the parent's fields accordingly
           continue;
         }
 

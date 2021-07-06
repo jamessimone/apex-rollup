@@ -2,6 +2,7 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   private final String queryString;
   private final List<Rollup__mdt> rollupInfo;
   private final Set<Id> recordIds;
+  private final Map<String, Rollup.CalcItemBag> statefulLookupToCalcItems;
 
   public RollupFullBatchRecalculator(
     String queryString,
@@ -16,6 +17,7 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
     this.queryString = queryString;
     this.rollupInfo = rollupInfo;
     this.recordIds = recordIds;
+    this.statefulLookupToCalcItems = new Map<String, Rollup.CalcItemBag>();
   }
 
   public override Database.QueryLocator start(Database.BatchableContext bc) {
@@ -40,5 +42,23 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   public override void finish(Database.BatchableContext bc) {
     RollupLogger.Instance.log('RollupFullBatchRecalculator finished', LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
+  }
+
+  protected override void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+    Map<String, Rollup.CalcItemBag> local = new Map<String, Rollup.CalcItemBag>();
+    for (String lookupKey : lookupToCalcItems.keySet()) {
+      Rollup.CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+      if (bag.hasQueriedForAdditionalItems == false && this.statefulLookupToCalcItems.containsKey(lookupKey)) {
+        bag = this.statefulLookupToCalcItems.get(lookupKey);
+      } else {
+        local.put(lookupKey, bag);
+      }
+    }
+
+    super.retrieveAdditionalCalcItems(local, rollup);
+
+    for (String lookupKey : local.keySet()) {
+      this.statefulLookupToCalcItems.put(lookupKey, local.get(lookupKey));
+    }
   }
 }

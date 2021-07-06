@@ -128,6 +128,7 @@ global without sharing virtual class Rollup {
     }
     public final List<SObject> originals;
     public final List<SObject> additional;
+    public Boolean hasQueriedForAdditionalItems = false;
   }
 
   public virtual class DMLHelper {
