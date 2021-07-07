@@ -8,39 +8,6 @@ private class RollupStandardIntegrationTests {
   }
 
   @isTest
-  static void shouldResetCountOnFullRecalcEvenIfItemDoesNotMatch() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Account acc = [SELECT Id FROM Account];
-    acc.AnnualRevenue = 2;
-    update acc;
-
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(Name = 'oneNonMatch', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'twoNonMatch', ParentId = acc.Id, PreferenceRank = 1)
-    };
-    insert cpas;
-    Rollup.defaultControl = null;
-
-    Rollup__mdt meta = new Rollup__mdt(
-      CalcItem__c = 'ContactPointAddress',
-      RollupFieldOnCalcItem__c = 'Id',
-      LookupFieldOnCalcItem__c = 'ParentId',
-      LookupFieldOnLookupObject__c = 'Id',
-      RollupFieldOnLookupObject__c = 'AnnualRevenue',
-      LookupObject__c = 'Account',
-      RollupOperation__c = 'COUNT',
-      CalcItemWhereClause__c = 'ParentId != \'' + acc.Id + '\''
-    );
-
-    Test.startTest();
-    Rollup.performFullRecalculation(meta);
-    Test.stopTest();
-
-    acc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(0, acc.AnnualRevenue, 'Annual revenue should have been nulled out for full recalc with only non-matching items');
-  }
-
-  @isTest
   static void shouldConcatDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];

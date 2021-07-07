@@ -830,7 +830,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         RollupLogger.Instance.log('lookup record prior to rolling up: ', lookupRecord, LoggingLevel.DEBUG);
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
-        if (priorVal != newVal) {
+        if (priorVal != newVal || this.isFullRecalc) {
           updater.updateField(lookupRecord, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }

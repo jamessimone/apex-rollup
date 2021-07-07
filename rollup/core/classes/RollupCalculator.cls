@@ -133,12 +133,12 @@ public without sharing abstract class RollupCalculator {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
       SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
-      Boolean hasExistingOrPriorMatch = this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == true;
+      Boolean doesNotMatch = this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == false;
 
       // it's only a full recalc situation if there are no items left after winnowing
       // otherwise, for even one item in the list, this should cause "shouldTriggerFullRecalc" to evaluate to false
       if (this.shouldTriggerFullRecalc) {
-        this.shouldTriggerFullRecalc = this.shouldTriggerFullRecalc && hasExistingOrPriorMatch;
+        this.shouldTriggerFullRecalc = doesNotMatch;
       }
 
       if (this.shouldShortCircuit) {
@@ -251,7 +251,7 @@ public without sharing abstract class RollupCalculator {
       if (this.eval?.matches(item) != false) {
         items.add(item);
       } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
-        // TODO - handle old item matching, new item not matching situation for other (non-full recalc) operations
+        // TODO - handle old item matching, new item not matching situation for (other non-full recalc) operations
         items.add(item);
       }
     }
