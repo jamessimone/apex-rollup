@@ -251,7 +251,7 @@ public without sharing abstract class RollupCalculator {
       if (this.eval?.matches(item) != false) {
         items.add(item);
       } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
-        // TODO - handle old item matching, new item not matching situation for other operations
+        // TODO - handle old item matching, new item not matching situation for other (non-full recalc) operations
         items.add(item);
       }
     }

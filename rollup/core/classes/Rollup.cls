@@ -254,7 +254,6 @@ global without sharing virtual class Rollup {
     }
 
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', potentialWhereClause);
-
     return buildFullRecalcRollup(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint).runCalc();
   }
 
@@ -273,9 +272,7 @@ global without sharing virtual class Rollup {
     validationRuleWrapper.orderByFirstLast = metadata.OrderByFirstLast__c;
     enforceValidationRules(validationRuleWrapper);
 
-    QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
-    wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    return getFullRecalcRollup(metadata, wrapper, InvocationPoint.FROM_LWC).runCalc();
+    return getFullRecalcRollup(metadata, new QueryWrapper(), InvocationPoint.FROM_LWC).runCalc();
   }
 
   global class FlowInput {
@@ -1431,9 +1428,9 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     InvocationPoint invokePoint
   ) {
-    // for (Rollup__mdt meta : matchingMeta) {
-    //   meta.IsFullRecordSet__c = true;
-    // }
+    for (Rollup__mdt meta : matchingMeta) {
+      meta.IsFullRecordSet__c = true;
+    }
     RollupAsyncProcessor instance = new RollupAsyncProcessor(invokePoint);
     Boolean shouldQueue =
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&

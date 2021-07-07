@@ -812,7 +812,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         Rollup.CalcItemBag bag = calcItemsByLookupField.get(key);
         // You might find yourself looking at this, wondering what the point of the bag is if we're just going to combine
         // the two lists here and move on with our lives. And, in truth, it serves little purpose at the moment - but it will
-        // in the future! This is because the AVERAGE / COUNT_DISTINCT / FIRST / LAST operations are ALWAYS full recalc operations -
+        // in the future! This is because the AVERAGE / CONCAT_DISTINCT / COUNT_DISTINCT / FIRST / LAST operations are ALWAYS full recalc operations -
         // they're just not labeled as such at the moment by the rollup.isFullRecalc property, a fact that has always bothered me.
         // those full recalc operations can be completely bulkified by completing the torch-passing of CalcItemBag downstream.
         List<SObject> localCalcItems = bag.originals;
