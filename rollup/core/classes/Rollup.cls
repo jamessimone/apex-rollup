@@ -1431,6 +1431,9 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     InvocationPoint invokePoint
   ) {
+    // for (Rollup__mdt meta : matchingMeta) {
+    //   meta.IsFullRecordSet__c = true;
+    // }
     RollupAsyncProcessor instance = new RollupAsyncProcessor(invokePoint);
     Boolean shouldQueue =
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
