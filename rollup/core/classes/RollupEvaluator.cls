@@ -319,16 +319,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private Boolean isOrConditional(String fullString, String conditionalStatement) {
       Boolean isOr = false;
       Boolean isFirstConditional = fullString.indexOf(conditionalStatement) == 0;
-      if (isFirstConditional) {
-        return isOr;
-      }
-      Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement) + conditionalStatement.length();
-      Integer clauseStartingIndex = whereWeAreInTheFullString - (conditionalStatement.length() + 5);
-      if (clauseStartingIndex > 0) {
-        isOr = fullString.substring(clauseStartingIndex, whereWeAreInTheFullString).containsIgnoreCase('or');
-      } else {
-        // do nothing, but with PMD happy
-        isOr = false;
+      if (isFirstConditional == false) {
+        Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement) + conditionalStatement.length();
+        // 5 is enough to encapsulate " or " with spaces
+        Integer clauseStartingIndex = whereWeAreInTheFullString - (conditionalStatement.length() + 5);
+        if (clauseStartingIndex > 0) {
+          isOr = fullString.substring(clauseStartingIndex, whereWeAreInTheFullString).containsIgnoreCase(' or ');
+        }
       }
       return isOr;
     }

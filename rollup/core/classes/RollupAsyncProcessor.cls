@@ -449,7 +449,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (objIds.isEmpty() == false) {
       Set<String> lookupKeys = lookupToCalcItems.keySet();
       String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
-      String query = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)), 'Id', '!=', whereClause);
+      String query = RollupQueryBuilder.Current.getQuery(
+        rollup.calcItemType,
+        new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)),
+        'Id',
+        '!=',
+        whereClause
+      );
       List<SObject> additionalCalcItems = Database.query(query);
 
       for (SObject additionalCalcItem : additionalCalcItems) {
@@ -460,7 +466,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
     }
-
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
@@ -810,8 +815,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // in the future! This is because the AVERAGE / COUNT_DISTINCT / FIRST / LAST operations are ALWAYS full recalc operations -
         // they're just not labeled as such at the moment by the rollup.isFullRecalc property, a fact that has always bothered me.
         // those full recalc operations can be completely bulkified by completing the torch-passing of CalcItemBag downstream.
-        // for the moment, though, I'd like to release these changes to test them out as the fix for the issues in:
-        // https://github.com/jamessimone/apex-rollup/issues/132
         List<SObject> localCalcItems = bag.originals;
         localCalcItems.addAll(bag.additional);
 
@@ -861,7 +864,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void winnowCalcItemsAndCheckReparenting(RollupAsyncProcessor roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
       SObject calcItem = localCalcItems[index];
-      if (roll.metadata?.IsFullRecordSet__c == true && roll.eval.matches(calcItem) == false) {
+      if (
+        roll.metadata?.IsFullRecordSet__c == true &&
+        (roll.eval.matches(calcItem) == false &&
+        (roll.oldCalcItems.containsKey(calcItem.Id) == false || roll.eval.matches(roll.oldCalcItems.get(calcItem.Id)) == false))
+      ) {
         // technically it should only be possible for a calc item that doesn't match
         // to still exist if it is a Full Record Set operation; this gives people the chance
         // to reset rollup values if none of the records passed in match the eval criteria

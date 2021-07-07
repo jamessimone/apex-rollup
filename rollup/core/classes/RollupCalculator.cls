@@ -121,17 +121,24 @@ public without sharing abstract class RollupCalculator {
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     this.shouldTriggerFullRecalc = true;
+    Set<Id> exclusionIds = new Set<Id>();
+    for (SObject calcItem : calcItems) {
+      if (calcItem.Id != null) {
+        exclusionIds.add(calcItem.Id);
+      }
+    }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
+
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
       SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+      Boolean hasExistingOrPriorMatch = this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == true;
+
       // it's only a full recalc situation if there are no items left after winnowing
       // otherwise, for even one item in the list, this should cause "shouldTriggerFullRecalc" to evaluate to false
       if (this.shouldTriggerFullRecalc) {
-        this.shouldTriggerFullRecalc =
-          this.shouldTriggerFullRecalc &&
-          (this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == true);
+        this.shouldTriggerFullRecalc = this.shouldTriggerFullRecalc && hasExistingOrPriorMatch;
       }
 
       if (this.shouldShortCircuit) {
@@ -201,7 +208,7 @@ public without sharing abstract class RollupCalculator {
     // ("performRollup"); this means String, Number, and Datetime variant rollup calculations all need to correctly handle
     // recalculating via "calculateNewAggregateValue"
     if (this.shouldTriggerFullRecalc) {
-      this.returnVal = this.calculateNewAggregateValue(this.op, new Map<Id, SObject>(calcItems).keySet(), this.getCalcItemType());
+      this.returnVal = this.calculateNewAggregateValue(this.op, exclusionIds, this.getCalcItemType());
       // bail on calling setReturnValue below
       return;
     }
