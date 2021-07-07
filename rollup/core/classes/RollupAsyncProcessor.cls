@@ -19,6 +19,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
+  private RollupAsyncProcessor fullRecalcProcessor;
 
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
   private static Integer stackDepth = 0;
@@ -426,6 +427,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     isRunningAsync = true; // the first rollup can immediately start rolling up, instead of dispatching to a queueable / another batchable
     RollupAsyncProcessor roll = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
     roll.isFullRecalc = true;
+    roll.fullRecalcProcessor = this;
     roll.runCalc();
   }
 
@@ -449,9 +451,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (objIds.isEmpty() == false) {
       Set<String> lookupKeys = lookupToCalcItems.keySet();
       String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
+      Map<Schema.SObjectType,Set<String>> localCalcToUniqueFieldNames = rollup.fullRecalcProcessor != null ? rollup.calcObjectToUniqueFieldNames : this.calcObjectToUniqueFieldNames;
       String query = RollupQueryBuilder.Current.getQuery(
         rollup.calcItemType,
-        new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)),
+        new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
         'Id',
         '!=',
         whereClause
@@ -803,7 +806,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Set<SObject> unprocessedCalcItems = new Set<SObject>();
     RollupSObjectUpdater updater = new RollupSObjectUpdater(rollup.opFieldOnLookupObject);
-    this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
+    if (this.fullRecalcProcessor != null) {
+      rollup.fullRecalcProcessor = this.fullRecalcProcessor;
+      rollup.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
+      this.fullRecalcProcessor.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
+    } else {
+      this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
+    }
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
