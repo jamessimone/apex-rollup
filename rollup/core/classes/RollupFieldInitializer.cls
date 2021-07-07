@@ -1,5 +1,4 @@
 public virtual class RollupFieldInitializer {
-
   private RollupFieldInitializer() {
   }
 
@@ -10,6 +9,11 @@ public virtual class RollupFieldInitializer {
   public final Long minimumLongValue = this.maximumLongValue * -1;
   public final Integer maximumIntegerValue = 2147483647;
   public final Integer minimumIntegerValue = this.maximumIntegerValue * -1;
+
+  public Datetime getApexCompliantDatetime(Datetime dt) {
+    // one of the worst things about SOQL is that Datetimes retrieved have the millisecond values truncated
+    return Datetime.newInstanceGmt(dt.yearGmt(), dt.monthGmt(), dt.dayGmt(), dt.hourGmt(), dt.minuteGmt(), dt.secondGmt());
+  }
 
   public virtual Object getDefaultValue(SObjectField field) {
     DescribeFieldResult fieldDescribe = field.getDescribe();

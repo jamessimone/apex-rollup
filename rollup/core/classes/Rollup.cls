@@ -26,7 +26,13 @@ global without sharing virtual class Rollup {
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
-  private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{ Op.FIRST.name(), Op.LAST.name(), Op.AVERAGE.name() };
+  private static final Set<String> ALWAYS_FULL_RECALC_OPS = new Set<String>{
+    Op.FIRST.name(),
+    Op.LAST.name(),
+    Op.AVERAGE.name(),
+    Op.CONCAT_DISTINCT.name(),
+    Op.COUNT_DISTINCT.name()
+  };
 
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
@@ -128,6 +134,7 @@ global without sharing virtual class Rollup {
     }
     public final List<SObject> originals;
     public final List<SObject> additional;
+    public Boolean hasQueriedForAdditionalItems = false;
   }
 
   public virtual class DMLHelper {
@@ -242,13 +249,7 @@ global without sharing virtual class Rollup {
       queryFields.addAll(getQueryFieldsFromMetadata(matchingMeta, RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType)));
 
       if (amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-        String countQuery = RollupQueryBuilder.Current.getQuery(
-          childType,
-          new List<String>{ 'Count()' },
-          matchingMeta.LookupFieldOnLookupObject__c,
-          '!=',
-          matchingMeta.CalcItemWhereClause__c
-        );
+        String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
         Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
         if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
           amountOfCalcItems = currentCount;
@@ -259,7 +260,6 @@ global without sharing virtual class Rollup {
     }
 
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', potentialWhereClause);
-
     return buildFullRecalcRollup(matchingMetadata, amountOfCalcItems, queryString, objIds, recordIds, childType, null, localInvokePoint).runCalc();
   }
 
@@ -388,7 +388,7 @@ global without sharing virtual class Rollup {
   )
   global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputs = new List<FlowOutput>();
-    List<RollupAsyncProcessor> rollups = new List<RollupAsyncProcessor>();
+    List<RollupAsyncProcessor> localRollups = new List<RollupAsyncProcessor>();
     InvocationPoint fromInvocable = InvocationPoint.FROM_INVOCABLE;
 
     for (FlowInput flowInput : flowInputs) {
@@ -435,7 +435,7 @@ global without sharing virtual class Rollup {
       );
 
       List<Rollup__mdt> metas = new List<Rollup__mdt>{ rollupMeta };
-      processCustomMetadata(rollups, metas, flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), rollupContext, fromInvocable);
+      processCustomMetadata(localRollups, metas, flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), rollupContext, fromInvocable);
 
       if (metas.isEmpty() == false) {
         RollupAsyncProcessor batchedRollup = getRollup(
@@ -451,15 +451,15 @@ global without sharing virtual class Rollup {
           logMessage = 'deferring processing for rollup';
           CACHED_ROLLUPS.addAll(batchedRollup.rollups);
         } else {
-          rollups.addAll(batchedRollup.rollups);
+          localRollups.addAll(batchedRollup.rollups);
         }
         RollupLogger.Instance.log(logMessage, batchedRollup.rollups, LoggingLevel.DEBUG);
       }
     }
 
     try {
-      if (rollups.isEmpty() == false) {
-        batch(rollups, fromInvocable);
+      if (localRollups.isEmpty() == false) {
+        batch(localRollups, fromInvocable);
       }
     } catch (Exception ex) {
       RollupLogger.Instance.log('an error occurred during invocable action', ex, LoggingLevel.ERROR);
@@ -1436,6 +1436,9 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     InvocationPoint invokePoint
   ) {
+    for (Rollup__mdt meta : matchingMeta) {
+      meta.IsFullRecordSet__c = true;
+    }
     RollupAsyncProcessor instance = new RollupAsyncProcessor(invokePoint);
     Boolean shouldQueue =
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
@@ -1762,7 +1765,7 @@ global without sharing virtual class Rollup {
       rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
       rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
 
-      if (rollupMetadata.IsFullRecordSet__c == false && ALWAYS_FULL_RECALC_OPS.contains(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
+      if (rollupMetadata.IsFullRecordSet__c != true && ALWAYS_FULL_RECALC_OPS.contains(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
 

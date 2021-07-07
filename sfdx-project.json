@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.32.0",
-            "versionDescription": "Beginning of Rollup Logger extension work, CONCAT bugfix, many invocable improvements, full batch recalculator bugfix",
+            "versionNumber": "1.2.33.0",
+            "versionDescription": "Bugfix for full recalculation app (which could have lead to a Too Many Query Rows error previously), CONCAT_DISTINCT properly added to list of full recalc operations",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
     ],
@@ -40,6 +40,7 @@
         "apex-rollup@1.2.29-0": "04t6g000008SgLWAA0",
         "apex-rollup@1.2.30-0": "04t6g000008SgSsAAK",
         "apex-rollup@1.2.31-0": "04t6g000008SgaiAAC",
-        "apex-rollup@1.2.32-0": "04t6g000008SgbqAAC"
+        "apex-rollup@1.2.32-0": "04t6g000008SgbqAAC",
+        "apex-rollup@1.2.33-0": "04t6g000008SgcyAAC"
     }
 }

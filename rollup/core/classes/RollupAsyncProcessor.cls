@@ -436,28 +436,39 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (rollup.isFullRecalc == false || String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
       return;
     }
+
     Set<String> objIds = new Set<String>();
-    for (Rollup.CalcItemBag bag : lookupToCalcItems.values()) {
-      for (SObject calcItem : bag.originals) {
-        objIds.add(calcItem.Id);
+    for (String lookupKey : lookupToCalcItems.keySet()) {
+      Rollup.CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+      if (bag.hasQueriedForAdditionalItems == false) {
+        bag.hasQueriedForAdditionalItems = true;
+        for (SObject calcItem : bag.originals) {
+          objIds.add(calcItem.Id);
+        }
       }
     }
 
-    Set<String> lookupKeys = lookupToCalcItems.keySet();
-    String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
-    String query = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(this.calcObjectToUniqueFieldNames.get(rollup.calcItemType)), 'Id', '!=', whereClause);
-    List<SObject> additionalCalcItems = Database.query(query);
+    if (objIds.isEmpty() == false) {
+      Set<String> lookupKeys = lookupToCalcItems.keySet();
+      String whereClause = String.valueOf(rollup.lookupFieldOnCalcItem) + ' = :lookupKeys';
+      Map<Schema.SObjectType,Set<String>> localCalcToUniqueFieldNames = rollup.fullRecalcProcessor != null ? rollup.calcObjectToUniqueFieldNames : this.calcObjectToUniqueFieldNames;
+      String query = RollupQueryBuilder.Current.getQuery(
+        rollup.calcItemType,
+        new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
+        'Id',
+        '!=',
+        whereClause
+      );
+      List<SObject> additionalCalcItems = Database.query(query);
 
-    for (SObject additionalCalcItem : additionalCalcItems) {
-      String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
-      if (lookupToCalcItems.containsKey(lookupKey)) {
-        lookupToCalcItems.get(lookupKey).additional.add(additionalCalcItem);
+      for (SObject additionalCalcItem : additionalCalcItems) {
+        String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
+        if (lookupToCalcItems.containsKey(lookupKey)) {
+          Rollup.CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+          bag.additional.add(additionalCalcItem);
+        }
       }
     }
-  }
-
-  protected virtual Boolean shouldBypassUpdatingLookupItems(String lookupKey) {
-    return this.fullRecalcProcessor?.shouldBypassUpdatingLookupItems(lookupKey) == true;
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
@@ -795,7 +806,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Set<SObject> unprocessedCalcItems = new Set<SObject>();
     RollupSObjectUpdater updater = new RollupSObjectUpdater(rollup.opFieldOnLookupObject);
-    this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
+    if (this.fullRecalcProcessor != null) {
+      rollup.fullRecalcProcessor = this.fullRecalcProcessor;
+      rollup.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
+      this.fullRecalcProcessor.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
+    } else {
+      this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
+    }
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
@@ -804,21 +821,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         Rollup.CalcItemBag bag = calcItemsByLookupField.get(key);
         // You might find yourself looking at this, wondering what the point of the bag is if we're just going to combine
         // the two lists here and move on with our lives. And, in truth, it serves little purpose at the moment - but it will
-        // in the future! This is because the AVERAGE / COUNT_DISTINCT / FIRST / LAST operations are ALWAYS full recalc operations -
+        // in the future! This is because the AVERAGE / CONCAT_DISTINCT / COUNT_DISTINCT / FIRST / LAST operations are ALWAYS full recalc operations -
         // they're just not labeled as such at the moment by the rollup.isFullRecalc property, a fact that has always bothered me.
         // those full recalc operations can be completely bulkified by completing the torch-passing of CalcItemBag downstream.
-        // for the moment, though, I'd like to release these changes to test them out as the fix for the issues in:
-        // https://github.com/jamessimone/apex-rollup/issues/132
         List<SObject> localCalcItems = bag.originals;
         localCalcItems.addAll(bag.additional);
 
         if (hasExceededCurrentRollupLimits(this.rollupControl)) {
           unprocessedCalcItems.addAll(localCalcItems);
           lookupItems.remove(index);
-          continue;
-        } else if (this.shouldBypassUpdatingLookupItems(key)) {
-          // if a prior batch of full recalc rollups was executing against calc items and the total number of child items exceeded
-          // the batch chunk size, that particular iteration pulls the rest of the child items and sets the parent's fields accordingly
           continue;
         }
 
@@ -828,7 +839,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         RollupLogger.Instance.log('lookup record prior to rolling up: ', lookupRecord, LoggingLevel.DEBUG);
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
         Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
-        if (priorVal != newVal) {
+        if (priorVal != newVal || this.isFullRecalc) {
           updater.updateField(lookupRecord, newVal);
           recordsToUpdate.put(key, lookupRecord);
         }
@@ -862,7 +873,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void winnowCalcItemsAndCheckReparenting(RollupAsyncProcessor roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
       SObject calcItem = localCalcItems[index];
-      if (roll.metadata?.IsFullRecordSet__c == true && roll.eval.matches(calcItem) == false) {
+      if (
+        roll.metadata?.IsFullRecordSet__c == true &&
+        (roll.eval.matches(calcItem) == false &&
+        (roll.oldCalcItems.containsKey(calcItem.Id) == false || roll.eval.matches(roll.oldCalcItems.get(calcItem.Id)) == false))
+      ) {
         // technically it should only be possible for a calc item that doesn't match
         // to still exist if it is a Full Record Set operation; this gives people the chance
         // to reset rollup values if none of the records passed in match the eval criteria

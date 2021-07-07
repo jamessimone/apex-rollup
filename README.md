@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgbqAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgcyAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgbqAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgcyAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -934,7 +934,7 @@ public class RollupLogger {
 }
 ```
 
-You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers will be included in the next release (`v1.2.33`) as separate unmanaged packages:
+You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers will be included in an upcoming release as separate unmanaged packages:
 
 1. [Nebula Logger](https://github.com/jongpie/NebulaLogger)
 2. A lightweight custom logger that's also part of this repository; it's just bundled separately

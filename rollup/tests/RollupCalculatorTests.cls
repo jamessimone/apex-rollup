@@ -626,7 +626,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
 
-    System.assertEquals('', calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   @isTest

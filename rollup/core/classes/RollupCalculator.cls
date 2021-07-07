@@ -120,16 +120,27 @@ public without sharing abstract class RollupCalculator {
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    this.shouldTriggerFullRecalc = calcItems.isEmpty() == false;
+    this.shouldTriggerFullRecalc = true;
+    Set<Id> exclusionIds = new Set<Id>();
+    for (SObject calcItem : calcItems) {
+      if (calcItem.Id != null) {
+        exclusionIds.add(calcItem.Id);
+      }
+    }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
+
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
+      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+      Boolean doesNotMatch = this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == false;
+
       // it's only a full recalc situation if there are no items left after winnowing
       // otherwise, for even one item in the list, this should cause "shouldTriggerFullRecalc" to evaluate to false
       if (this.shouldTriggerFullRecalc) {
-        this.shouldTriggerFullRecalc = this.shouldTriggerFullRecalc && this.eval?.matches(calcItem) == false;
+        this.shouldTriggerFullRecalc = doesNotMatch;
       }
+
       if (this.shouldShortCircuit) {
         this.handleShortCircuit(calcItem);
         continue;
@@ -197,7 +208,7 @@ public without sharing abstract class RollupCalculator {
     // ("performRollup"); this means String, Number, and Datetime variant rollup calculations all need to correctly handle
     // recalculating via "calculateNewAggregateValue"
     if (this.shouldTriggerFullRecalc) {
-      this.returnVal = this.calculateNewAggregateValue(this.op, new Map<Id, SObject>(calcItems).keySet(), this.getCalcItemType());
+      this.returnVal = this.calculateNewAggregateValue(this.op, exclusionIds, this.getCalcItemType());
       // bail on calling setReturnValue below
       return;
     }
@@ -240,7 +251,7 @@ public without sharing abstract class RollupCalculator {
       if (this.eval?.matches(item) != false) {
         items.add(item);
       } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
-        // TODO - handle old item matching, new item not matching situation for other operations
+        // TODO - handle old item matching, new item not matching situation for (other non-full recalc) operations
         items.add(item);
       }
     }
@@ -286,18 +297,23 @@ public without sharing abstract class RollupCalculator {
         )
       );
 
-      Rollup.Op baseOp = Rollup.opNameToOp.get(Rollup.getBaseOperationName(op.name()));
-      RollupCalculator calc = Factory.getCalculator(
-        this.returnVal,
-        baseOp,
-        this.opFieldOnCalcItem,
-        this.opFieldOnLookupObject,
-        this.metadata,
-        this.lookupRecordKey,
-        this.lookupKeyField
-      );
-      calc.performRollup(allOtherItems, new Map<Id, SObject>());
-      this.returnVal = calc.getReturnValue();
+      if (allOtherItems.isEmpty()) {
+        // break out of recursion if there's nothing to calculate
+        this.returnVal = null;
+      } else {
+        Rollup.Op baseOp = Rollup.opNameToOp.get(Rollup.getBaseOperationName(op.name()));
+        RollupCalculator calc = Factory.getCalculator(
+          this.returnVal,
+          baseOp,
+          this.opFieldOnCalcItem,
+          this.opFieldOnLookupObject,
+          this.metadata,
+          this.lookupRecordKey,
+          this.lookupKeyField
+        );
+        calc.performRollup(allOtherItems, new Map<Id, SObject>());
+        this.returnVal = calc.getReturnValue();
+      }
     }
     return this.returnVal;
   }
@@ -546,15 +562,7 @@ public without sharing abstract class RollupCalculator {
       Datetime datetimeWithMs = potentiallyUnitializedDecimal instanceof Decimal
         ? Datetime.newInstance(((Decimal) potentiallyUnitializedDecimal).longValue())
         : ((Datetime) potentiallyUnitializedDecimal);
-      return Datetime.newInstanceGmt(
-          datetimeWithMs.yearGmt(),
-          datetimeWithMs.monthGmt(),
-          datetimeWithMs.dayGmt(),
-          datetimeWithMs.hourGmt(),
-          datetimeWithMs.minuteGmt(),
-          datetimeWithMs.secondGmt()
-        )
-        .getTime();
+      return RollupFieldInitializer.Current.getApexCompliantDatetime(datetimeWithMs).getTime();
     }
 
     protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> excludedItems, SObjectType sObjectType) {
@@ -804,7 +812,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
-      this.stringVal = (String) this.performBaseCalculation(op, objIds, sObjectType);
+      this.stringVal = (String) super.performBaseCalculation(op, objIds, sObjectType);
       return this.stringVal;
     }
 
