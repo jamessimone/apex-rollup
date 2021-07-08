@@ -299,6 +299,7 @@ There is an included Lightning Web Component (LWC) that will show up in the "Cus
 - The button will not display on the flexipage at all until at least one `Rollup__mdt.LookupObject__c` field matches the SObject whose record flexipage you're dropping the button on
 - The button _will_ display even if a given parent record has no matching children associated with the rollup(s) in question.
 - This particular rollup runs synchronously, so it won't eat into your Asynchronous Job limits for the day; it also refreshes any Aura/page-layout sections of the page (LWC-based sections of the page should update automatically).
+- Editing `Rollup__mdt` records with a parent record's page open can lead to unexpected behavior. This is because the `Rollup__mdt` records are cached on page load, so any updates made to those records will require a page refresh prior to clicking the `Recalc Rollup` button
 
 ### Scheduled Jobs
 
