@@ -1148,14 +1148,8 @@ private class RollupTests {
 
   @isTest
   static void shouldConcatDistinctOnInsert() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Account acc = [SELECT Id, AccountNumber FROM Account];
-    acc.AccountNumber = 'beginning, test string, something';
-    update acc;
-    Rollup.defaultControl = null;
-
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
-    ContactPointAddress secondCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'hello another string');
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'test string');
+    ContactPointAddress secondCpa = new ContactPointAddress(Name = 'hello another string');
     ContactPointAddress thirdCpa = cpa.clone(true, true);
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa, secondCpa, thirdCpa });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1166,11 +1160,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(
-      'beginning, hello another string, something, test string',
-      updatedAcc.AccountNumber,
-      'CONCAT_DISTINCT AFTER_INSERT should only add unique values'
-    );
+    System.assertEquals('hello another string, test string', updatedAcc.AccountNumber, 'CONCAT_DISTINCT AFTER_INSERT should only add unique values');
   }
 
   @isTest
@@ -1712,7 +1702,15 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.firstFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby')
+    Rollup.firstFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AnnualRevenue,
+        Account.SObjectType,
+        5,
+        'ParentId'
+      )
       .runCalc();
     Test.stopTest();
 
@@ -1727,7 +1725,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.lastFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'orderby')
+    Rollup.lastFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 5, 'ParentId')
       .runCalc();
     Test.stopTest();
 

@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgcyAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SglrAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgcyAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SglrAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -218,7 +218,7 @@ Here is an example of the base action filled out (not shown, but also important 
 
 #### Perform Rollup\_\_mdt-based rollup Invocable Action
 
-This action functions similarly to how the `Rollup.runFromTrigger()` method does within Apex - you stipulate a calculation object, pass in the records associated with that object, and all Rollups configured via the CMDT `Rollup__mdt` are performed.
+This action functions similarly to how the `Rollup.runFromTrigger()` method does within Apex - you stipulate a calculation object, pass in the records associated with that object, and all Rollups configured via the CMDT `Rollup__mdt` are performed. **Note** - there are additional optional fields that match exactly the optional fields defined in the above invocable action that you can use to override your CMDT values for a specific flow. Only include these values if you want to override your CMDT values!
 
 Here are the fields for this invocable:
 
@@ -299,6 +299,7 @@ There is an included Lightning Web Component (LWC) that will show up in the "Cus
 - The button will not display on the flexipage at all until at least one `Rollup__mdt.LookupObject__c` field matches the SObject whose record flexipage you're dropping the button on
 - The button _will_ display even if a given parent record has no matching children associated with the rollup(s) in question.
 - This particular rollup runs synchronously, so it won't eat into your Asynchronous Job limits for the day; it also refreshes any Aura/page-layout sections of the page (LWC-based sections of the page should update automatically).
+- Editing `Rollup__mdt` records with a parent record's page open can lead to unexpected behavior. This is because the `Rollup__mdt` records are cached on page load, so any updates made to those records will require a page refresh prior to clicking the `Recalc Rollup` button
 
 ### Scheduled Jobs
 

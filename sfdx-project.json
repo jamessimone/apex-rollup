@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.33.0",
+            "versionNumber": "1.2.34.0",
             "versionDescription": "Bugfix for full recalculation app (which could have lead to a Too Many Query Rows error previously), CONCAT_DISTINCT properly added to list of full recalc operations",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         }
@@ -41,6 +41,7 @@
         "apex-rollup@1.2.30-0": "04t6g000008SgSsAAK",
         "apex-rollup@1.2.31-0": "04t6g000008SgaiAAC",
         "apex-rollup@1.2.32-0": "04t6g000008SgbqAAC",
-        "apex-rollup@1.2.33-0": "04t6g000008SgcyAAC"
+        "apex-rollup@1.2.33-0": "04t6g000008SgcyAAC",
+        "apex-rollup@1.2.34-0": "04t6g000008SglrAAC"
     }
 }
