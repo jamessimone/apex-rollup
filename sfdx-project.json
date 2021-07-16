@@ -7,9 +7,6 @@
             "versionNumber": "1.2.34.0",
             "versionDescription": "Bugfix for full recalculation app (which could have lead to a Too Many Query Rows error previously), CONCAT_DISTINCT properly added to list of full recalc operations",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
-        },
-        {
-            "path": "extra-tests"
         }
     ],
     "namespace": "",
