@@ -218,7 +218,7 @@ Here is an example of the base action filled out (not shown, but also important 
 
 #### Perform Rollup\_\_mdt-based rollup Invocable Action
 
-This action functions similarly to how the `Rollup.runFromTrigger()` method does within Apex - you stipulate a calculation object, pass in the records associated with that object, and all Rollups configured via the CMDT `Rollup__mdt` are performed.
+This action functions similarly to how the `Rollup.runFromTrigger()` method does within Apex - you stipulate a calculation object, pass in the records associated with that object, and all Rollups configured via the CMDT `Rollup__mdt` are performed. **Note** - there are additional optional fields that match exactly the optional fields defined in the above invocable action that you can use to override your CMDT values for a specific flow. Only include these values if you want to override your CMDT values!
 
 Here are the fields for this invocable:
 

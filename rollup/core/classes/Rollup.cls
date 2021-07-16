@@ -314,18 +314,19 @@ global without sharing virtual class Rollup {
     @InvocableVariable(label='Rollup Operation Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
     global String rollupContext;
 
-    // optional fields
+    // optional fields shared with RollupFlowBulkProcessor.FlowInput
+    @InvocableVariable(label='Defer processing')
+    global Boolean deferProcessing = false;
+    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    global String calcItemTypeWhenRollupStartedFromParent;
+    // rest of optional fields
     @InvocableVariable(
       label='Calc Item Changed Fields'
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
-    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
-    global String calcItemTypeWhenRollupStartedFromParent;
     @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
     global String concatDelimiter;
-    @InvocableVariable(label='Defer processing')
-    global Boolean deferProcessing = false;
 
     @InvocableVariable(
       label='Full Recalculation Default Number Value'

@@ -3324,9 +3324,9 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated COUNT DISTINCT AFTER_UPDATE reparenting STRING: ' + mock.Records);
-    Account updatedAcc = (Account) mock.Records[1];
+    Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
-    Account updatedOldAcc = (Account) mock.Records[0];
+    Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
   }
 
@@ -3401,10 +3401,10 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
-    Account updatedAcc = (Account) mock.Records[1];
+    Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(acc.Id, updatedAcc.Id);
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
-    Account updatedOldAcc = (Account) mock.Records[0];
+    Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(oldAcc.Id, updatedOldAcc.Id);
     System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }

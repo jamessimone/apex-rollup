@@ -1,5 +1,4 @@
 global without sharing class RollupFlowBulkProcessor {
-
   private RollupFlowBulkProcessor() {
     // only used for invocable
   }
@@ -11,10 +10,52 @@ global without sharing class RollupFlowBulkProcessor {
     global List<SObject> oldRecordsToRollup = new List<SObject>();
     @InvocableVariable(label='Rollup Context' required=true)
     global String rollupContext;
+    // Shared between this and Rollup.FlowInput
     @InvocableVariable(label='Defer processing?')
     global Boolean deferProcessing = true;
     @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
+    // Optional properties that can override the CMDT values
+    @InvocableVariable(
+      label='Calc Item Changed Fields'
+      description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
+    )
+    global String calcItemChangedFields;
+    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
+    global String concatDelimiter;
+
+    @InvocableVariable(
+      label='Full Recalculation Default Number Value'
+      description='If provided, used in place of the existing value on the rollup field for the lookup object for number-based rollups'
+    )
+    global Decimal fullRecalculationDefaultNumberValue;
+    @InvocableVariable(
+      label='Full Recalculation Default String Value'
+      description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
+    )
+    global String fullRecalculationDefaultStringValue;
+
+    @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
+    global String grandparentRelationshipFieldPath;
+    @InvocableVariable(
+      label='Is Full Record Set'
+      description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
+    )
+    global Boolean isFullRecordSet;
+    @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
+    global Boolean isRollupStartedFromParent = false;
+    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
+    global String orderByFirstLast;
+
+    @InvocableVariable(
+      label='Should rollup to ultimate hierarchy parent'
+      description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
+    )
+    global Boolean rollupToUltimateParent = false;
+    @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
+    global String calcItemWhereClause;
+    @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
+    global String ultimateParentLookup;
   }
 
   @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup')
@@ -38,24 +79,33 @@ global without sharing class RollupFlowBulkProcessor {
             String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent) && flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
           ) {
             Rollup.FlowInput input = new Rollup.FlowInput();
-            // pertinent fields from CMDT
-            input.calcItemChangedFields = meta.ChangedFieldsOnCalcItem__c;
-            input.calcItemWhereClause = meta.CalcItemWhereClause__c;
-            input.fullRecalculationDefaultNumberValue = meta.FullRecalculationDefaultNumberValue__c;
-            input.fullRecalculationDefaultStringValue = meta.FullRecalculationDefaultStringValue__c;
-            input.isFullRecordSet = meta.IsFullRecordSet__c;
+            // pertinent fields from CMDT (can be overridden by optional flow properties)
+            input.calcItemChangedFields = flowInput.calcItemChangedFields != null ? flowInput.calcItemChangedFields : meta.ChangedFieldsOnCalcItem__c;
+            input.calcItemWhereClause = flowInput.calcItemWhereClause != null ? flowInput.calcItemWhereClause : meta.CalcItemWhereClause__c;
+            input.concatDelimiter = flowInput.concatDelimiter != null ? flowInput.concatDelimiter : meta.ConcatDelimiter__c;
+            input.fullRecalculationDefaultNumberValue = flowInput.fullRecalculationDefaultNumberValue != null
+              ? flowInput.fullRecalculationDefaultNumberValue
+              : meta.FullRecalculationDefaultNumberValue__c;
+            input.fullRecalculationDefaultStringValue = flowInput.fullRecalculationDefaultStringValue != null
+              ? flowInput.fullRecalculationDefaultStringValue
+              : meta.FullRecalculationDefaultStringValue__c;
+            input.isFullRecordSet = flowInput.isFullRecordSet != null ? flowInput.isFullRecordSet : meta.IsFullRecordSet__c;
+            input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : meta.OrderByFirstLast__c;
+            input.isRollupStartedFromParent = flowInput.isRollupStartedFromParent != null
+              ? flowInput.isRollupStartedFromParent
+              : meta.IsRollupStartedFromParent__c;
+            input.grandparentRelationshipFieldPath = flowInput.grandparentRelationshipFieldPath != null
+              ? flowInput.grandparentRelationshipFieldPath
+              : meta.GrandparentRelationshipFieldPath__c;
+            input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
+            input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
+            // metadata values that don't get overridden
             input.lookupFieldOnCalcItem = meta.LookupFieldOnCalcItem__c;
             input.lookupFieldOnOpObject = meta.LookupFieldOnLookupObject__c;
-            input.orderByFirstLast = meta.OrderByFirstLast__c;
             input.rollupFieldOnCalcItem = meta.RollupFieldOnCalcItem__c;
             input.rollupFieldOnOpObject = meta.RollupFieldOnLookupObject__c;
             input.rollupOperation = meta.RollupOperation__c;
             input.rollupSObjectName = meta.LookupObject__c;
-            input.isRollupStartedFromParent = meta.IsRollupStartedFromParent__c;
-            input.grandparentRelationshipFieldPath = meta.GrandparentRelationshipFieldPath__c;
-            input.concatDelimiter = meta.ConcatDelimiter__c;
-            input.rollupToUltimateParent = meta.RollupToUltimateParent__c;
-            input.ultimateParentLookup = meta.UltimateParentLookup__c;
             // everything else is supplied from the invocable
             input.rollupContext = flowInput.rollupContext;
             input.recordsToRollup = flowInput.recordsToRollup;
