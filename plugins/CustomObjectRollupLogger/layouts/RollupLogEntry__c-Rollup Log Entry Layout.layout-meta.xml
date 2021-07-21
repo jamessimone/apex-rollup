@@ -21,10 +21,6 @@
                 <behavior>Required</behavior>
                 <field>LoggingLevel__c</field>
             </layoutItems>
-            <layoutItems>
-                <behavior>Required</behavior>
-                <field>LogRetentionDate__c</field>
-            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>

@@ -9,10 +9,10 @@ private class RollupLogBatchPurgerTests {
 
     RollupLogEntry__c entry = new RollupLogEntry__c(
       LoggingLevel__c = 'DEBUG',
-      RollupLog__c = log.Id,
-      LogRetentionDate__c = System.today().addDays(-(logControl.DaysRollupLogsRetained__c.intValue() + 1))
+      RollupLog__c = log.Id
     );
     insert entry;
+    Test.setCreatedDate(entry.Id, System.now().addDays(-(logControl.DaysRollupLogsRetained__c.intValue() + 1)));
 
     Test.startTest();
     Database.executeBatch(new RollupLogBatchPurger());

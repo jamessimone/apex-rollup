@@ -81,12 +81,6 @@
                 <field>RollupLoggerName__c</field>
             </layoutItems>
         </layoutColumns>
-        <layoutColumns>
-            <layoutItems>
-                <behavior>Edit</behavior>
-                <field>DaysRollupLogsRetained__c</field>
-            </layoutItems>
-        </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
     <layoutSections>

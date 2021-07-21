@@ -7,7 +7,7 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
 
   public Database.QueryLocator start(Database.BatchableContext bc) {
     Date daysBeforeOffset = System.today().addDays(-RollupLogControl.Offset);
-    return Database.getQueryLocator([SELECT Id, RollupLog__c FROM RollupLogEntry__c WHERE LogRetentionDate__c < :daysBeforeOffset ORDER BY RollupLog__c]);
+    return Database.getQueryLocator([SELECT Id, RollupLog__c FROM RollupLogEntry__c WHERE CreatedDate < :daysBeforeOffset ORDER BY RollupLog__c]);
   }
 
   public void execute(Database.BatchableContext bc, List<RollupLogEntry__c> logEntries) {
@@ -29,7 +29,7 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
     List<Database.DeleteResult> deleteResults = Database.delete(parentLogs, false);
     for (Database.DeleteResult dr : deleteResults) {
       if (dr.isSuccess()) {
-        this.recordCount += 1;
+        this.recordCount++;
       }
     }
   }

@@ -11,13 +11,10 @@ public class RollupLogEventHandler {
 
     List<RollupLogEntry__c> logEntries = new List<RollupLogEntry__c>();
     for (RollupLogEvent__e logEvent : logEvents) {
-      Date logRetentionDate = Date.today().addDays(-1);
-      // Date logRetentionDate = Date.today().addDays(RollupLogRetentionDate.Offset);
       RollupLogEntry__c rollupLogEntry = new RollupLogEntry__c(
         LoggingLevel__c = logEvent.LoggingLevel__c,
         Message__c = logEvent.Message__c,
-        RollupLog__c = transactionIdToLogs.get(logEvent.TransactionId__c).Id,
-        LogRetentionDate__c = logRetentionDate
+        RollupLog__c = transactionIdToLogs.get(logEvent.TransactionId__c).Id
       );
       logEntries.add(rollupLogEntry);
     }

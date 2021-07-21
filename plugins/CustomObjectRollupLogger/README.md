@@ -16,7 +16,7 @@ To install this plugin and get it setup within your org properly:
 2. Navigate to the Rollup `Org Defaults` Rollup Control record (Setup -> Custom Metadata Types -> Manage Records next to Rollup Control -> Org Defaults)
 3. Enter `RollupCustomObjectLogger` into the `Rollup Logger Name` field, and ensure `Is Rollup Logging Enabled?` is checked off
 
-That's it! Logs will now start flowing through on all rollup operations to `RollupLog__c`. A permission set, `Rollup Log Viewer` is included so that you can grant Rollup Log access to users other than yourself.
+That's it! Logs will now start flowing through on all rollup operations to `RollupLog__c`. A permission set, `Rollup Log Viewer` is included so that you can grant Rollup Log access to users other than yourself (should you be so inclined).
 
 ---
 
