@@ -9,13 +9,13 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SglrAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgoWAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SglrAAC">
-  <img alt="Deploy to Salesforce"
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgoWAAS">
+  <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
 
@@ -935,10 +935,10 @@ public class RollupLogger {
 }
 ```
 
-You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers will be included in an upcoming release as separate unmanaged packages:
+You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, you have options for custom logging plugins for Rollup:
 
-1. [Nebula Logger](https://github.com/jongpie/NebulaLogger)
-2. A lightweight custom logger that's also part of this repository; it's just bundled separately
+1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](/plugins/NebulaLogger)!
+2. A lightweight custom logger that's also part of this repository; [it's just bundled as a separate unmanaged package](plugins/CustomObjectRollupLogger)
 
 ### Multi-Currency Orgs
 

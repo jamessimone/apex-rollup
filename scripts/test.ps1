@@ -26,10 +26,6 @@ if(Test-Path ".\DEVHUB_SFDX_URL.txt") {
   $orgInfo.result.sfdxAuthUrl | Out-File -FilePath ".\DEVHUB_SFDX_URL.txt"
 }
 
-Write-Output "Copying deploy SFDX project json file to root directory, storing backup in /scripts"
-Copy-Item -Path ./sfdx-project.json -Destination ./scripts/sfdx-project.json
-Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.json -Force
-
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
 sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup

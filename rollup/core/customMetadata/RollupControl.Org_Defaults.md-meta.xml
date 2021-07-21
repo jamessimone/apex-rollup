@@ -7,6 +7,10 @@
         <value xsi:type="xsd:double">2000.0</value>
     </values>
     <values>
+        <field>DaysRollupLogsRetained__c</field>
+        <value xsi:type="xsd:double">5.0</value>
+    </values>
+    <values>
         <field>IsMergeReparentingEnabled__c</field>
         <value xsi:type="xsd:boolean">true</value>
     </values>

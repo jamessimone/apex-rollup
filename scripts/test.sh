@@ -14,10 +14,6 @@ else
   echo $orgInfo | jq -r '.result.sfdxAuthUrl' > ./DEVHUB_SFDX_URL.txt
 fi
 
-echo "Copying deploy SFDX project json file to root directory, storing backup in /scripts"
-cp ./sfdx-project.json ./scripts/sfdx-project.json
-cp ./scripts/deploy-sfdx-project.json ./sfdx-project.json
-
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
 sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup

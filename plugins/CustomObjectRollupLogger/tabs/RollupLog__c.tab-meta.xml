@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customObject>true</customObject>
+    <description>Used for viewing custom Rollup Logs</description>
+    <motif>Custom60: Umbrella</motif>
+</CustomTab>

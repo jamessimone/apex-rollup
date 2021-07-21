@@ -4,9 +4,36 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.34.0",
-            "versionDescription": "Bugfix for full recalculation app (which could have lead to a Too Many Query Rows error previously), CONCAT_DISTINCT properly added to list of full recalc operations",
+            "versionNumber": "1.2.35.0",
+            "versionDescription": "Rollup logging to custom objects with support for Nebula Logger introduced",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
+        },
+        {
+            "package": "Apex Rollup - Custom Logger",
+            "path": "plugins/CustomObjectRollupLogger",
+            "dependencies": [
+                {
+                    "package": "apex-rollup@1.2.35-0"
+                }
+            ],
+            "versionNumber": "0.0.1.0",
+            "versionDescription": "Introducing basic logging plugin",
+            "default": false
+        },
+        {
+            "package": "Apex Rollup - Nebula Logger",
+            "path": "plugins/NebulaLogger",
+            "dependencies": [
+                {
+                    "package": "apex-rollup@1.2.35-0"
+                },
+                {
+                    "package": "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements"
+                }
+            ],
+            "versionNumber": "0.0.1.0",
+            "versionDescription": "Adds support for Nebula Logger to Rollup logging operations",
+            "default": false
         }
     ],
     "namespace": "",
@@ -14,6 +41,11 @@
     "sourceApiVersion": "52.0",
     "packageAliases": {
         "apex-rollup": "0Ho6g000000TNcOCAW",
+        "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
+        "Apex Rollup - Custom Logger@0.0.1-0": "04t6g000008SgogAAC",
+        "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
+        "Apex Rollup - Nebula Logger@0.0.1-0": "04t6g000008SgolAAC",
+        "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",
         "apex-rollup@1.2.6-0": "04t6g000008GJMsAAO",
         "apex-rollup@1.2.7-0": "04t6g000008GJNqAAO",
         "apex-rollup@1.2.8-0": "04t6g000008GJNvAAO",
@@ -42,6 +74,7 @@
         "apex-rollup@1.2.31-0": "04t6g000008SgaiAAC",
         "apex-rollup@1.2.32-0": "04t6g000008SgbqAAC",
         "apex-rollup@1.2.33-0": "04t6g000008SgcyAAC",
-        "apex-rollup@1.2.34-0": "04t6g000008SglrAAC"
+        "apex-rollup@1.2.34-0": "04t6g000008SglrAAC",
+        "apex-rollup@1.2.35-0": "04t6g000008SgoWAAS"
     }
 }

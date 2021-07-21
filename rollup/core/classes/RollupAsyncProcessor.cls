@@ -595,7 +595,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       stackDepth++;
       RollupLogger.Instance.log('Processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
       // tragic, but necessary due to limits on requeueing allowed during testing
-      this.setIsDeferralAllowed(Test.isRunningTest() == false && hasExceededMaxRetries);
+      this.setIsDeferralAllowed(Test.isRunningTest() == false && hasExceededMaxRetries == false);
 
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);

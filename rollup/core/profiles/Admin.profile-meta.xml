@@ -77,7 +77,17 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>RollupControl__mdt.DaysRollupLogsRetained__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>RollupControl__mdt.IsMergeReparentingEnabled__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupControl__mdt.IsRollupLoggingEnabled__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -98,6 +108,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RollupControl__mdt.MaxRollupRetries__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupControl__mdt.RollupLoggerName__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

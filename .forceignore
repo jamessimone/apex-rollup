@@ -2,3 +2,4 @@
 **/.eslintrc.json
 **/__tests__/**
 **/__mockData__/**
+**/README.md
