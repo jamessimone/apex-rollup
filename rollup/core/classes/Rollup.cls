@@ -1349,18 +1349,39 @@ global without sharing virtual class Rollup {
         meta.CalcItem__c = String.valueOf(calcItemSObjectType);
       }
 
-      if (meta.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent) {
-        QueryWrapper queryWrapper = isIntermediateRollupForGrandparent == false
-          ? getParentWhereClause(
+      Boolean isFullRecalc = meta.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent || meta.RollupOperation__c.contains('REFRESH');
+      if (isFullRecalc) {
+        QueryWrapper queryWrapper;
+        if (meta.RollupOperation__c.contains('REFRESH')) {
+          meta.RollupOperation__c = meta.RollupOperation__c.replace('REFRESH_', '');
+          if (meta.IsRollupStartedFromParent__c == false) {
+            queryWrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
+            for (SObject calcItem : calcItems) {
+              queryWrapper.addRecordId((String) calcItem.get(meta.LookupFieldOnCalcItem__c));
+            }
+          } else {
+            queryWrapper = getParentWhereClause(
               calcItems,
               meta.LookupFieldOnLookupObject__c,
               meta.LookupObject__c,
               meta.LookupFieldOnCalcItem__c,
               meta.GrandparentRelationshipFieldPath__c,
               meta.CalcItemWhereClause__c
-            )
-          : getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
-        if (meta.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent && (queryWrapper.hasQuery || isCDC)) {
+            );
+          }
+        } else {
+          queryWrapper = isIntermediateRollupForGrandparent
+            ? getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems)
+            : getParentWhereClause(
+                calcItems,
+                meta.LookupFieldOnLookupObject__c,
+                meta.LookupObject__c,
+                meta.LookupFieldOnCalcItem__c,
+                meta.GrandparentRelationshipFieldPath__c,
+                meta.CalcItemWhereClause__c
+              );
+        }
+        if (isFullRecalc && (queryWrapper.hasQuery || isCDC)) {
           metas.remove(index);
           rollups.add(getFullRecalcRollup(meta, queryWrapper, invokePoint));
           continue;
