@@ -9,18 +9,20 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgtNAAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SguBAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgtNAAS">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SguBAAS">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
 
 <br/>
 <br/>
+
+Don't miss the [links to install the Rollup Logging plugins!](#rollup-logging)
 
 ### Deploy just the source code
 
@@ -922,6 +924,13 @@ Note that you're still selecting `Opportunity` as the `Calc Item` within your Ro
 
 <div id="rollup-logging"></div>
 
+**Important Note** the `Org_Default` Rollup Control entry is deployed with `Is Rollup Logging Enabled` set to `false`. Please flip this field to `true` in order to get logs ... logging.
+
+You have two options for custom logging plugins for Rollup:
+
+1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](plugins/NebulaLogger)!
+2. A [lightweight custom logger that's also part of this repository](plugins/CustomObjectRollupLogger); it's just bundled as a separate unmanaged package
+
 If logging to the debug logs is enough for your purposes, the default logger need never be changed. However, if you want to customize things further, or log errors to a custom object, you can do so! The included `RollupLogger` class also includes an interface:
 
 ```java
@@ -933,16 +942,14 @@ public class RollupLogger {
     void save();
   }
 }
+
 ```
 
-You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, you have options for custom logging plugins for Rollup:
-
-1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](/plugins/NebulaLogger)!
-2. A lightweight custom logger that's also part of this repository; [it's just bundled as a separate unmanaged package](plugins/CustomObjectRollupLogger)
+You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Org_Default` Rollup Control record by pasting it into the `Rollup Logger Name` field.
 
 ### Multi-Currency Orgs
 
-Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
+Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior (or, rather, incorrect conversions) if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
 
 ## Commit History
 

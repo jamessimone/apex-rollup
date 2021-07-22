@@ -228,6 +228,47 @@ private class RollupStandardIntegrationTests {
   }
 
   @isTest
+  static void shouldCorrectlyBulkRecalcWhenParentObjectsDiffer() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneLast', ParentId = acc.Id, PreferenceRank = 2),
+      new ContactPointAddress(Name = 'twoLast', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    insert new Task(Subject = 'Task rollup', WhatId = acc.Id);
+
+     List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'LAST',
+        OrderByFirstLast__c = 'PreferenceRank',
+        CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    acc = [SELECT Name, AccountNumber FROM Account];
+    System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
+    System.assertEquals('Task rollup', acc.AccountNumber);
+  }
+
+  @isTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
