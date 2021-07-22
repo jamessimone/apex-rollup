@@ -12,7 +12,9 @@ private class RollupLogBatchPurgerTests {
       RollupLog__c = log.Id
     );
     insert entry;
-    Test.setCreatedDate(entry.Id, System.now().addDays(-(logControl.DaysRollupLogsRetained__c.intValue() + 1)));
+    // UTC time can lead to some weird Datetime issues with adding simply a single day
+    // Let's go with 2 to make things completely solid
+    Test.setCreatedDate(entry.Id, System.now().addDays(-(logControl.DaysRollupLogsRetained__c.intValue() + 2)));
 
     Test.startTest();
     Database.executeBatch(new RollupLogBatchPurger());
