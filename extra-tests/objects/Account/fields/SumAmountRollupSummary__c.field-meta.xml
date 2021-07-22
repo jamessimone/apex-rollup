@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SumAmountRollupSummary__c</fullName>
+    <description>Rollup field of Opportunity.Amount, using standard Salesforce rollup summary field functionality</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Rollup field of Opportunity.Amount, using standard Salesforce rollup summary field functionality</inlineHelpText>
+    <label>Sum Amount (Rollup Summary)</label>
+    <summarizedField>Opportunity.Amount</summarizedField>
+    <summaryForeignKey>Opportunity.AccountId</summaryForeignKey>
+    <summaryOperation>sum</summaryOperation>
+    <type>Summary</type>
+</CustomField>
