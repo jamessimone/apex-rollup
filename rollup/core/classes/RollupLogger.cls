@@ -1,5 +1,5 @@
-public class RollupLogger extends Rollup implements ILogger {
-  private RollupLogger() {
+public virtual class RollupLogger extends Rollup implements ILogger {
+  protected RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
   }
 
@@ -23,17 +23,17 @@ public class RollupLogger extends Rollup implements ILogger {
     private set;
   }
 
-  public void log(String logString, LoggingLevel logLevel) {
-    this.log(logString, null, logLevel);
-  }
-
   public interface ILogger {
     void log(String logString, LoggingLevel logLevel);
     void log(String logString, Object logObject, LoggingLevel logLevel);
     void save();
   }
 
-  public void log(String logString, Object logObject, LoggingLevel logLevel) {
+  public virtual void log(String logString, LoggingLevel logLevel) {
+    this.log(logString, null, logLevel);
+  }
+
+  public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
       String appended = this.getLogStringFromObject(logObject);
       List<String> messages = new List<String>{ logString };
@@ -47,11 +47,11 @@ public class RollupLogger extends Rollup implements ILogger {
     }
   }
 
-  public void save() {
+  public virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
-  private String getLogStringFromObject(Object logObject) {
+  protected String getLogStringFromObject(Object logObject) {
     String appended = '';
     if (logObject instanceof String) {
       appended = (String) logObject;

@@ -100,4 +100,28 @@ private class RollupFlowBulkProcessorTests {
 
     System.assertEquals(true, ex.getMessage().contains('Invalid field Kaffufle for Opportunity'), ex.getMessage() + '\n' + ex.getStackTraceString());
   }
+
+  @isTest
+  static void shouldMapBulkFlowInputToRegularOne() {
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
+    input.rollupContext = 'INSERT';
+    input.calcItemChangedFields = 'Amount';
+    input.calcItemTypeWhenRollupStartedFromParent = 'Opportunity';
+    input.calcItemWhereClause = 'Amount = 5';
+    input.concatDelimiter = ';';
+    input.deferProcessing = true;
+    input.fullRecalculationDefaultNumberValue = 0;
+    input.grandparentRelationshipFieldPath = 'Account.Owner.Name';
+    input.isFullRecordSet = true;
+    input.isRollupStartedFromParent = true;
+    input.orderByFirstLast = 'Amount';
+    input.rollupToUltimateParent = true;
+    input.ultimateParentLookup = 'AccountId';
+
+    List<Rollup.FlowOutput>  outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    System.assertEquals(1, outputs.size());
+    System.assertEquals(true, outputs[0].isSuccess);
+  }
 }

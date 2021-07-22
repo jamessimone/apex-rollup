@@ -9,18 +9,20 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SglrAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SguGAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SglrAAC">
-  <img alt="Deploy to Salesforce"
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SguGAAS">
+  <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
 
 <br/>
 <br/>
+
+Don't miss the [links to install the Rollup Logging plugins!](#rollup-logging)
 
 ### Deploy just the source code
 
@@ -195,7 +197,7 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Rollup Object Lookup Field` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Object Calc Field` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
 - `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas by default, but you can use `Concat Delimiter` to change that.
-- `Rollup Operation Context` - INSERT / UPDATE / UPSERT / DELETE. **Special note** - unless you are using a Record-Triggered Flow / After Update Process Builder, you almost assuredly want to simply use the INSERT context (see image below). However, you _would_ use something like UPDATE if, after retrieving records using Get Records in an auto-launched flow, you then looped through your collection and modified fields prior to sending them to `Rollup`. You would only ever use UPSERT for a record-triggered flow triggering on `A record is created or updated`
+- `Rollup Operation Context` - INSERT / UPDATE / UPSERT / DELETE / REFRESH. **Special note** - unless you are using a Record-Triggered Flow / After Update Process Builder, you almost assuredly want to simply use the INSERT context (see image below). However, you _would_ use something like UPDATE if, after retrieving records using Get Records in an auto-launched flow, you then looped through your collection and modified fields prior to sending them to `Rollup`. You would only ever use UPSERT for a record-triggered flow triggering on `A record is created or updated`. REFRESH does a full recalc operation even if the rollup operation being used is not typically a full recalc.
 - `Records To Rollup` - a collection of SObjects. These need to be stored in a collection variable. **Note** - while this is an optional property, that is only because of a bug in the Flow engine caused by `Get Records` returning null when you use filter conditions that in turn make it so that no records are returned - which then throws an error when using this action without explicitly checking the collection returned by `Get Records` to see if it is null. Because that's a lot to ask of the Flow user, we instead let the collection be optional and handle the null check in Apex. You should **always** provide a value for this input!
 - `Prior records to rollup` - another collection of SObjects. For record-triggered flows set to run when `A record is created or updated`, or `A record is updated`, it's necessary to populate this argument - otherwise, Rollup will helpfully throw an error when you attempt to update records. Add `{!$Record__Prior}` to a collection variable and use that collection to populate this argument
 - `Calc item Changed fields` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
@@ -222,7 +224,7 @@ This action functions similarly to how the `Rollup.runFromTrigger()` method does
 
 Here are the fields for this invocable:
 
-- `Rollup Context` - INSERT / UPDATE / UPSERT / DELETE. **Special note** - unless you are using a Record-Triggered Flow / After Update Process Builder, you almost assuredly want to simply use the INSERT context. However, you _would_ use something like UPDATE if, after retrieving records using Get Records in an auto-launched flow, you then looped through your collection and modified fields prior to sending them to `Rollup`. You would only ever use UPSERT for a record-triggered flow triggering on `A record is created or updated`
+- `Rollup Context` - INSERT / UPDATE / UPSERT / DELETE / REFRESH. **Special note** - unless you are using a Record-Triggered Flow / After Update Process Builder, you almost assuredly want to simply use the INSERT context. However, you _would_ use something like UPDATE if, after retrieving records using Get Records in an auto-launched flow, you then looped through your collection and modified fields prior to sending them to `Rollup`. You would only ever use UPSERT for a record-triggered flow triggering on `A record is created or updated`. REFRESH does a full recalc operation even if the rollup operation being used is not typically a full recalc.
 - `Defer Processing` (optional, default `true`) - true by default, otherwise when checked it must be set to `{!$GlobalConstant.False}` in order to immediately kick off rolling up. Otherwise, you have to call the separate invocable method `Process Deferred Rollups` at the end of your flow. Otherwise, each invocable action kicks off a separate queueable/batch job. **Note** - for extremely large flows calling dozens of rollup operations, it behooves the end user / admin to occasionally call the `Process Deferred Rollups` to separate rollup operations into different jobs. You'll avoid running out of memory by doing so. See "Process Deferred Rollups" (below) for more info.
 - `Records To Rollup` - a collection of SObjects. These need to be stored in a collection variable. Like the `Perform rollup on records` invocable, this collection is not marked as required to get around a weird bug in the Flow engine with required fields and `Get Records`. If the collection you are passing in comes not from a record-triggered Flow, but from `Get Records`, this prevents you from having to check explicitly in Flow if the collection is null or not. You should **always** provide this input!
 - `Prior records to rollup` - another collection of SObjects. For record-triggered flows set to run when `A record is created or updated`, or `A record is updated`, it's necessary to populate this argument - otherwise, Rollup will helpfully throw an error when you attempt to update records. Add `{!$Record__Prior}` to a collection variable and use that collection to populate this argument
@@ -922,6 +924,13 @@ Note that you're still selecting `Opportunity` as the `Calc Item` within your Ro
 
 <div id="rollup-logging"></div>
 
+**Important Note** the `Org_Default` Rollup Control entry is deployed with `Is Rollup Logging Enabled` set to `false`. Please flip this field to `true` in order to get logs ... logging.
+
+You have two options for custom logging plugins for Rollup:
+
+1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](plugins/NebulaLogger)!
+2. A [lightweight custom logger that's also part of this repository](plugins/CustomObjectRollupLogger); it's just bundled as a separate unmanaged package
+
 If logging to the debug logs is enough for your purposes, the default logger need never be changed. However, if you want to customize things further, or log errors to a custom object, you can do so! The included `RollupLogger` class also includes an interface:
 
 ```java
@@ -933,16 +942,14 @@ public class RollupLogger {
     void save();
   }
 }
+
 ```
 
-You can implement `RollupLogger.ILogger` with your own code if you have a pre-existing logging solution. Otherwise, two options for custom loggers will be included in an upcoming release as separate unmanaged packages:
-
-1. [Nebula Logger](https://github.com/jongpie/NebulaLogger)
-2. A lightweight custom logger that's also part of this repository; it's just bundled separately
+You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Org_Default` Rollup Control record by pasting it into the `Rollup Logger Name` field.
 
 ### Multi-Currency Orgs
 
-Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
+Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior (or, rather, incorrect conversions) if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
 
 ## Commit History
 

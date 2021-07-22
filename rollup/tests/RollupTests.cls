@@ -2406,6 +2406,56 @@ private class RollupTests {
   }
 
   @isTest
+  static void shouldPerformFullRecalcFromFlowChildren() {
+    Account acc = [SELECT Id FROM Account];
+    // ensure another matching item exists outside of the passed in list
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two')
+    };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'REFRESH', 'SUM');
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @isTest
+  static void shouldPerformFullRecalcFromFlowParent() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 500, ParentId = accs[0].Id, Name = 'One'),
+      new ContactPointAddress(PreferenceRank = 1000, ParentId = accs[0].Id, Name = 'Two')
+    };
+
+    List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'REFRESH', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @isTest
   static void shouldAllowForSuccessiveInvocablesToBeCalledInSameTransaction() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct'),

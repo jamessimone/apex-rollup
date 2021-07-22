@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NumberOfLogEntries__c</fullName>
+    <description>The corresponding number of Rollup Log Entry children</description>
+    <externalId>false</externalId>
+    <inlineHelpText>The corresponding number of Rollup Log Entry children</inlineHelpText>
+    <label>Number Of Log Entries</label>
+    <summaryForeignKey>RollupLogEntry__c.RollupLog__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Summary</type>
+</CustomField>

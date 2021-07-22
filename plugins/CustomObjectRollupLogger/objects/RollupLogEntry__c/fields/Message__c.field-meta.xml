@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Message__c</fullName>
+    <description>The message for any given Rollup Log entry</description>
+    <externalId>false</externalId>
+    <inlineHelpText>The message for any given Rollup Log entry</inlineHelpText>
+    <label>Message</label>
+    <length>131072</length>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
