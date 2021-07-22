@@ -13,6 +13,7 @@ private class RollupIntegrationTests {
       StageName = 'testInt',
       CloseDate = System.today(),
       Amount = 1,
+      CurrencyIsoCode = 'USD',
       AccountIdText__c = acc.Id,
       AccountId = acc.Id
     );
