@@ -77,11 +77,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>RollupControl__mdt.DaysRollupLogsRetained__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>RollupControl__mdt.IsMergeReparentingEnabled__c</field>
         <readable>true</readable>
     </fieldPermissions>

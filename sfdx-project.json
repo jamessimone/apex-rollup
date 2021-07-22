@@ -34,6 +34,9 @@
             "versionNumber": "0.0.1.0",
             "versionDescription": "Adds support for Nebula Logger to Rollup logging operations",
             "default": false
+        },
+        {
+            "path": "extra-tests"
         }
     ],
     "namespace": "",
@@ -75,6 +78,6 @@
         "apex-rollup@1.2.32-0": "04t6g000008SgbqAAC",
         "apex-rollup@1.2.33-0": "04t6g000008SgcyAAC",
         "apex-rollup@1.2.34-0": "04t6g000008SglrAAC",
-        "apex-rollup@1.2.35-0": "04t6g000008SguBAAS"
+        "apex-rollup@1.2.35-0": "04t6g000008SguGAAS"
     }
 }
