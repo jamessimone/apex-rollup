@@ -643,7 +643,7 @@ private class RollupTests {
     List<Account> accs = new List<Account>{ acc };
     DMLMock mock = loadMock(accs);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'INSERT', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'INSERT', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
     flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
 
@@ -658,30 +658,6 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'SUM AFTER_INSERT from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank');
-  }
-
-  @isTest
-  static void shouldTryToUpsertFromFlow() {
-    Account acc = [SELECT Id FROM Account];
-
-    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'Upsert Flow Test');
-    insert cpa; // aping an after-insert action in Flow
-
-    List<ContactPointAddress> cpas = [SELECT Id, ParentId, CreatedDate, LastModifiedDate, PreferenceRank FROM ContactPointAddress];
-
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPSERT', 'SUM');
-    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{ null }; // sad but true - this is what flow passes for {!$Record__Prior} on upsert
-
-    Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
-    Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
-
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
   }
 
   @isTest
@@ -2351,7 +2327,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'INSERT', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
@@ -2369,7 +2345,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'insert', 'sum'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(cpas, 'insert', 'sum'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
@@ -2387,7 +2363,7 @@ private class RollupTests {
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
     };
     DMLMock mock = loadAccountIdMock(cpas);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250)
     };
@@ -2406,56 +2382,6 @@ private class RollupTests {
   }
 
   @isTest
-  static void shouldPerformFullRecalcFromFlowChildren() {
-    Account acc = [SELECT Id FROM Account];
-    // ensure another matching item exists outside of the passed in list
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
-
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two')
-    };
-    insert cpas;
-
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'REFRESH', 'SUM');
-
-    Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
-    Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
-
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
-  }
-
-  @isTest
-  static void shouldPerformFullRecalcFromFlowParent() {
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
-
-    insert new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 500, ParentId = accs[0].Id, Name = 'One'),
-      new ContactPointAddress(PreferenceRank = 1000, ParentId = accs[0].Id, Name = 'Two')
-    };
-
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(accs, 'REFRESH', 'SUM');
-    flowInputs[0].isRollupStartedFromParent = true;
-    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
-
-    Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
-    Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
-
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
-  }
-
-  @isTest
   static void shouldAllowForSuccessiveInvocablesToBeCalledInSameTransaction() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct'),
@@ -2467,7 +2393,7 @@ private class RollupTests {
     Account reparentedAcc = new Account(Name = 'ReparentMultipleDMLInvocableRollup');
     insert reparentedAcc;
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
     flowInputs[0].deferProcessing = true;
     Rollup.performRollup(flowInputs);
 
@@ -2509,8 +2435,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(cpas);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
 
     Exception ex;
     try {
@@ -2527,8 +2452,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
     };
-    DMLMock mock = loadAccountIdMock(cpas);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPSERT', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPSERT', 'SUM');
 
     Exception ex;
     try {
@@ -2542,7 +2466,7 @@ private class RollupTests {
 
   @isTest
   static void shouldGracefullyExitIfCalcItemsAreNull() {
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(null, 'INSERT', 'CONCAT');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(null, 'INSERT', 'CONCAT');
 
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
 
@@ -2566,7 +2490,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'COUNT');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'COUNT');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
@@ -2602,7 +2526,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'COUNT_DISTINCT');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'COUNT_DISTINCT');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
@@ -2636,7 +2560,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
@@ -2669,7 +2593,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
@@ -2703,7 +2627,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa }; // only pass cpa, which would be excluded normally (except for the PreferenceRank being set below to another val)
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'FIRST');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'FIRST');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
@@ -2737,7 +2661,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'DELETE', 'FIRST');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'DELETE', 'FIRST');
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank.format();
     flowInputs[0].orderByFirstLast = 'Name';
 
@@ -2768,7 +2692,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'DELETE', 'AVERAGE');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'DELETE', 'AVERAGE');
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank.format();
 
     Test.startTest();
@@ -2790,7 +2714,7 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'DELETE', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(cpas, 'DELETE', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
@@ -2820,7 +2744,7 @@ private class RollupTests {
 
     DMLMock mock = loadAccountIdMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'FIRST');
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
     flowInputs[0].orderByFirstLast = 'ActiveFromDate';
 
@@ -2835,7 +2759,7 @@ private class RollupTests {
 
   @isTest
   static void shouldReportErrorWhenOrderByNotIncludedForFirstLast() {
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
         new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
       },
@@ -2856,7 +2780,7 @@ private class RollupTests {
 
   @isTest
   static void shouldReportErrorWhenUltimateParentRollupAndNoLookupField() {
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
         new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
       },
@@ -2878,7 +2802,7 @@ private class RollupTests {
 
   @isTest
   static void shouldReportErrorWhenConcatDelimiterSetAndNotConcat() {
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
         new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
       },
@@ -2900,7 +2824,7 @@ private class RollupTests {
 
   @isTest
   static void shouldReportErrorWhenBothOverridesSet() {
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
         new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
       },
@@ -2935,7 +2859,7 @@ private class RollupTests {
       Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
     );
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'FIRST');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'FIRST');
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
     flowInputs[0].orderByFirstLast = 'ActiveFromDate';
 
@@ -2959,7 +2883,7 @@ private class RollupTests {
     };
     DMLMock mock = loadAccountIdMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].calcItemChangedFields = 'Name, IsDefault';
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 250, Name = cpas[0].Name),
@@ -2990,7 +2914,7 @@ private class RollupTests {
     Rollup.records = cpas;
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(cpas, 'INSERT', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
@@ -3004,9 +2928,9 @@ private class RollupTests {
 
     Exception ex;
     Test.startTest();
-    // prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
+    // RollupTestUtils.prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
     try {
-      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(history, 'INSERT', 'SUM'));
+      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(history, 'INSERT', 'SUM'));
     } catch (Exception e) {
       ex = e;
     }
@@ -3018,7 +2942,7 @@ private class RollupTests {
   @isTest
   static void shouldNotThrowErrorEvenIfNoRollupsPerformedDuringInvocable() {
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(prepareFlowTest(new List<SObject>(), 'INSERT', 'SUM'));
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(new List<SObject>(), 'INSERT', 'SUM'));
     Test.stopTest();
 
     System.assertEquals(1, flowOutputs.size());
@@ -3029,7 +2953,7 @@ private class RollupTests {
   static void shouldOverrideNumberBasedDefaultBasedOnMetadataForFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     DMLMock mock = loadAccountIdMock(cpas);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
     flowInputs[0].fullRecalculationDefaultNumberValue = -1001;
 
     Test.startTest();
@@ -3084,7 +3008,7 @@ private class RollupTests {
   static void shouldOverrideStringBasedDefaultForFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A') };
     DMLMock mock = loadAccountIdMock(cpas);
-    List<Rollup.FlowInput> flowInputs = prepareFlowTest(cpas, 'INSERT', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
     flowInputs[0].fullRecalculationDefaultStringValue = 'Z';
     flowInputs[0].rollupFieldOnOpObject = 'Name';
     flowInputs[0].rollupFieldOnCalcItem = 'Name';
@@ -3748,21 +3672,5 @@ private class RollupTests {
     Rollup.DML = mock;
 
     return mock;
-  }
-
-  private static List<Rollup.FlowInput> prepareFlowTest(List<SObject> records, String rollupContext, String rollupOperation) {
-    Rollup.records = null; // just to ensure this is coming from the correct place
-
-    Rollup.FlowInput flowInput = new Rollup.FlowInput();
-    flowInput.recordsToRollup = records;
-    flowInput.lookupFieldOnCalcItem = 'ParentId';
-    flowInput.lookupFieldOnOpObject = 'Id';
-    flowInput.rollupContext = rollupContext;
-    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
-    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
-    flowInput.rollupSObjectName = 'Account';
-    flowInput.rollupOperation = rollupOperation;
-
-    return new List<Rollup.FlowInput>{ flowInput };
   }
 }

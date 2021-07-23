@@ -450,7 +450,7 @@ private class RollupStandardIntegrationTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
 
-    //sepcifically do NOT wrap in Test.startTest() / Test.stopTest() - we need to ensure this happened synchronously
+    // specifically do NOT wrap in Test.startTest() / Test.stopTest() - we need to ensure this happened synchronously
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -578,6 +578,115 @@ private class RollupStandardIntegrationTests {
 
     System.assertNotEquals(null, ex);
     System.assertEquals('Field: BillingAddress of type: ADDRESS specified invalid for rollup operation', ex.getMessage());
+  }
+
+  /** Invocable integration tests */
+
+  @isTest
+  static void shouldTryToUpsertFromFlow() {
+    Account acc = [SELECT Id FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'Upsert Flow Test');
+    insert cpa; // aping an after-insert action in Flow
+
+    List<ContactPointAddress> cpas = [SELECT Id, ParentId, CreatedDate, LastModifiedDate, PreferenceRank FROM ContactPointAddress];
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPSERT', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{ null }; // sad but true - this is what flow passes for {!$Record__Prior} on upsert
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
+  }
+
+  @isTest
+  static void shouldPerformFullRecalcFromFlowChildren() {
+    Account acc = [SELECT Id FROM Account];
+    // ensure another matching item exists outside of the passed in list
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two')
+    };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @isTest
+  static void shouldPerformFullRecalcFromFlowChildrenWithReparenting() {
+    Account acc = [SELECT Id FROM Account];
+    Account reparentedAccount = new Account(Name = 'Reparented Refresh', AnnualRevenue = 1000);
+    insert reparentedAccount;
+
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = reparentedAccount.AnnualRevenue.intValue(), ParentId = reparentedAccount.Id, Name = 'Two')
+    };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>(cpas);
+
+    cpas[0].ParentId = acc.Id;
+    update cpas;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(1500, acc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+    reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id];
+    System.assertEquals(0, reparentedAccount.AnnualRevenue, 'Reparenting with REFRESH should run decrement logic on old parent');
+  }
+
+  @isTest
+  static void shouldPerformFullRecalcFromFlowParent() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 500, ParentId = accs[0].Id, Name = 'One'),
+      new ContactPointAddress(PreferenceRank = 1000, ParentId = accs[0].Id, Name = 'Two')
+    };
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
   }
 
   /** Schedulable tests */

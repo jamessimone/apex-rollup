@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.36.0",
-            "versionDescription": "Rollup logging to custom objects with support for Nebula Logger introduced",
+            "versionNumber": "1.2.37.0",
+            "versionDescription": "Fixing deferred rollup logic and adding more logging surrounding deferrals",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
         },
         {
@@ -13,7 +13,7 @@
             "path": "plugins/CustomObjectRollupLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.35-0"
+                    "package": "apex-rollup@1.2.37-0"
                 }
             ],
             "versionNumber": "0.0.2.0",
@@ -25,7 +25,7 @@
             "path": "plugins/NebulaLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.35-0"
+                    "package": "apex-rollup@1.2.37-0"
                 },
                 {
                     "package": "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements"

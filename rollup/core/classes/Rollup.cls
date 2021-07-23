@@ -1379,7 +1379,8 @@ global without sharing virtual class Rollup {
       Boolean isFullRecalc = meta.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent || meta.RollupOperation__c.contains('REFRESH');
       if (isFullRecalc) {
         QueryWrapper queryWrapper;
-        if (meta.RollupOperation__c.contains('REFRESH')) {
+        // Grandparent rollup refreshes currently not supported
+        if (meta.RollupOperation__c.contains('REFRESH') && String.isBlank(meta.GrandparentRelationshipFieldPath__c)) {
           meta.RollupOperation__c = meta.RollupOperation__c.replace('REFRESH_', '');
           if (meta.IsRollupStartedFromParent__c == false) {
             queryWrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);

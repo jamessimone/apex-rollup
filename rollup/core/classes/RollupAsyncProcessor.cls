@@ -590,12 +590,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void processDeferredRollups() {
-    Boolean hasExceededMaxRetries = this.rollupControl.MaxRollupRetries__c > stackDepth;
-    if (this.deferredRollups.isEmpty() == false && this.getIsDeferralAllowed() && hasExceededMaxRetries) {
+    Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c > stackDepth;
+    RollupLogger.Instance.log('In processDeferredRollups, printing out if we are still allowed to re-queue: ' + isAllowedToContinue, LoggingLevel.DEBUG);
+    if (this.deferredRollups.isEmpty() == false && this.getIsDeferralAllowed() && isAllowedToContinue) {
       stackDepth++;
       RollupLogger.Instance.log('Processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
       // tragic, but necessary due to limits on requeueing allowed during testing
-      this.setIsDeferralAllowed(Test.isRunningTest() == false && hasExceededMaxRetries == false);
+      this.setIsDeferralAllowed(Test.isRunningTest() == false && isAllowedToContinue);
 
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);
