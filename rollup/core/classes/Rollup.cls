@@ -1408,7 +1408,7 @@ global without sharing virtual class Rollup {
                 meta.CalcItemWhereClause__c
               );
         }
-        if (isFullRecalc && (queryWrapper.hasQuery || isCDC)) {
+        if (isFullRecalc && (queryWrapper?.hasQuery == true || isCDC)) {
           metas.remove(index);
           rollups.add(getFullRecalcRollup(meta, queryWrapper, invokePoint));
           continue;
@@ -1470,6 +1470,7 @@ global without sharing virtual class Rollup {
 
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(queryWrapper.toString(), childType);
     Set<String> queryFields = getQueryFieldsFromMetadata(meta, whereEval);
+    queryFields.addAll(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, childType).getQueryFields());
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
     return buildFullRecalcRollup(new List<Rollup__mdt>{ meta }, amountOfCalcItems, queryString, objIds, recordIds, childType, whereEval, invokePoint);
