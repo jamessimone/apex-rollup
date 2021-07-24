@@ -590,22 +590,30 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void processDeferredRollups() {
-    Boolean hasExceededMaxRetries = this.rollupControl.MaxRollupRetries__c > stackDepth;
-    if (this.deferredRollups.isEmpty() == false && this.getIsDeferralAllowed() && hasExceededMaxRetries) {
-      stackDepth++;
-      RollupLogger.Instance.log('Processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
-      // tragic, but necessary due to limits on requeueing allowed during testing
-      this.setIsDeferralAllowed(Test.isRunningTest() == false && hasExceededMaxRetries == false);
+    if (this.deferredRollups.isEmpty() == false) {
+      Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
+      RollupLogger.Instance.log(
+        'Number of deferred rollups: ' +
+        this.deferredRollups.size() +
+        ', still allowed to re-queue?: ' +
+        isAllowedToContinue,
+        LoggingLevel.DEBUG
+      );
+      if (this.getIsDeferralAllowed() && isAllowedToContinue) {
+        stackDepth++;
+        RollupLogger.Instance.log('Processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
+        this.setIsDeferralAllowed(isAllowedToContinue);
 
-      this.rollups.clear();
-      this.rollups.addAll(this.deferredRollups);
-      this.deferredRollups.clear();
+        this.rollups.clear();
+        this.rollups.addAll(this.deferredRollups);
+        this.deferredRollups.clear();
 
-      RollupLogger.Instance.log('Deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log('Deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
 
-      this.getAsyncRollup().beginAsyncRollup();
-    } else if (this.deferredRollups.isEmpty() == false) {
-      this.throwWithRollupData(this.deferredRollups);
+        this.getAsyncRollup().beginAsyncRollup();
+      } else if (this.deferredRollups.isEmpty() == false) {
+        this.throwWithRollupData(this.deferredRollups);
+      }
     }
   }
 
@@ -900,7 +908,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (
         roll.metadata?.IsFullRecordSet__c == true &&
         (roll.eval.matches(calcItem) == false &&
-        (roll.oldCalcItems.containsKey(calcItem.Id) == false || roll.eval.matches(roll.oldCalcItems.get(calcItem.Id)) == false))
+        (roll.oldCalcItems.containsKey(calcItem.Id) == false ||
+        roll.eval.matches(roll.oldCalcItems.get(calcItem.Id)) == false))
       ) {
         // technically it should only be possible for a calc item that doesn't match
         // to still exist if it is a Full Record Set operation; this gives people the chance

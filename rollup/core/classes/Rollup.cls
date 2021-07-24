@@ -237,7 +237,7 @@ global without sharing virtual class Rollup {
     Integer amountOfCalcItems = 0;
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
     Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
-    Map<SObjectType , RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
+    Map<SObjectType, RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
     String potentialWhereClause = '';
     String delimiter = ' ||| ';
     String lookupFieldName;
@@ -1380,27 +1380,13 @@ global without sharing virtual class Rollup {
       if (isFullRecalc) {
         QueryWrapper queryWrapper;
         if (meta.RollupOperation__c.contains('REFRESH')) {
-          meta.RollupOperation__c = meta.RollupOperation__c.replace('REFRESH_', '');
-          if (meta.IsRollupStartedFromParent__c == false) {
-            queryWrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
-            for (SObject calcItem : calcItems) {
-              queryWrapper.addRecordId((String) calcItem.get(meta.LookupFieldOnCalcItem__c));
-            }
-          } else {
-            queryWrapper = getParentWhereClause(
-              calcItems,
-              meta.LookupFieldOnLookupObject__c,
-              meta.LookupObject__c,
-              meta.LookupFieldOnCalcItem__c,
-              meta.GrandparentRelationshipFieldPath__c,
-              meta.CalcItemWhereClause__c
-            );
-          }
+          queryWrapper = getFullRecalcQueryWrapper(meta, calcItems, oldCalcItems);
         } else {
           queryWrapper = isIntermediateRollupForGrandparent
             ? getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems)
             : getParentWhereClause(
                 calcItems,
+                oldCalcItems,
                 meta.LookupFieldOnLookupObject__c,
                 meta.LookupObject__c,
                 meta.LookupFieldOnCalcItem__c,
@@ -1411,6 +1397,7 @@ global without sharing virtual class Rollup {
         if (isFullRecalc && (queryWrapper?.hasQuery == true || isCDC)) {
           metas.remove(index);
           rollups.add(getFullRecalcRollup(meta, queryWrapper, invokePoint));
+          addReparentDeletionOp(meta, calcItems, oldCalcItems, rollups, invokePoint);
           continue;
         }
       } else if (apexContext == TriggerOperation.AFTER_DELETE) {
@@ -1435,6 +1422,57 @@ global without sharing virtual class Rollup {
         (meta.RollupOperation__c.contains('UPDATE_') || meta.RollupOperation__c.contains('DELETE_')
           ? meta.RollupOperation__c.substringAfter('_')
           : meta.RollupOperation__c);
+    }
+  }
+
+  private static QueryWrapper getFullRecalcQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    QueryWrapper wrapper;
+    meta.RollupOperation__c = meta.RollupOperation__c.replace('REFRESH_', '');
+    if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c)) {
+      wrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
+      for (SObject calcItem : calcItems) {
+        wrapper.addRecordId((String) calcItem.get(meta.LookupFieldOnCalcItem__c));
+      }
+    } else {
+      wrapper = getParentWhereClause(
+        calcItems,
+        oldCalcItems,
+        meta.LookupFieldOnLookupObject__c,
+        meta.LookupObject__c,
+        meta.LookupFieldOnCalcItem__c,
+        meta.GrandparentRelationshipFieldPath__c,
+        meta.CalcItemWhereClause__c
+      );
+    }
+    return wrapper;
+  }
+
+  private static void addReparentDeletionOp(
+    Rollup__mdt meta,
+    List<SObject> calcItems,
+    Map<Id, SObject> oldCalcItems,
+    List<Rollup> rollups,
+    InvocationPoint invokePoint
+  ) {
+    List<SObject> typedCalcItems = calcItems.clone();
+    typedCalcItems.clear();
+
+    for (SObject calcItem : calcItems) {
+      if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c) && oldCalcItems.containsKey(calcItem.Id)) {
+        SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
+        if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c)) {
+          typedCalcItems.add(oldCalcItem);
+        }
+      }
+    }
+
+    // we only need to perform the delete if we've arrived here
+    // via a route where there were oldCalcItems AND one or more of their lookup keys changed
+    if (typedCalcItems.isEmpty() == false) {
+      String potentialDeleteOpName = 'DELETE_' + getBaseOperationName(meta.RollupOperation__c);
+      Rollup__mdt clonedMeta = meta.clone();
+      clonedMeta.RollupOperation__c = potentialDeleteOpName;
+      rollups.add(getRollup(new List<Rollup__mdt>{ clonedMeta }, typedCalcItems.getSObjectType(), typedCalcItems, new Map<Id, SObject>(), null, invokePoint));
     }
   }
 
@@ -1642,6 +1680,7 @@ global without sharing virtual class Rollup {
 
   private static QueryWrapper getParentWhereClause(
     List<SObject> calcItems,
+    Map<Id, SObject> oldCalcItems,
     String lookupFieldOnLookupObject,
     String lookupObjectName,
     String lookupFieldOnCalcItem,
@@ -1662,6 +1701,12 @@ global without sharing virtual class Rollup {
       String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
       if (String.isNotBlank(lookupId)) {
         wrapper.addRecordId(lookupId);
+      }
+      if (oldCalcItems.containsKey(calcItem.Id)) {
+        String oldLookupId = (String) oldCalcItems.get(calcItem.Id).get(lookupFieldOnLookupObject);
+        if (String.isNotBlank(oldLookupId)) {
+          wrapper.addRecordId(oldLookupId);
+        }
       }
     }
     String whereClause = String.isNotBlank(potentialWhereClause) ? potentialWhereClause + ' AND ' : '';
@@ -1715,7 +1760,12 @@ global without sharing virtual class Rollup {
 
   private static Map<Id, SObject> getOldFlowRecords(FlowInput flowInput, SObjectType sObjectType) {
     Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>();
-    if (flowInput.recordsToRollup?.isEmpty() == true || (flowInput.rollupContext != 'UPDATE' && flowInput.rollupContext != 'UPSERT')) {
+    if (
+      flowInput.recordsToRollup?.isEmpty() == true ||
+      (flowInput.rollupContext != 'UPDATE' &&
+      flowInput.rollupContext != 'UPSERT' &&
+      flowInput.rollupContext != 'REFRESH')
+    ) {
       return oldFlowRecords;
     } else if (flowInput.oldRecordsToRollup?.isEmpty() == false) {
       // normally, you could use a shortcut to initialize a Set<Id> like this
