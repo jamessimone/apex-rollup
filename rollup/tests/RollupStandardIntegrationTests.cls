@@ -472,8 +472,8 @@ private class RollupStandardIntegrationTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
-      MaxRollupRetries__c = 100,
-      MaxNumberOfQueries__c = 1,
+      MaxRollupRetries__c = 1,
+      MaxNumberOfQueries__c = 2,
       IsRollupLoggingEnabled__c = true
     );
     // start as synchronous rollup to allow for one deferral
@@ -645,9 +645,10 @@ private class RollupStandardIntegrationTests {
     insert cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
-    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>(cpas);
-
+    ContactPointAddress clonedCpa = cpas[0].clone(true);
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{ clonedCpa };
     cpas[0].ParentId = acc.Id;
+    flowInputs[0].recordsToRollup = cpas;
     update cpas;
 
     Test.startTest();

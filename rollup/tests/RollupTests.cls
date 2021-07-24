@@ -3386,13 +3386,24 @@ private class RollupTests {
   /** Re-queueing */
   @isTest
   static void shouldRequeueRollupsWhenQueryLimitsExceeded() {
-    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
+    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100);
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxLookupRowsBeforeBatching__c = -1, BatchChunkSize__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxRollupRetries__c = 1,
+      IsRollupLoggingEnabled__c = true,
+      MaxNumberOfQueries__c = 1
+    );
+    Rollup.specificControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS,
+      MaxLookupRowsBeforeBatching__c = 1,
+      BatchChunkSize__c = 1
+    );
 
     Test.startTest();
-    Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Rollup.batch(
+      Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType),
+      Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+    );
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
@@ -3404,7 +3415,11 @@ private class RollupTests {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 0, IsRollupLoggingEnabled__c = true);
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxLookupRowsBeforeBatching__c = -1, BatchChunkSize__c = 0);
+    Rollup.specificControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS,
+      MaxLookupRowsBeforeBatching__c = -1,
+      BatchChunkSize__c = 0
+    );
 
     try {
       Test.startTest();
@@ -3543,7 +3558,7 @@ private class RollupTests {
     DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxNumberOfQueries__c = 2);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS, MaxNumberOfQueries__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;
@@ -3583,7 +3598,7 @@ private class RollupTests {
     DMLMock mock = new DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup', MaxNumberOfQueries__c = 2);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS, MaxNumberOfQueries__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;
