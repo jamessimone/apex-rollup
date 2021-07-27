@@ -4,9 +4,12 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.37.0",
-            "versionDescription": "Fixing deferred rollup logic and adding more logging surrounding deferrals",
-            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
+            "versionNumber": "1.2.38.0",
+            "versionDescription": "Including extra code coverage during package version creation",
+            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
+            "unpackagedMetadata": {
+                "path": "extra-tests"
+            }
         },
         {
             "package": "Apex Rollup - Custom Logger",
@@ -36,7 +39,8 @@
             "default": false
         },
         {
-            "path": "extra-tests"
+            "path": "extra-tests",
+            "default": false
         }
     ],
     "namespace": "",
@@ -81,6 +85,7 @@
         "apex-rollup@1.2.34-0": "04t6g000008SglrAAC",
         "apex-rollup@1.2.35-0": "04t6g000008SguGAAS",
         "apex-rollup@1.2.36-0": "04t6g000008SguaAAC",
-        "apex-rollup@1.2.37-0": "04t6g000008SguzAAC"
+        "apex-rollup@1.2.37-0": "04t6g000008SguzAAC",
+        "apex-rollup@1.2.38-0": "04t6g000008SgvxAAC"
     }
 }
