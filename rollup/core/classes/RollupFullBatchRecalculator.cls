@@ -44,6 +44,10 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
     RollupLogger.Instance.save();
   }
 
+  protected override String getTypeName() {
+    return 'RollupFullBatchRecalculator';
+  }
+
   protected override void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     Map<String, Rollup.CalcItemBag> local = new Map<String, Rollup.CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {

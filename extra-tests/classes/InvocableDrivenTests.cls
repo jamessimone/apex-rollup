@@ -49,7 +49,7 @@ private class InvocableDrivenTests {
     System.assertEquals(today.addDays(-2), reparentAccount.DateField__c);
     System.assertEquals(3, reparentAccount.NumberOfEmployees, 'Second account should properly reflect reparented record for number of employees');
     System.assertEquals(one.Description + ', ' + three.Description, reparentAccount.Description, 'Second account should have only reparented case description');
-    System.assertEquals(one.Subject, reparentAccount.Name, 'Second account name field should reflect last subject');
     System.assertEquals(2, reparentAccount.AnnualRevenue, 'Second account sum field should include updated amount');
+    System.assertEquals(one.Subject, reparentAccount.Name, 'Second account name field should reflect last subject');
   }
 }
