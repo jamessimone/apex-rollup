@@ -160,8 +160,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       'Is No Op' => String.valueOf(this.isNoOp)
     };
 
-    // TODO - potentially change this from toString to an argument-accepting method
-    // so that calcItems/oldCalcItems are only logged below the DEBUG logging level enum
     this.addToMap(props, 'Calc Items', this.calcItems);
     this.addToMap(props, 'Old Calc Items', this.oldCalcItems);
     this.addToMap(props, 'Rollup Metadata', this.metadata);
@@ -275,7 +273,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this;
     } else {
       // the end of the line
-      this.throwWithRollupData(this.rollups);
+      this.logFatalRollups(this.rollups);
     }
 
     return roll;
@@ -576,16 +574,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         this.getAsyncRollup().beginAsyncRollup();
       } else if (this.deferredRollups.isEmpty() == false) {
-        this.throwWithRollupData(this.deferredRollups);
+        this.logFatalRollups(this.deferredRollups);
       }
     }
   }
 
-  private void throwWithRollupData(List<Rollup> rolls) {
+  private void logFatalRollups(List<Rollup> rolls) {
     String exceptionString = 'rollup failed to re-queue for: ';
     RollupLogger.Instance.log(exceptionString, rolls, LoggingLevel.ERROR);
     RollupLogger.Instance.save();
-    throw new AsyncException(exceptionString + rolls);
   }
 
   private void setupCalcItemData(Rollup roll) {
