@@ -28,6 +28,7 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   }
 
   public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
+    RollupLogger.Instance.log('starting full batch recalc run', this, LoggingLevel.DEBUG);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
      * them to the overall Rollup framework while breaking us out of the query limits
@@ -42,6 +43,10 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   public override void finish(Database.BatchableContext bc) {
     RollupLogger.Instance.log('RollupFullBatchRecalculator finished', LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
+  }
+
+  protected override String getTypeName() {
+    return 'RollupFullBatchRecalculator';
   }
 
   protected override void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {

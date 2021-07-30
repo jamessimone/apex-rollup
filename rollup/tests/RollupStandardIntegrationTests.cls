@@ -2,9 +2,10 @@
 private class RollupStandardIntegrationTests {
   @TestSetup
   static void setup() {
+    upsert new RollupSettings__c(IsEnabled__c = true);
+    // gets nulled out at the end of the setup context
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     insert new Account(Name = 'RollupStandardIntegrationTests');
-    upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
   @isTest
@@ -99,7 +100,8 @@ private class RollupStandardIntegrationTests {
   @isTest
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
-    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(256), LastName = 'Truncate', Email = 'rollup@gmail.com');
+    Integer maxAccountNameLength = Account.Name.getDescribe().getLength();
+    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(maxAccountNameLength + 1), LastName = 'Truncate', Email = 'rollup@gmail.com');
     insert con;
 
     Rollup__mdt meta = new Rollup__mdt(
@@ -117,7 +119,7 @@ private class RollupStandardIntegrationTests {
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
-    System.assertEquals(255, acc.Name.length(), acc.Name);
+    System.assertEquals(maxAccountNameLength, acc.Name.length(), acc.Name);
   }
 
   @isTest
@@ -652,12 +654,8 @@ private class RollupStandardIntegrationTests {
     update cpas;
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Rollup.performRollup(flowInputs);
     Test.stopTest();
-
-    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
-    System.assertEquals('SUCCESS', flowOutputs[0].message);
-    System.assertEquals(true, flowOutputs[0].isSuccess);
 
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(1500, acc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');

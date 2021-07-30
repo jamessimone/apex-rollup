@@ -86,6 +86,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
       try {
         loggerInstance = (ILogger) Type.forName(SELF.rollupControl.RollupLoggerName__c).newInstance();
       } catch (Exception ex) {
+        SELF.log('cast to Rollup.ILogger failed with message: ' + ex.getMessage() + ', falling back to default logger', SELF, LoggingLevel.WARN);
         loggerInstance = SELF;
       }
     } else {

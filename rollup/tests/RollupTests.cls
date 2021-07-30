@@ -3386,13 +3386,11 @@ private class RollupTests {
   /** Re-queueing */
   @isTest
   static void shouldRequeueRollupsWhenQueryLimitsExceeded() {
-    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) });
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(
-      MaxRollupRetries__c = 1,
-      IsRollupLoggingEnabled__c = true,
-      MaxNumberOfQueries__c = 1
+    DMLMock mock = loadAccountIdMock(
+      new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) }
     );
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 1);
     Rollup.specificControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS,
       MaxLookupRowsBeforeBatching__c = 1,
@@ -3408,29 +3406,6 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status, [SELECT Status, JobType FROM AsyncApexJob]);
-  }
-
-  @isTest
-  static void shouldThrowIfDeferralNotPossible() {
-    DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
-    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 0, IsRollupLoggingEnabled__c = true);
-    Rollup.specificControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS,
-      MaxLookupRowsBeforeBatching__c = -1,
-      BatchChunkSize__c = 0
-    );
-
-    try {
-      Test.startTest();
-      Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
-      Test.stopTest();
-      // a throw should occur within startTest()/stopTest() - the assertion below is uncatchable
-      System.assert(false, 'shouldThrowIfDeferralNotPossible should not make it here');
-    } catch (Exception ex) {
-      System.assertEquals(true, ex.getMessage().contains('rollup failed to re-queue for'), ex.getMessage());
-      System.assertNotEquals(true, ex.getMessage().contains('shouldThrowIfDeferralNotPossible should not make it here'));
-    }
   }
 
   /** Grandparent rollups */
@@ -3521,6 +3496,11 @@ private class RollupTests {
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE,
+      BatchChunkSize__c = 100,
+      IsRollupLoggingEnabled__c = true
+    );
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',

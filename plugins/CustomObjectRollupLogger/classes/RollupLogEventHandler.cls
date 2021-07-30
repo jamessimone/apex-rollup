@@ -3,7 +3,11 @@ public class RollupLogEventHandler {
     Map<String, RollupLog__c> transactionIdToLogs = new Map<String, RollupLog__c>();
 
     for (RollupLogEvent__e logEvent : logEvents) {
-      RollupLog__c rollupLog = new RollupLog__c(TransactionId__c = logEvent.TransactionId__c, LoggedBy__c = Id.valueOf(logEvent.LoggedBy__c));
+      RollupLog__c rollupLog = new RollupLog__c(
+        ErrorWouldHaveBeenThrown__c = logEvent.LoggingLevel__c == LoggingLevel.ERROR.name(),
+        LoggedBy__c = Id.valueOf(logEvent.LoggedBy__c),
+        TransactionId__c = logEvent.TransactionId__c
+      );
       transactionIdToLogs.put(logEvent.TransactionId__c, rollupLog);
     }
 

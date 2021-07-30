@@ -3,6 +3,11 @@
     <description>Grants permission to Rollup Log information</description>
     <fieldPermissions>
         <editable>false</editable>
+        <field>RollupLog__c.ErrorWouldHaveBeenThrown__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>RollupLogEntry__c.Message__c</field>
         <readable>true</readable>
     </fieldPermissions>

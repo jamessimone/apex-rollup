@@ -59,7 +59,7 @@ if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
 }
 
 $sfdxProjectJson = Get-SFDX-Project-JSON
-$currentPackageVersion = $sfdxProjectJson.packageDirectories.versionNumber
+$currentPackageVersion = $sfdxProjectJson.packageDirectories[0].versionNumber
 
 Write-Output "Current package version number: $currentPackageVersion"
 
@@ -98,8 +98,7 @@ if($currentBranch -eq "main") {
   # main is a push-protected branch; only create new package versions as part of PRs against main
   Write-Output "Creating new package version"
 
-  $packageVersionNotes = $sfdxProjectJson.packageDirectories.versionDescription
-  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories.path -x -w 30 -e $packageVersionNotes -c --releasenotesurl $sfdxProjectJson.packageDirectories.releaseNotesUrl
+  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories[0].path -x -w 30
   git add ./sfdx-project.json
 
   # Now that sfdx-project.json has been updated, grab the latest package version
@@ -109,7 +108,10 @@ if($currentBranch -eq "main") {
 
   if($currentPackageVersionId -ne $priorPackageVersionId) {
     $readmePath = "./README.md"
-    ((Get-Content -path $readmePath -Raw) -replace $priorPackageVersionId, $currentPackageVersionId) | Set-Content -Path $readmePath -NoNewline
+    $loginReplacement = "https://login.salesforce.com/packaging/installPackage.apexp?p0=" + $currentPackageVersionId
+    $testReplacement = "https://test.salesforce.com/packaging/installPackage.apexp?p0=" + $currentPackageVersionId
+    ((Get-Content -path $readmePath -Raw) -replace "https:\/\/login.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $loginReplacement) | Set-Content -Path $readmePath -NoNewline
+    ((Get-Content -path $readmePath -Raw) -replace "https:\/\/test.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $testReplacement) | Set-Content -Path $readmePath -NoNewline
 
     git add $readmePath
   }
