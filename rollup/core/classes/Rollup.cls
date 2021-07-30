@@ -1688,9 +1688,7 @@ global without sharing virtual class Rollup {
 
     if (String.isNotBlank(errorMessage)) {
       Exception ex = new IllegalArgumentException(errorMessage);
-      RollupLogger.Instance.log('an error occurred while validating flow inputs', ex, LoggingLevel.ERROR);
-      RollupLogger.Instance.save();
-      throw ex;
+      logAndThrowFlowException(ex, 'an error occurred while validating flow inputs');
     }
   }
 
@@ -1713,10 +1711,14 @@ global without sharing virtual class Rollup {
         (flowInput.isRollupStartedFromParent ? firstRecord : lookupItem).get(flowInput.lookupFieldOnOpObject);
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while validating flow-specific rules', ex, LoggingLevel.ERROR);
-      RollupLogger.Instance.save();
-      throw ex;
+      logAndThrowFlowException(ex, 'an error occurred while validating flow-specific rules');
     }
+  }
+
+  private static void logAndThrowFlowException(Exception ex, String logString) {
+    RollupLogger.Instance.log(logString, ex, LoggingLevel.ERROR);
+    RollupLogger.Instance.save();
+    throw ex;
   }
 
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {

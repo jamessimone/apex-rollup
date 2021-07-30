@@ -20,7 +20,7 @@
                 }
             ],
             "versionNumber": "0.0.3.0",
-            "versionDescription": "Prevent string overflow on log messages",
+            "versionDescription": "Prevent string overflow on log messages, added ErrorWouldHaveBeenThrown__c field on RollupLog__c",
             "default": false
         },
         {
@@ -51,7 +51,7 @@
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.1-0": "04t6g000008SgtwAAC",
         "Apex Rollup - Custom Logger@0.0.2-0": "04t6g000008SgufAAC",
-        "Apex Rollup - Custom Logger@0.0.3-0": "04t6g000008SgxPAAS",
+        "Apex Rollup - Custom Logger@0.0.3-0": "04t6g000008SgyNAAS",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.1-0": "04t6g000008SgolAAC",
         "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",

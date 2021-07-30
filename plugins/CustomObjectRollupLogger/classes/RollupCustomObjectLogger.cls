@@ -1,15 +1,22 @@
 public class RollupCustomObjectLogger extends RollupLogger {
   private final List<RollupLogEvent__e> rollupLogEvents = new List<RollupLogEvent__e>();
-  private final Integer MAX_LOG_STRING_LENGTH = RollupLogEvent__e.Message__c.getDescribe().getLength();
+  private final Database.DMLOptions truncatedAllowedOptions;
+
+  public RollupCustomObjectLogger() {
+    super();
+    this.truncatedAllowedOptions = new Database.DMLOptions();
+    this.truncatedAllowedOptions.AllowFieldTruncation = true;
+  }
 
   public override void log(String logString, LoggingLevel logLevel) {
-    String potentiallyTruncatedString = logString.length() > MAX_LOG_STRING_LENGTH ? logString.substring(0, MAX_LOG_STRING_LENGTH) : logString;
-    this.rollupLogEvents.add(new RollupLogEvent__e(
+    RollupLogEvent__e logEvent = new RollupLogEvent__e(
       LoggingLevel__c = logLevel.name(),
       LoggedBy__c = UserInfo.getUserId(),
-      Message__c = potentiallyTruncatedString,
+      Message__c = logString,
       TransactionId__c = Request.getCurrent().getRequestId()
-    ));
+    );
+    logEvent.setOptions(this.truncatedAllowedOptions);
+    this.rollupLogEvents.add(logEvent);
   }
 
   public override void log(String logString, Object logObject, LoggingLevel logLevel) {
