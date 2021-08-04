@@ -1544,10 +1544,14 @@ global without sharing virtual class Rollup {
     typedCalcItems.clear();
     String potentialDeleteOpName = 'DELETE_' + getBaseOperationName(meta.RollupOperation__c);
 
+    RollupLogger.Instance.log('calc items, addReparentDeletionOp', calcItems, LoggingLevel.DEBUG);
     for (SObject calcItem : calcItems) {
       if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c) && oldCalcItems.containsKey(calcItem.Id)) {
         SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
         String key = potentialDeleteOpName + oldCalcItem.Id + JSON.serialize(meta);
+        // TODO - Adding to help debug another issue - will remove in final version
+        RollupLogger.Instance.log('Current calc item in delete comparison', calcItem, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log('Old calc item in delete comparison', oldCalcItem, LoggingLevel.DEBUG);
         if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c) && REPARENTED_KEYS.contains(key) == false) {
           typedCalcItems.add(oldCalcItem);
           REPARENTED_KEYS.add(key);
@@ -1568,6 +1572,8 @@ global without sharing virtual class Rollup {
         null,
         invokePoint
       );
+      // to show in the logs
+      deleteProcessor.calcItems = typedCalcItems;
       RollupLogger.Instance.log('adding delete operation for:', deleteProcessor, LoggingLevel.DEBUG);
       rollups.add(deleteProcessor);
     }
