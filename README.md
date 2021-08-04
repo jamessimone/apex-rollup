@@ -931,7 +931,7 @@ You have several options for custom logging plugins for Rollup (all Rollup Logge
 
 1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](plugins/NebulaLogger)!
 2. A [lightweight custom logger that's also part of this repository](plugins/CustomObjectRollupLogger); it's just bundled as a separate unmanaged package
-3. Using the classic Apex debug logs - by adding an entry in the Rollup Logger Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Logger Plugin -> New) with the `Rollup Logger Plugin Name` set to `RollupLogger`
+3. Using the classic Apex debug logs - by adding an entry in the Rollup Logger Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Logger Plugin -> New) with the `Rollup Logger Plugin Name` set to `RollupLogger` (included by default; can be removed)
 4. If logging to the debug logs is enough for your purposes, use option #3. However, if you want to customize things further, or log errors to your own custom object/external logging destination (like Rollbar or Loggly), you can do so! The included `RollupLogger` class also includes an interface:
 
 ```java
