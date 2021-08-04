@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.38.0",
-            "versionDescription": "Including extra code coverage during package version creation, REFRESH updates",
+            "versionNumber": "1.2.39.0",
+            "versionDescription": "Added additional logging for RollupEvaluator under the FINE logging level",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"
@@ -16,11 +16,11 @@
             "path": "plugins/CustomObjectRollupLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.38-0"
+                    "package": "apex-rollup@1.2.39-0"
                 }
             ],
-            "versionNumber": "0.0.3.0",
-            "versionDescription": "Prevent string overflow on log messages, added ErrorWouldHaveBeenThrown__c field on RollupLog__c",
+            "versionNumber": "0.0.4.0",
+            "versionDescription": "Added logging level to log options and reworked logging plugin structure",
             "default": false
         },
         {
@@ -28,14 +28,14 @@
             "path": "plugins/NebulaLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.38-0"
+                    "package": "apex-rollup@1.2.39-0"
                 },
                 {
                     "package": "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements"
                 }
             ],
-            "versionNumber": "0.0.1.0",
-            "versionDescription": "Adds support for Nebula Logger to Rollup logging operations",
+            "versionNumber": "0.0.2.0",
+            "versionDescription": "Reworked logging plugin structure",
             "default": false
         },
         {
@@ -52,19 +52,11 @@
         "Apex Rollup - Custom Logger@0.0.1-0": "04t6g000008SgtwAAC",
         "Apex Rollup - Custom Logger@0.0.2-0": "04t6g000008SgufAAC",
         "Apex Rollup - Custom Logger@0.0.3-0": "04t6g000008SgyNAAS",
+        "Apex Rollup - Custom Logger@0.0.4-0": "04t6g000008Sh93AAC",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.1-0": "04t6g000008SgolAAC",
+        "Apex Rollup - Nebula Logger@0.0.2-0": "04t6g000008Sh8yAAC",
         "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",
-        "apex-rollup@1.2.20-0": "04t6g000008nt5NAAQ",
-        "apex-rollup@1.2.21-0": "04t6g000008nt6kAAA",
-        "apex-rollup@1.2.22-0": "04t6g000008SgCUAA0",
-        "apex-rollup@1.2.23-0": "04t6g000008SgDcAAK",
-        "apex-rollup@1.2.24-0": "04t6g000008SgEQAA0",
-        "apex-rollup@1.2.25-0": "04t6g000008SgGCAA0",
-        "apex-rollup@1.2.26-0": "04t6g000008SgI8AAK",
-        "apex-rollup@1.2.27-0": "04t6g000008SgImAAK",
-        "apex-rollup@1.2.28-0": "04t6g000008SgIwAAK",
-        "apex-rollup@1.2.29-0": "04t6g000008SgLWAA0",
         "apex-rollup@1.2.30-0": "04t6g000008SgSsAAK",
         "apex-rollup@1.2.31-0": "04t6g000008SgaiAAC",
         "apex-rollup@1.2.32-0": "04t6g000008SgbqAAC",
@@ -73,6 +65,7 @@
         "apex-rollup@1.2.35-0": "04t6g000008SguGAAS",
         "apex-rollup@1.2.36-0": "04t6g000008SguaAAC",
         "apex-rollup@1.2.37-0": "04t6g000008SguzAAC",
-        "apex-rollup@1.2.38-0": "04t6g000008SgyXAAS"
+        "apex-rollup@1.2.38-0": "04t6g000008SgyXAAS",
+        "apex-rollup@1.2.39-0": "04t6g000008Sh8tAAC"
     }
 }

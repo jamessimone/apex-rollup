@@ -1,11 +1,11 @@
 # Custom Object Rollup Logger
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgyNAAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sh93AAC">
   <img alt="Deploy to Salesforce"
        src="../../media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgyNAAS">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sh93AAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="../../media/deploy-package-to-sandbox.png">
 </a>
@@ -13,8 +13,8 @@
 To install this plugin and get it setup within your org properly:
 
 1. Install the unmanaged package via the buttons above
-2. Navigate to the Rollup `Org Defaults` Rollup Control record (Setup -> Custom Metadata Types -> Manage Records next to Rollup Control -> Org Defaults)
-3. Enter `RollupCustomObjectLogger` into the `Rollup Logger Name` field, and ensure `Is Rollup Logging Enabled?` is checked off
+2. Navigate to the Rollup Logger Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Logger Plugin -> New)
+3. Enter `RollupCustomObjectLogger` into the `Rollup Logger Plugin Name` field, choose the `Org_Default` rollup control record (and ensure `Is Rollup Logging Enabled?` is checked off on that record); the label can be whatever you'd like
 
 That's it! Logs will now start flowing through on all rollup operations to `RollupLog__c`. A permission set, `Rollup Log Viewer` is included so that you can grant Rollup Log access to users other than yourself (should you be so inclined).
 

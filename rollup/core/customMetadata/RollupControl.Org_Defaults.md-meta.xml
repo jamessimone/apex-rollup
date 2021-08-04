@@ -31,10 +31,6 @@
         <value xsi:type="xsd:double">100.0</value>
     </values>
     <values>
-        <field>RollupLoggerName__c</field>
-        <value xsi:nil="true"/>
-    </values>
-    <values>
         <field>ShouldAbortRun__c</field>
         <value xsi:type="xsd:boolean">false</value>
     </values>

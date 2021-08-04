@@ -1,4 +1,10 @@
 public virtual class RollupLogger extends Rollup implements ILogger {
+  @testVisible
+  private static List<RollupLoggerPlugin__mdt> pluginMocks;
+  @testVisible
+  private static RollupLoggerPluginParameter__mdt loggingLevelMock;
+  private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
+
   protected RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
   }
@@ -34,7 +40,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
   }
 
   public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
-    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.getLogLevel().ordinal()) {
       String appended = this.getLogStringFromObject(logObject);
       List<String> messages = new List<String>{ logString };
       if (String.isNotBlank(appended)) {
@@ -49,6 +55,36 @@ public virtual class RollupLogger extends Rollup implements ILogger {
 
   public virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
+  }
+
+  private RollupLoggerPluginParameter__mdt loggingLevel {
+    get {
+      if (loggingLevel == null) {
+        loggingLevel = loggingLevelMock != null ? loggingLevelMock : this.getLoggingLevelParameter();
+      }
+      return loggingLevel;
+    }
+    set;
+  }
+
+  protected virtual RollupLoggerPluginParameter__mdt getLoggingLevelParameter() {
+    return RollupLoggerPluginParameter__mdt.getInstance('LoggingDebugLevel');
+  }
+
+  protected override String getTypeName() {
+    return 'RollupLogger';
+  }
+
+  protected LoggingLevel getLogLevel() {
+    LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
+    String logLevelNameToSearch = this.loggingLevel != null ? this.loggingLevel.Value__c : toReturn.name();
+    for (LoggingLevel logLevel : System.LoggingLevel.values()) {
+      if (logLevel.name().equalsIgnoreCase(logLevelNameToSearch)) {
+        toReturn = logLevel;
+        break;
+      }
+    }
+    return toReturn;
   }
 
   protected String getLogStringFromObject(Object logObject) {
@@ -81,17 +117,59 @@ public virtual class RollupLogger extends Rollup implements ILogger {
   }
 
   private static ILogger getRollupLogger() {
-    ILogger loggerInstance;
-    if (String.isNotBlank(SELF.rollupControl.RollupLoggerName__c)) {
-      try {
-        loggerInstance = (ILogger) Type.forName(SELF.rollupControl.RollupLoggerName__c).newInstance();
-      } catch (Exception ex) {
-        SELF.log('cast to Rollup.ILogger failed with message: ' + ex.getMessage() + ', falling back to default logger', SELF, LoggingLevel.WARN);
-        loggerInstance = SELF;
-      }
-    } else {
-      loggerInstance = SELF;
+    List<RollupLoggerPlugin__mdt> plugins = [SELECT DeveloperName FROM RollupLoggerPlugin__mdt WHERE RollupControl__c = :SELF.rollupControl.Id];
+    if (pluginMocks != null) {
+      plugins.addAll(pluginMocks);
     }
-    return loggerInstance;
+    return combineLoggers(plugins);
+  }
+
+  private static ILogger combineLoggers(List<RollupLoggerPlugin__mdt> plugins) {
+    ILogger rollLogger;
+    if (plugins.isEmpty()) {
+      return SELF;
+    }
+    RollupLoggerPlugin__mdt firstLogger = plugins.remove(0);
+    if (firstLogger.DeveloperName == SELF.getTypeName()) {
+      rollLogger = SELF;
+    } else {
+
+      try {
+        rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
+      } catch(Exception ex) {
+        SELF.log('cast to ILogger failed with message: ' + ex.getMessage() + ', falling back to default logger', SELF, LoggingLevel.WARN);
+        rollLogger = SELF;
+      }
+      if (plugins.isEmpty() == false) {
+        rollLogger = new CombinedLogger(rollLogger, combineLoggers(plugins));
+      }
+    }
+
+    return rollLogger;
+  }
+
+  private class CombinedLogger implements ILogger {
+    private final ILogger first;
+    private final ILogger second;
+
+    public CombinedLogger(ILogger first, ILogger second) {
+      this.first = first;
+      this.second = second;
+    }
+
+    public void log(String logString, LoggingLevel logLevel) {
+      this.first.log(logString, logLevel);
+      this.second.log(logString, logLevel);
+    }
+
+    public void log(String logString, Object logObject, LoggingLevel logLevel) {
+      this.first.log(logString, logObject, logLevel);
+      this.second.log(logString, logObject, logLevel);
+    }
+
+    public void save() {
+      this.first.save();
+      this.second.save();
+    }
   }
 }

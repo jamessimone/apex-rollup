@@ -215,6 +215,10 @@ global without sharing virtual class Rollup {
     return this.toString();
   }
 
+  protected virtual String getTypeName() {
+    return 'Rollup';
+  }
+
   /**
    * global facing RollupAsyncProcessor calculation section
    * - Trigger operations

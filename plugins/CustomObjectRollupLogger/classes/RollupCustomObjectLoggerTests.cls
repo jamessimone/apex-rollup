@@ -27,4 +27,33 @@ private class RollupCustomObjectLoggerTests {
     System.assertEquals(LoggingLevel.ERROR.name(), firstEntry.RollupLogEntry__r[1].LoggingLevel__c);
     System.assertEquals('Second test log with record' + '\n' + JSON.serializePretty(new Account()), firstEntry.RollupLogEntry__r[1].Message__c);
   }
+
+  @isTest
+  static void shouldTruncateTooLongLogMessage() {
+    // if the message is too long for the platform event to fire - it simply won't fire!
+    // this test is to ensure a RollupLogEntry__c is created
+    RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
+    rollupCustomLogger.log('1'.repeat(RollupLogEvent__e.Message__c.getDescribe().getLength() + 1), LoggingLevel.ERROR);
+
+    Test.startTest();
+    rollupCustomLogger.save();
+    Test.stopTest();
+
+    System.assertEquals(1, [SELECT COUNT() FROM RollupLogEntry__c], 'Message should have been created successfully!');
+  }
+
+  @isTest
+  static void shouldNotLogBelowSpecifiedLoggingLevel() {
+    // override whatever's included in the CMDT to ensure we arrive at this value deterministically
+    RollupLogger.loggingLevelMock = new RollupLoggerPluginParameter__mdt(Value__c = LoggingLevel.DEBUG.name());
+
+    RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
+    rollupCustomLogger.log('Test message', LoggingLevel.FINE);
+
+    Test.startTest();
+    rollupCustomLogger.save();
+    Test.stopTest();
+
+    System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c], 'Log should not have been created because FINE is below DEBUG in LoggingLevel');
+  }
 }

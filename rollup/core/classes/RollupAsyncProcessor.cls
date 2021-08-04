@@ -246,7 +246,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return rollupProcessId;
   }
 
-  protected virtual String getTypeName() {
+  protected virtual override String getTypeName() {
     return 'RollupAsyncProcessor';
   }
 
@@ -262,7 +262,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this.rollups[0];
     } else if (this instanceof RollupFullBatchRecalculator) {
       roll = this;
-    } else if (shouldRunAsBatch && System.isBatch() == false) {
+    } else if ((shouldRunAsBatch && System.isBatch() == false) || (isAsyncInnerClass && canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
@@ -272,7 +272,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (canEnqueue && isAsyncInnerClass) {
       roll = this;
     } else {
-      // the end of the line
       this.logFatalRollups(this.rollups);
     }
 

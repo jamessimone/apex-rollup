@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgyXAAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sh8tAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SgyXAAS">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sh8tAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -924,14 +924,13 @@ Note that you're still selecting `Opportunity` as the `Calc Item` within your Ro
 
 <div id="rollup-logging"></div>
 
-**Important Note** the `Org_Default` Rollup Control entry is deployed with `Is Rollup Logging Enabled` set to `false`. Please flip this field to `true` in order to get logs ... logging.
 
-You have two options for custom logging plugins for Rollup:
+You have several options for custom logging plugins for Rollup (all Rollup Logger Plugin CMDT records should point to the `Org_Default` Rollup Control record). It's possible to use all of these options simultaneously - log to all the places!
 
 1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](plugins/NebulaLogger)!
 2. A [lightweight custom logger that's also part of this repository](plugins/CustomObjectRollupLogger); it's just bundled as a separate unmanaged package
-
-If logging to the debug logs is enough for your purposes, the default logger need never be changed. However, if you want to customize things further, or log errors to a custom object, you can do so! The included `RollupLogger` class also includes an interface:
+3. Using the classic Apex debug logs - by adding an entry in the Rollup Logger Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Logger Plugin -> New) with the `Rollup Logger Plugin Name` set to `RollupLogger`
+4. If logging to the debug logs is enough for your purposes, use option #3. However, if you want to customize things further, or log errors to your own custom object/external logging destination (like Rollbar or Loggly), you can do so! The included `RollupLogger` class also includes an interface:
 
 ```java
 public class RollupLogger {
@@ -945,7 +944,7 @@ public class RollupLogger {
 
 ```
 
-You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Org_Default` Rollup Control record by pasting it into the `Rollup Logger Name` field.
+You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Logger Plugin` CMDT records. _Alternatively_, you can also extend _RollupLogger_ itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods.
 
 ### Multi-Currency Orgs
 
