@@ -160,10 +160,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       'Is No Op' => String.valueOf(this.isNoOp)
     };
 
-    this.addToMap(props, 'Calc Items', this.calcItems);
-    this.addToMap(props, 'Old Calc Items', this.oldCalcItems);
-    this.addToMap(props, 'Rollup Metadata', this.metadata);
-    this.addToMap(props, 'Rollup Control', this.rollupControl);
+    this.customizeToStringEntries(props);
 
     String baseString = '';
     for (String key : props.keySet()) {
@@ -248,6 +245,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual override String getTypeName() {
     return 'RollupAsyncProcessor';
+  }
+
+  protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    this.addToMap(props, 'Calc Items', this.calcItems);
+    this.addToMap(props, 'Old Calc Items', this.oldCalcItems);
+    this.addToMap(props, 'Rollup Metadata', this.metadata);
+    this.addToMap(props, 'Rollup Control', this.rollupControl);
+    this.addToMap(props, 'Query Count', this.queryCount);
+    return props;
   }
 
   protected RollupAsyncProcessor getAsyncRollup() {
@@ -492,7 +498,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return String.valueOf(this.metadata);
   }
 
-  private void addToMap(Map<String, String> props, String key, Object ref) {
+  protected void addToMap(Map<String, String> props, String key, Object ref) {
     if (ref != null) {
       props.put(key, JSON.serializePretty(ref));
     }

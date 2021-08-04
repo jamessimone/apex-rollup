@@ -45,6 +45,15 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
     RollupLogger.Instance.save();
   }
 
+  protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    props = super.customizeToStringEntries(props);
+
+    this.addToMap(props, 'Rollup Metadata', this.rollupInfo);
+    this.addToMap(props, 'Query String', this.queryString);
+
+    return props;
+  }
+
   protected override String getTypeName() {
     return 'RollupFullBatchRecalculator';
   }

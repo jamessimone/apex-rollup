@@ -100,7 +100,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     } else if (logObject instanceof Rollup) {
       Rollup roll = (Rollup) logObject;
       if (roll.isBatched && roll.rollups.isEmpty() == false) {
-        appended = this.getLogStringFromObject(roll.rollups);
+        appended = 'Outer rollup:\n' + roll.toString() + '\nInner rollups:\n' + this.getLogStringFromObject(roll.rollups);
       } else {
         appended = roll.toString();
       }

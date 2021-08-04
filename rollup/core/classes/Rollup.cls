@@ -251,6 +251,7 @@ global without sharing virtual class Rollup {
 
   @AuraEnabled
   global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
+    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
     InvocationPoint localInvokePoint = invokeNameToInvokePoint.get(invokePointName);
 
     Integer amountOfCalcItems = 0;
@@ -310,6 +311,8 @@ global without sharing virtual class Rollup {
       processors.add(fullRecalcRoll);
     }
 
+    RollupLogger.Instance.log('bulk full recalc starting for:', processors, LoggingLevel.DEBUG);
+    RollupLogger.Instance.save();
     return batch(processors);
   }
 
@@ -320,6 +323,7 @@ global without sharing virtual class Rollup {
 
   @AuraEnabled
   global static String performFullRecalculation(Rollup__mdt metadata) {
+    RollupLogger.Instance.log('beginning full recalculation for', metadata, LoggingLevel.DEBUG);
     FlowInput validationRuleWrapper = new FlowInput();
     validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
     validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
@@ -330,7 +334,9 @@ global without sharing virtual class Rollup {
 
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
     wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    return getFullRecalcRollup(metadata, wrapper, InvocationPoint.FROM_LWC).runCalc();
+    Rollup fullRecalc = getFullRecalcRollup(metadata, wrapper, InvocationPoint.FROM_LWC);
+    RollupLogger.Instance.save();
+    return fullRecalc.runCalc();
   }
 
   global class FlowInput {
@@ -441,6 +447,7 @@ global without sharing virtual class Rollup {
     List<FlowOutput> flowOutputs = new List<FlowOutput>();
     List<Rollup> localRollups = new List<Rollup>();
     InvocationPoint fromInvocable = InvocationPoint.FROM_INVOCABLE;
+    RollupLogger.Instance.log('starting from invocable with data:', flowInputs, LoggingLevel.DEBUG);
 
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
@@ -1544,14 +1551,10 @@ global without sharing virtual class Rollup {
     typedCalcItems.clear();
     String potentialDeleteOpName = 'DELETE_' + getBaseOperationName(meta.RollupOperation__c);
 
-    RollupLogger.Instance.log('calc items, addReparentDeletionOp', calcItems, LoggingLevel.DEBUG);
     for (SObject calcItem : calcItems) {
       if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c) && oldCalcItems.containsKey(calcItem.Id)) {
         SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
         String key = potentialDeleteOpName + oldCalcItem.Id + JSON.serialize(meta);
-        // TODO - Adding to help debug another issue - will remove in final version
-        RollupLogger.Instance.log('Current calc item in delete comparison', calcItem, LoggingLevel.DEBUG);
-        RollupLogger.Instance.log('Old calc item in delete comparison', oldCalcItem, LoggingLevel.DEBUG);
         if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c) && REPARENTED_KEYS.contains(key) == false) {
           typedCalcItems.add(oldCalcItem);
           REPARENTED_KEYS.add(key);
@@ -1572,8 +1575,6 @@ global without sharing virtual class Rollup {
         null,
         invokePoint
       );
-      // to show in the logs
-      deleteProcessor.calcItems = typedCalcItems;
       RollupLogger.Instance.log('adding delete operation for:', deleteProcessor, LoggingLevel.DEBUG);
       rollups.add(deleteProcessor);
     }
@@ -1616,6 +1617,7 @@ global without sharing virtual class Rollup {
 
     Rollup fullRecalc = buildFullRecalcRollup(new List<Rollup__mdt>{ meta }, amountOfCalcItems, queryString, objIds, recordIds, childType, whereEval, invokePoint);
     fullRecalc.queryCount = amountOfCalcItems;
+    RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
     return fullRecalc;
   }
 
