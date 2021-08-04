@@ -14,6 +14,6 @@ To install this plugin and get it setup within your org properly:
 
 1. Install the unmanaged package via the button(s) above
 2. Navigate to the Rollup Logger Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Logger Plugin -> New)
-3. Enter `RollupNebulaLoggerAdapater` into the `Rollup Logger Plugin Name` field, choose the `Org_Default` rollup control record (and ensure `Is Rollup Logging Enabled?` is checked off on that record); the label can be whatever you'd like
+3. Enter `RollupNebulaLoggerAdapater` into the `Rollup Logger Plugin Name` field, choose the `Org_Default` rollup control record (and ensure `Is Rollup Logging Enabled?` is checked off on that record); the label can be whatever you'd like. At this time, there are no `Rollup Logger Plugin Parameter` entries needed for this particular plugin.
 
 That's it! Logs will now start flowing through on all rollup operations to `Log__c`, as they would with any other logging being done by Nebula.
