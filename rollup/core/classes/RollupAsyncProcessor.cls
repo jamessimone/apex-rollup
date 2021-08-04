@@ -117,7 +117,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.invokePoint = invokePoint;
     this.rollupControl = rollupControl;
     this.metadata = rollupMetadata;
-    this.isBatched = false;
+    this.isConductor = false;
 
     if (eval != null) {
       this.eval = eval;
@@ -157,7 +157,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       'Type' => this.getTypeName(),
       'Invocation Point' => this.invokePoint.name(),
       'Is Full Recalc' => String.valueOf(this.isFullRecalc),
-      'Is No Op' => String.valueOf(this.isNoOp)
+      'Is No Op' => String.valueOf(this.isNoOp),
+      'Is Conductor' => String.valueOf(this.isConductor)
     };
 
     this.customizeToStringEntries(props);
@@ -235,6 +236,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.syncRollups.isEmpty() == false) {
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
       this.process(this.syncRollups);
+      RollupLogger.Instance.log('finished running sync rollups', LoggingLevel.DEBUG);
       rollupProcessId = 'Running rollups flagged to go synchronously';
     } else {
       rollupProcessId = this.getAsyncRollup().beginAsyncRollup();
@@ -613,27 +615,29 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void getFieldNamesForRollups(List<RollupAsyncProcessor> rollups) {
     this.lookupObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
     this.calcObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
-    for (RollupAsyncProcessor rollup : rollups) {
-      if (rollup.lookupObj == null) {
+    for (RollupAsyncProcessor roll : rollups) {
+      if (roll.lookupObj == null) {
         continue;
       }
-      String rollupField = rollup.opFieldOnLookupObject.getDescribe().getName();
-      String lookupfield = rollup.lookupFieldOnLookupObject.getDescribe().getName();
-      if (this.lookupObjectToUniqueFieldNames.containsKey(rollup.lookupObj)) {
-        this.lookupObjectToUniqueFieldNames.get(rollup.lookupObj).addAll(new List<String>{ rollupField, lookupField });
+      String rollupField = roll.opFieldOnLookupObject.getDescribe().getName();
+      String lookupfield = roll.lookupFieldOnLookupObject.getDescribe().getName();
+      if (this.lookupObjectToUniqueFieldNames.containsKey(roll.lookupObj)) {
+        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj).addAll(new List<String>{ rollupField, lookupField });
       } else {
-        this.lookupObjectToUniqueFieldNames.put(rollup.lookupObj, new Set<String>{ rollupField, lookupfield });
+        this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, new Set<String>{ rollupField, lookupfield });
       }
 
-      List<String> whereFields = RollupEvaluator.getWhereEval(rollup.metadata.CalcItemWhereClause__c, rollup.calcItemType).getQueryFields();
-      whereFields.addAll(new List<String>{ rollup.opFieldOnCalcItem.getDescribe().getName(), rollup.lookupFieldOnCalcItem.getDescribe().getName() });
-      if (String.isNotBlank(rollup.metadata.OrderByFirstLast__c)) {
-        whereFields.add(rollup.metadata.OrderByFirstLast__c);
+      List<String> whereFields = String.isBlank(roll.metadata.CalcItemWhereClause__c)
+        ? new List<String>()
+        : RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields();
+      whereFields.addAll(new List<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() });
+      if (String.isNotBlank(roll.metadata.OrderByFirstLast__c)) {
+        whereFields.add(roll.metadata.OrderByFirstLast__c);
       }
-      if (this.calcObjectToUniqueFieldNames.containsKey(rollup.calcItemType)) {
-        this.calcObjectToUniqueFieldNames.get(rollup.calcItemType).addAll(whereFields);
+      if (this.calcObjectToUniqueFieldNames.containsKey(roll.calcItemType)) {
+        this.calcObjectToUniqueFieldNames.get(roll.calcItemType).addAll(whereFields);
       } else {
-        this.calcObjectToUniqueFieldNames.put(rollup.calcItemType, new Set<String>(whereFields));
+        this.calcObjectToUniqueFieldNames.put(roll.calcItemType, new Set<String>(whereFields));
       }
     }
   }
@@ -642,13 +646,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, Rollup.CalcItemBag> lookupFieldToCalcItems = new Map<String, Rollup.CalcItemBag>();
     if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
       if (rollup.traversal == null) {
-        rollup.traversal = new RollupRelationshipFieldFinder(
-            rollup.rollupControl,
-            rollup.metadata,
-            uniqueQueryFieldNames,
-            rollup.lookupObj,
-            this.oldCalcItems
-          )
+        rollup.traversal = new RollupRelationshipFieldFinder(rollup.rollupControl, rollup.metadata, uniqueQueryFieldNames, rollup.lookupObj, this.oldCalcItems)
           .getParents(this.calcItems);
       } else if (rollup.traversal?.getIsFinished() == false) {
         rollup.traversal.recommence();
@@ -1013,19 +1011,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // by default this returns a "batched" (set) of rollups; we
         // just want the first (and only) inner rollup to perform the pseudo-delete
         RollupAsyncProcessor oldLookupsRollup = getProcessor(
-            new Set<Id>(),
-            roll.opFieldOnCalcItem,
-            roll.lookupFieldOnCalcItem,
-            roll.lookupFieldOnLookupObject,
-            roll.opFieldOnLookupObject,
-            roll.lookupObj,
-            roll.calcItemType,
-            deleteOp,
-            null,
-            this.invokePoint,
-            this.rollupControl,
-            roll.metadata
-          );
+          new Set<Id>(),
+          roll.opFieldOnCalcItem,
+          roll.lookupFieldOnCalcItem,
+          roll.lookupFieldOnLookupObject,
+          roll.opFieldOnLookupObject,
+          roll.lookupObj,
+          roll.calcItemType,
+          deleteOp,
+          null,
+          this.invokePoint,
+          this.rollupControl,
+          roll.metadata
+        );
 
         RollupLogger.Instance.log('reparenting operation: ', oldLookupsRollup, LoggingLevel.DEBUG);
         RollupLogger.Instance.log('Reparented item prior to reparenting rollup: ', lookupRecord, LoggingLevel.DEBUG);

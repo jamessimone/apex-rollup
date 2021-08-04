@@ -29,7 +29,7 @@ global without sharing virtual class Rollup {
   protected final Set<Id> matchingCalcItemIds;
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
-  protected final Boolean isBatched;
+  protected final Boolean isConductor;
   protected final List<RollupAsyncProcessor> rollups = new List<RollupAsyncProcessor>();
 
   // non-final instance variables
@@ -165,7 +165,7 @@ global without sharing virtual class Rollup {
   protected Rollup(InvocationPoint invokePoint) {
     this.invokePoint = invokePoint;
     this.rollupControl = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
-    this.isBatched = true;
+    this.isConductor = true;
     // a batch only becomes valid if other Rollups are added to it
     this.isNoOp = true;
   }
@@ -276,7 +276,10 @@ global without sharing virtual class Rollup {
       }
 
       SObjectType childType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
-      Set<String> whereFields = getQueryFieldsFromMetadata(matchingMeta, RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType));
+      RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(matchingMeta.CalcItemWhereClause__c)
+        ? null
+        : RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType);
+      Set<String> whereFields = getQueryFieldsFromMetadata(matchingMeta, eval);
       RollupMetadata metaWrapper;
       if (childToMetaWrapper.containsKey(childType)) {
         metaWrapper = childToMetaWrapper.get(childType);
@@ -420,6 +423,8 @@ global without sharing virtual class Rollup {
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent = false;
+    @InvocableVariable(label='Should run sync?' description='Runs rollup calculations synchronously when set to true')
+    global Boolean shouldRunSync = false;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
     global String calcItemWhereClause;
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
@@ -504,6 +509,9 @@ global without sharing virtual class Rollup {
           CACHED_ROLLUPS.add(batchedRollup);
         } else {
           localRollups.add(batchedRollup);
+        }
+        if (flowInput.shouldRunSync) {
+          batchedRollup.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS;
         }
         RollupLogger.Instance.log(logMessage, batchedRollup, LoggingLevel.DEBUG);
       }
@@ -1144,7 +1152,10 @@ global without sharing virtual class Rollup {
 
     Set<String> uniqueFieldNames = new Set<String>();
     for (Rollup__mdt rollupInfo : matchingMetadata) {
-      uniqueFieldNames.addAll(getQueryFieldsFromMetadata(rollupInfo, RollupEvaluator.getWhereEval(rollupInfo.CalcItemWhereClause__c, sObjectType)));
+      RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(rollupInfo.CalcItemWhereClause__c)
+        ? null
+        : RollupEvaluator.getWhereEval(rollupInfo.CalcItemWhereClause__c, sObjectType);
+      uniqueFieldNames.addAll(getQueryFieldsFromMetadata(rollupInfo, eval));
     }
 
     // it would have been nice if this was an enum!
@@ -1582,7 +1593,9 @@ global without sharing virtual class Rollup {
 
   private static Set<String> getQueryFieldsFromMetadata(Rollup__mdt meta, RollupEvaluator.WhereFieldEvaluator eval) {
     Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c, meta.OrderByFirstLast__c };
-    queryFields.addAll(eval.getQueryFields());
+    if (eval != null) {
+      queryFields.addAll(eval.getQueryFields());
+    }
     return queryFields;
   }
 
@@ -1612,10 +1625,21 @@ global without sharing virtual class Rollup {
 
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(queryWrapper.toString(), childType);
     Set<String> queryFields = getQueryFieldsFromMetadata(meta, whereEval);
-    queryFields.addAll(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, childType).getQueryFields());
+    if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
+      queryFields.addAll(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, childType).getQueryFields());
+    }
     String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
 
-    Rollup fullRecalc = buildFullRecalcRollup(new List<Rollup__mdt>{ meta }, amountOfCalcItems, queryString, objIds, recordIds, childType, whereEval, invokePoint);
+    Rollup fullRecalc = buildFullRecalcRollup(
+      new List<Rollup__mdt>{ meta },
+      amountOfCalcItems,
+      queryString,
+      objIds,
+      recordIds,
+      childType,
+      whereEval,
+      invokePoint
+    );
     fullRecalc.queryCount = amountOfCalcItems;
     RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
     return fullRecalc;
@@ -2015,6 +2039,7 @@ global without sharing virtual class Rollup {
         rollupMetadata
       );
     }
+    rollupConductor.isNoOp = rollupConductor.rollups.isEmpty();
     return rollupConductor;
   }
 
@@ -2343,6 +2368,9 @@ global without sharing virtual class Rollup {
     String owner,
     Rollup__mdt metadata
   ) {
+    if (String.isBlank(metadata.CalcItemWhereClause__c)) {
+      return;
+    }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, sObjectType);
     for (String whereClause : whereEval.getWhereClauses()) {
       if (whereClause.contains(typeField) || whereClause.contains(owner)) {
