@@ -57,12 +57,12 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
-  private RollupLoggerPluginParameter__mdt loggingLevel {
+  private RollupLoggerPluginParameter__mdt loggingLevelPluginParameter {
     get {
-      if (loggingLevel == null) {
-        loggingLevel = loggingLevelMock != null ? loggingLevelMock : this.getLoggingLevelParameter();
+      if (loggingLevelPluginParameter == null) {
+        loggingLevelPluginParameter = loggingLevelMock != null ? loggingLevelMock : this.getLoggingLevelParameter();
       }
-      return loggingLevel;
+      return loggingLevelPluginParameter;
     }
     set;
   }
@@ -77,7 +77,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
 
   protected LoggingLevel getLogLevel() {
     LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
-    String logLevelNameToSearch = this.loggingLevel != null ? this.loggingLevel.Value__c : toReturn.name();
+    String logLevelNameToSearch = this.loggingLevelPluginParameter != null ? this.loggingLevelPluginParameter.Value__c : toReturn.name();
     for (LoggingLevel logLevel : System.LoggingLevel.values()) {
       if (logLevel.name().equalsIgnoreCase(logLevelNameToSearch)) {
         toReturn = logLevel;
@@ -128,10 +128,9 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     if (firstLogger.DeveloperName == SELF.getTypeName()) {
       rollLogger = SELF;
     } else {
-
       try {
         rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
-      } catch(Exception ex) {
+      } catch (Exception ex) {
         SELF.log('cast to ILogger failed with message: ' + ex.getMessage() + ', falling back to default logger', SELF, LoggingLevel.WARN);
         rollLogger = SELF;
       }

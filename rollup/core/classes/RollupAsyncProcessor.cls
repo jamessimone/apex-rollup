@@ -207,7 +207,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void finish(Database.BatchableContext context) {
-    RollupLogger.Instance.log('batch finished successfully', LoggingLevel.DEBUG);
+    RollupLogger.Instance.log(this.getTypeName() + ' batch finished successfully', LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
   }
 
@@ -246,7 +246,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual override String getTypeName() {
-    return 'RollupAsyncProcessor';
+    return RollupAsyncProcessor.class.getName();
   }
 
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
@@ -326,7 +326,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected override String getTypeName() {
-      return 'QueueableProcessor';
+      return QueueableProcessor.class.getName();
     }
 
     protected override String beginAsyncRollup() {
@@ -367,7 +367,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     public void execute(System.QueueableContext qc) {
       this.process(this.rollups);
-      RollupLogger.Instance.log('queueable finished successfully', LoggingLevel.DEBUG);
+      RollupLogger.Instance.log(this.getTypeName() + ' finished successfully', LoggingLevel.DEBUG);
       RollupLogger.Instance.save();
     }
   }

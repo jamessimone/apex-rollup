@@ -41,7 +41,7 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   }
 
   public override void finish(Database.BatchableContext bc) {
-    RollupLogger.Instance.log('RollupFullBatchRecalculator finished', LoggingLevel.DEBUG);
+    RollupLogger.Instance.log(this.getTypeName() + ' finished', LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
   }
 
@@ -55,7 +55,7 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
   }
 
   protected override String getTypeName() {
-    return 'RollupFullBatchRecalculator';
+    return RollupFullBatchRecalculator.class.getName();
   }
 
   protected override void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {

@@ -216,7 +216,7 @@ global without sharing virtual class Rollup {
   }
 
   protected virtual String getTypeName() {
-    return 'Rollup';
+    return Rollup.class.getName();
   }
 
   /**

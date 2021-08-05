@@ -286,11 +286,15 @@ public without sharing abstract class RollupCalculator {
 
     if (this.isRecursiveRecalc == false) {
       this.isRecursiveRecalc = true; // now we're cooking with gas
+      Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, String.valueOf(this.opFieldOnCalcItem) };
+      if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
+        queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+      }
 
       List<SObject> allOtherItems = Database.query(
         RollupQueryBuilder.Current.getQuery(
           sObjectType,
-          new List<String>{ this.metadata.LookupFieldOnCalcItem__c, String.valueOf(this.opFieldOnCalcItem) },
+          new List<String>(queryFields),
           'Id',
           '!=',
           this.lookupKeyQuery

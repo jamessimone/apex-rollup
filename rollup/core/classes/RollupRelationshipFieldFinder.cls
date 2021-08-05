@@ -179,12 +179,18 @@ public without sharing class RollupRelationshipFieldFinder {
       : new List<String>();
 
     if (localParts.isEmpty() && this.metadata.RollupToUltimateParent__c) {
-      String relationshipName = this.metadata.LookupFieldOnCalcItem__c.replace('__c', '__r').replace('Id', '');
+      String relationshipName = this.replaceLastInString(this.metadata.LookupFieldOnCalcItem__c, '__c', '__r');
+      relationshipName = this.replaceLastInString(relationshipName, 'Id', '');
       localParts.add(relationshipName);
       localParts.add(this.metadata.UltimateParentLookup__c);
     }
 
     return localParts;
+  }
+
+  private String replaceLastInString(String target, String occurrence, String replacement) {
+    Integer endingIndex = target.lastIndexOf(occurrence);
+    return endingIndex > -1 ? target.removeEnd(occurrence) + replacement : target;
   }
 
   private SObjectField getField(Map<String, SObjectField> fieldMap, String relationshipPart) {

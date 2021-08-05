@@ -3,7 +3,7 @@
     <fullName>Description__c</fullName>
     <description>Add information pertaining to the parameter value here, if necessary</description>
     <externalId>false</externalId>
-    <fieldManageability>SubscriberControlled</fieldManageability>
+    <fieldManageability>DeveloperControlled</fieldManageability>
     <inlineHelpText>Add information pertaining to the parameter value here, if necessary</inlineHelpText>
     <label>Description</label>
     <length>32768</length>
