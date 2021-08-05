@@ -178,13 +178,19 @@ public without sharing class RollupRelationshipFieldFinder {
       ? this.metadata.GrandparentRelationshipFieldPath__c.split('\\.')
       : new List<String>();
 
-      if (localParts.isEmpty() && this.metadata.RollupToUltimateParent__c) {
-        String relationshipName = this.metadata.LookupFieldOnCalcItem__c.replace('__c', '__r').replace('Id', '');
-        localParts.add(relationshipName);
-        localParts.add(this.metadata.UltimateParentLookup__c);
-      }
+    if (localParts.isEmpty() && this.metadata.RollupToUltimateParent__c) {
+      String relationshipName = this.replaceLastInString(this.metadata.LookupFieldOnCalcItem__c, '__c', '__r');
+      relationshipName = this.replaceLastInString(relationshipName, 'Id', '');
+      localParts.add(relationshipName);
+      localParts.add(this.metadata.UltimateParentLookup__c);
+    }
 
-      return localParts;
+    return localParts;
+  }
+
+  private String replaceLastInString(String target, String occurrence, String replacement) {
+    Integer endingIndex = target.lastIndexOf(occurrence);
+    return endingIndex > -1 ? target.removeEnd(occurrence) + replacement : target;
   }
 
   private SObjectField getField(Map<String, SObjectField> fieldMap, String relationshipPart) {
@@ -320,31 +326,33 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
-    RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(this.calcItemWhereClause, sObjectType);
-    for (String whereClause : eval.getWhereClauses()) {
-      // each where clause should begin with the field name:
-      // "AccountId = 'someId'" - so by splitting on the space,
-      // we would get the AccountId, for example
-      List<String> splitWhereClause = whereClause.split(' ');
-      String key;
-      if (splitWhereClause.size() > 1) {
-        String fieldName = splitWhereClause[0];
-        // the filtering has already been done for base fields, so we only need to do relationship ones
-        if (fieldName.contains('.')) {
-          // the relationship name is the string immediately preceeding the last period
-          List<String> relationshipNames = fieldName.split('\\.');
-          Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
-          key = relationshipNames[keyIndex];
+    if (String.isNotBlank(this.calcItemWhereClause)) {
+      RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(this.calcItemWhereClause, sObjectType);
+      for (String whereClause : eval.getWhereClauses()) {
+        // each where clause should begin with the field name:
+        // "AccountId = 'someId'" - so by splitting on the space,
+        // we would get the AccountId, for example
+        List<String> splitWhereClause = whereClause.split(' ');
+        String key;
+        if (splitWhereClause.size() > 1) {
+          String fieldName = splitWhereClause[0];
+          // the filtering has already been done for base fields, so we only need to do relationship ones
+          if (fieldName.contains('.')) {
+            // the relationship name is the string immediately preceeding the last period
+            List<String> relationshipNames = fieldName.split('\\.');
+            Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
+            key = relationshipNames[keyIndex];
+          }
         }
-      }
-      if (key != null) {
-        // the +1 is for the period following the key
-        String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
+        if (key != null) {
+          // the +1 is for the period following the key
+          String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
 
-        if (this.relationshipNameToWhereClauses.containsKey(key)) {
-          this.relationshipNameToWhereClauses.get(key).add(whereClauseForRelation);
-        } else {
-          this.relationshipNameToWhereClauses.put(key, new List<String>{ whereClauseForRelation });
+          if (this.relationshipNameToWhereClauses.containsKey(key)) {
+            this.relationshipNameToWhereClauses.get(key).add(whereClauseForRelation);
+          } else {
+            this.relationshipNameToWhereClauses.put(key, new List<String>{ whereClauseForRelation });
+          }
         }
       }
     }

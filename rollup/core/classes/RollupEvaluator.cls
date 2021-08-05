@@ -126,6 +126,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
+      addFinestLog('SObjectChangedFieldEvaluator', matches, calcItem);
       return matches;
     }
   }
@@ -136,7 +137,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
     private final List<String> splitWheres;
-    private final Map<Id, SObject> oldRecords;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause;
@@ -150,6 +150,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.whereClause = whereClause;
       this.splitWheres = this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
+      RollupLogger.Instance.log('Where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
     }
 
     public List<String> getWhereClauses() {
@@ -183,6 +184,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (matches) {
         matches = this.innerMatches(calcItem);
       }
+      addFinestLog('WhereFieldEvaluator', matches, calcItem);
 
       return matches;
     }
@@ -234,6 +236,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       } catch (Exception ex) {
         this.logError(ex);
+        RollupLogger.Instance.save();
         throw new IllegalArgumentException('Where clause entered incorrectly: ' + whereClause);
       }
       return localSplitWheres;
@@ -705,9 +708,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           matches = false;
         }
       }
+      addFinestLog('RecursiveUpdateEvaluator', matches, item);
 
       return matches;
     }
+  }
+
+  private static void addFinestLog(String className, Boolean matches, Object item) {
+    RollupLogger.Instance.log(className + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
   }
 
   @testVisible

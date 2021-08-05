@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RollupControl__c</fullName>
+    <description>The parent Rollup Control record</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>The parent Rollup Control record</inlineHelpText>
+    <label>Rollup Control</label>
+    <referenceTo>RollupControl__mdt</referenceTo>
+    <relationshipLabel>Rollup Logger Plugins</relationshipLabel>
+    <relationshipName>RollupLoggerPlugins</relationshipName>
+    <required>true</required>
+    <type>MetadataRelationship</type>
+    <unique>false</unique>
+</CustomField>

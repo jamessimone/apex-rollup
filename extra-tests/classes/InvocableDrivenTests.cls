@@ -52,4 +52,6 @@ private class InvocableDrivenTests {
     System.assertEquals(2, reparentAccount.AnnualRevenue, 'Second account sum field should include updated amount');
     System.assertEquals(one.Subject, reparentAccount.Name, 'Second account name field should reflect last subject');
   }
+
+  // TODO - add test with calc item where clause filtering on parent field!
 }

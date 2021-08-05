@@ -64,11 +64,19 @@
     <custom>false</custom>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
+        <name>Rollup__mdt</name>
+    </customMetadataTypeAccesses>
+    <customMetadataTypeAccesses>
+        <enabled>true</enabled>
         <name>RollupControl__mdt</name>
     </customMetadataTypeAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
-        <name>Rollup__mdt</name>
+        <name>RollupLoggerPlugin__mdt</name>
+    </customMetadataTypeAccesses>
+    <customMetadataTypeAccesses>
+        <enabled>true</enabled>
+        <name>RollupLoggerPluginParameter__mdt</name>
     </customMetadataTypeAccesses>
     <fieldPermissions>
         <editable>true</editable>
@@ -103,11 +111,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RollupControl__mdt.MaxRollupRetries__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>RollupControl__mdt.RollupLoggerName__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -175,11 +178,22 @@
         <field>Rollup__mdt.UltimateParentLookup__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupLoggerPluginParameter__mdt.Description__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <layoutAssignments>
         <layout>RollupControl__mdt-Rollup Control Layout</layout>
     </layoutAssignments>
     <layoutAssignments>
         <layout>Rollup__mdt-Rollup Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>RollupLoggerPlugin__mdt-Rollup Logger Plugin Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>RollupLoggerPluginParameter__mdt-Rollup Logger Plugin Parameter Layout</layout>
     </layoutAssignments>
     <tabVisibilities>
         <tab>Recalculate_Rollup</tab>

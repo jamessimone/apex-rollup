@@ -3,7 +3,7 @@ public class RollupLoggerTests {
   // Type.forName requires public visibility
   @isTest
   static void shouldLogUsingCustomLoggerWhenSupplied() {
-    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, RollupLoggerName__c = ExampleLogger.class.getName());
+    setup();
 
     RollupLogger.Instance.log('hi', LoggingLevel.DEBUG);
 
@@ -13,7 +13,7 @@ public class RollupLoggerTests {
 
   @isTest
   static void shouldLogCustomObjectWhenSupplied() {
-    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, RollupLoggerName__c = ExampleLogger.class.getName());
+    setup();
 
     Account acc = new Account();
 
@@ -26,7 +26,7 @@ public class RollupLoggerTests {
 
   @isTest
   static void shouldSaveProperly() {
-    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, RollupLoggerName__c = ExampleLogger.class.getName());
+    setup();
 
     RollupLogger.Instance.save();
 
@@ -34,12 +34,18 @@ public class RollupLoggerTests {
   }
 
   @isTest
-  static void shouldGracefullRecoverFromErrors() {
-    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, RollupLoggerName__c = 'made up');
+  static void shouldGracefullyRecoverFromErrors() {
+    setup();
+    RollupLogger.pluginMocks.add(new RollupLoggerPlugin__mdt(DeveloperName = 'Nonsense'));
 
     RollupLogger.Instance.save();
 
     System.assert(true, 'Should make it here');
+  }
+
+  private static void setup() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    RollupLogger.pluginMocks = new List<RollupLoggerPlugin__mdt>{ new RollupLoggerPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
   }
 
   static Boolean wasSaved = false;

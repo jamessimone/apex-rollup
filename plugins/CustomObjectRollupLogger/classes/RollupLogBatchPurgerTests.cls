@@ -1,6 +1,6 @@
 @isTest
 private class RollupLogBatchPurgerTests {
-  static RollupControl__mdt logControl = RollupControl__mdt.getInstance('CustomObjectRollupLogger');
+  static RollupLoggerPluginParameter__mdt daysRetained = RollupLoggerPluginParameter__mdt.getInstance('DaysRollupLogsRetained');
 
   @isTest
   static void shouldDeleteLogEntriesAndLogs() {
@@ -14,7 +14,7 @@ private class RollupLogBatchPurgerTests {
     insert entry;
     // UTC time can lead to some weird Datetime issues with adding simply a single day
     // Let's go with 2 to make things completely solid
-    Test.setCreatedDate(entry.Id, System.now().addDays(-(logControl.DaysRollupLogsRetained__c.intValue() + 2)));
+    Test.setCreatedDate(entry.Id, System.now().addDays(-(Integer.valueOf(daysRetained.Value__c) + 2)));
 
     Test.startTest();
     Database.executeBatch(new RollupLogBatchPurger());

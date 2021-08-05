@@ -74,6 +74,38 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @isTest
+  static void shouldSyncRunFlowWhenToggled() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    Account acc = new Account(Name = 'RollupFlowBulkProcessorTests');
+    insert acc;
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, AccountId = acc.Id) };
+    input.rollupContext = 'INSERT';
+    input.shouldRunSync = true;
+    input.deferProcessing = false;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      )
+    };
+
+    // since it should run sync, we don't wrap in start/stopTest
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(5, acc.AnnualRevenue);
+  }
+
+  @isTest
   static void shouldNotReportSuccessForInnerFailure() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };

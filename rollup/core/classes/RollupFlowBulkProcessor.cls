@@ -52,6 +52,11 @@ global without sharing class RollupFlowBulkProcessor {
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent = false;
+    @InvocableVariable(
+      label='Should run sync?'
+      description='Runs rollup calculations synchronously when set to true'
+    )
+    global Boolean shouldRunSync = false;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
     global String calcItemWhereClause;
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
@@ -111,6 +116,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.recordsToRollup = flowInput.recordsToRollup;
             input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
             input.deferProcessing = flowInput.deferProcessing;
+            input.shouldRunSync = flowInput.shouldRunSync;
             input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
             rollupFlowInputs.add(input);
 

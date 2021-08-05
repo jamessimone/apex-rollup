@@ -286,11 +286,15 @@ public without sharing abstract class RollupCalculator {
 
     if (this.isRecursiveRecalc == false) {
       this.isRecursiveRecalc = true; // now we're cooking with gas
+      Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, String.valueOf(this.opFieldOnCalcItem) };
+      if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
+        queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+      }
 
       List<SObject> allOtherItems = Database.query(
         RollupQueryBuilder.Current.getQuery(
           sObjectType,
-          new List<String>{ this.metadata.LookupFieldOnCalcItem__c, String.valueOf(this.opFieldOnCalcItem) },
+          new List<String>(queryFields),
           'Id',
           '!=',
           this.lookupKeyQuery
@@ -1011,13 +1015,16 @@ public without sharing abstract class RollupCalculator {
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       SObjectType sObjectType = this.getCalcItemType();
+      // objIds is used as a bind variable in the resulting queryString
       Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
       Set<String> queryFields = new Set<String>{
         String.valueOf(this.opFieldOnCalcItem),
         this.metadata.OrderByFirstLast__c,
         this.metadata.LookupFieldOnCalcItem__c
       };
-      queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+      if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
+        queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+      }
       // a full-recalc is always necessary because we don't retain the information about the order by field
       String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
