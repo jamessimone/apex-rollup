@@ -1,6 +1,6 @@
-@isTest
+@IsTest
 private class RollupNebulaLoggerAdapterTest {
-  @isTest
+  @IsTest
   static void shouldLogToNebula() {
     LoggerSettings__c settings = new LoggerSettings__c(IsEnabled__c = true);
     upsert settings;

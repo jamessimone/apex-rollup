@@ -1,8 +1,8 @@
-@isTest
+@IsTest
 private class RollupLogBatchPurgerTests {
   static RollupLoggerPluginParameter__mdt daysRetained = RollupLoggerPluginParameter__mdt.getInstance('DaysRollupLogsRetained');
 
-  @isTest
+  @IsTest
   static void shouldDeleteLogEntriesAndLogs() {
     RollupLog__c log = new RollupLog__c(TransactionId__c = 'something');
     insert log;
@@ -26,7 +26,7 @@ private class RollupLogBatchPurgerTests {
     System.assertEquals(0, existingLogs.size(), 'Log should have been deleted');
   }
 
-  @isTest
+  @IsTest
   static void shouldScheduleSuccessfully() {
     Id scheduleId = RollupLogBatchPurger.schedule('Test purge log schedule ' + System.now().getTime() , '0 0 0 * * ?');
 

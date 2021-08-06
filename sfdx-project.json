@@ -19,7 +19,7 @@
                     "package": "apex-rollup@1.2.39-0"
                 }
             ],
-            "versionNumber": "0.0.4.0",
+            "versionNumber": "0.0.5.0",
             "versionDescription": "Added logging level to log options and reworked logging plugin structure",
             "default": false
         },
@@ -53,6 +53,7 @@
         "Apex Rollup - Custom Logger@0.0.2-0": "04t6g000008SgufAAC",
         "Apex Rollup - Custom Logger@0.0.3-0": "04t6g000008SgyNAAS",
         "Apex Rollup - Custom Logger@0.0.4-0": "04t6g000008ShA1AAK",
+        "Apex Rollup - Custom Logger@0.0.5-0": "04t6g000008ShAfAAK",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.1-0": "04t6g000008SgolAAC",
         "Apex Rollup - Nebula Logger@0.0.2-0": "04t6g000008Sh8yAAC",

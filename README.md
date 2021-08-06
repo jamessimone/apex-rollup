@@ -147,7 +147,7 @@ There are two limitations to Entity Definition relationships that currently exis
 1. They cannot refer to the User object
 2. They cannot refer to the Task/Event objects
 
-For rollups referring to these objects, you can use either the Invocable or the static methods exposed on `Rollup` from Apex to roll values up. For a specialized use-case for this, please see [setting Rollup up to handle parent-level merges](#parent-level-merges)
+For rollups referring to these objects, you can use either the Invocable or the static methods exposed on `Rollup` from Apex to roll values up. For a specialized use-case for this, please see [setting Rollup up to handle parent-level merges](#parent-level-merges).
 
 #### Establishing Org Limits For Rollup Operations
 
@@ -946,7 +946,7 @@ public class RollupLogger {
 
 ```
 
-You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Logger Plugin` CMDT records. _Alternatively_, you can also extend _RollupLogger_ itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods.
+You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Logger Plugin` CMDT records. _Alternatively_, you can also _extend_ `RollupLogger` itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods.
 
 You can use the included `Rollup Logger Plugin Parameter` CMDT record `Logging Debug Level` to fine-tune the logging level you'd like to use when making use of Apex debug logs (from method #3, above). Valid entries conform to the `LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.
 

@@ -1,11 +1,11 @@
 # Custom Object Rollup Logger
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShA1AAK">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShAfAAK">
   <img alt="Deploy to Salesforce"
        src="../../media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShA1AAK">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShAfAAK">
   <img alt="Deploy to Salesforce Sandbox"
        src="../../media/deploy-package-to-sandbox.png">
 </a>
@@ -30,4 +30,4 @@ Id jobId = RollupLogBatchPurger.schedule(String jobName, String cronSchedule)
 // which represents a scheduled job
 ```
 
-The batch size for the scheduled job is also determined by the `Custom Object Rollup Logger` Rollup Control record's `Batch Chunk Size` field (defaults to 2000).
+The batch size for the scheduled job is also determined by the `Org_Default` Rollup Control record's `Batch Chunk Size` field (defaults to 2000).
