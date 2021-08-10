@@ -1,6 +1,6 @@
-@isTest
+@IsTest
 private class RollupSObjectUpdaterTests {
-  @isTest
+  @IsTest
   static void shouldAllowDatetimeToBeSavedAsDate() {
     Datetime now = System.now();
 
@@ -11,7 +11,7 @@ private class RollupSObjectUpdaterTests {
     System.assertEquals(now.dateGmt(), opp.CloseDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldRethrowForUnhandledConversion() {
     SObjectException ex;
 

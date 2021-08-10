@@ -1,18 +1,18 @@
-@isTest
+@IsTest
 private class RollupFlowBulkProcessorTests {
   @TestSetup
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
-  @isTest
+  @IsTest
   static void shouldNotProcessIfNoRecords() {
     List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ new RollupFlowBulkProcessor.FlowInput() });
 
     System.assertEquals('No records', outputs[0].message);
   }
 
-  @isTest
+  @IsTest
   static void shouldAddToRollupsIfCMDTPresent() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Contact() };
@@ -39,7 +39,7 @@ private class RollupFlowBulkProcessorTests {
     System.assertNotEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'Deferred rollup should be kept in buffer');
   }
 
-  @isTest
+  @IsTest
   static void shouldProcessDeferredFlowRollups() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupFlowBulkProcessorTests');
@@ -73,7 +73,7 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(0, Rollup.CACHED_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
   }
 
-  @isTest
+  @IsTest
   static void shouldSyncRunFlowWhenToggled() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupFlowBulkProcessorTests');
@@ -105,7 +105,7 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(5, acc.AnnualRevenue);
   }
 
-  @isTest
+  @IsTest
   static void shouldNotReportSuccessForInnerFailure() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
@@ -133,7 +133,7 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(true, ex.getMessage().contains('Invalid field Kaffufle for Opportunity'), ex.getMessage() + '\n' + ex.getStackTraceString());
   }
 
-  @isTest
+  @IsTest
   static void shouldMapBulkFlowInputToRegularOne() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };

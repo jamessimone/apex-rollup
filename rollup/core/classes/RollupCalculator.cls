@@ -17,7 +17,7 @@ public without sharing abstract class RollupCalculator {
   protected Boolean isLastItem = false;
   protected Boolean shouldTriggerFullRecalc;
 
-  @testVisible
+  @TestVisible
   private static Factory testFactory;
 
   public static Factory Factory {

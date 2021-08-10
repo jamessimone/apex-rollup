@@ -21,7 +21,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
   private static Integer stackDepth = 0;
   private static Boolean isRunningAsync = false;
-  @testVisible
+  @TestVisible
   private static Boolean shouldRunAsBatch = false;
 
   private class RollupAsyncSaver implements System.Queueable {
@@ -152,24 +152,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return numberToReturn;
   }
 
-  public override String toString() {
-    Map<String, String> props = new Map<String, String>{
-      'Type' => this.getTypeName(),
-      'Invocation Point' => this.invokePoint.name(),
-      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
-      'Is No Op' => String.valueOf(this.isNoOp),
-      'Is Conductor' => String.valueOf(this.isConductor)
-    };
-
-    this.customizeToStringEntries(props);
-
-    String baseString = '';
-    for (String key : props.keySet()) {
-      baseString += key + ': ' + props.get(key) + '\n';
-    }
-    return baseString.removeEnd('\n');
-  }
-
   public virtual Database.QueryLocator start(Database.BatchableContext context) {
     /**
      * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
@@ -249,20 +231,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return RollupAsyncProcessor.class.getName();
   }
 
-  protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    this.addToMap(props, 'Calc Items', this.calcItems);
-    this.addToMap(props, 'Old Calc Items', this.oldCalcItems);
-    this.addToMap(props, 'Rollup Metadata', this.metadata);
-    this.addToMap(props, 'Rollup Control', this.rollupControl);
-    this.addToMap(props, 'Query Count', this.queryCount);
-    return props;
-  }
-
   protected RollupAsyncProcessor getAsyncRollup() {
     // swap off on which async process is running to achieve infinite scaling
     isRunningAsync = true;
     Boolean canEnqueue = Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
-    Boolean isAsyncInnerClass = this instanceof QueueableProcessor;
     RollupAsyncProcessor roll;
     // deferred rollups delay the full batch recalc
     // till all the others have gone
@@ -270,14 +242,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this.rollups[0];
     } else if (this instanceof RollupFullBatchRecalculator) {
       roll = this;
-    } else if ((shouldRunAsBatch && System.isBatch() == false) || (isAsyncInnerClass && canEnqueue == false)) {
+    } else if ((shouldRunAsBatch && System.isBatch() == false) || canEnqueue == false) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
       roll = new RollupAsyncProcessor(this);
-    } else if (canEnqueue && System.isQueueable() == false && isAsyncInnerClass == false) {
+    } else if (canEnqueue && System.isQueueable() == false) {
       roll = new QueueableProcessor(this);
-    } else if (canEnqueue && isAsyncInnerClass) {
+    } else if (canEnqueue) {
       roll = this;
     } else {
       this.logFatalRollups(this.rollups);
@@ -495,15 +467,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // the only thing that necessarily makes a rollup unique is the sum total of the metadata behind it
     // as well as the calc items driving that calculation.
     // you could have multiple rollups with different Calc Item Where Clauses all rolling up to the same field
-    // even worse - in situations where multiple DML operations are enqueued in the same transaction
-    // the same calc items by Id might differ slightly by field value.
     return String.valueOf(this.metadata);
-  }
-
-  protected void addToMap(Map<String, String> props, String key, Object ref) {
-    if (ref != null) {
-      props.put(key, JSON.serializePretty(ref));
-    }
   }
 
   private void handleMultipleDMLRollupsEnqueuedInTheSameTransaction(List<Rollup> rolls) {

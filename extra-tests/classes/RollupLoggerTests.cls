@@ -1,7 +1,7 @@
-@isTest
+@IsTest
 public class RollupLoggerTests {
   // Type.forName requires public visibility
-  @isTest
+  @IsTest
   static void shouldLogUsingCustomLoggerWhenSupplied() {
     setup();
 
@@ -11,7 +11,7 @@ public class RollupLoggerTests {
     System.assertEquals(LoggingLevel.DEBUG, localLogLevel);
   }
 
-  @isTest
+  @IsTest
   static void shouldLogCustomObjectWhenSupplied() {
     setup();
 
@@ -24,7 +24,7 @@ public class RollupLoggerTests {
     System.assertEquals(LoggingLevel.FINE, localLogLevel);
   }
 
-  @isTest
+  @IsTest
   static void shouldSaveProperly() {
     setup();
 
@@ -33,7 +33,7 @@ public class RollupLoggerTests {
     System.assertEquals(true, wasSaved);
   }
 
-  @isTest
+  @IsTest
   static void shouldGracefullyRecoverFromErrors() {
     setup();
     RollupLogger.pluginMocks.add(new RollupLoggerPlugin__mdt(DeveloperName = 'Nonsense'));

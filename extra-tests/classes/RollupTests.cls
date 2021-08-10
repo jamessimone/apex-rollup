@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class RollupTests {
   // NB - tests that perform DML should wrap the DML by setting Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
   // and then Rollup.defaultControl = null after DML has been performed. This is to prevent side-effects caused by having implemented Rollup in your org
@@ -61,7 +61,7 @@ private class RollupTests {
 
   /** Trigger tests */
 
-  @isTest
+  @IsTest
   static void shouldNotRunForInvalidApexContext() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
     Rollup.apexContext = TriggerOperation.BEFORE_INSERT;
@@ -73,7 +73,7 @@ private class RollupTests {
     System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, this is a no-op');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotRunWhenDisabled() {
     RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
     existingSetting.IsEnabled__c = false;
@@ -89,7 +89,7 @@ private class RollupTests {
     System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, custom setting was disabled');
   }
 
-  @isTest
+  @IsTest
   static void shouldSumFromTriggerAfterInsert() {
     DMLMock mock = loadAccountIdMock(
       new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 25), new ContactPointAddress(PreferenceRank = 25) }
@@ -115,7 +115,7 @@ private class RollupTests {
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldTakeDefaultForSumWhenGiven() {
     DMLMock mock = loadAccountIdMock(
       new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 25), new ContactPointAddress(PreferenceRank = 25) }
@@ -142,7 +142,7 @@ private class RollupTests {
     System.assertEquals(55, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount to the default');
   }
 
-  @isTest
+  @IsTest
   static void shouldSumFromTriggerAfterUndelete() {
     // undelete should behave the same as an insert, for our purposes
     DMLMock mock = loadAccountIdMock(
@@ -167,7 +167,7 @@ private class RollupTests {
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'SUM AFTER_UNDELETE should add the original cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldSumFromTriggerAfterUpdate() {
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50);
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
@@ -184,7 +184,7 @@ private class RollupTests {
     System.assertEquals(25, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
-  @isTest
+  @IsTest
   static void shouldSumFromTriggerBeforeDelete() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -198,7 +198,7 @@ private class RollupTests {
     System.assertEquals(-100, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE should subtract the current amount from the pre-existing one');
   }
 
-  @isTest
+  @IsTest
   static void shouldCountDistinctFromTriggerOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -217,7 +217,7 @@ private class RollupTests {
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_INSERT should simply add unique values');
   }
 
-  @isTest
+  @IsTest
   static void shouldCountDistinctFromTriggerOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -239,7 +239,7 @@ private class RollupTests {
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should ensure distinct values');
   }
 
-  @isTest
+  @IsTest
   static void shouldCountDistinctFromTriggerOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -259,7 +259,7 @@ private class RollupTests {
     System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT BEFORE_DELETE should simply decrement');
   }
 
-  @isTest
+  @IsTest
   static void shouldCountFromTriggerAfterInsert() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -273,7 +273,7 @@ private class RollupTests {
     System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_INSERT should add when field is populated');
   }
 
-  @isTest
+  @IsTest
   static void shouldDecrementCountFromTriggerAfterUpdateIfValueIsRemoved() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -295,7 +295,7 @@ private class RollupTests {
     System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE should decrement when field is removed');
   }
 
-  @isTest
+  @IsTest
   static void shouldKeepCountUnchangedFromTriggerAfterUpdateEvenIfValueChanges() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -315,7 +315,7 @@ private class RollupTests {
     System.assertEquals(0, mock.Records.size(), 'Records should not have been populated COUNT AFTER_UPDATE');
   }
 
-  @isTest
+  @IsTest
   static void shouldDecrementCountFromTriggerBeforeDeleteIfValueIsRemoved() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -337,7 +337,7 @@ private class RollupTests {
     System.assertEquals(acc.AnnualRevenue - 1, updatedAcc.AnnualRevenue, 'COUNT BEFORE_DELETE should decrement when field is removed');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotCountNullValues() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress() });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -349,7 +349,7 @@ private class RollupTests {
     System.assertEquals(0, mock.Records.size(), 'Records should not have been populated when empty COUNT AFTER_INSERT');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunSumFromTriggerBasedOnMetadata() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -374,7 +374,7 @@ private class RollupTests {
     System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount based on CMDT');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunRegardlessOfMetadataCasing() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -399,7 +399,7 @@ private class RollupTests {
     System.assertEquals(100, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT should add the original cpaortunity amount based on CMDT');
   }
 
-  @isTest
+  @IsTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadata() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -425,7 +425,7 @@ private class RollupTests {
     System.assertEquals(100100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount to the default override based on CMDT');
   }
 
-  @isTest
+  @IsTest
   static void shouldOverrideStringBasedDefaultBasedOnMetadata() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -453,7 +453,7 @@ private class RollupTests {
 
   // an integration test of sorts, to validate that CalcItemWhereClause__c is correctly handed off to the right evaluator
   // the other tests pertaining to this are in RollupEvaluatorTests
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEquals() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'RollupZ'), new ContactPointAddress(Name = 'RollupZZ') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -479,7 +479,7 @@ private class RollupTests {
     System.assertEquals('RollupZ', updatedAcc.Name, 'MAX AFTER_INSERT should ignore excluded items');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEqualsNonDestructively() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     DMLMock mock = loadAccountIdMock(
@@ -523,7 +523,7 @@ private class RollupTests {
     System.assertEquals(3, updatedAcc.AnnualRevenue);
   }
 
-  @isTest
+  @IsTest
   static void shouldResetRollupValueWhenNoItemsMatchAndToggleIsSupplied() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -558,7 +558,7 @@ private class RollupTests {
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'Full record set flag should force empty match set to still update lookup item');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -594,7 +594,7 @@ private class RollupTests {
   }
 
   /** Parent-initiated rollups */
-  @isTest
+  @IsTest
   static void shouldAllowRollupToBeInitiatedFromTheParent() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -631,7 +631,7 @@ private class RollupTests {
     System.assertNotEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should have been updated with asset Quantity');
   }
 
-  @isTest
+  @IsTest
   static void shouldAllowRollupFromParentByInvocable() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -660,7 +660,7 @@ private class RollupTests {
     System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldBatchTwoOperations() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -688,7 +688,7 @@ private class RollupTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldBatchThreeOperations() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100, Name = 'My test name') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -718,7 +718,7 @@ private class RollupTests {
     System.assertEquals('My test name', updatedAcc.AccountNumber, 'CONCAT AFTER_INSERT should append to the target field');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxNumbersSuccessfullyAfterInsert() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 100, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -736,7 +736,7 @@ private class RollupTests {
     System.assertEquals(200, updatedAcc.AnnualRevenue, 'MAX AFTER_INSERT should take the maximum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxNumbersSuccessfullyAfterUpdate() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 100, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -758,7 +758,7 @@ private class RollupTests {
     System.assertEquals(200, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMax() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -790,7 +790,7 @@ private class RollupTests {
     System.assertEquals(secondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpa PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMax() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -824,7 +824,7 @@ private class RollupTests {
     System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpa amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMaxAndNoOtherSObjectsExist() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -867,7 +867,7 @@ private class RollupTests {
     System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MAX AFTER_UPDATE should take the maximum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -893,7 +893,7 @@ private class RollupTests {
     System.assertEquals(0, updatedAcc.AnnualRevenue, 'MAX BEFORE_DELETE should take the maximum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinNumbersSuccessfullyAfterInsert() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 100, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -911,7 +911,7 @@ private class RollupTests {
     System.assertEquals(100, updatedAcc.AnnualRevenue, 'MIN AFTER_INSERT should take the minimum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinNumbersSuccessfullyAfterUpdate() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 100, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -933,7 +933,7 @@ private class RollupTests {
     System.assertEquals(100, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the minimum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMin() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -965,7 +965,7 @@ private class RollupTests {
     System.assertEquals(175, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the minimum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMin() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -999,7 +999,7 @@ private class RollupTests {
     System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the min cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMinAndNoOtherSObjectsExist() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -1042,7 +1042,7 @@ private class RollupTests {
     System.assertEquals(updatedSecondCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'MIN AFTER_UPDATE should take the min cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -1071,7 +1071,7 @@ private class RollupTests {
     System.assertEquals(175, updatedAcc.AnnualRevenue, 'MIN BEFORE_DELETE should take the minimum cpaortunity amount');
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatOnUpdate() {
     // AFTER_INSERT test is handled in the "shouldBatchThreeOperations" method
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
@@ -1101,7 +1101,7 @@ private class RollupTests {
     System.assertEquals(cpa.Name, updatedAcc.AccountNumber, 'CONCAT AFTER_UPDATE should replace the old string value with the new');
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
@@ -1122,7 +1122,7 @@ private class RollupTests {
     System.assertEquals('beginning something', updatedAcc.AccountNumber, 'CONCAT BEFORE_DELETE should replace the outgoing string value with empty string');
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatDistinctOnInsert() {
     ContactPointAddress cpa = new ContactPointAddress(Name = 'test string');
     ContactPointAddress secondCpa = new ContactPointAddress(Name = 'hello another string');
@@ -1139,7 +1139,7 @@ private class RollupTests {
     System.assertEquals('hello another string, test string', updatedAcc.AccountNumber, 'CONCAT_DISTINCT AFTER_INSERT should only add unique values');
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatDistinctOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
@@ -1179,7 +1179,7 @@ private class RollupTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatDistinctOnUpdateWhereOnlyNewItemIsAdded() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
@@ -1218,7 +1218,7 @@ private class RollupTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, Name FROM Account];
@@ -1246,7 +1246,7 @@ private class RollupTests {
     System.assertEquals(originalAccountName, updatedAcc.Name);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxOnStringsOnInsert() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
@@ -1262,7 +1262,7 @@ private class RollupTests {
     System.assertEquals('Z', updatedAcc.AccountNumber, 'MAX AFTER_INSERT should take the maximum string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxStringsWhenDefaultIsGiven() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
@@ -1278,7 +1278,7 @@ private class RollupTests {
     System.assertEquals('ZZZ', updatedAcc.AccountNumber, 'MAX AFTER_INSERT should take the maximum string including default');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinOnStringsOnInsert() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 
@@ -1294,7 +1294,7 @@ private class RollupTests {
     System.assertEquals('A', updatedAcc.AccountNumber, 'MIN AFTER_INSERT should take the minimum string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinOnStringsOnUpdate() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'B', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -1317,7 +1317,7 @@ private class RollupTests {
     System.assertEquals('A', updatedAcc.AccountNumber, 'MIN AFTER_UPDATE should take the minimum string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxOnStringsOnUpdate() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = '', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -1337,7 +1337,7 @@ private class RollupTests {
     System.assertEquals('A', updatedAcc.AccountNumber, 'MAX AFTER_UPDATE should take the maximum string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinOnStringsBeforeDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
@@ -1362,7 +1362,7 @@ private class RollupTests {
     System.assertEquals('', updatedAcc.AccountNumber, 'MIN BEFORE_DELETE should take the minimum string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxOnStringsBeforeDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
@@ -1393,7 +1393,7 @@ private class RollupTests {
     System.assertEquals(originalCpaNameGreater ? cpa.Name : testCpas[0].Name, updatedAcc.AccountNumber, 'MAX BEFORE_DELETE should take the maximum string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxOnPicklistStringsOnInsert() {
     List<PicklistEntry> picklistVals = Lead.LeadSource.getDescribe().getPicklistValues();
 
@@ -1426,7 +1426,7 @@ private class RollupTests {
     System.assertEquals(maxLeadSource, updatedAcc.AccountNumber, 'MAX BEFORE_INSERT should take the maximum picklist string');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinPicklistStringsOnInsert() {
     List<PicklistEntry> picklistVals = Lead.LeadSource.getDescribe().getPicklistValues();
 
@@ -1459,7 +1459,7 @@ private class RollupTests {
     System.assertEquals(minLeadSource, updatedAcc.AccountNumber, 'MIN BEFORE_INSERT should take the minimum picklist string');
   }
 
-  @isTest
+  @IsTest
   static void shouldAverageOnInsert() {
     // average is a special case; even on insert, we have to also check for pre-existing records existing
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
@@ -1491,7 +1491,7 @@ private class RollupTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldAverageOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -1526,7 +1526,7 @@ private class RollupTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldAverageOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -1553,7 +1553,7 @@ private class RollupTests {
     System.assertEquals(testCpaOne.PreferenceRank, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE should take into account only non-deleted values');
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupForFirst() {
     rollupOp = Rollup.Op.FIRST;
     RollupCalculator.Factory = new FactoryMock();
@@ -1575,7 +1575,7 @@ private class RollupTests {
     System.assertEquals(true, calcMockWasCalled);
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupForLast() {
     rollupOp = Rollup.Op.LAST;
     RollupCalculator.Factory = new FactoryMock();
@@ -1596,7 +1596,7 @@ private class RollupTests {
     System.assertEquals(true, calcMockWasCalled);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForAverage() {
     rollupOp = Rollup.Op.AVERAGE;
     RollupCalculator.Factory = new FactoryMock();
@@ -1611,7 +1611,7 @@ private class RollupTests {
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForCountDistinct() {
     rollupOp = Rollup.Op.COUNT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
@@ -1626,7 +1626,7 @@ private class RollupTests {
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForConcatDistinct() {
     rollupOp = Rollup.Op.CONCAT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
@@ -1641,7 +1641,7 @@ private class RollupTests {
     System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForConcat() {
     rollupOp = Rollup.Op.CONCAT;
     RollupCalculator.Factory = new FactoryMock();
@@ -1656,7 +1656,7 @@ private class RollupTests {
     System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForCount() {
     rollupOp = Rollup.Op.COUNT;
     RollupCalculator.Factory = new FactoryMock();
@@ -1670,7 +1670,7 @@ private class RollupTests {
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForFirst() {
     rollupOp = Rollup.Op.FIRST;
     RollupCalculator.Factory = new FactoryMock();
@@ -1693,7 +1693,7 @@ private class RollupTests {
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForLast() {
     rollupOp = Rollup.Op.LAST;
     RollupCalculator.Factory = new FactoryMock();
@@ -1708,7 +1708,7 @@ private class RollupTests {
     System.assertEquals(5, testMetadata.FullRecalculationDefaultNumberValue__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldPassRecalcValueForMin() {
     rollupOp = Rollup.Op.MIN;
     RollupCalculator.Factory = new FactoryMock();
@@ -1723,7 +1723,7 @@ private class RollupTests {
   }
 
   // Now we test different field types for success: time, datetime, date. Here be dragons.
-  @isTest
+  @IsTest
   static void shouldMaxDateOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Max date on insert test');
@@ -1745,7 +1745,7 @@ private class RollupTests {
     System.assertEquals(taskTwo.ActivityDate, updatedCpa.ActiveFromDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinDateOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Min date on insert test');
@@ -1767,7 +1767,7 @@ private class RollupTests {
     System.assertEquals(taskOne.ActivityDate, updatedCpa.ActiveFromDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinDateOnInsertWhereParentDateIsNull() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     //using campaign for this test because EndDate is not required when inserting a Campaign
@@ -1790,7 +1790,7 @@ private class RollupTests {
     System.assertEquals(taskOne.ActivityDate, updatedCamp.EndDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinDateOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
@@ -1815,7 +1815,7 @@ private class RollupTests {
     System.assertEquals(taskOne.ActivityDate, updatedCon.BirthDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxDatetimeOnInsert() {
     Contract con = [SELECT Id FROM Contract];
 
@@ -1834,7 +1834,7 @@ private class RollupTests {
     System.assertEquals(eventTwo.ActivityDateTime, updatedContract.ActivatedDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinDatetimeOnInsert() {
     Contract con = [SELECT Id FROM Contract];
 
@@ -1853,7 +1853,7 @@ private class RollupTests {
     System.assertEquals(eventOne.ActivityDateTime, updatedContract.ActivatedDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinDatetimeOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
@@ -1879,7 +1879,7 @@ private class RollupTests {
     System.assertEquals(eventTwo.ActivityDateTime, updatedContract.ActivatedDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxDatetimeOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
@@ -1905,7 +1905,7 @@ private class RollupTests {
     System.assertEquals(eventTwo.ActivityDateTime, updatedContract.ActivatedDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxDatetimeOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
@@ -1930,7 +1930,7 @@ private class RollupTests {
     System.assertEquals(eventTwo.ActivityDateTime, updatedContract.ActivatedDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinDatetimeOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
@@ -1961,7 +1961,7 @@ private class RollupTests {
    * a value on a related record, you're good to go!
    */
 
-  @isTest
+  @IsTest
   static void shouldMinTimeOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(EmailDomain = 'Lookupfield', EmailAddress = 'testrollup' + System.now().getTime() + '@email.com');
@@ -1990,7 +1990,7 @@ private class RollupTests {
     System.assertEquals(cp1.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxTimeOnInsert() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(EmailDomain = 'Lookupfield', EmailAddress = 'testrollup' + System.now().getTime() + '@email.com');
@@ -2019,7 +2019,7 @@ private class RollupTests {
     System.assertEquals(cp2.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxTimeOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
@@ -2062,7 +2062,7 @@ private class RollupTests {
     System.assertEquals(cp2.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinTimeOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
@@ -2105,7 +2105,7 @@ private class RollupTests {
     System.assertEquals(cp1.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
-  @isTest
+  @IsTest
   static void shouldMinTimeOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
@@ -2146,7 +2146,7 @@ private class RollupTests {
     System.assertEquals(cp2.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
-  @isTest
+  @IsTest
   static void shouldMaxTimeOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
@@ -2189,7 +2189,7 @@ private class RollupTests {
 
   /** CDC trigger tests */
 
-  @isTest
+  @IsTest
   static void shouldWorkForChangeDataEventCaptureTriggersOnCreate() {
     // CDC functions ** nearly ** the same as regular triggers, yet the SObjects supplied to ChangeEventTriggers
     // differ in two subtle ways: not all the fields are populated (just the changed ones), and the reference info
@@ -2234,7 +2234,7 @@ private class RollupTests {
     System.assertEquals(500, acc.AnnualRevenue);
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForChangeDataEventCaptureTriggersOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -2275,7 +2275,7 @@ private class RollupTests {
     System.assertEquals(500, acc.AnnualRevenue);
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForChangeDataCaptureTriggersOnDelete() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2321,7 +2321,7 @@ private class RollupTests {
 
   /** Invocable tests */
 
-  @isTest
+  @IsTest
   static void shouldBeInvokedSuccessfullyAfterInsertFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     DMLMock mock = loadAccountIdMock(cpas);
@@ -2339,7 +2339,7 @@ private class RollupTests {
     System.assertEquals(1000, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldBeInvokedRegardlessOfCasingFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     DMLMock mock = loadAccountIdMock(cpas);
@@ -2357,7 +2357,7 @@ private class RollupTests {
     System.assertEquals(1000, updatedAcc.AnnualRevenue, 'sum AFTER_INSERT from flow should match input PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldBeInvokedSuccessfullyAfterSaveFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
@@ -2381,7 +2381,7 @@ private class RollupTests {
     System.assertEquals(750, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldAllowForSuccessiveInvocablesToBeCalledInSameTransaction() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct'),
@@ -2429,7 +2429,7 @@ private class RollupTests {
     System.assertEquals(cpas[1].Name, updatedAcc.Description, 'CONCAT_DISTINCT AFTER_UPDATE from flow should match diff for reparented Name');
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2447,7 +2447,7 @@ private class RollupTests {
     System.assertEquals('Prior records to rollup collection required for rollup context: UPDATE', ex.getMessage());
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowValidationErrorOnUpsertFromFlowIfNoOldCalcItems() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
@@ -2464,7 +2464,7 @@ private class RollupTests {
     System.assertEquals('Prior records to rollup collection required for rollup context: UPSERT', ex.getMessage());
   }
 
-  @isTest
+  @IsTest
   static void shouldGracefullyExitIfCalcItemsAreNull() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(null, 'INSERT', 'CONCAT');
 
@@ -2475,7 +2475,7 @@ private class RollupTests {
     System.assertEquals(true, flowOutputs[0].isSuccess);
   }
 
-  @isTest
+  @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCount() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2509,7 +2509,7 @@ private class RollupTests {
     System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE from flow should correctly perform full recalc');
   }
 
-  @isTest
+  @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCountDistinct() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2545,7 +2545,7 @@ private class RollupTests {
     System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE from flow should correctly perform full recalc');
   }
 
-  @isTest
+  @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotSum() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2579,7 +2579,7 @@ private class RollupTests {
     System.assertEquals(matchingCpa.PreferenceRank, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match diff for PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotFirst() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2612,7 +2612,7 @@ private class RollupTests {
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should get nulled out if no other matching items');
   }
 
-  @isTest
+  @IsTest
   static void shouldUpdateToActualFirstIfCurrentItemShouldBeExcludedAndOldOneWouldNot() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2647,7 +2647,7 @@ private class RollupTests {
     System.assertEquals(cpaTwo.PreferenceRank, updatedAcc.AnnualRevenue, 'FIRST AFTER_UPDATE from flow should correctly recalculate and exclude current item');
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyDeleteFirstIfCurrentItemIsOnlyItemAndItIsExcluded() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2678,7 +2678,7 @@ private class RollupTests {
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'FIRST BEFORE_DELETE from flow should correctly null out');
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyDeleteForAverageIfCurrentItemIsOnlyItemAndItIsExcluded() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2708,7 +2708,7 @@ private class RollupTests {
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'AVERAGE BEFORE_DELETE from flow should correctly null out');
   }
 
-  @isTest
+  @IsTest
   static void shouldBeInvokedSuccessfullyBeforeDeleteFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     DMLMock mock = loadAccountIdMock(cpas);
@@ -2726,7 +2726,7 @@ private class RollupTests {
     System.assertEquals(-1000, updatedAcc.AnnualRevenue, 'SUM BEFORE_DELETE from flow should subtract PreferenceRank from Account');
   }
 
-  @isTest
+  @IsTest
   static void shouldExcludeNonLinkedItemsAndUseCalcItemWhereClause() {
     Account acc = [SELECT Id FROM Account];
     Date today = System.today();
@@ -2757,7 +2757,7 @@ private class RollupTests {
     System.assertEquals(cpa.PreferenceRank, updatedAcc.AnnualRevenue, 'Only linked items should be used');
   }
 
-  @isTest
+  @IsTest
   static void shouldReportErrorWhenOrderByNotIncludedForFirstLast() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
@@ -2778,7 +2778,7 @@ private class RollupTests {
     System.assertEquals('Order By First/Last field required for FIRST operation', ex.getMessage());
   }
 
-  @isTest
+  @IsTest
   static void shouldReportErrorWhenUltimateParentRollupAndNoLookupField() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
@@ -2800,7 +2800,7 @@ private class RollupTests {
     System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex.getMessage());
   }
 
-  @isTest
+  @IsTest
   static void shouldReportErrorWhenConcatDelimiterSetAndNotConcat() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
@@ -2822,7 +2822,7 @@ private class RollupTests {
     System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups', ex.getMessage());
   }
 
-  @isTest
+  @IsTest
   static void shouldReportErrorWhenBothOverridesSet() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
@@ -2845,7 +2845,7 @@ private class RollupTests {
     System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex.getMessage());
   }
 
-  @isTest
+  @IsTest
   static void shouldStillPerformRollupForFirstLastEvenIfCurrentCalcItemsDoNotMatch() {
     Account acc = [SELECT Id FROM Account];
     Date today = System.today();
@@ -2875,7 +2875,7 @@ private class RollupTests {
   }
 
   // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed
-  @isTest
+  @IsTest
   static void shouldOnlyIncludeObjectChangedFieldsWhenSuppliedFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1000, Name = 'Acme cpa', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -2907,7 +2907,7 @@ private class RollupTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldReportSuccessWhenFlowPassesNoRecords() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>();
     Rollup.shouldRun = true;
@@ -2921,7 +2921,7 @@ private class RollupTests {
     System.assertEquals(true, flowOutputs[0].isSuccess);
   }
 
-  @isTest
+  @IsTest
   static void shouldReportFailureWhenExceptionIsThrown() {
     List<ContactPointAddressHistory> history = new List<ContactPointAddressHistory>{ new ContactPointAddressHistory() };
     Rollup.shouldRun = true;
@@ -2939,7 +2939,7 @@ private class RollupTests {
     System.assertEquals('Invalid field PreferenceRank for ContactPointAddressHistory', ex.getMessage(), ex.getMessage() + '\n' + ex.getStacktraceString());
   }
 
-  @isTest
+  @IsTest
   static void shouldNotThrowErrorEvenIfNoRollupsPerformedDuringInvocable() {
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(new List<SObject>(), 'INSERT', 'SUM'));
@@ -2949,7 +2949,7 @@ private class RollupTests {
     System.assertEquals(true, flowOutputs[0].isSuccess);
   }
 
-  @isTest
+  @IsTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadataForFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     DMLMock mock = loadAccountIdMock(cpas);
@@ -2969,7 +2969,7 @@ private class RollupTests {
     System.assertEquals(-1, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT from flow should match input PreferenceRank + number override');
   }
 
-  @isTest
+  @IsTest
   static void shouldOverrideDateUsingNumberBasedDefaultForFlow() {
     Contract con = [SELECT Id FROM Contract];
 
@@ -3004,7 +3004,7 @@ private class RollupTests {
     System.assertEquals(nowish, updatedContract.ActivatedDate, 'MAX AFTER_INSERT from flow should match override date');
   }
 
-  @isTest
+  @IsTest
   static void shouldOverrideStringBasedDefaultForFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A') };
     DMLMock mock = loadAccountIdMock(cpas);
@@ -3026,7 +3026,7 @@ private class RollupTests {
     System.assertEquals('Z', updatedAcc.Name, 'SUM AFTER_INSERT from flow should match string override when it is greater than supplied calc values');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotWriteToNonUpdateableFieldsForOldFlowRecords() {
     Account acc = [SELECT Id FROM Account];
 
@@ -3066,7 +3066,7 @@ private class RollupTests {
 
   /** Batch test */
 
-  @isTest
+  @IsTest
   static void shouldRunSuccessfullyAsBatch() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3085,7 +3085,7 @@ private class RollupTests {
 
   /** Rollup Control metadata tests */
 
-  @isTest
+  @IsTest
   static void shouldAbortWhenOrgDefaultsHaveDisabledRunning() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3098,7 +3098,7 @@ private class RollupTests {
     System.assertEquals(0, mock.Records.size(), 'Rollup run should have aborted');
   }
 
-  @isTest
+  @IsTest
   static void shouldAbortWhenspecificControlDisablesRunning() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3111,7 +3111,7 @@ private class RollupTests {
     System.assertEquals(0, mock.Records.size(), 'Rollup run should have aborted');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3131,7 +3131,7 @@ private class RollupTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
   }
 
-  @isTest
+  @IsTest
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3151,7 +3151,7 @@ private class RollupTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
-  @isTest
+  @IsTest
   static void shouldRunAsQueueableWhenSpecificControlIsQueueable() {
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3165,7 +3165,7 @@ private class RollupTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyReparentWhenBothParentsArePartOfRollup() {
     // Happy path - all items in memory
     Account acc = [SELECT Id FROM Account];
@@ -3200,7 +3200,7 @@ private class RollupTests {
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyReparentWhenOnlyNewParentIsPartOfRollup() {
     // Unhappy path - query for related rows
     Account acc = [SELECT Id FROM Account];
@@ -3234,7 +3234,7 @@ private class RollupTests {
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyReparentForStrings() {
     Account acc = [SELECT Id FROM Account];
 
@@ -3268,7 +3268,7 @@ private class RollupTests {
     System.assertEquals('', updatedOldAcc.Name, 'MAX AFTER_UPDATE should be empty after reparenting');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyReparentForStringsCountDistinct() {
     Account acc = [SELECT Id FROM Account];
 
@@ -3304,7 +3304,7 @@ private class RollupTests {
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyReparentForStringCount() {
     Account acc = [SELECT Id FROM Account];
 
@@ -3346,7 +3346,7 @@ private class RollupTests {
     }
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyReparentForAverage() {
     Account acc = [SELECT Id FROM Account];
 
@@ -3384,7 +3384,7 @@ private class RollupTests {
   }
 
   /** Re-queueing */
-  @isTest
+  @IsTest
   static void shouldRequeueRollupsWhenQueryLimitsExceeded() {
     DMLMock mock = loadAccountIdMock(
       new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) }
@@ -3409,7 +3409,7 @@ private class RollupTests {
   }
 
   /** Grandparent rollups */
-  @isTest
+  @IsTest
   static void shouldAllowGrandparentRollups() {
     Account acc = [SELECT Id FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -3445,7 +3445,7 @@ private class RollupTests {
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
-  @isTest
+  @IsTest
   static void shouldAllowGrandparentRollupsFromParent() {
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<Event> events = new List<Event>{
@@ -3483,7 +3483,7 @@ private class RollupTests {
     System.assertEquals(events[0].Subject + ', ' + events[1].Subject, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
-  @isTest
+  @IsTest
   static void shouldAllowGrandparentRollupFromParentWithPolymorphicFields() {
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -3526,7 +3526,7 @@ private class RollupTests {
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
-  @isTest
+  @IsTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -3565,7 +3565,7 @@ private class RollupTests {
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
-  @isTest
+  @IsTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrievedWithBatch() {
     RollupAsyncProcessor.shouldRunAsBatch = true;
     Account acc = [SELECT Id, OwnerId FROM Account];
@@ -3605,7 +3605,7 @@ private class RollupTests {
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupEntireHierarchyWhenEnabled() {
     Account acc = [SELECT Id, Name FROM Account];
 

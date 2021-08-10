@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class RollupStandardIntegrationTests {
   @TestSetup
   static void setup() {
@@ -8,7 +8,7 @@ private class RollupStandardIntegrationTests {
     insert new Account(Name = 'RollupStandardIntegrationTests');
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
@@ -52,7 +52,7 @@ private class RollupStandardIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldCountDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
@@ -97,7 +97,7 @@ private class RollupStandardIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
     Integer maxAccountNameLength = Account.Name.getDescribe().getLength();
@@ -122,7 +122,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(maxAccountNameLength, acc.Name.length(), acc.Name);
   }
 
-  @isTest
+  @IsTest
   static void shouldEnqueueCMDTRecalcWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
@@ -160,7 +160,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
-  @isTest
+  @IsTest
   static void shouldRunRollupSyncWhenFiredFromParentRecalcInvocation() {
     Account acc = [SELECT Id FROM Account];
 
@@ -196,7 +196,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(6, acc.AnnualRevenue);
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyQueryOrderByFieldForBulkRecalc() {
     Account acc = [SELECT Id FROM Account];
 
@@ -229,7 +229,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyBulkRecalcWhenParentObjectsDiffer() {
     Account acc = [SELECT Id FROM Account];
 
@@ -270,7 +270,45 @@ private class RollupStandardIntegrationTests {
     System.assertEquals('Task rollup', acc.AccountNumber);
   }
 
-  @isTest
+  // TODO - uncomment this
+  // @IsTest
+  // static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {
+  //   Account acc = [SELECT Id FROM Account];
+  //   acc.AccountNumber = 'someString';
+  //   acc.AnnualRevenue = 5;
+  //   Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+  //   update acc;
+  //   Rollup.defaultControl = null;
+
+  //   List<Rollup__mdt> metas = new List<Rollup__mdt>{
+  //     new Rollup__mdt(
+  //       CalcItem__c = 'ContactPointAddress',
+  //       RollupFieldOnCalcItem__c = 'PreferenceRank',
+  //       LookupFieldOnCalcItem__c = 'ParentId',
+  //       LookupObject__c = 'Account',
+  //       LookupFieldOnLookupObject__c = 'Id',
+  //       RollupFieldOnLookupObject__c = 'AnnualRevenue',
+  //       RollupOperation__c = 'LAST',
+  //       CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+  //     ),
+  //     new Rollup__mdt(
+  //       CalcItem__c = 'Task',
+  //       RollupFieldOnCalcItem__c = 'Subject',
+  //       LookupFieldOnCalcItem__c = 'WhatId',
+  //       LookupObject__c = 'Account',
+  //       LookupFieldOnLookupObject__c = 'Id',
+  //       RollupFieldOnLookupObject__c = 'AccountNumber',
+  //       RollupOperation__c = 'CONCAT'
+  //     )
+  //   };
+
+  //   Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+  //   acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
+  //   System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AccountNumber), acc.AccountNumber, 'AccountNumber should have been reset');
+  //   System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AnnualRevenue), acc.AnnualRevenue, 'AnnualRevenue should have been reset');
+  // }
+
+  @IsTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 
@@ -303,7 +341,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
-  @isTest
+  @IsTest
   static void shouldBatchForFullRecalcWhenOverLimits() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
@@ -347,7 +385,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
   }
 
-  @isTest
+  @IsTest
   static void shouldNotAddToExistingAmountForFullRecalc() {
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 60;
@@ -379,7 +417,7 @@ private class RollupStandardIntegrationTests {
 
   // also an integration test for querying relationship names
   // on CalcItemWhereClause__c Rollup__mdt field
-  @isTest
+  @IsTest
   static void shouldSuccessfullyExcludeBasedOnWhereCriteriaDuringFullRecalc() {
     Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
 
@@ -408,7 +446,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyQueryOrderByFieldForFullRecalcFirst() {
     Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
 
@@ -437,7 +475,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(cpas[1].Name, updatedAcc.Name, 'Should have taken first based on PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunSyncWhenFlaggedOnRollupLimit() {
     Account acc = [SELECT Id FROM Account];
 
@@ -459,7 +497,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(2, acc.AnnualRevenue, 'COUNT AFTER_INSERT should add when field is populated sync calc');
   }
 
-  @isTest
+  @IsTest
   static void shouldPartiallyDeferRollupCalculationWhenOverLimits() {
     Rollup.specificControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, OwnerId FROM Account];
@@ -512,7 +550,7 @@ private class RollupStandardIntegrationTests {
     }
   }
 
-  @isTest
+  @IsTest
   static void shouldRunDirectlyFromApex() {
     Account acc = [SELECT Id FROM Account];
 
@@ -542,7 +580,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(15, acc.AnnualRevenue);
   }
 
-  @isTest
+  @IsTest
   static void shouldDeferUpdateWhenMaxParentRowsLessThanCurrentUpdateRows() {
     Account acc = [SELECT Id FROM Account];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'MaxParentRows');
@@ -562,7 +600,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(50, acc.AnnualRevenue, 'Account should have been updated since the mock is not used async');
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowExceptionWhenTryingToOperateOnDisallowedFieldTypes() {
     Account acc = [SELECT Id FROM Account];
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };
@@ -584,7 +622,7 @@ private class RollupStandardIntegrationTests {
 
   /** Invocable integration tests */
 
-  @isTest
+  @IsTest
   static void shouldTryToUpsertFromFlow() {
     Account acc = [SELECT Id FROM Account];
 
@@ -608,7 +646,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
   }
 
-  @isTest
+  @IsTest
   static void shouldPerformFullRecalcFromFlowChildren() {
     Account acc = [SELECT Id FROM Account];
     // ensure another matching item exists outside of the passed in list
@@ -633,7 +671,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
   }
 
-  @isTest
+  @IsTest
   static void shouldPerformFullRecalcFromFlowChildrenWithReparenting() {
     Account acc = [SELECT Id FROM Account];
     Account reparentedAccount = new Account(Name = 'Reparented Refresh', AnnualRevenue = 1000);
@@ -663,7 +701,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals(0, reparentedAccount.AnnualRevenue, 'Reparenting with REFRESH should run decrement logic on old parent');
   }
 
-  @isTest
+  @IsTest
   static void shouldPerformFullRecalcFromFlowParent() {
     List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
 
@@ -689,7 +727,7 @@ private class RollupStandardIntegrationTests {
   }
 
   /** Schedulable tests */
-  @isTest
+  @IsTest
   static void shouldThrowExceptionForBadQuery() {
     // it's a date field - you tell ME why this query is invalid!
     String veryBadQuery = 'SELECT MAX(ActivityDate) FROM Task';
@@ -704,7 +742,7 @@ private class RollupStandardIntegrationTests {
     System.assertNotEquals(null, ex);
   }
 
-  @isTest
+  @IsTest
   static void shouldScheduleSuccessfullyForGoodQuery() {
     String goodQuery = 'SELECT Id, Name FROM ContactPointAddress WHERE CreatedDate > YESTERDAY';
 

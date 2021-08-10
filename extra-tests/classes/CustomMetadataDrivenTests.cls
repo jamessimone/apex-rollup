@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class CustomMetadataDrivenTests {
 
   @TestSetup
@@ -7,7 +7,7 @@ private class CustomMetadataDrivenTests {
     insert new RollupParent__c(Name = 'CustomMetadataDrivenTests');
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupFromChildToParentOnInsert() {
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
@@ -24,7 +24,7 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(childOne.NumberField__c, parent.NumberField__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupFromChildToParentOnUpdate() {
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
@@ -44,7 +44,7 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(childTwo.NumberField__c, parent.NumberField__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupTextFromChildToParentOnDelete() {
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
@@ -64,7 +64,7 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(childOne.NumberField__c, parent.NumberField__c);
   }
 
-  @isTest
+  @IsTest
   static void regressionUpdatingEvalCriteriaShouldNotExcludeItemOnMultipleUpdatePath() {
     // DateField__c rollup relies on NumberField > 0
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];

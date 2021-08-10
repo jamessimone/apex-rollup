@@ -1,7 +1,7 @@
 public virtual class RollupLogger extends Rollup implements ILogger {
-  @testVisible
+  @TestVisible
   private static List<RollupLoggerPlugin__mdt> pluginMocks;
-  @testVisible
+  @TestVisible
   private static RollupLoggerPluginParameter__mdt loggingLevelMock;
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
 

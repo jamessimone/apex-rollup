@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class InvocableDrivenTests {
   // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
 
@@ -9,7 +9,7 @@ private class InvocableDrivenTests {
     insert acc;
   }
 
-  @isTest
+  @IsTest
   static void shouldRollupMultipleDMLStatementsWithinSingleTransaction() {
     Account acc = [SELECT Id FROM Account];
     Account reparentAccount = new Account(Name = 'Reparent');

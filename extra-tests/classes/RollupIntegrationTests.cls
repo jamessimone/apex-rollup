@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class RollupIntegrationTests {
   // "Integration," in the sense that these include custom fields / objects that shouldn't be installed
   @TestSetup
@@ -22,7 +22,7 @@ private class RollupIntegrationTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, prior.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -51,7 +51,7 @@ private class RollupIntegrationTests {
     System.assertEquals(1, acc.AnnualRevenue, 'Custom metadata mapping failed!');
   }
 
-  @isTest
+  @IsTest
   static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -85,7 +85,7 @@ private class RollupIntegrationTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 
-  @isTest
+  @IsTest
   static void shouldSupportCustomObjectsReferencedViaCustomMetadata() {
     Application__c app = new Application__c(Name = 'RollupIntegrationTests App');
     insert app;
@@ -109,7 +109,7 @@ private class RollupIntegrationTests {
     System.assertEquals('Account, Lead', app.Objects__c);
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyAverageWithSpecialFieldNamesAndFilteredItems() {
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
     insert parentApp;
@@ -158,7 +158,7 @@ private class RollupIntegrationTests {
     System.assertEquals(45 / 3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of matching items');
   }
 
-  @isTest
+  @IsTest
   static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Custom Object Parent App');
     insert parentApp;
@@ -193,7 +193,7 @@ private class RollupIntegrationTests {
   }
 
   /** grandparent rollup tests */
-  @isTest
+  @IsTest
   static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
@@ -240,7 +240,7 @@ private class RollupIntegrationTests {
     System.assertEquals(secondGreatGrandparent, traversal.retrieveParent(nonMatchingChild.Id), 'Should now match!');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotBlowUpIfGrandparentsDontExist() {
     Application__c app = new Application__c(Name = 'No grandparent app');
     insert app;
@@ -274,7 +274,7 @@ private class RollupIntegrationTests {
     System.assert(true, 'Should make it here without exception being thrown');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunCorrectlyForGrandparentReparenting() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
@@ -324,7 +324,7 @@ private class RollupIntegrationTests {
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromApex() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
@@ -374,7 +374,7 @@ private class RollupIntegrationTests {
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - apex');
   }
 
-  @isTest
+  @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromFlow() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent Flow');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent Flow');
@@ -421,7 +421,7 @@ private class RollupIntegrationTests {
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - flow');
   }
 
-  @isTest
+  @IsTest
   static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
     insert greatGrandparent;
@@ -471,7 +471,7 @@ private class RollupIntegrationTests {
     System.assertEquals(greatGrandparent.Name, updatedGreatGrandparent.Name, 'Great-grandparent name should not have been appended based on exclusions');
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyFilterPolymorphicWhatFields() {
     Account acc = new Account(Name = 'Matching type');
     Case cas = new Case();
@@ -512,7 +512,7 @@ private class RollupIntegrationTests {
     System.assertEquals(matchingTask.Subject + ', ' + acc.Name, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkEvenIfPolymorphicFieldsAreIncluded() {
     Account acc = new Account(Name = 'Matching type');
     insert acc;
@@ -554,7 +554,7 @@ private class RollupIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyFilterPolymorphicWhoFields() {
     Contact con = new Contact(LastName = 'Polly', Email = 'polly@morhpism.com');
     Lead lead = new Lead(LastName = 'Morphism', Email = 'morphism@polly.com', Company = 'PollyMorphism');
@@ -589,7 +589,7 @@ private class RollupIntegrationTests {
     System.assertEquals(matchingTask.Subject + ', ' + lead.LastName, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyFilterPolymorphicOwnerFields() {
     User currentUser = [SELECT Id, Name FROM User WHERE Id = :UserInfo.getUserId()];
     Lead matchingLead = new Lead(Company = 'Matching polymorphic', LastName = 'Polly', OwnerId = currentUser.Id);
@@ -629,7 +629,7 @@ private class RollupIntegrationTests {
     System.assertEquals(matchingLead.LastName, updatedLead.LastName, 'Lead last name should not have been updated');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotBlowUpForRecursiveCheckOnFormulaFields() {
     String oppId = RollupTestUtils.createId(Opportunity.SObjectType);
     Opportunity opp = new Opportunity(Amount = 15, AccountId = RollupTestUtils.createId(Account.SObjectType), Id = oppId);
@@ -669,7 +669,7 @@ private class RollupIntegrationTests {
     System.assertEquals(true, eval.matches(opp), 'Should match recursively if values do not match');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupFromTriggerOnMerge() {
     Account parent = [SELECT Id, Name FROM Account];
 

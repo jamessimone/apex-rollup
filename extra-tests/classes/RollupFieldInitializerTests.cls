@@ -1,6 +1,6 @@
-@isTest
+@IsTest
 private class RollupFieldInitializerTests {
-  @isTest
+  @IsTest
   static void shouldReturnDefaultForNumberFields() {
     RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
@@ -10,7 +10,7 @@ private class RollupFieldInitializerTests {
     System.assertEquals(0, initializer.getDefaultValue(Opportunity.Probability), 'percent');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDefaultsForDates() {
     RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
@@ -19,7 +19,7 @@ private class RollupFieldInitializerTests {
     System.assertEquals(initializer.defaultDateTime.timeGmt(), initializer.getDefaultValue(BusinessHours.MondayStartTime), 'time');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDefaultsForStrings() {
     RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 
@@ -37,7 +37,7 @@ private class RollupFieldInitializerTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDefaultsForPicklist() {
     List<Schema.PicklistEntry> picklistEntries = Account.Industry.getDescribe().getPicklistValues();
     if (picklistEntries.isEmpty()) {
@@ -56,7 +56,7 @@ private class RollupFieldInitializerTests {
     System.assertEquals(picklistEntries[0].getValue(), initializer.getDefaultValue(QuickText.Channel));
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnAdditionalInfoAboutPicklistFields() {
     RollupFieldInitializer.PicklistController picklistController = new RollupFieldInitializer.PicklistController(Lead.Status.getDescribe());
 
@@ -78,7 +78,7 @@ private class RollupFieldInitializerTests {
     System.assertEquals(picklistController.minimumIntegerValue, picklistController.getRank('a', Rollup.Op.MAX));
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnSafeDefaultsForNonPicklistValues() {
     RollupFieldInitializer.PicklistController picklistController = new RollupFieldInitializer.PicklistController(Account.Name.getDescribe());
 
@@ -86,7 +86,7 @@ private class RollupFieldInitializerTests {
     System.assertEquals(false, picklistController.isTrueFor('one', 'two', Rollup.Op.MAX));
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowForUnhandledTypes() {
     RollupFieldInitializer initializer = RollupFieldInitializer.Current;
 

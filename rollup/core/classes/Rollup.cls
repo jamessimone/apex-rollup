@@ -3,21 +3,21 @@ global without sharing virtual class Rollup {
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
    * but this keeps things much simpler
    */
-  @testVisible
+  @TestVisible
   private static Boolean shouldRun = false;
-  @testVisible
+  @TestVisible
   private static TriggerOperation apexContext;
-  @testVisible
+  @TestVisible
   private static List<SObject> records;
-  @testVisible
+  @TestVisible
   private static Map<Id, SObject> oldRecordsMap;
-  @testVisible
+  @TestVisible
   private static List<Rollup__mdt> rollupMetadata;
-  @testVisible
+  @TestVisible
   private static RollupControl__mdt defaultControl;
-  @testVisible
+  @TestVisible
   private static RollupControl__mdt specificControl;
-  @testVisible
+  @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS = new List<Rollup>();
 
   private static final Set<String> REPARENTED_KEYS = new Set<String>();
@@ -34,7 +34,7 @@ global without sharing virtual class Rollup {
 
   // non-final instance variables
   protected List<SObject> calcItems;
-  protected Map<Id, SObject> oldCalcItems;
+  protected Map<Id, SObject> oldCalcItems = new Map<Id, SObject>();
   protected Rollup__mdt metadata;
   protected Boolean isFullRecalc = false;
   protected Boolean isNoOp;
@@ -47,9 +47,9 @@ global without sharing virtual class Rollup {
    * useful in limited contexts to get around the classic approach to dependency injection
    * (such as in this case, when constructor-based DI isn't possible).
    * It's more palatable in Apex than in many other languages, as a matter of fact -
-   * this is because the @testVisible annotation enforces for us the override only being possible while testing
+   * this is because the @TestVisible annotation enforces for us the override only being possible while testing
    */
-  @testVisible
+  @TestVisible
   private static DMLHelper DML {
     get {
       if (DML == null) {
@@ -217,6 +217,39 @@ global without sharing virtual class Rollup {
 
   protected virtual String getTypeName() {
     return Rollup.class.getName();
+  }
+
+  protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    this.addToMap(props, 'Calc Items', this.calcItems?.size() > 25 ? (Object) '25 items or more ...' : (Object) this.calcItems);
+    this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 25 ? (Object) '25 items or more ...' : (Object) this.oldCalcItems);
+    this.addToMap(props, 'Rollup Metadata', this.metadata);
+    this.addToMap(props, 'Rollup Control', this.rollupControl);
+    this.addToMap(props, 'Query Count', this.queryCount);
+    return props;
+  }
+
+  protected void addToMap(Map<String, String> props, String key, Object ref) {
+    if (ref != null) {
+      props.put(key, JSON.serializePretty(ref));
+    }
+  }
+
+  public override String toString() {
+    Map<String, String> props = new Map<String, String>{
+      'Type' => this.getTypeName(),
+      'Invocation Point' => this.invokePoint.name(),
+      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
+      'Is No Op' => String.valueOf(this.isNoOp),
+      'Is Conductor' => String.valueOf(this.isConductor)
+    };
+
+    this.customizeToStringEntries(props);
+
+    String baseString = '';
+    for (String key : props.keySet()) {
+      baseString += key + ': ' + props.get(key) + '\n';
+    }
+    return baseString.removeEnd('\n');
   }
 
   /**
@@ -1664,7 +1697,7 @@ global without sharing virtual class Rollup {
       amountOfCalcItems < instance.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (shouldQueue) {
       List<SObject> calculationItems = Database.query(queryString);
-      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(calculationItems), eval, invokePoint);
+      Rollup thisRollup = getRollup(matchingMeta, calcItemType, calculationItems, new Map<Id, SObject>(), eval, invokePoint);
       thisRollup.isFullRecalc = true;
       return thisRollup;
     } else {
@@ -1978,6 +2011,8 @@ global without sharing virtual class Rollup {
     Rollup rollupConductor = new RollupAsyncProcessor(rollupInvokePoint, calcItems, oldCalcItems);
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return rollupConductor;
+    } else if (rollupOperations.size() == 1) {
+      rollupConductor.metadata = rollupOperations[0];
     }
     if (sObjectType == null) {
       sObjectType = calcItems[0].getSObjectType();
@@ -2259,7 +2294,7 @@ global without sharing virtual class Rollup {
     if (defaultControl != null) {
       return defaultControl;
     } else if (cachedOrgDefault == null) {
-      // hack for additional code coverage; use one of the testVisible variables to test getting the below defaults instead
+      // hack for additional code coverage; use one of the TestVisible variables to test getting the below defaults instead
       RollupControl__mdt sensibleDefault = records != null ? null : RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
       if (sensibleDefault == null) {
         // this *should* be impossible, since the record is included on install, but ...
