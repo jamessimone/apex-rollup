@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class RollupCalculatorTests {
   // use these tests when DML is not required, or only *light* DML is necessary
   // otherwise use RollupTests for the full picture
@@ -9,7 +9,7 @@ private class RollupCalculatorTests {
   }
 
   /** FIRST / LAST operations */
-  @isTest
+  @IsTest
   static void shouldReturnNullWhenNoCalcItemsFirst() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -27,7 +27,7 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnFirstValueBasedOnMetadataField() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -54,7 +54,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnLastValueBasedOnMetadataField() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -79,7 +79,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnFirstValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -104,7 +104,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnMiddleValueWhenFirstAndLastAreNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -129,7 +129,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnFirstValueWhenMiddleAndLastAreNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -154,7 +154,7 @@ private class RollupCalculatorTests {
     System.assertEquals(1, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -179,7 +179,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldNotSortAtAllIfOrderByValuesAreNull() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -203,7 +203,7 @@ private class RollupCalculatorTests {
     System.assertEquals(opps[0].Amount, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnFirstString() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -228,7 +228,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnLastString() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -253,7 +253,7 @@ private class RollupCalculatorTests {
     System.assertEquals(2, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnFirstNumber() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Amount', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -278,7 +278,7 @@ private class RollupCalculatorTests {
     System.assertEquals(1, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnLastNumber() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Amount', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -303,7 +303,7 @@ private class RollupCalculatorTests {
     System.assertEquals(16, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void regressionShouldRollupFirstLastWithQueriedOrderBy() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -328,7 +328,7 @@ private class RollupCalculatorTests {
     System.assertEquals(16, (Decimal) calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void regressionShouldExcludeCurrentItemsOnFirstLastDelete() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -353,7 +353,7 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue(), 'Delete should exclude current values :(');
   }
 
-  @isTest
+  @IsTest
   static void regressionShouldIncludeCalcItemWhereClauseInQueryFieldsFirst() {
     Account acc = [SELECT Id FROM Account];
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'Name', CalcItem__c = 'ContactPointAddress', CalcItemWhereClause__c = 'PreferenceRank != 0');
@@ -381,7 +381,7 @@ private class RollupCalculatorTests {
 
   // AVERAGE tests
 
-  @isTest
+  @IsTest
   static void shouldReturnDefaultWhenNoCalcItemsAverage() {
     Rollup__mdt metadata = new Rollup__mdt(OrderByFirstLast__c = 'CloseDate', CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -399,7 +399,7 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldNotTryToAverageNull() {
     Rollup__mdt metadata = new Rollup__mdt(CalcItem__c = 'Opportunity');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -427,7 +427,7 @@ private class RollupCalculatorTests {
 
   // COUNT tests
 
-  @isTest
+  @IsTest
   static void shouldReturnNewValOnCountChangeIfReparenting() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -444,7 +444,7 @@ private class RollupCalculatorTests {
     System.assertEquals(1, (Decimal) calc.getReturnValue(), 'If record is reparented, it should count towards count for new record!');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnZeroOnFullRecalcIfNoMatchingItemsCount() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -463,7 +463,7 @@ private class RollupCalculatorTests {
     System.assertEquals(0, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnZeroOnFullRecalcIfNoItemsPresentCount() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -480,7 +480,7 @@ private class RollupCalculatorTests {
     System.assertEquals(0, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnZeroOnFullRecalcIfNoMatchingItemsCountDistinct() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -499,7 +499,7 @@ private class RollupCalculatorTests {
     System.assertEquals(0, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnCountIfRollupValueUnchangedButEvalStatusHas() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -519,7 +519,7 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue(), 'Count should be returned if item was previously excluded but now isn\t!');
   }
 
-  @isTest
+  @IsTest
   static void shouldAllowIncrementOnUpdateIfOldValueIsDefault() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -539,7 +539,7 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue(), 'Count should be recorded properly if old value was default and new value exists');
   }
 
-  @isTest
+  @IsTest
   static void shouldDecrementIfOldCalcItemMatchesAndNewOneDoesNot() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       1,
@@ -567,7 +567,7 @@ private class RollupCalculatorTests {
 
   // SUM tests
 
-  @isTest
+  @IsTest
   static void shouldReturnNullOnFullRecalcIfNoMatchingItemsSum() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -586,7 +586,7 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnSumIfRollupValueUnchangedButEvalStatusHas() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -608,7 +608,7 @@ private class RollupCalculatorTests {
 
   // CONCAT tests
 
-  @isTest
+  @IsTest
   static void shouldReturnDefaultIfNoMatchingItemsPassedConcat() {
     String distinct = 'distinct';
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -629,7 +629,7 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue());
   }
 
-  @isTest
+  @IsTest
   static void shouldConcatDistinctProperly() {
     String distinct = 'distinct';
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -654,7 +654,7 @@ private class RollupCalculatorTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldUseCustomConcatDelimiterWhenSupplied() {
     String distinct = 'distinct';
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -673,7 +673,7 @@ private class RollupCalculatorTests {
     System.assertEquals(distinct + '; ' + nonDistinctOpp.Name, (String) calc.getReturnValue(), 'distinct values should be concatenated with custom delimiter!');
   }
 
-  @isTest
+  @IsTest
   static void regressionShouldNotBlowUpOnNullPriorValueConcat() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       '',
@@ -694,7 +694,7 @@ private class RollupCalculatorTests {
 
   // PICKLIST tests
 
-  @isTest
+  @IsTest
   static void shouldConcatenateProperlyToMultiSelectPicklist() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       '',
@@ -719,7 +719,7 @@ private class RollupCalculatorTests {
     System.assertEquals('And;Hello;SSK;World, I know', (String) calc.getReturnValue(), 'Multi-select should use ; to concat');
   }
 
-  @isTest
+  @IsTest
   static void shouldMinOnMultiSelectPicklist() {
     Rollup__mdt metadata = new Rollup__mdt();
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
@@ -751,7 +751,7 @@ private class RollupCalculatorTests {
 
   // MIN / MAX
 
-  @isTest
+  @IsTest
   static void shouldDefaultToNullIfCurrentItemExcludedAndNoOtherMatchingItemsTime() {
     Time max = Time.newInstance(11, 11, 11, 11);
     Rollup__mdt metadata = new Rollup__mdt(CalcItem__c = 'ContactPointAddress', CalcItemWhereClause__c = 'BestTimeToContactEndTime != ' + String.valueOf(max));
@@ -776,7 +776,7 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
   }
 
-  @isTest
+  @IsTest
   static void shouldDefaultToCurrentValueOnMinIfNoOtherMatchingItemsDate() {
     Rollup__mdt metadata = new Rollup__mdt();
     Date today = System.today();
@@ -799,7 +799,7 @@ private class RollupCalculatorTests {
     System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
   }
 
-  @isTest
+  @IsTest
   static void shouldDefaultToCurrentValueOnMinIfNoOtherMatchingItemsTime() {
     Rollup__mdt metadata = new Rollup__mdt();
     Time max = Time.newInstance(11, 11, 11, 11);
@@ -820,7 +820,7 @@ private class RollupCalculatorTests {
     System.assertEquals(cpa.BestTimeToContactEndTime, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyUpdateMinIfOnlyMatchingItemChanges() {
     Rollup__mdt metadata = new Rollup__mdt();
     Time max = Time.newInstance(11, 11, 11, 11);
@@ -842,7 +842,7 @@ private class RollupCalculatorTests {
     System.assertEquals(cpa.BestTimeToContactEndTime, calc.getReturnValue(), 'Should correctly return min if only one matching item');
   }
 
-  @isTest
+  @IsTest
   static void shouldDefaultToCurrentValueOnMaxIfNoOtherMatchingItemsDate() {
     Rollup__mdt metadata = new Rollup__mdt();
     Date today = System.today();
@@ -867,7 +867,7 @@ private class RollupCalculatorTests {
 
   // Factory tests
 
-  @isTest
+  @IsTest
   static void shouldThrowExceptionIfTypeNotSupported() {
     Exception ex;
 
@@ -888,7 +888,7 @@ private class RollupCalculatorTests {
     System.assertNotEquals(null, ex, 'Exception should have been thrown');
   }
 
-  @isTest
+  @IsTest
   static void shouldInvokeNoOpMethodsWithoutFail() {
     RollupCalculator calc = new RollupCalcEmptyMock();
     calc.handleCountDistinct(null);

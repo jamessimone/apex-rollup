@@ -1,8 +1,8 @@
-@isTest
+@IsTest
 private class RollupRelationshipFieldFinderTests {
   static RollupControl__mdt control = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 10000);
 
-  @isTest
+  @IsTest
   static void shouldFindParentRelationshipBetweenStandardObjects() {
     Account parent = new Account(Name = 'Parent relationship between standard objects');
     insert parent;
@@ -37,7 +37,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(parent, traversal.retrieveParent(cpa.Id));
   }
 
-  @isTest
+  @IsTest
   static void shouldFindGrandparentRelationshipBetweenStandardObjects() {
     Account parent = new Account(Name = 'Parent account looking up to User');
     insert parent;
@@ -62,7 +62,7 @@ private class RollupRelationshipFieldFinderTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldBailEarlyIfQueryCountExceedsControlCount() {
     Account acc = new Account(Name = 'Parent to cpa');
     insert acc;
@@ -82,7 +82,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(false, traversal.getIsFinished(), 'Should have bailed early!');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotReportFalsePositiveIfUltimateParentStaysTheSame() {
     Account intermediateOne = new Account(Name = 'Intermediate 1');
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
@@ -133,7 +133,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if ultimate lookup is different');
   }
 
-  @isTest
+  @IsTest
   static void shouldReportReparentingCorrectlyForNulls() {
     Account intermediateOne = new Account(Name = 'Intermediate 1');
     insert new List<Account>{ intermediateOne };
@@ -170,7 +170,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(true, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should correctly report reparenting if new lookup is null');
   }
 
-  @isTest
+  @IsTest
   static void shouldReportReparentingCorrectlyForImmediateParent() {
     Account parentOne = new Account(Name = 'Parent1');
     Account parentTwo = new Account(Name = 'Parent2');
@@ -195,7 +195,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(false, traversal.isUltimatelyReparented(cpaOne, 'ParentId'));
   }
 
-  @isTest
+  @IsTest
   static void shouldTrackMultipleParents() {
     Account parentOne = new Account(Name = 'SoloParent');
     insert parentOne;
@@ -218,7 +218,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(parentOne, traversal.retrieveParent(cpaTwo.Id), 'Second opp should not have been excluded!');
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyReturnParentRecordsWithNestedConditionals() {
     Account parentOne = new Account(Name = 'match', AccountNumber = '1');
     Account parentTwo = new Account(Name = 'non-match');
@@ -253,7 +253,7 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second opp should have been excluded with clause after nested conditional!');
   }
 
-  @isTest
+  @IsTest
   static void shouldTraverseAllTheWayUpWhenMetadataFlagIsEnabled() {
     Account parentOne = new Account(Name = 'ultimate parent');
     insert parentOne;

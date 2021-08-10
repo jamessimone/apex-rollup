@@ -1,6 +1,6 @@
-@isTest
+@IsTest
 private class RollupEvaluatorTests {
-  @isTest
+  @IsTest
   static void shouldReturnEqualsCorrectlyForEqualsCriteria() {
     Opportunity nameEquals = new Opportunity(Name = 'RollupZ');
     Opportunity doesNotEqualName = new Opportunity(Name = 'RollupZZ');
@@ -12,7 +12,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(doesNotEqualName), 'Name should not match RollupZ');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEquals() {
     Opportunity nameEquals = new Opportunity(Name = 'RollupZ');
     Opportunity doesNotEqualName = new Opportunity(Name = 'RollupZZ');
@@ -24,7 +24,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(doesNotEqualName), 'RollupZZ should not match');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEqualsAlternate() {
     Opportunity nameEquals = new Opportunity(Name = 'RollupZ');
     Opportunity doesNotEqualName = new Opportunity(Name = 'RollupZZ');
@@ -36,7 +36,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(doesNotEqualName), 'RollupZZ should not match');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldEqualsMultiple() {
     Opportunity rollupZ = new Opportunity(Name = 'RollupZ');
     Opportunity rollupZZ = new Opportunity(Name = 'RollupZZ');
@@ -48,7 +48,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(rollupZZ), 'Should match based on IN');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldNotEqualsMultiple() {
     Opportunity rollupZ = new Opportunity(Name = 'RollupZ');
     Opportunity rollupZZ = new Opportunity(Name = 'RollupZZ');
@@ -60,7 +60,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(rollupZZ), 'Should not match based on NOT IN');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsForNotEqualsNumbers() {
     Opportunity notZero = new Opportunity(Amount = 10);
     Opportunity zero = new Opportunity(Amount = 0);
@@ -72,7 +72,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(zero), '0 should  be excluded since opp amount = ' + zero.Amount);
   }
 
-  @isTest
+  @IsTest
   static void shouldNotFilterCalcItemsBasedOnWhereClauseWithInOrNotIn() {
     Account acc = new Account(Name = 'Something & Something Else');
     Account two = new Account(Name = 'Vertical/Backslash');
@@ -94,7 +94,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(new Account(Name = 'Something with not in the string')));
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForParentFields() {
     Account acc = new Account(Name = 'RollupEvaluatorTests');
     Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);
@@ -107,7 +107,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo), 'Should match since the name is different than the parent field name');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseForLists() {
     List<String> accIds = new List<String>{ '0016g0000000000001', '0016g0000000000002' };
     String whereClause = 'AccountId IN ' + JSON.serialize(accIds).replace('[', '(').replace(']', ')').replaceAll('"', '\'');
@@ -122,7 +122,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(shouldNotMatch), 'third account Id is not in list');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForOrStatements() {
     Account acc = new Account(Name = 'RollupEvaluatorTests');
     Opportunity oppOne = new Opportunity(Name = acc.Name, Account = acc);
@@ -137,7 +137,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppThree), 'Should match since the account name does not match');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForLikeStatements() {
     Account acc = new Account(Name = 'RollupEvaluatorTest');
     Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
@@ -151,7 +151,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo), 'Should match based on parent field');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForNotLikeStatements() {
     Account acc = new Account(Name = 'RollupEvaluatorTest');
     Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
@@ -165,7 +165,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(oppTwo), 'Should not match based on parent field');
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterCalcItemsThatContainAndOrStringsThatAreNotFilterConditions() {
     Opportunity oppOne = new Opportunity(Name = 'A or B');
     Opportunity oppTwo = new Opportunity(Name = 'A and B');
@@ -178,7 +178,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(oppTwo), 'Where clause should not have been split in the wrong place!');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForStringsWithSymbolsInThem() {
     Opportunity oppOne = new Opportunity(Name = '!()eeeek$$$-@');
 
@@ -189,7 +189,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppOne), 'Where clause should not have been split in the wrong place!');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForParanthesisAtEndOfString() {
     Opportunity nameWithParanthesis = new Opportunity(Name = 'Realized Gain/(Loss)');
 
@@ -200,7 +200,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(nameWithParanthesis), 'Where clause should not have been split in the wrong place!');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanNumbers() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);
@@ -220,7 +220,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 5.00)), 'Should match since amount greater than!');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -233,7 +233,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(oppTwo), 'Second close date should not match since it is not greater: ' + oppTwo.CloseDate);
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanDatetimes() {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(2));
@@ -246,7 +246,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(evTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanTimes() {
     ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
 
@@ -258,7 +258,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanOrEqualDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -271,7 +271,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanOrEqualsTimes() {
     ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
 
@@ -283,7 +283,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanOrEqualsDatetimes() {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
@@ -296,7 +296,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(evTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanStrings() {
     Opportunity oppOne = new Opportunity(Name = 'A');
     Opportunity oppTwo = new Opportunity(Name = 'B');
@@ -309,7 +309,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForGreaterThanOrEqualStrings() {
     Opportunity oppOne = new Opportunity(Name = 'A');
     Opportunity oppTwo = new Opportunity(Name = 'B');
@@ -322,7 +322,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -335,7 +335,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanTimes() {
     ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
 
@@ -347,7 +347,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanDatetimes() {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
@@ -360,7 +360,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(evTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanOrEqualDates() {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
@@ -373,7 +373,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanOrEqualTimes() {
     ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0));
 
@@ -385,7 +385,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 1))));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanOrEqualsDatetimes() {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
@@ -398,7 +398,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(evTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanStrings() {
     Opportunity oppOne = new Opportunity(Name = 'A');
     Opportunity oppTwo = new Opportunity(Name = 'B');
@@ -411,7 +411,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanOrEqualStrings() {
     Opportunity oppOne = new Opportunity(Name = 'A');
     Opportunity oppTwo = new Opportunity(Name = 'A');
@@ -424,7 +424,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppTwo));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForLessThanConditions() {
     Opportunity oppOne = new Opportunity();
     Opportunity oppTwo = new Opportunity(Amount = 5);
@@ -444,7 +444,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 3.00)), 'Should match since amount less than!');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForCurrencyZeros() {
     Account acc = new Account(AnnualRevenue = 0.00);
     String whereClause = 'AnnualRevenue != 0';
@@ -454,7 +454,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(acc));
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForBooleanConditions() {
     User active = new User(IsActive = true);
     User nonActive = new User(IsActive = false);
@@ -479,7 +479,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(nonActive), 'Mixed case True should not match');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnCorrectlyForNestedConditionals() {
     Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
     Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
@@ -503,7 +503,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnForMultipleOrConditionalsWithQueryKeywordsInString() {
     Opportunity oppOne = new Opportunity(ForecastCategoryName = 'Omitted');
     Opportunity oppTwo = new Opportunity(ForecastCategoryName = 'Pipeline'); // pipeline has "in" within it; this is a query keyword that should not get replaced
@@ -523,7 +523,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppFive), 'Amount for opp five should match');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnCorrectlyWhenQueryKeywordsWithSpacesArePartOfString() {
     // even worse than the above - imagine a Name field "This in That" returning false
     // because we've mistakenly transformed it into "This = that" 🤦‍♂️
@@ -534,7 +534,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(nameShouldMatch), 'Name should match');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyIdentifyIncludesForMultiSelectPicklists() {
     // QuickText.Channel is the only multi-select picklist in a vanilla Salesforce org
     QuickText qt = new QuickText(Channel = 'AAA;BBB;CCC');
@@ -546,7 +546,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(nonMatch), 'Does not have full picklist val, should not match');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDualEvaluatorWhenCalcItemChangedFieldsAndWhereClauseFilledOut() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name');
     Opportunity oldOpp = opp.clone(true, true);
@@ -570,7 +570,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match, stage name unchanged even though amount > 20');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDualEvaluatorWhenCalcItemReparented() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', AccountId = '0016g000000000000X', Amount = 50);
     Opportunity oldOpp = opp.clone(true, true);
@@ -586,7 +586,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Should match since StageName has changed and amount > 20');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDualEvaluatorWhenEvalIsPassedInAndReparenting() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', AccountId = '0016g000000000000X', Amount = 50);
     Opportunity oldOpp = opp.clone(true, true);
@@ -603,7 +603,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Should match since always true eval passed in and reparented');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnChangedFieldEval() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50);
     Opportunity oldOpp = opp.clone(true, true);
@@ -625,7 +625,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match amount did not change');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDualEvaluatorWhenEvalIsPassedAndCalcItemWhereClause() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50);
     Opportunity oldOpp = opp.clone(true, true);
@@ -646,7 +646,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match since amount is < 20');
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnDoubleDualEvalWhenEvalIsPassedAndCalcItemWhereClauseAndChangedFields() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name');
     Opportunity oldOpp = opp.clone(true, true);
@@ -674,7 +674,7 @@ private class RollupEvaluatorTests {
     System.assertNotEquals(true, eval.matches(secondOpp), 'Should not match since StageName has not changed');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotReturnRelationshipFieldsIfTheyAreNotDirectlyRelated() {
     String queryString = 'User.Id IN (\'0056g000002GeR0AAA\')';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Opportunity.SObjectType);
@@ -682,7 +682,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(new List<String>(), eval.getQueryFields());
   }
 
-  @isTest
+  @IsTest
   static void shouldReturnOwnerParentFieldsWhenNotPolymorphic() {
     String queryString = 'Owner.Name = \'someName\'';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Account.SObjectType);
@@ -690,17 +690,17 @@ private class RollupEvaluatorTests {
     System.assertEquals(new List<String>{ 'Owner.Name' }, eval.getQueryFields());
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowExceptionForImproperlyEnteredWhereClause() {
     assertExceptionContains('= 1', 'Where clause entered incorrectly', null);
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowExceptionForMultipleValuesWithGreaterThan() {
     assertExceptionContains('Amount > (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
   }
 
-  @isTest
+  @IsTest
   static void shouldThrowExceptionForMultipleValuesWithLessThan() {
     assertExceptionContains('Amount < (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
   }
@@ -719,7 +719,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, ex.getMessage().contains(expectedException));
   }
 
-  @isTest
+  @IsTest
   static void shouldFilterRecursiveUpdates() {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
@@ -753,7 +753,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotFilterRecursiveUpdatesWhenGrandparentRelationshipFieldFilledOut() {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
@@ -784,7 +784,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and grandparent field path filled out');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotFilterRecursiveUpdatesWhenRollupToUltimateParentIsTrue() {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
@@ -815,7 +815,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Should return true when recursive and ultimate parent field true');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkWithTripleEvaluator() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name', AccountId = '0016g000000000000X');
     Opportunity oldOpp = opp.clone(true, true);
@@ -844,7 +844,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkWithChangedFieldsAndRecursionDetection() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name', AccountId = '0016g000000000000X');
     Opportunity oldOpp = opp.clone(true, true);
@@ -877,7 +877,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkWithCalcItemWhereClauseAndRecursionDetection() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, AccountId = '0016g000000000000X');
     Opportunity nonMatchingOpp = new Opportunity(Id = '0066g000000000000Y', Amount = 15, AccountId = '0016g000000000000X');
@@ -905,7 +905,7 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on calc item where clause');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkForNotEqualNull() {
     Opportunity opp = new Opportunity(AccountId = '0016g000000000000X');
     String whereClause = 'AccountId != null';

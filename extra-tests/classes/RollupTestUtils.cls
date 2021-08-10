@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 public class RollupTestUtils {
 
   // from https://salesforce.stackexchange.com/questions/21137/creating-unit-tests-without-interacting-with-the-database-creating-fake-ids

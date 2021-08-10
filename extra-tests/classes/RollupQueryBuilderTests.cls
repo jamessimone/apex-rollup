@@ -1,6 +1,6 @@
-@isTest
+@IsTest
 private class RollupQueryBuilderTests {
-  @isTest
+  @IsTest
   static void shouldQueryAllTasks() {
     String queryString = RollupQueryBuilder.Current.getQuery(Task.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
 
@@ -11,7 +11,7 @@ private class RollupQueryBuilderTests {
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
   }
 
-  @isTest
+  @IsTest
   static void shouldQueryAllEvents() {
     String queryString = RollupQueryBuilder.Current.getQuery(Event.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
 
@@ -21,7 +21,7 @@ private class RollupQueryBuilderTests {
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
   }
 
-  @isTest
+  @IsTest
   static void shouldProperlyQueryIfMultipleCasedVersionsOfSameFieldPassedIn() {
     String queryString = RollupQueryBuilder.Current.getQuery(
       Opportunity.SObjectType,
@@ -37,7 +37,7 @@ private class RollupQueryBuilderTests {
     System.assertEquals(true, queryString.contains('AccountId'));
   }
 
-  @isTest
+  @IsTest
   static void shouldNotBlowUpIfPassedInFieldsAreNullOrBlank() {
     String queryString = RollupQueryBuilder.Current.getQuery(
       Opportunity.SObjectType,

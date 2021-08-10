@@ -84,7 +84,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return new SObjectChangedFieldEvaluator(changedFieldNames, oldCalcItems);
   }
 
-  @testVisible
+  @TestVisible
   private class AlwaysTrueEvaluator extends RollupEvaluator {
     public override Boolean matches(Object calcItem) {
       return true;
@@ -718,7 +718,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     RollupLogger.Instance.log(className + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
   }
 
-  @testVisible
+  @TestVisible
   static String stubRequestId;
   private static String getCurrentTransactionId() {
     return stubRequestId != null ? stubRequestId : Request.getCurrent().getRequestId();

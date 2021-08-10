@@ -1,13 +1,13 @@
-@isTest
+@IsTest
 private class RollupRecursionItemTests {
-  @isTest
+  @IsTest
   static void shouldReportFalseForNonRollupRecursionItemEquals() {
     RollupRecursionItem recursionItem = new RollupRecursionItem(null, new Rollup__mdt(), 0);
 
     System.assertEquals(false, recursionItem.equals(new Account()));
   }
 
-  @isTest
+  @IsTest
   static void shouldReportTrueForEquivalentWrappedValues() {
     Account acc = new Account(Name = 'Hi', Id = RollupTestUtils.createId(Account.SObjectType));
     Rollup__mdt meta = new Rollup__mdt(RollupFieldOnCalcItem__c = 'Name', LookupFieldOnCalcItem__c = 'Id');
@@ -23,7 +23,7 @@ private class RollupRecursionItemTests {
     System.assertNotEquals(item, secondItem);
   }
 
-  @isTest
+  @IsTest
   static void shouldReportTrueForItemsWithSameNulledProps() {
     Rollup__mdt meta = new Rollup__mdt(RollupFieldOnCalcItem__c = 'Name', LookupFieldOnCalcItem__c = 'Id');
 
@@ -36,7 +36,7 @@ private class RollupRecursionItemTests {
     System.assertNotEquals(item, secondItem, 'Once any prop is not null, equivalency should fail!');
   }
 
-  @isTest
+  @IsTest
   static void shouldUseHashCodeWhenPerformingSetEquality() {
     Rollup__mdt meta = new Rollup__mdt(LookupFieldOnCalcItem__c = 'Id', RollupFieldOnCalcItem__c = 'Name');
     RollupRecursionItem item = new RollupRecursionItem(null, meta, 0);
@@ -51,7 +51,7 @@ private class RollupRecursionItemTests {
     System.assertNotEquals(true, recursionItems.contains(nonMatchingItem));
   }
 
-  @isTest
+  @IsTest
   static void shouldNotReportTrueIfSamePropsButDifferentCalcItemWhereFields() {
     Account acc = new Account(Name = 'Hi', Id = RollupTestUtils.createId(Account.SObjectType), Description = 'Some description');
     Rollup__mdt meta = new Rollup__mdt(
