@@ -198,7 +198,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.ingestRollupControlData();
 
     if (this.isNoOp) {
-      this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
+      this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty() && this.calcItems.isEmpty();
     }
 
     String rollupProcessId = 'No process Id';

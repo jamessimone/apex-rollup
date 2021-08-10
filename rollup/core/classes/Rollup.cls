@@ -240,7 +240,8 @@ global without sharing virtual class Rollup {
       'Invocation Point' => this.invokePoint.name(),
       'Is Full Recalc' => String.valueOf(this.isFullRecalc),
       'Is No Op' => String.valueOf(this.isNoOp),
-      'Is Conductor' => String.valueOf(this.isConductor)
+      'Is Conductor' => String.valueOf(this.isConductor),
+      'Inner rollups' => String.valueOf(this.rollups.size())
     };
 
     this.customizeToStringEntries(props);
@@ -276,9 +277,10 @@ global without sharing virtual class Rollup {
   }
 
   private class RollupMetadata {
-    public Set<String> queryFields = new Set<String>();
-    public List<Rollup__mdt> metadata = new List<Rollup__mdt>();
+    public final Set<String> queryFields = new Set<String>();
+    public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
     public String whereClause = '';
+    public final List<QueryWrapper> queryWrappers = new List<QueryWrapper>();
     public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
   }
 
@@ -320,7 +322,7 @@ global without sharing virtual class Rollup {
         metaWrapper.metadata.add(matchingMeta);
       } else {
         metaWrapper = new RollupMetadata();
-        metaWrapper.queryFields = wherefields;
+        metaWrapper.queryFields.addAll(wherefields);
         metaWrapper.metadata.add(matchingMeta);
         metaWrapper.whereClause = potentialWhereClause;
         childToMetaWrapper.put(childType, metaWrapper);
@@ -370,9 +372,27 @@ global without sharing virtual class Rollup {
 
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
     wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    Rollup fullRecalc = getFullRecalcRollup(metadata, wrapper, InvocationPoint.FROM_LWC);
+    RollupMetadata wrappedMeta = new RollupMetadata();
+    wrappedMeta.metadata.add(metadata);
+    wrappedMeta.queryWrappers.add(wrapper);
+    wrappedMeta.queryFields.addAll(
+      new List<String>{
+        metadata.RollupFieldOnCalcItem__c,
+        metadata.LookupFieldOnCalcItem__c,
+        metadata.LookupFieldOnLookupObject__c,
+        metadata.RollupFieldOnCalcItem__c,
+        metadata.OrderByFirstLast__c
+      }
+    );
+    if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
+      wrappedMeta.queryFields.addAll(
+        RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, getSObjectFromName(metadata.CalcItem__c).getSObjectType()).getQueryFields()
+      );
+    }
+
+    Rollup fullRecalc = getFullRecalcRollup(new List<RollupMetadata>{ wrappedMeta }, InvocationPoint.FROM_LWC);
     RollupLogger.Instance.save();
-    return fullRecalc.runCalc();
+    return fullRecalc.rollups[0].runCalc();
   }
 
   global class FlowInput {
@@ -1499,9 +1519,11 @@ global without sharing virtual class Rollup {
     String rollupContext,
     InvocationPoint invokePoint
   ) {
-    SObjectType calcItemSObjectType = calcItems.getSObjectType();
+    Map<String, DeleteReparentOperation> deleteKeyToReparentOp = new Map<String, DeleteReparentOperation>();
+    Map<String, RollupMetadata> fullRecalcKeyToMeta = new Map<String, RollupMetadata>();
     for (Integer index = metas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = metas[index];
+      SObjectType calcItemSObjectType = meta.IsRollupStartedFromParent__c ? getSObjectFromName(meta.CalcItem__c).getSObjectType() : calcItems.getSObjectType();
       Boolean isIntermediateRollupForGrandparent =
         meta.CalcItem__c != String.valueOf(calcItemSObjectType) &&
         String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) &&
@@ -1513,9 +1535,9 @@ global without sharing virtual class Rollup {
         meta.CalcItem__c = String.valueOf(calcItemSObjectType);
       }
 
+      QueryWrapper queryWrapper;
       Boolean isFullRecalc = meta.IsRollupStartedFromParent__c || isIntermediateRollupForGrandparent || meta.RollupOperation__c.contains('REFRESH');
       if (isFullRecalc) {
-        QueryWrapper queryWrapper;
         if (meta.RollupOperation__c.contains('REFRESH')) {
           queryWrapper = getFullRecalcQueryWrapper(meta, calcItems, oldCalcItems);
         } else {
@@ -1532,33 +1554,65 @@ global without sharing virtual class Rollup {
               );
         }
         if (isFullRecalc && (queryWrapper?.hasQuery == true || isCDC)) {
-          metas.remove(index);
-          rollups.add(getFullRecalcRollup(meta, queryWrapper, invokePoint));
-          addReparentDeletionOp(meta, calcItems, oldCalcItems, rollups, invokePoint);
-          continue;
+          prepareReparentDeletionOps(meta, calcItems, oldCalcItems, deleteKeyToReparentOp);
         }
       } else if (apexContext == TriggerOperation.AFTER_DELETE) {
         if (mergedParentIds.isEmpty() == false) {
-          QueryWrapper wrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
+          queryWrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
           for (String mergedParentId : mergedParentIds) {
-            wrapper.addRecordId(mergedParentId);
+            queryWrapper.addRecordId(mergedParentId);
           }
           if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
-            wrapper.setQuery(meta.CalcItemWhereClause__c + ' AND ' + wrapper.getQuery());
+            queryWrapper.setQuery(meta.CalcItemWhereClause__c + ' AND ' + queryWrapper.getQuery());
           }
-          rollups.add(getFullRecalcRollup(meta, wrapper, invokePoint));
         }
-        metas.remove(index);
-        continue;
       }
 
-      // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
-      // we need to reset the CMDT to the correct base operation prior to appending the new context
-      meta.RollupOperation__c =
-        rollupContext +
-        (meta.RollupOperation__c.contains('UPDATE_') || meta.RollupOperation__c.contains('DELETE_')
-          ? meta.RollupOperation__c.substringAfter('_')
-          : meta.RollupOperation__c);
+      if (queryWrapper?.hasQuery == true || isCDC) {
+        metas.remove(index);
+
+        if (queryWrapper?.hasQuery == true) {
+          String key =
+            meta.CalcItem__c +
+            meta.LookupFieldOnCalcItem__c +
+            meta.LookupObject__c +
+            meta.LookupFieldOnLookupObject__c +
+            meta.RollupFieldOnLookupObject__c;
+          RollupMetadata wrappedMeta = fullRecalcKeyToMeta.containsKey(key) ? fullRecalcKeyToMeta.get(key) : new RollupMetadata();
+          wrappedMeta.metadata.add(meta);
+          wrappedMeta.queryWrappers.add(queryWrapper);
+          wrappedMeta.queryFields.addAll(new List<String>{ meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c, meta.OrderByFirstLast__c });
+          if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
+            wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcItemSObjectType).getQueryFields());
+          }
+          fullRecalcKeyToMeta.put(key, wrappedMeta);
+        }
+      } else {
+        // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
+        // we need to reset the CMDT to the correct base operation prior to appending the new context
+        meta.RollupOperation__c =
+          rollupContext +
+          (meta.RollupOperation__c.contains('UPDATE_') || meta.RollupOperation__c.contains('DELETE_')
+            ? meta.RollupOperation__c.substringAfter('_')
+            : meta.RollupOperation__c);
+      }
+    }
+
+    // collapse delete/full recalc operations
+    for (String deleteKey : deleteKeyToReparentOp.keySet()) {
+      DeleteReparentOperation deleteReparentOp = deleteKeyToReparentOp.get(deleteKey);
+      Rollup deleteProcessor = getRollup(
+        deleteReparentOp.rollupMetas,
+        deleteReparentOp.reparentedRecords.getSObjectType(),
+        deleteReparentOp.reparentedRecords,
+        new Map<Id, SObject>(),
+        null,
+        invokePoint
+      );
+      rollups.add(deleteProcessor);
+    }
+    if (fullRecalcKeyToMeta.isEmpty() == false) {
+      rollups.add(getFullRecalcRollup(fullRecalcKeyToMeta.values(), invokePoint));
     }
   }
 
@@ -1584,43 +1638,42 @@ global without sharing virtual class Rollup {
     return wrapper;
   }
 
-  private static void addReparentDeletionOp(
+  private class DeleteReparentOperation {
+    public List<SObject> reparentedRecords;
+    public final List<Rollup__mdt> rollupMetas = new List<Rollup__mdt>();
+  }
+
+  private static void prepareReparentDeletionOps(
     Rollup__mdt meta,
     List<SObject> calcItems,
     Map<Id, SObject> oldCalcItems,
-    List<Rollup> rollups,
-    InvocationPoint invokePoint
+    Map<String, DeleteReparentOperation> deleteKeyToOps
   ) {
     List<SObject> typedCalcItems = calcItems.clone();
     typedCalcItems.clear();
     String potentialDeleteOpName = 'DELETE_' + getBaseOperationName(meta.RollupOperation__c);
+    Rollup__mdt clonedMeta = meta.clone();
+    clonedMeta.RollupOperation__c = potentialDeleteOpName;
+    String deleteKey = potentialDeleteOpName + meta.LookupFieldOnCalcItem__c + meta.LookupObject__c;
 
-    for (SObject calcItem : calcItems) {
-      if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c) && oldCalcItems.containsKey(calcItem.Id)) {
-        SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
-        String key = potentialDeleteOpName + oldCalcItem.Id + JSON.serialize(meta);
-        if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c) && REPARENTED_KEYS.contains(key) == false) {
-          typedCalcItems.add(oldCalcItem);
-          REPARENTED_KEYS.add(key);
+    if (deleteKeyToOps.containsKey(deleteKey)) {
+      deleteKeyToOps.get(deleteKey).rollupMetas.add(clonedMeta);
+    } else {
+      for (SObject calcItem : calcItems) {
+        if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c) && oldCalcItems.containsKey(calcItem.Id)) {
+          SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
+          String key = potentialDeleteOpName + oldCalcItem.Id + JSON.serialize(meta);
+          if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c)) {
+            typedCalcItems.add(oldCalcItem);
+          }
         }
       }
-    }
-
-    // we only need to perform the delete if we've arrived here
-    // via a route where there were oldCalcItems AND one or more of their lookup keys changed
-    if (typedCalcItems.isEmpty() == false) {
-      Rollup__mdt clonedMeta = meta.clone();
-      clonedMeta.RollupOperation__c = potentialDeleteOpName;
-      Rollup deleteProcessor = getRollup(
-        new List<Rollup__mdt>{ clonedMeta },
-        typedCalcItems.getSObjectType(),
-        typedCalcItems,
-        new Map<Id, SObject>(),
-        null,
-        invokePoint
-      );
-      RollupLogger.Instance.log('adding delete operation for:', deleteProcessor, LoggingLevel.DEBUG);
-      rollups.add(deleteProcessor);
+      if (typedCalcItems.isEmpty() == false) {
+        DeleteReparentOperation deleteReparentOp = new DeleteReparentOperation();
+        deleteReparentOp.reparentedRecords = typedCalcItems;
+        deleteReparentOp.rollupMetas.add(clonedMeta);
+        deleteKeyToOps.put(deleteKey, deleteReparentOp);
+      }
     }
   }
 
@@ -1640,42 +1693,41 @@ global without sharing virtual class Rollup {
     return '\nORDER BY ' + String.join(orderByFields, ',');
   }
 
-  private static Rollup getFullRecalcRollup(Rollup__mdt meta, QueryWrapper queryWrapper, InvocationPoint invokePoint) {
+  private static Rollup getFullRecalcRollup(List<RollupMetadata> wrappedMetas, InvocationPoint invokePoint) {
     // just how many items are we talking, here? If it's less than the query limit, we can proceed
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
-    SObjectType childType = getSObjectFromName(meta.CalcItem__c).getSObjectType();
-    String countQuery = RollupQueryBuilder.Current.getQuery(
-      childType,
-      new List<String>{ 'Count()' },
-      meta.LookupFieldOnLookupObject__c,
-      '!=',
-      queryWrapper.getQuery()
-    );
+    Rollup rollupConductor = new RollupAsyncProcessor(invokePoint, new List<SObject>(), new Map<Id, SObject>());
+    rollupConductor.queryCount = 0;
 
-    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
-    Set<Id> recordIds = queryWrapper.recordIds;
-    Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
+    for (RollupMetadata wrappedMeta : wrappedMetas) {
+      if (wrappedMeta.metadata.isEmpty() == false) {
+        for (QueryWrapper wrapper : wrappedMeta.queryWrappers) {
+          Set<Id> recordIds = wrapper.recordIds;
+          SObjectType childType = getSObjectFromName(wrappedMeta.metadata[0].CalcItem__c).getSObjectType();
+          String countQuery = RollupQueryBuilder.Current.getQuery(
+            childType,
+            new List<String>{ 'Count()' },
+            wrappedMeta.metadata[0].LookupFieldOnLookupObject__c,
+            '!=',
+            wrapper.getQuery()
+          );
 
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(queryWrapper.toString(), childType);
-    Set<String> queryFields = getQueryFieldsFromMetadata(meta, whereEval);
-    if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
-      queryFields.addAll(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, childType).getQueryFields());
+          Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
+          Integer amountOfCalcItems = getCountFromDb(countQuery, objIds, recordIds);
+
+          String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrapper.getQuery());
+
+          RollupEvaluator.WhereFieldEvaluator whereEval = String.isNotBlank(wrapper.toString())
+            ? RollupEvaluator.getWhereEval(wrapper.toString(), childType)
+            : null;
+          Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, amountOfCalcItems, queryString, objIds, recordIds, childType, whereEval, invokePoint);
+          rollupConductor.queryCount += amountOfCalcItems;
+          rollupConductor.rollups.add((RollupAsyncProcessor) fullRecalc);
+          rollupConductor.calcItems = fullRecalc.calcItems;
+        }
+      }
     }
-    String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), 'Id', '!=', queryWrapper.getQuery());
-
-    Rollup fullRecalc = buildFullRecalcRollup(
-      new List<Rollup__mdt>{ meta },
-      amountOfCalcItems,
-      queryString,
-      objIds,
-      recordIds,
-      childType,
-      whereEval,
-      invokePoint
-    );
-    fullRecalc.queryCount = amountOfCalcItems;
-    RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
-    return fullRecalc;
+    return rollupConductor;
   }
 
   private static Rollup buildFullRecalcRollup(
@@ -1707,12 +1759,14 @@ global without sharing virtual class Rollup {
   }
 
   private static String batch(List<Rollup> rollups, InvocationPoint invokePoint) {
+    Rollup conductor;
     if (rollups.isEmpty()) {
-      return new Rollup(invokePoint).runCalc();
+      conductor = new Rollup(invokePoint);
+    } else {
+      conductor = new RollupAsyncProcessor(invokePoint, rollups[0].calcItems, rollups[0].oldCalcItems);
+      flattenBatches(conductor, rollups);
     }
-    Rollup batchedRollup = new RollupAsyncProcessor(invokePoint, rollups[0].calcItems, rollups[0].oldCalcItems);
-    flattenBatches(batchedRollup, rollups);
-    return batchedRollup.runCalc();
+    return conductor.runCalc();
   }
 
   private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
@@ -1729,7 +1783,7 @@ global without sharing virtual class Rollup {
         }
         // recurse through lists until there aren't any more nested rollups
         flattenBatches(outerRollup, rollup.rollups);
-      } else {
+      } else if (rollup instanceof RollupAsyncProcessor) {
         loadRollups((RollupAsyncProcessor) rollup, outerRollup);
       }
     }
