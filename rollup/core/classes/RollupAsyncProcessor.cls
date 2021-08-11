@@ -707,7 +707,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (apexOperations.contains(TriggerOperation.AFTER_INSERT) && roll.op.name().contains('UPDATE')) {
       return true;
     } else if (
-      (apexOperations.contains(TriggerOperation.AFTER_INSERT) || apexOperations.contains(TriggerOperation.AFTER_UPDATE)) && roll.op.name().contains('DELETE')
+      (apexOperations.contains(TriggerOperation.AFTER_INSERT) || apexOperations.contains(TriggerOperation.AFTER_UPDATE)) &&
+      roll.op?.name().contains('DELETE') == true
     ) {
       return true;
     }

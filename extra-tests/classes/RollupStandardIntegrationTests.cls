@@ -4,17 +4,14 @@ private class RollupStandardIntegrationTests {
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
     // gets nulled out at the end of the setup context
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     insert new Account(Name = 'RollupStandardIntegrationTests');
   }
 
   @IsTest
   static void shouldConcatDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'test update';
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(
       ParentId = acc.Id,
@@ -54,7 +51,6 @@ private class RollupStandardIntegrationTests {
 
   @IsTest
   static void shouldCountDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc;
@@ -65,7 +61,6 @@ private class RollupStandardIntegrationTests {
       PreferenceRank = 0
     );
     insert cpa;
-    Rollup.defaultControl = null;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, PreferenceRank = 1) };
@@ -276,9 +271,7 @@ private class RollupStandardIntegrationTests {
   //   Account acc = [SELECT Id FROM Account];
   //   acc.AccountNumber = 'someString';
   //   acc.AnnualRevenue = 5;
-  //   Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
   //   update acc;
-  //   Rollup.defaultControl = null;
 
   //   List<Rollup__mdt> metas = new List<Rollup__mdt>{
   //     new Rollup__mdt(
@@ -343,7 +336,6 @@ private class RollupStandardIntegrationTests {
 
   @IsTest
   static void shouldBatchForFullRecalcWhenOverLimits() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 5; // validate that the pre-existing value is cleared
     update acc;

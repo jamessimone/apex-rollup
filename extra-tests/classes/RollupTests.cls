@@ -1,11 +1,8 @@
 @IsTest
 private class RollupTests {
-  // NB - tests that perform DML should wrap the DML by setting Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-  // and then Rollup.defaultControl = null after DML has been performed. This is to prevent side-effects caused by having implemented Rollup in your org
   @TestSetup
   static void setup() {
     // in the event that rollups are running in the org, we want to avoid triggering any operations while performing setup DML
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupTests');
     insert acc;
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
@@ -200,10 +197,8 @@ private class RollupTests {
 
   @IsTest
   static void shouldCountDistinctFromTriggerOnInsert() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     insert new ContactPointAddress(Name = 'Test Count Distinct Insert', ParentId = acc.Id);
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Test Count Distinct Insert Two') });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -219,10 +214,8 @@ private class RollupTests {
 
   @IsTest
   static void shouldCountDistinctFromTriggerOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     insert new ContactPointAddress(Name = 'Test Count Distinct Insert One', ParentId = acc.Id);
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Test Count Distinct Insert Two', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
@@ -241,11 +234,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCountDistinctFromTriggerOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc; // we want to ensure that the AnnualRevenue is reset because there are no other matching values
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress() });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -275,11 +266,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldDecrementCountFromTriggerAfterUpdateIfValueIsRemoved() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
@@ -297,11 +286,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldKeepCountUnchangedFromTriggerAfterUpdateEvenIfValueChanges() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 1;
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50);
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
@@ -317,11 +304,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldDecrementCountFromTriggerBeforeDeleteIfValueIsRemoved() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 9;
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50);
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
@@ -525,11 +510,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldResetRollupValueWhenNoItemsMatchAndToggleIsSupplied() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 50;
     update acc;
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'RollupZ', ParentId = acc.Id, PreferenceRank = 50) });
 
@@ -596,11 +579,9 @@ private class RollupTests {
   /** Parent-initiated rollups */
   @IsTest
   static void shouldAllowRollupToBeInitiatedFromTheParent() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     Asset asset = new Asset(AccountId = acc.Id, Name = 'Rollup initiated from parent', Quantity = 500);
     insert asset;
-    Rollup.defaultControl = null;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -633,12 +614,10 @@ private class RollupTests {
 
   @IsTest
   static void shouldAllowRollupFromParentByInvocable() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     ContactPointAddress cpa = [SELECT Id, PreferenceRank FROM ContactPointAddress];
     cpa.ParentId = acc.Id;
     update cpa;
-    Rollup.defaultControl = null;
 
     List<Account> accs = new List<Account>{ acc };
     DMLMock mock = loadMock(accs);
@@ -760,7 +739,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMax() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -769,7 +747,6 @@ private class RollupTests {
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
     insert originalCpas;
-    Rollup.defaultControl = null;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = 150;
@@ -792,7 +769,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMax() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -801,7 +777,6 @@ private class RollupTests {
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
     insert originalCpas;
-    Rollup.defaultControl = null;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = 150;
@@ -826,11 +801,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMaxAndNoOtherSObjectsExist() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(
       PreferenceRank = acc.AnnualRevenue.intValue(),
@@ -869,7 +842,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -878,7 +850,6 @@ private class RollupTests {
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
     insert originalCpas;
-    Rollup.defaultControl = null;
 
     Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
     DMLMock mock = loadAccountIdMock(originalCpas);
@@ -935,7 +906,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMin() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
@@ -944,7 +914,6 @@ private class RollupTests {
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
     insert originalCpas;
-    Rollup.defaultControl = null;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = 200;
@@ -967,7 +936,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMin() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
@@ -976,7 +944,6 @@ private class RollupTests {
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
     insert originalCpas;
-    Rollup.defaultControl = null;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = secondCpa.PreferenceRank + 50; // the amount isn't important - that it's now more than the second CPA PreferenceRank is
@@ -1001,11 +968,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMinAndNoOtherSObjectsExist() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(
       PreferenceRank = acc.AnnualRevenue.intValue(),
@@ -1044,7 +1009,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 150;
     update acc;
@@ -1053,7 +1017,6 @@ private class RollupTests {
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
     insert originalCpas;
-    Rollup.defaultControl = null;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>(Rollup.records);
@@ -1074,11 +1037,9 @@ private class RollupTests {
   @IsTest
   static void shouldConcatOnUpdate() {
     // AFTER_INSERT test is handled in the "shouldBatchThreeOperations" method
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'first test string';
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(
       ParentId = acc.Id,
@@ -1103,11 +1064,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldConcatOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'beginning test string something';
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ cpa });
@@ -1141,11 +1100,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldConcatDistinctOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'first test string';
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(
       ParentId = acc.Id,
@@ -1181,11 +1138,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldConcatDistinctOnUpdateWhereOnlyNewItemIsAdded() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'first test string again';
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(
       ParentId = acc.Id,
@@ -1220,13 +1175,11 @@ private class RollupTests {
 
   @IsTest
   static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, Name FROM Account];
     String originalAccountName = acc.Name;
     String somethingElse = 'Something else';
     acc.Name = acc.Name + ', ' + somethingElse;
     update acc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 0);
     ContactPointAddress toDelete = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 1);
@@ -1339,11 +1292,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinOnStringsBeforeDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'A';
     update acc;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'A', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
@@ -1364,14 +1315,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxOnStringsBeforeDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'A';
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Z', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
     // ensure that if any automation has changed the name, we keep track of it
     cpa = [SELECT Name FROM ContactPointAddress WHERE Id = :cpa.Id];
 
@@ -1403,13 +1352,11 @@ private class RollupTests {
 
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     List<Lead> leads = new List<Lead>{
       new Lead(Company = acc.Id, LeadSource = picklistVals[0].getValue(), LastName = 'Max Picklist on insert one'),
       new Lead(Company = acc.Id, LeadSource = picklistVals[1].getValue(), LastName = 'Max Picklist on insert two')
     };
     insert leads; // not the best, either, but we need to be able to use SOQL below
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadMock(leads);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1436,13 +1383,11 @@ private class RollupTests {
 
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     List<Lead> leads = new List<Lead>{
       new Lead(Company = acc.Id, LeadSource = picklistVals[0].getValue(), LastName = 'Min Picklist on insert one'),
       new Lead(Company = acc.Id, LeadSource = picklistVals[1].getValue(), LastName = 'Min Picklist on insert two')
     };
     insert leads;
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadMock(leads);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1462,14 +1407,12 @@ private class RollupTests {
   @IsTest
   static void shouldAverageOnInsert() {
     // average is a special case; even on insert, we have to also check for pre-existing records existing
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 100;
     update acc;
 
     ContactPointAddress testCpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Pre-existing', ParentId = acc.Id);
     insert testCpa;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 200000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -1493,14 +1436,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldAverageOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 100;
     update acc;
 
     ContactPointAddress testCpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Pre-existing', ParentId = acc.Id);
     insert testCpa;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 200000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -1528,7 +1469,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldAverageOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 200;
     update acc;
@@ -1536,7 +1476,6 @@ private class RollupTests {
     ContactPointAddress testCpaOne = new ContactPointAddress(PreferenceRank = 100, Name = 'Pre-existing one', ParentId = acc.Id);
     ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing one', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ testCpaOne, testCpaTwo };
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ testCpaTwo };
 
@@ -1725,10 +1664,8 @@ private class RollupTests {
   // Now we test different field types for success: time, datetime, date. Here be dragons.
   @IsTest
   static void shouldMaxDateOnInsert() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Max date on insert test');
     insert cpa;
-    Rollup.defaultControl = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = cpa.Id);
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = cpa.Id);
@@ -1747,10 +1684,8 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDateOnInsert() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Min date on insert test');
     insert cpa;
-    Rollup.defaultControl = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50));
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50));
@@ -1769,11 +1704,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDateOnInsertWhereParentDateIsNull() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     //using campaign for this test because EndDate is not required when inserting a Campaign
     Campaign camp = new Campaign(Name = 'Test Date with no initialized value');
     insert camp;
-    Rollup.defaultControl = null;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = System.today().addDays(-50), WhatId = camp.Id);
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = System.today().addDays(50), WhatId = camp.Id);
@@ -1792,13 +1725,11 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDateOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
     insert con;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
     insert taskOne;
-    Rollup.defaultControl = null;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = RollupTestUtils.createId(Task.SObjectType), WhoId = con.Id);
 
@@ -1855,11 +1786,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDatetimeOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
-    Rollup.defaultControl = null;
 
     // now the "new" version of eventOne is no longer the min
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate.addDays(50), WhatId = con.Id, Id = RollupTestUtils.createId(Event.SObjectType));
@@ -1881,11 +1810,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxDatetimeOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
-    Rollup.defaultControl = null;
 
     // now the "new" version of eventOne is no longer the max
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate.addDays(-25), WhatId = con.Id, Id = RollupTestUtils.createId(Event.SObjectType));
@@ -1907,7 +1834,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxDatetimeOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
@@ -1915,7 +1841,6 @@ private class RollupTests {
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate, WhatId = con.Id, Id = RollupTestUtils.createId(Event.SObjectType));
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(50), WhatId = con.Id, DurationInMinutes = 50);
     insert eventTwo;
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadMock(new List<Event>{ eventOne });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -1932,7 +1857,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDatetimeOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contract con = [SELECT Id FROM Contract];
     con.ActivatedDate = System.now();
     update con;
@@ -1940,7 +1864,6 @@ private class RollupTests {
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate, WhatId = con.Id, Id = RollupTestUtils.createId(Event.SObjectType));
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(-50), WhatId = con.Id, DurationInMinutes = 50);
     insert eventTwo;
-    Rollup.defaultControl = null;
 
     DMLMock mock = loadMock(new List<Event>{ eventOne });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -1963,10 +1886,8 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinTimeOnInsert() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(EmailDomain = 'Lookupfield', EmailAddress = 'testrollup' + System.now().getTime() + '@email.com');
     insert cpe;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(11, 11, 11, 11), Name = cpe.EmailDomain);
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Name = cpe.EmailDomain);
@@ -1992,10 +1913,8 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxTimeOnInsert() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(EmailDomain = 'Lookupfield', EmailAddress = 'testrollup' + System.now().getTime() + '@email.com');
     insert cpe;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(11, 11, 11, 11), Name = cpe.EmailDomain);
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Name = cpe.EmailDomain);
@@ -2021,14 +1940,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxTimeOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0),
       EmailDomain = 'Lookupfield',
       EmailAddress = 'testrollup' + System.now().getTime() + '@email.com'
     );
     insert cpe;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
@@ -2064,14 +1981,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinTimeOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0),
       EmailDomain = 'Lookupfield',
       EmailAddress = 'testrollup' + System.now().getTime() + '@email.com'
     );
     insert cpe;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cp1 = new ContactPointAddress(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
@@ -2107,7 +2022,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinTimeOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
       EmailDomain = 'Lookupfield',
@@ -2122,7 +2036,6 @@ private class RollupTests {
     );
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(6, 6, 6, 6), Name = cpe.EmailDomain);
     insert cp2;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> addresses = new List<ContactPointAddress>{ cp1 };
     DMLMock mock = loadMock(new List<ContactPointAddress>{ cp1 });
@@ -2148,7 +2061,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxTimeOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(5, 5, 5, 5),
       EmailDomain = 'Lookupfield',
@@ -2163,7 +2075,6 @@ private class RollupTests {
     );
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(4, 4, 4, 4), Name = cpe.EmailDomain);
     insert cp2;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> addresses = new List<ContactPointAddress>{ cp1 };
     DMLMock mock = loadMock(new List<ContactPointAddress>{ cp1 });
@@ -2195,11 +2106,9 @@ private class RollupTests {
     // differ in two subtle ways: not all the fields are populated (just the changed ones), and the reference info
     // is supplied on a separate object, the ChangeEventHeader
     // Unfortunately, these two "tiny" differences means a lot of other code needs to be tested
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'CREATE';
@@ -2236,11 +2145,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldWorkForChangeDataEventCaptureTriggersOnUpdate() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc update', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'UPDATE';
@@ -2277,14 +2184,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldWorkForChangeDataCaptureTriggersOnDelete() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 10000;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc update', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'DELETE';
@@ -2294,7 +2199,7 @@ private class RollupTests {
 
     ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent();
     ev.ChangeEventHeader = header;
-    ev.PreferenceRank = 500;
+    ev.PreferenceRank = cpa.PreferenceRank;
 
     DMLMock mock = loadMock(new List<SObject>{ ev });
 
@@ -2477,7 +2382,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCount() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 2;
     update acc;
@@ -2485,7 +2389,6 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'Count Non-match', ParentId = acc.Id);
     ContactPointAddress matchingCpa = new ContactPointAddress(PreferenceRank = 1, Name = 'Count match', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ cpa, matchingCpa };
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2511,7 +2414,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotCountDistinct() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 3;
     update acc;
@@ -2521,7 +2423,6 @@ private class RollupTests {
     ContactPointAddress secondMatchingCpa = matchingCpa.clone();
     secondMatchingCpa.Name = 'Second Count Distinct Match';
     insert new List<ContactPointAddress>{ cpa, matchingCpa, secondMatchingCpa };
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2547,7 +2448,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotSum() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 2;
     update acc;
@@ -2555,7 +2455,6 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'Sum non-match', ParentId = acc.Id);
     ContactPointAddress matchingCpa = new ContactPointAddress(PreferenceRank = 15, Name = 'sum match', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ cpa, matchingCpa };
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2581,14 +2480,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotFirst() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2614,7 +2511,6 @@ private class RollupTests {
 
   @IsTest
   static void shouldUpdateToActualFirstIfCurrentItemShouldBeExcludedAndOldOneWouldNot() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
@@ -2622,7 +2518,6 @@ private class RollupTests {
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     ContactPointAddress cpaTwo = new ContactPointAddress(PreferenceRank = 1, Name = 'Second', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ cpa, cpaTwo };
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa }; // only pass cpa, which would be excluded normally (except for the PreferenceRank being set below to another val)
     DMLMock mock = loadMock(cpas);
@@ -2649,14 +2544,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldProperlyDeleteFirstIfCurrentItemIsOnlyItemAndItIsExcluded() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'First Delete', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -2680,14 +2573,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldProperlyDeleteForAverageIfCurrentItemIsOnlyItemAndItIsExcluded() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 250;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Average Delete', ParentId = acc.Id);
     insert cpa;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     DMLMock mock = loadMock(cpas);
@@ -3087,9 +2978,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldAbortWhenOrgDefaultsHaveDisabledRunning() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     DMLMock mock = loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3170,10 +3061,8 @@ private class RollupTests {
     // Happy path - all items in memory
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(AnnualRevenue = 300, Name = 'AnotherRollupTest');
     insert oldAcc;
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
     ContactPointAddress reparentedCpa = new ContactPointAddress(
@@ -3205,11 +3094,9 @@ private class RollupTests {
     // Unhappy path - query for related rows
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(AnnualRevenue = 25, Name = 'AnotherRollupTest');
     insert oldAcc;
 
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
     DMLMock mock = loadMock(new List<ContactPointAddress>{ cpa });
@@ -3238,10 +3125,8 @@ private class RollupTests {
   static void shouldCorrectlyReparentForStrings() {
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(Name = 'Something');
     insert oldAcc;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'X', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -3272,10 +3157,8 @@ private class RollupTests {
   static void shouldCorrectlyReparentForStringsCountDistinct() {
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');
     insert oldAcc;
-    Rollup.defaultControl = null;
 
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'X', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)),
@@ -3308,10 +3191,8 @@ private class RollupTests {
   static void shouldCorrectlyReparentForStringCount() {
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');
     insert oldAcc;
-    Rollup.defaultControl = null;
 
     // the first two items will be false positives; records whose values haven't changed over the course of the update
     // of interest to us will be the last record, whose ParentId we'll show as the oldAcc's in oldRecordsMap to trigger a
@@ -3350,11 +3231,9 @@ private class RollupTests {
   static void shouldCorrectlyReparentForAverage() {
     Account acc = [SELECT Id FROM Account];
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account oldAcc = new Account(AnnualRevenue = 50, Name = 'AnotherRollupTest');
     insert oldAcc;
 
-    Rollup.defaultControl = null;
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
     ContactPointAddress reparentedCpa = new ContactPointAddress(
