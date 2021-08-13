@@ -265,7 +265,7 @@ private class RollupStandardIntegrationTests {
     System.assertEquals('Task rollup', acc.AccountNumber);
   }
 
-  // TODO - uncomment this
+  // TODO - uncomment this and implement to work on fix for https://github.com/jamessimone/apex-rollup/issues/149
   // @IsTest
   // static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {
   //   Account acc = [SELECT Id FROM Account];

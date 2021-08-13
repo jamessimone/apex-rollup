@@ -244,6 +244,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private List<String> getSoqlWhereClauses(String whereClause, SObjectType calcItemSObjectType) {
       List<String> localSplitWheres = whereClause.split('( and | AND | OR | or )');
+      System.debug(localSplitWheres);
       this.reconstructImproperlySplitClauses(localSplitWheres);
       this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType);
 

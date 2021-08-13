@@ -389,7 +389,7 @@ global without sharing virtual class Rollup {
       InvocationPoint.FROM_LWC
     )[0];
     RollupLogger.Instance.save();
-    return fullRecalc.rollups[0].runCalc();
+    return fullRecalc.runCalc();
   }
 
   global class FlowInput {
@@ -1538,7 +1538,11 @@ global without sharing virtual class Rollup {
       }
 
       QueryWrapper queryWrapper;
-      if (meta.IsRollupStartedFromParent__c) {
+      // the order of operations is important here - REFRESH *also* needs to check for
+      // meta.IsRollupStartedFromParent__c, so that check can't come first
+      if (meta.RollupOperation__c.contains('REFRESH')) {
+        queryWrapper = getFullRecalcQueryWrapper(meta, calcItems, oldCalcItems);
+      } else if (meta.IsRollupStartedFromParent__c) {
         queryWrapper = getParentWhereClause(
           calcItems,
           oldCalcItems,
@@ -1548,8 +1552,6 @@ global without sharing virtual class Rollup {
           meta.GrandparentRelationshipFieldPath__c,
           meta.CalcItemWhereClause__c
         );
-      } else if (meta.RollupOperation__c.contains('REFRESH')) {
-        queryWrapper = getFullRecalcQueryWrapper(meta, calcItems, oldCalcItems);
       } else if (isIntermediateRollupForGrandparent) {
         queryWrapper = getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
       } else if (apexContext == TriggerOperation.AFTER_DELETE && mergedParentIds.isEmpty() == false) {
@@ -1713,16 +1715,18 @@ global without sharing virtual class Rollup {
     List<Rollup> fullRecalcRollups = new List<Rollup>();
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
-      if (wrappedMeta.whereClause == '(') {
-        wrappedMeta.whereClause = '';
-      } else if (wrappedMeta.whereClause.endsWith(' OR (')) {
+      if (wrappedMeta.whereClause.endsWith(' OR (')) {
         wrappedMeta.whereClause = wrappedMeta.whereClause.removeEnd(' OR (') + ')';
+      }
+      if (wrappedMeta.whereClause == '(' || wrappedMeta.whereClause == '()') {
+        wrappedMeta.whereClause = '';
       }
       if (wrappedMeta.whereClause.countMatches('(') > wrappedMeta.whereClause.countMatches(')')) {
         // a dark hack - possibly even evil. Definitely open to revisiting this horror-show to properly match
         // the closing parens in a better fashion!
         wrappedMeta.whereClause += ')';
       }
+
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       Rollup fullRecalc = buildFullRecalcRollup(
         wrappedMeta.metadata,
@@ -1764,6 +1768,7 @@ global without sharing virtual class Rollup {
       return thisRollup;
     } else {
       String queryWithOrderBy = queryString + getFullRecalcQueryString(matchingMeta);
+      System.assert(false, queryWithOrderBy);
       return new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds);
     }
   }
@@ -1948,7 +1953,7 @@ global without sharing virtual class Rollup {
         }
       }
     }
-    String whereClause = String.isNotBlank(potentialWhereClause) ? potentialWhereClause + ' AND ' : '';
+    String whereClause = String.isNotBlank(potentialWhereClause) ? '(' + potentialWhereClause + ') AND ' : '';
     wrapper.setQuery(whereClause + wrapper.getQuery());
     return wrapper;
   }
