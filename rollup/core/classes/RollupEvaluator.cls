@@ -244,7 +244,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private List<String> getSoqlWhereClauses(String whereClause, SObjectType calcItemSObjectType) {
       List<String> localSplitWheres = whereClause.split('( and | AND | OR | or )');
-      System.debug(localSplitWheres);
       this.reconstructImproperlySplitClauses(localSplitWheres);
       this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType);
 
@@ -290,7 +289,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             if (innerMatch.endsWith(')')) {
               Integer startingPoint = this.whereClause.indexOf(potentialNestedConditional);
               Integer endingPoint = this.whereClause.indexOf(innerMatch) + (innerMatch.length() - 1);
-              potentialNestedConditional = this.whereClause.substring(startingPoint, endingPoint);
+              potentialNestedConditional = this.whereClause.substring(startingPoint, endingPoint).remove('(').remove(')');
               break;
             }
           }
@@ -301,6 +300,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           Boolean isAnInnerOrCondition = false;
           List<String> innerWhereClauses = this.getSoqlWhereClauses(potentialNestedConditional, calcItemSObjectType);
           for (String innerWhere : innerWhereClauses) {
+            if (splitWheres.contains(innerWhere) == false) {
+              splitWheres.add(innerWhere);
+            }
             isAnInnerOrCondition = isAnInnerOrCondition || this.isOrConditional(potentialNestedConditional, innerWhere);
             conditions.addAll(this.createConditionsFromString(innerWhere, calcItemSObjectType));
           }

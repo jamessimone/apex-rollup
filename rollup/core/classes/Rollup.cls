@@ -1682,16 +1682,18 @@ global without sharing virtual class Rollup {
     // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
     Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
-    for (FullRecalculationMetadata fullRecalcMeta : fullRecalcMetas) {
+    for (Integer index = 0; index < fullRecalcMetas.size(); index++) {
+      FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         RollupMetadata newWrappedData = new RollupMetadata();
         newWrappedData.recordCount = 0;
-        newWrappedData.whereClause = '(';
         typeToWrappedMeta.put(fullRecalcMeta.calcItemType, newWrappedData);
       }
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       wrappedMeta.metadata.add(fullRecalcMeta.meta);
-      wrappedMeta.whereClause += fullRecalcMeta.wrapper.getQuery() + ' OR (';
+      String start = index == 0 ? '(' : ')';
+      String ending = index == fullRecalcMetas.size() -1 ? ')' : ' OR (';
+      wrappedMeta.whereClause += start + fullRecalcMeta.wrapper.getQuery() + ending;
       String countQuery = RollupQueryBuilder.Current.getQuery(
         fullRecalcMeta.calcItemType,
         new List<String>{ 'Count()' },
@@ -1715,18 +1717,6 @@ global without sharing virtual class Rollup {
     List<Rollup> fullRecalcRollups = new List<Rollup>();
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
-      if (wrappedMeta.whereClause.endsWith(' OR (')) {
-        wrappedMeta.whereClause = wrappedMeta.whereClause.removeEnd(' OR (') + ')';
-      }
-      if (wrappedMeta.whereClause == '(' || wrappedMeta.whereClause == '()') {
-        wrappedMeta.whereClause = '';
-      }
-      if (wrappedMeta.whereClause.countMatches('(') > wrappedMeta.whereClause.countMatches(')')) {
-        // a dark hack - possibly even evil. Definitely open to revisiting this horror-show to properly match
-        // the closing parens in a better fashion!
-        wrappedMeta.whereClause += ')';
-      }
-
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       Rollup fullRecalc = buildFullRecalcRollup(
         wrappedMeta.metadata,
@@ -1768,7 +1758,6 @@ global without sharing virtual class Rollup {
       return thisRollup;
     } else {
       String queryWithOrderBy = queryString + getFullRecalcQueryString(matchingMeta);
-      System.assert(false, queryWithOrderBy);
       return new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds);
     }
   }

@@ -111,8 +111,12 @@ public without sharing class RollupQueryBuilder {
 
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').trim();
         optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
+        optionalWhereClause = optionalWhereClause.replace('()', '');
         while (optionalWhereClause.startsWith('(') && optionalWhereClause.countMatches('(') >= optionalWhereClause.countMatches(')')) {
           optionalWhereClause = optionalWhereClause.removeStart('(');
+        }
+        while (optionalWhereClause.endsWith(')') && optionalWhereClause.countMatches(')') >= optionalWhereClause.countMatches('(')) {
+          optionalWhereClause = optionalWhereClause.removeEnd(')');
         }
       }
     } catch (Exception ex) {
