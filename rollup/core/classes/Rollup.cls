@@ -1690,27 +1690,17 @@ global without sharing virtual class Rollup {
         typeToWrappedMeta.put(fullRecalcMeta.calcItemType, newWrappedData);
       }
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
-      wrappedMeta.metadata.add(fullRecalcMeta.meta);
-      String start = index == 0 ? '(' : ')';
-      String ending = index == fullRecalcMetas.size() -1 ? ')' : ' OR (';
-      wrappedMeta.whereClause += start + fullRecalcMeta.wrapper.getQuery() + ending;
-      String countQuery = RollupQueryBuilder.Current.getQuery(
-        fullRecalcMeta.calcItemType,
-        new List<String>{ 'Count()' },
-        fullRecalcMeta.meta.LookupFieldOnLookupObject__c,
-        '!=',
-        fullRecalcMeta.wrapper.getQuery()
-      );
-      wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-      Integer localCount = getCountFromDb(countQuery, objIds, fullRecalcMeta.wrapper.recordIds);
+      transformFullRecalcMetadataToRollupMetadata(fullRecalcMetas, wrappedMeta, index);
       if (wrappedMeta.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
+        String countQuery = RollupQueryBuilder.Current.getQuery(
+          fullRecalcMeta.calcItemType,
+          new List<String>{ 'Count()' },
+          fullRecalcMeta.meta.LookupFieldOnLookupObject__c,
+          '!=',
+          fullRecalcMeta.wrapper.getQuery()
+        );
+        Integer localCount = getCountFromDb(countQuery, objIds, fullRecalcMeta.wrapper.recordIds);
         wrappedMeta.recordCount = localCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? localCount : wrappedMeta.recordCount + localCount;
-      }
-
-      RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
-      wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
-      if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
-        wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
       }
     }
 
@@ -1733,6 +1723,22 @@ global without sharing virtual class Rollup {
     }
 
     return fullRecalcRollups;
+  }
+
+  private static void transformFullRecalcMetadataToRollupMetadata(List<FullRecalculationMetadata> fullRecalcMetas, RollupMetadata wrappedMeta, Integer index) {
+    FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
+    wrappedMeta.metadata.add(fullRecalcMeta.meta);
+    wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
+    if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
+      wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
+    }
+    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
+    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
+    if (fullRecalcMeta.wrapper.getQuery().contains(':recordIds') && wrappedMeta.whereClause.contains(':recordIds') == false) {
+      String start = index > 0 ? ' OR (' : '';
+      String ending = index < fullRecalcMetas.size() - 1 ? '' : ')';
+      wrappedMeta.whereClause += start + fullRecalcMeta.wrapper.getQuery() + ending;
+    }
   }
 
   private static Rollup buildFullRecalcRollup(

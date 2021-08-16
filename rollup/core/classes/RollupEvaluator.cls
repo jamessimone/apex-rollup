@@ -126,7 +126,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      addFinestLog('SObjectChangedFieldEvaluator', matches, calcItem);
+      addFinestLog(SObjectChangedFieldEvaluator.class, matches, calcItem);
       return matches;
     }
   }
@@ -180,11 +180,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
-      Boolean matches = calcItem instanceof SObject;
+      Boolean matches = true;
       if (matches) {
         matches = this.innerMatches(calcItem);
       }
-      addFinestLog('WhereFieldEvaluator', matches, calcItem);
+      addFinestLog(WhereFieldEvaluator.class, matches, calcItem);
 
       return matches;
     }
@@ -711,14 +711,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           matches = false;
         }
       }
-      addFinestLog('RecursiveUpdateEvaluator', matches, item);
+      addFinestLog(RecursiveUpdateEvaluator.class, matches, item);
 
       return matches;
     }
   }
 
-  private static void addFinestLog(String className, Boolean matches, Object item) {
-    RollupLogger.Instance.log(className + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
+  private static void addFinestLog(Type clazz, Boolean matches, Object item) {
+    RollupLogger.Instance.log(clazz.getName() + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
   }
 
   @TestVisible

@@ -48,7 +48,9 @@ private class RollupQueryBuilderTests {
   }
 
   @IsTest
-  static void shouldHandleNestedWhereClauses() {
+  static void shouldHandleNestedPolymporphicWhereClauses() {
+    // we expect that What.Type will end up being stripped out of this
+    // where clause; this is only true for polymorphic where clauses
     String queryString = RollupQueryBuilder.Current.getQuery(
       Event.SObjectType,
       new List<String>{ 'Subject', 'WhatId' },
@@ -61,6 +63,6 @@ private class RollupQueryBuilderTests {
     System.assertEquals(false, queryString.contains('What.Owner.Id'));
     System.assertEquals(false, queryString.contains('()'), 'Should clean up removed nested conditionals: ' + queryString);
     System.assertEquals(false, queryString.contains('AND  AND '), queryString);
-    System.assertEquals(true, queryString.contains('What.Type = \'Account\''), queryString);
+    System.assertEquals(false, queryString.contains('What.Type'), 'What.Type should have been stripped out: ' + queryString);
   }
 }

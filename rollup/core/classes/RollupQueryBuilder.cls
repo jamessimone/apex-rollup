@@ -52,9 +52,17 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
+    // perform a variety of adjustments on the whereClause
+    optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
+    while (optionalWhereClause?.startsWith('(') == true && optionalWhereClause?.countMatches('(') > optionalWhereClause?.countMatches(')')) {
+      optionalWhereClause = optionalWhereClause.removeStart('(');
+    }
+    while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
+      optionalWhereClause = optionalWhereClause.removeEnd(')');
+    }
+
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
-    optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
     String baseQuery =
       'SELECT ' +
       String.join(uniqueQueryFieldNames, ',') +
@@ -112,12 +120,6 @@ public without sharing class RollupQueryBuilder {
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').trim();
         optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
         optionalWhereClause = optionalWhereClause.replace('()', '');
-        while (optionalWhereClause.startsWith('(') && optionalWhereClause.countMatches('(') >= optionalWhereClause.countMatches(')')) {
-          optionalWhereClause = optionalWhereClause.removeStart('(');
-        }
-        while (optionalWhereClause.endsWith(')') && optionalWhereClause.countMatches(')') >= optionalWhereClause.countMatches('(')) {
-          optionalWhereClause = optionalWhereClause.removeEnd(')');
-        }
       }
     } catch (Exception ex) {
       RollupLogger.Instance.log('exception occurred while building query: ', ex, LoggingLevel.WARN);
