@@ -1736,7 +1736,7 @@ global without sharing virtual class Rollup {
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
     if (fullRecalcMeta.wrapper.getQuery().contains(':recordIds') && wrappedMeta.whereClause.contains(':recordIds') == false) {
       String start = index > 0 ? ' OR (' : '';
-      String ending = index < fullRecalcMetas.size() - 1 ? '' : ')';
+      String ending = index < fullRecalcMetas.size() - 1 || fullRecalcMetas.size() - 1 == 0 ? '' : ')';
       wrappedMeta.whereClause += start + fullRecalcMeta.wrapper.getQuery() + ending;
     }
   }
@@ -1948,8 +1948,11 @@ global without sharing virtual class Rollup {
         }
       }
     }
-    String whereClause = String.isNotBlank(potentialWhereClause) ? '(' + potentialWhereClause + ') AND ' : '';
-    wrapper.setQuery(whereClause + wrapper.getQuery());
+    if (String.isNotBlank(potentialWhereClause)) {
+      // String whereClause = '' + potentialWhereClause + ' AND ';
+      String whereClause = '(' + potentialWhereClause + ') AND ';
+      wrapper.setQuery(whereClause + wrapper.getQuery());
+    }
     return wrapper;
   }
 

@@ -481,8 +481,8 @@ private class RollupEvaluatorTests {
 
   @IsTest
   static void shouldReturnCorrectlyForNestedConditionals() {
-    // Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
-    // Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
+    Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
+    Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
     Opportunity oppThree = new Opportunity(Amount = 3.01, StageName = 'Hello there');
     Opportunity oppFour = new Opportunity(StageName = 'Hi', Amount = 0);
     Opportunity oppFive = new Opportunity(Id = '0066g000000000000T', Amount = 3.99999);
@@ -496,8 +496,8 @@ private class RollupEvaluatorTests {
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    // System.assertNotEquals(true, eval.matches(oppOne), 'Name does not match!');
-    // System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
+    System.assertNotEquals(true, eval.matches(oppOne), 'Name does not match!');
+    System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
     System.assertEquals(true, eval.matches(oppThree), 'Amount matches and name roughly matches!');
     System.assertEquals(true, eval.matches(oppFour), 'Amount and name match');
     System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');

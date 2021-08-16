@@ -52,14 +52,9 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
-    // perform a variety of adjustments on the whereClause
+    System.debug(optionalWhereClause);
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
-    while (optionalWhereClause?.startsWith('(') == true && optionalWhereClause?.countMatches('(') > optionalWhereClause?.countMatches(')')) {
-      optionalWhereClause = optionalWhereClause.removeStart('(');
-    }
-    while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
-      optionalWhereClause = optionalWhereClause.removeEnd(')');
-    }
+    System.debug(optionalWhereClause);
 
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
@@ -79,6 +74,13 @@ public without sharing class RollupQueryBuilder {
         optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
+      while (optionalWhereClause?.startsWith('(') == true && optionalWhereClause?.countMatches('(') > optionalWhereClause?.countMatches(')')) {
+        optionalWhereClause = optionalWhereClause.removeStart('(');
+      }
+      while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
+        optionalWhereClause = optionalWhereClause.removeEnd(')');
+      }
+
       if (optionalWhereClause.length() > 0 && (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR'))) {
         baseQuery += optionalWhereClause;
       } else if (optionalWhereClause.length() > 0) {
