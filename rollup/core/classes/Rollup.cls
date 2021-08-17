@@ -1524,8 +1524,9 @@ global without sharing virtual class Rollup {
         String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(calcItems.getSObjectType());
       SObjectType calcItemSObjectType = meta.IsRollupStartedFromParent__c == false &&
         apexContext != TriggerOperation.AFTER_DELETE &&
-        nonMatchingGrandparent == false
-        ? calcItems.getSObjectType()
+        nonMatchingGrandparent == false &&
+        calcItems.isEmpty() == false
+        ? calcItems[0].getSObjectType()
         : getSObjectFromName(meta.CalcItem__c).getSObjectType();
       Boolean isIntermediateRollupForGrandparent =
         nonMatchingGrandparent &&

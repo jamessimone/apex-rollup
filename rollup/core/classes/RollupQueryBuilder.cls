@@ -52,9 +52,7 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
-    System.debug(optionalWhereClause);
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
-    System.debug(optionalWhereClause);
 
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run

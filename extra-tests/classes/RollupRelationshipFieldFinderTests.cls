@@ -222,11 +222,13 @@ private class RollupRelationshipFieldFinderTests {
   static void shouldProperlyReturnParentRecordsWithNestedConditionals() {
     Account parentOne = new Account(Name = 'match', AccountNumber = '1');
     Account parentTwo = new Account(Name = 'non-match');
-    insert new List<Account>{ parentOne, parentTwo };
+    Account parentThree = new Account(Name = 'another non-match');
+    insert new List<Account>{ parentOne, parentTwo, parentThree };
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentTwo.Id, Name = 'SecondParentedChild');
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
+    ContactPointAddress cpaThree = new ContactPointAddress(ParentId = parentThree.Id, Name = 'ThirdParentedChild');
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo, cpaThree };
     insert cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
@@ -237,7 +239,7 @@ private class RollupRelationshipFieldFinderTests {
           parentOne.Name +
           '\' OR Parent.AccountNumber = \'' +
           parentOne.AccountNumber +
-          '\') AND Parent.Name != \'' +
+          '\' OR Parent.Name != \'' + parentThree.Name + '\') AND Parent.Name != \'' +
           parentTwo.Name +
           '\''
       ),
@@ -249,8 +251,9 @@ private class RollupRelationshipFieldFinderTests {
 
     // we don't anticipate it being necessary to return fields used in the where clause; just that records are filtered correctly
     Account expectedAcc = new Account(Id = parentOne.Id, Name = parentOne.Name);
-    System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'First opp parent should not be exluded with nested conditional!');
-    System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second opp should have been excluded with clause after nested conditional!');
+    System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'First cpa parent should not be exluded with nested conditional!');
+    System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second cpa should have been excluded with clause after nested conditional!');
+    System.assertEquals(null, traversal.retrieveParent(cpaThree.Id), 'Third cpa should be excluded as it does not match anything');
   }
 
   @IsTest

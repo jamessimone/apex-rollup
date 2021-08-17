@@ -43,16 +43,6 @@ jest.mock(
   { virtual: true }
 );
 
-// jest.mock(
-//   '@salesforce/apex/Rollup.getBatchRollupStatus',
-//   () => {
-//     return {
-//       default: () => jest.fn()
-//     };
-//   },
-//   { virtual: true }
-// );
-
 function setElementValue(element, value) {
   element.value = value;
   element.dispatchEvent(new CustomEvent('commit'));
@@ -277,7 +267,6 @@ describe('Rollup force recalc tests', () => {
     getBatchRollupStatus.mockResolvedValueOnce('test').mockResolvedValueOnce('Completed');
     performFullRecalculation.mockResolvedValueOnce('someProcessId');
 
-    performBulkFullRecalc.mock
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });

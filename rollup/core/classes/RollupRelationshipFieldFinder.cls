@@ -279,14 +279,14 @@ public without sharing class RollupRelationshipFieldFinder {
     Map<String, SObjectField> fieldMap = baseSObjectType.getDescribe().fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
 
-    Set<Id> lookupIds = new Set<Id>();
+    Set<Id> objIds = new Set<Id>();
     Id firstId;
     for (SObject record : records) {
       Id lookupId = (Id) record.get(field);
       if (firstId == null && String.isNotBlank(lookupId)) {
         firstId = lookupId;
       }
-      this.trackTraversalIds(record.Id, lookupId, field, lookupIds);
+      this.trackTraversalIds(record.Id, lookupId, field, objIds);
     }
     // no matter how far up the chain we are, if we arrive at a point where there are no records, we're done
     if (firstId == null) {
@@ -314,7 +314,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
-    String query = 'SELECT ' + String.join(new List<String>(fieldNames), ',') + ' FROM ' + nextSObjectType.getDescribe().getName() + ' WHERE Id = :lookupIds';
+    String query = RollupQueryBuilder.Current.getQuery(nextSObjectType, new List<String>(fieldNames), 'Id', '=');
     query = this.appendAdditionalWhereClauses(query, currentRelationshipName, nextFieldMap);
 
     // recurse through till we get to the top/bottom of the chain
@@ -364,7 +364,8 @@ public without sharing class RollupRelationshipFieldFinder {
       ? this.relationshipNameToWhereClauses.get(relationshipName)
       : new List<String>();
 
-    for (Integer index = 0; index < whereClauses.size(); index++) {
+    String concatDelim = '';
+    for (Integer index = whereClauses.size() - 1; index >= 0; index--) {
       String whereClause = whereClauses[index];
       // this is safe because "populateRelationshipNameToWhereClauses" does the same check
       String fieldName = whereClause.split(' ')[0];
@@ -372,18 +373,22 @@ public without sharing class RollupRelationshipFieldFinder {
         continue;
       }
 
-      if (index == 0) {
+      if (index == whereClauses.size() - 1) {
         query += ' AND ';
       }
-      Boolean isOr = index > 0 && this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ' or ') >= 0;
-      if (isOr) {
-        query += ' OR ' + whereClause;
-      } else {
-        query += (index != 0 ? ' AND ' : '') + whereClause;
+      Boolean isOr = this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ' or ') >= 0;
+      Boolean isNestedConditionalStart = this.calcItemWhereClause.indexOfIgnoreCase('(' + relationshipName + '.' + whereClause) > 0 || this.calcItemWhereClause.indexOfIgnoreCase('(' + whereClause) > 0;
+      Boolean isNestedConditoonalEnd = this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ')') >= 0;
+      String whereClauseToUse = isNestedConditionalStart ? '(' + whereClause : whereClause;
+
+      if (isNestedConditoonalEnd) {
+        whereClauseToUse += ')';
       }
+      concatDelim = isOr ? ' OR ' : ' AND ';
+      query += whereClauseToUse + concatDelim;
     }
 
-    return query;
+    return query.removeEnd(concatDelim).trim();
   }
 
   private void trackTraversalIds(Id recordId, Id lookupId, Schema.SObjectField field, Set<Id> lookupIds) {
