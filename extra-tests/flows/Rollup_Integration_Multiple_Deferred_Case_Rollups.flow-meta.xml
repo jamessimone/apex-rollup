@@ -1,91 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
-        <name>Add_matching_description_to_Site</name>
-        <label>Add matching description to Site</label>
-        <locationX>176</locationX>
-        <locationY>1031</locationY>
-        <actionName>Rollup</actionName>
-        <actionType>apex</actionType>
-        <connector>
-            <targetReference>Commit_deferred_rollups</targetReference>
-        </connector>
-        <dataTypeMappings>
-            <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>Case</typeValue>
-        </dataTypeMappings>
-        <dataTypeMappings>
-            <typeName>T__recordsToRollup</typeName>
-            <typeValue>Case</typeValue>
-        </dataTypeMappings>
-        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
-        <inputParameters>
-            <name>rollupFieldOnCalcItem</name>
-            <value>
-                <stringValue>Description</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>lookupFieldOnCalcItem</name>
-            <value>
-                <stringValue>AccountId</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>oldRecordsToRollup</name>
-            <value>
-                <elementReference>PriorCases</elementReference>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>recordsToRollup</name>
-            <value>
-                <elementReference>Cases</elementReference>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupSObjectName</name>
-            <value>
-                <stringValue>Account</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupFieldOnOpObject</name>
-            <value>
-                <stringValue>Site</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>lookupFieldOnOpObject</name>
-            <value>
-                <stringValue>Id</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupOperation</name>
-            <value>
-                <stringValue>CONCAT</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupContext</name>
-            <value>
-                <stringValue>REFRESH</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>calcItemWhereClause</name>
-            <value>
-                <stringValue>Description = &apos;Name Match&apos; AND Subject = &apos;Refresh Test&apos;</stringValue>
-            </value>
-        </inputParameters>
-        <storeOutputAutomatically>true</storeOutputAutomatically>
-    </actionCalls>
-    <actionCalls>
         <name>Commit_deferred_rollups</name>
         <label>Commit deferred rollups</label>
         <locationX>176</locationX>
-        <locationY>1151</locationY>
+        <locationY>1031</locationY>
         <actionName>RollupFlowBulkSaver</actionName>
         <actionType>apex</actionType>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
@@ -98,7 +17,7 @@
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
-            <targetReference>Add_matching_description_to_Site</targetReference>
+            <targetReference>Commit_deferred_rollups</targetReference>
         </connector>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>

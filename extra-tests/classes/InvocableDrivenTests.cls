@@ -10,22 +10,6 @@ private class InvocableDrivenTests {
   }
 
   @IsTest
-  static void shouldWorkWithRefreshContext() {
-    Account acc = [SELECT Id FROM Account];
-
-    // Description and Subject both are referenced in the Flow
-    Case matchesFlow = new Case(Description = 'Name Match', AccountId = acc.Id, Subject = 'Refresh Test');
-    Case nonMatch = new Case(Description = 'Non match', AccountId = acc.Id, Subject = 'Calc Item Where Clause test');
-
-    Test.startTest();
-    insert new List<Case>{ matchesFlow, nonMatch };
-    Test.stopTest();
-
-    acc = [SELECT Site FROM Account];
-    System.assertEquals(matchesFlow.Description, acc.Site, 'Description should have been CONCAT to account Site');
-  }
-
-  @IsTest
   static void shouldRollupMultipleDMLStatementsWithinSingleTransaction() {
     Account acc = [SELECT Id FROM Account];
     Account reparentAccount = new Account(Name = 'Reparent');

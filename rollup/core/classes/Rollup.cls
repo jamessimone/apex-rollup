@@ -20,6 +20,7 @@ global without sharing virtual class Rollup {
   @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS = new List<Rollup>();
 
+  private static final Set<Rollup__mdt> ALREADY_PROCESSED_METADATA = new Set<Rollup__mdt>();
   private static final Map<String, List<SObject>> CACHED_QUERY_ITEMS = new Map<String, List<SObject>>();
   private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
   private static Boolean isCDC = false;
@@ -30,6 +31,7 @@ global without sharing virtual class Rollup {
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
   protected final Boolean isConductor;
+  @TestVisible
   protected final List<RollupAsyncProcessor> rollups = new List<RollupAsyncProcessor>();
 
   // non-final instance variables
@@ -578,8 +580,9 @@ global without sharing virtual class Rollup {
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
       }
     }
-    RollupLogger.Instance.save();
     flatten(CACHED_ROLLUPS);
+    ALREADY_PROCESSED_METADATA.clear();
+    RollupLogger.Instance.save();
 
     return flowOutputs;
   }
@@ -1520,6 +1523,10 @@ global without sharing virtual class Rollup {
     Map<String, DeleteReparentOperation> deleteKeyToReparentOp = new Map<String, DeleteReparentOperation>();
     for (Integer index = metas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = metas[index];
+      if (ALREADY_PROCESSED_METADATA.contains(meta)) {
+        metas.remove(index);
+        continue;
+      }
       Boolean nonMatchingGrandparent =
         String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(calcItems.getSObjectType());
       SObjectType calcItemSObjectType = meta.IsRollupStartedFromParent__c == false &&
@@ -1543,6 +1550,7 @@ global without sharing virtual class Rollup {
       // meta.IsRollupStartedFromParent__c, so that check can't come first
       if (meta.RollupOperation__c.contains('REFRESH')) {
         queryWrapper = getFullRecalcQueryWrapper(meta, calcItems, oldCalcItems);
+        ALREADY_PROCESSED_METADATA.add(meta);
       } else if (meta.IsRollupStartedFromParent__c) {
         queryWrapper = getParentWhereClause(
           calcItems,

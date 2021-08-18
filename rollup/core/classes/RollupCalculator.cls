@@ -2,6 +2,7 @@ public without sharing abstract class RollupCalculator {
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
   private Boolean isRecursiveRecalc = false;
+  private Boolean isFullRecalc = false;
 
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
@@ -119,8 +120,13 @@ public without sharing abstract class RollupCalculator {
     this.eval = eval;
   }
 
+  public void setFullRecalc(Boolean isFullRecalc) {
+    this.isFullRecalc = isFullRecalc;
+  }
+
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    this.shouldTriggerFullRecalc = true;
+    // if we're already in a full recalc, we've got all the items we need already
+    this.shouldTriggerFullRecalc = this.isFullRecalc == false;
     Set<Id> exclusionIds = new Set<Id>();
     for (SObject calcItem : calcItems) {
       if (calcItem.Id != null) {
@@ -266,14 +272,7 @@ public without sharing abstract class RollupCalculator {
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
     String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
-    String query = RollupQueryBuilder.Current.getQuery(
-      sObjectType,
-      new List<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias },
-      'Id',
-      '!=',
-      this.lookupKeyQuery
-    );
-    List<SObject> aggregate = Database.query(query);
+    List<SObject> aggregate = this.tryQuery(sObjectType, new Set<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias }, objIds);
     return aggregate.isEmpty() == false ? aggregate[0].get(alias) : null;
   }
 
@@ -291,16 +290,7 @@ public without sharing abstract class RollupCalculator {
         queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
       }
 
-      List<SObject> allOtherItems = Database.query(
-        RollupQueryBuilder.Current.getQuery(
-          sObjectType,
-          new List<String>(queryFields),
-          'Id',
-          '!=',
-          this.lookupKeyQuery
-        )
-      );
-
+      List<SObject> allOtherItems = this.tryQuery(sObjectType, queryFields, objIds);
       if (allOtherItems.isEmpty()) {
         // break out of recursion if there's nothing to calculate
         this.returnVal = null;
@@ -320,6 +310,29 @@ public without sharing abstract class RollupCalculator {
       }
     }
     return this.returnVal;
+  }
+
+  private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, Set<Id> objIds) {
+    String query = RollupQueryBuilder.Current.getQuery(
+      sObjectType,
+      new List<String>(queryFields),
+      'Id',
+      '!=',
+      this.lookupKeyQuery
+    );
+    List<SObject> results;
+    try {
+      results = Database.query(query);
+    } catch(System.QueryException qex) {
+      query = RollupQueryBuilder.Current.getQuery(
+        sObjectType,
+        new List<String>(queryFields),
+        'Id',
+        '!='
+      );
+      results = Database.query(query);
+    }
+    return results;
   }
 
   private class CountDistinctRollupCalculator extends RollupCalculator {

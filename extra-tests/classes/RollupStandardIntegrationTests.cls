@@ -13,10 +13,7 @@ private class RollupStandardIntegrationTests {
     acc.AccountNumber = 'test update';
     update acc;
 
-    ContactPointAddress cpa = new ContactPointAddress(
-      ParentId = acc.Id,
-      Name = acc.AccountNumber
-    );
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = acc.AccountNumber);
     insert cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
@@ -42,11 +39,7 @@ private class RollupStandardIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AccountNumber FROM Account];
-    System.assertEquals(
-      null,
-      updatedAcc.AccountNumber,
-      'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items'
-    );
+    System.assertEquals(null, updatedAcc.AccountNumber, 'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest
@@ -55,11 +48,7 @@ private class RollupStandardIntegrationTests {
     acc.AnnualRevenue = 1;
     update acc;
 
-    ContactPointAddress cpa = new ContactPointAddress(
-      ParentId = acc.Id,
-      Name = 'Testing CPA COUNT_DISTINCT update',
-      PreferenceRank = 0
-    );
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update', PreferenceRank = 0);
     insert cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
@@ -85,11 +74,7 @@ private class RollupStandardIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(
-      0,
-      updatedAcc.AnnualRevenue,
-      'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items'
-    );
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest
@@ -236,7 +221,7 @@ private class RollupStandardIntegrationTests {
 
     insert new Task(Subject = 'Task rollup', WhatId = acc.Id);
 
-     List<Rollup__mdt> metas = new List<Rollup__mdt>{
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',
         RollupFieldOnCalcItem__c = 'Name',
@@ -502,12 +487,7 @@ private class RollupStandardIntegrationTests {
     };
     insert cpas;
 
-    Rollup.defaultControl = new RollupControl__mdt(
-      BatchChunkSize__c = 1,
-      MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 2,
-      IsRollupLoggingEnabled__c = true
-    );
+    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 1, MaxRollupRetries__c = 1, MaxNumberOfQueries__c = 2, IsRollupLoggingEnabled__c = true);
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
 
@@ -644,9 +624,7 @@ private class RollupStandardIntegrationTests {
     // ensure another matching item exists outside of the passed in list
     insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two')
-    };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
     insert cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
@@ -716,6 +694,40 @@ private class RollupStandardIntegrationTests {
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @IsTest
+  static void shouldFilterNonMatchingRollupsOutOfBatch() {
+    Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
+    insert con;
+    RollupAsyncProcessor batchProcessor = new RollupAsyncProcessor(
+      new Set<Id>{ con.Id },
+      Contact.FirstName,
+      Contact.Id,
+      Contact.Id,
+      Contact.FirstName,
+      Campaign.SObjectType,
+      Contact.SObjectType,
+      Rollup.Op.CONCAT,
+      null,
+      Rollup.InvocationPoint.FROM_APEX,
+      RollupControl__mdt.getInstance('Org_Defaults'),
+      new Rollup__mdt(
+        CalcItem__c = 'Contact',
+        RollupFieldOnCalcItem__c = 'FirstName',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Campaign',
+        RollupFieldOnLookupObject__c = 'FirstName',
+        LookupFieldOnLookupObject__c = 'Id'
+      )
+    );
+    RollupAsyncProcessor conductor = new RollupAsyncProcessor(Rollup.InvocationPoint.FROM_APEX, new List<Contact>{ con }, new Map<Id, SObject>());
+    conductor.rollups.add(batchProcessor);
+    Test.startTest();
+    Database.executeBatch(conductor);
+    Test.stopTest();
+
+    System.assert(true, 'Should make it here');
   }
 
   /** Schedulable tests */
