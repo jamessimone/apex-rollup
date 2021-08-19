@@ -58,10 +58,6 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>RollupRelationshipFieldFinderTests</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>RollupSObjectUpdater</apexClass>
         <enabled>true</enabled>
     </classAccesses>
