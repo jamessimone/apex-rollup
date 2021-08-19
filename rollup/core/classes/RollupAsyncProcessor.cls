@@ -130,26 +130,22 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Integer numberToReturn = 0;
     if (otherRollup instanceof Rollup) {
       RollupAsyncProcessor that = (RollupAsyncProcessor) otherRollup;
-      if (that.op != null)  {
-        Boolean thisDelete = this.op.name().contains('DELETE');
-        Boolean thatDelete = that.op.name().contains('DELETE');
-        Boolean thisUpdate = this.op.name().contains('UPDATE');
-        Boolean thatUpdate = that.op.name().contains('UPDATE');
-        Boolean thisInsert = thisDelete == false && thisUpdate == false;
-        Boolean thatInsert = thatDelete == false && thatUpdate == false;
+      Boolean thisDelete = this.op.name().contains('DELETE');
+      Boolean thatDelete = that.op.name().contains('DELETE');
+      Boolean thisUpdate = this.op.name().contains('UPDATE');
+      Boolean thatUpdate = that.op.name().contains('UPDATE');
+      Boolean thisInsert = thisDelete == false && thisUpdate == false;
+      Boolean thatInsert = thatDelete == false && thatUpdate == false;
 
-        // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
-        if (thisInsert && (thatUpdate || thatDelete)) {
-          numberToReturn = -1;
-        } else if ((thisUpdate || thisDelete) && thatInsert) {
-          numberToReturn = 1;
-        } else if (thatUpdate && thisDelete) {
-          numberToReturn = 1;
-        } else if (thisUpdate && thatDelete) {
-          numberToReturn = -1;
-        }
-      } else {
+      // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
+      if (thisInsert && (thatUpdate || thatDelete)) {
+        numberToReturn = -1;
+      } else if ((thisUpdate || thisDelete) && thatInsert) {
         numberToReturn = 1;
+      } else if (thatUpdate && thisDelete) {
+        numberToReturn = 1;
+      } else if (thisUpdate && thatDelete) {
+        numberToReturn = -1;
       }
     }
 
@@ -206,6 +202,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public override String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
+    // they also can be added to this.syncRollups if we're already async
     this.ingestRollupControlData();
 
     if (this.isNoOp) {
@@ -695,7 +692,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS ||
-        (hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync;
+        ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync && this.getIsRunningFromFlow() == false);
 
       if (rollup.rollupControl.ShouldAbortRun__c || orgDefaults.ShouldAbortRun__c) {
         this.rollups.remove(index);

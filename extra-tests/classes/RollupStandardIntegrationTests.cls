@@ -420,7 +420,7 @@ private class RollupStandardIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(acc.AnnualRevenue, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
   }
 
   @IsTest
