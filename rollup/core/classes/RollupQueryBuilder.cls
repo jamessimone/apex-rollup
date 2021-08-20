@@ -122,7 +122,7 @@ public without sharing class RollupQueryBuilder {
         optionalWhereClause = optionalWhereClause.replace('()', '');
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('exception occurred while building query: ', ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('exception occurred while converting polymorphic where clause: ', ex, LoggingLevel.WARN);
     }
     return optionalWhereClause;
   }

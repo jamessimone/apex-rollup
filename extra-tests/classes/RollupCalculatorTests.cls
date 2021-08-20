@@ -867,7 +867,7 @@ private class RollupCalculatorTests {
   // Base recalculation tests
 
   @IsTest
-  static void shouldNotThrowExceptionWhenFilteringOnUnqueryableFields() {
+  static void shouldNotThrowExceptionWhenFilteringOnUnfilterableFields() {
     Account acc = [SELECT Id FROM Account];
     Case cas = new Case(AccountId = acc.Id, Description = 'Something', Subject = 'Hello');
     insert cas;

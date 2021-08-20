@@ -180,12 +180,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
-      Boolean matches = true;
-      if (matches) {
-        matches = this.innerMatches(calcItem);
-      }
+      Boolean matches = this.innerMatches(calcItem);
       addFinestLog(WhereFieldEvaluator.class, matches, calcItem);
-
       return matches;
     }
 
