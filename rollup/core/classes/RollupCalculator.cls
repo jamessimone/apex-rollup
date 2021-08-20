@@ -1056,19 +1056,16 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class FirstLastSorter {
+  private class FirstLastSorter extends RollupComparer {
     private final Boolean isFirst;
     private final String orderByField;
-
-    private final Integer moveTowardFrontOfList = 1;
-    private final Integer moveTowardBackOfList = -1;
 
     public FirstLastSorter(Rollup.Op op, String orderByField) {
       this.isFirst = op.name().contains(Rollup.Op.FIRST.name());
       this.orderByField = orderByField;
     }
 
-    public Integer compare(Object o1, Object o2) {
+    public override Integer compare(Object o1, Object o2) {
       Integer returnVal = 0;
       SObject objOne = (SObject) o1;
       SObject objTwo = (SObject) o2;
@@ -1106,35 +1103,6 @@ public without sharing abstract class RollupCalculator {
       }
 
       return this.isFirst ? returnVal : returnVal * -1;
-    }
-
-    public void sort(Object[] values) {
-      ComparableItem[] wrappedItems = new List<ComparableItem>();
-
-      for (Object value : values) {
-        wrappedItems.add(new ComparableItem(this, value));
-      }
-
-      wrappedItems.sort();
-
-      values.clear();
-      for (ComparableItem item : wrappedItems) {
-        values.add(item.value);
-      }
-    }
-  }
-
-  private class ComparableItem implements System.Comparable {
-    private final FirstLastSorter sorter;
-    private final Object value;
-
-    public ComparableItem(FirstLastSorter sorter, Object value) {
-      this.sorter = sorter;
-      this.value = value;
-    }
-
-    public Integer compareTo(Object o) {
-      return this.sorter.compare(this.value, ((ComparableItem) o).value);
     }
   }
 }

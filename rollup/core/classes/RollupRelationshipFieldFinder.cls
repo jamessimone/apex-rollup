@@ -314,8 +314,11 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
-    String query = RollupQueryBuilder.Current.getQuery(nextSObjectType, new List<String>(fieldNames), 'Id', '=');
-    query = this.appendAdditionalWhereClauses(query, currentRelationshipName, nextFieldMap);
+    String query = this.appendAdditionalWhereClauses(
+      RollupQueryBuilder.Current.getQuery(nextSObjectType, new List<String>(fieldNames), 'Id', '='),
+      currentRelationshipName,
+      nextFieldMap
+    );
 
     // recurse through till we get to the top/bottom of the chain
     if (this.isFirstRun) {
@@ -328,7 +331,10 @@ public without sharing class RollupRelationshipFieldFinder {
   private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
     if (String.isNotBlank(this.calcItemWhereClause)) {
       RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(this.calcItemWhereClause, sObjectType);
-      for (String whereClause : eval.getWhereClauses()) {
+      List<String> whereClauses = eval.getWhereClauses();
+      // we have to reconstitute the where clause conditions later, which requires them to be in the right order
+      new WhereClauseSorter(this.calcItemWhereClause).sort(whereClauses);
+      for (String whereClause : whereClauses) {
         // each where clause should begin with the field name:
         // "AccountId = 'someId'" - so by splitting on the space,
         // we would get the AccountId, for example
@@ -365,7 +371,7 @@ public without sharing class RollupRelationshipFieldFinder {
       : new List<String>();
 
     String concatDelim = '';
-    for (Integer index = whereClauses.size() - 1; index >= 0; index--) {
+    for (Integer index = 0; index < whereClauses.size(); index++) {
       String whereClause = whereClauses[index];
       // this is safe because "populateRelationshipNameToWhereClauses" does the same check
       String fieldName = whereClause.split(' ')[0];
@@ -373,11 +379,13 @@ public without sharing class RollupRelationshipFieldFinder {
         continue;
       }
 
-      if (index == whereClauses.size() - 1) {
+      if (index == 0) {
         query += ' AND ';
       }
       Boolean isOr = this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ' or ') >= 0;
-      Boolean isNestedConditionalStart = this.calcItemWhereClause.indexOfIgnoreCase('(' + relationshipName + '.' + whereClause) > 0 || this.calcItemWhereClause.indexOfIgnoreCase('(' + whereClause) > 0;
+      Boolean isNestedConditionalStart =
+        this.calcItemWhereClause.indexOfIgnoreCase('(' + relationshipName + '.' + whereClause) > 0 ||
+        this.calcItemWhereClause.indexOfIgnoreCase('(' + whereClause) > 0;
       Boolean isNestedConditoonalEnd = this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ')') >= 0;
       String whereClauseToUse = isNestedConditionalStart ? '(' + whereClause : whereClause;
 
@@ -451,6 +459,33 @@ public without sharing class RollupRelationshipFieldFinder {
           this.traversal.lookupIdToFinalRecords.put(descendantId, record);
         }
       }
+    }
+  }
+
+  private class WhereClauseSorter extends RollupComparer {
+    private final String fullWhereClause;
+    public WhereClauseSorter(String fullWhereClause) {
+      this.fullWhereClause = fullWhereClause;
+    }
+
+    public override Integer compare(Object o1, Object o2) {
+      Integer returnVal = 0;
+
+      if (o1 instanceof String && o2 instanceof String) {
+        String first = (String) o1;
+        String second = (String) o2;
+
+        Integer whereFirstIs = this.fullWhereClause.indexOf(first);
+        Integer whereSecondIs = this.fullWhereClause.indexOf(second);
+
+        if (whereFirstIs > whereSecondIs) {
+          returnVal = this.moveTowardFrontOfList;
+        } else if (whereSecondIs > whereFirstIs) {
+          returnVal = this.moveTowardBackOfList;
+        }
+      }
+
+      return returnVal;
     }
   }
 }
