@@ -106,7 +106,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
       // not all objects implement toString, unfortunately,
       // and we don't want this to throw. Blob.toString throws,
       // for example - let's just serializePretty and move on
-      appended = JSON.serializePretty(logObject);
+      appended = JSON.serializePretty(logObject, true);
     }
     return appended;
   }

@@ -39,16 +39,30 @@ private class RollupQueryBuilderTests {
 
   @IsTest
   static void shouldNotBlowUpIfPassedInFieldsAreNullOrBlank() {
-    String queryString = RollupQueryBuilder.Current.getQuery(
-      Opportunity.SObjectType,
-      new List<String>{ '', null, ' ', 'Id'},
-      'AccountId',
-      '='
-    );
+    String queryString = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ '', null, ' ', 'Id' }, 'AccountId', '=');
 
     Set<String> objIds = new Set<String>();
     Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('Id'));
+  }
+
+  @IsTest
+  static void shouldHandleNestedPolymporphicWhereClauses() {
+    // we expect that What.Type will end up being stripped out of this
+    // where clause; this is only true for polymorphic where clauses
+    String queryString = RollupQueryBuilder.Current.getQuery(
+      Event.SObjectType,
+      new List<String>{ 'Subject', 'WhatId' },
+      Event.WhatId.getDescribe().getName(),
+      '!=',
+      '((What.Type = \'Account\') AND What.Owner.Id = :recordIds)'
+    );
+
+    System.assertEquals(true, queryString.contains('TYPEOF'), 'Polymorphic where clause should have been transformed: ' + queryString);
+    System.assertEquals(false, queryString.contains('What.Owner.Id'));
+    System.assertEquals(false, queryString.contains('()'), 'Should clean up removed nested conditionals: ' + queryString);
+    System.assertEquals(false, queryString.contains('AND  AND '), queryString);
+    System.assertEquals(false, queryString.contains('What.Type'), 'What.Type should have been stripped out: ' + queryString);
   }
 }

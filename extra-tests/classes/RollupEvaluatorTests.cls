@@ -494,11 +494,11 @@ private class RollupEvaluatorTests {
       oppFive.Amount +
       ')))';
 
-    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
     System.assertNotEquals(true, eval.matches(oppOne), 'Name does not match!');
     System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
-    System.assertEquals(true, eval.matches(oppThree), 'Amount and name roughly match!');
+    System.assertEquals(true, eval.matches(oppThree), 'Amount matches and name roughly matches!');
     System.assertEquals(true, eval.matches(oppFour), 'Amount and name match');
     System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');
   }

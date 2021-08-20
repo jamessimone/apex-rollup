@@ -10,7 +10,27 @@ private class InvocableDrivenTests {
   }
 
   @IsTest
+  static void shouldWorkWithRefreshContext() {
+    Account acc = [SELECT Id FROM Account];
+
+    // Description and Subject both are referenced in the Flow
+    Case matchesFlow = new Case(Description = 'Name Match', AccountId = acc.Id, Subject = 'Refresh Test');
+    Case nonMatch = new Case(Description = 'Non match', AccountId = acc.Id, Subject = 'Calc Item Where Clause test');
+
+    Test.startTest();
+    insert new List<Case>{ matchesFlow, nonMatch };
+    Test.stopTest();
+
+    acc = [SELECT Site FROM Account];
+    System.assertEquals(matchesFlow.Description, acc.Site, 'Description should have been CONCAT to account Site');
+  }
+
+  @IsTest
   static void shouldRollupMultipleDMLStatementsWithinSingleTransaction() {
+    // TODO - there were some WILD boxcarring / order of operation issues when the "shouldWorkWithRefreshContext" test
+    // was introduced (and the associated REFRESH action in the Rollup_Integration_Multiple_Deferred_Case_Rollups flow)
+    // come back at some point to re-explore why adding the full recalc rollup into the mix made it impossible to use the
+    // isRunningAsync flag in RollupAsyncProcessor
     Account acc = [SELECT Id FROM Account];
     Account reparentAccount = new Account(Name = 'Reparent');
     insert reparentAccount;

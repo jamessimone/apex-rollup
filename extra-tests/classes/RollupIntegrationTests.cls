@@ -3,7 +3,6 @@ private class RollupIntegrationTests {
   // "Integration," in the sense that these include custom fields / objects that shouldn't be installed
   @TestSetup
   static void setup() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = new Account(Name = 'RollupIntegrationTests');
     insert acc;
 

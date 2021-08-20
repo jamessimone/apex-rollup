@@ -1,7 +1,6 @@
 @IsTest
 private class RollupCalculatorTests {
   // use these tests when DML is not required, or only *light* DML is necessary
-  // otherwise use RollupTests for the full picture
 
   @TestSetup
   static void setup() {
@@ -865,6 +864,30 @@ private class RollupCalculatorTests {
     System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should be nulled out if no matching maximum');
   }
 
+  // Base recalculation tests
+
+  @IsTest
+  static void shouldNotThrowExceptionWhenFilteringOnUnfilterableFields() {
+    Account acc = [SELECT Id FROM Account];
+    Case cas = new Case(AccountId = acc.Id, Description = 'Something', Subject = 'Hello');
+    insert cas;
+
+    Rollup__mdt meta = new Rollup__mdt(CalcItem__c = 'Case', LookupObject__c = 'Account', CalcItemWhereClause__c = 'Description != \'Something\'');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+        '',
+        Rollup.Op.CONCAT_DISTINCT,
+        Case.Description,
+        Account.Description,
+        meta,
+        acc.Id,
+        Account.Id
+      );
+    calc.setEvaluator(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, Case.SObjectType));
+    calc.performRollup(new List<Case>{ cas }, new Map<Id, Case>());
+
+    System.assertEquals(null, calc.getReturnValue());
+  }
+
   // Factory tests
 
   @IsTest
@@ -881,6 +904,7 @@ private class RollupCalculatorTests {
         RollupTestUtils.createId(QuickText.SObjectType),
         QuickText.Name
       );
+      calc.getReturnValue();
     } catch (Exception e) {
       ex = e;
     }

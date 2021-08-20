@@ -126,7 +126,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      addFinestLog('SObjectChangedFieldEvaluator', matches, calcItem);
+      addFinestLog(SObjectChangedFieldEvaluator.class, matches, calcItem);
       return matches;
     }
   }
@@ -136,7 +136,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final String whereClause;
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
-    private final List<String> splitWheres;
+    private final Set<String> splitWheres = new Set<String>();
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause;
@@ -148,7 +148,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       }
       this.whereClause = whereClause;
-      this.splitWheres = this.createConditions(calcItemSObjectType);
+      this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
       RollupLogger.Instance.log('Where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
     }
@@ -180,12 +180,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
-      Boolean matches = calcItem instanceof SObject;
-      if (matches) {
-        matches = this.innerMatches(calcItem);
-      }
-      addFinestLog('WhereFieldEvaluator', matches, calcItem);
-
+      Boolean matches = this.innerMatches(calcItem);
+      addFinestLog(WhereFieldEvaluator.class, matches, calcItem);
       return matches;
     }
 
@@ -223,7 +219,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return localRelationshipNames;
     }
 
-    private List<String> createConditions(SObjectType calcItemSObjectType) {
+    private void createConditions(SObjectType calcItemSObjectType) {
       List<String> localSplitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
       try {
         for (String splitWhereClause : localSplitWheres) {
@@ -239,28 +235,26 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         RollupLogger.Instance.save();
         throw new IllegalArgumentException('Where clause entered incorrectly: ' + whereClause);
       }
+    }
+
+    private List<String> getSoqlWhereClauses(String localWhereClause, SObjectType calcItemSObjectType) {
+      List<String> localSplitWheres = localWhereClause.split('( and | AND | OR | or )');
+      this.reconstructImproperlySplitClauses(localSplitWheres, localWhereClause);
+      this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType, localWhereClause);
       return localSplitWheres;
     }
 
-    private List<String> getSoqlWhereClauses(String whereClause, SObjectType calcItemSObjectType) {
-      List<String> localSplitWheres = whereClause.split('( and | AND | OR | or )');
-      this.reconstructImproperlySplitClauses(localSplitWheres);
-      this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType);
-
-      return localSplitWheres;
-    }
-
-    private void reconstructImproperlySplitClauses(List<String> splitWheres) {
+    private void reconstructImproperlySplitClauses(List<String> localSplitWheres, String whereClause) {
       // shocker - strings can have the criteria keywords IN them. reconstitute the strings that have been incorrectly split
-      for (Integer index = splitWheres.size() - 1; index >= 0; index--) {
-        String splitWhereClause = splitWheres[index];
+      for (Integer index = localSplitWheres.size() - 1; index >= 0; index--) {
+        String splitWhereClause = localSplitWheres[index];
         // we have to assume that the only place where this could happen is at the back of the string
         if (splitWhereClause.endsWith('\'') && splitWhereClause.indexOf('\'') == splitWhereClause.length() - 1 && index > 0) {
           try {
-            String nextString = splitWheres[index - 1];
+            String nextString = localSplitWheres[index - 1];
             String foundCriteria = whereClause.substring(whereClause.indexOf(nextString) + nextString.length(), whereClause.indexOf(splitWhereClause)).trim();
-            splitWheres[index - 1] = (nextString + ' ' + foundCriteria + ' ' + splitWhereClause);
-            splitWheres.remove(index);
+            localSplitWheres[index - 1] = (nextString + ' ' + foundCriteria + ' ' + splitWhereClause);
+            localSplitWheres.remove(index);
           } catch (Exception ex) {
             this.logError(ex);
           }
@@ -268,38 +262,41 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    private void recurseForNestedConditionals(List<String> splitWheres, SObjectType calcItemSObjectType) {
+    private void recurseForNestedConditionals(List<String> localSplitWheres, SObjectType calcItemSObjectType, String whereClause) {
       // this time we can't iterate through the list in reverse simply because there are
       // multiple instances where a parathenses is perfectly valid to have at the end of the where clause;
       // any IN-based condition, for example, would end with a paranthetical list of Ids/Strings
       // on the other hand, there's only one way there would be parantheses at the beginning of the statement -
       // if it was a nested conditional
-      for (Integer index = 0; index < splitWheres.size(); index++) {
-        String potentialNestedConditional = splitWheres[index].trim();
+      for (Integer index = 0; index < localSplitWheres.size(); index++) {
+        String potentialNestedConditional = localSplitWheres[index].trim();
         Integer originalMatchIndex = index;
         Integer openParansRange = potentialNestedConditional.indexOf('(');
         if (openParansRange == 0) {
           // remove the parans now
           potentialNestedConditional = potentialNestedConditional.substring(1, potentialNestedConditional.length() - 1);
           // iterate through the rest of the list, stopping at the end of the parantheses
-          for (Integer innerIndex = index + 1; innerIndex < splitWheres.size(); innerIndex++) {
-            String innerMatch = splitWheres[innerIndex].trim();
+          for (Integer innerIndex = index + 1; innerIndex < localSplitWheres.size(); innerIndex++) {
+            String innerMatch = localSplitWheres[innerIndex].trim();
             // remove the blanks afterwards!
-            splitWheres[innerIndex] = '';
+            localSplitWheres[innerIndex] = '';
             if (innerMatch.endsWith(')')) {
-              Integer startingPoint = this.whereClause.indexOf(potentialNestedConditional);
-              Integer endingPoint = this.whereClause.indexOf(innerMatch) + (innerMatch.length() - 1);
-              potentialNestedConditional = this.whereClause.substring(startingPoint, endingPoint);
+              Integer startingPoint = whereClause.indexOf(potentialNestedConditional);
+              Integer endingPoint = whereClause.indexOf(innerMatch) + (innerMatch.length() - 1);
+              potentialNestedConditional = whereClause.substring(startingPoint, endingPoint).removeStart('(').removeEnd(')');
               break;
+            } else {
+              this.splitWheres.add(innerMatch);
             }
           }
           // we'll remove these blanks in a second
-          splitWheres[originalMatchIndex] = '';
+          localSplitWheres[originalMatchIndex] = '';
 
           List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
           Boolean isAnInnerOrCondition = false;
           List<String> innerWhereClauses = this.getSoqlWhereClauses(potentialNestedConditional, calcItemSObjectType);
           for (String innerWhere : innerWhereClauses) {
+            this.splitWheres.add(innerWhere);
             isAnInnerOrCondition = isAnInnerOrCondition || this.isOrConditional(potentialNestedConditional, innerWhere);
             conditions.addAll(this.createConditionsFromString(innerWhere, calcItemSObjectType));
           }
@@ -311,10 +308,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      for (Integer reverseIndex = splitWheres.size() - 1; reverseIndex >= 0; reverseIndex--) {
-        String potentialWhereClause = splitWheres[reverseIndex];
+      for (Integer reverseIndex = localSplitWheres.size() - 1; reverseIndex >= 0; reverseIndex--) {
+        String potentialWhereClause = localSplitWheres[reverseIndex];
         if (String.isBlank(potentialWhereClause)) {
-          splitWheres.remove(reverseIndex);
+          localSplitWheres.remove(reverseIndex);
+        } else {
+          this.splitWheres.add(potentialWhereClause);
         }
       }
     }
@@ -333,13 +332,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return isOr;
     }
 
-    private List<WhereFieldCondition> createConditionsFromString(String whereClause, SObjectType calcItemSObjectType) {
+    private List<WhereFieldCondition> createConditionsFromString(String localClause, SObjectType calcItemSObjectType) {
       List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
-      whereClause = whereClause.trim();
-      String fieldName = whereClause.substring(0, whereClause.indexOf(' '));
-      whereClause = whereClause.replace(fieldName, '').trim();
-      String criteria = whereClause.substring(0, whereClause.indexOf(' ')).trim();
-      String value = this.getValue(whereClause.substringAfter(criteria));
+      localClause = localClause.trim();
+      String fieldName = localClause.substring(0, localClause.indexOf(' '));
+      localClause = localClause.replace(fieldName, '').trim();
+      String criteria = localClause.substring(0, localClause.indexOf(' ')).trim();
+      String value = this.getValue(localClause.substringAfter(criteria));
 
       if (value.startsWith('(') && value.endsWith(')')) {
         List<String> values = value.substring(1, value.length() - 1).split(',');
@@ -708,14 +707,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           matches = false;
         }
       }
-      addFinestLog('RecursiveUpdateEvaluator', matches, item);
+      addFinestLog(RecursiveUpdateEvaluator.class, matches, item);
 
       return matches;
     }
   }
 
-  private static void addFinestLog(String className, Boolean matches, Object item) {
-    RollupLogger.Instance.log(className + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
+  private static void addFinestLog(Type clazz, Boolean matches, Object item) {
+    RollupLogger.Instance.log(clazz.getName() + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
   }
 
   @TestVisible

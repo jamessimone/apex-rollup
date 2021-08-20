@@ -159,22 +159,29 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
+    this.winnowRollups(this.rollups);
     this.getFieldNamesForRollups(this.rollups);
     String lookupFieldForLookupObject;
     SObjectType sObjectType;
+    String query;
     Set<String> objIds = new Set<String>();
-    for (RollupAsyncProcessor rollup : this.rollups) {
-      sObjectType = rollup.lookupObj;
-      lookupFieldForLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
-      objIds.addAll(this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(sObjectType)).keySet());
+    if (this.rollups.isEmpty()) {
+      RollupLogger.Instance.log('No matching rollups remaining, exiting early', LoggingLevel.WARN);
+      query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
+    } else {
+      for (RollupAsyncProcessor rollup : this.rollups) {
+        sObjectType = rollup.lookupObj;
+        lookupFieldForLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
+        objIds.addAll(this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(sObjectType)).keySet());
+      }
+      query = RollupQueryBuilder.Current.getQuery(
+        sObjectType,
+        new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)),
+        lookupFieldForLookupObject,
+        '='
+      );
+      RollupLogger.Instance.log('starting batch with query: ', query, LoggingLevel.DEBUG);
     }
-    String query = RollupQueryBuilder.Current.getQuery(
-      sObjectType,
-      new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)),
-      lookupFieldForLookupObject,
-      '='
-    );
-    RollupLogger.Instance.log('starting batch with query: ', query, LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
     return Database.getQueryLocator(query);
   }
@@ -195,10 +202,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public override String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
+    // they also can be added to this.syncRollups if we're already async
     this.ingestRollupControlData();
 
     if (this.isNoOp) {
-      this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty();
+      this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty() && this.calcItems.isEmpty();
     }
 
     String rollupProcessId = 'No process Id';
@@ -606,6 +614,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
+  private void winnowRollups(List<RollupAsyncProcessor> potentialRollups) {
+    for (Integer index = potentialRollups.size() - 1; index >= 0; index --) {
+      RollupAsyncProcessor processor = potentialRollups[index];
+      Map<String, SObjectField> fieldMap = processor.lookupObj.getDescribe().fields.getMap();
+      if (fieldMap.containsKey(processor.opFieldOnLookupObject.getDescribe().getName()) == false) {
+        potentialRollups.remove(index);
+      }
+    }
+  }
+
   private Map<String, Rollup.CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
     Map<String, Rollup.CalcItemBag> lookupFieldToCalcItems = new Map<String, Rollup.CalcItemBag>();
     if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
@@ -674,7 +692,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS ||
-        (hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync;
+        ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync && this.getIsRunningFromFlow() == false);
 
       if (rollup.rollupControl.ShouldAbortRun__c || orgDefaults.ShouldAbortRun__c) {
         this.rollups.remove(index);
@@ -707,7 +725,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (apexOperations.contains(TriggerOperation.AFTER_INSERT) && roll.op.name().contains('UPDATE')) {
       return true;
     } else if (
-      (apexOperations.contains(TriggerOperation.AFTER_INSERT) || apexOperations.contains(TriggerOperation.AFTER_UPDATE)) && roll.op.name().contains('DELETE')
+      (apexOperations.contains(TriggerOperation.AFTER_INSERT) || apexOperations.contains(TriggerOperation.AFTER_UPDATE)) &&
+      roll.op?.name().contains('DELETE') == true
     ) {
       return true;
     }
@@ -946,6 +965,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       lookupRecordKey,
       lookupKeyField
     );
+    rollupCalc.setFullRecalc(roll.isFullRecalc);
     rollupCalc.setEvaluator(roll.eval);
     rollupCalc.setCDCUpdate(this.isCDCUpdate);
     rollupCalc.performRollup(calcItems, this.oldCalcItems);

@@ -52,9 +52,10 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
+    optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
+
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
-    optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
     String baseQuery =
       'SELECT ' +
       String.join(uniqueQueryFieldNames, ',') +
@@ -71,6 +72,13 @@ public without sharing class RollupQueryBuilder {
         optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
         optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
       }
+      while (optionalWhereClause?.startsWith('(') == true && optionalWhereClause?.countMatches('(') > optionalWhereClause?.countMatches(')')) {
+        optionalWhereClause = optionalWhereClause.removeStart('(');
+      }
+      while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
+        optionalWhereClause = optionalWhereClause.removeEnd(')');
+      }
+
       if (optionalWhereClause.length() > 0 && (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR'))) {
         baseQuery += optionalWhereClause;
       } else if (optionalWhereClause.length() > 0) {
@@ -91,13 +99,13 @@ public without sharing class RollupQueryBuilder {
   private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
     // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
-    if (String.isBlank(optionalWhereClause) || this.hasPolymorphicOwnerClause(optionalWhereClause) == false) {
+    if (this.hasPolymorphicOwnerClause(optionalWhereClause) == false || uniqueQueryFieldNames.contains('Count()')) {
       return optionalWhereClause;
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType);
     try {
       for (String whereClause : whereEval.getWhereClauses()) {
-        if (this.hasPolymorphicOwnerClause(whereClause) == false || uniqueQueryFieldNames.contains('Count()')) {
+        if (this.hasPolymorphicOwnerClause(whereClause) == false) {
           continue;
         }
         String fieldName = whereClause.split(' ')[0];
@@ -111,14 +119,15 @@ public without sharing class RollupQueryBuilder {
 
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').trim();
         optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
+        optionalWhereClause = optionalWhereClause.replace('()', '');
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('exception occurred while building query: ', ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('exception occurred while converting polymorphic where clause: ', ex, LoggingLevel.WARN);
     }
     return optionalWhereClause;
   }
 
   private Boolean hasPolymorphicOwnerClause(String whereClause) {
-    return whereClause.contains('.Owner');
+    return whereClause?.contains('.Owner') == true;
   }
 }
