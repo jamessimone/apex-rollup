@@ -24,13 +24,6 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 Don't miss the [links to install the Rollup Logging plugins!](#rollup-logging)
 
-### Deploy just the source code
-
-<a href="https://githubsfdeploy.herokuapp.com?owner=jamessimone&repo=apex-rollup&ref=main">
-  <img alt="Deploy to Salesforce"
-       src="./media/deploy-unpackaged-metadata.png">
-</a>
-
 ## Setup
 
 As of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), `Rollup` now ships with a custom hierarchy setting, `Rollup Settings`, which you will have to create an Org Wide Default entry for by going to:
