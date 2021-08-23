@@ -1,7 +1,4 @@
-public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements Database.Stateful {
-  private final String queryString;
-  private final List<Rollup__mdt> rollupInfo;
-  private final Set<Id> recordIds;
+public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
   private final Map<String, Rollup.CalcItemBag> statefulLookupToCalcItems;
 
   public RollupFullBatchRecalculator(
@@ -11,17 +8,11 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
     SObjectType calcItemType,
     Set<Id> recordIds
   ) {
-    super(invokePoint);
-    this.isNoOp = false;
-    this.calcItemType = calcItemType;
-    this.queryString = queryString;
-    this.rollupInfo = rollupInfo;
-    this.recordIds = recordIds;
+    super(queryString, invokePoint, rollupInfo, calcItemType, recordIds);
     this.statefulLookupToCalcItems = new Map<String, Rollup.CalcItemBag>();
   }
 
   public override Database.QueryLocator start(Database.BatchableContext bc) {
-    Set<Id> objIds = new Set<Id>(); // necessary; there's a bind variable in the query string
     // note - if the optional where clause was appended to the passed in query string, this.recordIds is also
     // used as a bind variable
     return Database.getQueryLocator(this.queryString);
@@ -36,22 +27,13 @@ public class RollupFullBatchRecalculator extends RollupAsyncProcessor implements
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.processDelegatedFullRecalcRollup(this.rollupInfo, calcItems, new Map<Id, SObject>(calcItems));
+    this.processDelegatedFullRecalcRollup(this.rollupInfo, calcItems, new Map<Id, SObject>());
     RollupLogger.Instance.save();
   }
 
   public override void finish(Database.BatchableContext bc) {
     RollupLogger.Instance.log(this.getTypeName() + ' finished', LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
-  }
-
-  protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    props = super.customizeToStringEntries(props);
-
-    this.addToMap(props, 'Rollup Metadata', this.rollupInfo);
-    this.addToMap(props, 'Query String', this.queryString);
-
-    return props;
   }
 
   protected override String getTypeName() {

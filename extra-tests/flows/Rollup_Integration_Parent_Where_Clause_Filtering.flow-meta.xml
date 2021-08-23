@@ -9,11 +9,11 @@
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <dataTypeMappings>
-            <typeName>T__oldRecordsToRollup</typeName>
+            <typeName>T__recordsToRollup</typeName>
             <typeValue>Contact</typeValue>
         </dataTypeMappings>
         <dataTypeMappings>
-            <typeName>T__recordsToRollup</typeName>
+            <typeName>T__oldRecordsToRollup</typeName>
             <typeValue>Contact</typeValue>
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
@@ -33,6 +33,12 @@
             <name>oldRecordsToRollup</name>
             <value>
                 <elementReference>OldContacts</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>orderByFirstLast</name>
+            <value>
+                <stringValue>LastName</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -74,7 +80,7 @@
         <inputParameters>
             <name>calcItemWhereClause</name>
             <value>
-                <stringValue>Account.Name != &apos;Test Parent Fields&apos;</stringValue>
+                <stringValue>Account.Name = &apos;Test Parent Fields&apos;</stringValue>
             </value>
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
@@ -135,7 +141,7 @@
         <recordTriggerType>CreateAndUpdate</recordTriggerType>
         <triggerType>RecordAfterSave</triggerType>
     </start>
-    <status>Draft</status>
+    <status>Active</status>
     <variables>
         <name>Contacts</name>
         <dataType>SObject</dataType>
