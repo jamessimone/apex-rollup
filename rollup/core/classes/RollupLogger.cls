@@ -5,8 +5,11 @@ public virtual class RollupLogger extends Rollup implements ILogger {
   private static RollupLoggerPluginParameter__mdt loggingLevelMock;
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
 
+  private final LoggingLevel currentLoggingLevel;
+
   protected RollupLogger() {
     super(InvocationPoint.FROM_STATIC_LOGGER);
+    this.currentLoggingLevel = this.getLogLevel();
   }
 
   private static RollupLogger SELF {
@@ -40,7 +43,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
   }
 
   public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
-    if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.getLogLevel().ordinal()) {
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       String appended = this.getLogStringFromObject(logObject);
       List<String> messages = new List<String>{ logString };
       if (String.isNotBlank(appended)) {
