@@ -768,8 +768,8 @@ private class RollupIntegrationTests {
     acc.AnnualRevenue = 1;
     update acc;
 
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update', PreferenceRank = 0);
-    insert cpa;
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update');
+    insert new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>();
@@ -793,7 +793,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_INSERT should not overcount items');
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_INSERT should not overcount items');
   }
 
   @IsTest

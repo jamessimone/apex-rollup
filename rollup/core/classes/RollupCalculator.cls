@@ -313,23 +313,12 @@ public without sharing abstract class RollupCalculator {
   }
 
   private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, Set<Id> objIds) {
-    String query = RollupQueryBuilder.Current.getQuery(
-      sObjectType,
-      new List<String>(queryFields),
-      'Id',
-      '!=',
-      this.lookupKeyQuery
-    );
+    String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
     List<SObject> results;
     try {
       results = Database.query(query);
-    } catch(System.QueryException qex) {
-      query = RollupQueryBuilder.Current.getQuery(
-        sObjectType,
-        new List<String>(queryFields),
-        'Id',
-        '!='
-      );
+    } catch (System.QueryException qex) {
+      query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=');
       results = Database.query(query);
     }
     return results;
@@ -395,11 +384,12 @@ public without sharing abstract class RollupCalculator {
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       Boolean isGroupable = isArchivable == false && this.opFieldOnCalcItem.getDescribe().isGroupable();
       List<String> queryFields = new List<String>{ String.valueOf(this.opFieldOnCalcItem) };
-      if (isGroupable) {
-        queryFields.add('COUNT(Id)');
-      }
       String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
       Boolean isIdCount = calcItemOpField == 'Id';
+      if (isGroupable) {
+        queryFields.add(isIdCount ? 'COUNT()' : 'COUNT(Id)');
+      }
+
       String query =
         RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
         (isGroupable && isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
@@ -407,15 +397,13 @@ public without sharing abstract class RollupCalculator {
         query = query.replace('Id,', '');
       }
 
-      List<SObject> results = Database.query(query);
       if (isIdCount) {
-        Integer result = (Integer) results[0].get('expr0');
-        if (result != 0) {
-          for (Integer index = 0; index < result; index++) {
-            this.distinctValues.add(index);
-          }
+        Integer result = Database.countQuery(query);
+        for (Integer index = 0; index < result; index++) {
+          this.distinctValues.add(index);
         }
       } else {
+        List<SObject> results = Database.query(query);
         for (SObject res : results) {
           // have to use the String representation of the this.opFieldOnCalcItem to avoid:
           // System.SObjectException: SObject.FieldName does not belong to SObject type AggregateResult
