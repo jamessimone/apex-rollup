@@ -348,7 +348,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
       this.distinctValues = new Set<Object>();
-      if (this.returnVal != RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject)) {
+      if (this.returnVal != RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) && this.opFieldOnCalcItem.getDescribe().getName() != 'Id') {
         this.distinctValues.add(this.returnVal);
       }
     }
@@ -398,14 +398,29 @@ public without sharing abstract class RollupCalculator {
       if (isGroupable) {
         queryFields.add('COUNT(Id)');
       }
+      String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
+      Boolean isIdCount = calcItemOpField == 'Id';
       String query =
         RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
-        (isGroupable ? (' GROUP BY ' + this.opFieldOnCalcItem) : '');
+        (isGroupable && isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
+      if (isIdCount) {
+        query = query.replace('Id,', '');
+      }
+
       List<SObject> results = Database.query(query);
-      for (SObject res : results) {
-        // have to use the String representation of the this.opFieldOnCalcItem to avoid:
-        // System.SObjectException: SObject.FieldName does not belong to SObject type AggregateResult
-        this.distinctValues.add(res.get(this.opFieldOnCalcItem.getDescribe().getName()));
+      if (isIdCount) {
+        Integer result = (Integer) results[0].get('expr0');
+        if (result != 0) {
+          for (Integer index = 0; index < result; index++) {
+            this.distinctValues.add(index);
+          }
+        }
+      } else {
+        for (SObject res : results) {
+          // have to use the String representation of the this.opFieldOnCalcItem to avoid:
+          // System.SObjectException: SObject.FieldName does not belong to SObject type AggregateResult
+          this.distinctValues.add(res.get(calcItemOpField));
+        }
       }
       return this.distinctValues.size();
     }
