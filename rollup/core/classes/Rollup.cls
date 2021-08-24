@@ -243,7 +243,7 @@ global without sharing virtual class Rollup {
   public override String toString() {
     Map<String, String> props = new Map<String, String>{
       'Type' => this.getTypeName(),
-      'Invocation Point' => this.invokePoint.name(),
+      'Invocation Point' => this.invokePoint?.name(),
       'Is Full Recalc' => String.valueOf(this.isFullRecalc),
       'Is No Op' => String.valueOf(this.isNoOp),
       'Is Conductor' => String.valueOf(this.isConductor),

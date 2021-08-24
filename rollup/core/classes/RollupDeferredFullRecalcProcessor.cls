@@ -22,6 +22,7 @@ public class RollupDeferredFullRecalcProcessor extends RollupAsyncProcessor.Full
   }
 
   private RollupAsyncProcessor getProcessor() {
+    this.isProcessed = true;
     List<SObject> localCalcItems = Database.query(this.queryString);
     RollupAsyncProcessor processor = (RollupAsyncProcessor) this.getAsyncRollup(
       this.rollupInfo,

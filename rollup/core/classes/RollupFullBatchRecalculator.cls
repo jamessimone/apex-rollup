@@ -13,6 +13,7 @@ public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.Fu
   }
 
   public override Database.QueryLocator start(Database.BatchableContext bc) {
+    this.isProcessed = true;
     // note - if the optional where clause was appended to the passed in query string, this.recordIds is also
     // used as a bind variable
     return Database.getQueryLocator(this.queryString);
@@ -38,6 +39,10 @@ public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.Fu
 
   protected override String getTypeName() {
     return RollupFullBatchRecalculator.class.getName();
+  }
+
+  protected override String startAsyncWork() {
+    return this.startBatchProcessor();
   }
 
   protected override void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
