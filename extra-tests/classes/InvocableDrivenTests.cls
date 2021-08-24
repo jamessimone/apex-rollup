@@ -25,7 +25,7 @@ private class InvocableDrivenTests {
     System.assertEquals(matchesFlow.Description, acc.Site, 'Description should have been CONCAT to account Site');
   }
 
-  @isTest
+  @IsTest
   static void shouldPerformDeleteOnRefreshOperationWhereOldValueMatches() {
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
     Account acc = [SELECT Id FROM Account];
@@ -43,7 +43,7 @@ private class InvocableDrivenTests {
     System.assertEquals(null, acc.Site, 'Description should have been removed once case no longer matched');
   }
 
-  @isTest
+  @IsTest
   static void shouldWorkWhenBatchedFromRefresh() {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 1000);
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
