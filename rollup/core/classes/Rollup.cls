@@ -1708,7 +1708,7 @@ global without sharing virtual class Rollup {
     Map<Id, SObject> oldCalcItems,
     Map<String, DeleteReparentOperation> deleteKeyToOps
   ) {
-    if (oldCalcItems.isEmpty()) {
+    if (oldCalcItems?.isEmpty() != false || calcItems?.isEmpty() != false) {
       return;
     }
     List<SObject> typedCalcItems = calcItems.clone();
@@ -1720,11 +1720,10 @@ global without sharing virtual class Rollup {
 
     if (deleteKeyToOps.containsKey(deleteKey)) {
       deleteKeyToOps.get(deleteKey).rollupMetas.add(clonedMeta);
-    } else {
+    } else if (calcItems[0].getSObjectType().getDescribe().fields.getMap().containsKey(meta.LookupFieldOnCalcItem__c)) {
       for (SObject calcItem : calcItems) {
-        if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c) && oldCalcItems.containsKey(calcItem.Id)) {
+        if (oldCalcItems.containsKey(calcItem.Id)) {
           SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
-          String key = potentialDeleteOpName + oldCalcItem.Id + JSON.serialize(meta);
           if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c)) {
             typedCalcItems.add(oldCalcItem);
           }
