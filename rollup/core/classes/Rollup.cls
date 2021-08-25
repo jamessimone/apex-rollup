@@ -1786,14 +1786,7 @@ global without sharing virtual class Rollup {
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
-      Rollup fullRecalc = buildFullRecalcRollup(
-        wrappedMeta.metadata,
-        wrappedMeta.recordCount,
-        queryString,
-        wrappedMeta.recordIds,
-        calcType,
-        invokePoint
-      );
+      Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, invokePoint);
       fullRecalc.queryCount = wrappedMeta.recordCount;
       RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
       fullRecalcRollups.add(fullRecalc);

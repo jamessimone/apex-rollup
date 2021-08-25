@@ -514,7 +514,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.processDeferredRollups();
   }
 
-  protected virtual List<RollupAsyncProcessor> transform() {
+  protected virtual List<RollupAsyncProcessor> transformFullRecalcRollups() {
     return new List<RollupAsyncProcessor>();
   }
 
@@ -528,13 +528,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void transformRollups(List<RollupAsyncProcessor> rollupsToProcess) {
     for (Integer index = rollupsToProcess.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = rollupsToProcess[index];
-      List<RollupAsyncProcessor> additionalRollups = rollup.transform();
+      List<RollupAsyncProcessor> additionalRollups = rollup.transformFullRecalcRollups();
       if (additionalRollups.isEmpty() == false) {
         rollupsToProcess.remove(index);
         rollupsToProcess.addAll(additionalRollups);
       }
     }
-    rollupsToProcess.addAll(this.transform());
+    rollupsToProcess.addAll(this.transformFullRecalcRollups());
   }
 
   private void handleMultipleDMLRollupsEnqueuedInTheSameTransaction(List<Rollup> rolls) {

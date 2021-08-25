@@ -13,7 +13,7 @@ public class RollupDeferredFullRecalcProcessor extends RollupAsyncProcessor.Full
     return this.getProcessor().runCalc();
   }
 
-  protected override List<RollupAsyncProcessor> transform() {
+  protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
     return this.getProcessor().rollups;
   }
 
