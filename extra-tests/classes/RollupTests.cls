@@ -3112,10 +3112,13 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated COUNT DISTINCT AFTER_UPDATE reparenting STRING: ' + mock.Records);
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
-    Account updatedOldAcc = (Account) mock.Records[1];
-    System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
+    for (Account updatedAcc : (List<Account>) mock.Records) {
+      if (updatedAcc.Id == acc.Id) {
+        System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
+      } else if (updatedAcc.Id == oldAcc.Id) {
+        System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
+      }
+    }
   }
 
   @IsTest

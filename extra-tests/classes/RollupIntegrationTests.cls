@@ -762,10 +762,10 @@ private class RollupIntegrationTests {
     System.assertEquals(null, updatedAcc.AccountNumber, 'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
-  @isTest
+  @IsTest
   static void shouldNotIncludePriorValueForCountDistinctId() {
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
-    acc.AnnualRevenue = 1;
+    acc.AnnualRevenue = 5;
     update acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update');
@@ -779,6 +779,74 @@ private class RollupIntegrationTests {
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_INSERT should not overcount items');
+  }
+
+  @IsTest
+  static void shouldNotDoubleCountOldParentValueOnUpdate() {
+    Account acc = [SELECT Id, Name FROM Account];
+    acc.AnnualRevenue = 1;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'something else');
+    insert cpa;
+
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = acc.Name) };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
+  }
+
+  @IsTest
+  static void shouldClearParentValueIfNothingMatchesCountDistinct() {
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update');
+    insert new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
+
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>();
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',

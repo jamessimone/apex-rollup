@@ -326,6 +326,7 @@ public without sharing abstract class RollupCalculator {
 
   private class CountDistinctRollupCalculator extends RollupCalculator {
     private final Set<Object> distinctValues;
+    private final Boolean isIdCount;
     public CountDistinctRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -337,7 +338,9 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
       this.distinctValues = new Set<Object>();
-      if (this.returnVal != RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) && this.opFieldOnCalcItem.getDescribe().getName() != 'Id') {
+      this.isIdCount = this.opFieldOnCalcItem.getDescribe().getName() == 'Id';
+      Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject);
+      if (defaultVal != 0 && this.returnVal != defaultVal && this.isIdCount == false) {
         this.distinctValues.add(this.returnVal);
       }
     }
@@ -371,6 +374,7 @@ public without sharing abstract class RollupCalculator {
       Object priorCalcVal = oldCalcItem.get(this.opFieldOnCalcItem);
 
       if (currentVal != priorCalcVal || this.isReparented(calcItem, oldCalcItem)) {
+        this.distinctValues.clear();
         this.distinctValues.add(currentVal);
         this.shouldShortCircuit = true;
         this.calculateNewAggregateValue(this.op, oldCalcItems.keySet(), calcItem.getSObjectType());
@@ -385,19 +389,18 @@ public without sharing abstract class RollupCalculator {
       Boolean isGroupable = isArchivable == false && this.opFieldOnCalcItem.getDescribe().isGroupable();
       List<String> queryFields = new List<String>{ String.valueOf(this.opFieldOnCalcItem) };
       String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
-      Boolean isIdCount = calcItemOpField == 'Id';
       if (isGroupable) {
-        queryFields.add(isIdCount ? 'COUNT()' : 'COUNT(Id)');
+        queryFields.add(this.isIdCount ? 'COUNT()' : 'COUNT(Id)');
       }
 
       String query =
         RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
-        (isGroupable && isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
-      if (isIdCount) {
+        (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
+      if (this.isIdCount) {
         query = query.replace('Id,', '');
       }
 
-      if (isIdCount) {
+      if (this.isIdCount) {
         Integer result = Database.countQuery(query);
         for (Integer index = 0; index < result; index++) {
           this.distinctValues.add(index);
