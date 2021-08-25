@@ -541,8 +541,8 @@ global without sharing virtual class Rollup {
         // this will throw back up to the Flow engine if the inputs don't pass validation
         enforceValidationRules(flowInput);
         enforceFlowSpecificRules(flowInput, sObjectType);
-
         winnowOldFlowRecords(flowInput);
+
         Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(flowInput.oldRecordsToRollup);
         String rollupContext = getFlowRollupContext(flowInput, firstRecord, oldFlowRecords);
 
@@ -1321,7 +1321,7 @@ global without sharing virtual class Rollup {
         rollupContext = '';
       }
       when AFTER_DELETE {
-        reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds, rollupConductor.rollupControl);
+        shouldReturn = reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds, rollupConductor.rollupControl, shouldReturn);
       }
       when else {
         shouldReturn = true;
@@ -2293,11 +2293,12 @@ global without sharing virtual class Rollup {
     return ((SObject) Type.forName(sObjectName).newInstance());
   }
 
-  private static void reparentAndGetMergedRecordIds(
+  private static Boolean reparentAndGetMergedRecordIds(
     List<SObject> calcItems,
     List<Rollup__mdt> rollupMetadata,
     Set<String> mergedParentIds,
-    RollupControl__mdt control
+    RollupControl__mdt control,
+    Boolean shouldReturn
   ) {
     String mergeFieldIndicator = 'MasterRecordId';
     // titled objIds because it's used as a bind variable in SOQL below
@@ -2314,7 +2315,8 @@ global without sharing virtual class Rollup {
     }
 
     if (objIds.isEmpty() || control.IsMergeReparentingEnabled__c == false) {
-      return;
+      shouldReturn = true;
+      return shouldReturn;
     }
 
     // only M/D relationships specifically set to reparent do so automatically
@@ -2352,6 +2354,8 @@ global without sharing virtual class Rollup {
 
     defaultControl = null;
     specificControl = null;
+
+    return shouldReturn;
   }
 
   private static Rollup loadRollups(

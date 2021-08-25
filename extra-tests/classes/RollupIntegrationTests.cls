@@ -728,6 +728,49 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldNotCrashForFalseMergePositive() {
+    Account acc = [SELECT Id, Name, Description, AnnualRevenue FROM Account];
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'MAX',
+        CalcItemWhereClause__c = 'Parent.Name = \'' + acc.Name + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupOperation__c = 'CONCAT'
+      ),
+      // should be filtered out
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'User',
+        LookupFieldOnCalcItem__c = 'OwnerId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Username',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    delete acc;
+    Test.stopTest();
+
+    System.assert(true, 'Should make it here');
+  }
+
+  @IsTest
   static void shouldConcatDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'test update';
