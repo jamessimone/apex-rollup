@@ -157,11 +157,26 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return new List<String>(this.splitWheres);
     }
 
+    public String getSafeQuery() {
+      String startingPoint = this.whereClause;
+      for (String whereClausePart : this.splitWheres) {
+        List<String> completelySplitClauses = whereClausePart.split(' ');
+        if (completelySplitClauses.size() >= 3 && completelySplitClauses[1] == '!like') {
+          String supplementalClause = '(NOT ' + completelySplitClauses[0] + ' LIKE ' + completelySplitClauses[2] + ')';
+          startingPoint = startingPoint.replace(whereClausePart, supplementalClause);
+        }
+      }
+      return startingPoint;
+    }
+
     public List<String> getQueryFields() {
       Set<String> fieldNames = new Set<String>();
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
           Boolean hasRelationshipField = condition.fieldName.contains('.');
+          if (condition.fieldName.toLowerCase() == 'not') {
+            continue;
+          }
           if (
             hasRelationshipField &&
             fieldNames.contains(condition.fieldName) == false &&
