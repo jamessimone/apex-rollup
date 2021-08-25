@@ -78,6 +78,7 @@ public without sharing class RollupQueryBuilder {
       while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
         optionalWhereClause = optionalWhereClause.removeEnd(')');
       }
+      optionalWhereClause = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType).getSafeQuery();
 
       if (optionalWhereClause.length() > 0 && (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR'))) {
         baseQuery += optionalWhereClause;
@@ -117,9 +118,12 @@ public without sharing class RollupQueryBuilder {
 
         uniqueQueryFieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + typeOfField + ' END');
 
-        optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').trim();
-        optionalWhereClause = optionalWhereClause.replace(whereClause, '').trim();
-        optionalWhereClause = optionalWhereClause.replace('()', '');
+        optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '')
+          .replace(whereClause, '')
+          .replace('()', '')
+          .replace('( OR )', '')
+          .replace('( AND )', '')
+          .trim();
       }
     } catch (Exception ex) {
       RollupLogger.Instance.log('exception occurred while converting polymorphic where clause: ', ex, LoggingLevel.WARN);

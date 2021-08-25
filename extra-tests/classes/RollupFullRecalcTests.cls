@@ -473,6 +473,31 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldCorrectlyHandleNotLikeInWhereClause() {
+    Account acc = [SELECT Id FROM Account];
+
+    insert new Task(Subject = 'Task rollup', WhatId = acc.Id);
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT',
+        CalcItemWhereClause__c = 'Subject NOT LIKE \'Email\' ||| WhatId = \'' + acc.Id + '\''
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    acc = [SELECT AccountNumber FROM Account];
+    System.assertEquals('Task rollup', acc.AccountNumber);
+  }
+
+  @IsTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
 

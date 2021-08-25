@@ -64,5 +64,9 @@ private class RollupQueryBuilderTests {
     System.assertEquals(false, queryString.contains('()'), 'Should clean up removed nested conditionals: ' + queryString);
     System.assertEquals(false, queryString.contains('AND  AND '), queryString);
     System.assertEquals(false, queryString.contains('What.Type'), 'What.Type should have been stripped out: ' + queryString);
+    Set<String> recordIds = new Set<String>();
+    Set<String> objIds = recordIds;
+    // confirm query works
+    Database.query(queryString);
   }
 }

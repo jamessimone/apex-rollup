@@ -314,18 +314,24 @@ global without sharing virtual class Rollup {
     String potentialWhereClause = '';
     String delimiter = ' ||| ';
     String lookupFieldName;
+    Integer delimiterIndex = -1;
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
-        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
+        delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
         potentialWhereClause = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length());
         lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
       } else if (String.isNotBlank(potentialWhereClause)) {
         potentialWhereClause = potentialWhereClause.replace(lookupFieldName, matchingMeta.LookupFieldOnCalcItem__c);
         lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
       }
-      if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) && localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
-        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c.substringBeforeLast(delimiter);
+      if (delimiterIndex != -1) {
+        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
+        if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
+          matchingMeta.CalcItemWhereClause__c += ' AND ' + potentialWhereClause;
+        } else {
+          matchingMeta.CalcItemWhereClause__c = potentialWhereClause;
+        }
       }
 
       SObjectType childType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
@@ -342,7 +348,7 @@ global without sharing virtual class Rollup {
         metaWrapper = new RollupMetadata();
         metaWrapper.queryFields.addAll(wherefields);
         metaWrapper.metadata.add(matchingMeta);
-        metaWrapper.whereClause = potentialWhereClause;
+        metaWrapper.whereClause = matchingMeta.CalcItemWhereClause__c;
         childToMetaWrapper.put(childType, metaWrapper);
       }
 

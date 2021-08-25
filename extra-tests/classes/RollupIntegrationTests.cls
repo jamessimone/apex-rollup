@@ -806,6 +806,39 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldProperlyQueryNotLikeCountDistinct() {
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT not like');
+    insert new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
+
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>();
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress',
+        CalcItemWhereClause__c = 'Name NOT LIKE \'' + cpa.Name.substring(0, 6) + '%\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT should work with NOT LIKE');
+  }
+
+  @IsTest
   static void shouldNotIncludePriorValueForCountDistinctId() {
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 5;
