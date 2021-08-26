@@ -915,4 +915,13 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(opp), 'Opp should match since it has account Id');
     System.assertNotEquals(true, eval.matches(new Opportunity()), 'Opp should not match since AccountId is null');
   }
+
+  @IsTest
+  static void shouldCorrectlyReformatNotLikeQuery() {
+    String whereClause = 'TaskSubType != \'Email\' OR Subject NOT LIKE \'Email\'';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
+
+    System.assertEquals('TaskSubType != \'Email\' OR (NOT Subject LIKE \'Email\')', eval.getSafeQuery());
+  }
 }

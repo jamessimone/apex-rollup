@@ -24,4 +24,36 @@ public class RollupTestUtils {
 
     return new List<Rollup.FlowInput>{ flowInput };
   }
+
+  public class DMLMock extends Rollup.DMLHelper {
+    public List<SObject> Records = new List<SObject>();
+    public override void doUpdate(List<SObject> recordsToUpdate) {
+      this.Records = recordsToUpdate;
+    }
+  }
+
+  public static DMLMock loadAccountIdMock(List<SObject> records) {
+    Account acc = [SELECT Id FROM Account];
+    for (SObject record : records) {
+      record.put('ParentId', acc.Id);
+    }
+
+    return loadMock(records);
+  }
+
+  public static DMLMock getTaskMock(List<SObject> records, Id cpaId) {
+    for (SObject task : records) {
+      task.put('WhatId', cpaId);
+    }
+    return loadMock(records);
+  }
+
+  public static DMLMock loadMock(List<SObject> records) {
+    Rollup.records = records;
+    Rollup.shouldRun = true;
+    DMLMock mock = new DMLMock();
+    Rollup.DML = mock;
+
+    return mock;
+  }
 }

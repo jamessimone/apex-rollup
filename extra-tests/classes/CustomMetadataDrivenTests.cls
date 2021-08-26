@@ -4,11 +4,12 @@ private class CustomMetadataDrivenTests {
   @TestSetup
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
-    insert new RollupParent__c(Name = 'CustomMetadataDrivenTests');
+    insert new RollupParent__c(Name = CustomMetadataDrivenTests.class.getName());
   }
 
   @IsTest
   static void shouldRollupFromChildToParentOnInsert() {
+    // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 3);
@@ -26,6 +27,7 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldRollupFromChildToParentOnUpdate() {
+    // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 3);
@@ -46,6 +48,7 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldRollupTextFromChildToParentOnDelete() {
+    // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 1);
@@ -66,6 +69,7 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void regressionUpdatingEvalCriteriaShouldNotExcludeItemOnMultipleUpdatePath() {
+    // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     // DateField__c rollup relies on NumberField > 0
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', DateField__c = System.today().addDays(3), RollupParent__c = parent.Id, NumberField__c = 0);

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.41.0",
-            "versionDescription": "Massive efficiency improvements for Flow invocations",
+            "versionNumber": "1.2.42.0",
+            "versionDescription": "Further REFRESH improvements, rollup logging optimizations",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"
@@ -69,6 +69,7 @@
         "apex-rollup@1.2.38-0": "04t6g000008SgyXAAS",
         "apex-rollup@1.2.39-0": "04t6g000008ShAVAA0",
         "apex-rollup@1.2.40-0": "04t6g000008ShFvAAK",
-        "apex-rollup@1.2.41-0": "04t6g000008ShJEAA0"
+        "apex-rollup@1.2.41-0": "04t6g000008ShJEAA0",
+        "apex-rollup@1.2.42-0": "04t6g000008ShMNAA0"
     }
 }

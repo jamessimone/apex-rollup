@@ -157,11 +157,26 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return new List<String>(this.splitWheres);
     }
 
+    public String getSafeQuery() {
+      String startingPoint = this.whereClause;
+      for (String whereClausePart : this.splitWheres) {
+        List<String> completelySplitClauses = whereClausePart.split(' ');
+        if (completelySplitClauses.size() >= 3 && completelySplitClauses[1] == '!like') {
+          String supplementalClause = '(NOT ' + completelySplitClauses[0] + ' LIKE ' + completelySplitClauses[2] + ')';
+          startingPoint = startingPoint.replace(whereClausePart, supplementalClause);
+        }
+      }
+      return startingPoint;
+    }
+
     public List<String> getQueryFields() {
       Set<String> fieldNames = new Set<String>();
       for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
         for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
           Boolean hasRelationshipField = condition.fieldName.contains('.');
+          if (condition.fieldName.toLowerCase() == 'not') {
+            continue;
+          }
           if (
             hasRelationshipField &&
             fieldNames.contains(condition.fieldName) == false &&
@@ -233,7 +248,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       } catch (Exception ex) {
         this.logError(ex);
         RollupLogger.Instance.save();
-        throw new IllegalArgumentException('Where clause entered incorrectly: ' + whereClause);
+        throw new IllegalArgumentException(
+          'Where clause entered incorrectly: ' +
+          whereClause +
+          '\nException: ' +
+          ex.getMessage() +
+          '\n' +
+          ex.getStackTraceString()
+        );
       }
     }
 
@@ -272,7 +294,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         String potentialNestedConditional = localSplitWheres[index].trim();
         Integer originalMatchIndex = index;
         Integer openParansRange = potentialNestedConditional.indexOf('(');
-        if (openParansRange == 0) {
+        if (openParansRange == 0 && potentialNestedConditional.length() > 1) {
           // remove the parans now
           potentialNestedConditional = potentialNestedConditional.substring(1, potentialNestedConditional.length() - 1);
           // iterate through the rest of the list, stopping at the end of the parantheses
@@ -714,7 +736,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private static void addFinestLog(Type clazz, Boolean matches, Object item) {
-    RollupLogger.Instance.log(clazz.getName() + ' matches? '+ matches + ' for: ' + item, LoggingLevel.FINEST);
+    RollupLogger.Instance.log(clazz.getName() + ' matches? ' + matches + ' for: ' + item, LoggingLevel.FINEST);
   }
 
   @TestVisible
