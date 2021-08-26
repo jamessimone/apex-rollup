@@ -35,7 +35,6 @@ private class InvocableDrivenTests {
     Test.startTest();
     insert matchesFlow;
     acc = [SELECT Site FROM Account];
-    System.assertEquals(matchesFlow.Description, acc.Site, 'Should have updated account while still a match');
     matchesFlow.Subject = 'Now not a match';
     update matchesFlow;
     Test.stopTest();
