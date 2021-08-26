@@ -564,18 +564,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
     localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
-    // TODO - come back to this and last test in InvocableDrivenTests
-    // for (SObject localLookupItem : localLookupItems) {
-    //   Schema.DescribeFieldResult fieldToken = roll.lookupFieldOnLookupObject.getDescribe();
-    //   if (String.isNotBlank(fieldToken.getRelationshipName())) {
-    //     String lookupKey = (String) localLookupItem.get(roll.lookupFieldOnLookupObject);
-    //     CalcItemBag bag = calcItemsByLookupField.get(lookupKey);
-    //     for (SObject calcItem : bag.originals) {
-    //       System.debug('Populating parent! ' + localLookupItem);
-    //       calcItem.putSObject(fieldToken.getRelationshipName(), localLookupItem);
-    //     }
-    //   }
-    // }
     return localLookupItems;
   }
 
@@ -824,12 +812,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (roll.lookupObj != targetType) {
         hasMoreThanOneTarget = true;
       }
-
-      // TODO - something like this _might_ become necessary in the future when RollupFullBatchRecalc is introduced as a child rollup
-      // if (roll.isConductor) {
-      //   totalCountOfRecords += this.getLookupRecordsCount(hasMoreThanOneTarget, roll.rollups);
-      //   continue;
-      // }
 
       if (roll.queryCount != null) {
         totalCountOfRecords += roll.queryCount;

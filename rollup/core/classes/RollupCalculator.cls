@@ -375,7 +375,9 @@ public without sharing abstract class RollupCalculator {
 
       if (currentVal != priorCalcVal || this.isReparented(calcItem, oldCalcItem)) {
         this.distinctValues.clear();
-        this.distinctValues.add(currentVal);
+        if (currentVal != null) {
+          this.distinctValues.add(currentVal);
+        }
         this.shouldShortCircuit = true;
         this.calculateNewAggregateValue(this.op, oldCalcItems.keySet(), calcItem.getSObjectType());
       }

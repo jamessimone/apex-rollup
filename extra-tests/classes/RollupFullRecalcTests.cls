@@ -88,7 +88,6 @@ private class RollupFullRecalcTests {
     System.assertEquals('One, Two', updatedAcc.AccountNumber);
   }
 
-
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildrenWithReparenting() {
     Account acc = [SELECT Id FROM Account];
@@ -101,6 +100,9 @@ private class RollupFullRecalcTests {
       new ContactPointAddress(PreferenceRank = reparentedAccount.AnnualRevenue.intValue(), ParentId = reparentedAccount.Id, Name = 'Two')
     };
     insert cpas;
+
+    reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id];
+    System.assertEquals(cpas[0].PreferenceRank, reparentedAccount.AnnualRevenue, 'Reparenting test set up under wrong conditions!');
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     ContactPointAddress clonedCpa = cpas[0].clone(true);
@@ -184,6 +186,8 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldAllowGrandparentRollupFromParentWithPolymorphicFields() {
+    // technically shouldAllowGrandparentRollupsFromParent also tests polymorphic fields
+    // this test does that in conjunction with a more complicated where clause
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
@@ -479,7 +483,6 @@ private class RollupFullRecalcTests {
     insert new Task(Subject = 'Task rollup', WhatId = acc.Id);
 
     List<Rollup__mdt> metas = new List<Rollup__mdt>{
-
       new Rollup__mdt(
         CalcItem__c = 'Task',
         RollupFieldOnCalcItem__c = 'Subject',

@@ -6,9 +6,10 @@ private class RollupQueryBuilderTests {
 
     // validate the query
     Set<String> objIds = new Set<String>();
-    Database.query(queryString);
+    List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
+    System.assertEquals(Task.SObjectType, records.getSObjectType());
   }
 
   @IsTest
@@ -16,9 +17,10 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(Event.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
 
     Set<String> objIds = new Set<String>();
-    Database.query(queryString);
+    List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
+    System.assertEquals(Event.SObjectType, records.getSObjectType());
   }
 
   @IsTest
@@ -31,10 +33,11 @@ private class RollupQueryBuilderTests {
     );
 
     Set<String> objIds = new Set<String>();
-    Database.query(queryString);
+    List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('Id'));
     System.assertEquals(true, queryString.contains('AccountId'));
+    System.assertEquals(Opportunity.SObjectType, records.getSObjectType());
   }
 
   @IsTest
@@ -42,9 +45,10 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ '', null, ' ', 'Id' }, 'AccountId', '=');
 
     Set<String> objIds = new Set<String>();
-    Database.query(queryString);
+    List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('Id'));
+    System.assertEquals(Opportunity.SObjectType, records.getSObjectType());
   }
 
   @IsTest
@@ -67,6 +71,7 @@ private class RollupQueryBuilderTests {
     Set<String> recordIds = new Set<String>();
     Set<String> objIds = recordIds;
     // confirm query works
-    Database.query(queryString);
+    List<SObject> records = Database.query(queryString);
+    System.assertEquals(Event.SObjectType, records.getSObjectType());
   }
 }

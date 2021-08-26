@@ -839,6 +839,47 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldNotIncludeNullForCountDistinct() {
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT null PreferenceRank');
+    insert cpa;
+
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>();
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT should ignore nulls');
+
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS);
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10) };
+    Rollup.runFromTrigger();
+
+    updatedAcc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT on update should ignore nulls');
+  }
+
+  @IsTest
   static void shouldNotIncludePriorValueForCountDistinctId() {
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 5;
