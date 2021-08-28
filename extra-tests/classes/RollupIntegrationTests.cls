@@ -5,7 +5,7 @@ private class RollupIntegrationTests {
   // "Integration," in the sense that these include custom fields / objects that shouldn't be installed
   @TestSetup
   static void setup() {
-    Account acc = new Account(Name = 'RollupIntegrationTests');
+    Account acc = new Account(Name = RollupIntegrationTests.class.getName());
     insert acc;
 
     acc.AccountIdText__c = acc.Id;
@@ -28,7 +28,7 @@ private class RollupIntegrationTests {
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, prior.AnnualRevenue, 'Test has started under the wrong conditions!');
-    Rollup.records = [SELECT Id, Amount, AccountIdText__c FROM Opportunity];
+    Rollup.records = [SELECT Id, Amount, AccountIdText__c, CurrencyIsoCode FROM Opportunity];
     Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -57,7 +57,7 @@ private class RollupIntegrationTests {
   static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
-    List<Opportunity> opps = [SELECT Id, Name, AmountFormula__c, AccountId FROM Opportunity];
+    List<Opportunity> opps = [SELECT Id, Name, AmountFormula__c, AccountId, CurrencyIsoCode FROM Opportunity];
     System.assertEquals(1, opps[0].AmountFormula__c, 'Test has started with wrong opp conditions!');
     Rollup.records = opps;
     Rollup.shouldRun = true;
@@ -169,7 +169,7 @@ private class RollupIntegrationTests {
     update acc;
 
     Opportunity usdOpp = [
-      SELECT Name, StageName, CloseDate, Amount, CurrencyIsoCode, AccountIdText__c, AccountId
+      SELECT Name, StageName, CloseDate, Amount, CurrencyIsoCode, AccountId
       FROM Opportunity
       WHERE CurrencyIsoCode = 'USD'
       LIMIT 1
@@ -177,8 +177,10 @@ private class RollupIntegrationTests {
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     eurOpp.CurrencyIsoCode = 'EUR';
+    eurOpp.Amount = .95;
     Opportunity jpyOpp = eurOpp.clone(false, true);
     jpyOpp.CurrencyIsoCode = 'JPY';
+    jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -188,8 +190,7 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupOperation__c = 'SUM',
-        IsFullRecordSet__c = true,
+        RollupOperation__c = 'MAX',
         CalcItem__c = 'Opportunity'
       )
     };
@@ -201,27 +202,15 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Decimal expectedMaxAmount;
-    for (Opportunity opp : [SELECT convertCurrency(Amount) ConvertedAmount FROM Opportunity WHERE Id IN :Rollup.records]) {
-      Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
-      if (expectedMaxAmount == null || oppConvertedAmount > expectedMaxAmount) {
-        expectedMaxAmount = oppConvertedAmount;
-      }
-    }
-    expectedMaxAmount *= CURRENCY_TYPES.get(acc.CurrencyIsoCode).ConversionRate;
-
     acc = [SELECT Id, CurrencyIsoCode, AnnualRevenue, MaxAmountRollupSummary__c FROM Account];
     System.assertEquals(
-      expectedMaxAmount.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       acc.MaxAmountRollupSummary__c.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
-      'Calculated TotalRevenue and rollup-summary field MaxAmountRollupSummary__c should match!'
-    );
-    System.assertEquals(
-      expectedMaxAmount.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       acc.AnnualRevenue.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       'Multi-currency MAX rollup not calculated correctly!'
     );
   }
+
+  // TODO - first/last/average calculations
 
   @isTest
   static void shouldCorrectlyRollupMinForMultiCurrency() {
@@ -240,8 +229,10 @@ private class RollupIntegrationTests {
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     eurOpp.CurrencyIsoCode = 'EUR';
+    eurOpp.Amount = .95;
     Opportunity jpyOpp = eurOpp.clone(false, true);
     jpyOpp.CurrencyIsoCode = 'JPY';
+    jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -251,7 +242,7 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupOperation__c = 'SUM',
+        RollupOperation__c = 'MIN',
         IsFullRecordSet__c = true,
         CalcItem__c = 'Opportunity'
       )
@@ -264,23 +255,10 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Decimal expectedMinAmount;
-    for (Opportunity opp : [SELECT convertCurrency(Amount) ConvertedAmount FROM Opportunity WHERE Id IN :Rollup.records]) {
-      Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
-      if (expectedMinAmount == null || oppConvertedAmount < expectedMinAmount) {
-        expectedMinAmount = oppConvertedAmount;
-      }
-    }
-    expectedMinAmount *= CURRENCY_TYPES.get(acc.CurrencyIsoCode).ConversionRate;
-
     acc = [SELECT Id, CurrencyIsoCode, AnnualRevenue, MinAmountRollupSummary__c FROM Account];
+
     System.assertEquals(
-      expectedMinAmount.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       acc.MinAmountRollupSummary__c.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
-      'Calculated TotalRevenue and rollup-summary field MinAmountRollupSummary__c should match!'
-    );
-    System.assertEquals(
-      expectedMinAmount.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       acc.AnnualRevenue.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       'Multi-currency MIN rollup not calculated correctly!'
     );
@@ -303,8 +281,10 @@ private class RollupIntegrationTests {
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     eurOpp.CurrencyIsoCode = 'EUR';
+    eurOpp.Amount = .95;
     Opportunity jpyOpp = eurOpp.clone(false, true);
     jpyOpp.CurrencyIsoCode = 'JPY';
+    jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -327,20 +307,10 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Decimal expectedSumAmount = 0;
-    for (Opportunity opp : [SELECT convertCurrency(Amount) ConvertedAmount FROM Opportunity WHERE Id IN :Rollup.records]) {
-      expectedSumAmount += (Decimal) opp.get('ConvertedAmount');
-    }
-    expectedSumAmount *= CURRENCY_TYPES.get(acc.CurrencyIsoCode).ConversionRate;
-
     acc = [SELECT Id, CurrencyIsoCode, AnnualRevenue, SumAmountRollupSummary__c FROM Account];
+
     System.assertEquals(
-      expectedSumAmount.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       acc.SumAmountRollupSummary__c.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
-      'Calculated TotalRevenue and rollup-summary field SumAmountRollupSummary__c should match!'
-    );
-    System.assertEquals(
-      expectedSumAmount.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       acc.AnnualRevenue.setScale(CURRENCY_TYPES.get(acc.CurrencyIsoCode).DecimalPlaces),
       'Multi-currency SUM rollup not calculated correctly!'
     );

@@ -19,6 +19,10 @@ public without sharing class RollupQueryBuilder {
     Map<String, SObjectField> baseFields = sObjectToken.fields.getMap();
     Set<String> lowerCaseFieldNames = new Set<String>();
 
+    if (UserInfo.isMultiCurrencyOrganization() && uniqueQueryFieldNames.contains('Count()') == false) {
+      uniqueQueryFieldNames.add('CurrencyIsoCode');
+    }
+
     for (Integer index = uniqueQueryFieldNames.size() - 1; index >= 0; index--) {
       String uniqueFieldName = uniqueQueryFieldNames[index];
       if (String.isBlank(uniqueFieldName)) {

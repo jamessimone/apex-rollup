@@ -3,7 +3,7 @@ private class InvocableDrivenTests {
   @TestSetup
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
-    Account acc = new Account(Name = 'InvocableDrivenRollupTests');
+    Account acc = new Account(Name = InvocableDrivenTests.class.getName());
     insert acc;
   }
 
