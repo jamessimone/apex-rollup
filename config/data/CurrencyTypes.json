@@ -7,7 +7,7 @@
       },
       "IsoCode": "EUR",
       "DecimalPlaces": 2,
-      "ConversionRate": 1.37,
+      "ConversionRate": 0.85,
       "IsActive":true,
       "IsCorporate": false
     },
@@ -18,7 +18,7 @@
       },
       "IsoCode": "JPY",
       "DecimalPlaces": 4,
-      "ConversionRate": 0.0095,
+      "ConversionRate": 109.83,
       "IsActive":true,
       "IsCorporate": false
     }

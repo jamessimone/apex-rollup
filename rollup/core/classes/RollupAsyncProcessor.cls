@@ -906,7 +906,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         // Check for changed values
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.getRollupVal(rollup, localCalcItems, priorVal, key, rollup.lookupFieldOnCalcItem);
+        Object newVal = this.calculateNewRollupVal(rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
       }
     }
@@ -1018,7 +1018,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return oldCalcItem;
   }
 
-  private Object getRollupVal(RollupAsyncProcessor roll, List<SObject> calcItems, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
+  private Object calculateNewRollupVal(RollupAsyncProcessor roll, List<SObject> calcItems, SObject lookupRecord, Object priorVal, String lookupRecordKey, SObjectField lookupKeyField) {
     RollupCalculator rollupCalc = RollupCalculator.Factory.getCalculator(
       priorVal,
       roll.op,
@@ -1031,6 +1031,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     rollupCalc.setFullRecalc(roll.isFullRecalc);
     rollupCalc.setEvaluator(roll.eval);
     rollupCalc.setCDCUpdate(this.isCDCUpdate);
+    rollupCalc.setMultiCurrencyInfo(lookupRecord);
     rollupCalc.performRollup(calcItems, this.oldCalcItems);
     return rollupCalc.getReturnValue();
   }
@@ -1076,7 +1077,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         RollupLogger.Instance.log('reparenting operation: ', oldLookupsRollup, LoggingLevel.DEBUG);
 
         Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
-        Object newVal = this.getRollupVal(oldLookupsRollup, reparentedCalcItems, priorVal, key, roll.lookupFieldOnCalcItem);
+        Object newVal = this.calculateNewRollupVal(oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
 
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
       }

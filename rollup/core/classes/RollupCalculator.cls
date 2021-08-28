@@ -3,6 +3,7 @@ public without sharing abstract class RollupCalculator {
   private Boolean isFirstTimeThrough = true;
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
+  private Boolean isMultiCurrencyRollup;
 
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
@@ -17,9 +18,13 @@ public without sharing abstract class RollupCalculator {
   protected Object returnVal;
   protected Boolean isLastItem = false;
   protected Boolean shouldTriggerFullRecalc;
+  protected String parentIsoCode;
 
   @TestVisible
   private static Factory testFactory;
+
+  private static final Map<String, CurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY = getCurrencyMap();
+  private static Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
 
   public static Factory Factory {
     get {
@@ -107,6 +112,7 @@ public without sharing abstract class RollupCalculator {
       lookupRecordKey +
       '\'' +
       (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
+    this.isMultiCurrencyRollup = UserInfo.isMultiCurrencyOrganization() && this.opFieldOnLookupObject.getDescribe().getType() == DisplayType.CURRENCY;
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -122,6 +128,12 @@ public without sharing abstract class RollupCalculator {
 
   public void setFullRecalc(Boolean isFullRecalc) {
     this.isFullRecalc = isFullRecalc;
+  }
+
+  public void setMultiCurrencyInfo(SObject parentRecord) {
+    if (parentRecord.getPopulatedFieldsAsMap().containsKey('CurrencyIsoCode')) {
+      this.parentIsoCode = (String) parentRecord.get('CurrencyIsoCode');
+    }
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -255,10 +267,12 @@ public without sharing abstract class RollupCalculator {
     for (SObject item : temporaryItems) {
       SObject potentialOldItem = oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
       if (this.eval?.matches(item) != false) {
-        items.add(item);
+        this.transformForMultiCurrencyOrgs(item);
+        items.add(this.getTransformedCalcItem(item));
       } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
         // TODO - handle old item matching, new item not matching situation for (other non-full recalc) operations
-        items.add(item);
+        this.transformForMultiCurrencyOrgs(item);
+        items.add(this.getTransformedCalcItem(item));
       }
     }
 
@@ -278,6 +292,10 @@ public without sharing abstract class RollupCalculator {
 
   protected Boolean isReparented(SObject calcItem, SObject oldCalcItem) {
     return calcItem.get(this.lookupKeyField) != oldCalcItem.get(this.lookupKeyField);
+  }
+
+  protected SObject getTransformedCalcItem(SObject calcItem) {
+    return TRANSFORMED_MULTICURRENCY_CALC_ITEMS.containsKey(calcItem.Id) ? TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id) : calcItem;
   }
 
   protected Object performBaseCalculation(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
@@ -305,6 +323,7 @@ public without sharing abstract class RollupCalculator {
           this.lookupRecordKey,
           this.lookupKeyField
         );
+        calc.parentIsoCode = this.parentIsoCode;
         calc.performRollup(allOtherItems, new Map<Id, SObject>());
         this.returnVal = calc.getReturnValue();
       }
@@ -322,6 +341,29 @@ public without sharing abstract class RollupCalculator {
       results = Database.query(query);
     }
     return results;
+  }
+
+  private void transformForMultiCurrencyOrgs(SObject calcItem) {
+    if (this.isMultiCurrencyRollup == false || calcItem.getSObjectType().getDescribe().fields.getMap().containsKey('CurrencyIsoCode') == false) {
+      return;
+    }
+
+    String calcItemIsoCode = (String) calcItem.get('CurrencyIsoCode');
+    SObject skinnyCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id);
+    if (
+      calcItemIsoCode == this.parentIsoCode ||
+      skinnyCalcItem?.getPopulatedFieldsAsMap().containsKey(this.opFieldOnCalcItem.getDescribe().getName()) == true)
+     {
+      return;
+    }
+    // the worst possible scenario has occurred - the currencies differ and we haven't already populated the map
+    Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / (Decimal) calcItem.get(this.opFieldOnCalcItem);
+    Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(this.parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
+    // skinnyCalcItem = skinnyCalcItem == null ? calcItem.getSObjectType().newSObject(calcItem.Id) : skinnyCalcItem;
+    skinnyCalcItem = skinnyCalcItem == null ? calcItem.clone(true, true, true, true) : skinnyCalcItem;
+    skinnyCalcItem.put('CurrencyIsoCode', this.parentIsoCode);
+    skinnyCalcItem.put(this.opFieldOnCalcItem, calcItemAmountInParentCurrency);
+    TRANSFORMED_MULTICURRENCY_CALC_ITEMS.put(calcItem.Id, skinnyCalcItem);
   }
 
   private class CountDistinctRollupCalculator extends RollupCalculator {
@@ -1112,5 +1154,26 @@ public without sharing abstract class RollupCalculator {
 
       return this.isFirst ? returnVal : returnVal * -1;
     }
+  }
+
+  private class CurrencyInfo {
+    public String IsoCode { get; set; }
+    public Decimal ConversionRate { get; set; }
+    public Integer DecimalPlaces { get; set; }
+    public Boolean IsCorporate { get; set; }
+  }
+
+  private static Map<String, CurrencyInfo> getCurrencyMap() {
+    Map<String, CurrencyInfo> currencyInfoMap = new Map<String, CurrencyInfo>();
+    if (UserInfo.isMultiCurrencyOrganization() == false) {
+      return currencyInfoMap;
+    }
+
+    String query = 'SELECT IsoCode, ConversionRate, DecimalPlaces, IsCorporate FROM CurrencyType WHERE IsActive = TRUE';
+    List<CurrencyInfo> currencyTypes = (List<CurrencyInfo>) JSON.deserialize(JSON.serialize(Database.query(query)), List<CurrencyInfo>.class);
+    for (CurrencyInfo currencyType : currencyTypes) {
+      currencyInfoMap.put(currencyType.IsoCode, currencyType);
+    }
+    return currencyInfoMap;
   }
 }
