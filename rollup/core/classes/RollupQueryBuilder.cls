@@ -5,6 +5,8 @@ public without sharing class RollupQueryBuilder {
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
   public static final Integer SENTINEL_COUNT_VALUE = -1;
 
+  private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
+
   /**
    * @return String `queryString` - returns a query string with "objIds" expected as a bind variable
    */
@@ -18,10 +20,6 @@ public without sharing class RollupQueryBuilder {
     DescribeSObjectResult sObjectToken = sObjectType.getDescribe();
     Map<String, SObjectField> baseFields = sObjectToken.fields.getMap();
     Set<String> lowerCaseFieldNames = new Set<String>();
-
-    if (UserInfo.isMultiCurrencyOrganization() && uniqueQueryFieldNames.contains('Count()') == false) {
-      uniqueQueryFieldNames.add('CurrencyIsoCode');
-    }
 
     for (Integer index = uniqueQueryFieldNames.size() - 1; index >= 0; index--) {
       String uniqueFieldName = uniqueQueryFieldNames[index];
@@ -54,6 +52,26 @@ public without sharing class RollupQueryBuilder {
       ) {
         uniqueQueryFieldNames[index] = uniqueFieldName;
       }
+    }
+
+    Boolean hasAggregateFunction = false;
+    for (String uniqueQueryFieldName : uniqueQueryFieldNames) {
+      // This is definitely not the most intuitive way to do this, but need to determine if the query
+      // will be a regular query vs an aggregated query - all aggregate functions use '()', so checking
+      // for '(' is a quick & lazy way to check without making larger changes to how RollupQueryBuilder works
+      // (but it's very goofy & could definitely be improved)
+      if (uniqueQueryFieldName?.contains('(')) {
+        hasAggregateFunction = true;
+        break;
+      }
+    }
+    if (
+      hasAggregateFunction == false &&
+      uniqueQueryFieldNames.contains(CURRENCY_ISO_CODE_FIELD_NAME) == false &&
+      UserInfo.isMultiCurrencyOrganization() &&
+      sObjectToken.fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)
+    ) {
+      uniqueQueryFieldNames.add(CURRENCY_ISO_CODE_FIELD_NAME);
     }
 
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);

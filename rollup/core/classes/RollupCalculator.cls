@@ -1,9 +1,12 @@
 public without sharing abstract class RollupCalculator {
+  private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
+
+  private final Boolean isMultiCurrencyRollup;
+
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
-  private Boolean isMultiCurrencyRollup;
 
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
@@ -112,7 +115,7 @@ public without sharing abstract class RollupCalculator {
       lookupRecordKey +
       '\'' +
       (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
-    this.isMultiCurrencyRollup = UserInfo.isMultiCurrencyOrganization() && this.opFieldOnLookupObject.getDescribe().getType() == DisplayType.CURRENCY;
+    this.isMultiCurrencyRollup = UserInfo.isMultiCurrencyOrganization() && this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY;
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -131,8 +134,8 @@ public without sharing abstract class RollupCalculator {
   }
 
   public void setMultiCurrencyInfo(SObject parentRecord) {
-    if (parentRecord.getPopulatedFieldsAsMap().containsKey('CurrencyIsoCode')) {
-      this.parentIsoCode = (String) parentRecord.get('CurrencyIsoCode');
+    if (parentRecord.getPopulatedFieldsAsMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)) {
+      this.parentIsoCode = (String) parentRecord.get(CURRENCY_ISO_CODE_FIELD_NAME);
     }
   }
 
@@ -344,24 +347,25 @@ public without sharing abstract class RollupCalculator {
   }
 
   private void transformForMultiCurrencyOrgs(SObject calcItem) {
-    if (this.isMultiCurrencyRollup == false || calcItem.getSObjectType().getDescribe().fields.getMap().containsKey('CurrencyIsoCode') == false) {
+    if (this.isMultiCurrencyRollup == false || calcItem.getSObjectType().getDescribe().fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME) == false) {
       return;
     }
 
-    String calcItemIsoCode = (String) calcItem.get('CurrencyIsoCode');
+    String calcItemIsoCode = (String) calcItem.get(CURRENCY_ISO_CODE_FIELD_NAME);
     SObject skinnyCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id);
     if (
+      String.isBlank(this.parentIsoCode) ||
+      String.isBlank(calcItemIsoCode) ||
       calcItemIsoCode == this.parentIsoCode ||
-      skinnyCalcItem?.getPopulatedFieldsAsMap().containsKey(this.opFieldOnCalcItem.getDescribe().getName()) == true)
-     {
+      skinnyCalcItem?.getPopulatedFieldsAsMap().containsKey(this.opFieldOnCalcItem.getDescribe().getName()) == true
+    ) {
       return;
     }
     // the worst possible scenario has occurred - the currencies differ and we haven't already populated the map
     Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / (Decimal) calcItem.get(this.opFieldOnCalcItem);
     Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(this.parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
-    // skinnyCalcItem = skinnyCalcItem == null ? calcItem.getSObjectType().newSObject(calcItem.Id) : skinnyCalcItem;
     skinnyCalcItem = skinnyCalcItem == null ? calcItem.clone(true, true, true, true) : skinnyCalcItem;
-    skinnyCalcItem.put('CurrencyIsoCode', this.parentIsoCode);
+    skinnyCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, this.parentIsoCode);
     skinnyCalcItem.put(this.opFieldOnCalcItem, calcItemAmountInParentCurrency);
     TRANSFORMED_MULTICURRENCY_CALC_ITEMS.put(calcItem.Id, skinnyCalcItem);
   }
