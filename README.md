@@ -948,7 +948,7 @@ You can use the included `Rollup Logger Plugin Parameter` CMDT record `Logging D
 
 ### Multi-Currency Orgs
 
-Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior (or, rather, incorrect conversions) if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
+As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported. Similar to how Salesforce's roll-up summary fields handle multi-currency, `Rollup` automatically converts currency values on child records to the parent record's currency when calculating the rollup value.  Currently, MIN, MAX and SUM operations are supported. // TODO - AVERAGE, FIRST and LAST are WIP
 
 ## Commit History
 
