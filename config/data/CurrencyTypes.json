@@ -3,6 +3,17 @@
     {
       "attributes": {
         "type": "CurrencyType",
+        "referenceId": "ref0"
+      },
+      "IsoCode": "USD",
+      "DecimalPlaces": 2,
+      "ConversionRate": 1,
+      "IsActive":true,
+      "IsCorporate": true
+    },
+    {
+      "attributes": {
+        "type": "CurrencyType",
         "referenceId": "ref1"
       },
       "IsoCode": "EUR",

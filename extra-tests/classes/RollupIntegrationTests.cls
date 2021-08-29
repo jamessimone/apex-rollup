@@ -353,8 +353,10 @@ private class RollupIntegrationTests {
   /** grandparent rollup tests */
   @IsTest
   static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
-    Account greatGrandparent = new Account(Name = 'Great-grandparent');
-    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    // The CurrencyIsoCode field isn't directly used here, but the field will be automatically included by Rollup's queries,
+    // so include it on the accounts so the asserts below show that the accounts do, in fact, match
+    Account greatGrandparent = new Account(Name = 'Great-grandparent', CurrencyIsoCode = 'USD');
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent', CurrencyIsoCode = 'USD');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
