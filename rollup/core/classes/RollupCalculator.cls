@@ -115,7 +115,10 @@ public without sharing abstract class RollupCalculator {
       lookupRecordKey +
       '\'' +
       (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
-    this.isMultiCurrencyRollup = UserInfo.isMultiCurrencyOrganization() && this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY;
+    this.isMultiCurrencyRollup =
+      UserInfo.isMultiCurrencyOrganization() &&
+      (this.opFieldOnCalcItem.getDescribe().getType() == DisplayType.CURRENCY ||
+      this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
