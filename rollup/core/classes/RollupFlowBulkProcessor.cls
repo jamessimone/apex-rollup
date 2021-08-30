@@ -12,7 +12,7 @@ global without sharing class RollupFlowBulkProcessor {
     global String rollupContext;
     // Shared between this and Rollup.FlowInput
     @InvocableVariable(label='Defer processing?')
-    global Boolean deferProcessing = true;
+    global Boolean deferProcessing;
     @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
     // Optional properties that can override the CMDT values
@@ -43,7 +43,7 @@ global without sharing class RollupFlowBulkProcessor {
     )
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
-    global Boolean isRollupStartedFromParent = false;
+    global Boolean isRollupStartedFromParent;
     @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
     global String orderByFirstLast;
 
@@ -51,12 +51,12 @@ global without sharing class RollupFlowBulkProcessor {
       label='Should rollup to ultimate hierarchy parent'
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
-    global Boolean rollupToUltimateParent = false;
+    global Boolean rollupToUltimateParent;
     @InvocableVariable(
       label='Should run sync?'
       description='Runs rollup calculations synchronously when set to true'
     )
-    global Boolean shouldRunSync = false;
+    global Boolean shouldRunSync;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
     global String calcItemWhereClause;
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
@@ -115,8 +115,8 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupContext = flowInput.rollupContext;
             input.recordsToRollup = flowInput.recordsToRollup;
             input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
-            input.deferProcessing = flowInput.deferProcessing;
-            input.shouldRunSync = flowInput.shouldRunSync;
+            input.deferProcessing = flowInput.deferProcessing != null ? flowInput.deferProcessing : true;
+            input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
             input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
             rollupFlowInputs.add(input);
 
