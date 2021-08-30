@@ -159,7 +159,7 @@ private class RollupIntegrationTests {
     System.assertEquals(45 / 3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of matching items');
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupMaxForMultiCurrency() {
     Account acc = [SELECT Id, AnnualRevenue, CurrencyIsoCode FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -204,7 +204,7 @@ private class RollupIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupMinForMultiCurrency() {
     Account acc = [SELECT Id, AnnualRevenue, CurrencyIsoCode FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -256,7 +256,7 @@ private class RollupIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupSumForMultiCurrency() {
     Account acc = [SELECT Id, AnnualRevenue, CurrencyIsoCode FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -308,7 +308,7 @@ private class RollupIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupAverageForMultiCurrency() {
     Account acc = [SELECT Id, AnnualRevenue, CurrencyIsoCode FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -360,7 +360,7 @@ private class RollupIntegrationTests {
     );
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupFirstForMultiCurrency() {
     Account acc = [SELECT Id, AnnualRevenue, CurrencyIsoCode FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -413,7 +413,7 @@ private class RollupIntegrationTests {
     System.assertEquals(firstOpportunityId, acc.Name, 'Should have taken first based on multi-currency Amount! Records: ' + opportunities);
   }
 
-  @isTest
+  @IsTest
   static void shouldCorrectlyRollupLastForMultiCurrency() {
     Account acc = [SELECT Id, AnnualRevenue, CurrencyIsoCode FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -466,7 +466,7 @@ private class RollupIntegrationTests {
     System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
   }
 
-  @isTest
+  @IsTest
   static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Custom Object Parent App');
     insert parentApp;
