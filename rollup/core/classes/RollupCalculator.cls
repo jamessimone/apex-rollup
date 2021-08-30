@@ -1,10 +1,10 @@
 public without sharing abstract class RollupCalculator {
   private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
 
-  private final Boolean isMultiCurrencyRollup;
 
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
+  private Boolean isMultiCurrencyRollup = false;
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
 
@@ -117,7 +117,7 @@ public without sharing abstract class RollupCalculator {
       (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
     this.isMultiCurrencyRollup =
       UserInfo.isMultiCurrencyOrganization() &&
-      (this.opFieldOnCalcItem.getDescribe().getType() == DisplayType.CURRENCY ||
+      (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
       this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
   }
   public virtual Object getReturnValue() {
@@ -365,12 +365,26 @@ public without sharing abstract class RollupCalculator {
       return;
     }
     // the worst possible scenario has occurred - the currencies differ and we haven't already populated the map
-    Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / (Decimal) calcItem.get(this.opFieldOnCalcItem);
-    Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(this.parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
     skinnyCalcItem = skinnyCalcItem == null ? calcItem.clone(true, true, true, true) : skinnyCalcItem;
-    skinnyCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, this.parentIsoCode);
-    skinnyCalcItem.put(this.opFieldOnCalcItem, calcItemAmountInParentCurrency);
+    this.convertToParentCurrency(calcItem, skinnyCalcItem, this.opFieldOnCalcItem, calcItemIsoCode);
+
+    SObjectField orderByFirstLastField = calcItem.getSObjectType().getDescribe().fields.getMap().get(this.metadata.OrderByFirstLast__c);
+    if (orderByFirstLastField != null && orderByFirstLastField != this.opFieldOnCalcItem) {
+      this.convertToParentCurrency(calcItem, skinnyCalcItem, orderByFirstLastField, calcItemIsoCode);
+    }
+
     TRANSFORMED_MULTICURRENCY_CALC_ITEMS.put(calcItem.Id, skinnyCalcItem);
+  }
+
+  private void convertToParentCurrency(SObject calcItem, SObject skinnyCalcItem, SObjectField fieldOnCalcItem, String calcItemIsoCode) {
+    if (fieldOnCalcItem.getDescribe().getType() != DisplayType.CURRENCY) {
+      return;
+    }
+
+    Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / (Decimal) calcItem.get(fieldOnCalcItem);
+    Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(this.parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
+    skinnyCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, this.parentIsoCode);
+    skinnyCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
   }
 
   private class CountDistinctRollupCalculator extends RollupCalculator {
@@ -1081,6 +1095,12 @@ public without sharing abstract class RollupCalculator {
         lookupKeyField
       );
       this.metadata.OrderByFirstLast__c = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
+      SObjectType calcItemSObjectType = ((SObject)Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
+      SObjectField orderByFirstLastField = calcItemSObjectType.getDescribe().fields.getMap().get(this.metadata.OrderByFirstLast__c);
+      this.isMultiCurrencyRollup =
+        UserInfo.isMultiCurrencyOrganization() &&
+        orderByFirstLastField != null &&
+        orderByFirstLastField.getDescribe().getType() == DisplayType.CURRENCY;
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
