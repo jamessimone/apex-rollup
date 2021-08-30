@@ -101,6 +101,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     );
   }
 
+  // Conductor constructors - "outer" rollups that orchestrate the proceedings for inner rollups
   public RollupAsyncProcessor(InvocationPoint invokePoint) {
     super(invokePoint);
   }
@@ -113,11 +114,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     super(innerRollup.invokePoint, innerRollup.calcItems, innerRollup.oldCalcItems);
 
     this.rollups.addAll(innerRollup.rollups);
-    this.isNoOp = this.rollups.isEmpty() && innerRollup.metadata?.IsFullRecordSet__c == false;
+    this.isNoOp = this.rollups.isEmpty();
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isCDCUpdate = innerRollup.isCDCUpdate;
   }
 
+  // Inner rollup constructor - a rollup solely concerned with calculations
   public RollupAsyncProcessor(
     Set<Id> matchingCalcItemIds,
     SObjectField opFieldOnCalcItem,
@@ -473,6 +475,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (RollupAsyncProcessor roll : rollups) {
+      roll.isProcessed = true;
       CalcItemData data = new CalcItemData(this.calcItems, this.oldCalcItems);
       this.setupCalcItemData(roll);
       RollupLogger.Instance.log('starting rollup for: ', roll, LoggingLevel.DEBUG);
@@ -883,7 +886,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
-      rollup.isProcessed = true;
       SObject lookupRecord = lookupItems[index];
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
@@ -938,6 +940,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (roll instanceof FullRecalcProcessor) {
       for (RollupAsyncProcessor otherRollup : this.rollups) {
         if (roll.isProcessed == false && otherRollup != roll) {
+          RollupLogger.Instance.log('adding full recalc rollup as inner rollup:', otherRollup, LoggingLevel.DEBUG);
           roll.rollups.add(otherRollup);
         }
       }
