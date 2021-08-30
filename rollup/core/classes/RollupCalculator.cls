@@ -1,7 +1,6 @@
 public without sharing abstract class RollupCalculator {
   private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
 
-
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
   private Boolean isMultiCurrencyRollup = false;
@@ -1095,12 +1094,9 @@ public without sharing abstract class RollupCalculator {
         lookupKeyField
       );
       this.metadata.OrderByFirstLast__c = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
-      SObjectType calcItemSObjectType = ((SObject)Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
+      SObjectType calcItemSObjectType = ((SObject) Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
       SObjectField orderByFirstLastField = calcItemSObjectType.getDescribe().fields.getMap().get(this.metadata.OrderByFirstLast__c);
-      this.isMultiCurrencyRollup =
-        UserInfo.isMultiCurrencyOrganization() &&
-        orderByFirstLastField != null &&
-        orderByFirstLastField.getDescribe().getType() == DisplayType.CURRENCY;
+      this.isMultiCurrencyRollup = UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY;
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
