@@ -381,7 +381,7 @@ private class RollupIntegrationTests {
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'CurrencyIsoCode',
+        RollupFieldOnCalcItem__c = 'Id',
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
@@ -400,18 +400,18 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Decimal firstAmount;
-    String firstOpportunityCurrencyIsoCode;
+    Id firstOpportunityId;
     List<Opportunity> opportunities = [SELECT Id, convertCurrency(Amount) ConvertedAmount, CurrencyIsoCode FROM Opportunity];
     for (Opportunity opp : opportunities) {
       Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
       if (firstAmount == null || oppConvertedAmount < firstAmount) {
         firstAmount = oppConvertedAmount;
-        firstOpportunityCurrencyIsoCode = opp.CurrencyIsoCode;
+        firstOpportunityId = opp.Id;
       }
     }
 
     acc = [SELECT Id, Name FROM Account];
-    System.assertEquals(firstOpportunityCurrencyIsoCode, acc.Name, 'Should have taken first based on multi-currency Amount! Records: ' + opportunities);
+    System.assertEquals(firstOpportunityId, acc.Name, 'Should have taken first based on multi-currency Amount! Records: ' + opportunities);
   }
 
   @isTest
@@ -434,7 +434,7 @@ private class RollupIntegrationTests {
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'CurrencyIsoCode',
+        RollupFieldOnCalcItem__c = 'Id',
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
@@ -453,18 +453,18 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Decimal lastAmount;
-    String lastOpportunityCurrencyIsoCode;
+    Id lastOpportunityId;
     List<Opportunity> opportunities = [SELECT Id, convertCurrency(Amount) ConvertedAmount, CurrencyIsoCode FROM Opportunity];
     for (Opportunity opp : opportunities) {
       Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
       if (lastAmount == null || oppConvertedAmount > lastAmount) {
         lastAmount = oppConvertedAmount;
-        lastOpportunityCurrencyIsoCode = opp.CurrencyIsoCode;
+        lastOpportunityId = opp.Id;
       }
     }
 
     acc = [SELECT Id, Name FROM Account];
-    System.assertEquals(lastOpportunityCurrencyIsoCode, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
+    System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
   }
 
   @isTest
