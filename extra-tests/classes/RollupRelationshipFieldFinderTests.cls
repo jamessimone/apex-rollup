@@ -21,7 +21,7 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
-    parent = (Account) queryRecord(parent.Id);
+    parent = (Account) RollupTestUtils.queryRecord(parent.Id);
     System.assertEquals(parent, traversal.retrieveParent(cpa.Id));
 
     // validates that the relationship field finder works even if a fully qualified path isn't provided if the parent
@@ -56,7 +56,7 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
     parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id];
-    User expectedUser = (User) queryRecord(parent.OwnerId);
+    User expectedUser = (User) RollupTestUtils.queryRecord(parent.OwnerId);
     System.assertEquals(
       expectedUser,
       traversal.retrieveParent(cpa.Id),
@@ -216,7 +216,7 @@ private class RollupRelationshipFieldFinderTests {
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    parentOne = (Account) queryRecord(parentOne.Id);
+    parentOne = (Account) RollupTestUtils.queryRecord(parentOne.Id);
     System.assertEquals(parentOne, traversal.retrieveParent(cpaOne.Id), 'First opp parent should not be exluded!');
     System.assertEquals(parentOne, traversal.retrieveParent(cpaTwo.Id), 'Second opp should not have been excluded!');
   }
@@ -253,8 +253,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     // we don't anticipate it being necessary to return fields used in the where clause; just that records are filtered correctly
-    Account expectedFirst = (Account) queryRecord(parentOne.Id);
-    parentThree = (Account) queryRecord(parentThree.Id);
+    Account expectedFirst = (Account) RollupTestUtils.queryRecord(parentOne.Id);
+    parentThree = (Account) RollupTestUtils.queryRecord(parentThree.Id);
     System.assertEquals(expectedFirst, traversal.retrieveParent(cpaOne.Id), 'First cpa parent should be returned, matches nested conditional!');
     System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second cpa parent should have been excluded with clause after nested conditional!');
     // parent three doesn't have additional fields (like AccountNumber), fine to use as is
@@ -301,19 +301,8 @@ private class RollupRelationshipFieldFinderTests {
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    Account expectedAcc = (Account) queryRecord(parentOne.Id);
+    Account expectedAcc = (Account) RollupTestUtils.queryRecord(parentOne.Id);
     System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'Ultimate parent should have been used!');
     System.assertEquals(expectedAcc, traversal.retrieveParent(cpaTwo.Id), 'Ultimate parent should be found even if 5+ levels deep in hierarchy');
-  }
-
-  private static SObject queryRecord(Id recordId) {
-    SObjectType sObjectType = recordId.getSObjectType();
-    String currencyIscoCodeFieldName = 'CurrencyIsoCode';
-    List<String> fields = new List<String>{ 'Id', 'Name' };
-    if (UserInfo.isMultiCurrencyOrganization() && sObjectType.getDescribe().fields.getMap().containsKey(currencyIscoCodeFieldName)) {
-      fields.add(currencyIscoCodeFieldName);
-    }
-    String recordQuery = 'SELECT ' + String.join(fields, ', ') + '\nFROM ' + sObjectType + '\nWHERE Id = :recordId';
-    return Database.query(recordQuery);
   }
 }

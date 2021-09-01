@@ -56,4 +56,36 @@ public class RollupTestUtils {
 
     return mock;
   }
+
+  /**
+   * Returns a record using dynamic SOQL to prevent CurrencyIsoCode from being strongly typed anywhere in the tests
+   */
+  public static SObject queryRecord(Id recordId) {
+    return queryRecord(recordId, new List<String>());
+  }
+
+  public static SObject queryRecord(Id recordId, List<String> fieldNames) {
+    return queryRecord(recordId, null, fieldNames);
+  }
+
+  public static SObject queryrecord(String fromObject, List<String> fieldNames) {
+    return queryRecord(null, fromObject, fieldNames);
+  }
+
+  private static SObject queryRecord(Id recordId, String fromObject, List<String> fieldNames) {
+    SObjectType sObjectType = recordId != null ? recordId.getSObjectType() : ((SObject) Type.forName(fromObject).newInstance()).getSObjectType();
+    String currencyIscoCodeFieldName = 'CurrencyIsoCode';
+    if (fieldNames.contains('Id') == false) {
+      fieldNames.add('Id');
+    }
+    if (fieldNames.contains('Name') == false) {
+      fieldNames.add('Name');
+    }
+    if (UserInfo.isMultiCurrencyOrganization() && sObjectType.getDescribe().fields.getMap().containsKey(currencyIscoCodeFieldName)) {
+      fieldNames.add(currencyIscoCodeFieldName);
+    }
+    String whereClause = recordId == null ? '' :  '\nWHERE Id = :recordId';
+    String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + sObjectType + whereClause;
+    return Database.query(recordQuery);
+  }
 }

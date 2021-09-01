@@ -2,10 +2,10 @@
     "packageDirectories": [
         {
             "default": true,
-            "package": "apex-rollup",
+            "package": "Apex Rollup",
             "path": "rollup",
-            "versionNumber": "1.2.42.0",
-            "versionDescription": "Further REFRESH improvements, rollup logging optimizations",
+            "versionNumber": "1.2.43.0",
+            "versionDescription": "Multi-currency rollups, bugfixes",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"

@@ -25,7 +25,7 @@ public without sharing abstract class RollupCalculator {
   @TestVisible
   private static Factory testFactory;
 
-  private static final Map<String, CurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY = getCurrencyMap();
+  private static final Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY = RollupCurrencyInfo.getCurrencyMap();
   private static Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
 
   public static Factory Factory {
@@ -1177,26 +1177,5 @@ public without sharing abstract class RollupCalculator {
 
       return this.isFirst ? returnVal : returnVal * -1;
     }
-  }
-
-  private class CurrencyInfo {
-    public String IsoCode { get; set; }
-    public Decimal ConversionRate { get; set; }
-    public Integer DecimalPlaces { get; set; }
-    public Boolean IsCorporate { get; set; }
-  }
-
-  private static Map<String, CurrencyInfo> getCurrencyMap() {
-    Map<String, CurrencyInfo> currencyInfoMap = new Map<String, CurrencyInfo>();
-    if (UserInfo.isMultiCurrencyOrganization() == false) {
-      return currencyInfoMap;
-    }
-
-    String query = 'SELECT IsoCode, ConversionRate, DecimalPlaces, IsCorporate FROM CurrencyType WHERE IsActive = TRUE';
-    List<CurrencyInfo> currencyTypes = (List<CurrencyInfo>) JSON.deserialize(JSON.serialize(Database.query(query)), List<CurrencyInfo>.class);
-    for (CurrencyInfo currencyType : currencyTypes) {
-      currencyInfoMap.put(currencyType.IsoCode, currencyType);
-    }
-    return currencyInfoMap;
   }
 }
