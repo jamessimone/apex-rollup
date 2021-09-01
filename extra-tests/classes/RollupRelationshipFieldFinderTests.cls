@@ -292,7 +292,8 @@ private class RollupRelationshipFieldFinderTests {
       new Rollup__mdt(
         RollupToUltimateParent__c = true,
         UltimateParentLookup__c = 'ParentId',
-        GrandparentRelationshipFieldPath__c = 'Parent.Name'
+        GrandparentRelationshipFieldPath__c = 'Parent.Name',
+        LookupFieldOnCalcItem__c = 'ParentId'
       ),
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,

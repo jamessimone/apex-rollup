@@ -141,6 +141,8 @@ global without sharing virtual class Rollup {
 
   public virtual class DMLHelper {
     public virtual void doUpdate(List<SObject> recordsToUpdate) {
+      recordsToUpdate.sort();
+      RollupLogger.Instance.log('updating the following records:', recordsToUpdate, LoggingLevel.FINE);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
       Database.update(recordsToUpdate, dmlOptions);
@@ -2014,7 +2016,6 @@ global without sharing virtual class Rollup {
       }
     }
     if (String.isNotBlank(potentialWhereClause)) {
-      // String whereClause = '' + potentialWhereClause + ' AND ';
       String whereClause = '(' + potentialWhereClause + ') AND ';
       wrapper.setQuery(whereClause + wrapper.getQuery());
     }

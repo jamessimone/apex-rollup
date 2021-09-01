@@ -352,7 +352,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         return new List<SObject>();
       } else {
         List<SObject> localLookupItems;
-        if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+        if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
           localLookupItems = rollup.traversal.getAllParents();
           // winnow the list, which would otherwise occur because of specifically only querying for the objIds passed in
           for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
@@ -511,9 +511,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     this.splitUpdates(updatedLookupRecords);
-
     this.getDML().doUpdate(updatedLookupRecords.values());
-
     this.processDeferredRollups();
   }
 
