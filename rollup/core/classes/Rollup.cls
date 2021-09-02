@@ -198,7 +198,7 @@ global without sharing virtual class Rollup {
     isDeferralAllowed = value;
   }
 
-  protected Rollup getAsyncRollup(
+  protected RollupAsyncProcessor getAsyncRollup(
     List<Rollup__mdt> rollupOperations,
     SObjectType sObjectType,
     List<SObject> calcItems,
@@ -2125,7 +2125,7 @@ global without sharing virtual class Rollup {
     return null;
   }
 
-  private static Rollup getRollup(
+  private static RollupAsyncProcessor getRollup(
     List<Rollup__mdt> rollupOperations,
     SObjectType sObjectType,
     List<SObject> calcItems,
@@ -2133,7 +2133,7 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     InvocationPoint rollupInvokePoint
   ) {
-    Rollup rollupConductor = new RollupAsyncProcessor(rollupInvokePoint, calcItems, oldCalcItems);
+    RollupAsyncProcessor rollupConductor = new RollupAsyncProcessor(rollupInvokePoint, calcItems, oldCalcItems);
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return rollupConductor;
     } else if (rollupOperations.size() == 1) {

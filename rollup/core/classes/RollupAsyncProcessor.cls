@@ -419,11 +419,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.lookupItems;
   }
 
-  protected void processDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+  protected void processDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, Map<Id, SObject> oldCalcItems, FullRecalcProcessor fullRecalcProcessor) {
     isRunningAsync = true; // the first rollup can immediately start rolling up, instead of dispatching to a queueable / another batchable
-    RollupAsyncProcessor roll = (RollupAsyncProcessor) this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
+    RollupAsyncProcessor roll = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
     roll.isFullRecalc = true;
-    roll.fullRecalcProcessor = (FullRecalcProcessor) this;
+    roll.fullRecalcProcessor = fullRecalcProcessor;
     roll.runCalc();
   }
 
