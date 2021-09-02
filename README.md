@@ -948,7 +948,7 @@ You can use the included `Rollup Logger Plugin Parameter` CMDT record `Logging D
 
 ### Multi-Currency Orgs
 
-As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. `Rollup` automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency,.
+As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. `Rollup` automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency. Please note that if you use Advanced Currency Management in combination with the `DatedConversionRate` object, this package does not currently support mapping the dated conversion rates. Please [submit an issue](/issues) in the event that you need support for dated conversion rates!
 
 ## Commit History
 

@@ -359,7 +359,9 @@ public without sharing abstract class RollupCalculator {
       String.isBlank(this.parentIsoCode) ||
       String.isBlank(calcItemIsoCode) ||
       calcItemIsoCode == this.parentIsoCode ||
-      skinnyCalcItem?.getPopulatedFieldsAsMap().containsKey(this.opFieldOnCalcItem.getDescribe().getName()) == true
+      skinnyCalcItem?.getPopulatedFieldsAsMap().containsKey(this.opFieldOnCalcItem.getDescribe().getName()) == true ||
+      CURRENCY_ISO_CODE_TO_CURRENCY.containsKey(calcItemIsoCode) == false ||
+      CURRENCY_ISO_CODE_TO_CURRENCY.containsKey(this.parentIsoCode) == false
     ) {
       return;
     }

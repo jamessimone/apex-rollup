@@ -2,7 +2,7 @@
     "packageDirectories": [
         {
             "default": true,
-            "package": "Apex Rollup",
+            "package": "apex-rollup",
             "path": "rollup",
             "versionNumber": "1.2.43.0",
             "versionDescription": "Multi-currency rollups, bugfixes",
