@@ -261,6 +261,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private SObject getPotentialUltimateParent(SObject childRecord) {
     Map<String, Schema.SObjectField> fieldMap = childRecord.getSObjectType().getDescribe().fields.getMap();
+    this.currentRelationshipName = this.relationshipParts.size() == 1
+      ? this.relationshipParts[0]
+      : this.currentRelationshipName;
     SObjectField lookupField = this.getField(fieldMap, this.currentRelationshipName);
     String relationshipName = lookupField.getDescribe().getRelationshipName();
     if (childRecord.get(this.metadata.UltimateParentLookup__c) != null && childRecord.getPopulatedFieldsAsMap().containsKey(relationshipName)) {
@@ -494,7 +497,15 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
-  private List<SObject> performQuery(SObjectType sObjectType, List<String> queryFields, String lookupfield, String equality, Set<Id> objIds, String whereClause, List<SObject> records) {
+  private List<SObject> performQuery(
+    SObjectType sObjectType,
+    List<String> queryFields,
+    String lookupfield,
+    String equality,
+    Set<Id> objIds,
+    String whereClause,
+    List<SObject> records
+  ) {
     return Database.query(RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, lookupfield, equality, whereClause));
   }
 
