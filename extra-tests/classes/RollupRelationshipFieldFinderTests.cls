@@ -2,10 +2,14 @@
 private class RollupRelationshipFieldFinderTests {
   static RollupControl__mdt control = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 10000);
 
+  @TestSetup
+  static void setup() {
+    insert new Account(Name = RollupRelationshipFieldFinderTests.class.getName());
+  }
+
   @IsTest
   static void shouldFindParentRelationshipBetweenStandardObjects() {
-    Account parent = new Account(Name = 'Parent relationship between standard objects');
-    insert parent;
+    Account parent = [SELECT Id FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child cpa');
     insert cpa;
@@ -21,6 +25,7 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
+    parent = (Account) RollupTestUtils.queryRecord(parent.Id);
     System.assertEquals(parent, traversal.retrieveParent(cpa.Id));
 
     // validates that the relationship field finder works even if a fully qualified path isn't provided if the parent
@@ -39,8 +44,7 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldFindGrandparentRelationshipBetweenStandardObjects() {
-    Account parent = new Account(Name = 'Parent account looking up to User');
-    insert parent;
+    Account parent = [SELECT Id FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child looking up to account');
     insert cpa;
@@ -55,8 +59,9 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
     parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id];
+    User expectedUser = (User) RollupTestUtils.queryRecord(parent.OwnerId);
     System.assertEquals(
-      [SELECT Id, Name FROM User WHERE Id = :parent.OwnerId][0],
+      expectedUser,
       traversal.retrieveParent(cpa.Id),
       'User should have been retrieved correctly!'
     );
@@ -64,8 +69,7 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldBailEarlyIfQueryCountExceedsControlCount() {
-    Account acc = new Account(Name = 'Parent to cpa');
-    insert acc;
+    Account acc = [SELECT Id FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Child cpa');
     control.MaxNumberOfQueries__c = 1;
@@ -88,7 +92,7 @@ private class RollupRelationshipFieldFinderTests {
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
     insert new List<Account>{ intermediateOne, intermediateTwo };
 
-    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account];
+    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account WHERE NAME LIKE 'Intermediate%' LIMIT 2];
     if (updatedAccounts.size() == 2) {
       // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate
       // the results
@@ -135,8 +139,7 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldReportReparentingCorrectlyForNulls() {
-    Account intermediateOne = new Account(Name = 'Intermediate 1');
-    insert new List<Account>{ intermediateOne };
+    Account intermediateOne = [SELECT Id FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = intermediateOne.Id, Name = 'Child reparented');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
@@ -172,24 +175,24 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldReportReparentingCorrectlyForImmediateParent() {
-    Account parentOne = new Account(Name = 'Parent1');
+    Account parentOne = [SELECT Id FROM Account];
     Account parentTwo = new Account(Name = 'Parent2');
-    insert new List<Account>{ parentOne, parentTwo };
+    insert parentTwo;
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'Child1');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentOne.Id, Name = 'Child2');
-    List<ContactPointAddress> opps = new List<ContactPointAddress>{ cpaOne, cpaTwo };
-    insert opps;
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
+    insert cpas;
 
-    Map<Id, SObject> oldOpps = new Map<Id, SObject>{ cpaOne.Id => cpaOne, cpaTwo.Id => new ContactPointAddress(ParentId = parentTwo.Id) };
+    Map<Id, SObject> oldCpas = new Map<Id, SObject>{ cpaOne.Id => cpaOne, cpaTwo.Id => new ContactPointAddress(ParentId = parentTwo.Id) };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,
-      oldOpps
+      oldCpas
     );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(opps);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     System.assertEquals(true, traversal.isUltimatelyReparented(cpaTwo, 'ParentId'));
     System.assertEquals(false, traversal.isUltimatelyReparented(cpaOne, 'ParentId'));
@@ -197,8 +200,7 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldTrackMultipleParents() {
-    Account parentOne = new Account(Name = 'SoloParent');
-    insert parentOne;
+    Account parentOne = [SELECT Id FROM Account];
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentOne.Id, Name = 'SecondParentedChild');
@@ -214,6 +216,7 @@ private class RollupRelationshipFieldFinderTests {
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
+    parentOne = (Account) RollupTestUtils.queryRecord(parentOne.Id);
     System.assertEquals(parentOne, traversal.retrieveParent(cpaOne.Id), 'First opp parent should not be exluded!');
     System.assertEquals(parentOne, traversal.retrieveParent(cpaTwo.Id), 'Second opp should not have been excluded!');
   }
@@ -250,7 +253,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     // we don't anticipate it being necessary to return fields used in the where clause; just that records are filtered correctly
-    Account expectedFirst = new Account(Id = parentOne.Id, Name = parentOne.Name);
+    Account expectedFirst = (Account) RollupTestUtils.queryRecord(parentOne.Id);
+    parentThree = (Account) RollupTestUtils.queryRecord(parentThree.Id);
     System.assertEquals(expectedFirst, traversal.retrieveParent(cpaOne.Id), 'First cpa parent should be returned, matches nested conditional!');
     System.assertEquals(null, traversal.retrieveParent(cpaTwo.Id), 'Second cpa parent should have been excluded with clause after nested conditional!');
     // parent three doesn't have additional fields (like AccountNumber), fine to use as is
@@ -259,8 +263,7 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldTraverseAllTheWayUpWhenMetadataFlagIsEnabled() {
-    Account parentOne = new Account(Name = 'ultimate parent');
-    insert parentOne;
+    Account parentOne = [SELECT Id FROM Account];
     Account parentTwo = new Account(Name = 'child parent', ParentId = parentOne.Id);
     // also start another chain of relationships
     Account secondParent = new Account(Name = 'second child parent', ParentId = parentOne.Id);
@@ -288,7 +291,8 @@ private class RollupRelationshipFieldFinderTests {
       new Rollup__mdt(
         RollupToUltimateParent__c = true,
         UltimateParentLookup__c = 'ParentId',
-        GrandparentRelationshipFieldPath__c = 'Parent.Name'
+        GrandparentRelationshipFieldPath__c = 'Parent.Name',
+        LookupFieldOnCalcItem__c = 'ParentId'
       ),
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,
@@ -296,8 +300,36 @@ private class RollupRelationshipFieldFinderTests {
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
-    Account expectedAcc = new Account(Id = parentOne.Id, Name = parentOne.Name);
+    Account expectedAcc = (Account) RollupTestUtils.queryRecord(parentOne.Id);
     System.assertEquals(expectedAcc, traversal.retrieveParent(cpaOne.Id), 'Ultimate parent should have been used!');
     System.assertEquals(expectedAcc, traversal.retrieveParent(cpaTwo.Id), 'Ultimate parent should be found even if 5+ levels deep in hierarchy');
+  }
+
+  @IsTest
+  static void shouldWorkWithHierarchiesWhereLookupFieldDiffersFromHierarchy() {
+    Account hierarchyParent = [SELECT Id FROM Account];
+    Account parent = new Account(Name = 'child parent', ParentId = hierarchyParent.Id);
+    insert parent;
+
+    Contact con = new Contact(LastName = 'hierarchy child', AccountId = parent.Id);
+    List<Contact> cons = new List<Contact>{ con };
+    insert cons;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(
+        RollupToUltimateParent__c = true,
+        UltimateParentLookup__c = 'ParentId',
+        LookupFieldOnCalcItem__c = 'AccountId'
+      ),
+      new Set<String>{ 'Name', 'Id' },
+      Account.SObjectType,
+      new Map<Id, SObject>()
+    );
+
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cons);
+    Account expectedAcc = [SELECT Id FROM Account WHERE Id = :hierarchyParent.Id];
+    Account retrievedAcc = (Account) traversal.retrieveParent(con.Id);
+    System.assertEquals(expectedAcc.Id, retrievedAcc.Id, 'Should correctly retrieve hierarchy');
   }
 }

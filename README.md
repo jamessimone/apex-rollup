@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShMNAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPMAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShMNAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPMAA0">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -948,7 +948,7 @@ You can use the included `Rollup Logger Plugin Parameter` CMDT record `Logging D
 
 ### Multi-Currency Orgs
 
-Untested. I would expect that MAX/SUM/MIN/AVERAGE operations would have undefined behavior (or, rather, incorrect conversions) if mixed currencies are present on the children items. This would be a good first issue for somebody looking to contribute!
+As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. `Rollup` automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency. Please note that if you use Advanced Currency Management in combination with the `DatedConversionRate` object, this package does not currently support mapping the dated conversion rates. Please [submit an issue](/issues) in the event that you need support for dated conversion rates!
 
 ## Commit History
 

@@ -55,6 +55,9 @@ if($scratchOrgAllotment -gt 0) {
       throw $1
     }
     $userNameHasBeenSet = $true
+    # Multi-currency prep
+    Write-Output 'Importing multi-currency config data to scratch org ...'
+    sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
     # Deploy
     Write-Output 'Pushing source to scratch org ...'
     sfdx force:source:push

@@ -52,6 +52,7 @@ public without sharing class RollupRelationshipFieldFinder {
     private Boolean isFinished = false;
     private Boolean isAbortedEarly = false;
 
+    private final Map<Id, SObject> finalParentIdToRecords = new Map<Id, SObject>();
     private final Map<Id, SObject> lookupIdToFinalRecords = new Map<Id, SObject>();
     private Map<Id, List<Id>> lookupIdMap = new Map<Id, List<Id>>();
     private final Map<Id, List<Id>> hierarchy = new Map<Id, List<Id>>();
@@ -166,6 +167,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     if (baseSObjectType == this.ultimateParent && this.isFinishedWithHierarchyTraversal(records)) {
+      this.retrieveAdditionalHierarchyRecords(records, this.traversal.hierarchy.keySet());
       this.prepFinishedObject(records);
       return this.traversal;
     } else {
@@ -228,9 +230,8 @@ public without sharing class RollupRelationshipFieldFinder {
   private void prepFinishedObject(List<SObject> records) {
     this.traversal.isFinished = true;
     this.populateFinalRecordsMapping(records);
-    this.traversal.isFinished = true;
     this.relationshipParts = this.originalParts; // reset to initial state in case outer method is re-called
-    this.traversal.lookupIdMap = new Map<Id, List<Id>>(); // try to spare the heap
+    this.traversal.lookupIdMap.clear(); // try to spare the heap
   }
 
   private Boolean isFinishedWithHierarchyTraversal(List<SObject> records) {
@@ -260,6 +261,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private SObject getPotentialUltimateParent(SObject childRecord) {
     Map<String, Schema.SObjectField> fieldMap = childRecord.getSObjectType().getDescribe().fields.getMap();
+    this.currentRelationshipName = this.relationshipParts.size() == 1
+      ? this.relationshipParts[0]
+      : this.currentRelationshipName;
     SObjectField lookupField = this.getField(fieldMap, this.currentRelationshipName);
     String relationshipName = lookupField.getDescribe().getRelationshipName();
     if (childRecord.get(this.metadata.UltimateParentLookup__c) != null && childRecord.getPopulatedFieldsAsMap().containsKey(relationshipName)) {
@@ -409,7 +413,7 @@ public without sharing class RollupRelationshipFieldFinder {
         this.traversal.lookupIdMap.put(lookupId, new List<Id>{ recordId });
       }
 
-      if (this.isFirstRun) {
+      if (this.isFirstRun && field != null) {
         // we need to keep track of potentially reparented lookups to aid with the note below
         if (this.oldRecords.containsKey(recordId)) {
           Id oldLookupId = (Id) this.oldRecords.get(recordId).get(field);
@@ -423,12 +427,14 @@ public without sharing class RollupRelationshipFieldFinder {
         // track the hierarchy of objects to help in determining whether or not something
         // has ultimately been reparented
         // for example:
-        // * Object 1 -> Parent 1 -> Grandparent 1 could be updated to
-        // * Object 1 -> Parent 2 -> Grandparent 1
+        // * Child 1 -> Parent 1 -> Grandparent 1 could be updated to
+        // * Child 1 -> Parent 2 -> Grandparent 1
         // this would "traditionally" be a reparenting situation, but if we are skipping
         // the intermediate objects for a rollup and the end result is the same, we need
         // to avoid reporting false positives like this one
         this.traversal.hierarchy.get(recordId).add(lookupId);
+      } else {
+        this.traversal.hierarchy.put(recordId, new List<Id>{ lookupId });
       }
     }
   }
@@ -451,12 +457,95 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
+  private void retrieveAdditionalHierarchyRecords(List<SObject> records, Set<Id> objIds) {
+    String whereClause = 'Id != :records';
+    if (this.metadata.RollupToUltimateParent__c == false) {
+      return;
+    } else if (records.isEmpty()) {
+      List<SObject> otherMatchingParentRecords = this.performQuery(
+        this.ultimateParent,
+        new List<String>{ this.metadata.UltimateParentLookup__c, 'Id' },
+        this.metadata.UltimateParentLookup__c,
+        '=',
+        objIds,
+        whereClause,
+        records
+      );
+      if (otherMatchingParentRecords.isEmpty() == false) {
+        this.retrieveAdditionalHierarchyRecords(otherMatchingParentRecords, objIds);
+      }
+    } else {
+      Set<Id> additionalParentIds = new Set<Id>();
+      for (SObject otherMatchingParent : records) {
+        additionalParentIds.add(otherMatchingParent.Id);
+        this.trackTraversalIds(otherMatchingParent.Id, (Id) otherMatchingParent.get(this.metadata.UltimateParentLookup__c), null, additionalParentIds);
+      }
+      List<SObject> otherPotentialParents = this.performQuery(
+        this.ultimateParent,
+        new List<String>{ this.metadata.UltimateParentLookup__c, 'Id' },
+        this.metadata.UltimateParentLookup__c,
+        '=',
+        additionalParentIds,
+        whereClause,
+        records
+      );
+      if (otherPotentialParents.isEmpty()) {
+        this.retrieveAdditionalCalcItems();
+      } else {
+        this.retrieveAdditionalHierarchyRecords(otherPotentialParents, additionalParentIds);
+      }
+    }
+  }
+
+  private List<SObject> performQuery(
+    SObjectType sObjectType,
+    List<String> queryFields,
+    String lookupfield,
+    String equality,
+    Set<Id> objIds,
+    String whereClause,
+    List<SObject> records
+  ) {
+    return Database.query(RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, lookupfield, equality, whereClause));
+  }
+
+  private void retrieveAdditionalCalcItems() {
+    if (this.records?.isEmpty() == false) {
+      SObjectType childType = this.records[0].getSObjectType();
+      Set<String> queryFields = new Set<String>{
+        this.metadata.LookupFieldOnCalcItem__c,
+        this.metadata.RollupFieldOnCalcItem__c,
+        this.metadata.OrderByFirstLast__c,
+        this.metadata.UltimateParentLookup__c
+      };
+      queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, childType).getQueryFields());
+      String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), this.metadata.LookupFieldOnCalcItem__c, '=');
+      query += '\nAND Id != :records';
+      Set<Id> objIds = this.traversal.hierarchy.keySet();
+      List<SObject> additionalCalcItems = Database.query(query);
+      this.records.addAll(additionalCalcItems);
+      for (SObject additionalCalcItem : additionalCalcItems) {
+        Id parentId = (Id) additionalCalcItem.get(this.metadata.LookupFieldOnCalcItem__c);
+        if (this.traversal.hierarchy.containsKey(parentId)) {
+          List<Id> potentialLinkedLookupIds = this.traversal.hierarchy.get(parentId);
+          for (Id potentialLinkedLookupId : potentialLinkedLookupIds) {
+            if (potentialLinkedLookupId != parentId && this.traversal.finalParentIdToRecords.containsKey(potentialLinkedLookupId)) {
+              SObject ultimateParentRecord = this.traversal.finalParentIdToRecords.get(potentialLinkedLookupId);
+              this.traversal.lookupIdToFinalRecords.put(additionalCalcItem.Id, ultimateParentRecord);
+            }
+          }
+        }
+      }
+    }
+  }
+
   private void populateFinalRecordsMapping(List<SObject> records) {
     for (SObject record : records) {
       Set<Id> descendantIds = this.getDescendantIds(record.Id, new Set<Id>());
       for (Id descendantId : descendantIds) {
         if (descendantId != record.Id) {
           this.traversal.lookupIdToFinalRecords.put(descendantId, record);
+          this.traversal.finalParentIdToRecords.put(record.Id, record);
         }
       }
     }

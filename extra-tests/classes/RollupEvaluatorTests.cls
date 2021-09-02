@@ -924,4 +924,13 @@ private class RollupEvaluatorTests {
 
     System.assertEquals('TaskSubType != \'Email\' OR (NOT Subject LIKE \'Email\')', eval.getSafeQuery());
   }
+
+  @IsTest
+  static void shouldNotMangleValuesWithNameInThem() {
+    String whereClause = 'Name != \'oneName\'';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
+
+    System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'oneName')));
+  }
 }

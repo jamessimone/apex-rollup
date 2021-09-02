@@ -38,6 +38,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
   public abstract Boolean matches(Object calcItem);
 
+  public abstract override String toString();
+
   public static WhereFieldEvaluator getWhereEval(String calcItemWhereClause, SObjectType calcItemType) {
     String key = calcItemWhereClause + calcItemType;
     WhereFieldEvaluator eval;
@@ -89,6 +91,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     public override Boolean matches(Object calcItem) {
       return true;
     }
+
+    public override String toString() {
+      return AlwaysTrueEvaluator.class.getName();
+    }
   }
 
   private class CombinedEvaluator extends RollupEvaluator {
@@ -101,7 +107,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
-      return this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
+      Boolean matches = this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
+      addLog(this, matches, calcItem, LoggingLevel.FINER);
+      return matches;
+    }
+
+    public override String toString() {
+      return CombinedEvaluator.class.getName() + '\nFirst eval: ' + this.firstEval.toString() + '\nSecond eval: ' + this.secondEval.toString();
     }
   }
 
@@ -126,8 +138,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      addFinestLog(SObjectChangedFieldEvaluator.class, matches, calcItem);
+      addLog(this, matches, calcItem, LoggingLevel.FINER);
       return matches;
+    }
+
+    public override String toString() {
+      return SObjectChangedFieldEvaluator.class.getName() + '\nChanged fields: ' + changedFieldNames;
     }
   }
 
@@ -151,6 +167,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
       RollupLogger.Instance.log('Where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
+    }
+
+    public override String toString() {
+      return WhereFieldEvaluator.class.getName() + '\nWhere clause: ' + this.originalWhereClause;
     }
 
     public List<String> getWhereClauses() {
@@ -195,9 +215,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
-      Boolean matches = this.innerMatches(calcItem);
-      addFinestLog(WhereFieldEvaluator.class, matches, calcItem);
-      return matches;
+      return this.innerMatches(calcItem);
     }
 
     private Boolean innerMatches(Object calcItem) {
@@ -205,6 +223,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (matches) {
         for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
           Boolean hasInnerMatch = conditionalGrouping.equals(calcItem);
+          addLog(conditionalGrouping, hasInnerMatch, calcItem, LoggingLevel.FINEST);
           if (hasInnerMatch && conditionalGrouping.isOrConditional()) {
             matches = true;
           } else if (conditionalGrouping.isOrConditional() == false) {
@@ -358,7 +377,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
       localClause = localClause.trim();
       String fieldName = localClause.substring(0, localClause.indexOf(' '));
-      localClause = localClause.replace(fieldName, '').trim();
+      localClause = localClause.removeStart(fieldName).trim();
       String criteria = localClause.substring(0, localClause.indexOf(' ')).trim();
       String value = this.getValue(localClause.substringAfter(criteria));
 
@@ -430,6 +449,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     protected abstract Boolean conditionallyEquals(Object calcItem);
+
+    public override String toString() {
+      return ConditionalGrouping.class.getName() + '\nIs Or Conditional: ' + this.isOrConditional() + '\nInner conditions: ' + this.innerConditions;
+    }
   }
 
   private class OrConditionalGrouping extends ConditionalGrouping {
@@ -709,6 +732,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
+    public override String toString() {
+      return RecursiveUpdateEvaluator.class.getName() + ' tracking ' + OPERATION_TO_RECURSION_TRACKER.size() + ' potentially recursive operations';
+    }
+
     // at some point, it's possible that this will be revisited, but for now recursion detection
     // for grandparent / ultimate parent rollups is not supported
     public override Boolean matches(Object item) {
@@ -729,14 +756,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           matches = false;
         }
       }
-      addFinestLog(RecursiveUpdateEvaluator.class, matches, item);
+      addLog(this, matches, item, LoggingLevel.FINER);
 
       return matches;
     }
   }
 
-  private static void addFinestLog(Type clazz, Boolean matches, Object item) {
-    RollupLogger.Instance.log(clazz.getName() + ' matches? ' + matches + ' for: ' + item, LoggingLevel.FINEST);
+  private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {
+    RollupLogger.Instance.log(clazz + '\nmatches? ' + matches + ' for: ' + item, logLevel);
   }
 
   @TestVisible

@@ -1,0 +1,37 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "CurrencyType",
+        "referenceId": "ref0"
+      },
+      "IsoCode": "USD",
+      "DecimalPlaces": 2,
+      "ConversionRate": 1,
+      "IsActive":true,
+      "IsCorporate": true
+    },
+    {
+      "attributes": {
+        "type": "CurrencyType",
+        "referenceId": "ref1"
+      },
+      "IsoCode": "EUR",
+      "DecimalPlaces": 2,
+      "ConversionRate": 0.85,
+      "IsActive":true,
+      "IsCorporate": false
+    },
+    {
+      "attributes": {
+        "type": "CurrencyType",
+        "referenceId": "ref2"
+      },
+      "IsoCode": "JPY",
+      "DecimalPlaces": 4,
+      "ConversionRate": 109.83,
+      "IsActive":true,
+      "IsCorporate": false
+    }
+  ]
+}

@@ -58,6 +58,33 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldPerformFullRecalcWithHierarchy() {
+    Account acc = [SELECT Id FROM Account];
+    Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
+    insert childAccount;
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = childAccount.Id, Name = 'One');
+
+    // ensure that a top-level child item linked only to the ultimate parent is included
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    flowInputs[0].ultimateParentLookup = 'ParentId';
+    flowInputs[0].rollupToUltimateParent = true;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @IsTest
   static void shouldBulkifyBatchFullRecalcsProperly() {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 2);
     Account acc = [SELECT Id FROM Account];
@@ -664,6 +691,48 @@ private class RollupFullRecalcTests {
 
     Account updatedAcc = [SELECT Name FROM Account];
     System.assertEquals(cpas[1].Name, updatedAcc.Name, 'Should have taken first based on PreferenceRank');
+  }
+
+  @IsTest
+  static void shouldRetainFullRecalcValuesForMutuallyExclusiveRollupsToSameField() {
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneName', ParentId = acc.Id, PreferenceRank = 3),
+      new ContactPointAddress(Name = 'twoName', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeName', ParentId = acc.Id, PreferenceRank = 2)
+    };
+    insert cpas;
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Name != \'' + cpas[0].Name + '\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(6, acc.AnnualRevenue, 'Full child amount should be included');
   }
 
   // TODO - uncomment this and implement to work on fix for https://github.com/jamessimone/apex-rollup/issues/149

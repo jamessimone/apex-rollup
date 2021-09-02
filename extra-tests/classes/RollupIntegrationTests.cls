@@ -1,8 +1,10 @@
 @IsTest
 private class RollupIntegrationTests {
+  private static final Map<String, RollupCurrencyInfo> CURRENCY_TYPES = RollupCurrencyInfo.getCurrencyMap();
+
   @TestSetup
   static void setup() {
-    Account acc = new Account(Name = 'RollupIntegrationTests');
+    Account acc = new Account(Name = RollupIntegrationTests.class.getName());
     insert acc;
 
     acc.AccountIdText__c = acc.Id;
@@ -16,6 +18,8 @@ private class RollupIntegrationTests {
       AccountIdText__c = acc.Id,
       AccountId = acc.Id
     );
+    setCurrencyIsoCode(opp, 'USD');
+
     insert opp;
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
@@ -24,7 +28,7 @@ private class RollupIntegrationTests {
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, prior.AnnualRevenue, 'Test has started under the wrong conditions!');
-    Rollup.records = [SELECT Id, Amount, AccountIdText__c FROM Opportunity];
+    Rollup.records = new List<Opportunity>{ (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'Amount', 'AccountIdText__c' }) };
     Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -53,9 +57,9 @@ private class RollupIntegrationTests {
   static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
-    List<Opportunity> opps = [SELECT Id, Name, AmountFormula__c, AccountId FROM Opportunity];
-    System.assertEquals(1, opps[0].AmountFormula__c, 'Test has started with wrong opp conditions!');
-    Rollup.records = opps;
+    Opportunity opp = (Opportunity) RollupTestUtils.queryrecord('Opportunity', new List<String>{ 'AmountFormula__c', 'AccountId' });
+    System.assertEquals(1, opp.AmountFormula__c, 'Test has started with wrong opp conditions!');
+    Rollup.records = new List<Opportunity>{ opp };
     Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -67,7 +71,7 @@ private class RollupIntegrationTests {
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
         IsFullRecordSet__c = true,
-        CalcItemWhereClause__c = 'Name != \'' + opps[0].Name + '\'',
+        CalcItemWhereClause__c = 'Name != \'' + opp.Name + '\'',
         FullRecalculationDefaultNumberValue__c = 0,
         CalcItem__c = 'Opportunity'
       )
@@ -157,6 +161,312 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldCorrectlyRollupMaxForMultiCurrency() {
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+    setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+
+    Opportunity eurOpp = usdOpp.clone(false, true);
+    setCurrencyIsoCode(eurOpp, 'EUR');
+    eurOpp.Amount = .95;
+    Opportunity jpyOpp = eurOpp.clone(false, true);
+    setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.Amount = 100;
+    insert new List<Opportunity>{ eurOpp, jpyOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'MAX',
+        CalcItem__c = 'Opportunity'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'MaxAmountRollupSummary__c' });
+    Integer scaleSize = CURRENCY_TYPES.containsKey(getCurrencyIsoCode(acc)) ? CURRENCY_TYPES.get(getCurrencyIsoCode(acc)).DecimalPlaces : 2;
+    System.assertEquals(
+      acc.MaxAmountRollupSummary__c.setScale(scaleSize),
+      acc.AnnualRevenue.setScale(scaleSize),
+      'Multi-currency MAX rollup not calculated correctly!'
+    );
+  }
+
+  @IsTest
+  static void shouldCorrectlyRollupMinForMultiCurrency() {
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+    setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+
+    Opportunity eurOpp = usdOpp.clone(false, true);
+    setCurrencyIsoCode(eurOpp, 'EUR');
+    eurOpp.Amount = .95;
+    Opportunity jpyOpp = eurOpp.clone(false, true);
+    setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.Amount = 100;
+    insert new List<Opportunity>{ eurOpp, jpyOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'MIN',
+        IsFullRecordSet__c = true,
+        CalcItem__c = 'Opportunity'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'MinAmountRollupSummary__c' });
+    Integer scaleSize = CURRENCY_TYPES.containsKey(getCurrencyIsoCode(acc)) ? CURRENCY_TYPES.get(getCurrencyIsoCode(acc)).DecimalPlaces : 2;
+    System.assertEquals(
+      acc.MinAmountRollupSummary__c.setScale(scaleSize),
+      acc.AnnualRevenue.setScale(scaleSize),
+      'Multi-currency MIN rollup not calculated correctly!'
+    );
+  }
+
+  @IsTest
+  static void shouldCorrectlyRollupSumForMultiCurrency() {
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+    setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+
+    Opportunity eurOpp = usdOpp.clone(false, true);
+    setCurrencyIsoCode(eurOpp, 'EUR');
+    eurOpp.Amount = .95;
+    Opportunity jpyOpp = eurOpp.clone(false, true);
+    setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.Amount = 100;
+    insert new List<Opportunity>{ eurOpp, jpyOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        IsFullRecordSet__c = true,
+        CalcItem__c = 'Opportunity'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'SumAmountRollupSummary__c' });
+    Integer scaleSize = CURRENCY_TYPES.containsKey(getCurrencyIsoCode(acc)) ? CURRENCY_TYPES.get(getCurrencyIsoCode(acc)).DecimalPlaces : 2;
+    System.assertEquals(
+      acc.SumAmountRollupSummary__c.setScale(scaleSize),
+      acc.AnnualRevenue.setScale(scaleSize),
+      'Multi-currency SUM rollup not calculated correctly!'
+    );
+  }
+
+  @IsTest
+  static void shouldCorrectlyRollupAverageForMultiCurrency() {
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+    setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+
+    Opportunity eurOpp = usdOpp.clone(false, true);
+    setCurrencyIsoCode(eurOpp, 'EUR');
+    eurOpp.Amount = .95;
+    Opportunity jpyOpp = eurOpp.clone(false, true);
+    setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.Amount = 100;
+    insert new List<Opportunity>{ eurOpp, jpyOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'AVERAGE',
+        CalcItem__c = 'Opportunity'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
+      ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
+      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity GROUP BY Id];
+    Decimal convertedAmountSum = 0;
+    for (SObject opp : opportunities) {
+      convertedAmountSum += (Decimal) opp.get('ConvertedAmount');
+    }
+    Decimal conversionRate = CURRENCY_TYPES.containsKey(getCurrencyIsoCode(acc)) ? CURRENCY_TYPES.get(getCurrencyIsoCode(acc)).ConversionRate : 1;
+    Decimal expectedAverage = (convertedAmountSum / opportunities.size()) * conversionRate;
+
+    Integer scaleSize = CURRENCY_TYPES.containsKey(getCurrencyIsoCode(acc)) ? CURRENCY_TYPES.get(getCurrencyIsoCode(acc)).DecimalPlaces : 2;
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(
+      expectedAverage.setScale(scaleSize),
+      acc.AnnualRevenue.setScale(scaleSize),
+      'Multi-currency AVERAGE rollup not calculated correctly! Records: ' + opportunities
+    );
+  }
+
+  @IsTest
+  static void shouldCorrectlyRollupFirstForMultiCurrency() {
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+    setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+
+    Opportunity eurOpp = usdOpp.clone(false, true);
+    setCurrencyIsoCode(eurOpp, 'EUR');
+    eurOpp.Amount = .95;
+    Opportunity jpyOpp = eurOpp.clone(false, true);
+    setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.Amount = 100;
+    insert new List<Opportunity>{ eurOpp, jpyOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'FIRST',
+        CalcItem__c = 'Opportunity',
+        OrderByFirstLast__c = 'Amount'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Decimal firstAmount;
+    Id firstOpportunityId;
+    List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
+      ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
+      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity GROUP BY Id];
+    for (SObject opp : opportunities) {
+      Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
+      if (firstAmount == null || oppConvertedAmount < firstAmount) {
+        firstAmount = oppConvertedAmount;
+        firstOpportunityId = opp.Id;
+      }
+    }
+
+    acc = [SELECT Id, Name FROM Account];
+    System.assertEquals(firstOpportunityId, acc.Name, 'Should have taken first based on multi-currency Amount! Records: ' + opportunities);
+  }
+
+  @IsTest
+  static void shouldCorrectlyRollupLastForMultiCurrency() {
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+    setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+
+    Opportunity eurOpp = usdOpp.clone(false, true);
+    setCurrencyIsoCode(eurOpp, 'EUR');
+    eurOpp.Amount = .95;
+    Opportunity jpyOpp = eurOpp.clone(false, true);
+    setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.Amount = 100;
+    insert new List<Opportunity>{ eurOpp, jpyOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'LAST',
+        CalcItem__c = 'Opportunity',
+        OrderByFirstLast__c = 'Amount'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Decimal lastAmount;
+    Id lastOpportunityId;
+    List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
+      ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
+      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity GROUP BY Id];
+    for (SObject opp : opportunities) {
+      Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
+      if (lastAmount == null || oppConvertedAmount > lastAmount) {
+        lastAmount = oppConvertedAmount;
+        lastOpportunityId = opp.Id;
+      }
+    }
+
+    acc = [SELECT Id, Name FROM Account];
+    System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
+  }
+
+  @IsTest
   static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Custom Object Parent App');
     insert parentApp;
@@ -193,8 +503,12 @@ private class RollupIntegrationTests {
   /** grandparent rollup tests */
   @IsTest
   static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
+    // The CurrencyIsoCode field isn't directly used here, but the field will be automatically included by Rollup's queries,
+    // so include it on the accounts so the asserts below show that the accounts do, in fact, match
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
+    setCurrencyISoCode(greatGrandparent, 'USD');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    setCurrencyISoCode(secondGreatGrandparent, 'USD');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
@@ -1239,5 +1553,15 @@ private class RollupIntegrationTests {
     String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, 'ContactPointAddress', null);
 
     System.assertNotEquals(null, jobId);
+  }
+
+  private static void setCurrencyISoCode(SObject record, String isoCode) {
+    if (UserInfo.isMultiCurrencyOrganization()) {
+      record.put('CurrencyIsoCode', isoCode);
+    }
+  }
+
+  private static String getCurrencyIsoCode(SObject record) {
+    return UserInfo.isMultiCurrencyOrganization() ? (String) record.get('CurrencyIsoCode') : 'USD';
   }
 }

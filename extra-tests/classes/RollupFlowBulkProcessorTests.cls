@@ -154,4 +154,30 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(1, outputs.size());
     System.assertEquals(true, outputs[0].isSuccess);
   }
+
+  @IsTest
+  static void shouldNotThrowValidationErrorForHierarchyRollups() {
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
+    input.rollupContext = 'REFRESH';
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        UltimateParentLookup__c = 'ParentId',
+        RollupToUltimateParent__c = true
+      )
+    };
+
+    List<Rollup.FlowOutput>  outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    System.assertEquals(1, outputs.size());
+    System.assertEquals(true, outputs[0].isSuccess, outputs);
+  }
 }
