@@ -693,6 +693,48 @@ private class RollupFullRecalcTests {
     System.assertEquals(cpas[1].Name, updatedAcc.Name, 'Should have taken first based on PreferenceRank');
   }
 
+  @IsTest
+  static void shouldRetainFullRecalcValuesForMutuallyExclusiveRollupsToSameField() {
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneName', ParentId = acc.Id, PreferenceRank = 3),
+      new ContactPointAddress(Name = 'twoName', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeName', ParentId = acc.Id, PreferenceRank = 2)
+    };
+    insert cpas;
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Name != \'' + cpas[0].Name + '\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(6, acc.AnnualRevenue, 'Full child amount should be included');
+  }
+
   // TODO - uncomment this and implement to work on fix for https://github.com/jamessimone/apex-rollup/issues/149
   // @IsTest
   // static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {

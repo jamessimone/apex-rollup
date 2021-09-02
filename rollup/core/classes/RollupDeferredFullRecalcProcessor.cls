@@ -33,7 +33,8 @@ public class RollupDeferredFullRecalcProcessor extends RollupAsyncProcessor.Full
       this.invokePoint
     );
     processor.isFullRecalc = true;
-    for (Rollup innerRoll : processor.rollups) {
+    for (RollupAsyncProcessor innerRoll : processor.rollups) {
+      innerRoll.fullRecalcProcessor = this;
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = localCalcItems;
     }

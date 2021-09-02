@@ -40,7 +40,6 @@ global without sharing virtual class Rollup {
   protected Boolean isFullRecalc = false;
   protected Boolean isNoOp;
   protected Boolean isCDCUpdate = false;
-  protected RollupAsyncProcessor fullRecalcProcessor;
   protected Integer queryCount;
 
   /**
@@ -229,7 +228,9 @@ global without sharing virtual class Rollup {
 
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
     this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? (Object) '10 items or more ...' : (Object) this.calcItems);
-    this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? (Object) '10 items or more ...' : (Object) this.oldCalcItems);
+    if (this.oldCalcItems?.isEmpty() == false) {
+      this.addToMap(props, 'Old Calc Items', this.oldCalcItems.size() > 10 ? (Object) '10 items or more ...' : (Object) this.oldCalcItems);
+    }
     this.addToMap(props, 'Rollup Metadata', this.metadata);
     this.addToMap(props, 'Rollup Control', this.rollupControl);
     this.addToMap(props, 'Query Count', this.queryCount);
