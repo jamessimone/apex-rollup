@@ -28,7 +28,7 @@ public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.Fu
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.processDelegatedFullRecalcRollup(this.rollupInfo, calcItems, new Map<Id, SObject>(), this);
+    this.getDelegatedFullRecalcRollup(this.rollupInfo, calcItems, this).runCalc();
     RollupLogger.Instance.save();
   }
 
