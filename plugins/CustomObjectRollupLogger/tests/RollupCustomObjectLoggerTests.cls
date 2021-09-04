@@ -48,7 +48,7 @@ private class RollupCustomObjectLoggerTests {
   @IsTest
   static void shouldNotLogBelowSpecifiedLoggingLevel() {
     // override whatever's included in the CMDT to ensure we arrive at this value deterministically
-    RollupLogger.loggingLevelMock = new RollupLoggerPluginParameter__mdt(Value__c = LoggingLevel.DEBUG.name());
+    RollupLogger.loggingLevelMock = new RollupPluginParameter__mdt(Value__c = LoggingLevel.DEBUG.name());
 
     RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
     rollupCustomLogger.log('Test message', LoggingLevel.FINE);

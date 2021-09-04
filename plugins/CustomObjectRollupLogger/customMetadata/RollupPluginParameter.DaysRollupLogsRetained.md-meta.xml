@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-    <label>Custom Logging Debug Level</label>
+    <label>Days Rollup Logs Retained</label>
     <protected>false</protected>
     <values>
         <field>Description__c</field>
-        <value xsi:type="xsd:string">Conforms to the standard LoggingLevel enum - valid values are ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.</value>
+        <value xsi:type="xsd:string">The number of days before created rollup logs are purged when the Apex Class RollupLogBatchPurger is scheduled.</value>
     </values>
     <values>
-        <field>RollupLoggerPlugin__c</field>
+        <field>RollupPlugin__c</field>
         <value xsi:type="xsd:string">RollupCustomObjectLogger</value>
     </values>
     <values>
         <field>Value__c</field>
-        <value xsi:type="xsd:string">DEBUG</value>
+        <value xsi:type="xsd:string">5</value>
     </values>
 </CustomMetadata>

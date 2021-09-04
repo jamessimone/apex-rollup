@@ -12,7 +12,7 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Required</behavior>
-                <field>RollupLoggerPlugin__c</field>
+                <field>RollupPlugin__c</field>
             </layoutItems>
             <layoutItems>
                 <behavior>Required</behavior>

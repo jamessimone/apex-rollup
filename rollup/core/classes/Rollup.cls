@@ -50,10 +50,10 @@ global without sharing virtual class Rollup {
    * this is because the @TestVisible annotation enforces for us the override only being possible while testing
    */
   @TestVisible
-  private static DMLHelper DML {
+  private static RollupSObjectUpdater DML {
     get {
       if (DML == null) {
-        DML = new DMLHelper();
+        DML = new RollupSObjectUpdater();
       }
       return DML;
     }
@@ -138,16 +138,6 @@ global without sharing virtual class Rollup {
     public Boolean hasQueriedForAdditionalItems = false;
   }
 
-  public virtual class DMLHelper {
-    public virtual void doUpdate(List<SObject> recordsToUpdate) {
-      recordsToUpdate.sort();
-      RollupLogger.Instance.log('updating the following records:', recordsToUpdate, LoggingLevel.FINE);
-      Database.DMLOptions dmlOptions = new Database.DMLOptions();
-      dmlOptions.AllowFieldTruncation = true;
-      Database.update(recordsToUpdate, dmlOptions);
-    }
-  }
-
   global interface Evaluator {
     Boolean matches(Object calcItem);
   }
@@ -209,7 +199,7 @@ global without sharing virtual class Rollup {
     return getRollup(rollupOperations, sObjectType, calcItems, oldCalcItems, eval, rollupInvokePoint);
   }
 
-  protected DMLHelper getDML() {
+  protected RollupSObjectUpdater getDML() {
     return DML;
   }
 

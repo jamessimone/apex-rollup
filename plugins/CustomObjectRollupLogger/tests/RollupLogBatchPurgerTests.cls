@@ -1,6 +1,6 @@
 @IsTest
 private class RollupLogBatchPurgerTests {
-  static RollupLoggerPluginParameter__mdt daysRetained = RollupLoggerPluginParameter__mdt.getInstance('DaysRollupLogsRetained');
+  static RollupPluginParameter__mdt daysRetained = RollupPluginParameter__mdt.getInstance('DaysRollupLogsRetained');
 
   @IsTest
   static void shouldDeleteLogEntriesAndLogs() {

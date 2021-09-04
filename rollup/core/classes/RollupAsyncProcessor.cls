@@ -72,7 +72,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(QueueableContext context) {
-      new DMLHelper().doUpdate(this.records);
+      new RollupSObjectUpdater().doUpdate(this.records);
     }
   }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Used to signal callback listeners that rollup has performed an update.</description>
+    <eventType>HighVolume</eventType>
+    <label>Rollup Callback Event</label>
+    <pluralLabel>Rollup Callback Events</pluralLabel>
+    <publishBehavior>PublishImmediately</publishBehavior>
+</CustomObject>

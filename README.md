@@ -9,12 +9,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPMAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPbAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPMAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPbAAK">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -22,7 +22,7 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 <br/>
 <br/>
 
-Don't miss the [links to install the Rollup Logging plugins!](#rollup-logging)
+Don't miss the [links to install the Rollup plugins!](#rollup-plugins)
 
 ## Setup
 
@@ -95,7 +95,7 @@ That's it! Now you're ready to configure your rollups using Custom Metadata. `Ro
 
 One **special** thing to note on the subject of Field Definitions — custom fields/objects referenced in CMDT Field Definition fields are stored in an atypical way, and require the usage of an additional SOQL query as part of `Rollup`'s upfront cost. A typical `Rollup` operation will use `2` SOQL queries per rollup — the query that determines whether or not a job should be queued or batched, and a query to get the `Rollup__mdt` custom metadata. Though it's true that since Spring 21, it's possible to retrieve CMDT straight from the cache without consuming a SOQL query, Custom Metadata Types retrieved from the cache don't have their parent-level fields initialized, which makes it impossible to massage the data into a usable shape within the rest of `Rollup`. Additionally, if your `Calc Item Where Clause` contains a reference to a polymorphic field (like `What.Type` or `Owner.Name` or `What.Type` etc ...), an extra query will be consumed prior to `Rollup` going async to ensure that only matching items are passed along to be rolled up.
 
-If the SOQL queries used by `Rollup` becomes cause for concern, please [submit an issue](/issues) and we can work to address it!
+If the SOQL queries used by `Rollup` becomes cause for concern, please [submit an issue](../../issues) and we can work to address it!
 
 #### Special Considerations For Usage Of The Calc Item Where Clause
 
@@ -124,7 +124,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](/issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#where-clause-considerations)
+- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#where-clause-considerations)
 - `Is Full Record Set` (optional, defaults to `false`) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
 - `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. Like DLRS, this field is optional on a first/last operation, and if a field is not supplied, the `Rollup field On Calc Item` is used.
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. `Rollup` will then go and retrieve the assorted children records before rolling the values up to the parents. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Calc Item Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
@@ -166,7 +166,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Batch Chunk Size` - (defaults to 2000) - The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default for batch jobs.
 - `Is Rollup Logging Enabled` - (defaults to false) - Check this box in order to debug your rollups. Debug information is included in a few mission-critical pieces of Rollup to provide you with more information about where exactly an error might be occurring, should you encounter one.
 - `Is Merge Reparenting Enabled` - (defaults to true) - By default, if there is an `after delete` trigger context for Account / Case / Contact / Lead where Rollup is being used and one or more of those records is merged, Rollup goes and updates any children records from the old lookup to the new lookup automatically prior to recalculating rollup values. If you have pre-existing merge handling covered in your org by some other means, you should disable this checkbox and ensure that Rollup is only called _after_ your pre-existing merge handling has run.
-- `Rollup Logger Name` - (optional) - By default, if `Is Rollup Logging Enabled` is checked, logs associated with Rollup can be seen by keeping the Salesforce Developer Console open while inserting/updating records, or by starting a Debug Trace for a user. You also have the option of customizing how logs are displayed/stored. For more information, see the [Rollup Logging](#rollup-logging) section.
+- `Rollup Logger Name` - (optional) - By default, if `Is Rollup Logging Enabled` is checked, logs associated with Rollup can be seen by keeping the Salesforce Developer Console open while inserting/updating records, or by starting a Debug Trace for a user. You also have the option of customizing how logs are displayed/stored. For more information, see the [Rollup Plugins](#rollup-plugins) section.
 
 ### Flow / Process Builder Invocable
 
@@ -918,16 +918,17 @@ trigger OpportunityChangeEventTrigger on OpportunityChangeEvent (after insert) {
 
 Note that you're still selecting `Opportunity` as the `Calc Item` within your Rollup metadata record in this example; in fact, you cannot select `OpportunityChangeEvent`, so hopefully that was already clear. This means that people interested in using CDC should view it as an either/or option when compared to invoking `Rollup` from a standard, synchronous trigger. Additionally, that means reparenting that occurs at the calculation item level (the child object in the rollup operation) is not yet a supported feature of `Rollup` for CDC-based rollup actions — because the underlying object has already been updated in the database, and because CDC events only contain the new values for changed fields (instead of the new & old values). It's a TBD-type situation if this will ever be supported.
 
-### Rollup Logging
+### Rollup Plugins
 
-<div id="rollup-logging"></div>
+<div id="rollup-plugins"></div>
 
+#### Rollup Logging Plugins
 
-You have several options for custom logging plugins for Rollup (all Rollup Logger Plugin CMDT records should point to the `Org_Default` Rollup Control record). It's possible to use all of these options simultaneously - log to all the places!
+You have several options for custom logging plugins for Rollup (all Rollup Plugin CMDT records should point to the `Org_Default` Rollup Control record). It's possible to use all of these options simultaneously - log to all the places!
 
 1. [Nebula Logger](https://github.com/jongpie/NebulaLogger) is an extremely popular open-source logging library. If you use Nebula Logger, you can [install the rollup logging adapter for using Nebula Logger](plugins/NebulaLogger)!
 2. A [lightweight custom logger that's also part of this repository](plugins/CustomObjectRollupLogger); it's just bundled as a separate unmanaged package
-3. Using the classic Apex debug logs - by adding an entry in the Rollup Logger Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Logger Plugin -> New) with the `Rollup Logger Plugin Name` set to `RollupLogger` (included by default; can be removed)
+3. Using the classic Apex debug logs - by adding an entry in the Rollup Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Plugin -> New) with the `Rollup Plugin Name` set to `RollupLogger` (included by default; can be removed)
 4. If logging to the debug logs is enough for your purposes, use option #3. However, if you want to customize things further, or log errors to your own custom object/external logging destination (like Rollbar or Loggly), you can do so! The included `RollupLogger` class also includes an interface:
 
 ```java
@@ -942,13 +943,17 @@ public class RollupLogger {
 
 ```
 
-You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Logger Plugin` CMDT records. _Alternatively_, you can also _extend_ `RollupLogger` itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods.
+You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Plugin` CMDT records. _Alternatively_, you can also _extend_ `RollupLogger` itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods.
 
-You can use the included `Rollup Logger Plugin Parameter` CMDT record `Logging Debug Level` to fine-tune the logging level you'd like to use when making use of Apex debug logs (from method #3, above). Valid entries conform to the `LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.
+You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Level` to fine-tune the logging level you'd like to use when making use of Apex debug logs (from method #3, above). Valid entries conform to the `LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.
+
+#### Other Rollup Plugins
+
+To perform additional post-processing on the newly updated parent records, a ["callback" plugin](/plugins/RollupCallback) is also now available as 2GP unmanaged package. For more information, check out [the Readme](/plugins/Rollupcallback), as there are a variety of options available when it comes to post-processing.
 
 ### Multi-Currency Orgs
 
-As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. `Rollup` automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency. Please note that if you use Advanced Currency Management in combination with the `DatedConversionRate` object, this package does not currently support mapping the dated conversion rates. Please [submit an issue](/issues) in the event that you need support for dated conversion rates!
+As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. `Rollup` automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency. Please note that if you use Advanced Currency Management in combination with the `DatedConversionRate` object, this package does not currently support mapping the dated conversion rates. Please [submit an issue](../../issues) in the event that you need support for dated conversion rates!
 
 ## Commit History
 

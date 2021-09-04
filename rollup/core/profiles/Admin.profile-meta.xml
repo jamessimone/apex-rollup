@@ -84,11 +84,11 @@
     </customMetadataTypeAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
-        <name>RollupLoggerPlugin__mdt</name>
+        <name>RollupPlugin__mdt</name>
     </customMetadataTypeAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
-        <name>RollupLoggerPluginParameter__mdt</name>
+        <name>RollupPluginParameter__mdt</name>
     </customMetadataTypeAccesses>
     <fieldPermissions>
         <editable>true</editable>
@@ -192,7 +192,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>RollupLoggerPluginParameter__mdt.Description__c</field>
+        <field>RollupPluginParameter__mdt.Description__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <layoutAssignments>
@@ -202,10 +202,10 @@
         <layout>Rollup__mdt-Rollup Layout</layout>
     </layoutAssignments>
     <layoutAssignments>
-        <layout>RollupLoggerPlugin__mdt-Rollup Logger Plugin Layout</layout>
+        <layout>RollupPlugin__mdt-Rollup Plugin Layout</layout>
     </layoutAssignments>
     <layoutAssignments>
-        <layout>RollupLoggerPluginParameter__mdt-Rollup Logger Plugin Parameter Layout</layout>
+        <layout>RollupPluginParameter__mdt-Rollup Plugin Parameter Layout</layout>
     </layoutAssignments>
     <tabVisibilities>
         <tab>Recalculate_Rollup</tab>
