@@ -800,34 +800,6 @@ One of the reasons that `Rollup` can boast of superior performance is that, for 
 
 In these instances, `Rollup` _does_ requery the calculation object; it also does another loop through the calculation items supplied to it in search of _all_ the values necessary to find the true rollup value. This provides context, more than anything — the rollup operation should still be lightning fast.
 
-### Custom Apex
-
-If you are implementing `Rollup` through the use of the static Apex methods instead of CMDT, one thing to be aware of — if you need to perform 6+ rollup operations _and_ you are rolling up to more than one target object, you should absolutely keep your rollups ordered by the target object when invoking the `batch` method:
-
-```java
-// this is perfectly valid
-Rollup.batch(
-  // repeated just for lack of having better examples, but let's say five separate rollups ....
-  // the important part is that they're ordered by the last argument; the SObjectType in question
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
-)
-
-// this should be avoided. It ** could ** potentially lead to a chunking error when updating all of the parent-level items
-Rollup.batch(
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
-  Rollup.concatDistinctFromApex(Task.Status, Task.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType),
-  Rollup.maxFromApex(Task.ActivityDate, Task.AccountId, Opportunity.AccountId, Opportunity.CloseDate, Opportunity.SObjectType)
-);
-```
-
 ### Parent Level Merges
 
 <div id="parent-level-merges"></div>
