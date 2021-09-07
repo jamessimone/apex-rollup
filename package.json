@@ -14,6 +14,7 @@
     "@salesforce/sfdx-lwc-jest": "0.12.5"
   },
   "scripts": {
+    "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target . --engine pmd --severity-threshold 3",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck",

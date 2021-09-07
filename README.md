@@ -951,7 +951,7 @@ Whether you are developing on a sandbox or a new scratch org, please be sure to 
 
 Within a scratch org, validating that all of the tests run is as simple as invoking `sfdx force:apex:test:run -w 10`.
 
-### Style Guidelines
+### Short Contributing Guidelines
 
 I use Prettier in conjunction with the `prettier-apex` plugin for formatting Apex. There are (hopefully) minor stylistic choices that I have made and hope any contributors will respect when modifying the code:
 
