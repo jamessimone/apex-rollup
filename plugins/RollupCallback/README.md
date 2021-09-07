@@ -65,7 +65,7 @@ export default class RollupChangeNotifier extends LightningElement {
 
 Which produces something like this:
 
-![Example Rollup notifier LWC](./media/example-rollup-notifier-lwc.png)
+![Example Rollup notifier LWC](../../media/example-rollup-notifier-lwc.png)
 
 ## Usage
 
