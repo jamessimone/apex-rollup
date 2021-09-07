@@ -29,6 +29,7 @@ public class RollupDispatchTests {
 
     Test.startTest();
     updater.doUpdate(new List<SObject>{ new Account() });
+    System.assertEquals(1, Limits.getPublishImmediateDML(), 'Rollup callback event should have been published');
     Test.stopTest();
 
     System.assertEquals(true, RollupDispatch.wasCalled);
@@ -43,6 +44,7 @@ public class RollupDispatchTests {
     updater.doUpdate(new List<SObject>{ new Account() });
     Test.stopTest();
 
+    System.assertEquals(true, RollupDispatch.wasCalled);
     System.assertEquals(true, dispatcherMockWasCalled);
   }
 

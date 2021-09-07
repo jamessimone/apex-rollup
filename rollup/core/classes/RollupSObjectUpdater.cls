@@ -47,18 +47,13 @@ public virtual class RollupSObjectUpdater {
   }
 
   private void dispatch(List<SObject> updatedRecords) {
-    RollupPlugin__mdt dispatchPlugin = RollupPlugin__mdt.getInstance(DISPATCH_NAME);
     if (updatedRecords.isEmpty() == false) {
-      List<RollupPluginParameter__mdt> potentialRollupDispatchers = new List<RollupPluginParameter__mdt>{
-        new RollupPluginParameter__mdt(Value__c = DISPATCH_NAME)
-      };
+      RollupPlugin__mdt dispatchPlugin = RollupPlugin__mdt.getInstance(DISPATCH_NAME);
+      List<RollupPluginParameter__mdt> potentialRollupDispatchers = new List<RollupPluginParameter__mdt>();
       if (dispatchPlugin != null) {
-        potentialRollupDispatchers.addAll([
-          SELECT Value__c
-          FROM RollupPluginParameter__mdt
-          WHERE RollupPlugin__c = :dispatchPlugin.Id
-          AND DeveloperName != 'ShouldFirePlatformEvent'
-          ]
+        potentialRollupDispatchers.add(new RollupPluginParameter__mdt(Value__c = DISPATCH_NAME));
+        potentialRollupDispatchers.addAll(
+          [SELECT Value__c FROM RollupPluginParameter__mdt WHERE RollupPlugin__c = :dispatchPlugin.Id AND DeveloperName != 'ShouldFirePlatformEvent']
         );
       }
       if (pluginParameterMock != null) {
@@ -70,11 +65,19 @@ public virtual class RollupSObjectUpdater {
         this.fillDispatcher(dispatchers, pluginParameter.Value__c);
       }
 
-      RollupLogger.Instance.log('dispatching updated records to:', dispatchers, LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('dispatching updated records to:', this.getLogString(dispatchers), LoggingLevel.DEBUG);
       for (IDispatcher dispatcher : dispatchers) {
         dispatcher?.dispatch(updatedRecords);
       }
     }
+  }
+
+  private String getLogString(List<IDispatcher> dispatchers) {
+    String baseString = '';
+    for (IDispatcher dispatcher : dispatchers) {
+      baseString += String.valueOf(dispatcher).split(':')[0] + ', ';
+    }
+    return baseString.removeEnd(', ');
   }
 
   private void fillDispatcher(List<IDispatcher> dispatchers, String typeName) {

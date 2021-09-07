@@ -26,6 +26,7 @@ public class RollupSObjectUpdaterTests {
 
   @IsTest
   static void shouldDispatchOnUpdate() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupSObjectUpdater.pluginParameterMock = new RollupPluginParameter__mdt(Value__c = DispatcherMock.class.getName());
     RollupSObjectUpdater updater = new RollupSObjectUpdater();
 

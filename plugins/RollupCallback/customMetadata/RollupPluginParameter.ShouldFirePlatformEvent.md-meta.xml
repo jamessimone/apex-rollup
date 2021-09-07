@@ -8,7 +8,7 @@
     </values>
     <values>
         <field>RollupPlugin__c</field>
-        <value xsi:type="xsd:string">RollupDispatcher</value>
+        <value xsi:type="xsd:string">RollupDispatch</value>
     </values>
     <values>
         <field>Value__c</field>
