@@ -1,4 +1,4 @@
-public virtual class RollupLogger extends Rollup implements ILogger {
+public without sharing virtual class RollupLogger extends Rollup implements ILogger {
   @TestVisible
   private static List<RollupPlugin__mdt> pluginMocks;
   @TestVisible
@@ -42,6 +42,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     this.log(logString, null, logLevel);
   }
 
+  @SuppressWarnings('PMD.AvoidDebugStatements')
   public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       String appended = this.getLogStringFromObject(logObject);
@@ -121,6 +122,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     return appended;
   }
 
+  @SuppressWarnings('PMD.ApexCrudViolation')
   private static ILogger getRollupLogger() {
     List<RollupPlugin__mdt> plugins = [
       SELECT DeveloperName

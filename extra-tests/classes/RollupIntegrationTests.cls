@@ -1183,7 +1183,7 @@ private class RollupIntegrationTests {
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT should ignore nulls');
 
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10) };

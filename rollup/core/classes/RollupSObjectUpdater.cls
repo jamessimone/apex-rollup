@@ -1,4 +1,4 @@
-public virtual class RollupSObjectUpdater {
+public without sharing virtual class RollupSObjectUpdater {
   @TestVisible
   private static RollupPluginParameter__mdt pluginParameterMock;
   private static final String DISPATCH_NAME = 'RollupDispatch';

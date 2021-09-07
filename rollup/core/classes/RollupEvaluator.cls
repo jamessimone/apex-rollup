@@ -4,6 +4,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static final String FALSE_VAL = 'false';
   private static final Set<String> POLYMORPHIC_FIELDS = new Set<String>{ 'Owner', 'Type' };
   private static final AlwaysTrueEvaluator ALWAYS_TRUE_SINGLETON = new AlwaysTrueEvaluator();
+  @TestVisible
+  static String stubRequestId;
 
   // totally not obvious ranking going on here - it's absolutely imperative that
   // the two-word conditions go first; otherwise replacing will fail on the whole string
@@ -34,7 +36,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private set;
   }
 
-  private static Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
+  private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
 
   public abstract Boolean matches(Object calcItem);
 
@@ -440,6 +442,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.innerConditions = innerConditions;
     }
 
+    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode')
     public Boolean equals(Object calcItem) {
       return this.conditionallyEquals(calcItem);
     }
@@ -532,6 +535,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
+    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyIfStmt')
     public Boolean equals(Object o) {
       SObject item = (SObject) o;
       Boolean isEqual = true;
@@ -766,8 +770,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     RollupLogger.Instance.log(clazz + '\nmatches? ' + matches + ' for: ' + item, logLevel);
   }
 
-  @TestVisible
-  static String stubRequestId;
   private static String getCurrentTransactionId() {
     return stubRequestId != null ? stubRequestId : Request.getCurrent().getRequestId();
   }

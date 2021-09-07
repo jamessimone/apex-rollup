@@ -26,7 +26,7 @@ public without sharing abstract class RollupCalculator {
   private static Factory testFactory;
 
   private static final Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY = RollupCurrencyInfo.getCurrencyMap();
-  private static Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
+  private static final Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
 
   public static Factory Factory {
     get {
@@ -388,7 +388,7 @@ public without sharing abstract class RollupCalculator {
     skinnyCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
   }
 
-  private class CountDistinctRollupCalculator extends RollupCalculator {
+  private inherited sharing class CountDistinctRollupCalculator extends RollupCalculator {
     private final Set<Object> distinctValues;
     private final Boolean isIdCount;
     public CountDistinctRollupCalculator(
@@ -447,6 +447,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
 
+    @SuppressWarnings('PMD.ApexSOQLInjection')
     protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
       if (this.shouldTriggerFullRecalc == true) {
         this.distinctValues.clear();
@@ -483,7 +484,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private virtual class DecimalRollupCalculator extends RollupCalculator {
+  private inherited sharing virtual class DecimalRollupCalculator extends RollupCalculator {
     private Decimal returnDecimal;
     public DecimalRollupCalculator(
       Object priorVal,
@@ -622,7 +623,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private virtual class DatetimeRollupCalculator extends DecimalRollupCalculator {
+  private inherited sharing virtual class DatetimeRollupCalculator extends DecimalRollupCalculator {
     public DatetimeRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -663,7 +664,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class DateRollupCalculator extends DatetimeRollupCalculator {
+  private inherited sharing class DateRollupCalculator extends DatetimeRollupCalculator {
     // for Date, it's not necessary to override the "getDecimalOrDefault" method in DatetimeRollupCalculator
     // because the conversion only happens in "getReturnValue"
     public DateRollupCalculator(
@@ -692,7 +693,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class TimeRollupCalculator extends DatetimeRollupCalculator {
+  private inherited sharing class TimeRollupCalculator extends DatetimeRollupCalculator {
     public TimeRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -734,7 +735,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class CountRollupCalculator extends DecimalRollupCalculator {
+  private inherited sharing class CountRollupCalculator extends DecimalRollupCalculator {
     public CountRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -785,7 +786,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private virtual class StringRollupCalculator extends RollupCalculator {
+  private inherited sharing virtual class StringRollupCalculator extends RollupCalculator {
     protected String concatDelimiter = ', ';
     private String stringVal;
 
@@ -961,6 +962,7 @@ public without sharing abstract class RollupCalculator {
       return existingVal += this.concatDelimiter + replacementVal;
     }
 
+    @SuppressWarnings('PMD.UnusedLocalVariable')
     private void handleConcatDistinctDelete(SObject calcItem) {
       // we do a replace first, in case this is a reparenting operation
       this.stringVal = this.replaceWithDelimiter(this.stringVal, (String) calcItem.get(this.opFieldOnCalcItem), '');
@@ -984,7 +986,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class PicklistRollupCalculator extends StringRollupCalculator {
+  private inherited sharing class PicklistRollupCalculator extends StringRollupCalculator {
     private final RollupFieldInitializer.PicklistController picklistController;
     private final RollupFieldInitializer.PicklistController rollupFieldController;
     public PicklistRollupCalculator(
@@ -1024,7 +1026,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class AverageRollupCalculator extends RollupCalculator {
+  private inherited sharing class AverageRollupCalculator extends RollupCalculator {
     public AverageRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1070,7 +1072,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class FirstLastRollupCalculator extends RollupCalculator {
+  private inherited sharing class FirstLastRollupCalculator extends RollupCalculator {
     public FirstLastRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1101,6 +1103,7 @@ public without sharing abstract class RollupCalculator {
       this.isMultiCurrencyRollup = UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY;
     }
 
+    @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       SObjectType sObjectType = this.getCalcItemType();
       // objIds is used as a bind variable in the resulting queryString

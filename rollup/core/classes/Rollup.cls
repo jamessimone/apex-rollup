@@ -20,6 +20,7 @@ global without sharing virtual class Rollup {
   @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS = new List<Rollup>();
 
+  private static RollupControl__mdt cachedOrgDefault;
   private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
@@ -584,7 +585,7 @@ global without sharing virtual class Rollup {
           localRollups.add(rollupConductor);
         }
         if (wrapper.flowInput.shouldRunSync) {
-          rollupConductor.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS;
+          rollupConductor.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
         }
         RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.DEBUG);
       }
@@ -1264,7 +1265,7 @@ global without sharing virtual class Rollup {
     // the performance downsides should be negligible, given that we're already within an async context
     rollupToReturn.isCDCUpdate = apexContext == TriggerOperation.AFTER_UPDATE;
     // we're already async, so let's not waste any more time
-    rollupToReturn.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS;
+    rollupToReturn.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
     rollupToReturn.runCalc();
   }
 
@@ -1821,8 +1822,8 @@ global without sharing virtual class Rollup {
     if (shouldQueue) {
       return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint);
     } else {
-      String queryWithOrderBy = queryString + getFullRecalcQueryString(matchingMeta);
-      return new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds);
+      String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta)).replace('ALL ROWS', '');
+      return new RollupFullBatchRecalculator(queryWithOrderBy, invokePoint, matchingMeta, calcItemType, recordIds);
     }
   }
 
@@ -2137,7 +2138,6 @@ global without sharing virtual class Rollup {
      * Let's get ready to rollup!
      */
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
-    Map<String, SObjectField> fieldNameToField = describeForSObject.fields.getMap();
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
@@ -2147,7 +2147,6 @@ global without sharing virtual class Rollup {
       // NB - this SHOULD work even for SObjects part of managed packages
       SObjectType lookupSObjectType = getSObjectFromName(rollupMetadata.LookupObject__c).getSObjectType();
       DescribeSObjectResult lookupObjectDescribe = lookupSObjectType.getDescribe();
-      Map<String, SObjectField> lookupFieldNameToLookupFields = lookupObjectDescribe.fields.getMap();
       SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
 
@@ -2232,7 +2231,7 @@ global without sharing virtual class Rollup {
 
   private static void setControlToSyncForSingularParentRecalcs(RollupControl__mdt control, InvocationPoint invokePoint) {
     if (invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
-      control.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS;
+      control.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
     }
   }
 
@@ -2283,6 +2282,7 @@ global without sharing virtual class Rollup {
     return ((SObject) Type.forName(sObjectName).newInstance());
   }
 
+  @SuppressWarnings('PMD.OperationWithLimitsInLoop')
   private static Boolean reparentAndGetMergedRecordIds(
     List<SObject> calcItems,
     List<Rollup__mdt> rollupMetadata,
@@ -2408,7 +2408,6 @@ global without sharing virtual class Rollup {
     return getSensibleControlDefault();
   }
 
-  private static RollupControl__mdt cachedOrgDefault;
   private static RollupControl__mdt getSensibleControlDefault() {
     if (defaultControl != null) {
       return defaultControl;
@@ -2425,7 +2424,7 @@ global without sharing virtual class Rollup {
           MaxRollupRetries__c = 100,
           MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
           ShouldAbortRun__c = false,
-          ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE
+          ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable
         );
       } else {
         sensibleDefault = sensibleDefault.clone(true, true);
@@ -2539,7 +2538,7 @@ global without sharing virtual class Rollup {
     }
   }
 
-  private class RollupSchedulable implements System.Schedulable {
+  private without sharing class RollupSchedulable implements System.Schedulable {
     private final String query;
     private final SObjectType rollupObject;
     private final Evaluator eval;

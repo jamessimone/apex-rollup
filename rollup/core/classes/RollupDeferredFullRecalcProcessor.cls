@@ -1,4 +1,4 @@
-public class RollupDeferredFullRecalcProcessor extends RollupAsyncProcessor.FullRecalcProcessor {
+public inherited sharing class RollupDeferredFullRecalcProcessor extends RollupAsyncProcessor.FullRecalcProcessor {
   public RollupDeferredFullRecalcProcessor(
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,

@@ -26,7 +26,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
 
-  public abstract class FullRecalcProcessor extends QueueableProcessor {
+  public abstract inherited sharing class FullRecalcProcessor extends QueueableProcessor {
     protected final String queryString;
     protected final List<Rollup__mdt> rollupInfo;
     protected final Set<Id> recordIds;
@@ -270,7 +270,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     shouldRunAsBatch =
       shouldRunAsBatch ||
       hasMoreThanOneTarget == false &&
-      ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.BATCHABLE &&
+      ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Batchable &&
       totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == RollupQueryBuilder.SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
@@ -313,7 +313,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return roll;
   }
 
-  private virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+  private inherited sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
     private QueueableProcessor(
       Set<Id> matchingCalcItemIds,
       SObjectField opFieldOnCalcItem,
@@ -434,6 +434,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return processor;
   }
 
+  @SuppressWarnings('PMD.UnusedLocalVariable')
   protected virtual void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     // TODO - incorporate grandparent rollups into this, as well
     if (rollup.isFullRecalc == false || String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
@@ -777,7 +778,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
-        rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS ||
+        rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
         ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) &&
         isRunningAsync &&
         this.getIsRunningFromFlow() == false);

@@ -175,6 +175,8 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldAllowGrandparentRollupsFromParent() {
+    // also an integration test for having an ORDER BY statement
+    // in RollupFullBatchRecalculator
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<Event> events = new List<Event>{
       new Event(WhatId = acc.Id, Subject = 'One', ActivityDatetime = System.now(), DurationInMinutes = 60),
@@ -227,7 +229,7 @@ private class RollupFullRecalcTests {
     Rollup.shouldRun = true;
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
     Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
       BatchChunkSize__c = 100,
       IsRollupLoggingEnabled__c = true
     );
@@ -579,7 +581,7 @@ private class RollupFullRecalcTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
       BatchChunkSize__c = 10,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE, // validate that it still batches
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
       IsRollupLoggingEnabled__c = true
     );
 

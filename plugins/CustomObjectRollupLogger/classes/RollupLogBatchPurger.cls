@@ -39,7 +39,7 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
     RollupLogger.Instance.save();
   }
 
-  private class PurgerSchedulable implements Schedulable {
+  private without sharing class PurgerSchedulable implements Schedulable {
     private final Integer batchSize;
 
     public PurgerSchedulable(Integer batchSize) {

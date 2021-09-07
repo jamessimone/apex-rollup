@@ -24,19 +24,19 @@ public virtual without sharing class RollupMetaPicklists {
       super(RollupControl__mdt.ShouldRunAs__c);
     }
 
-    public String SYNCHRONOUS {
+    public String Synchronous {
       get {
         return this.validate('Synchronous Rollup');
       }
     }
 
-    public String BATCHABLE {
+    public String Batchable {
       get {
         return this.validate('Batchable');
       }
     }
 
-    public String QUEUEABLE {
+    public String Queueable {
       get {
         return this.validate('Queueable');
       }
