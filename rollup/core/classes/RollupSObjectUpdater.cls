@@ -67,17 +67,18 @@ public virtual class RollupSObjectUpdater {
 
       RollupLogger.Instance.log('dispatching updated records to:', this.getLogString(dispatchers), LoggingLevel.DEBUG);
       for (IDispatcher dispatcher : dispatchers) {
-        dispatcher?.dispatch(updatedRecords);
+        dispatcher.dispatch(updatedRecords);
       }
     }
   }
 
   private String getLogString(List<IDispatcher> dispatchers) {
     String baseString = '';
+    String delimiter = ', ';
     for (IDispatcher dispatcher : dispatchers) {
-      baseString += String.valueOf(dispatcher).split(':')[0] + ', ';
+      baseString += String.valueOf(dispatcher).split(':')[0] + delimiter;
     }
-    return baseString.removeEnd(', ');
+    return baseString.removeEnd(delimiter);
   }
 
   private void fillDispatcher(List<IDispatcher> dispatchers, String typeName) {

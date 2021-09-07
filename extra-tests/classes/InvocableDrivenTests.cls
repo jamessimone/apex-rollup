@@ -142,19 +142,18 @@ private class InvocableDrivenTests {
     Test.startTest();
     Contact childOne = new Contact(AccountId = acc.Id, LastName = 'X', Phone = '6176191911');
     Contact childTwo = new Contact(AccountId = matchingAccount.Id, LastName = 'A', Phone = '6176191912');
-    Contact childThree = new Contact(AccountId = matchingAccount.Id, LastName = 'B', Phone = '6176191900');
-    insert new List<Contact>{ childOne, childTwo, childThree };
+    Contact childThree = new Contact(AccountId = matchingAccount.Id, LastName = 'Z', Phone = '6176191900');
+    List<Contact> cons = new List<Contact>{ childOne, childTwo, childThree };
+    insert cons;
 
-    childTwo.AccountId = acc.Id;
-    childThree.AccountId = acc.Id;
-    update new List<Contact>{ childTwo, childThree };
+    childOne.AccountId = matchingAccount.Id;
+    childThree.AccountId = acc.Id; // verify that parent-level filtering is working
+    update cons;
     Test.stopTest();
 
     acc = [SELECT Phone FROM Account WHERE Id = :acc.Id];
     matchingAccount = [SELECT Phone FROM Account WHERE Id = :matchingAccount.Id];
-    System.assertEquals(null, matchingAccount.Phone, 'Phone should have been cleared out!');
-    // TODO - uncomment and fix this - last I checked, the rollups were running with the correct calcItems/oldCalcItems
-    // but reparenting wasn't detected for some reason
-    // System.assertEquals('B', acc.Phone, 'Account should be updated now that criteria matches');
+    System.assertEquals(childOne.Phone, matchingAccount.Phone, 'Phone should have been updated based on new ordering');
+    System.assertEquals(null, acc.Phone, 'Account phone should be cleared out since parent name field does not match');
   }
 }

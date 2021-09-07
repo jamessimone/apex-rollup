@@ -52,7 +52,10 @@ public virtual class RollupLogger extends Rollup implements ILogger {
       // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
       // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
       List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
-      while (innerStacktraces.isEmpty() == false && innerStacktraces.get(0).contains('Class.RollupLogger.log')) {
+      while (
+        innerStacktraces.isEmpty() == false &&
+        (innerStacktraces.get(0).contains('Class.RollupLogger.log') || innerStacktraces.get(0).contains('Class.RollupLogger.CombinedLogger.log'))
+      ) {
         innerStacktraces.remove(0);
       }
       messages.add(String.join(innerStacktraces, '\n'));

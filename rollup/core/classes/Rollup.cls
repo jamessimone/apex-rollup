@@ -545,7 +545,7 @@ global without sharing virtual class Rollup {
         Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(flowInput.oldRecordsToRollup);
         String rollupContext = getFlowRollupContext(flowInput, firstRecord, oldFlowRecords);
 
-        Rollup__mdt meta = transformFlowInputToRollupMetadata(flowInput, rollupContext, flowInput.recordsToRollup[0].getSObjectType());
+        Rollup__mdt meta = transformFlowInputToRollupMetadata(flowInput, rollupContext, sObjectType);
         if (metaToInput.containsKey(meta)) {
           FlowInputWrapper wrapper = metaToInput.get(meta);
           wrapper.flowInput.recordsToRollup.addAll(flowInput.recordsToRollup);
