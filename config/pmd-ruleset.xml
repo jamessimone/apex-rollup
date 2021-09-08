@@ -13,7 +13,6 @@
     <rule ref="category/apex/codestyle.xml">
       <exclude name="VariableNamingConventions"/>
       <exclude name="FieldNamingConventions"/>
-      <exclude name="FieldDeclarationsShouldBeAtStart"/>
       <exclude name="PropertyNamingConventions"/>
     </rule>
     <rule ref="category/apex/design.xml">

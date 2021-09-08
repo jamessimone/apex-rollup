@@ -1,6 +1,8 @@
 public virtual without sharing class RollupMetaPicklists {
   private final Set<String> validValues;
 
+  public static final ShouldRunAs ShouldRunAs = new ShouldRunAs();
+
   private RollupMetaPicklists(Schema.SObjectField fieldToken) {
     this.validValues = new Set<String>();
 
@@ -9,8 +11,6 @@ public virtual without sharing class RollupMetaPicklists {
       this.validValues.add(entry.getValue());
     }
   }
-
-  public static final ShouldRunAs ShouldRunAs = new ShouldRunAs();
 
   protected String validate(String val) {
     if (this.validValues.contains(val) == false) {

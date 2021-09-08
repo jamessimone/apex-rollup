@@ -1,5 +1,7 @@
 @IsTest
 public class RollupDispatchTests {
+  private static Boolean dispatcherMockWasCalled = false;
+
   @IsTest
   static void shouldNotDispatchWithoutUpdatedRecords() {
     RollupSObjectUpdater updater = new RollupSObjectUpdater();
@@ -48,7 +50,6 @@ public class RollupDispatchTests {
     System.assertEquals(true, dispatcherMockWasCalled);
   }
 
-  private static Boolean dispatcherMockWasCalled = false;
   public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {
     public void dispatch(List<SObject> records) {
       dispatcherMockWasCalled = true;

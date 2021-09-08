@@ -1,5 +1,10 @@
 @IsTest
 public class RollupLoggerTests {
+  static Boolean wasSaved = false;
+  static Object localLogObject;
+  static String locallogString;
+  static LoggingLevel localLogLevel;
+
   // Type.forName requires public visibility
   @IsTest
   static void shouldLogUsingCustomLoggerWhenSupplied() {
@@ -47,11 +52,6 @@ public class RollupLoggerTests {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupLogger.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
   }
-
-  static Boolean wasSaved = false;
-  static Object localLogObject;
-  static String locallogString;
-  static LoggingLevel localLogLevel;
 
   public class ExampleLogger implements RollupLogger.ILogger {
     public void log(String logString, LoggingLevel logLevel) {

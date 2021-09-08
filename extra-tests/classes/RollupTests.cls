@@ -1,5 +1,15 @@
 @IsTest
 private class RollupTests {
+  static Object testPriorVal;
+  static Rollup.Op testOp;
+  static SObjectField testOpFieldOnCalcItem;
+  static SObjectField testOpFieldOnLookupObject;
+  static Rollup__mdt testMetadata;
+  static String testLookupRecordKey;
+  static SObjectField testLookupKeyField;
+  static Rollup.Op rollupOp;
+  static Boolean calcMockWasCalled = false;
+
   @TestSetup
   static void setup() {
     // in the event that rollups are running in the org, we want to avoid triggering any operations while performing setup DML
@@ -11,15 +21,6 @@ private class RollupTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
-
-  static Object testPriorVal;
-  static Rollup.Op testOp;
-  static SObjectField testOpFieldOnCalcItem;
-  static SObjectField testOpFieldOnLookupObject;
-  static Rollup__mdt testMetadata;
-  static String testLookupRecordKey;
-  static SObjectField testLookupKeyField;
-  static Rollup.Op rollupOp;
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
       Object priorVal,
@@ -41,7 +42,6 @@ private class RollupTests {
     }
   }
 
-  static Boolean calcMockWasCalled = false;
   public class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {

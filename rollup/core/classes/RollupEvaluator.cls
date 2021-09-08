@@ -7,6 +7,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   @TestVisible
   static String stubRequestId;
 
+  private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
+
   // totally not obvious ranking going on here - it's absolutely imperative that
   // the two-word conditions go first; otherwise replacing will fail on the whole string
   // due to casing issues (NOT like, NOT in). I could make those be part of the map, too,
@@ -35,8 +37,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
     private set;
   }
-
-  private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
 
   public abstract Boolean matches(Object calcItem);
 

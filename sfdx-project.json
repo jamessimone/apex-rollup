@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "versionNumber": "1.2.44.0",
-            "versionDescription": "Fixes parent-level filtering for Flow, deprecated RollupLoggerPlugin__mdt in favor of RollupPlugin__mdt",
+            "versionDescription": "Fixes parent-level filtering for Flow, deprecated RollupLoggerPlugin__mdt in favor of RollupPlugin__mdt, adds PMD analysis",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"

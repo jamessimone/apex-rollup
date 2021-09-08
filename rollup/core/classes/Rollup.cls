@@ -20,6 +20,7 @@ global without sharing virtual class Rollup {
   @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS = new List<Rollup>();
 
+  private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
   private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
   private static Boolean isCDC = false;
@@ -129,14 +130,14 @@ global without sharing virtual class Rollup {
   }
 
   public class CalcItemBag {
+    public final List<SObject> originals;
+    public final List<SObject> additional;
+    public Boolean hasQueriedForAdditionalItems = false;
     public CalcItemBag(List<SObject> originals) {
       this.originals = originals;
       this.additional = originals.clone(); // retain SObjectType info
       this.additional.clear();
     }
-    public final List<SObject> originals;
-    public final List<SObject> additional;
-    public Boolean hasQueriedForAdditionalItems = false;
   }
 
   global interface Evaluator {
@@ -489,15 +490,14 @@ global without sharing virtual class Rollup {
   }
 
   global class FlowOutput {
-    global FlowOutput() {
-      this.isSuccess = true;
-      this.Message = 'SUCCESS';
-    }
-
     @InvocableVariable(label='Is Success' description='Was rollup enqueued successfully?')
     global Boolean isSuccess;
     @InvocableVariable(label='Status Message' description='"SUCCESS" when isSuccess is true, otherwise the encountered error message')
     global String message;
+    global FlowOutput() {
+      this.isSuccess = true;
+      this.Message = 'SUCCESS';
+    }
   }
 
   private class FlowInputWrapper {
@@ -1355,7 +1355,6 @@ global without sharing virtual class Rollup {
     batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
   }
 
-  private static List<Rollup__mdt> cachedMetadata;
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     List<SObject> matchingMetadata;
     // We need to clean up the Entity Definition / Field Definition
@@ -1938,17 +1937,16 @@ global without sharing virtual class Rollup {
   }
 
   private class QueryWrapper {
+    private Boolean hasQuery = false;
+    private String query;
+    public final Set<Id> recordIds = new Set<Id>();
+    private final List<String> stringifiedRecordIds = new List<String>();
     private QueryWrapper() {
     }
     private QueryWrapper(String lookupObject, String lookupField) {
       String base = String.isBlank(lookupObject) ? '' : lookupObject.replace('__c', '__r') + '.';
       this.query = base + lookupField + ' = :recordIds';
     }
-
-    private Boolean hasQuery = false;
-    private String query;
-    public final Set<Id> recordIds = new Set<Id>();
-    private final List<String> stringifiedRecordIds = new List<String>();
 
     public void addRecordId(String recordId) {
       if (String.isNotBlank(recordId)) {

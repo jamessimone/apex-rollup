@@ -57,7 +57,9 @@ public without sharing class RollupRecursionItem {
    * first repository associated with Salesforce that I ever visited on Github, so it seems nice
    * that we've come full circle since that moment!
    */
+  @SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
   private static final Integer NULL_HASH = 0;
+  @SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
   private static final Integer PRIME = 31;
 
   private class Hasher {

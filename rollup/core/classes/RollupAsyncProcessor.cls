@@ -77,12 +77,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private class CalcItemData {
+    public final List<SObject> items;
+    public final Map<Id, SObject> oldItems;
     public CalcItemData(List<SObject> items, Map<Id, SObject> oldItems) {
       this.items = items?.clone();
       this.oldItems = oldItems?.clone();
     }
-    public final List<SObject> items;
-    public final Map<Id, SObject> oldItems;
   }
 
   public static RollupAsyncProcessor getProcessor(

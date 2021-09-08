@@ -1,5 +1,7 @@
 @IsTest
 public class RollupSObjectUpdaterTests {
+  private static Boolean dispatcherMockWasCalled = false;
+
   @IsTest
   static void shouldAllowDatetimeToBeSavedAsDate() {
     Datetime now = System.now();
@@ -35,7 +37,6 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(true, dispatcherMockWasCalled);
   }
 
-  private static Boolean dispatcherMockWasCalled = false;
   public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {
     public void dispatch(List<SObject> records) {
       dispatcherMockWasCalled = true;
