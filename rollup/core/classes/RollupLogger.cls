@@ -124,34 +124,43 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
 
   @SuppressWarnings('PMD.ApexCrudViolation')
   private static ILogger getRollupLogger() {
-    List<RollupPlugin__mdt> plugins = [
+    List<RollupPlugin__mdt> loggingPlugins = [
       SELECT DeveloperName
       FROM RollupPlugin__mdt
-      WHERE RollupControl__c = :SELF.rollupControl.Id AND DeveloperName LIKE '%Logger'
+      WHERE RollupControl__c = :SELF.rollupControl.Id AND DeveloperName LIKE '%Logger%' AND DeveloperName != 'RollupLogger'
     ];
+    SELF.log('retrieving the following logging plugins:', loggingPlugins, LoggingLevel.DEBUG);
     if (pluginMocks != null) {
-      plugins.addAll(pluginMocks);
+      loggingPlugins.addAll(pluginMocks);
     }
-    return combineLoggers(plugins);
+    return combineLoggers(loggingPlugins);
   }
 
-  private static ILogger combineLoggers(List<RollupPlugin__mdt> plugins) {
+  private static ILogger combineLoggers(List<RollupPlugin__mdt> loggingPlugins) {
     ILogger rollLogger;
-    if (plugins.isEmpty()) {
+    if (loggingPlugins.isEmpty()) {
       return SELF;
     }
-    RollupPlugin__mdt firstLogger = plugins.remove(0);
+    RollupPlugin__mdt firstLogger = loggingPlugins.remove(0);
     if (firstLogger.DeveloperName == SELF.getTypeName()) {
       rollLogger = SELF;
     } else {
       try {
         rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
       } catch (Exception ex) {
-        SELF.log('cast to ILogger failed with message: ' + ex.getMessage() + ', falling back to default logger', SELF, LoggingLevel.WARN);
+        SELF.log(
+          'cast to ILogger for:' +
+          firstLogger.DeveloperName +
+          ' failed with message: ' +
+          ex.getMessage() +
+          ', falling back to default logger',
+          SELF,
+          LoggingLevel.WARN
+        );
         rollLogger = SELF;
       }
-      if (plugins.isEmpty() == false) {
-        rollLogger = new CombinedLogger(rollLogger, combineLoggers(plugins));
+      if (loggingPlugins.isEmpty() == false) {
+        rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
       }
     }
 

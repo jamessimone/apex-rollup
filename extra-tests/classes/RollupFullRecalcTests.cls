@@ -174,6 +174,59 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldProperlyBulkifyApexFullRecalcs() {
+    // cheating, but we'll use REFRESH_ rollup operations to reproduce this issue (REFRESH is typically only available in Flow)
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<Event> events = new List<Event>{
+      new Event(WhatId = acc.Id, Subject = 'One', ActivityDatetime = System.now(), DurationInMinutes = 60),
+      new Event(WhatId = acc.Id, Subject = 'Two', ActivityDatetime = System.now(), DurationInMinutes = 60)
+    };
+    insert events;
+
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = events;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'REFRESH_CONCAT'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'REFRESH_COUNT',
+        CalcItemWhereClause__c = 'WhatId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'DurationInMinutes',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'REFRESH_SUM'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_DELETE;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(0, mock.Records.size(), 'No updates should have been made for non-merge delete');
+  }
+
+  @IsTest
   static void shouldAllowGrandparentRollupsFromParent() {
     // also an integration test for having an ORDER BY statement
     // in RollupFullBatchRecalculator

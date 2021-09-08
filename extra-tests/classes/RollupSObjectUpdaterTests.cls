@@ -14,6 +14,14 @@ public class RollupSObjectUpdaterTests {
   }
 
   @IsTest
+  static void shouldAllowDecimalToBeSavedAsInteger() {
+    Account acc = new Account();
+    new RollupSObjectUpdater(Account.NumberOfEmployees).updateField(acc, 3.00);
+
+    System.assertEquals(3, acc.NumberOfEmployees);
+  }
+
+  @IsTest
   static void shouldRethrowForUnhandledConversion() {
     SObjectException ex;
 

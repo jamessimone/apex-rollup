@@ -33,13 +33,14 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void handleUpdateException(SObjectException ex, SObject record, Object value) {
-    switch on ex.getMessage() {
-      when 'Illegal assignment from Datetime to Date' {
-        Datetime dtValue = (Datetime) value;
-        record.put(this.fieldToken, dtValue.dateGmt());
+    switch on ex.getMessage().substringAfter('Illegal assignment from ') {
+      when 'Datetime to Date' {
+        record.put(this.fieldToken, ((Datetime) value).dateGmt());
+      }
+      when 'Decimal to Integer' {
+        record.put(this.fieldToken, ((Decimal)value).intValue());
       }
       when else {
-        // so far Datetime -> Date has been the only reported issue
         // this switch statement can be expanded as necessary to deal with other problems
         throw ex;
       }

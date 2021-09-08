@@ -150,7 +150,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Rollup__mdt rollupMetadata
   ) {
     super();
-    this.matchingCalcItemIds = matchingCalcItemIds;
+    this.matchingCalcItemIds.addAll(matchingCalcItemIds);
     this.opFieldOnCalcItem = opFieldOnCalcItem;
     this.lookupFieldOnCalcItem = lookupFieldOnCalcItem;
     this.lookupFieldOnLookupObject = lookupFieldOnLookupObject;
@@ -264,20 +264,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return rollupProcessId;
     }
 
-    Boolean hasMoreThanOneTarget = false;
-    Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget, this.rollups);
-
-    shouldRunAsBatch =
-      shouldRunAsBatch ||
-      hasMoreThanOneTarget == false &&
-      ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Batchable &&
-      totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == RollupQueryBuilder.SENTINEL_COUNT_VALUE);
     if (this.syncRollups.isEmpty() == false) {
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
       this.process(this.syncRollups);
       RollupLogger.Instance.log('finished running sync rollups', LoggingLevel.DEBUG);
       rollupProcessId = 'Running rollups flagged to go synchronously';
     } else {
+      Boolean hasMoreThanOneTarget = false;
+      Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget, this.rollups);
+      shouldRunAsBatch =
+        shouldRunAsBatch ||
+        hasMoreThanOneTarget == false &&
+        ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Batchable &&
+        totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == RollupQueryBuilder.SENTINEL_COUNT_VALUE);
       rollupProcessId = this.getAsyncRollup().beginAsyncRollup();
     }
     RollupLogger.Instance.save();
@@ -297,7 +296,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this.rollups[0];
     } else if (this instanceof FullRecalcProcessor) {
       roll = this;
-    } else if ((shouldRunAsBatch && System.isBatch() == false) || canEnqueue == false) {
+    } else if ((shouldRunAsBatch && System.isBatch() == false) || (canEnqueue == false && System.isBatch() == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
@@ -781,7 +780,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
         ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) &&
         isRunningAsync &&
-        this.getIsRunningFromFlow() == false);
+        this.getIsRunningFromFlow() == false) ||
+        System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs();
 
       if (rollup.rollupControl.ShouldAbortRun__c || orgDefaults.ShouldAbortRun__c) {
         this.rollups.remove(index);

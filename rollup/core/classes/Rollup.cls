@@ -28,7 +28,7 @@ global without sharing virtual class Rollup {
   private static Boolean isRunningFromFlow = false;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
 
-  protected final Set<Id> matchingCalcItemIds;
+  protected final Set<Id> matchingCalcItemIds = new Set<Id>();
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
   protected final Boolean isConductor;
@@ -1549,7 +1549,7 @@ global without sharing virtual class Rollup {
       matchingRollup.oldCalcItems.put(calcItem.Id, stackedRollup.oldCalcItems.get(calcItem.Id));
     }
     for (Rollup innerRollup : matchingRollup.rollups) {
-      if (innerRollup.matchingCalcItemIds?.isEmpty() == false) {
+      if (innerRollup.matchingCalcItemIds.isEmpty() == false) {
         innerRollup.matchingCalcItemIds.addAll(idToCalcItem.keySet());
         innerRollup.matchingCalcItemIds.addAll(matchingRollup.oldCalcItems.keySet());
       }
@@ -1797,9 +1797,7 @@ global without sharing virtual class Rollup {
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
     if (fullRecalcMeta.wrapper.getQuery().contains(':recordIds') && wrappedMeta.whereClause.contains(':recordIds') == false) {
-      String start = index > 0 ? ' OR (' : '';
-      String ending = index < fullRecalcMetas.size() - 1 || fullRecalcMetas.size() - 1 == 0 ? '' : ')';
-      wrappedMeta.whereClause += start + fullRecalcMeta.wrapper.getQuery() + ending;
+      wrappedMeta.whereClause += fullRecalcMeta.wrapper.getQuery();
     }
   }
 

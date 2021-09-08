@@ -10,12 +10,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ### Package deployment options
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPbAAK">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShSQAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShPbAAK">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShSQAA0">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -916,7 +916,7 @@ public class RollupLogger {
 
 ```
 
-You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Plugin` CMDT records. _Alternatively_, you can also _extend_ `RollupLogger` itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods.
+You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Plugin` CMDT records. _Alternatively_, you can also _extend_ `RollupLogger` itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods. Either way, the API name for the CMDT record **must** include `Logger` in order to work (eg: `RollupCustomObjectLogger`, `RollupNebulaLoggerAdapter`).
 
 You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Level` to fine-tune the logging level you'd like to use when making use of Apex debug logs (from method #3, above). Valid entries conform to the `LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.
 
