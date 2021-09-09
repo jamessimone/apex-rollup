@@ -967,6 +967,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           roll.rollups.add(otherRollup);
         }
       }
+      RollupLogger.Instance.log('current full recalc rollup:', roll, LoggingLevel.DEBUG);
       roll.startAsyncWork();
     }
   }

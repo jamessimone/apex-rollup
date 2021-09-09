@@ -127,9 +127,9 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     List<RollupPlugin__mdt> loggingPlugins = [
       SELECT DeveloperName
       FROM RollupPlugin__mdt
-      WHERE RollupControl__c = :SELF.rollupControl.Id AND DeveloperName LIKE '%Logger%' AND DeveloperName != 'RollupLogger'
+      WHERE RollupControl__c = :SELF.rollupControl.Id AND DeveloperName LIKE '%Logger%'
     ];
-    SELF.log('retrieving the following logging plugins:', loggingPlugins, LoggingLevel.DEBUG);
+    SELF.log('retrieved the following logging plugins:', loggingPlugins, LoggingLevel.FINE);
     if (pluginMocks != null) {
       loggingPlugins.addAll(pluginMocks);
     }

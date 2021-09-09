@@ -1589,9 +1589,17 @@ global without sharing virtual class Rollup {
 
       Boolean isRefresh = meta.RollupOperation__c.contains('REFRESH');
       QueryWrapper queryWrapper;
-      // the order of operations is important here - REFRESH *also* needs to check for
-      // meta.IsRollupStartedFromParent__c, so that check can't come first
-      if (isRefresh) {
+      if (apexContext == TriggerOperation.AFTER_DELETE && mergedParentIds.isEmpty() == false) {
+        queryWrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
+        for (String mergedParentId : mergedParentIds) {
+          queryWrapper.addRecordId(mergedParentId);
+        }
+        if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
+          queryWrapper.setQuery(meta.CalcItemWhereClause__c + ' AND ' + queryWrapper.getQuery());
+        }
+      } else if (isRefresh) {
+        // the order of operations is important here - REFRESH *also* needs to check for
+        // meta.IsRollupStartedFromParent__c, so that check can't come first
         queryWrapper = getFullRecalcQueryWrapper(meta, calcItems, oldCalcItems);
       } else if (meta.IsRollupStartedFromParent__c) {
         queryWrapper = getParentWhereClause(
@@ -1605,14 +1613,6 @@ global without sharing virtual class Rollup {
         );
       } else if (isIntermediateRollupForGrandparent) {
         queryWrapper = getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
-      } else if (apexContext == TriggerOperation.AFTER_DELETE && mergedParentIds.isEmpty() == false) {
-        queryWrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
-        for (String mergedParentId : mergedParentIds) {
-          queryWrapper.addRecordId(mergedParentId);
-        }
-        if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
-          queryWrapper.setQuery(meta.CalcItemWhereClause__c + ' AND ' + queryWrapper.getQuery());
-        }
       }
 
       if (queryWrapper != null) {

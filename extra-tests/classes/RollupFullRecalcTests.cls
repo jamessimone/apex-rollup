@@ -116,6 +116,36 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldBulkifyQueueableFullRecalcsProperly() {
+    Account acc = [SELECT Id FROM Account];
+    // ensure another matching item exists outside of the passed in list
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    Rollup.FlowInput secondFlowInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'CONCAT')[0];
+    secondFlowInput.rollupFieldOnOpObject = 'AccountNumber';
+    secondFlowInput.rollupFieldOnCalcItem = 'Name';
+    flowInputs.add(secondFlowInput);
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(2, flowOutputs.size(), 'Flow outputs were not provided');
+    for (Rollup.FlowOutput flowOutput : flowOutputs) {
+      System.assertEquals('SUCCESS', flowOutput.message);
+      System.assertEquals(true, flowOutput.isSuccess);
+    }
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue, AccountNumber FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+    System.assertEquals('One, Two', updatedAcc.AccountNumber);
+  }
+
+  @IsTest
   static void shouldPerformFullRecalcFromFlowChildrenWithReparenting() {
     Account acc = [SELECT Id FROM Account];
     Account reparentedAccount = new Account(Name = 'Reparented Refresh', AnnualRevenue = 1000);
