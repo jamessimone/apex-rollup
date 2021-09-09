@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.2.44.0",
+            "versionNumber": "1.3.0.0",
             "versionDescription": "Fixes parent-level filtering for Flow, deprecated RollupLoggerPlugin__mdt in favor of RollupPlugin__mdt, adds PMD analysis",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -16,7 +16,7 @@
             "path": "plugins/CustomObjectRollupLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.44-0"
+                    "package": "apex-rollup@1.3.0-0"
                 }
             ],
             "versionNumber": "0.0.6.0",
@@ -31,7 +31,7 @@
             "path": "plugins/NebulaLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.44-0"
+                    "package": "apex-rollup@1.3.0-0"
                 },
                 {
                     "package": "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements"
@@ -49,7 +49,7 @@
             "path": "plugins/RollupCallback",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.2.44-0"
+                    "package": "apex-rollup@1.3.0-0"
                 }
             ],
             "versionNumber": "0.0.1.0",
@@ -71,13 +71,13 @@
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.5-0": "04t6g000008ShAfAAK",
-        "Apex Rollup - Custom Logger@0.0.6-0": "04t6g000008ShPgAAK",
+        "Apex Rollup - Custom Logger@0.0.6-0": "04t6g000008ShT9AAK",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.2-0": "04t6g000008Sh8yAAC",
-        "Apex Rollup - Nebula Logger@0.0.3-0": "04t6g000008ShSGAA0",
+        "Apex Rollup - Nebula Logger@0.0.3-0": "04t6g000008ShTEAA0",
         "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",
         "Apex Rollup - Rollup Callback": "0Ho6g000000GnA1CAK",
-        "Apex Rollup - Rollup Callback@0.0.1-0": "04t6g000008ShRmAAK",
+        "Apex Rollup - Rollup Callback@0.0.1-0": "04t6g000008ShTJAA0",
         "apex-rollup@1.2.37-0": "04t6g000008SguzAAC",
         "apex-rollup@1.2.38-0": "04t6g000008SgyXAAS",
         "apex-rollup@1.2.39-0": "04t6g000008ShAVAA0",
@@ -85,6 +85,7 @@
         "apex-rollup@1.2.41-0": "04t6g000008ShJEAA0",
         "apex-rollup@1.2.42-0": "04t6g000008ShMNAA0",
         "apex-rollup@1.2.43-0": "04t6g000008ShPMAA0",
-        "apex-rollup@1.2.44-0": "04t6g000008ShSaAAK"
+        "apex-rollup@1.2.44-0-beta-package-only": "04t6g000008ShSaAAK",
+        "apex-rollup@1.3.0-0": "04t6g000008ShSzAAK"
     }
 }
