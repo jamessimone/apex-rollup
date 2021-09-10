@@ -77,6 +77,10 @@ public without sharing virtual class RollupSObjectUpdater {
     String baseString = '';
     String delimiter = ', ';
     for (IDispatcher dispatcher : dispatchers) {
+      // NB -if toString() has been overridden on an IDispatcher, the value of that (or the value before any colon in that string)
+      // will be what gets displayed, but when a class doesn't override toString(), it starts off with something like
+      // "RollupSObjectUpdater:..." where the ellipsis is actually a list of member variables. without proper reflection,
+      // this is as good as it gets
       baseString += String.valueOf(dispatcher).split(':')[0] + delimiter;
     }
     return baseString.removeEnd(delimiter);

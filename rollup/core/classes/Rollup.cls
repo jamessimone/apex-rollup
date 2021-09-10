@@ -1748,18 +1748,16 @@ global without sharing virtual class Rollup {
   }
 
   private static List<Rollup> getFullRecalcRollups(List<FullRecalculationMetadata> fullRecalcMetas, InvocationPoint invokePoint) {
-    // just how many items are we talking, here? If it's less than the query limit, we can proceed
-    // otherwise, kick off a batch to fetch the calc items and then chain into the regular code path
-    Set<String> objIds = new Set<String>(); // get everything that doesn't have a null Id - a pretty trick
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
     for (Integer index = 0; index < fullRecalcMetas.size(); index++) {
       FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
+      RollupMetadata wrappedMeta;
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
-        RollupMetadata newWrappedData = new RollupMetadata();
-        newWrappedData.recordCount = 0;
-        typeToWrappedMeta.put(fullRecalcMeta.calcItemType, newWrappedData);
+        wrappedMeta = new RollupMetadata();
+        wrappedMeta.recordCount = 0;
+      } else {
+        wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       }
-      RollupMetadata wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       transformFullRecalcMetadataToRollupMetadata(fullRecalcMetas, wrappedMeta, index);
       if (wrappedMeta.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
         String countQuery = RollupQueryBuilder.Current.getQuery(
@@ -1769,9 +1767,10 @@ global without sharing virtual class Rollup {
           '!=',
           fullRecalcMeta.wrapper.getQuery()
         );
-        Integer localCount = getCountFromDb(countQuery, objIds, fullRecalcMeta.wrapper.recordIds);
+        Integer localCount = getCountFromDb(countQuery, new Set<String>(), fullRecalcMeta.wrapper.recordIds);
         wrappedMeta.recordCount = localCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? localCount : wrappedMeta.recordCount + localCount;
       }
+      typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
     }
 
     List<Rollup> fullRecalcRollups = new List<Rollup>();
@@ -1779,6 +1778,7 @@ global without sharing virtual class Rollup {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, invokePoint);
+      fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
       fullRecalc.queryCount = wrappedMeta.recordCount;
       RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
       fullRecalcRollups.add(fullRecalc);
@@ -1796,8 +1796,15 @@ global without sharing virtual class Rollup {
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
-    if (fullRecalcMeta.wrapper.getQuery().contains(':recordIds') && wrappedMeta.whereClause.contains(':recordIds') == false) {
-      wrappedMeta.whereClause += fullRecalcMeta.wrapper.getQuery();
+    if (
+      wrappedMeta.whereClause.contains(':recordIds') == false &&
+      wrappedMeta.recordIds.isEmpty() == false &&
+      String.isBlank(fullRecalcMeta.meta.GrandparentRelationshipFieldPath__c)
+    ) {
+      // TODO - it would be nice to support the singular recalc button with grandparent rollups
+      // but doing so requires that we validate the query ahead of time (to remove errors with trying to filter on
+      // polymorphic fields). as it stands, this guard clause is a little TOO safe
+      wrappedMeta.whereClause += fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
     }
   }
 
@@ -2332,7 +2339,8 @@ global without sharing virtual class Rollup {
     }
     // prevent downstream rollups from running on this code path; we are already in the midst
     // of calculating each of the parent record's new rollup values
-    RollupControl__mdt earlyExitControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+    RollupControl__mdt earlyExitControl = control.clone(true);
+    earlyExitControl.ShouldAbortRun__c = true;
     defaultControl = earlyExitControl;
     specificControl = earlyExitControl;
 
