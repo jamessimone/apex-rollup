@@ -820,39 +820,41 @@ private class RollupFullRecalcTests {
     System.assertEquals(6, acc.AnnualRevenue, 'Full child amount should be included');
   }
 
-  // TODO - uncomment this and implement to work on fix for https://github.com/jamessimone/apex-rollup/issues/149
-  // @IsTest
-  // static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {
-  //   Account acc = [SELECT Id FROM Account];
-  //   acc.AccountNumber = 'someString';
-  //   acc.AnnualRevenue = 5;
-  //   update acc;
+  @IsTest
+  static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
 
-  //   List<Rollup__mdt> metas = new List<Rollup__mdt>{
-  //     new Rollup__mdt(
-  //       CalcItem__c = 'ContactPointAddress',
-  //       RollupFieldOnCalcItem__c = 'PreferenceRank',
-  //       LookupFieldOnCalcItem__c = 'ParentId',
-  //       LookupObject__c = 'Account',
-  //       LookupFieldOnLookupObject__c = 'Id',
-  //       RollupFieldOnLookupObject__c = 'AnnualRevenue',
-  //       RollupOperation__c = 'LAST',
-  //       CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
-  //     ),
-  //     new Rollup__mdt(
-  //       CalcItem__c = 'Task',
-  //       RollupFieldOnCalcItem__c = 'Subject',
-  //       LookupFieldOnCalcItem__c = 'WhatId',
-  //       LookupObject__c = 'Account',
-  //       LookupFieldOnLookupObject__c = 'Id',
-  //       RollupFieldOnLookupObject__c = 'AccountNumber',
-  //       RollupOperation__c = 'CONCAT'
-  //     )
-  //   };
+    insert new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Name = 'Should not match');
 
-  //   Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
-  //   acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
-  //   System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AccountNumber), acc.AccountNumber, 'AccountNumber should have been reset');
-  //   System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AnnualRevenue), acc.AnnualRevenue, 'AnnualRevenue should have been reset');
-  // }
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0 ||| ParentId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
+    System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AnnualRevenue), acc.AnnualRevenue, 'AnnualRevenue should have been reset');
+    // seems like some standard fields default to null when you save an empty string to them, even if they have no default value 🙄
+    System.assertEquals(null, acc.AccountNumber, 'AccountNumber should have been reset');
+  }
 }

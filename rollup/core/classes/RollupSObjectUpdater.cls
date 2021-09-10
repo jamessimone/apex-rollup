@@ -16,12 +16,16 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   public virtual void doUpdate(List<SObject> recordsToUpdate) {
-    recordsToUpdate.sort();
-    RollupLogger.Instance.log('updating the following records:', recordsToUpdate, LoggingLevel.FINE);
-    Database.DMLOptions dmlOptions = new Database.DMLOptions();
-    dmlOptions.AllowFieldTruncation = true;
-    Database.update(recordsToUpdate, dmlOptions);
-    this.dispatch(recordsToUpdate);
+    // typically I wouldn't advocate for the use of a guard clause here since an empty list
+    // getting updated is a no-op, but the addition of the logging item is annoying ...
+    if (recordsToUpdate.isEmpty() == false) {
+      recordsToUpdate.sort();
+      RollupLogger.Instance.log('updating the following records:', recordsToUpdate, LoggingLevel.FINE);
+      Database.DMLOptions dmlOptions = new Database.DMLOptions();
+      dmlOptions.AllowFieldTruncation = true;
+      Database.update(recordsToUpdate, dmlOptions);
+      this.dispatch(recordsToUpdate);
+    }
   }
 
   public void updateField(SObject record, Object value) {

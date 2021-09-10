@@ -31,7 +31,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     protected final List<Rollup__mdt> rollupInfo;
     protected final Set<Id> recordIds;
     protected final Set<Id> objIds = new Set<Id>(); // necessary; there's a bind variable in the query string
-    private final Set<String> previouslyProcessedParents = new Set<String>();
+    private final Set<String> previouslyResetParents = new Set<String>();
 
     public FullRecalcProcessor(String queryString, InvocationPoint invokePoint, List<Rollup__mdt> rollupInfo, SObjectType calcItemType, Set<Id> recordIds) {
       super(invokePoint);
@@ -53,11 +53,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     private Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-      return this.previouslyProcessedParents.contains(this.getKey(processor, parent));
+      return this.previouslyResetParents.contains(this.getKey(processor, parent));
     }
 
-    private void setProcessedParent(RollupAsyncProcessor processor, SObject parent) {
-      this.previouslyProcessedParents.add(this.getKey(processor, parent));
+    private void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
+      this.previouslyResetParents.add(this.getKey(processor, parent));
     }
 
     private String getKey(RollupAsyncProcessor processor, SObject parent) {
@@ -285,6 +285,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual override String getTypeName() {
     return RollupAsyncProcessor.class.getName();
+  }
+
+  protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    props = super.customizeToStringEntries(props);
+    this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
+    return props;
   }
 
   protected RollupAsyncProcessor getAsyncRollup() {
@@ -1132,7 +1138,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       RollupLogger.Instance.log('updating record ...', LoggingLevel.FINE);
       updater.updateField(lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
-      roll.fullRecalcProcessor?.setProcessedParent(roll, lookupRecord);
+      roll.fullRecalcProcessor?.storeParentResetField(roll, lookupRecord);
     }
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }

@@ -310,6 +310,8 @@ global without sharing virtual class Rollup {
     String delimiter = ' ||| ';
     String lookupFieldName;
     Integer delimiterIndex = -1;
+    Id potentialParentId;
+    Map<Id, SObject> parentRecordsToReset = new Map<Id, SObject>();
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
@@ -321,6 +323,7 @@ global without sharing virtual class Rollup {
         lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
       }
       if (delimiterIndex != -1) {
+        potentialParentId = Id.valueOf(potentialWhereClause.substringAfter('= ').replace('\'', ''));
         matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
         if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
           matchingMeta.CalcItemWhereClause__c += ' AND ' + potentialWhereClause;
@@ -348,16 +351,26 @@ global without sharing virtual class Rollup {
       }
 
       if (amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-        String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, matchingMeta.LookupFieldOnLookupObject__c, '!=');
+        String countQuery = RollupQueryBuilder.Current.getQuery(
+          childType,
+          new List<String>{ 'Count()' },
+          matchingMeta.LookupFieldOnLookupObject__c,
+          '!=',
+          matchingMeta.CalcItemWhereClause__c
+        );
         Integer currentCount = getCountFromDb(countQuery, objIds, recordIds);
         if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
           amountOfCalcItems = currentCount;
         } else {
+          if (currentCount == 0 && potentialParentId != null) {
+            resetParentLevelValues(matchingMeta, potentialParentId, parentRecordsToReset);
+          }
           metaWrapper.recordCount = currentCount;
           amountOfCalcItems += currentCount;
         }
       }
     }
+    performNonRecursiveUpdate(parentRecordsToReset.values(), new Rollup(localInvokePoint).rollupControl);
 
     List<Rollup> processors = new List<Rollup>();
     for (SObjectType childType : childToMetaWrapper.keySet()) {
@@ -1556,6 +1569,21 @@ global without sharing virtual class Rollup {
     }
   }
 
+  private static void resetParentLevelValues(Rollup__mdt matchingMeta, Id parentId, Map<Id, SObject> parentRecordsToReset) {
+    SObject parentRecord;
+    SObjectType sObjectType = parentId.getSobjectType();
+    if (parentRecordsToReset.containsKey(parentId)) {
+      parentRecord = parentRecordsToReset.get(parentId);
+    } else {
+      parentRecord = sObjectType.newSObject(parentId);
+    }
+    parentRecord.put(
+      matchingMeta.RollupFieldOnLookupObject__c,
+      RollupFieldInitializer.Current.getDefaultValue(sObjectType.getDescribe().fields.getMap().get(matchingMeta.RollupFieldOnLookupObject__c))
+    );
+    parentRecordsToReset.put(parentRecord.Id, parentRecord);
+  }
+
   private static void processCustomMetadata(
     List<Rollup> rollups,
     List<Rollup__mdt> metas,
@@ -2337,8 +2365,13 @@ global without sharing virtual class Rollup {
         }
       }
     }
+    performNonRecursiveUpdate(recordsToUpdate, control);
+    return shouldReturn;
+  }
+
+  private static void performNonRecursiveUpdate(List<SObject> recordsToUpdate, RollupControl__mdt control) {
     // prevent downstream rollups from running on this code path; we are already in the midst
-    // of calculating each of the parent record's new rollup values
+    // of calculating each of the record's new rollup values
     RollupControl__mdt earlyExitControl = control.clone(true);
     earlyExitControl.ShouldAbortRun__c = true;
     defaultControl = earlyExitControl;
@@ -2348,8 +2381,6 @@ global without sharing virtual class Rollup {
 
     defaultControl = null;
     specificControl = null;
-
-    return shouldReturn;
   }
 
   private static Rollup loadRollups(
