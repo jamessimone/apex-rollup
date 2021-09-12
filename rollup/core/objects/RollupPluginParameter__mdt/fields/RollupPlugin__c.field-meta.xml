@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>RollupLoggerPlugin__c</fullName>
+    <fullName>RollupPlugin__c</fullName>
     <description>Lookup to the parent plugin object</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>Lookup to the parent plugin object</inlineHelpText>
-    <label>Rollup Logger Plugin</label>
-    <referenceTo>RollupLoggerPlugin__mdt</referenceTo>
-    <relationshipLabel>Rollup Logger Plugin Parameters</relationshipLabel>
-    <relationshipName>RollupLoggerPluginParameters</relationshipName>
+    <label>Rollup Plugin</label>
+    <referenceTo>RollupPlugin__mdt</referenceTo>
+    <relationshipLabel>Rollup Plugin Parameters</relationshipLabel>
+    <relationshipName>RollupPluginParameters</relationshipName>
     <required>true</required>
     <type>MetadataRelationship</type>
     <unique>false</unique>

@@ -1,4 +1,4 @@
-public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
+public inherited sharing virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
   private final Map<String, Rollup.CalcItemBag> statefulLookupToCalcItems;
 
   public RollupFullBatchRecalculator(
@@ -19,8 +19,8 @@ public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.Fu
     return Database.getQueryLocator(this.queryString);
   }
 
-  public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    RollupLogger.Instance.log('starting full batch recalc run', this, LoggingLevel.DEBUG);
+  public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
+    RollupLogger.Instance.log('starting full batch recalc run:', this, LoggingLevel.DEBUG);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
      * them to the overall Rollup framework while breaking us out of the query limits
@@ -28,7 +28,7 @@ public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.Fu
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.processDelegatedFullRecalcRollup(this.rollupInfo, calcItems, new Map<Id, SObject>(), this);
+    this.getDelegatedFullRecalcRollup(this.rollupInfo, calcItems, this).runCalc();
     RollupLogger.Instance.save();
   }
 
@@ -37,7 +37,7 @@ public virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.Fu
     RollupLogger.Instance.save();
   }
 
-  protected override String getTypeName() {
+  protected virtual override String getTypeName() {
     return RollupFullBatchRecalculator.class.getName();
   }
 

@@ -116,6 +116,36 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldBulkifyQueueableFullRecalcsProperly() {
+    Account acc = [SELECT Id FROM Account];
+    // ensure another matching item exists outside of the passed in list
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    Rollup.FlowInput secondFlowInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'CONCAT')[0];
+    secondFlowInput.rollupFieldOnOpObject = 'AccountNumber';
+    secondFlowInput.rollupFieldOnCalcItem = 'Name';
+    flowInputs.add(secondFlowInput);
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(2, flowOutputs.size(), 'Flow outputs were not provided');
+    for (Rollup.FlowOutput flowOutput : flowOutputs) {
+      System.assertEquals('SUCCESS', flowOutput.message);
+      System.assertEquals(true, flowOutput.isSuccess);
+    }
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue, AccountNumber FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+    System.assertEquals('One, Two', updatedAcc.AccountNumber);
+  }
+
+  @IsTest
   static void shouldPerformFullRecalcFromFlowChildrenWithReparenting() {
     Account acc = [SELECT Id FROM Account];
     Account reparentedAccount = new Account(Name = 'Reparented Refresh', AnnualRevenue = 1000);
@@ -174,7 +204,62 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldProperlyBulkifyApexFullRecalcs() {
+    // cheating, but we'll use REFRESH_ rollup operations to reproduce this issue (REFRESH is typically only available in Flow)
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<Event> events = new List<Event>{
+      new Event(WhatId = acc.Id, Subject = 'One', ActivityDatetime = System.now(), DurationInMinutes = 60),
+      new Event(WhatId = acc.Id, Subject = 'Two', ActivityDatetime = System.now(), DurationInMinutes = 60)
+    };
+    insert events;
+
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.shouldRun = true;
+    Rollup.records = events;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'REFRESH_CONCAT'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'REFRESH_COUNT',
+        CalcItemWhereClause__c = 'WhatId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'DurationInMinutes',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'REFRESH_SUM'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_DELETE;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(0, mock.Records.size(), 'No updates should have been made for non-merge delete');
+  }
+
+  @IsTest
   static void shouldAllowGrandparentRollupsFromParent() {
+    // also an integration test for having an ORDER BY statement
+    // in RollupFullBatchRecalculator
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<Event> events = new List<Event>{
       new Event(WhatId = acc.Id, Subject = 'One', ActivityDatetime = System.now(), DurationInMinutes = 60),
@@ -227,7 +312,7 @@ private class RollupFullRecalcTests {
     Rollup.shouldRun = true;
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
     Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
       BatchChunkSize__c = 100,
       IsRollupLoggingEnabled__c = true
     );
@@ -579,7 +664,7 @@ private class RollupFullRecalcTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
       BatchChunkSize__c = 10,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE, // validate that it still batches
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
       IsRollupLoggingEnabled__c = true
     );
 
@@ -661,7 +746,7 @@ private class RollupFullRecalcTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
   }
 
   @IsTest
@@ -735,39 +820,181 @@ private class RollupFullRecalcTests {
     System.assertEquals(6, acc.AnnualRevenue, 'Full child amount should be included');
   }
 
-  // TODO - uncomment this and implement to work on fix for https://github.com/jamessimone/apex-rollup/issues/149
-  // @IsTest
-  // static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {
-  //   Account acc = [SELECT Id FROM Account];
-  //   acc.AccountNumber = 'someString';
-  //   acc.AnnualRevenue = 5;
-  //   update acc;
+  @IsTest
+  static void shouldCorrectlyResetParentValueFromSingularRecalcWithNoChildren() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
 
-  //   List<Rollup__mdt> metas = new List<Rollup__mdt>{
-  //     new Rollup__mdt(
-  //       CalcItem__c = 'ContactPointAddress',
-  //       RollupFieldOnCalcItem__c = 'PreferenceRank',
-  //       LookupFieldOnCalcItem__c = 'ParentId',
-  //       LookupObject__c = 'Account',
-  //       LookupFieldOnLookupObject__c = 'Id',
-  //       RollupFieldOnLookupObject__c = 'AnnualRevenue',
-  //       RollupOperation__c = 'LAST',
-  //       CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
-  //     ),
-  //     new Rollup__mdt(
-  //       CalcItem__c = 'Task',
-  //       RollupFieldOnCalcItem__c = 'Subject',
-  //       LookupFieldOnCalcItem__c = 'WhatId',
-  //       LookupObject__c = 'Account',
-  //       LookupFieldOnLookupObject__c = 'Id',
-  //       RollupFieldOnLookupObject__c = 'AccountNumber',
-  //       RollupOperation__c = 'CONCAT'
-  //     )
-  //   };
+    insert new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Name = 'Should not match');
 
-  //   Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
-  //   acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
-  //   System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AccountNumber), acc.AccountNumber, 'AccountNumber should have been reset');
-  //   System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AnnualRevenue), acc.AnnualRevenue, 'AnnualRevenue should have been reset');
-  // }
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0 ||| ParentId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
+    System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset');
+    // seems like some standard fields default to null when you save an empty string to them, even if they have no default value 🙄
+    System.assertEquals(null, acc.AccountNumber, 'AccountNumber should have been reset');
+  }
+
+  @IsTest
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteUnderQueryLimit() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    Account secondParentWithValues = new Account(Name = 'Two', AnnualRevenue = 5);
+    Account thirdParentWithValues = new Account(Name = 'Three', AccountNumber = '1234');
+    insert new List<Account>{ secondParentWithValues, thirdParentWithValues };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
+    for (Account updatedAcc : accounts) {
+      System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
+      System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
+    }
+  }
+
+  @IsTest
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverQueryLimit() {
+    RollupParentResetProcessor.maxQueryRows = 0;
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true);
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    Account secondParentWithValues = new Account(Name = 'Two', AnnualRevenue = 5);
+    Account thirdParentWithValues = new Account(Name = 'Three', AccountNumber = '1234');
+    insert new List<Account>{ secondParentWithValues, thirdParentWithValues };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
+    for (Account updatedAcc : accounts) {
+      System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
+      System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
+    }
+  }
+
+  @IsTest
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverLimitWithBatching() {
+    RollupParentResetProcessor.maxQueryRows = 0;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true);
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    Account secondParentWithValues = new Account(Name = 'Two', AnnualRevenue = 5);
+    Account thirdParentWithValues = new Account(Name = 'Three', AccountNumber = '1234');
+    insert new List<Account>{ secondParentWithValues, thirdParentWithValues };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    List<Account> accounts = [SELECT AnnualRevenue, Name FROM Account];
+    for (Account updatedAcc : accounts) {
+      // for this set of tests, since we can't add more than one queueable job to the stack in a test context
+      // and because each full reset is processor separately, we can only validate that the first Rollup__mdt record
+      // had the parents associated with it reset. It's possible that this will be revisited in the future to consolidate full
+      // resets into singular jobs
+      System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
+    }
+  }
 }

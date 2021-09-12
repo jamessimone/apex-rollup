@@ -35,7 +35,7 @@ public class RollupCustomObjectLogger extends RollupLogger {
     this.rollupLogEvents.clear();
   }
 
-  protected override RollupLoggerPluginParameter__mdt getLoggingLevelParameter() {
-    return RollupLoggerPluginParameter__mdt.getInstance('CustomLoggingDebugLevel');
+  protected override RollupPluginParameter__mdt getLoggingLevelParameter() {
+    return RollupPluginParameter__mdt.getInstance('CustomLoggingDebugLevel');
   }
 }

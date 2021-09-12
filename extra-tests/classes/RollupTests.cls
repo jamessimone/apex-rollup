@@ -1,5 +1,15 @@
 @IsTest
 private class RollupTests {
+  static Object testPriorVal;
+  static Rollup.Op testOp;
+  static SObjectField testOpFieldOnCalcItem;
+  static SObjectField testOpFieldOnLookupObject;
+  static Rollup__mdt testMetadata;
+  static String testLookupRecordKey;
+  static SObjectField testLookupKeyField;
+  static Rollup.Op rollupOp;
+  static Boolean calcMockWasCalled = false;
+
   @TestSetup
   static void setup() {
     // in the event that rollups are running in the org, we want to avoid triggering any operations while performing setup DML
@@ -11,15 +21,6 @@ private class RollupTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
-
-  static Object testPriorVal;
-  static Rollup.Op testOp;
-  static SObjectField testOpFieldOnCalcItem;
-  static SObjectField testOpFieldOnLookupObject;
-  static Rollup__mdt testMetadata;
-  static String testLookupRecordKey;
-  static SObjectField testLookupKeyField;
-  static Rollup.Op rollupOp;
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
       Object priorVal,
@@ -41,7 +42,6 @@ private class RollupTests {
     }
   }
 
-  static Boolean calcMockWasCalled = false;
   public class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
@@ -2571,7 +2571,7 @@ private class RollupTests {
     flowInputs[0].orderByFirstLast = 'ActiveFromDate';
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Rollup.performRollup(flowInputs);
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
@@ -2592,7 +2592,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+      Rollup.performRollup(flowInputs);
     } catch (Exception e) {
       ex = e;
     }
@@ -2614,7 +2614,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+      Rollup.performRollup(flowInputs);
     } catch (Exception e) {
       ex = e;
     }
@@ -2636,7 +2636,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+      Rollup.performRollup(flowInputs);
     } catch (Exception e) {
       ex = e;
     }
@@ -2659,7 +2659,7 @@ private class RollupTests {
 
     Exception ex;
     try {
-      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+      Rollup.performRollup(flowInputs);
     } catch (Exception e) {
       ex = e;
     }
@@ -2688,7 +2688,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(cpas);
 
     Test.startTest();
-    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Rollup.performRollup(flowInputs);
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
@@ -2752,7 +2752,7 @@ private class RollupTests {
     Test.startTest();
     // RollupTestUtils.prepareFlowTest sets us up for a failure with a field that doesn't exist on ContactPointAddressHistory
     try {
-      List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(history, 'INSERT', 'SUM'));
+      Rollup.performRollup(RollupTestUtils.prepareFlowTest(history, 'INSERT', 'SUM'));
     } catch (Exception e) {
       ex = e;
     }
@@ -2938,7 +2938,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
       BatchChunkSize__c = 1,
       MaxLookupRowsBeforeBatching__c = 1
     );
@@ -2958,7 +2958,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.BATCHABLE,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
       MaxLookupRowsBeforeBatching__c = 1000,
       BatchChunkSize__c = 50
     );
@@ -2977,7 +2977,7 @@ private class RollupTests {
   static void shouldRunAsQueueableWhenSpecificControlIsQueueable() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.QUEUEABLE);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3205,7 +3205,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 1);
     Rollup.specificControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       MaxLookupRowsBeforeBatching__c = 1,
       BatchChunkSize__c = 1
     );
@@ -3270,7 +3270,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS, MaxNumberOfQueries__c = 2);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;
@@ -3310,7 +3310,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
     Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.SYNCHRONOUS, MaxNumberOfQueries__c = 2);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 2);
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = cpas;

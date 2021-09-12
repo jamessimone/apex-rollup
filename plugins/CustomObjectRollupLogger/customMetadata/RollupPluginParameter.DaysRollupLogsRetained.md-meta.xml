@@ -7,7 +7,7 @@
         <value xsi:type="xsd:string">The number of days before created rollup logs are purged when the Apex Class RollupLogBatchPurger is scheduled.</value>
     </values>
     <values>
-        <field>RollupLoggerPlugin__c</field>
+        <field>RollupPlugin__c</field>
         <value xsi:type="xsd:string">RollupCustomObjectLogger</value>
     </values>
     <values>

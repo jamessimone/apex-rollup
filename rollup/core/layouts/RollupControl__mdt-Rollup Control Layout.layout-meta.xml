@@ -110,7 +110,7 @@
     <relatedLists>
         <fields>MasterLabel</fields>
         <fields>DeveloperName</fields>
-        <relatedList>RollupLoggerPlugin__mdt.RollupControl__c</relatedList>
+        <relatedList>RollupPlugin__mdt.RollupControl__c</relatedList>
     </relatedLists>
     <relatedLists>
         <fields>MasterLabel</fields>

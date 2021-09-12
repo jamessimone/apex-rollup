@@ -1,11 +1,11 @@
 public without sharing class RollupQueryBuilder {
-  private RollupQueryBuilder() {
-  }
+  private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
 
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
   public static final Integer SENTINEL_COUNT_VALUE = -1;
 
-  private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
+  private RollupQueryBuilder() {
+  }
 
   /**
    * @return String `queryString` - returns a query string with "objIds" expected as a bind variable
@@ -130,7 +130,7 @@ public without sharing class RollupQueryBuilder {
           .trim();
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('exception occurred while converting polymorphic where clause: ', ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('exception occurred while converting polymorphic where clause:', ex, LoggingLevel.WARN);
     }
     return optionalWhereClause;
   }

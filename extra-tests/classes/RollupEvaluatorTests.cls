@@ -690,16 +690,19 @@ private class RollupEvaluatorTests {
     System.assertEquals(new List<String>{ 'Owner.Name' }, eval.getQueryFields());
   }
 
+  @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
   @IsTest
   static void shouldThrowExceptionForImproperlyEnteredWhereClause() {
     assertExceptionContains('= 1', 'Where clause entered incorrectly', null);
   }
 
+  @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
   @IsTest
   static void shouldThrowExceptionForMultipleValuesWithGreaterThan() {
     assertExceptionContains('Amount > (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
   }
 
+  @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
   @IsTest
   static void shouldThrowExceptionForMultipleValuesWithLessThan() {
     assertExceptionContains('Amount < (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));

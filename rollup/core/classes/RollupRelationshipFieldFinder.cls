@@ -274,6 +274,7 @@ public without sharing class RollupRelationshipFieldFinder {
     return childRecord;
   }
 
+  @SuppressWarnings('PMD.ApexSOQLInjection')
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
     this.populateRelationshipNameToWhereClauses(baseSObjectType);
 
@@ -509,6 +510,7 @@ public without sharing class RollupRelationshipFieldFinder {
     return Database.query(RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, lookupfield, equality, whereClause));
   }
 
+  @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
   private void retrieveAdditionalCalcItems() {
     if (this.records?.isEmpty() == false) {
       SObjectType childType = this.records[0].getSObjectType();

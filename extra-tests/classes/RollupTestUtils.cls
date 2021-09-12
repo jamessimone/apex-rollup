@@ -25,7 +25,7 @@ public class RollupTestUtils {
     return new List<Rollup.FlowInput>{ flowInput };
   }
 
-  public class DMLMock extends Rollup.DMLHelper {
+  public class DMLMock extends RollupSObjectUpdater {
     public List<SObject> Records = new List<SObject>();
     public override void doUpdate(List<SObject> recordsToUpdate) {
       this.Records = recordsToUpdate;

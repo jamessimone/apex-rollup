@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.2.43.0",
+  "version": "1.3.0",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -14,6 +14,7 @@
     "@salesforce/sfdx-lwc-jest": "0.12.5"
   },
   "scripts": {
+    "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target . --engine pmd --severity-threshold 3",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck",

@@ -1,8 +1,8 @@
-public virtual class RollupLogger extends Rollup implements ILogger {
+public without sharing virtual class RollupLogger extends Rollup implements ILogger {
   @TestVisible
-  private static List<RollupLoggerPlugin__mdt> pluginMocks;
+  private static List<RollupPlugin__mdt> pluginMocks;
   @TestVisible
-  private static RollupLoggerPluginParameter__mdt loggingLevelMock;
+  private static RollupPluginParameter__mdt loggingLevelMock;
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
 
   private final LoggingLevel currentLoggingLevel;
@@ -42,6 +42,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     this.log(logString, null, logLevel);
   }
 
+  @SuppressWarnings('PMD.AvoidDebugStatements')
   public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       String appended = this.getLogStringFromObject(logObject);
@@ -52,7 +53,10 @@ public virtual class RollupLogger extends Rollup implements ILogger {
       // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
       // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
       List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
-      while(innerStacktraces.isEmpty() == false && innerStacktraces.get(0).contains('Class.RollupLogger.log')) {
+      while (
+        innerStacktraces.isEmpty() == false &&
+        (innerStacktraces.get(0).contains('Class.RollupLogger.log') || innerStacktraces.get(0).contains('Class.RollupLogger.CombinedLogger.log'))
+      ) {
         innerStacktraces.remove(0);
       }
       messages.add(String.join(innerStacktraces, '\n'));
@@ -64,7 +68,7 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
-  private RollupLoggerPluginParameter__mdt loggingLevelPluginParameter {
+  private RollupPluginParameter__mdt loggingLevelPluginParameter {
     get {
       if (loggingLevelPluginParameter == null) {
         loggingLevelPluginParameter = loggingLevelMock != null ? loggingLevelMock : this.getLoggingLevelParameter();
@@ -74,12 +78,12 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     set;
   }
 
-  protected virtual RollupLoggerPluginParameter__mdt getLoggingLevelParameter() {
-    return RollupLoggerPluginParameter__mdt.getInstance('LoggingDebugLevel');
+  protected virtual RollupPluginParameter__mdt getLoggingLevelParameter() {
+    return RollupPluginParameter__mdt.getInstance('LoggingDebugLevel');
   }
 
   protected override String getTypeName() {
-    return 'RollupLogger';
+    return RollupLogger.class.getName();
   }
 
   protected LoggingLevel getLogLevel() {
@@ -118,31 +122,45 @@ public virtual class RollupLogger extends Rollup implements ILogger {
     return appended;
   }
 
+  @SuppressWarnings('PMD.ApexCrudViolation')
   private static ILogger getRollupLogger() {
-    List<RollupLoggerPlugin__mdt> plugins = [SELECT DeveloperName FROM RollupLoggerPlugin__mdt WHERE RollupControl__c = :SELF.rollupControl.Id];
+    List<RollupPlugin__mdt> loggingPlugins = [
+      SELECT DeveloperName
+      FROM RollupPlugin__mdt
+      WHERE RollupControl__c = :SELF.rollupControl.Id AND DeveloperName LIKE '%Logger%'
+    ];
+    SELF.log('retrieved the following logging plugins:', loggingPlugins, LoggingLevel.FINE);
     if (pluginMocks != null) {
-      plugins.addAll(pluginMocks);
+      loggingPlugins.addAll(pluginMocks);
     }
-    return combineLoggers(plugins);
+    return combineLoggers(loggingPlugins);
   }
 
-  private static ILogger combineLoggers(List<RollupLoggerPlugin__mdt> plugins) {
+  private static ILogger combineLoggers(List<RollupPlugin__mdt> loggingPlugins) {
     ILogger rollLogger;
-    if (plugins.isEmpty()) {
+    if (loggingPlugins.isEmpty()) {
       return SELF;
     }
-    RollupLoggerPlugin__mdt firstLogger = plugins.remove(0);
+    RollupPlugin__mdt firstLogger = loggingPlugins.remove(0);
     if (firstLogger.DeveloperName == SELF.getTypeName()) {
       rollLogger = SELF;
     } else {
       try {
         rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
       } catch (Exception ex) {
-        SELF.log('cast to ILogger failed with message: ' + ex.getMessage() + ', falling back to default logger', SELF, LoggingLevel.WARN);
+        SELF.log(
+          'cast to ILogger for:' +
+          firstLogger.DeveloperName +
+          ' failed with message: ' +
+          ex.getMessage() +
+          ', falling back to default logger',
+          SELF,
+          LoggingLevel.WARN
+        );
         rollLogger = SELF;
       }
-      if (plugins.isEmpty() == false) {
-        rollLogger = new CombinedLogger(rollLogger, combineLoggers(plugins));
+      if (loggingPlugins.isEmpty() == false) {
+        rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
       }
     }
 

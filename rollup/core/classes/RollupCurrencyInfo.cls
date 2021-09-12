@@ -1,4 +1,4 @@
-public class RollupCurrencyInfo {
+public without sharing class RollupCurrencyInfo {
 
   public String IsoCode { get; set; }
   public Decimal ConversionRate { get; set; }

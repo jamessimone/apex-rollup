@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.UnusedLocalVariable')
 @IsTest
 private class RollupQueryBuilderTests {
   @IsTest

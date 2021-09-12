@@ -7,7 +7,7 @@
         <value xsi:type="xsd:string">Conforms to the standard LoggingLevel enum - valid values are ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.</value>
     </values>
     <values>
-        <field>RollupLoggerPlugin__c</field>
+        <field>RollupPlugin__c</field>
         <value xsi:type="xsd:string">RollupLogger</value>
     </values>
     <values>

@@ -1,5 +1,7 @@
 @IsTest
-private class RollupSObjectUpdaterTests {
+public class RollupSObjectUpdaterTests {
+  private static Boolean dispatcherMockWasCalled = false;
+
   @IsTest
   static void shouldAllowDatetimeToBeSavedAsDate() {
     Datetime now = System.now();
@@ -9,6 +11,14 @@ private class RollupSObjectUpdaterTests {
     new RollupSObjectUpdater(Opportunity.CloseDate).updateField(opp, now);
 
     System.assertEquals(now.dateGmt(), opp.CloseDate);
+  }
+
+  @IsTest
+  static void shouldAllowDecimalToBeSavedAsInteger() {
+    Account acc = new Account();
+    new RollupSObjectUpdater(Account.NumberOfEmployees).updateField(acc, 3.00);
+
+    System.assertEquals(3, acc.NumberOfEmployees);
   }
 
   @IsTest
@@ -22,5 +32,22 @@ private class RollupSObjectUpdaterTests {
     }
 
     System.assertNotEquals(null, ex);
+  }
+
+  @IsTest
+  static void shouldDispatchOnUpdate() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    RollupSObjectUpdater.pluginParameterMock = new RollupPluginParameter__mdt(Value__c = DispatcherMock.class.getName());
+    RollupSObjectUpdater updater = new RollupSObjectUpdater();
+
+    updater.doUpdate(new List<SObjecT>{ new Account() });
+
+    System.assertEquals(true, dispatcherMockWasCalled);
+  }
+
+  public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {
+    public void dispatch(List<SObject> records) {
+      dispatcherMockWasCalled = true;
+    }
   }
 }

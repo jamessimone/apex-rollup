@@ -1,14 +1,14 @@
 public virtual class RollupFieldInitializer {
-  private RollupFieldInitializer() {
-  }
-
-  public static final RollupFieldInitializer Current = new RollupFieldInitializer();
-
   public final Datetime defaultDateTime = Datetime.newInstanceGmt(1970, 1, 1);
   public final Long maximumLongValue = (Math.pow(2, 63) - 1).longValue();
   public final Long minimumLongValue = this.maximumLongValue * -1;
   public final Integer maximumIntegerValue = 2147483647;
   public final Integer minimumIntegerValue = this.maximumIntegerValue * -1;
+
+  public static final RollupFieldInitializer Current = new RollupFieldInitializer();
+
+  private RollupFieldInitializer() {
+  }
 
   public Datetime getApexCompliantDatetime(Datetime dt) {
     // one of the worst things about SOQL is that Datetimes retrieved have the millisecond values truncated

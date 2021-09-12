@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Should Fire Platform Event</label>
+    <protected>false</protected>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">Remove this record (or update Value to false) if you don't want the RollupCallbackEvent__e platform event to be fired</value>
+    </values>
+    <values>
+        <field>RollupPlugin__c</field>
+        <value xsi:type="xsd:string">RollupDispatch</value>
+    </values>
+    <values>
+        <field>Value__c</field>
+        <value xsi:type="xsd:string">true</value>
+    </values>
+</CustomMetadata>

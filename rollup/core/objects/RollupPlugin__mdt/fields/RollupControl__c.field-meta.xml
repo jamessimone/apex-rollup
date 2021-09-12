@@ -7,8 +7,8 @@
     <inlineHelpText>The parent Rollup Control record</inlineHelpText>
     <label>Rollup Control</label>
     <referenceTo>RollupControl__mdt</referenceTo>
-    <relationshipLabel>Rollup Logger Plugins</relationshipLabel>
-    <relationshipName>RollupLoggerPlugins</relationshipName>
+    <relationshipLabel>Rollup Plugins</relationshipLabel>
+    <relationshipName>RollupPlugins</relationshipName>
     <required>true</required>
     <type>MetadataRelationship</type>
     <unique>false</unique>
