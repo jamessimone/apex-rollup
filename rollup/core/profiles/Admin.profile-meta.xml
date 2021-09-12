@@ -58,6 +58,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>RollupParentResetProcessor</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>RollupQueryBuilder</apexClass>
         <enabled>true</enabled>
     </classAccesses>

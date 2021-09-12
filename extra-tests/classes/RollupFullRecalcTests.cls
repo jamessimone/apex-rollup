@@ -746,7 +746,7 @@ private class RollupFullRecalcTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'Account should not have been updated based on exclusion criteria');
   }
 
   @IsTest
@@ -853,8 +853,52 @@ private class RollupFullRecalcTests {
 
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
     acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
-    System.assertEquals(RollupFieldInitializer.Current.getDefaultValue(Account.AnnualRevenue), acc.AnnualRevenue, 'AnnualRevenue should have been reset');
+    System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset');
     // seems like some standard fields default to null when you save an empty string to them, even if they have no default value 🙄
     System.assertEquals(null, acc.AccountNumber, 'AccountNumber should have been reset');
+  }
+
+  @IsTest
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRoute() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    Account secondParentWithValues = new Account(Name = 'Two', AnnualRevenue = 5);
+    Account thirdParentWithValues = new Account(Name = 'Three', AccountNumber = '1234');
+    insert new List<Account>{ secondParentWithValues, thirdParentWithValues };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
+    for (Account updatedAcc : accounts) {
+      System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
+      System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
+    }
   }
 }

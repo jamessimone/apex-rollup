@@ -88,6 +88,7 @@ global without sharing virtual class Rollup {
     set;
   }
 
+  @SuppressWarnings('PMD.UnusedLocalVariable')
   public enum Op {
     SUM,
     UPDATE_SUM,
@@ -144,6 +145,7 @@ global without sharing virtual class Rollup {
     Boolean matches(Object calcItem);
   }
 
+  @SuppressWarnings('PMD.UnusedLocalVariable')
   global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,
@@ -282,7 +284,6 @@ global without sharing virtual class Rollup {
     public final Set<String> queryFields = new Set<String>();
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
     public String whereClause = '';
-    public final List<QueryWrapper> queryWrappers = new List<QueryWrapper>();
     public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
   }
 
@@ -310,8 +311,6 @@ global without sharing virtual class Rollup {
     String delimiter = ' ||| ';
     String lookupFieldName;
     Integer delimiterIndex = -1;
-    Id potentialParentId;
-    Map<Id, SObject> parentRecordsToReset = new Map<Id, SObject>();
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
@@ -323,7 +322,6 @@ global without sharing virtual class Rollup {
         lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
       }
       if (delimiterIndex != -1) {
-        potentialParentId = Id.valueOf(potentialWhereClause.substringAfter('= ').replace('\'', ''));
         matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
         if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
           matchingMeta.CalcItemWhereClause__c += ' AND ' + potentialWhereClause;
@@ -362,15 +360,11 @@ global without sharing virtual class Rollup {
         if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
           amountOfCalcItems = currentCount;
         } else {
-          if (currentCount == 0 && potentialParentId != null) {
-            resetParentLevelValues(matchingMeta, potentialParentId, parentRecordsToReset);
-          }
           metaWrapper.recordCount = currentCount;
           amountOfCalcItems += currentCount;
         }
       }
     }
-    performNonRecursiveUpdate(parentRecordsToReset.values(), new Rollup(localInvokePoint).rollupControl);
 
     List<Rollup> processors = new List<Rollup>();
     for (SObjectType childType : childToMetaWrapper.keySet()) {
@@ -384,7 +378,7 @@ global without sharing virtual class Rollup {
 
     RollupLogger.Instance.log('bulk full recalc starting for:', processors, LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
-    return batch(processors);
+    return batch(processors, localInvokePoint);
   }
 
   @AuraEnabled
@@ -1261,6 +1255,7 @@ global without sharing virtual class Rollup {
     // non-obvious coupling between objIds and the "queryString" below
     List<Id> objIds = new List<Id>();
     for (SObject cdcRecord : cdcRecords) {
+      header = (EventBus.ChangeEventHeader) cdcRecord.get('ChangeEventHeader');
       uniqueFieldNames.addAll(header.changedfields);
       objIds.add(header.getRecordIds()[0]);
     }
@@ -1851,7 +1846,11 @@ global without sharing virtual class Rollup {
     Boolean shouldQueue =
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
       amountOfCalcItems < instance.rollupControl.MaxLookupRowsBeforeBatching__c;
-    if (shouldQueue) {
+    if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false) {
+      SObjectType parentType = getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
+      String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
+      return new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
+    } else if (shouldQueue) {
       return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint);
     } else {
       String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta)).replace('ALL ROWS', '');

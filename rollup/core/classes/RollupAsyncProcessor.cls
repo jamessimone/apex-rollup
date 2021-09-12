@@ -12,6 +12,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected final SObjectType calcItemType;
   protected Boolean isProcessed = false;
+  protected Boolean overridesRunCalc = false;
   protected FullRecalcProcessor fullRecalcProcessor;
 
   private RollupRelationshipFieldFinder.Traversal traversal;
@@ -26,6 +27,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
 
+  @SuppressWarnings('PMD.UnusedLocalVariable')
   public abstract inherited sharing class FullRecalcProcessor extends QueueableProcessor {
     protected final String queryString;
     protected final List<Rollup__mdt> rollupInfo;
@@ -260,6 +262,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     String rollupProcessId = 'No process Id';
     if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
+      RollupLogger.Instance.log('no-op, exiting early to avoid burning async job', LoggingLevel.FINE);
       RollupLogger.Instance.save();
       return rollupProcessId;
     }
@@ -560,6 +563,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (additionalRollups.isEmpty() == false) {
         rollupsToProcess.remove(index);
         rollupsToProcess.addAll(additionalRollups);
+      } else if (rollup.overridesRunCalc) {
+        rollupsToProcess.remove(index);
+        rollup.runCalc();
       }
     }
     rollupsToProcess.addAll(this.transformFullRecalcRollups());
@@ -596,7 +602,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void splitUpdates(Map<String, SObject> updatedLookupRecords) {
-    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size()) {
+    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size() && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
       Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
       Integer removalIndex = 0;
       List<SObject> asyncUpdateList = new List<SObject>();
