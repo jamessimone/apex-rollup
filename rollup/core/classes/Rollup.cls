@@ -62,7 +62,7 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  public static Map<String, Op> opNameToOp {
+  public static final Map<String, Op> opNameToOp {
     get {
       if (opNameToOp == null) {
         opNameToOp = new Map<String, Op>();
@@ -75,7 +75,7 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  public static Map<String, InvocationPoint> invokeNameToInvokePoint {
+  public static final Map<String, InvocationPoint> invokeNameToInvokePoint {
     get {
       if (invokeNameToInvokePoint == null) {
         invokeNameToInvokePoint = new Map<String, InvocationPoint>();
@@ -388,7 +388,7 @@ global without sharing virtual class Rollup {
 
   @AuraEnabled
   global static String performFullRecalculation(Rollup__mdt metadata) {
-    RollupLogger.Instance.log('beginning full recalculation for', metadata, LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('beginning full recalculation for:', metadata, LoggingLevel.DEBUG);
     FlowInput validationRuleWrapper = new FlowInput();
     validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
     validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
@@ -584,9 +584,9 @@ global without sharing virtual class Rollup {
       if (metas.isEmpty() == false) {
         Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, wrapper.oldFlowRecords, null, fromInvocable);
         rollupConductor.metadata = rollupMeta;
-        String logMessage = 'adding invocable rollup to list';
+        String logMessage = 'adding invocable rollup to list:';
         if (wrapper.flowInput.deferProcessing) {
-          logMessage = 'deferring processing for rollup';
+          logMessage = 'deferring processing for rollup:';
           CACHED_ROLLUPS.add(rollupConductor);
         } else {
           localRollups.add(rollupConductor);
@@ -603,7 +603,7 @@ global without sharing virtual class Rollup {
         batch(localRollups, fromInvocable);
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred during invocable action', ex, LoggingLevel.ERROR);
+      RollupLogger.Instance.log('an error occurred during invocable action:', ex, LoggingLevel.ERROR);
       for (FlowOutput flowOutput : flowOutputs) {
         flowOutput.IsSuccess = false;
         flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
@@ -1562,21 +1562,6 @@ global without sharing virtual class Rollup {
         innerRollup.matchingCalcItemIds.addAll(matchingRollup.oldCalcItems.keySet());
       }
     }
-  }
-
-  private static void resetParentLevelValues(Rollup__mdt matchingMeta, Id parentId, Map<Id, SObject> parentRecordsToReset) {
-    SObject parentRecord;
-    SObjectType sObjectType = parentId.getSobjectType();
-    if (parentRecordsToReset.containsKey(parentId)) {
-      parentRecord = parentRecordsToReset.get(parentId);
-    } else {
-      parentRecord = sObjectType.newSObject(parentId);
-    }
-    parentRecord.put(
-      matchingMeta.RollupFieldOnLookupObject__c,
-      RollupFieldInitializer.Current.getDefaultValue(sObjectType.getDescribe().fields.getMap().get(matchingMeta.RollupFieldOnLookupObject__c))
-    );
-    parentRecordsToReset.put(parentRecord.Id, parentRecord);
   }
 
   private static void processCustomMetadata(

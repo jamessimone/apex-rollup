@@ -168,7 +168,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.whereClause = whereClause;
       this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
-      RollupLogger.Instance.log('Where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
+      RollupLogger.Instance.log('where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
     }
 
     public override String toString() {
@@ -432,7 +432,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private void logError(Exception ex) {
-      RollupLogger.Instance.log('an error occurred in RollupEvaluator: ', ex, LoggingLevel.ERROR);
+      RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
     }
   }
 

@@ -271,7 +271,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
       this.process(this.syncRollups);
       RollupLogger.Instance.log('finished running sync rollups', LoggingLevel.DEBUG);
-      rollupProcessId = 'Running rollups flagged to go synchronously';
+      rollupProcessId = 'running rollups flagged to go synchronously';
     } else {
       Boolean hasMoreThanOneTarget = false;
       Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget, this.rollups);
@@ -631,14 +631,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       );
       if (this.getIsDeferralAllowed() && isAllowedToContinue) {
         stackDepth++;
-        RollupLogger.Instance.log('Processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log('processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
         this.setIsDeferralAllowed(isAllowedToContinue);
 
         this.rollups.clear();
         this.rollups.addAll(this.deferredRollups);
         this.deferredRollups.clear();
 
-        RollupLogger.Instance.log('Deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
 
         this.getAsyncRollup().beginAsyncRollup();
       } else if (this.deferredRollups.isEmpty() == false) {
