@@ -2,7 +2,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   @TestVisible
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
 
-  private class QueueableResetProcessor implements System.Queueable {
+  private without sharing class QueueableResetProcessor implements System.Queueable {
     private final RollupParentResetProcessor processor;
     private final Integer batchChunkSize;
     private QueueableResetProcessor(RollupParentResetProcessor processor, Integer batchChunkSize) {
