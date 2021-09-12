@@ -75,7 +75,7 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  private static Map<String, InvocationPoint> invokeNameToInvokePoint {
+  public static Map<String, InvocationPoint> invokeNameToInvokePoint {
     get {
       if (invokeNameToInvokePoint == null) {
         invokeNameToInvokePoint = new Map<String, InvocationPoint>();

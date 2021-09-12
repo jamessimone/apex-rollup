@@ -859,7 +859,7 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRoute() {
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteUnderQueryLimit() {
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -899,6 +899,102 @@ private class RollupFullRecalcTests {
     for (Account updatedAcc : accounts) {
       System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
       System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
+    }
+  }
+
+  @IsTest
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverQueryLimit() {
+    RollupParentResetProcessor.maxQueryRows = 0;
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true);
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    Account secondParentWithValues = new Account(Name = 'Two', AnnualRevenue = 5);
+    Account thirdParentWithValues = new Account(Name = 'Three', AccountNumber = '1234');
+    insert new List<Account>{ secondParentWithValues, thirdParentWithValues };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
+    for (Account updatedAcc : accounts) {
+      System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
+      System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
+    }
+  }
+
+  @IsTest
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverLimitWithBatching() {
+    RollupParentResetProcessor.maxQueryRows = 0;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true);
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    Account secondParentWithValues = new Account(Name = 'Two', AnnualRevenue = 5);
+    Account thirdParentWithValues = new Account(Name = 'Three', AccountNumber = '1234');
+    insert new List<Account>{ secondParentWithValues, thirdParentWithValues };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    List<Account> accounts = [SELECT AnnualRevenue, Name FROM Account];
+    for (Account updatedAcc : accounts) {
+      // for this set of tests, since we can't add more than one queueable job to the stack in a test context
+      // and because each full reset is processor separately, we can only validate that the first Rollup__mdt record
+      // had the parents associated with it reset. It's possible that this will be revisited in the future to consolidate full
+      // resets into singular jobs
+      System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
     }
   }
 }

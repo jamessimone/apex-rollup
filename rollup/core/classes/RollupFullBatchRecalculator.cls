@@ -19,7 +19,7 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
     return Database.getQueryLocator(this.queryString);
   }
 
-  public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
+  public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
     RollupLogger.Instance.log('starting full batch recalc run', this, LoggingLevel.DEBUG);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
@@ -37,7 +37,7 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
     RollupLogger.Instance.save();
   }
 
-  protected override String getTypeName() {
+  protected virtual override String getTypeName() {
     return RollupFullBatchRecalculator.class.getName();
   }
 
