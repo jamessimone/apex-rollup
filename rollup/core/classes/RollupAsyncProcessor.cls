@@ -237,9 +237,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> lookupItems) {
-    for (RollupAsyncProcessor rollup : this.rollups) {
-      this.initializeRollupFieldDefaults(lookupItems, rollup);
+    for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
+      RollupAsyncProcessor roll = this.rollups[index];
+      if (lookupItems.getSObjectType() != roll.lookupObj) {
+        this.rollups.remove(index);
+        this.deferredRollups.add(roll);
+      } else {
+        this.initializeRollupFieldDefaults(lookupItems, roll);
+      }
     }
+
     this.lookupItems = lookupItems;
     this.process(this.rollups);
     RollupLogger.Instance.save();

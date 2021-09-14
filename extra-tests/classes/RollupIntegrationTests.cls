@@ -1403,7 +1403,7 @@ private class RollupIntegrationTests {
     Rollup.records = cpas;
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
 
     // specifically do NOT wrap in Test.startTest() / Test.stopTest() - we need to ensure this happened synchronously
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -1414,7 +1414,6 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldPartiallyDeferRollupCalculationWhenOverLimits() {
-    Rollup.specificControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id, OwnerId FROM Account];
     Account secondParent = new Account(Name = 'Second parent');
     insert secondParent;
@@ -1425,10 +1424,14 @@ private class RollupIntegrationTests {
     };
     insert cpas;
 
-    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 1, MaxRollupRetries__c = 1, MaxNumberOfQueries__c = 2, IsRollupLoggingEnabled__c = true);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = 'Synchronous Rollup');
-
+    Rollup.defaultControl = new RollupControl__mdt(
+      BatchChunkSize__c = 1,
+      MaxRollupRetries__c = 1,
+      MaxNumberOfQueries__c = 2,
+      IsRollupLoggingEnabled__c = true,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
+    );
     Rollup.shouldRun = true;
     Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1458,6 +1461,71 @@ private class RollupIntegrationTests {
     for (Account updatedAcc : updatedAccounts) {
       System.assertEquals(1, updatedAcc.AnnualRevenue, 'Average annual revenue should have been set for both records!');
     }
+  }
+
+  @IsTest
+  static void shouldNotBlowUpWhenDeferralLeadsToMultipleSObjectsBeingPresent() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+
+    Individual indy = new Individual(LastName = 'Indy');
+    insert indy;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, Name = 'One', PreferenceRank = 1),
+      new ContactPointAddress(ParentId = indy.Id, Name = 'Two', PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      BatchChunkSize__c = 2,
+      MaxRollupRetries__c = 1,
+      MaxNumberOfQueries__c = 2,
+      IsRollupLoggingEnabled__c = true,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
+    );
+    RollupAsyncProcessor.shouldRunAsBatch = true;
+    Rollup.shouldRun = true;
+    Rollup.records = cpas;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'AVERAGE'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Individual',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'ChildrenCount',
+        RollupOperation__c = 'COUNT'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Individual',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'LastName',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    indy = [SELECT LastName, ChildrenCount FROM Individual];
+    System.assertEquals(1, acc.AnnualRevenue, 'Annual revenue should have been averaged properly');
+    System.assertEquals(1, indy.ChildrenCount, 'Children count should have been counted correctly');
+    System.assertEquals('Indy, Two',  indy.LastName, 'LastName should have been concat properly');
   }
 
   @IsTest
