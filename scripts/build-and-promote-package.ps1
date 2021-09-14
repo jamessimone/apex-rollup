@@ -80,11 +80,10 @@ try {
   try {
     $priorPackageVersionId = $sfdxProjectJson.packageAliases[0] | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
   } catch {
-    $allPackages = $sfdxProjectJson.packageAliases[0] | Select-Object -ExcludeProperty 'Nebula Logger*' | Get-Member -MemberType NoteProperty
-    $priorPackageVersionFull = $allPackages[$allPackages.Length - 1].ToString().Replace("string", "")
+    $allPackages = $sfdxProjectJson.packageAliases[0] | Select-Object -ExcludeProperty 'Nebula Logger*' | Get-Member -MemberType NoteProperty | Select-Object
+    $priorPackageVersionFull = $allPackages[$allPackages.Length - 1].Name
     $apexRollupPosition = $priorPackageVersionFull.IndexOf("@")
-    $priorPackageVersionId = $priorPackageVersionFull.Substring($apexRollupPosition + 1, 9).Split("-")[0]
-    Write-Output $priorPackageVersionId
+    $priorPackageVersionId = $priorPackageVersionFull.Substring($apexRollupPosition + 1).Split('-')[0]
     $priorPackageVersionNumber = $priorPackageVersionId
   }
 }
