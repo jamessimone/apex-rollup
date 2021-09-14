@@ -13,8 +13,9 @@ function Get-Apex-Rollup-Package-Alias {
   param (
     $packageVersion
   )
-  if ($packageVersion.EndsWith(".0")) {
-    $packageVersion = $packageVersion.Substring(0, $packageVersion.length - 2);
+  $matchString = ".0-0"
+  if ($packageVersion.EndsWith($matchString)) {
+    $packageVersion = $packageVersion.Substring(0, $packageVersion.Length - $matchString.Length);
   }
   return "apex-rollup@$packageVersion-0"
 }
@@ -71,12 +72,20 @@ try {
   $priorPackageVersionId = $sfdxProjectJson.packageAliases[0] | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
 } catch {
   # if there hasn't been a current version of the package, get the previous version and its associated package Id
-  $currentPackageNumber = ([int]($currentPackageVersion | Select-String -Pattern \S\S\.0).Matches.Value)
+  $currentPackageNumber = ([int]($currentPackageVersion | Select-String -Pattern '(\d|\d\d)\.0').Matches.Value)
   $currentPackageNumberString = $currentPackageNumber.ToString()
   $priorPackageVersionString = ($currentPackageNumber - 1).ToString()
 
   $priorPackageVersionNumber = (Update-Last-Substring $currentPackageVersion $currentPackageNumberString $priorPackageVersionString)
-  $priorPackageVersionId = $sfdxProjectJson.packageAliases[0] | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
+  try {
+    $priorPackageVersionId = $sfdxProjectJson.packageAliases[0] | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
+  } catch {
+    $allPackages = $sfdxProjectJson.packageAliases[0] | Select-Object -ExcludeProperty 'Nebula Logger*' | Get-Member -MemberType NoteProperty | Select-Object
+    $priorPackageVersionFull = $allPackages[$allPackages.Length - 1].Name
+    $apexRollupPosition = $priorPackageVersionFull.IndexOf("@")
+    $priorPackageVersionId = $priorPackageVersionFull.Substring($apexRollupPosition + 1).Split('-')[0]
+    $priorPackageVersionNumber = $priorPackageVersionId
+  }
 }
 
 Write-Output "Prior package version: $priorPackageVersionId"
@@ -120,7 +129,7 @@ if($currentBranch -eq "main") {
   if ($packageJson.version -ne $currentPackageVersion) {
     Write-Output "Bumping package.json version to: $currentPackageVersion"
 
-    $packageJson.version = $currentPackageVersion
+    $packageJson.version = Update-Last-Substring $currentPackageVersion ".0" ""
     $packagePath = "./package.json"
     ConvertTo-Json -InputObject $packageJson | Set-Content -Path $packagePath -NoNewline
 

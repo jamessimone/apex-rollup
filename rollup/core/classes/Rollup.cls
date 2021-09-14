@@ -542,16 +542,15 @@ global without sharing virtual class Rollup {
       if (flowInput.recordsToRollup?.isEmpty() != false) {
         flowOutput.message = 'No records to rollup, returning early';
       } else {
-        SObject firstRecord = flowInput.recordsToRollup[0];
         // flow collections are not strongly typed, so we grab from the first record
-        SObjectType sObjectType = firstRecord.getSObjectType();
+        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
         // this will throw back up to the Flow engine if the inputs don't pass validation
         enforceValidationRules(flowInput);
         enforceFlowSpecificRules(flowInput, sObjectType);
         winnowOldFlowRecords(flowInput);
 
         Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(flowInput.oldRecordsToRollup);
-        String rollupContext = getFlowRollupContext(flowInput, firstRecord, oldFlowRecords);
+        String rollupContext = getFlowRollupContext(flowInput, flowInput.recordsToRollup[0], sObjectType, oldFlowRecords);
 
         Rollup__mdt meta = transformFlowInputToRollupMetadata(flowInput, rollupContext, sObjectType);
         if (metaToInput.containsKey(meta)) {
@@ -2048,7 +2047,7 @@ global without sharing virtual class Rollup {
     }
   }
 
-  private static String getFlowRollupContext(FlowInput firstInput, SObject firstRecord, Map<Id, SObject> oldFlowRecords) {
+  private static String getFlowRollupContext(FlowInput firstInput, SObject firstRecord, SObjectType sObjectType, Map<Id, SObject> oldFlowRecords) {
     String flowContext = firstInput.rollupContext.toUpperCase();
     if (String.isBlank(flowContext) || flowContext == 'UPSERT' && oldFlowRecords.containsKey(firstRecord.Id) == false) {
       flowContext = 'INSERT';
@@ -2068,7 +2067,7 @@ global without sharing virtual class Rollup {
         matchingOperation = TriggerOperation.BEFORE_DELETE;
       }
     }
-    populateCachedApexOperations(firstRecord.getSObjectType(), matchingOperation);
+    populateCachedApexOperations(sObjectType, matchingOperation);
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }

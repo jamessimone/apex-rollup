@@ -8,7 +8,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private final Op op;
 
   private final List<RollupAsyncProcessor> deferredRollups = new List<RollupAsyncProcessor>();
-  private final List<RollupAsyncProcessor> syncRollups = new List<RollupAsyncProcessor>();
 
   protected final SObjectType calcItemType;
   protected Boolean isProcessed = false;
@@ -21,7 +20,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private List<SObject> lookupItems;
   private Map<String, List<SObject>> cachedFullRecalcs;
 
-  private static final RollupSettings__c SETTINGS = RollupSettings__c.getInstance();
   private static Integer stackDepth = 0;
   private static Boolean isRunningAsync = false;
   @TestVisible
@@ -239,9 +237,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> lookupItems) {
-    for (RollupAsyncProcessor rollup : this.rollups) {
-      this.initializeRollupFieldDefaults(lookupItems, rollup);
+    for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
+      RollupAsyncProcessor roll = this.rollups[index];
+      if (lookupItems.getSObjectType() != roll.lookupObj) {
+        this.rollups.remove(index);
+        this.deferredRollups.add(roll);
+      } else {
+        this.initializeRollupFieldDefaults(lookupItems, roll);
+      }
     }
+
     this.lookupItems = lookupItems;
     this.process(this.rollups);
     RollupLogger.Instance.save();
@@ -253,23 +258,20 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public virtual override String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
-    // they also can be added to this.syncRollups if we're already async
-    this.ingestRollupControlData();
+    // they also can be added to syncRollups if we're already async
+    List<RollupAsyncProcessor> syncRollups = new List<RollupAsyncProcessor>();
+    this.ingestRollupControlData(syncRollups);
 
     if (this.isNoOp) {
-      this.isNoOp = this.rollups.isEmpty() && this.syncRollups.isEmpty() && this.calcItems?.isEmpty() == true;
+      this.isNoOp = this.rollups.isEmpty() && syncRollups.isEmpty() && this.calcItems?.isEmpty() == true;
     }
 
     String rollupProcessId = 'No process Id';
-    if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || SETTINGS.IsEnabled__c == false) {
+    if (this.isNoOp || this.rollupControl.ShouldAbortRun__c || RollupSettings__c.getInstance().IsEnabled__c == false) {
       RollupLogger.Instance.log('no-op, exiting early to avoid burning async job', LoggingLevel.FINE);
-      RollupLogger.Instance.save();
-      return rollupProcessId;
-    }
-
-    if (this.syncRollups.isEmpty() == false) {
+    } else if (syncRollups.isEmpty() == false) {
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
-      this.process(this.syncRollups);
+      this.process(syncRollups);
       RollupLogger.Instance.log('finished running sync rollups', LoggingLevel.DEBUG);
       rollupProcessId = 'running rollups flagged to go synchronously';
     } else {
@@ -781,7 +783,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return isValid;
   }
 
-  private void ingestRollupControlData() {
+  private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
     RollupControl__mdt orgDefaults = this.rollupControl;
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = this.rollups[index];
@@ -799,7 +801,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.rollups.remove(index);
       } else if (couldRunSync && shouldRunSyncDeferred == false) {
         this.rollups.remove(index);
-        this.syncRollups.add(rollup);
+        syncRollups.add(rollup);
       } else if (couldRunSync && shouldRunSyncDeferred) {
         this.rollups.remove(index);
         this.getCachedRollups().add(rollup);
