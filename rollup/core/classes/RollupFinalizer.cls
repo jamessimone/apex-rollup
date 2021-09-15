@@ -8,16 +8,25 @@ public without sharing class RollupFinalizer implements Finalizer {
   }
 
   public void execute(FinalizerContext fc) {
-    ParentJobResult res = testResult != null ? testResult : fc.getResult();
+    ParentJobResult res = this.getParentJobResult(fc);
     switch on res {
       when UNHANDLED_EXCEPTION {
-        this.logAndRerun();
+        this.logAndRerun(fc);
       }
     }
   }
 
-  private void logAndRerun() {
-    RollupLogger.Instance.log('beginning re-run via finalizer ...', LoggingLevel.DEBUG);
+  private ParentJobResult getParentJobResult(FinalizerContext fc) {
+    ParentJobResult res = fc?.getResult();
+    if (testResult != null) {
+      res = testResult;
+      testResult = null;
+    }
+    return res;
+  }
+
+  private void logAndRerun(FinalizerContext fc) {
+    RollupLogger.Instance.log('beginning re-run via finalizer after failure from:', fc?.getException(), LoggingLevel.DEBUG);
     try {
       this.rollupConductor.runCalc();
     } catch(Exception ex) {

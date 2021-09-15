@@ -401,6 +401,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
+      System.attachFinalizer(new RollupFinalizer(this));
       this.process(this.rollups);
       this.logFinish();
     }
