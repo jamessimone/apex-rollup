@@ -28,6 +28,10 @@ public without sharing class RollupFinalizer implements Finalizer {
   private void logAndRerun(FinalizerContext fc) {
     RollupLogger.Instance.log('beginning re-run via finalizer after failure from:', fc?.getException(), LoggingLevel.DEBUG);
     try {
+      // the finalizer runs in the same transaction as the parent Queueable, so we DON'T want the conductor to think we're already
+      // in a safe, async space; we're not - we're in the equivalent of a Batch class's "finish" method. Even though the transaction
+      // is the same, here we're allowed to fire off a batch start/queued job (even if we hadn't been able to in the parent queueable)
+      this.rollupConductor.resetFlags();
       this.rollupConductor.runCalc();
     } catch(Exception ex) {
       RollupLogger.Instance.log('exception while trying to recover from finalizer:', ex, LoggingLevel.ERROR);

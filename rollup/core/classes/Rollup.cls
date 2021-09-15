@@ -17,32 +17,80 @@ global without sharing virtual class Rollup {
   private static RollupControl__mdt defaultControl;
   @TestVisible
   private static RollupControl__mdt specificControl;
-  @TestVisible
-  private static final List<Rollup> CACHED_ROLLUPS = new List<Rollup>();
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
-  private static Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
   private static Boolean isRunningFromFlow = false;
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
 
-  protected final Set<Id> matchingCalcItemIds = new Set<Id>();
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
   protected final Boolean isConductor;
   @TestVisible
-  protected final List<RollupAsyncProcessor> rollups = new List<RollupAsyncProcessor>();
 
   // non-final instance variables
   protected List<SObject> calcItems;
-  protected Map<Id, SObject> oldCalcItems = new Map<Id, SObject>();
   protected Rollup__mdt metadata;
   protected Boolean isFullRecalc = false;
   protected Boolean isNoOp;
   protected Boolean isCDCUpdate = false;
   protected Integer queryCount;
+
+  // Lazy-load section. Lots of additional lines, but with the benefit that we keep the heap size down for instances of Rollup
+  // that never reference these variables
+  private static final Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS {
+    get {
+      if (CACHED_APEX_OPERATIONS == null) {
+        CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
+      }
+      return CACHED_APEX_OPERATIONS;
+    }
+    set;
+  }
+
+  @TestVisible
+  private static final List<Rollup> CACHED_ROLLUPS {
+    get {
+      if (CACHED_ROLLUPS == null) {
+        CACHED_ROLLUPS = new List<Rollup>();
+      }
+      return CACHED_ROLLUPS;
+    }
+    set;
+  }
+
+  protected Map<Id, SObject> oldCalcItems {
+    get {
+      if (oldCalcItems == null) {
+        oldCalcItems = new Map<Id, SObject>();
+      }
+      return oldCalcItems;
+    }
+    set;
+  }
+
+  protected final Set<Id> matchingCalcItemIds {
+    get {
+      if (matchingCalcItemIds == null) {
+        matchingCalcItemIds = new Set<Id>();
+      }
+      return matchingCalcItemIds;
+    }
+    set;
+  }
+
+  @TestVisible
+  protected final List<RollupAsyncProcessor> rollups {
+    get {
+      if (rollups == null) {
+        rollups = new List<RollupAsyncProcessor>();
+      }
+      return rollups;
+    }
+    set;
+  }
 
   /**
    * receiving an interface/subclass from a property get/set (from the book "The Art Of Unit Testing") is an old technique;
@@ -130,6 +178,25 @@ global without sharing virtual class Rollup {
     public Evaluator eval { get; set; }
   }
 
+  private class RollupMetadata {
+    public final Set<Id> recordIds = new Set<Id>();
+    public final Set<String> queryFields = new Set<String>();
+    public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
+    public String whereClause = '';
+    public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+  }
+
+  private class FullRecalculationMetadata {
+    private final Rollup__mdt meta;
+    private final QueryWrapper wrapper;
+    private final SObjectType calcItemType;
+    public FullRecalculationMetadata(Rollup__mdt meta, QueryWrapper wrapper, SObjectType calcItemType) {
+      this.meta = meta;
+      this.wrapper = wrapper;
+      this.calcItemType = calcItemType;
+    }
+  }
+
   public class CalcItemBag {
     public final List<SObject> originals;
     public final List<SObject> additional;
@@ -170,6 +237,30 @@ global without sharing virtual class Rollup {
     this(invokePoint);
     this.calcItems = calcItems;
     this.oldCalcItems = oldCalcItems;
+  }
+
+  public override String toString() {
+    Map<String, String> props = new Map<String, String>{
+      'Type' => this.getTypeName(),
+      'Invocation Point' => this.invokePoint?.name(),
+      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
+      'Is No Op' => String.valueOf(this.isNoOp),
+      'Is Conductor' => String.valueOf(this.isConductor),
+      'Inner rollups' => String.valueOf(this.rollups.size())
+    };
+
+    this.customizeToStringEntries(props);
+
+    String baseString = '';
+    for (String key : props.keySet()) {
+      baseString += key + ': ' + props.get(key) + '\n';
+    }
+    return baseString.removeEnd('\n');
+  }
+
+  public virtual void resetFlags() {
+    isRunningFromFlow = false;
+    isDeferralAllowed = true;
   }
 
   protected List<Rollup> getCachedRollups() {
@@ -237,25 +328,6 @@ global without sharing virtual class Rollup {
     }
   }
 
-  public override String toString() {
-    Map<String, String> props = new Map<String, String>{
-      'Type' => this.getTypeName(),
-      'Invocation Point' => this.invokePoint?.name(),
-      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
-      'Is No Op' => String.valueOf(this.isNoOp),
-      'Is Conductor' => String.valueOf(this.isConductor),
-      'Inner rollups' => String.valueOf(this.rollups.size())
-    };
-
-    this.customizeToStringEntries(props);
-
-    String baseString = '';
-    for (String key : props.keySet()) {
-      baseString += key + ': ' + props.get(key) + '\n';
-    }
-    return baseString.removeEnd('\n');
-  }
-
   /**
    * global facing RollupAsyncProcessor calculation section
    * - Trigger operations
@@ -277,25 +349,6 @@ global without sharing virtual class Rollup {
       }
     }
     return calcItemToMetadata;
-  }
-
-  private class RollupMetadata {
-    public final Set<Id> recordIds = new Set<Id>();
-    public final Set<String> queryFields = new Set<String>();
-    public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
-    public String whereClause = '';
-    public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
-  }
-
-  private class FullRecalculationMetadata {
-    private final Rollup__mdt meta;
-    private final QueryWrapper wrapper;
-    private final SObjectType calcItemType;
-    public FullRecalculationMetadata(Rollup__mdt meta, QueryWrapper wrapper, SObjectType calcItemType) {
-      this.meta = meta;
-      this.wrapper = wrapper;
-      this.calcItemType = calcItemType;
-    }
   }
 
   @AuraEnabled

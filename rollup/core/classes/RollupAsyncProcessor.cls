@@ -7,8 +7,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private final Evaluator eval;
   private final Op op;
 
-  private final List<RollupAsyncProcessor> deferredRollups = new List<RollupAsyncProcessor>();
-
   protected final SObjectType calcItemType;
   protected Boolean isProcessed = false;
   protected Boolean overridesRunCalc = false;
@@ -24,6 +22,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static Boolean isRunningAsync = false;
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
+
+  private final List<RollupAsyncProcessor> deferredRollups {
+    get {
+      if (deferredRollups == null) {
+        deferredRollups = new List<RollupAsyncProcessor>();
+      }
+      return deferredRollups;
+    }
+    set;
+  }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
   public abstract inherited sharing class FullRecalcProcessor extends QueueableProcessor {
@@ -286,6 +294,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     RollupLogger.Instance.save();
     return rollupProcessId;
+  }
+
+  public override void resetFlags() {
+    super.resetFlags();
+    isRunningAsync = false;
+    shouldRunAsBatch = false;
+    stackDepth = 0;
   }
 
   protected virtual override String getTypeName() {

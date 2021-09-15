@@ -1584,6 +1584,7 @@ private class RollupIntegrationTests {
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRun = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
 
     Exception ex;
     try {
