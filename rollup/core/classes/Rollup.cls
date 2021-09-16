@@ -28,7 +28,6 @@ global without sharing virtual class Rollup {
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
   protected final Boolean isConductor;
-  @TestVisible
 
   // non-final instance variables
   protected List<SObject> calcItems;
@@ -198,13 +197,20 @@ global without sharing virtual class Rollup {
   }
 
   public class CalcItemBag {
-    public final List<SObject> originals;
-    public final List<SObject> additional;
+    private final Map<Id, SObject> idToCalcItem = new Map<Id, SObject>();
     public Boolean hasQueriedForAdditionalItems = false;
-    public CalcItemBag(List<SObject> originals) {
-      this.originals = originals;
-      this.additional = originals.clone(); // retain SObjectType info
-      this.additional.clear();
+    public CalcItemBag(List<SObject> calcItems) {
+      for (SObject calcItem : calcItems) {
+        this.add(calcItem);
+      }
+    }
+
+    public List<SObject> getAll() {
+      return this.idToCalcItem.values();
+    }
+
+    public void add(SObject calcItem) {
+      idToCalcItem.put(calcItem.Id, calcItem);
     }
   }
 

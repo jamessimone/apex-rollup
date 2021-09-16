@@ -54,6 +54,7 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
       } else {
         local.put(lookupKey, bag);
       }
+      lookupToCalcItems.put(lookupKey, bag);
     }
 
     super.retrieveAdditionalCalcItems(local, rollup);
@@ -61,5 +62,7 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
     for (String lookupKey : local.keySet()) {
       this.statefulLookupToCalcItems.put(lookupKey, local.get(lookupKey));
     }
+    RollupLogger.Instance.log('stateful calc items retrieved:', this.statefulLookupToCalcItems, LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('associated rollup:', rollup, LoggingLevel.DEBUG);
   }
 }

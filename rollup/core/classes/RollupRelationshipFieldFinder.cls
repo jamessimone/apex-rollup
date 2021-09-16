@@ -93,7 +93,7 @@ public without sharing class RollupRelationshipFieldFinder {
           continue;
         }
         if (parentToLookupRecords.containsKey(parentRecord.Id)) {
-          parentToLookupRecords.get(parentRecord.Id).originals.add(record);
+          parentToLookupRecords.get(parentRecord.Id).add(record);
         } else {
           parentToLookupRecords.put(parentRecord.Id, new Rollup.CalcItemBag(new List<SObject>{ record }));
         }
