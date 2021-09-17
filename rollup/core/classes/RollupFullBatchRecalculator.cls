@@ -46,11 +46,12 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
   }
 
   protected override void retrieveAdditionalCalcItems(Map<String, Rollup.CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+    RollupLogger.Instance.log(this.getTypeName() + ' checking on cached calc items ...', LoggingLevel.FINE);
     Map<String, Rollup.CalcItemBag> local = new Map<String, Rollup.CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       Rollup.CalcItemBag bag = lookupToCalcItems.get(lookupKey);
       if (bag.hasQueriedForAdditionalItems == false && this.statefulLookupToCalcItems.containsKey(lookupKey)) {
-        bag = this.statefulLookupToCalcItems.get(lookupKey);
+        lookupToCalcItems.remove(lookupKey);
       } else {
         local.put(lookupKey, bag);
       }
@@ -62,7 +63,5 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
     for (String lookupKey : local.keySet()) {
       this.statefulLookupToCalcItems.put(lookupKey, local.get(lookupKey));
     }
-    RollupLogger.Instance.log('stateful calc items retrieved:', this.statefulLookupToCalcItems, LoggingLevel.DEBUG);
-    RollupLogger.Instance.log('associated rollup:', rollup, LoggingLevel.DEBUG);
   }
 }

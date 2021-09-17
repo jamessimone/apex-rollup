@@ -411,6 +411,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           localLookupItems = Database.query(queryString);
         }
         this.initializeRollupFieldDefaults(localLookupItems, rollup);
+        for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
+          if (rollup.fullRecalcProcessor?.parentRollupFieldHasBeenReset(rollup, localLookupItems[index]) == true) {
+            localLookupItems.remove(index);
+          }
+        }
         return localLookupItems;
       }
     }

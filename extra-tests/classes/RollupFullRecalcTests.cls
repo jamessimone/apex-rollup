@@ -905,7 +905,11 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverQueryLimit() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      BatchChunkSize__c = 3,
+      IsRollupLoggingEnabled__c = true
+    );
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -952,7 +956,11 @@ private class RollupFullRecalcTests {
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverLimitWithBatching() {
     RollupParentResetProcessor.maxQueryRows = 0;
     RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
+      BatchChunkSize__c = 3,
+      IsRollupLoggingEnabled__c = true
+    );
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -996,5 +1004,48 @@ private class RollupFullRecalcTests {
       // resets into singular jobs
       System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
     }
+  }
+
+  @IsTest
+  static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRuns() {
+    // since we can't have more than one batch chunk run in the tests, but we need to test logic in the execute method
+    // we'll call that method twice directly
+    Rollup.defaultControl = new RollupControl__mdt(
+      BatchChunkSize__c = 1,
+      MaxNumberOfQueries__c = 4,
+      IsRollupLoggingEnabled__c = true,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
+    );
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 2, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 3, Name = 'Two')
+    };
+    insert cpas;
+
+    RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
+      'SELECT Id, PreferenceRank FROM ContactPointAddress',
+      Rollup.InvocationPoint.FROM_APEX,
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          RollupOperation__c = 'SUM'
+        )
+      },
+      ContactPointAddress.SObjectType,
+      new Set<Id>()
+    );
+
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[1] });
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(5, acc.AnnualRevenue, 'Should have included all calc items in both runs without double-counting or incorrectly summing');
   }
 }
