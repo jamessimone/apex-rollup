@@ -186,6 +186,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (completelySplitClauses.size() >= 3 && completelySplitClauses[1] == '!like') {
           String supplementalClause = '(NOT ' + completelySplitClauses[0] + ' LIKE ' + completelySplitClauses[2] + ')';
           startingPoint = startingPoint.replace(whereClausePart, supplementalClause);
+        } else if (completelySplitClauses.size() >= 3 && completelySplitClauses[1].contains('=') && completelySplitClauses[2].startsWith('(') && completelySplitClauses[completelySplitClauses.size() - 1].endsWith(')')) {
+          completelySplitClauses[1] = completelySplitClauses[1] == '!=' ? 'NOT IN' : 'IN';
+          startingPoint = startingPoint.replace(whereClausePart, String.join(completelySplitClauses, ' '));
         }
       }
       return startingPoint;

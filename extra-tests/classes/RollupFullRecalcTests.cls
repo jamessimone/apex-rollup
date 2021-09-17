@@ -1048,4 +1048,41 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(5, acc.AnnualRevenue, 'Should have included all calc items in both runs without double-counting or incorrectly summing');
   }
+
+  @IsTest
+  static void shouldFullRecalcWithInWhereClauses() {
+    RollupParentResetProcessor.maxQueryRows = 0;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
+      BatchChunkSize__c = 3,
+      IsRollupLoggingEnabled__c = true
+    );
+    Account acc = [SELECT Id FROM Account];
+
+    insert new List<Opportunity>{
+      new Opportunity(StageName = 'firstName', CloseDate = System.today(), AccountId = acc.Id, Name = 'one', Amount = 1),
+      new Opportunity(StageName = 'secondName', CloseDate = System.today(), AccountId = acc.Id, Name = 'two', Amount = 1)
+    };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'StageName IN (\'firstName\', \'secondName\')'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, acc.AnnualRevenue);
+  }
 }
