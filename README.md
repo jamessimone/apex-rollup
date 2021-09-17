@@ -104,8 +104,8 @@ If the SOQL queries used by `Rollup` becomes cause for concern, please [submit a
 
 In addition to the above, some other considerations when it comes to the where clause:
 
- - Any time a polymorphic field is used in your `Calc Item Where Clause`, you must also have a constraint on the parent-level `Type` in order for it to work. If you are filtering on `Task.What`, for example, you must have only a single SObject-parent type as part of your where clause, e.g. `What.Name = 'someName' AND What.Type = 'Account'`.
- - Use of a negated `LIKE` clause follows the SQL syntax (as opposed to SOQL's basic syntax): `Subject NOT LIKE 'Email`, for example.
+- Any time a polymorphic field is used in your `Calc Item Where Clause`, you must also have a constraint on the parent-level `Type` in order for it to work. If you are filtering on `Task.What`, for example, you must have only a single SObject-parent type as part of your where clause, e.g. `What.Name = 'someName' AND What.Type = 'Account'`.
+- Use of a negated `LIKE` clause follows the SQL syntax (as opposed to SOQL's basic syntax): `Subject NOT LIKE 'Email`, for example.
 
 #### Rollup Custom Metadata Field Breakdown
 
@@ -251,10 +251,7 @@ if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreat
 2. Search for `<dataTypeMappings>`. You should see something like this:
 
 ```xml
-<dataTypeMappings>
-    <typeName>T__recordsToRollup</typeName>
-    <typeValue>Case</typeValue>
-</dataTypeMappings>
+
 ```
 
 3. Copy and paste, updating the `<typeName>` section to include a new reference to `T__oldRecordsToRollup`:
@@ -923,7 +920,7 @@ You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Le
 
 #### Other Rollup Plugins
 
-To perform additional post-processing on the newly updated parent records, a ["callback" plugin](/plugins/RollupCallback) is also now available as 2GP unmanaged package. For more information, check out [the Readme](/plugins/Rollupcallback), as there are a variety of options available when it comes to post-processing.
+To perform additional post-processing on the newly updated parent records, a ["callback" plugin](plugins/RollupCallback) is also now available as a 2GP unmanaged package. For more information, check out [the Readme](plugins/RollupCallback), as there are a variety of options available when it comes to post-processing.
 
 ### Multi-Currency Orgs
 
