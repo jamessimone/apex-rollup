@@ -6,7 +6,7 @@
     <fieldManageability>DeveloperControlled</fieldManageability>
     <inlineHelpText>For CONCAT and CONCAT_DISTINCT operations, optionally override the delimiter used between concatened entries. Defaults to comma.</inlineHelpText>
     <label>Concat Delimiter</label>
-    <length>1</length>
+    <length>255</length>
     <required>false</required>
     <type>Text</type>
     <unique>false</unique>
