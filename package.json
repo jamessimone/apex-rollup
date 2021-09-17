@@ -8,12 +8,42 @@
   },
   "author": "james.simone",
   "license": "MIT",
-  "devDependencies": {
-    "prettier-plugin-apex": "latest",
-    "prettier": "latest",
-    "@salesforce/sfdx-lwc-jest": "0.12.5"
+  "lint-staged": {
+    "*.js": "eslint **/lwc/** --fix",
+    "*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}": "prettier --write",
+    "*.{cls,trigger}": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --engine pmd --severity-threshold 3 --target"
   },
+  "devDependencies": {
+    "@babel/core": "latest",
+    "@babel/eslint-parser": "latest",
+    "@ljharb/eslint-config": "latest",
+    "@lwc/eslint-plugin-lwc": "latest",
+    "@prettier/plugin-xml": "latest",
+    "@salesforce/eslint-config-lwc": "latest",
+    "@salesforce/eslint-plugin-aura": "latest",
+    "@salesforce/eslint-plugin-lightning": "latest",
+    "@salesforce/sfdx-lwc-jest": "0.12.5",
+    "eslint": "latest",
+    "eslint-config-prettier": "latest",
+    "husky": "latest",
+    "lint-staged": "latest",
+    "prettier-plugin-apex": "latest",
+    "prettier": "latest"
+  },
+  "keywords": [
+    "salesforce",
+    "rollup",
+    "platform-events",
+    "apex",
+    "flow",
+    "lightning-component",
+    "lwc",
+    "aura"
+  ],
   "scripts": {
+    "husky:pre-commit": "lint-staged",
+    "lint:verify": "eslint **/lwc/**",
+    "prepare": "husky install",
     "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target . --engine pmd --severity-threshold 3",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
