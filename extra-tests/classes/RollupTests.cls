@@ -2051,7 +2051,10 @@ private class RollupTests {
     ev.ChangeEventHeader = header;
     ev.PreferenceRank = 500;
 
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<SObject>{ ev });
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.records = new List<ContactPointAddressChangeEvent>{ ev };
+    Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -2090,7 +2093,10 @@ private class RollupTests {
     ev.ChangeEventHeader = header;
     ev.PreferenceRank = 500;
 
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<SObject>{ ev });
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.records = new List<ContactPointAddressChangeEvent>{ ev };
+    Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -2132,7 +2138,10 @@ private class RollupTests {
     ev.ChangeEventHeader = header;
     ev.PreferenceRank = cpa.PreferenceRank;
 
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<SObject>{ ev });
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.records = new List<ContactPointAddressChangeEvent>{ ev };
+    Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(

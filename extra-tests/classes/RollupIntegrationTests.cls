@@ -93,8 +93,8 @@ private class RollupIntegrationTests {
     insert app;
 
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{
-      new ApplicationLog__c(Application__c = app.Id, Object__c = 'Lead'),
-      new ApplicationLog__c(Application__c = app.Id, Object__c = 'Account')
+      new ApplicationLog__c(Id = RollupTestUtils.createId(ApplicationLog__c.SObjectType), Application__c = app.Id, Object__c = 'Lead'),
+      new ApplicationLog__c(Id = RollupTestUtils.createId(ApplicationLog__c.SObjectType), Application__c = app.Id, Object__c = 'Account')
     };
 
     Rollup.records = appLogs;
@@ -1533,8 +1533,8 @@ private class RollupIntegrationTests {
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 5),
-      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 10)
+      new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 5),
+      new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 10)
     };
 
     Rollup.records = cpas;
@@ -1584,6 +1584,7 @@ private class RollupIntegrationTests {
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRun = true;
+    RollupAsyncProcessor.shouldRunAsBatch = true;
 
     Exception ex;
     try {

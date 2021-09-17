@@ -132,7 +132,7 @@ export default class RollupForceRecalculation extends LightningElement {
     // some arbitrary wait time - for a huge batch job, it could take ages to resolve
     const statusPromise = new Promise(resolve => {
       let timeoutId;
-      if (this._resolvedBatchStatuses.includes(this.rollupStatus) == false) {
+      if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false) {
         timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), 3000);
       } else {
         this.isRollingUp = false;
@@ -140,7 +140,7 @@ export default class RollupForceRecalculation extends LightningElement {
         resolve();
       }
     });
-    await statusPromise;
+    return statusPromise;
   }
 
   _displayErrorToast(title, message) {

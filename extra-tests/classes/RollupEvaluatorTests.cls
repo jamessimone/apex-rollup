@@ -929,6 +929,15 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void shouldCorrectlyFormatInQuery() {
+    String whereClause = 'StageName IN (\'firstName\', \'secondName\')';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(whereClause, eval.getSafeQuery());
+  }
+
+  @IsTest
   static void shouldNotMangleValuesWithNameInThem() {
     String whereClause = 'Name != \'oneName\'';
 

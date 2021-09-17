@@ -49,6 +49,11 @@ public class RollupTestUtils {
   }
 
   public static DMLMock loadMock(List<SObject> records) {
+    for (SObject record : records) {
+      if (record.Id == null) {
+        record.Id = createId(record.getSObjectType());
+      }
+    }
     Rollup.records = records;
     Rollup.shouldRun = true;
     DMLMock mock = new DMLMock();
