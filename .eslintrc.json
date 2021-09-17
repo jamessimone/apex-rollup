@@ -23,7 +23,7 @@
     "array-callback-return": "error",
     "consistent-return": "error",
     "default-case": "error",
-    "dot-notation": ["error", { "allowKeywords": true }],
+    "dot-notation": "off",
     "eqeqeq": ["error", "smart"],
     "guard-for-in": "error",
     "no-alert": "error",

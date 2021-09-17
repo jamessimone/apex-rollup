@@ -30,7 +30,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
       try {
         await performBulkFullRecalc({ matchingMetadata: this._matchingMetas, invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
         // record detail pages / components still based on Aura need a little kickstart to properly show the updated values
-        if (!!window.$A) {
+        if (!!window['$A']) {
           eval("$A.get('e.force:refreshView').fire();");
         }
       } catch (err) {
