@@ -4,18 +4,29 @@
 [![Rollup Code Coverage](https://codecov.io/gh/jamessimone/apex-rollup/branch/main/graph/badge.svg)](https://codecov.io/gh/jamessimone/apex-rollup)
 [![License](https://img.shields.io/npm/l/scanner.svg)](https://github.com/jamessimone/apex-rollup/blob/main/package.json)
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/)! As of [v1.2.0](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.0), `Rollup` also offers [the ability to roll directly up from children records to grandparent (or greater!) records](#grandparent-rollups), without needing complex hierarchical intermediate fields.
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#replacing-dlrs)!
+
+## Features
+
+You have several different options when it comes to making use of `Rollup`:
+
+- The [Custom Metadata-driven solution](#cmdt-based-rollup): install with _one line of code_
+- From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
+  - [Base Invocable action wiki](./wiki/Perform-Rollup-On-Records---Base-Invocable-Action) - separate wiki link
+  - [CMDT-driven action](./wiki/Perform-Rollup__mdt-based-rollup-Invocable) - separate wiki link
+  - Deferred rollup kickoff action (required for the CMDT-driven action)
+- [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
+- [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
+- [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 
 ## Deployment
 
-### Package deployment options
-
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShapAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShbnAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShapAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShbnAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -38,23 +49,6 @@ While you can still enable/disable individual rollups from running with the use 
 
 - ease of installation/upgrade. Previously some users had issues when installing/upgrading due to pre-existing automation in their orgs interfering with the `Rollup` tests
 - granularity of control. Want to disable rollups from running for a specific user or profile? Easy as pie!
-
-### Migrating from DLRS
-
-If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex scripts:
-
-1. [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org. There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-custom-metadata), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
-2. [scripts/deactivate-converted-dlrs-rules.apex](scripts/deactivate-converted-dlrs-rules.apex). Once you've converted your `dlrs__LookupRollupSummary2__mdt` records into `Rollup__mdt` records, you can run this script to deactivate any converted DLRS rules in the current org. Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
-
-## Usage
-
-You have several different options when it comes to making use of `Rollup`:
-
-- The [Custom Metadata-driven solution](#cmdt-based-rollup): install with _one line of code_
-- From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
-- [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
-- [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
-- [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 
 ### CMDT-based Rollup Solution:
 
@@ -185,6 +179,8 @@ This is also the preferred method for scheduling; while I do expose the option t
 
 #### Perform Rollup on records Invocable Action
 
+[Check out the Wiki article for more info on this action](./wiki/Perform-Rollup-On-Records---Base-Invocable-Action), or follow along below -
+
 Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builder using the `Perform Rollup on records` action:
 
 - `Object for "Records To rollup" (input)` - comes from your calculation items, and their SObject type should be selected accordingly. If you are rolling up from Opportunity to Account, you would select Opportunity as the type
@@ -217,6 +213,8 @@ Here is an example of the base action filled out (not shown, but also important 
 ![Example "Perform Rollup on records" action](./media/example-perform-rollup-action.png)
 
 #### Perform Rollup\_\_mdt-based rollup Invocable Action
+
+[Check out the Wiki article for more info on this action](./wiki/Perform-Rollup__mdt-based-rollup-Invocable), or follow along below -
 
 This action functions similarly to how the `Rollup.runFromTrigger()` method does within Apex - you stipulate a calculation object, pass in the records associated with that object, and all Rollups configured via the CMDT `Rollup__mdt` are performed. **Note** - there are additional optional fields that match exactly the optional fields defined in the above invocable action that you can use to override your CMDT values for a specific flow. Only include these values if you want to override your CMDT values!
 
@@ -331,6 +329,8 @@ In either case, the SOQL query needs to correspond to either the parent or the c
 ### Grandparent (Or Greater) Rollups
 
 <div id="grandparent-rollups"></div>
+
+[Check out the Wiki article for more information on Grandparent rollups](<./wiki/Configuring-Grandparent-(or-Greater)-Rollups>), or follow along here -
 
 It's not all that uncommon, especially with custom objects, to get into the practice of rolling up values from one object merely so that _another_ parent object can receive _those_ rolled up values; that is to say, we occasionally use intermediate objects in order to roll values up from a grandchild record to a grandparent (and there's no need to stop there; it's totally possible to want to roll up values from great-grandchildren to the great-grandparent record, and so on). `Rollup` offers the never-before-seen functionality of skipping the intermediate records so that you can go directly to the ultimate parent object. This is supported through the invocable rollup actions, as well as through the CMDT-based rollup approach by filling out the optional field `Grandparent Relationship Field Path`:
 
@@ -778,6 +778,15 @@ trigger OpportunityTrigger on Opportunity(before update, after update, before in
   }
 }
 ```
+
+## Migrating from DLRS
+
+<div id="replacing-dlrs"></div>
+
+If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex scripts:
+
+1. [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org. There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-custom-metadata), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
+2. [scripts/deactivate-converted-dlrs-rules.apex](scripts/deactivate-converted-dlrs-rules.apex). Once you've converted your `dlrs__LookupRollupSummary2__mdt` records into `Rollup__mdt` records, you can run this script to deactivate any converted DLRS rules in the current org. Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
 
 ## Special Considerations
 

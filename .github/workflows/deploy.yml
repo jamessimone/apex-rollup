@@ -7,7 +7,7 @@ on:
       - main
     paths-ignore:
       - 'sfdx-project.json'
-      - 'README.md'
+      - '**/README.md'
       - 'Contributing.md'
       - 'CODE_OF_CONDUCT.md'
       - 'package.json'
@@ -20,7 +20,7 @@ on:
     types: [opened, edited, synchronize, reopened]
     paths-ignore:
       - 'sfdx-project.json'
-      - 'README.md'
+      - '**/README.md'
       - 'Contributing.md'
       - 'CODE_OF_CONDUCT.md'
       - 'package.json'
@@ -79,8 +79,8 @@ jobs:
       - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
         shell: bash
         run: |
-         echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
-         echo ${{ env.PACKAGING_SFDX_URL }} > ./PACKAGING_SFDX_URL.txt
+          echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
+          echo ${{ env.PACKAGING_SFDX_URL }} > ./PACKAGING_SFDX_URL.txt
         env:
           DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
           PACKAGING_SFDX_URL: ${{ secrets.PACKAGING_SFDX_URL }}
@@ -109,6 +109,6 @@ jobs:
       - name: 'Re-commit updated package version (if necessary)'
         if: ${{ github.ref != 'refs/heads/main' && env.SHOULD_CREATE_AND_PROMOTE == '1' && github.actor == github.event.repository.owner.login && github.base_ref == 'main' }}
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
         run: 'sh ./scripts/updateGithubCommitStatus.sh'

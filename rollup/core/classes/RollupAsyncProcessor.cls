@@ -271,7 +271,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.ingestRollupControlData(syncRollups);
 
     if (this.isNoOp) {
-      this.isNoOp = this.rollups.isEmpty() && syncRollups.isEmpty() && this.calcItems?.isEmpty() == true;
+      this.isNoOp = this.rollups.isEmpty() && syncRollups.isEmpty() && (this.isFullRecalc == false && this.calcItems?.isEmpty() == true);
     }
 
     String rollupProcessId = 'No process Id';
@@ -290,7 +290,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         hasMoreThanOneTarget == false &&
         ((this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Batchable &&
         totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c) || totalCountOfRecords == RollupQueryBuilder.SENTINEL_COUNT_VALUE);
-      rollupProcessId = this.getAsyncRollup().beginAsyncRollup();
+      rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
     }
     RollupLogger.Instance.save();
     return rollupProcessId;

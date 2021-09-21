@@ -55,11 +55,9 @@ export default class RollupChangeNotifier extends LightningElement {
 ```html
 <!-- in rollupChangeNotifier.html -->
 <template>
-    <template if:true={hasUpdated}>
-      <div style="color: red; background-color: white; padding: 1rem">
-        This record has had its rollup values updated!
-      </div>
-    </template>
+  <template if:true="{hasUpdated}">
+    <div style="color: red; background-color: white; padding: 1rem">This record has had its rollup values updated!</div>
+  </template>
 </template>
 ```
 
@@ -71,12 +69,12 @@ Which produces something like this:
 
 Once you have the plugin installed, you have multiple options for interacting with the updated parent-level records.
 
-1. Let the vanilla `RollupDispatch` implementation fire off a platform event (`RollupCallbackEvent__e`) which you can listen for and respond to in Apex, Flows, LWC, etc ... this platform event includes a field, `RecordIds__c` that contains a comma-separated list of all the updated parent records. This event fires by default any time record updates through `Rollup` are made, but can be prevented from firing by:
+1. Let the vanilla `RollupDispatch` implementation fire off a platform event (`RollupCallbackEvent__e`) which you can listen for and respond to in Apex, Flows, LWC, etc (this is how the above example works) ... this platform event includes a field, `RecordIds__c` that contains a comma-separated list of all the updated parent records. This event fires by default any time record updates through `Rollup` are made, but can be prevented from firing by:
 
 - deleting the `Should Fire Platform Event` Rollup Plugin Parameter associated with the `Rollup Dispatcher` Rollup Plugin CMDT record
 - updating said record's `Value` field to `false`
 
-2. You can also chose to add your own callback implementations by adding additional `Rollup Plugin Parameter` entries off of the `Rollup Dispatcher for Rollup Callback` Rollup Plugin Custom Metadata record. To do so, implement the `RollupSObjectUpdater.IDispatcher` interface:
+2. You can also choose to add your own callback implementations by adding additional `Rollup Plugin Parameter` entries off of the `Rollup Dispatcher for Rollup Callback` Rollup Plugin Custom Metadata record. To do so, implement the `RollupSObjectUpdater.IDispatcher` interface:
 
 ```java
 public interface RollupSObjectUpdater.IDispatcher {
@@ -87,6 +85,7 @@ public interface RollupSObjectUpdater.IDispatcher {
 Implementing this interface gives you something that the Rollup Callback Event can't - direct access to the parent records _and_ their updated rollup fields.
 
 Here's an example implementation that fires off a subflow for you where:
+
 - `SubflowRollupDispatcher` would be the Value filled out on a new `Rollup Plugin Parameter` associated with the `Rollup Dispatcher for Rollup Callback` Rollup Plugin CMDT record
 - you had a subflow set up called `RollupSubflow` that had a collection input variable called `records` which conformed to an Apex-Defined Type, `SObjectDecorator` (note: this is a somewhat contrived example; it's my hope that Flows will support generic SObjects as input parameters; in the meantime, an Apex-Defined Type is as close as we can get).
 
