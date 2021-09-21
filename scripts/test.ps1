@@ -4,9 +4,25 @@ $ErrorActionPreference = 'Stop'
 $testInvocation = 'sfdx force:apex:test:run -r human -w 20 -c -d ./tests/apex'
 
 function Start-Tests() {
-  # Run tests
   Write-Output "Starting test run ..."
   Invoke-Expression $testInvocation
+  $testRunId = Get-Content tests/apex/test-run-id.txt
+  $specificTestRunJson = Get-Content "tests/apex/test-result-$testRunId.json" | ConvertFrom-Json
+  $testFailure = $false
+  if ($specificTestRunJson.summary.outcome -eq "Failed") {
+    $testFailure = $true
+  }
+
+  try {
+    Write-Output "Deleting scratch org ..."
+    sfdx force:org:delete -p -u apex-rollup-scratch-org
+  } catch {
+    Write-Output "Scratch org deletion failed, continuing ..."
+  }
+
+  if ($true -eq $testFailure) {
+    throw 'Test run failure!'
+  }
 }
 
 function Reset-SFDX-Json() {
@@ -32,8 +48,8 @@ Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.j
 
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
-sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
-sfdx config:set defaultusername=deploy@rollup.com defaultdevhubusername=deploy@rollup.com
+sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a she-and-jim
+sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
@@ -47,33 +63,21 @@ $shouldDeployToSandbox = $false
 if($scratchOrgAllotment -gt 0) {
   Write-Output "Beginning scratch org creation"
   # Create Scratch Org
-  try {
-    $scratchOrgCreateMessage = sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
-    # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
-    # The other issue is that this doesn't throw, so we have to test the response message ourselves
-    if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
-      throw $1
-    }
-    $userNameHasBeenSet = $true
-    # Multi-currency prep
-    Write-Output 'Importing multi-currency config data to scratch org ...'
-    sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
-    # Deploy
-    Write-Output 'Pushing source to scratch org ...'
-    sfdx force:source:push
-    # Run tests
-    Start-Tests
-    Write-Output "Scratch org tests finished running with success: $?"
-    # Delete scratch org
-    try {
-      sfdx force:org:delete -p -u apex-rollup-scratch-org
-    } catch {
-      Write-Output "Scratch org deletion failed, continuing ..."
-    }
-  } catch {
-    Write-Output "There was an issue with scratch org creation, continuing ..."
-    $shouldDeployToSandbox = $true
+  $scratchOrgCreateMessage = sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+  # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
+  # The other issue is that this doesn't throw, so we have to test the response message ourselves
+  if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
+    throw $1
   }
+  $userNameHasBeenSet = $true
+  # Multi-currency prep
+  Write-Output 'Importing multi-currency config data to scratch org ...'
+  sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
+  # Deploy
+  Write-Output 'Pushing source to scratch org ...'
+  sfdx force:source:push
+  # Run tests
+  Start-Tests
 } else {
   $shouldDeployToSandbox = $true
 }
@@ -104,5 +108,5 @@ if($null -ne $orgInfo -And $userNameHasBeenSet) {
 
 Reset-SFDX-Json
 
-Write-Output "Build + testing finished successfully, preparing to upload code coverage"
+Write-Output "Build + testing finished successfully"
 

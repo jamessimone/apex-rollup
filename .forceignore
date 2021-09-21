@@ -1,5 +1,6 @@
+# .forceignore v2
 **/jsconfig.json
 **/.eslintrc.json
-**/__tests__/**
-**/__mockData__/**
+**/__tests__
+**/__mockData__
 **/README.md
