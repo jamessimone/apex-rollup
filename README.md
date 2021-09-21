@@ -12,8 +12,8 @@ You have several different options when it comes to making use of `Rollup`:
 
 - The [Custom Metadata-driven solution](#cmdt-based-rollup): install with _one line of code_
 - From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
-  - [Base Invocable action wiki](./wiki/Perform-Rollup-On-Records---Base-Invocable-Action) - separate wiki link
-  - [CMDT-driven action](./wiki/Perform-Rollup__mdt-based-rollup-Invocable) - separate wiki link
+  - [Base Invocable action wiki](../../wiki/Perform-Rollup-On-Records---Base-Invocable-Action) - separate wiki link
+  - [CMDT-driven action](../../wiki/Perform-Rollup__mdt-based-rollup-Invocable) - separate wiki link
   - Deferred rollup kickoff action (required for the CMDT-driven action)
 - [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
 - [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
@@ -179,7 +179,7 @@ This is also the preferred method for scheduling; while I do expose the option t
 
 #### Perform Rollup on records Invocable Action
 
-[Check out the Wiki article for more info on this action](./wiki/Perform-Rollup-On-Records---Base-Invocable-Action), or follow along below -
+[Check out the Wiki article for more info on this action](../../wiki/Perform-Rollup-On-Records---Base-Invocable-Action), or follow along below -
 
 Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builder using the `Perform Rollup on records` action:
 
@@ -214,7 +214,7 @@ Here is an example of the base action filled out (not shown, but also important 
 
 #### Perform Rollup\_\_mdt-based rollup Invocable Action
 
-[Check out the Wiki article for more info on this action](./wiki/Perform-Rollup__mdt-based-rollup-Invocable), or follow along below -
+[Check out the Wiki article for more info on this action](../../wiki/Perform-Rollup__mdt-based-rollup-Invocable), or follow along below -
 
 This action functions similarly to how the `Rollup.runFromTrigger()` method does within Apex - you stipulate a calculation object, pass in the records associated with that object, and all Rollups configured via the CMDT `Rollup__mdt` are performed. **Note** - there are additional optional fields that match exactly the optional fields defined in the above invocable action that you can use to override your CMDT values for a specific flow. Only include these values if you want to override your CMDT values!
 
@@ -330,7 +330,7 @@ In either case, the SOQL query needs to correspond to either the parent or the c
 
 <div id="grandparent-rollups"></div>
 
-[Check out the Wiki article for more information on Grandparent rollups](<./wiki/Configuring-Grandparent-(or-Greater)-Rollups>), or follow along here -
+[Check out the Wiki article for more information on Grandparent rollups](<../../wiki/Configuring-Grandparent-(or-Greater)-Rollups>), or follow along here -
 
 It's not all that uncommon, especially with custom objects, to get into the practice of rolling up values from one object merely so that _another_ parent object can receive _those_ rolled up values; that is to say, we occasionally use intermediate objects in order to roll values up from a grandchild record to a grandparent (and there's no need to stop there; it's totally possible to want to roll up values from great-grandchildren to the great-grandparent record, and so on). `Rollup` offers the never-before-seen functionality of skipping the intermediate records so that you can go directly to the ultimate parent object. This is supported through the invocable rollup actions, as well as through the CMDT-based rollup approach by filling out the optional field `Grandparent Relationship Field Path`:
 
