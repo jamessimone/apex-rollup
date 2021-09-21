@@ -28,7 +28,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
 
   public override String runCalc() {
     this.isProcessed = true;
-    Integer countOfItems = Database.countQuery(this.queryString.replaceFirst('Id', 'Count()'));
+    Integer countOfItems = Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
     Boolean isOverLimit = countOfItems > maxQueryRows;
     if (isOverLimit && System.isBatch() == false) {
       // avoids: System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method
