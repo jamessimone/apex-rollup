@@ -10,7 +10,7 @@
   "license": "MIT",
   "lint-staged": {
     "*.js": "eslint **/lwc/** --fix",
-    "*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}": "prettier --write",
+    "*.{cls,cmp,component,css,html,js,json,md,page,trigger,yaml,yml}": "prettier --write",
     "*.{cls,trigger}": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --engine pmd --severity-threshold 3 --target"
   },
   "devDependencies": {
