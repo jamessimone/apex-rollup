@@ -42,7 +42,7 @@ public without sharing virtual class RollupSObjectUpdater {
         record.put(this.fieldToken, ((Datetime) value).dateGmt());
       }
       when 'Decimal to Integer' {
-        record.put(this.fieldToken, ((Decimal)value).intValue());
+        record.put(this.fieldToken, ((Decimal) value).intValue());
       }
       when else {
         // this switch statement can be expanded as necessary to deal with other problems
@@ -63,6 +63,10 @@ public without sharing virtual class RollupSObjectUpdater {
       }
       if (pluginParameterMock != null) {
         potentialRollupDispatchers.add(pluginParameterMock);
+      }
+
+      if (potentialRollupDispatchers.isEmpty()) {
+        return;
       }
 
       List<IDispatcher> dispatchers = new List<IDispatcher>();

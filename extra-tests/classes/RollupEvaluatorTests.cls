@@ -929,8 +929,26 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
-  static void shouldCorrectlyFormatInQuery() {
+  static void shouldCorrectlyFormatInQueryWithinEquality() {
     String whereClause = 'StageName IN (\'firstName\', \'secondName\')';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(whereClause, eval.getSafeQuery());
+  }
+
+  @IsTest
+  static void shouldCorrectlyFormatInQueryWithinValue() {
+    String whereClause = 'StageName != \'Gift in Kind\'';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(whereClause, eval.getSafeQuery());
+  }
+
+  @IsTest
+  static void shouldCorrectlyFormatCapitalizedInQueryWithinValue() {
+    String whereClause = 'StageName != \'Gift In Kind\'';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
@@ -944,5 +962,16 @@ private class RollupEvaluatorTests {
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
 
     System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'oneName')));
+  }
+
+  @IsTest
+  static void shouldWorkWithCarriageReturnsAndLineBreaks() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    String whereClause = 'Name = \'someValue\' AND (PreferenceRank = 1 \r\n OR PreferenceRank = 2 \r\n OR PreferenceRank = 3)';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
+
+    System.assertEquals(true, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 1)));
+    System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 0)), 'cpa should not match');
   }
 }

@@ -1,5 +1,5 @@
+@SuppressWarnings('apex-assist')
 public class RollupNebulaLoggerAdapter extends RollupLogger {
-
   public override void log(String logString, LoggingLevel logLevel) {
     Logger.newEntry(logLevel, logString);
   }

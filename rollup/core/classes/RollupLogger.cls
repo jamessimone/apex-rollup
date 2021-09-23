@@ -12,7 +12,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     this.currentLoggingLevel = this.getLogLevel();
   }
 
-  private static RollupLogger SELF {
+  private static final RollupLogger SELF {
     get {
       if (SELF == null) {
         SELF = new RollupLogger();
@@ -22,7 +22,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     set;
   }
 
-  public static ILogger Instance {
+  public static final ILogger Instance {
     get {
       if (Instance == null) {
         Instance = getRollupLogger();
@@ -159,9 +159,9 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
         );
         rollLogger = SELF;
       }
-      if (loggingPlugins.isEmpty() == false) {
-        rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
-      }
+    }
+    if (loggingPlugins.isEmpty() == false) {
+      rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
     }
 
     return rollLogger;

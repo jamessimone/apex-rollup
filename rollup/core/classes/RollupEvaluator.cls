@@ -55,7 +55,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? ALWAYS_TRUE_SINGLETON : eval };
+    List<Rollup.Evaluator> evals = eval == null ? new List<Rollup.Evaluator>() : new List<Rollup.Evaluator>{ eval };
 
     if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
       evals.add(getWhereEval(metadata.CalcItemWhereClause__c, sObjectType));
@@ -65,6 +65,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
     if (metadata.RollupOperation__c?.contains('UPDATE') == true) {
       evals.add(new RecursiveUpdateEvaluator(metadata));
+    }
+    if (evals.isEmpty()) {
+      evals.add(ALWAYS_TRUE_SINGLETON);
     }
 
     return getCombinedEvals(evals);
@@ -157,7 +160,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final Set<String> splitWheres = new Set<String>();
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
-      whereClause = whereClause == null ? '' : whereClause;
+      whereClause = whereClause == null ? '' : whereClause.replaceAll('(\n|\r|\t)', '');
       this.originalWhereClause = whereClause;
 
       if (String.isNotBlank(whereClause)) {
@@ -186,9 +189,23 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (completelySplitClauses.size() >= 3 && completelySplitClauses[1] == '!like') {
           String supplementalClause = '(NOT ' + completelySplitClauses[0] + ' LIKE ' + completelySplitClauses[2] + ')';
           startingPoint = startingPoint.replace(whereClausePart, supplementalClause);
-        } else if (completelySplitClauses.size() >= 3 && completelySplitClauses[1].contains('=') && completelySplitClauses[2].startsWith('(') && completelySplitClauses[completelySplitClauses.size() - 1].endsWith(')')) {
+        } else if (
+          completelySplitClauses.size() >= 3 &&
+          completelySplitClauses[1].contains('=') &&
+          completelySplitClauses[2].startsWith('(') &&
+          completelySplitClauses[completelySplitClauses.size() - 1].endsWith(')')
+        ) {
           completelySplitClauses[1] = completelySplitClauses[1] == '!=' ? 'NOT IN' : 'IN';
           startingPoint = startingPoint.replace(whereClausePart, String.join(completelySplitClauses, ' '));
+        } else if (completelySplitClauses.size() >= 3 && this.originalWhereClause.indexOf(whereClausePart) == -1) {
+          for (String replacementKey : CONDITION_MAP.keySet()) {
+            String replacementVal = CONDITION_MAP.get(replacementKey);
+            String potentialReplacement = whereClausePart.replace(replacementVal, replacementKey);
+            if (this.originalWhereClause.indexOf(potentialReplacement) >= 0) {
+              startingPoint = startingPoint.replace(whereClausePart, potentialReplacement);
+              break;
+            }
+          }
         }
       }
       return startingPoint;
@@ -226,11 +243,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private Boolean innerMatches(Object calcItem) {
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
-        for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
+        for (Integer index = 0; index < this.conditionalGroupings.size(); index++) {
+          ConditionalGrouping conditionalGrouping = this.conditionalGroupings[index];
           Boolean hasInnerMatch = conditionalGrouping.equals(calcItem);
           addLog(conditionalGrouping, hasInnerMatch, calcItem, LoggingLevel.FINEST);
-          if (hasInnerMatch && conditionalGrouping.isOrConditional()) {
-            matches = true;
+          if (conditionalGrouping.isOrConditional()) {
+            matches = index == 0 ? hasInnerMatch : hasInnerMatch || matches;
           } else if (conditionalGrouping.isOrConditional() == false) {
             matches = matches && hasInnerMatch;
           }
@@ -368,9 +386,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean isOr = false;
       Boolean isFirstConditional = fullString.indexOf(conditionalStatement) == 0;
       if (isFirstConditional == false) {
-        Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement) + conditionalStatement.length();
+        Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement);
         // 5 is enough to encapsulate " or " with spaces
-        Integer clauseStartingIndex = whereWeAreInTheFullString - (conditionalStatement.length() + 5);
+        Integer clauseStartingIndex = whereWeAreInTheFullString - 5;
         if (clauseStartingIndex > 0) {
           isOr = fullString.substring(clauseStartingIndex, whereWeAreInTheFullString).containsIgnoreCase(' or ');
         }
@@ -538,7 +556,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyIfStmt')
+    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode')
     public Boolean equals(Object o) {
       SObject item = (SObject) o;
       Boolean isEqual = true;
@@ -559,9 +577,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           // like/not like have to be handled separately because it's the storedValue
           // that gets tested against, not the other way around
           isEqual = false;
-          if (storedValue == null) {
-            // do nothing
-          } else {
+          if (storedValue != null) {
             for (String val : this.values) {
               isEqual = storedValue.contains(val);
               if (isEqual) {
@@ -770,7 +786,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {
-    RollupLogger.Instance.log(clazz + '\nmatches? ' + matches + ' for: ' + item, logLevel);
+    RollupLogger.Instance.log(clazz + '\nMatches? ' + matches + ' for: ' + item, logLevel);
   }
 
   private static String getCurrentTransactionId() {

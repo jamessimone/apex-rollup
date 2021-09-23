@@ -1,5 +1,6 @@
 @IsTest
 private class RollupNebulaLoggerAdapterTest {
+  @SuppressWarnings('apex-assist')
   @IsTest
   static void shouldLogToNebula() {
     LoggerSettings__c settings = new LoggerSettings__c(IsEnabled__c = true);
