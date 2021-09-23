@@ -107,11 +107,10 @@ if($currentBranch -eq "main") {
   # main is a push-protected branch; only create new package versions as part of PRs against main
   Write-Output "Creating new package version"
 
-  sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories[0].path -x -w 30 -c
+  $packageVersionCreateResult = sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories[0].path -x -w 30 -c --json | ConvertFrom-Json
   git add ./sfdx-project.json
 
-  # Now that sfdx-project.json has been updated, grab the latest package version
-  $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
+  $currentPackageVersionId = $packageVersionCreateResult.result.SubscriberPackageVersionId
 
   Write-Output "New package version: $currentPackageVersionId"
 
