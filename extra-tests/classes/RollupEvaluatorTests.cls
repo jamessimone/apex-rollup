@@ -945,4 +945,15 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'oneName')));
   }
+
+  @IsTest
+  static void shouldWorkWithCarriageReturnsAndLineBreaks() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    String whereClause = 'Name = \'someValue\' AND (PreferenceRank = 1 \r\n OR PreferenceRank = 2 \r\n OR PreferenceRank = 3)';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
+
+    System.assertEquals(true, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 1)));
+    System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 0)), 'cpa should not match');
+  }
 }
