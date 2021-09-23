@@ -159,9 +159,9 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
         );
         rollLogger = SELF;
       }
-      if (loggingPlugins.isEmpty() == false) {
-        rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
-      }
+    }
+    if (loggingPlugins.isEmpty() == false) {
+      rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
     }
 
     return rollLogger;
