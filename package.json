@@ -8,11 +8,6 @@
   },
   "author": "james.simone",
   "license": "MIT",
-  "lint-staged": {
-    "*.js": "eslint **/lwc/** --fix",
-    "*.{cls,cmp,component,css,html,js,json,md,page,trigger,yaml,yml}": "prettier --write",
-    "*.{cls,trigger}": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --engine pmd --severity-threshold 3 --target"
-  },
   "devDependencies": {
     "@babel/core": "latest",
     "@babel/eslint-parser": "latest",

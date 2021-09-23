@@ -4,6 +4,7 @@ public class RollupDispatch implements RollupSObjectUpdater.IDispatcher {
   @TestVisible
   private static String platformEventOverride;
 
+  @SuppressWarnings('apex-assist')
   private static String PLATFORM_EVENT_BOOLEAN_STRING {
     get {
       if (PLATFORM_EVENT_BOOLEAN_STRING == null && platformEventOverride != null) {
@@ -25,9 +26,7 @@ public class RollupDispatch implements RollupSObjectUpdater.IDispatcher {
         updatedRecordIds.add(record.Id);
       }
 
-      RollupCallbackEvent__e callbackEvent = new RollupCallbackEvent__e(
-        RecordIds__c = String.join(updatedRecordIds, ',')
-      );
+      RollupCallbackEvent__e callbackEvent = new RollupCallbackEvent__e(RecordIds__c = String.join(updatedRecordIds, ','));
       EventBus.publish(callbackEvent);
     }
   }

@@ -186,7 +186,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (completelySplitClauses.size() >= 3 && completelySplitClauses[1] == '!like') {
           String supplementalClause = '(NOT ' + completelySplitClauses[0] + ' LIKE ' + completelySplitClauses[2] + ')';
           startingPoint = startingPoint.replace(whereClausePart, supplementalClause);
-        } else if (completelySplitClauses.size() >= 3 && completelySplitClauses[1].contains('=') && completelySplitClauses[2].startsWith('(') && completelySplitClauses[completelySplitClauses.size() - 1].endsWith(')')) {
+        } else if (
+          completelySplitClauses.size() >= 3 &&
+          completelySplitClauses[1].contains('=') &&
+          completelySplitClauses[2].startsWith('(') &&
+          completelySplitClauses[completelySplitClauses.size() - 1].endsWith(')')
+        ) {
           completelySplitClauses[1] = completelySplitClauses[1] == '!=' ? 'NOT IN' : 'IN';
           startingPoint = startingPoint.replace(whereClausePart, String.join(completelySplitClauses, ' '));
         }
@@ -770,7 +775,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {
-    RollupLogger.Instance.log(clazz + '\nmatches? ' + matches + ' for: ' + item, logLevel);
+    RollupLogger.Instance.log(clazz + '\nMatches? ' + matches + ' for: ' + item, logLevel);
   }
 
   private static String getCurrentTransactionId() {
