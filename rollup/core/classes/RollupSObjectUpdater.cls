@@ -65,6 +65,10 @@ public without sharing virtual class RollupSObjectUpdater {
         potentialRollupDispatchers.add(pluginParameterMock);
       }
 
+      if (potentialRollupDispatchers.isEmpty()) {
+        return;
+      }
+
       List<IDispatcher> dispatchers = new List<IDispatcher>();
       for (RollupPluginParameter__mdt pluginParameter : potentialRollupDispatchers) {
         this.fillDispatcher(dispatchers, pluginParameter.Value__c);

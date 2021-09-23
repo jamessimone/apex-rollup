@@ -55,7 +55,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   public static Rollup.Evaluator getEvaluator(Rollup.Evaluator eval, Rollup__mdt metadata, Map<Id, SObject> oldCalcItems, SObjectType sObjectType) {
-    List<Rollup.Evaluator> evals = new List<Rollup.Evaluator>{ eval == null ? ALWAYS_TRUE_SINGLETON : eval };
+    List<Rollup.Evaluator> evals = eval == null ? new List<Rollup.Evaluator>() : new List<Rollup.Evaluator>{ eval };
 
     if (String.isNotBlank(metadata.CalcItemWhereClause__c)) {
       evals.add(getWhereEval(metadata.CalcItemWhereClause__c, sObjectType));
@@ -65,6 +65,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
     if (metadata.RollupOperation__c?.contains('UPDATE') == true) {
       evals.add(new RecursiveUpdateEvaluator(metadata));
+    }
+    if (evals.isEmpty()) {
+      evals.add(ALWAYS_TRUE_SINGLETON);
     }
 
     return getCombinedEvals(evals);
@@ -194,6 +197,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         ) {
           completelySplitClauses[1] = completelySplitClauses[1] == '!=' ? 'NOT IN' : 'IN';
           startingPoint = startingPoint.replace(whereClausePart, String.join(completelySplitClauses, ' '));
+        } else if (completelySplitClauses.size() >= 3 && this.originalWhereClause.indexOf(whereClausePart) == -1) {
+          for (String replacementKey : CONDITION_MAP.keySet()) {
+            String replacementVal = CONDITION_MAP.get(replacementKey);
+            String potentialReplacement = whereClausePart.replace(replacementVal, replacementKey);
+            if (this.originalWhereClause.indexOf(potentialReplacement) >= 0) {
+              startingPoint = startingPoint.replace(whereClausePart, potentialReplacement);
+              break;
+            }
+          }
         }
       }
       return startingPoint;

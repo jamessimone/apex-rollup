@@ -929,8 +929,26 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
-  static void shouldCorrectlyFormatInQuery() {
+  static void shouldCorrectlyFormatInQueryWithinEquality() {
     String whereClause = 'StageName IN (\'firstName\', \'secondName\')';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(whereClause, eval.getSafeQuery());
+  }
+
+  @IsTest
+  static void shouldCorrectlyFormatInQueryWithinValue() {
+    String whereClause = 'StageName != \'Gift in Kind\'';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(whereClause, eval.getSafeQuery());
+  }
+
+  @IsTest
+  static void shouldCorrectlyFormatCapitalizedInQueryWithinValue() {
+    String whereClause = 'StageName != \'Gift In Kind\'';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
