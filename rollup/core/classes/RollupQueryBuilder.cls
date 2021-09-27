@@ -1,6 +1,4 @@
 public without sharing class RollupQueryBuilder {
-  private static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
-
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
   public static final Integer SENTINEL_COUNT_VALUE = -1;
 
@@ -142,8 +140,8 @@ public without sharing class RollupQueryBuilder {
   private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> uniqueQueryFieldNames, DescribeSObjectResult sObjectToken) {
     if (
       UserInfo.isMultiCurrencyOrganization() &&
-      uniqueQueryFieldNames.contains(CURRENCY_ISO_CODE_FIELD_NAME) == false &&
-      sObjectToken.fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)
+      uniqueQueryFieldNames.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME) == false &&
+      sObjectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
     ) {
       Boolean hasAggregateFunction = false;
       for (String uniqueQueryFieldName : uniqueQueryFieldNames) {
@@ -157,7 +155,7 @@ public without sharing class RollupQueryBuilder {
         }
       }
       if (hasAggregateFunction == false) {
-        uniqueQueryFieldNames.add(CURRENCY_ISO_CODE_FIELD_NAME);
+        uniqueQueryFieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
       }
     }
   }
