@@ -3,9 +3,18 @@ public without sharing class RollupCurrencyInfo {
 
   @TestVisible
   private static Map<String, RollupCurrencyInfo> mockCurrencyData;
-
-  private static final Boolean IS_MULTICURRENCY = UserInfo.isMultiCurrencyOrganization();
   private static final Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
+
+  @TestVisible
+  private static Boolean IS_MULTICURRENCY {
+    get {
+      if (IS_MULTICURRENCY == null) {
+        IS_MULTICURRENCY = UserInfo.isMultiCurrencyOrganization();
+      }
+      return IS_MULTICURRENCY;
+    }
+    set;
+  }
 
   private static final RollupCurrencyInfo FALLBACK_INFO {
     get {

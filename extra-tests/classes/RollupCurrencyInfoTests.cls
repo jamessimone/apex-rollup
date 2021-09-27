@@ -12,10 +12,7 @@ private class RollupCurrencyInfoTests {
     mockEurInfo.DecimalPlaces = 2;
     mockEurInfo.IsoCode = 'EUR';
 
-    RollupCurrencyInfo.mockCurrencyData = new Map<String, RollupCurrencyInfo> {
-      mockUsdInfo.IsoCode => mockUsdInfo,
-      mockEurInfo.IsoCode => mockEurInfo
-    };
+    RollupCurrencyInfo.mockCurrencyData = new Map<String, RollupCurrencyInfo>{ mockUsdInfo.IsoCode => mockUsdInfo, mockEurInfo.IsoCode => mockEurInfo };
     Opportunity opp = new Opportunity(Amount = 0);
 
     RollupCurrencyInfo.setCurrencyIsoCode(opp, mockUsdInfo.IsoCode);
@@ -23,5 +20,14 @@ private class RollupCurrencyInfoTests {
 
     opp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp);
     System.assertEquals(0, opp.Amount, 'Should make it here without divide by zero error!');
+  }
+
+  @IsTest
+  static void shouldReturnSafeFallbackForCurrencyInfo() {
+    RollupCurrencyInfo.IS_MULTICURRENCY = false;
+
+    RollupCurrencyInfo fallbackInfo = RollupCurrencyInfo.getCurrencyInfo('USD');
+
+    System.assertNotEquals(null, fallbackInfo);
   }
 }
