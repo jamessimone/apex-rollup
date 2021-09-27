@@ -1,4 +1,6 @@
 public without sharing class RollupCurrencyInfo {
+  public static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
+
   @TestVisible
   private static Map<String, RollupCurrencyInfo> mockCurrencyData;
 
@@ -26,8 +28,6 @@ public without sharing class RollupCurrencyInfo {
     }
     set;
   }
-
-  public static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
 
   public String IsoCode { get; set; }
   public Decimal ConversionRate { get; set; }
