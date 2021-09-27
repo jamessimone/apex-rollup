@@ -2132,9 +2132,7 @@ global without sharing virtual class Rollup {
   }
 
   private static void winnowOldFlowRecords(FlowInput flowInput) {
-    if (flowInput.oldRecordsToRollup == null) {
-      flowInput.oldRecordsToRollup = new List<SObject>();
-    }
+    flowInput.oldRecordsToRollup = flowInput.oldRecordsToRollup == null ? new List<SObject>() : flowInput.oldRecordsToRollup.clone();
     for (Integer index = flowInput.oldRecordsToRollup.size() - 1; index >= 0; index--) {
       SObject oldRecord = flowInput.oldRecordsToRollup[index];
       // record-triggered flows set up to run when "A record is created or modified"

@@ -3,6 +3,8 @@ private class RollupFlowBulkProcessorTests {
   @TestSetup
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
+    Account acc = new Account(Name = RollupFlowBulkProcessorTests.class.getName());
+    insert acc;
   }
 
   @IsTest
@@ -41,8 +43,7 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void shouldProcessDeferredFlowRollups() {
-    Account acc = new Account(Name = 'RollupFlowBulkProcessorTests');
-    insert acc;
+    Account acc = [SELECT Id FROM Account];
 
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -74,8 +75,7 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void shouldSyncRunFlowWhenToggled() {
-    Account acc = new Account(Name = 'RollupFlowBulkProcessorTests');
-    insert acc;
+    Account acc = [SELECT Id FROM Account];
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -149,7 +149,7 @@ private class RollupFlowBulkProcessorTests {
     input.rollupToUltimateParent = true;
     input.ultimateParentLookup = 'AccountId';
 
-    List<Rollup.FlowOutput>  outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
     System.assertEquals(1, outputs.size());
     System.assertEquals(true, outputs[0].isSuccess);
@@ -175,9 +175,52 @@ private class RollupFlowBulkProcessorTests {
       )
     };
 
-    List<Rollup.FlowOutput>  outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
     System.assertEquals(1, outputs.size());
     System.assertEquals(true, outputs[0].isSuccess, outputs);
+  }
+
+  @IsTest
+  static void shouldNotThrowValidationErrorsForUpdatesWithMultipleCmdtRecords() {
+    Account acc = [SELECT Id FROM Account];
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{
+      new Opportunity(Amount = 5, Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = acc.Id),
+      new Opportunity(Amount = 5, Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = acc.Id)
+    };
+    input.rollupContext = 'UPSERT';
+    input.oldRecordsToRollup = new List<SObject>{ null, null };
+    input.deferProcessing = false;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      ),
+      new Rollup__mdt(
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees'
+      )
+    };
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
+    System.assertEquals(2, acc.NumberOfEmployees, 'Account number of employees should have counted properly');
   }
 }

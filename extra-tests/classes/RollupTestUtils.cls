@@ -79,7 +79,7 @@ public class RollupTestUtils {
 
   private static SObject queryRecord(Id recordId, String fromObject, List<String> fieldNames) {
     SObjectType sObjectType = recordId != null ? recordId.getSObjectType() : ((SObject) Type.forName(fromObject).newInstance()).getSObjectType();
-    String currencyIscoCodeFieldName = 'CurrencyIsoCode';
+    String currencyIscoCodeFieldName = RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME;
     if (fieldNames.contains('Id') == false) {
       fieldNames.add('Id');
     }
