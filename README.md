@@ -21,12 +21,12 @@ You have several different options when it comes to making use of `Rollup`:
 
 ## Deployment
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Shn2AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Shn7AAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Shn2AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Shn7AAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
