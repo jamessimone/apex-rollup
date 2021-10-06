@@ -4,7 +4,7 @@
     <defaultValue>false</defaultValue>
     <description>Use this field to turn off individual Rollups on the fly.</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>Use this field to turn off individual Rollups on the fly.</inlineHelpText>
     <label>Should Abort Run</label>
     <type>Checkbox</type>

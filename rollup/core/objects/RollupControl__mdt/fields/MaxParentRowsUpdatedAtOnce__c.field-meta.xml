@@ -3,7 +3,7 @@
     <fullName>MaxParentRowsUpdatedAtOnce__c</fullName>
     <description>The maximum number of parent rows that can be updated in a single transaction. Otherwise, Rollup splits the parent items evenly and updates them in separate transactions.</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>The maximum number of parent rows that can be updated in a single transaction. Otherwise, Rollup splits the parent items evenly and updates them in separate transactions.</inlineHelpText>
     <label>Max Parent Rows Updated At Once</label>
     <precision>18</precision>
