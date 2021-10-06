@@ -939,6 +939,47 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldProperlyFilterParentFields() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Account matchingAccount = new Account(Name = 'Matching');
+    insert matchingAccount;
+
+    List<SObject> opps = new List<Opportunity>{
+      new Opportunity(Name = 'Non Match 0', AccountId = acc.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Non Match 1', AccountId = acc.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Match 0', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Match 1', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Match 2', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today())
+    };
+    insert opps;
+
+    Rollup.records = opps;
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Account.Name != \'' + acc.Name + '\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(null, acc.AnnualRevenue, 'Calc item where clause should have prevented account from being updated');
+    matchingAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :matchingAccount.Id];
+    System.assertEquals(1500, matchingAccount.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldNotBlowUpForRecursiveCheckOnFormulaFields() {
     String oppId = RollupTestUtils.createId(Opportunity.SObjectType);
     Opportunity opp = new Opportunity(Amount = 15, AccountId = RollupTestUtils.createId(Account.SObjectType), Id = oppId);
@@ -1052,7 +1093,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
-        // validate calc item where clause works
+        // validate polymorphic calc item where clause works
         CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
@@ -1522,7 +1563,7 @@ private class RollupIntegrationTests {
     indy = [SELECT LastName, ChildrenCount FROM Individual];
     System.assertEquals(1, acc.AnnualRevenue, 'Annual revenue should have been averaged properly');
     System.assertEquals(1, indy.ChildrenCount, 'Children count should have been counted correctly');
-    System.assertEquals('Indy, Two',  indy.LastName, 'LastName should have been concat properly');
+    System.assertEquals('Indy, Two', indy.LastName, 'LastName should have been concat properly');
   }
 
   @IsTest
@@ -1626,8 +1667,11 @@ private class RollupIntegrationTests {
   static void shouldFilterNonMatchingRollupsOutOfBatch() {
     Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
     insert con;
+    RollupControl__mdt control = RollupControl__mdt.getInstance('Org_Defaults');
+    Rollup.FilterResults results = new Rollup.FilterResults();
+    results.matchingItemIds.add(con.Id);
     RollupAsyncProcessor batchProcessor = new RollupAsyncProcessor(
-      new Set<Id>{ con.Id },
+      results,
       Contact.FirstName,
       Contact.Id,
       Contact.Id,
@@ -1635,9 +1679,8 @@ private class RollupIntegrationTests {
       Campaign.SObjectType,
       Contact.SObjectType,
       Rollup.Op.CONCAT,
-      null,
       Rollup.InvocationPoint.FROM_APEX,
-      RollupControl__mdt.getInstance('Org_Defaults'),
+      control,
       new Rollup__mdt(
         CalcItem__c = 'Contact',
         RollupFieldOnCalcItem__c = 'FirstName',

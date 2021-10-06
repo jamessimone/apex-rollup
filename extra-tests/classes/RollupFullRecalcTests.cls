@@ -11,7 +11,7 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldSortFullRecalcsToEnd() {
     RollupAsyncProcessor actualProcessor = RollupAsyncProcessor.getProcessor(
-      new Set<Id>(),
+      new Rollup.FilterResults(),
       Contact.Id,
       Contact.AccountId,
       Account.Id,
@@ -19,7 +19,6 @@ private class RollupFullRecalcTests {
       Account.SObjectType,
       Contact.SObjectType,
       Rollup.Op.SUM,
-      null,
       Rollup.InvocationPoint.FROM_APEX,
       null,
       null

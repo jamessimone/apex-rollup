@@ -17,8 +17,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
   private Map<String, List<SObject>> cachedFullRecalcs;
+  private Integer stackDepth = 0;
 
-  private static Integer stackDepth = 0;
   private static Boolean isRunningAsync = false;
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
@@ -94,7 +94,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public static RollupAsyncProcessor getProcessor(
-    Set<Id> matchingCalcItemIds,
+    FilterResults filterResults,
     SObjectField opFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnLookupObject,
@@ -102,13 +102,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     SObjectType lookupObj,
     SObjectType calcItem,
     Op operation,
-    Evaluator eval,
     InvocationPoint rollupInvokePoint,
     RollupControl__mdt rollupControl,
     Rollup__mdt metadata
   ) {
     return new QueueableProcessor(
-      matchingCalcItemIds,
+      filterResults,
       opFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnLookupObject,
@@ -116,7 +115,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       lookupObj,
       calcItem,
       operation,
-      eval,
       rollupInvokePoint,
       rollupControl,
       metadata
@@ -140,11 +138,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isCDCUpdate = innerRollup.isCDCUpdate;
     this.fullRecalcProcessor = innerRollup.fullRecalcProcessor;
+    this.stackDepth = innerRollup.stackDepth;
+    this.calcItemReplacer = innerRollup.calcItemReplacer;
   }
 
   // Inner rollup constructor - a rollup solely concerned with calculations
   public RollupAsyncProcessor(
-    Set<Id> matchingCalcItemIds,
+    FilterResults filterResults,
     SObjectField opFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
     SObjectField lookupFieldOnLookupObject,
@@ -152,13 +152,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     SObjectType lookupObj,
     SObjectType calcItemType,
     Op op,
-    Evaluator eval,
     InvocationPoint invokePoint,
     RollupControl__mdt rollupControl,
     Rollup__mdt rollupMetadata
   ) {
     super();
-    this.matchingCalcItemIds.addAll(matchingCalcItemIds);
+    this.matchingCalcItemIds.addAll(filterResults.matchingItemIds);
     this.opFieldOnCalcItem = opFieldOnCalcItem;
     this.lookupFieldOnCalcItem = lookupFieldOnCalcItem;
     this.lookupFieldOnLookupObject = lookupFieldOnLookupObject;
@@ -171,8 +170,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.metadata = rollupMetadata;
     this.isConductor = false;
 
-    if (eval != null) {
-      this.eval = eval;
+    if (filterResults.eval != null) {
+      this.eval = filterResults.eval;
     }
 
     this.isNoOp = this.matchingCalcItemIds?.isEmpty() == true && this.metadata?.IsFullRecordSet__c == false;
@@ -340,7 +339,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private inherited sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
     private QueueableProcessor(
-      Set<Id> matchingCalcItemIds,
+      Rollup.FilterResults filterResults,
       SObjectField opFieldOnCalcItem,
       SObjectField lookupFieldOnCalcItem,
       SObjectField lookupFieldOnLookupObject,
@@ -348,13 +347,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       SObjectType lookupObj,
       SObjectType calcItem,
       Op operation,
-      Evaluator eval,
       InvocationPoint rollupInvokePoint,
       RollupControl__mdt rollupControl,
       Rollup__mdt metadata
     ) {
       super(
-        matchingCalcItemIds,
+        filterResults,
         opFieldOnCalcItem,
         lookupFieldOnCalcItem,
         lookupFieldOnLookupObject,
@@ -362,7 +360,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         lookupObj,
         calcItem,
         operation,
-        eval,
         rollupInvokePoint,
         rollupControl,
         metadata
@@ -653,8 +650,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         LoggingLevel.DEBUG
       );
       if (this.getIsDeferralAllowed() && isAllowedToContinue) {
-        stackDepth++;
-        RollupLogger.Instance.log('processing deferred rollups with stack depth: ' + stackDepth + ', rollup control:', this.rollupControl, LoggingLevel.DEBUG);
+        this.stackDepth++;
+        RollupLogger.Instance.log(
+          'processing deferred rollups with stack depth: ' +
+          this.stackDepth +
+          ', rollup control:',
+          this.rollupControl,
+          LoggingLevel.DEBUG
+        );
         this.setIsDeferralAllowed(isAllowedToContinue);
 
         this.rollups.clear();
@@ -742,6 +745,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (this.calcItems == null) {
       return lookupFieldToCalcItems;
+    }
+    if (this.calcItemReplacer.hasProcessedMetadata(rollup.metadata) == false) {
+      this.calcItems = this.calcItemReplacer.replace(this.calcItems, rollup.metadata);
     }
     if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
       if (rollup.traversal == null) {
@@ -1121,7 +1127,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // by default this returns a "batched" (set) of rollups; we
         // just want the first (and only) inner rollup to perform the pseudo-delete
         RollupAsyncProcessor oldLookupsRollup = getProcessor(
-          new Set<Id>(),
+          new FilterResults(),
           roll.opFieldOnCalcItem,
           roll.lookupFieldOnCalcItem,
           roll.lookupFieldOnLookupObject,
@@ -1129,7 +1135,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           roll.lookupObj,
           roll.calcItemType,
           deleteOp,
-          null,
           this.invokePoint,
           this.rollupControl,
           roll.metadata
