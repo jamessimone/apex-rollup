@@ -2158,8 +2158,8 @@ global without sharing virtual class Rollup {
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
       if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
-        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
-          continue;
+        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) == null) {
+          rollupMetadatas.remove(index);
         }
       } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE && sObjectName == meta.LookupObject__c) {
         continue;
