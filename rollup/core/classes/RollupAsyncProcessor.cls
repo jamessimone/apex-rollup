@@ -339,7 +339,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private inherited sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
     private QueueableProcessor(
-      Rollup.FilterResults filterResults,
+      FilterResults filterResults,
       SObjectField opFieldOnCalcItem,
       SObjectField lookupFieldOnCalcItem,
       SObjectField lookupFieldOnLookupObject,

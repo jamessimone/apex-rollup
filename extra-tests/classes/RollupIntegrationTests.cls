@@ -683,6 +683,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
+    Rollup.onlyUseMockMetadata = true;
     Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
     insert greatGrandparent;
 

@@ -17,6 +17,8 @@ global without sharing virtual class Rollup {
   private static RollupControl__mdt defaultControl;
   @TestVisible
   private static RollupControl__mdt specificControl;
+  @TestVisible
+  private static Boolean onlyUseMockMetadata = false;
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
@@ -1427,7 +1429,7 @@ global without sharing virtual class Rollup {
     // We need to clean up the Entity Definition / Field Definition
     // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
-      if (cachedMetadata == null) {
+      if (cachedMetadata == null && onlyUseMockMetadata == false) {
         cachedMetadata = [
           SELECT
             MasterLabel,
@@ -1473,6 +1475,8 @@ global without sharing virtual class Rollup {
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
         }
+      } else if (onlyUseMockMetadata) {
+        cachedMetadata = new List<Rollup__mdt>();
       }
       if (rollupMetadata != null) {
         cachedMetadata.addAll(rollupMetadata);
@@ -2158,20 +2162,25 @@ global without sharing virtual class Rollup {
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
       if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
-        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) == null) {
+        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
+          continue;
+        } else if (isNotTriggeredByMatchingObject(meta, sObjectName)) {
           rollupMetadatas.remove(index);
         }
       } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE && sObjectName == meta.LookupObject__c) {
         continue;
       } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE) {
         rollupMetadatas.remove(index);
-      } else if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
-        rollupMetadatas.remove(index);
-      } else if (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c) {
+      } else if (isNotTriggeredByMatchingObject(meta, sObjectName)) {
         rollupMetadatas.remove(index);
       }
     }
     return rollupMetadatas;
+  }
+
+  private static Boolean isNotTriggeredByMatchingObject(Rollup__mdt meta, String sObjectName) {
+    return (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) ||
+      (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c);
   }
 
   private static SObjectField getPartOfGrandparentChain(String grandParentFieldPath, SObjectType sObjectType) {
