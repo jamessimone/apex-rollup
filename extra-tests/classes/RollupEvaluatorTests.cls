@@ -974,4 +974,18 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 1)));
     System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 0)), 'cpa should not match');
   }
+
+  @IsTest
+  static void shouldWorkWithoutDecimalZeroesForNumbers() {
+    String whereClause = 'Amount = 50000';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 50000)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 50000.00)), 'Should work with or without decimal places');
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 50000.01)));
+
+    eval = new RollupEvaluator.WhereFieldEvaluator('Amount = 50.1', Opportunity.SObjectType);
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 50.10)), 'Should detect trailing zero correctly');
+  }
 }
