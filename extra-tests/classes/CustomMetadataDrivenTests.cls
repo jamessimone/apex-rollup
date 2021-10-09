@@ -1,6 +1,5 @@
 @IsTest
 private class CustomMetadataDrivenTests {
-
   @TestSetup
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
@@ -88,5 +87,37 @@ private class CustomMetadataDrivenTests {
 
     parent = [SELECT DateField__c FROM RollupParent__c WHERE Id = :parent.Id];
     System.assertEquals(childOne.DateField__c, parent.DateField__c);
+  }
+
+  @IsTest
+  static void shouldRunCorrectlyForGrandparentReparenting() {
+    Account greatGrandparent = new Account(Name = 'Great-grandparent');
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = secondGreatGrandparent.Id);
+    insert new List<ParentApplication__c>{ grandParent, secondGrandparent };
+
+    Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = parent.Id, Name = greatGrandparent.Name);
+    ApplicationLog__c secondChild = new ApplicationLog__c(Application__c = secondParent.Id, Name = secondGreatGrandparent.Name);
+    insert new List<ApplicationLog__c>{ child, secondChild };
+
+    child = new ApplicationLog__c(Id = child.Id, Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
+    secondChild = new ApplicationLog__c(Id = secondChild.Id, Name = 'Reparenting deux', Application__c = parent.Id);
+
+    Test.startTest();
+    update new List<ApplicationLog__c>{ child, secondChild };
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+
+    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
+    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
   }
 }

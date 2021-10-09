@@ -21,12 +21,12 @@ You have several different options when it comes to making use of `Rollup`:
 
 ## Deployment
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Shn7AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si03AAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Shn7AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si03AAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -159,9 +159,9 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Max Number Of Queries` - (defaults to 50) - Configure this number to decide how many queries Rollup is allowed to issue before restarting in another context. Consider the downstream query needs when your parent objects are updated when configuring this field. By safely requeueing Rollup in conjunction with this number, we ensure no query limit is ever hit.
 - `Max Rollup Retries` - (defaults to 100) - Only configurable on the Org Default record. Use in conjunction with `Max Query Rows`. This determines the maximum possible rollup jobs (either batched or queued) that can be spawned from a single overall rollup operation due to the prior one(s) exceeding the configured query limit.
 - `Batch Chunk Size` - (defaults to 2000) - The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default for batch jobs.
-- `Is Rollup Logging Enabled` - (defaults to false) - Check this box in order to debug your rollups. Debug information is included in a few mission-critical pieces of Rollup to provide you with more information about where exactly an error might be occurring, should you encounter one.
+- `Is Rollup Logging Enabled` - (defaults to false) - Check this box in order to debug your rollups. Debug information is included in a few mission-critical pieces of Rollup to provide you with more information about where exactly an error might be occurring, should you encounter one. For more information, see the [Rollup Plugins](#rollup-plugins) section
 - `Is Merge Reparenting Enabled` - (defaults to true) - By default, if there is an `after delete` trigger context for Account / Case / Contact / Lead where Rollup is being used and one or more of those records is merged, Rollup goes and updates any children records from the old lookup to the new lookup automatically prior to recalculating rollup values. If you have pre-existing merge handling covered in your org by some other means, you should disable this checkbox and ensure that Rollup is only called _after_ your pre-existing merge handling has run.
-- `Rollup Logger Name` - (optional) - By default, if `Is Rollup Logging Enabled` is checked, logs associated with Rollup can be seen by keeping the Salesforce Developer Console open while inserting/updating records, or by starting a Debug Trace for a user. You also have the option of customizing how logs are displayed/stored. For more information, see the [Rollup Plugins](#rollup-plugins) section.
+- `Replace Calc Items Async When Over Count` - (defaults to 1) - in some instances, calc items passed into rollup need to be requeried - either to get additional fields (in the case of polymorphic queries), or if parent-level filters have been added to any rollup's `Calc Item Where Clause`. For these cases, we want to avoid adding unncessary queries to the sync portion of the run; we also want to avoid a slowdown in the sync processing time that `Rollup` requires. You can change this number from the default of 1 to 0 if you want any necessary replacement to _always_ happen in the async scope.
 
 ### Flow / Process Builder Invocable
 

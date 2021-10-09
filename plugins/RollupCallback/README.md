@@ -1,11 +1,11 @@
 # Rollup Callback Plugin
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShTJAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShztAAC">
   <img alt="Deploy to Salesforce"
        src="../../media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShTJAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShztAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="../../media/deploy-package-to-sandbox.png">
 </a>
@@ -43,7 +43,7 @@ export default class RollupChangeNotifier extends LightningElement {
 <!-- in rollupChangeNotifier.js-meta.xml -->
 <?xml version="1.0" encoding="UTF-8"?>
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>52.0</apiVersion>
+    <apiVersion>53.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Rollup Change Notifier</masterLabel>
     <targets>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ReplaceCalcItemsAsyncWhenOverCount__c</fullName>
+    <description>Sometimes, the calc items passed into rollup need to be re-queried for - this can happen if you have a polymorphic where clause, or if your where clause contains parent-level filters. This number dictates when those requeries happen before rollup kicks off, or afterwards.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Sometimes, the calc items passed into rollup need to be re-queried for - this can happen if you have a polymorphic where clause, or if your where clause contains parent-level filters. This number dictates when those requeries happen before rollup kicks off, or afterwards.</inlineHelpText>
+    <label>Replace Calc Items Async When Over Count</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

@@ -17,6 +17,8 @@ global without sharing virtual class Rollup {
   private static RollupControl__mdt defaultControl;
   @TestVisible
   private static RollupControl__mdt specificControl;
+  @TestVisible
+  private static Boolean onlyUseMockMetadata = false;
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
@@ -36,6 +38,7 @@ global without sharing virtual class Rollup {
   protected Boolean isNoOp;
   protected Boolean isCDCUpdate = false;
   protected Integer queryCount;
+  protected RollupCalcItemReplacer calcItemReplacer;
 
   // Lazy-load section. Lots of additional lines, but with the benefit that we keep the heap size down for instances of Rollup
   // that never reference these variables
@@ -169,7 +172,7 @@ global without sharing virtual class Rollup {
     DELETE_LAST
   }
 
-  private class FilterResults {
+  public class FilterResults {
     public FilterResults() {
       this.matchingItemIds = new Set<Id>();
     }
@@ -234,6 +237,7 @@ global without sharing virtual class Rollup {
   protected Rollup(InvocationPoint invokePoint) {
     this.invokePoint = invokePoint;
     this.rollupControl = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
+    this.calcItemReplacer = new RollupCalcItemReplacer(this.rollupControl);
     this.isConductor = true;
     // a batch only becomes valid if other Rollups are added to it
     this.isNoOp = true;
@@ -596,6 +600,7 @@ global without sharing virtual class Rollup {
     Map<Rollup__mdt, FlowInputWrapper> metaToInput = new Map<Rollup__mdt, FlowInputWrapper>();
     for (FlowInput flowInput : flowInputs) {
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
+      RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.DEBUG);
 
       FlowOutput flowOutput = new FlowOutput();
       if (flowInput.recordsToRollup?.isEmpty() != false) {
@@ -626,8 +631,6 @@ global without sharing virtual class Rollup {
 
     for (Rollup__mdt rollupMeta : metaToInput.keySet()) {
       FlowInputWrapper wrapper = metaToInput.get(rollupMeta);
-      RollupLogger.Instance.log('processing invocable data:', wrapper.flowInput, LoggingLevel.DEBUG);
-
       List<Rollup__mdt> metas = new List<Rollup__mdt>{ rollupMeta };
       processCustomMetadata(
         localRollups,
@@ -1325,7 +1328,7 @@ global without sharing virtual class Rollup {
     List<SObject> cdcCalcItems = Database.query(queryString);
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
-    Rollup rollupToReturn = runFromApex(rollupMetadata, null, cdcCalcItems, cdcCalcItemsMap);
+    Rollup rollupToReturn = runFromApex(matchingMetadata, null, cdcCalcItems, cdcCalcItemsMap);
     // because CDC is async, the DB will always be updated by the time we get there
     // for update, that means we always have to trigger a full recalc
     // the performance downsides should be negligible, given that we're already within an async context
@@ -1426,7 +1429,7 @@ global without sharing virtual class Rollup {
     // We need to clean up the Entity Definition / Field Definition
     // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
-      if (cachedMetadata == null) {
+      if (cachedMetadata == null && onlyUseMockMetadata == false) {
         cachedMetadata = [
           SELECT
             MasterLabel,
@@ -1472,6 +1475,8 @@ global without sharing virtual class Rollup {
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
         }
+      } else if (onlyUseMockMetadata) {
+        cachedMetadata = new List<Rollup__mdt>();
       }
       if (rollupMetadata != null) {
         cachedMetadata.addAll(rollupMetadata);
@@ -1821,6 +1826,7 @@ global without sharing virtual class Rollup {
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         wrappedMeta = new RollupMetadata();
         wrappedMeta.recordCount = 0;
+        wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
       } else {
         wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       }
@@ -1870,7 +1876,8 @@ global without sharing virtual class Rollup {
       // TODO - it would be nice to support the singular recalc button with grandparent rollups
       // but doing so requires that we validate the query ahead of time (to remove errors with trying to filter on
       // polymorphic fields). as it stands, this guard clause is a little TOO safe
-      wrappedMeta.whereClause += fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
+      String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
+      wrappedMeta.whereClause += additionalClause;
     }
   }
 
@@ -2159,18 +2166,23 @@ global without sharing virtual class Rollup {
       if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
         if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
           continue;
+        } else if (isNotTriggeredByMatchingObject(meta, sObjectName)) {
+          rollupMetadatas.remove(index);
         }
       } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE && sObjectName == meta.LookupObject__c) {
         continue;
-      } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE && sObjectName == meta.CalcItem__c) {
+      } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE) {
         rollupMetadatas.remove(index);
-      } else if (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) {
-        rollupMetadatas.remove(index);
-      } else if (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c) {
+      } else if (isNotTriggeredByMatchingObject(meta, sObjectName)) {
         rollupMetadatas.remove(index);
       }
     }
     return rollupMetadatas;
+  }
+
+  private static Boolean isNotTriggeredByMatchingObject(Rollup__mdt meta, String sObjectName) {
+    return (meta.CalcItem__c != sObjectName && meta.IsRollupStartedFromParent__c == false) ||
+      (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c);
   }
 
   private static SObjectField getPartOfGrandparentChain(String grandParentFieldPath, SObjectType sObjectType) {
@@ -2241,7 +2253,7 @@ global without sharing virtual class Rollup {
       }
       setControlToSyncForSingularParentRecalcs(localControl, rollupInvokePoint);
 
-      FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType);
+      FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType, rollupConductor.calcItemReplacer);
 
       loadRollups(
         rollupFieldOnCalcItem,
@@ -2251,9 +2263,8 @@ global without sharing virtual class Rollup {
         lookupSObjectType,
         sObjectType, // calc item SObjectType
         rollupOp,
-        filterResults.matchingItemIds,
+        filterResults,
         rollupConductor,
-        filterResults.eval,
         localControl,
         rollupInvokePoint,
         rollupMetadata
@@ -2431,15 +2442,14 @@ global without sharing virtual class Rollup {
     SObjectType lookupSObjectType,
     SObjectType calcItemSObjectType,
     Op rollupOp,
-    Set<Id> matchingCalcItemIds,
+    FilterResults filterResults,
     Rollup rollupConductor,
-    Evaluator eval,
     RollupControl__mdt rollupControl,
     InvocationPoint invokePoint,
     Rollup__mdt rollupMetadata
   ) {
     RollupAsyncProcessor processor = RollupAsyncProcessor.getProcessor(
-      matchingCalcItemIds,
+      filterResults,
       rollupFieldOnCalcItem,
       lookupFieldOnCalcItem,
       lookupFieldOnOpObject,
@@ -2447,7 +2457,6 @@ global without sharing virtual class Rollup {
       lookupSObjectType,
       calcItemSObjectType,
       rollupOp,
-      eval,
       invokePoint,
       rollupControl,
       rollupMetadata
@@ -2498,6 +2507,7 @@ global without sharing virtual class Rollup {
           MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
           MaxRollupRetries__c = 100,
           MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
+          ReplaceCalcItemsAsyncWhenOverCount__c = 1,
           ShouldAbortRun__c = false,
           ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable
         );
@@ -2509,12 +2519,19 @@ global without sharing virtual class Rollup {
     return cachedOrgDefault;
   }
 
-  private static FilterResults filter(List<SObject> calcItems, Map<Id, SObject> oldCalcItems, Evaluator eval, Rollup__mdt metadata, SObjectType calcItemType) {
+  private static FilterResults filter(
+    List<SObject> calcItems,
+    Map<Id, SObject> oldCalcItems,
+    Evaluator eval,
+    Rollup__mdt metadata,
+    SObjectType calcItemType,
+    RollupCalcItemReplacer calcItemReplacer
+  ) {
     FilterResults results = new FilterResults();
-    calcItems = replaceCalcItemsForPolymorphicWhereClause(calcItems, metadata);
+    calcItems = calcItemReplacer.replace(calcItems, metadata);
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
 
-    // while we iterate through calcItems, the only possible mutation to that array is through "replaceCalcItemsForPolymorphicWhereClause"
+    // while we iterate through calcItems, the only possible mutation to that array is through "replaceCalcItems"
     // otherwise, for custom evaluators / where clauses / calc item changed fields, etc ... mutating the initial "calcItems" passed in would
     // mean inadvertently filtering the items for other rollups on the same child SObject type. For this reason, we use the cloned "matchingItems"
     // list to avoid unintended side-effects
@@ -2522,7 +2539,7 @@ global without sharing virtual class Rollup {
       // if the where clause would exclude something, but we're in an update
       // and the old value wouldn't have been excluded, pass it on through
       // to be handled further downstream
-      if (results.eval.matches(item)) {
+      if (results.eval.matches(item) || calcItemReplacer.hasProcessedMetadata(metadata) == false) {
         results.matchingItemIds.add(item.Id);
       } else if (oldCalcItems != null && oldCalcItems.containsKey(item.Id) && results.eval.matches(oldCalcItems.get(item.Id))) {
         results.matchingItemIds.add(item.Id);
@@ -2531,86 +2548,6 @@ global without sharing virtual class Rollup {
       }
     }
     return results;
-  }
-
-  private static List<SObject> replaceCalcItemsForPolymorphicWhereClause(List<SObject> calcItems, Rollup__mdt metadata) {
-    final String typeField = '.Type';
-    final String owner = 'Owner.';
-
-    // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
-    SObject firstItem = calcItems[0];
-    if (String.isBlank(metadata?.CalcItemWhereClause__c)) {
-      return calcItems;
-    }
-    Boolean hasOwnerClause = metadata.CalcItemWhereClause__c.contains(owner);
-    Boolean hasTypeClause = metadata.CalcItemWhereClause__c.contains(typeField);
-    SObjectType sObjectType = firstItem.getSObjectType();
-    Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
-    Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
-
-    if (hasPolyMorphicFields) {
-      if (hasTypeClause == false && hasOwnerClause == false) {
-        return calcItems;
-      }
-
-      // the calc item where clause contains at least one polymorphic field, but before re-querying we validate whether or not the fields are already provided
-      Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
-      Set<String> additionalQueryFields = new Set<String>();
-      List<String> optionalWhereClauses = new List<String>();
-
-      processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata);
-
-      // we have to manually iterate through these fields because the "fieldMap" keySet is all in lowercase because it's ... special
-      // and only responds properly to proper-cased fields when you call the map "containsKey" method - if the field names in the keySet were
-      // proper-cased, we could just call additionalQueryFields.addAll(populatedFields.keySet().removeAll(fieldMap.keySet())) - alas
-      // this awesome one-liner doesn't work for us
-      for (String fieldName : populatedFields.keySet()) {
-        if (fieldMap.containsKey(fieldName)) {
-          additionalQueryFields.add(fieldName);
-        }
-      }
-
-      String queryString = RollupQueryBuilder.Current.getQuery(
-        sObjectType,
-        new List<String>(additionalQueryFields),
-        'Id',
-        '=',
-        String.join(optionalWhereClauses, ' AND ')
-      );
-      List<String> objIds = new List<String>();
-      for (SObject record : calcItems) {
-        if (String.isNotBlank(record.Id)) {
-          objIds.add(record.Id);
-        }
-      }
-      calcItems = Database.query(queryString);
-    }
-    return calcItems;
-  }
-
-  private static void processWhereClauseForDownstreamEvals(
-    List<String> optionalWhereClauses,
-    Set<String> additionalQueryFields,
-    SObjectType sObjectType,
-    String typeField,
-    String owner,
-    Rollup__mdt metadata
-  ) {
-    if (String.isBlank(metadata.CalcItemWhereClause__c)) {
-      return;
-    }
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, sObjectType);
-    for (String whereClause : whereEval.getWhereClauses()) {
-      if (whereClause.contains(typeField) || whereClause.contains(owner)) {
-        List<String> splitWheres = whereClause.split(' ');
-        if (splitWheres.size() > 0) {
-          additionalQueryFields.add(splitWheres[0]);
-        }
-        // "consume" the metadata where clause for downstream evaluators
-        metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c.replace(whereClause, '');
-        optionalWhereClauses.add(whereClause);
-      }
-    }
   }
 
   private without sharing class RollupSchedulable implements System.Schedulable {

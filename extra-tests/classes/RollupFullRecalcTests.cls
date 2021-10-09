@@ -11,7 +11,7 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldSortFullRecalcsToEnd() {
     RollupAsyncProcessor actualProcessor = RollupAsyncProcessor.getProcessor(
-      new Set<Id>(),
+      new Rollup.FilterResults(),
       Contact.Id,
       Contact.AccountId,
       Account.Id,
@@ -19,7 +19,6 @@ private class RollupFullRecalcTests {
       Account.SObjectType,
       Contact.SObjectType,
       Rollup.Op.SUM,
-      null,
       Rollup.InvocationPoint.FROM_APEX,
       null,
       null
@@ -686,6 +685,50 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
+  }
+
+  @IsTest
+  static void shouldNotBatchForFullRecalcWhenWhereClausePlacesItemsUnderneathThreshold() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixQueue', ParentId = acc.Id, PreferenceRank = 2)
+    };
+    insert cpas;
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 2, // this is the important part; that only the qualified cpa ends up counting
+      MaxNumberOfQueries__c = 5,
+      BatchChunkSize__c = 10,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      IsRollupLoggingEnabled__c = true,
+      MaxParentRowsUpdatedAtOnce__c = 2,
+      MaxRollupRetries__c = 1
+    );
+
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'PreferenceRank = 2'
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, acc.AnnualRevenue);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable'].Status);
   }
 
   @IsTest

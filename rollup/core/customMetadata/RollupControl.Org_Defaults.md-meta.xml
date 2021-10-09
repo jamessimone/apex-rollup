@@ -31,6 +31,10 @@
         <value xsi:type="xsd:double">20.0</value>
     </values>
     <values>
+        <field>ReplaceCalcItemsAsyncWhenOverCount__c</field>
+        <value xsi:type="xsd:double">1.0</value>
+    </values>
+    <values>
         <field>ShouldAbortRun__c</field>
         <value xsi:type="xsd:boolean">false</value>
     </values>

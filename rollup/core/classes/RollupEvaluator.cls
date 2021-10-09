@@ -539,7 +539,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (this.hasValues == null) {
             this.hasValues = true;
           }
-
           // coerce Boolean values to their standard representation
           if (val.equalsIgnoreCase(TRUE_VAL)) {
             val = TRUE_VAL;
@@ -556,18 +555,31 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode')
+    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyCatchBlock')
     public Boolean equals(Object o) {
       SObject item = (SObject) o;
       Boolean isEqual = true;
 
       Object originalValue = this.getFieldValue(item, this.fieldName, this.sObjectType);
       String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
-      // special case for currency/multi-decimal situations where zero is being compared to
-      // but the comparison value has no decimals
-      if (storedValue?.replace('.', '')?.containsOnly('0') == true && this.values.contains('0')) {
-        storedValue = '0';
+
+      if (originalValue instanceof Decimal) {
+        for (Integer index = 0; index < this.values.size(); index++) {
+          Object val = this.values[index];
+          try {
+            String stringVal = String.valueOf(val);
+            Decimal decimalVal = Decimal.valueOf(stringVal);
+            if (decimalVal == originalValue) {
+              originalValue = decimalVal;
+              storedValue = stringVal;
+              break;
+            }
+          } catch (Exception ex) {
+            // do nothing
+          }
+        }
       }
+
       switch on this.criteria {
         when '=', '!=' {
           isEqual = this.values.contains(storedValue) || this.hasValues == false && String.isBlank(storedValue);
@@ -656,12 +668,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObject parentSObject = item.getSObject(originalName);
       // the polymorphic "Type" field won't show up in the map of valid fields for an object
       // but if the value's been queried for, it's valid to pass back
-      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type' && parentSObject.getPopulatedFieldsAsMap().containsKey('Type')) {
+      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type' && parentSObject?.getPopulatedFieldsAsMap().containsKey('Type') == true) {
         return parentSObject.get(fieldNameParts[0]);
       } else if (fieldNameParts.isEmpty() == false) {
         return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
       } else {
-        return parentSObject.get(originalName);
+        return parentSObject?.get(originalName);
       }
     }
 

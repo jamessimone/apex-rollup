@@ -501,7 +501,7 @@
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>52.0</apiVersion>
+    <apiVersion>53.0</apiVersion>
     <assignments>
         <name>Add_case_and_prior_case_to_collections</name>
         <label>Add case and prior case to collections</label>

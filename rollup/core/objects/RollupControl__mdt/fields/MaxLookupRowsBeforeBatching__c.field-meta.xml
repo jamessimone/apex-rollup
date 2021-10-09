@@ -3,7 +3,7 @@
     <fullName>MaxLookupRowsBeforeBatching__c</fullName>
     <description>If a Rollup Limit is not supplied, this defaults to 3000</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>If a Rollup Limit is not supplied, this defaults to 3000</inlineHelpText>
     <label>Max Lookup Rows Before Batching</label>
     <precision>18</precision>

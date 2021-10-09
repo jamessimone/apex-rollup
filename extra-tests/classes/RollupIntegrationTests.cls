@@ -502,6 +502,7 @@ private class RollupIntegrationTests {
   static void shouldFindGreatGrandParentRelationshipBetweenCustomObjects() {
     // The CurrencyIsoCode field isn't directly used here, but the field will be automatically included by Rollup's queries,
     // so include it on the accounts so the asserts below show that the accounts do, in fact, match
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     RollupCurrencyInfo.setCurrencyIsoCode(greatGrandparent, 'USD');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
@@ -581,56 +582,6 @@ private class RollupIntegrationTests {
 
     // basically validates that traversal.isAbortedEarly correctly does its job in RollupRleationshipFieldFinder.cls
     System.assert(true, 'Should make it here without exception being thrown');
-  }
-
-  @IsTest
-  static void shouldRunCorrectlyForGrandparentReparenting() {
-    Account greatGrandparent = new Account(Name = 'Great-grandparent');
-    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
-
-    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
-    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = secondGreatGrandparent.Id);
-    insert new List<ParentApplication__c>{ grandParent, secondGrandparent };
-
-    Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
-    Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
-
-    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
-    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
-    List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, secondChild };
-    insert appLogs;
-
-    Rollup.records = appLogs;
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        CalcItem__c = 'ApplicationLog__c',
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'Application__c',
-        LookupObject__c = 'Account',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupOperation__c = 'CONCAT_DISTINCT',
-        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'
-      )
-    };
-    Rollup.shouldRun = true;
-    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, SObject>{
-      child.Id => new ApplicationLog__c(Id = child.Id, Application__c = parent.Id, Name = greatGrandparent.Name),
-      secondChild.Id => new ApplicationLog__c(Id = secondChild.Id, Application__c = secondParent.Id, Name = secondGreatGrandparent.Name)
-    };
-
-    Test.startTest();
-    Rollup.runFromTrigger();
-    Test.stopTest();
-
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
-
-    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
-    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
   }
 
   @IsTest
@@ -732,6 +683,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
+    Rollup.onlyUseMockMetadata = true;
     Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
     insert greatGrandparent;
 
@@ -939,6 +891,47 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldProperlyFilterParentFields() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Account matchingAccount = new Account(Name = 'Matching');
+    insert matchingAccount;
+
+    List<SObject> opps = new List<Opportunity>{
+      new Opportunity(Name = 'Non Match 0', AccountId = acc.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Non Match 1', AccountId = acc.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Match 0', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Match 1', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
+      new Opportunity(Name = 'Match 2', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today())
+    };
+    insert opps;
+
+    Rollup.records = opps;
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Account.Name != \'' + acc.Name + '\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(null, acc.AnnualRevenue, 'Calc item where clause should have prevented account from being updated');
+    matchingAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :matchingAccount.Id];
+    System.assertEquals(1500, matchingAccount.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldNotBlowUpForRecursiveCheckOnFormulaFields() {
     String oppId = RollupTestUtils.createId(Opportunity.SObjectType);
     Opportunity opp = new Opportunity(Amount = 15, AccountId = RollupTestUtils.createId(Account.SObjectType), Id = oppId);
@@ -1052,7 +1045,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
-        // validate calc item where clause works
+        // validate polymorphic calc item where clause works
         CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
@@ -1522,7 +1515,7 @@ private class RollupIntegrationTests {
     indy = [SELECT LastName, ChildrenCount FROM Individual];
     System.assertEquals(1, acc.AnnualRevenue, 'Annual revenue should have been averaged properly');
     System.assertEquals(1, indy.ChildrenCount, 'Children count should have been counted correctly');
-    System.assertEquals('Indy, Two',  indy.LastName, 'LastName should have been concat properly');
+    System.assertEquals('Indy, Two', indy.LastName, 'LastName should have been concat properly');
   }
 
   @IsTest
@@ -1626,8 +1619,11 @@ private class RollupIntegrationTests {
   static void shouldFilterNonMatchingRollupsOutOfBatch() {
     Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
     insert con;
+    RollupControl__mdt control = RollupControl__mdt.getInstance('Org_Defaults');
+    Rollup.FilterResults results = new Rollup.FilterResults();
+    results.matchingItemIds.add(con.Id);
     RollupAsyncProcessor batchProcessor = new RollupAsyncProcessor(
-      new Set<Id>{ con.Id },
+      results,
       Contact.FirstName,
       Contact.Id,
       Contact.Id,
@@ -1635,9 +1631,8 @@ private class RollupIntegrationTests {
       Campaign.SObjectType,
       Contact.SObjectType,
       Rollup.Op.CONCAT,
-      null,
       Rollup.InvocationPoint.FROM_APEX,
-      RollupControl__mdt.getInstance('Org_Defaults'),
+      control,
       new Rollup__mdt(
         CalcItem__c = 'Contact',
         RollupFieldOnCalcItem__c = 'FirstName',
