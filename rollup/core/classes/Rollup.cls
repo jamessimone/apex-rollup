@@ -1826,6 +1826,7 @@ global without sharing virtual class Rollup {
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         wrappedMeta = new RollupMetadata();
         wrappedMeta.recordCount = 0;
+        wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
       } else {
         wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       }
@@ -1875,7 +1876,8 @@ global without sharing virtual class Rollup {
       // TODO - it would be nice to support the singular recalc button with grandparent rollups
       // but doing so requires that we validate the query ahead of time (to remove errors with trying to filter on
       // polymorphic fields). as it stands, this guard clause is a little TOO safe
-      wrappedMeta.whereClause += fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
+      String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
+      wrappedMeta.whereClause += additionalClause;
     }
   }
 
