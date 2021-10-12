@@ -42,30 +42,35 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     this.log(logString, null, logLevel);
   }
 
-  @SuppressWarnings('PMD.AvoidDebugStatements')
-  public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
+  public void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
-      String appended = this.getLogStringFromObject(logObject);
-      List<String> messages = new List<String>{ logString };
-      if (String.isNotBlank(appended)) {
-        messages.add(appended);
-      }
-      // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
-      // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
-      List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
-      while (
-        innerStacktraces.isEmpty() == false &&
-        (innerStacktraces.get(0).contains('Class.RollupLogger.log') || innerStacktraces.get(0).contains('Class.RollupLogger.CombinedLogger.log'))
-      ) {
-        innerStacktraces.remove(0);
-      }
-      messages.add(String.join(innerStacktraces, '\n'));
-      System.debug(logLevel, 'Rollup: ' + String.join(messages, '\n') + '\n');
+      this.innerLog(logString, logObject, logLevel);
     }
   }
 
   public virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
+  }
+
+  @SuppressWarnings('PMD.AvoidDebugStatements')
+  protected virtual void innerLog(String logString, Object logObject, LoggingLevel logLevel) {
+    String appended = this.getLogStringFromObject(logObject);
+    List<String> messages = new List<String>{ logString };
+    if (String.isNotBlank(appended)) {
+      messages.add(appended);
+    }
+    // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
+    // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
+    List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
+    while (
+      innerStacktraces.isEmpty() == false &&
+      (innerStacktraces.get(0).contains('Class.RollupLogger.log') || innerStacktraces.get(0).contains('Class.RollupLogger.CombinedLogger.log')) ||
+      innerStacktraces.get(0).contains('Class.RollupLogger.innerLog')
+    ) {
+      innerStacktraces.remove(0);
+    }
+    messages.add(String.join(innerStacktraces, '\n'));
+    System.debug(logLevel, 'Rollup: ' + String.join(messages, '\n') + '\n');
   }
 
   private RollupPluginParameter__mdt loggingLevelPluginParameter {

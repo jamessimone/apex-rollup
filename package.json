@@ -36,13 +36,17 @@
     "aura"
   ],
   "scripts": {
+    "create:package:rollup": "sfdx force:package:version:create --package \"apex-rollup\" -w 20 -x -c",
+    "create:package:nebula:adapter": "sfdx force:package:version:create --package \"Apex Rollup - Nebula Logger\" -w 20 -x -c",
+    "create:package:logger": "sfdx force:package:version:create --package \"Apex Rollup - Custom Logger\" -w 20 -x -c",
+    "create:package:callback": "sfdx force:package:version:create --package \"Apex Rollup - Rollup Callback\" -w 20 -x -c",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "eslint **/lwc/**",
     "prepare": "husky install",
+    "prettier": "prettier",
     "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target . --engine pmd --severity-threshold 3",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
-    "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck",
-    "prettier": "prettier"
+    "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"
   }
 }

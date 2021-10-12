@@ -677,7 +677,22 @@ global without sharing virtual class Rollup {
   }
 
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
-    RollupSchedulable scheduledRollup = new RollupSchedulable(query, rollupObjectName, eval);
+    List<SObject> localCalcItems;
+    try {
+      localCalcItems = Database.query(query);
+    } catch (QueryException ex) {
+      throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
+    }
+    SObjectType calcItemType = localCalcItems.getSObjectType();
+    Rollup roll = getRollup(
+      getRollupMetadataBySObject(calcItemType),
+      calcItemType,
+      localCalcItems,
+      new Map<Id, SObject>(),
+      eval,
+      InvocationPoint.FROM_SCHEDULED
+    );
+    RollupSchedulable scheduledRollup = new RollupSchedulable(roll);
     return System.schedule(jobName, cronExp, scheduledRollup);
   }
 
@@ -2548,28 +2563,5 @@ global without sharing virtual class Rollup {
       }
     }
     return results;
-  }
-
-  private without sharing class RollupSchedulable implements System.Schedulable {
-    private final String query;
-    private final SObjectType rollupObject;
-    private final Evaluator eval;
-
-    public RollupSchedulable(String query, String rollupObjectName, Evaluator eval) {
-      this.query = query;
-      this.rollupObject = getSObjectFromName(rollupObjectName).getSObjectType();
-      this.eval = eval;
-      try {
-        Database.query(this.query);
-      } catch (QueryException ex) {
-        throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
-      }
-    }
-
-    public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> metadata = getRollupMetadataBySObject(this.rollupObject);
-      List<SObject> calcItems = Database.query(this.query);
-      getRollup(metadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, InvocationPoint.FROM_SCHEDULED).runCalc();
-    }
   }
 }

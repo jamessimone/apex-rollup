@@ -2,6 +2,7 @@
 private class RollupCustomObjectLoggerTests {
   @IsTest
   static void shouldSaveToRollupLog() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
     rollupCustomLogger.log('Test log', LoggingLevel.DEBUG);
     rollupCustomLogger.log('Second test log with record', new Account(), LoggingLevel.ERROR);
@@ -30,6 +31,7 @@ private class RollupCustomObjectLoggerTests {
 
   @IsTest
   static void shouldTruncateTooLongLogMessage() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     // if the message is too long for the platform event to fire - it simply won't fire!
     // this test is to ensure a RollupLogEntry__c is created
     RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
@@ -47,6 +49,7 @@ private class RollupCustomObjectLoggerTests {
 
   @IsTest
   static void shouldNotLogBelowSpecifiedLoggingLevel() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     // override whatever's included in the CMDT to ensure we arrive at this value deterministically
     RollupLogger.loggingLevelMock = new RollupPluginParameter__mdt(Value__c = LoggingLevel.DEBUG.name());
 
