@@ -313,7 +313,7 @@ public without sharing abstract class RollupCalculator {
         // break out of recursion if there's nothing to calculate
         this.returnVal = null;
       } else {
-        Rollup.Op baseOp = Rollup.opNameToOp.get(Rollup.getBaseOperationName(op.name()));
+        Rollup.Op baseOp = Rollup.Op.valueOf(Rollup.getBaseOperationName(op.name()));
         RollupCalculator calc = Factory.getCalculator(
           this.returnVal,
           baseOp,

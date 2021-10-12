@@ -92,13 +92,12 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
   }
 
   protected LoggingLevel getLogLevel() {
-    LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
+    LoggingLevel toReturn;
     String logLevelNameToSearch = this.loggingLevelPluginParameter != null ? this.loggingLevelPluginParameter.Value__c : toReturn.name();
-    for (LoggingLevel logLevel : System.LoggingLevel.values()) {
-      if (logLevel.name().equalsIgnoreCase(logLevelNameToSearch)) {
-        toReturn = logLevel;
-        break;
-      }
+    try {
+      toReturn = LoggingLevel.valueOf(logLevelNameToSearch);
+    } catch (Exception ex) {
+      toReturn = FALLBACK_LOGGING_LEVEL;
     }
     return toReturn;
   }

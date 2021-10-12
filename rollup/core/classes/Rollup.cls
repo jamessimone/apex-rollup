@@ -112,32 +112,6 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  public static final Map<String, Op> opNameToOp {
-    get {
-      if (opNameToOp == null) {
-        opNameToOp = new Map<String, Op>();
-        for (Op operation : Op.values()) {
-          opNameToOp.put(operation.name(), operation);
-        }
-      }
-      return opNameToOp;
-    }
-    set;
-  }
-
-  public static final Map<String, InvocationPoint> invokeNameToInvokePoint {
-    get {
-      if (invokeNameToInvokePoint == null) {
-        invokeNameToInvokePoint = new Map<String, InvocationPoint>();
-        for (InvocationPoint invocation : InvocationPoint.values()) {
-          invokeNameToInvokePoint.put(invocation.name(), invocation);
-        }
-      }
-      return invokeNameToInvokePoint;
-    }
-    set;
-  }
-
   @SuppressWarnings('PMD.UnusedLocalVariable')
   public enum Op {
     SUM,
@@ -364,7 +338,7 @@ global without sharing virtual class Rollup {
   @AuraEnabled
   global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
-    InvocationPoint localInvokePoint = invokeNameToInvokePoint.get(invokePointName);
+    InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
 
     Integer amountOfCalcItems = 0;
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
@@ -2238,7 +2212,7 @@ global without sharing virtual class Rollup {
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
-      Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
+      Op rollupOp = Op.valueOf(rollupMetadata.RollupOperation__c);
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField calcLookupField = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
 

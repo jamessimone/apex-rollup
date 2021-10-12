@@ -1122,7 +1122,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         String currentOp = getBaseOperationName(roll.op.name());
         String deleteOpName = 'DELETE_' + currentOp;
-        Op deleteOp = opNameToOp.get(deleteOpName);
+        Op deleteOp = Rollup.Op.valueOf(deleteOpName);
 
         // by default this returns a "batched" (set) of rollups; we
         // just want the first (and only) inner rollup to perform the pseudo-delete
