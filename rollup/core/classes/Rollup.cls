@@ -1815,7 +1815,9 @@ global without sharing virtual class Rollup {
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         wrappedMeta = new RollupMetadata();
         wrappedMeta.recordCount = 0;
-        wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
+        if (fullRecalcMetas.size() == 1) {
+          wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
+        }
       } else {
         wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       }
@@ -1826,7 +1828,7 @@ global without sharing virtual class Rollup {
           new List<String>{ 'Count()' },
           fullRecalcMeta.meta.LookupFieldOnLookupObject__c,
           '!=',
-          fullRecalcMeta.wrapper.getQuery()
+          wrappedMeta.whereClause
         );
         Integer localCount = getCountFromDb(countQuery, new Set<String>(), fullRecalcMeta.wrapper.recordIds);
         wrappedMeta.recordCount = localCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? localCount : wrappedMeta.recordCount + localCount;
@@ -1834,9 +1836,14 @@ global without sharing virtual class Rollup {
       typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
     }
 
+    final Integer maxQueryLength = 100000;
     List<Rollup> fullRecalcRollups = new List<Rollup>();
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
+      if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
+        wrappedMeta.whereClause = '';
+        wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+      }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, invokePoint);
       fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
@@ -1860,11 +1867,11 @@ global without sharing virtual class Rollup {
     if (
       wrappedMeta.whereClause.contains(':recordIds') == false &&
       wrappedMeta.recordIds.isEmpty() == false &&
-      String.isBlank(fullRecalcMeta.meta.GrandparentRelationshipFieldPath__c)
-    ) {
       // TODO - it would be nice to support the singular recalc button with grandparent rollups
       // but doing so requires that we validate the query ahead of time (to remove errors with trying to filter on
       // polymorphic fields). as it stands, this guard clause is a little TOO safe
+      String.isBlank(fullRecalcMeta.meta.GrandparentRelationshipFieldPath__c)
+    ) {
       String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
       wrappedMeta.whereClause += additionalClause;
     }

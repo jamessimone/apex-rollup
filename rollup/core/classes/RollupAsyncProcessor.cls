@@ -1120,12 +1120,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           continue;
         }
 
-        String currentOp = getBaseOperationName(roll.op.name());
-        String deleteOpName = 'DELETE_' + currentOp;
-        Op deleteOp = Rollup.Op.valueOf(deleteOpName);
+        Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
 
-        // by default this returns a "batched" (set) of rollups; we
-        // just want the first (and only) inner rollup to perform the pseudo-delete
         RollupAsyncProcessor oldLookupsRollup = getProcessor(
           new FilterResults(),
           roll.opFieldOnCalcItem,
@@ -1139,6 +1135,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           this.rollupControl,
           roll.metadata
         );
+        oldLookupsRollup.calcItems = reparentedCalcItems;
 
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
 
