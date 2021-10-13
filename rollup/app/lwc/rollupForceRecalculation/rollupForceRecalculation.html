@@ -10,11 +10,11 @@
       <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
         <template if:true={isCMDTRecalc}>
           <lightning-combobox
-          name="Select Calc Item"
-          label="Select Calc Item"
-          value={selectedMetadata}
-          options={rollupMetadataOptions}
-          onchange={handleComboChange}
+            name="Select Calc Item"
+            label="Select Calc Item"
+            value={selectedMetadata}
+            options={rollupMetadataOptions}
+            onchange={handleComboChange}
           ></lightning-combobox>
           <template if:true={selectedMetadataCMDTRecords}>
             <lightning-datatable
@@ -119,6 +119,7 @@
             oncommit={handleChange}
           >
           </lightning-input>
+          <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
           <lightning-textarea
             class="slds-col slds-form-element slds-form-element_horizontal"
             onchange={handleChange}

@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "versionNumber": "1.3.8.0",
-            "versionDescription": "Adds parent-level filtering via Calc Item Where Clause support to Apex Rollup, fixed full recalc issue reported by jcart, fixed a Grandparent rollup bug reported by Ryan Gramer",
+            "versionDescription": "Fix Schedulable rollup classes, rollup loggers now respect Is Rollup Logging Enabled, fix some broken query formatting",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"
