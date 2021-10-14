@@ -731,6 +731,8 @@ private class RollupFullRecalcTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable'].Status);
   }
 
+  // TODO - write test for mutually exclusive CMDT on bulk full recalc route, which was "fixed" in v1.3.8 (by removing the where clauses from full recalc queries being made)
+
   @IsTest
   static void shouldNotBlowUpOnMassiveQuery() {
     String endOfWhereClause = '2'.repeat(100001);
