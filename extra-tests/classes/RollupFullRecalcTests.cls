@@ -731,7 +731,44 @@ private class RollupFullRecalcTests {
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable'].Status);
   }
 
-  // TODO - write test for mutually exclusive CMDT on bulk full recalc route, which was "fixed" in v1.3.8 (by removing the where clauses from full recalc queries being made)
+  @IsTest
+  static void shouldAllowForMutuallyExclusiveWhereClausesOnBulkFullRecalc() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    Task appliesToFirst = new Task(Subject = 'Task for first CMDT', WhatId = acc.Id);
+    Task appliesToSecond = new Task(Subject = 'Task for second CMDT', WhatId = acc.Id);
+    insert new List<Task>{ appliesToFirst, appliesToSecond };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT',
+        CalcItemWhereClause__c = 'Subject = \'' + appliesToFirst.Subject + '\' ||| WhatId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItemWhereClause__c = 'Subject = \'' + appliesToSecond.Subject + '\''
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+
+    acc = [SELECT AccountNumber, Name FROM Account WHERE Id = :acc.Id];
+
+    System.assertEquals(appliesToFirst.Subject, acc.AccountNumber);
+    System.assertEquals(appliesToSecond.Subject, acc.Name);
+  }
 
   @IsTest
   static void shouldNotBlowUpOnMassiveQuery() {
