@@ -6,11 +6,14 @@ public class RollupCustomObjectLogger extends RollupLogger {
     super();
   }
 
-  public override void log(String logString, LoggingLevel logLevel) {
-    if (this.getLogLevel().ordinal() > logLevel.ordinal()) {
-      return; // it's a no-op
-    }
-    else if (logString.length() >= MAX_LENGTH) {
+  public override void save() {
+    EventBus.publish(this.rollupLogEvents);
+    this.rollupLogEvents.clear();
+  }
+
+  protected override void innerLog(String logString, Object logObject, LoggingLevel logLevel) {
+    logString = logString + '\n' + this.getLogStringFromObject(logObject);
+    if (logString.length() >= MAX_LENGTH) {
       // normally we could do this with the AllowFieldTruncation property on Database.DMLOptions
       // but even though you can add DMLOptions to platform event objects, they don't seem to do anything -
       // and if any of the field's text lengths is exceeded, the platform event just silently fails to trigger - neat!
@@ -23,16 +26,6 @@ public class RollupCustomObjectLogger extends RollupLogger {
       TransactionId__c = Request.getCurrent().getRequestId()
     );
     this.rollupLogEvents.add(logEvent);
-  }
-
-  public override void log(String logString, Object logObject, LoggingLevel logLevel) {
-    String fullLogString = logString + '\n' + this.getLogStringFromObject(logObject);
-    this.log(fullLogString, logLevel);
-  }
-
-  public override void save() {
-    EventBus.publish(this.rollupLogEvents);
-    this.rollupLogEvents.clear();
   }
 
   protected override RollupPluginParameter__mdt getLoggingLevelParameter() {

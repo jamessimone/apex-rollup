@@ -24,6 +24,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   ) {
     super(getRefinedQueryString(queryString, matchingMeta), invokePoint, matchingMeta, calcItemType, recordIds);
     this.overridesRunCalc = true;
+    this.isNoOp = false;
   }
 
   public override String runCalc() {

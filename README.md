@@ -4,7 +4,7 @@
 [![Rollup Code Coverage](https://codecov.io/gh/jamessimone/apex-rollup/branch/main/graph/badge.svg)](https://codecov.io/gh/jamessimone/apex-rollup)
 [![License](https://img.shields.io/npm/l/scanner.svg)](https://github.com/jamessimone/apex-rollup/blob/main/package.json)
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#replacing-dlrs)!
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#replacing-dlrs)!
 
 ## Features
 
@@ -21,12 +21,12 @@ You have several different options when it comes to making use of `Rollup`:
 
 ## Deployment
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si03AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si24AAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si03AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si24AAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -38,7 +38,7 @@ Don't miss the [links to install the Rollup plugins!](#rollup-plugins)
 
 ## Setup
 
-As of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), `Rollup` now ships with a custom hierarchy setting, `Rollup Settings`, which you will have to create an Org Wide Default entry for by going to:
+As of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), `Rollup` ships with a custom hierarchy setting, `Rollup Settings`, which you will have to create an Org Wide Default entry for by going to:
 
 1. Setup
 2. Custom Settings

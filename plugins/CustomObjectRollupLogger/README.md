@@ -1,11 +1,11 @@
 # Custom Object Rollup Logger
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShzjAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si1GAAS">
   <img alt="Deploy to Salesforce"
        src="../../media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ShzjAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si1GAAS">
   <img alt="Deploy to Salesforce Sandbox"
        src="../../media/deploy-package-to-sandbox.png">
 </a>
@@ -24,8 +24,9 @@ A utility class, `RollupLogBatchPurger` is included. By scheduling this class, y
 
 ```java
 // example cronSchedule string for running the purger every day at 7 AM:
-// 0 0 7 ? * *
-Id jobId = RollupLogBatchPurger.schedule(String jobName, String cronSchedule)
+String cronSchedule = '0 0 7 ? * *';
+String jobName = 'Rollup Custom Logger Batch Purger';
+Id jobId = RollupLogBatchPurger.schedule(jobName, cronSchedule);
 // the "jobId" returned is associated with the CronTrigger object
 // which represents a scheduled job
 ```

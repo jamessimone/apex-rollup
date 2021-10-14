@@ -115,7 +115,7 @@ public without sharing class RollupQueryBuilder {
         List<String> fieldParts = fieldName.split('\\.');
         String whoOrWhat = fieldParts.remove(0);
         String indexer = whoOrWhat + '.Type = \'';
-        String relationshipName = optionalWhereClause.substring(optionalWhereClause.indexOf(indexer) + indexer.length()).substringBeforeLast('\'');
+        String relationshipName = optionalWhereClause.substring(optionalWhereClause.indexOf(indexer) + indexer.length()).substringBefore('\'');
         String typeOfField = String.join(fieldParts, '.');
 
         uniqueQueryFieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + typeOfField + ' END');

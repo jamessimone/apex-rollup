@@ -112,32 +112,6 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  public static final Map<String, Op> opNameToOp {
-    get {
-      if (opNameToOp == null) {
-        opNameToOp = new Map<String, Op>();
-        for (Op operation : Op.values()) {
-          opNameToOp.put(operation.name(), operation);
-        }
-      }
-      return opNameToOp;
-    }
-    set;
-  }
-
-  public static final Map<String, InvocationPoint> invokeNameToInvokePoint {
-    get {
-      if (invokeNameToInvokePoint == null) {
-        invokeNameToInvokePoint = new Map<String, InvocationPoint>();
-        for (InvocationPoint invocation : InvocationPoint.values()) {
-          invokeNameToInvokePoint.put(invocation.name(), invocation);
-        }
-      }
-      return invokeNameToInvokePoint;
-    }
-    set;
-  }
-
   @SuppressWarnings('PMD.UnusedLocalVariable')
   public enum Op {
     SUM,
@@ -364,7 +338,7 @@ global without sharing virtual class Rollup {
   @AuraEnabled
   global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
-    InvocationPoint localInvokePoint = invokeNameToInvokePoint.get(invokePointName);
+    InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
 
     Integer amountOfCalcItems = 0;
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
@@ -677,7 +651,22 @@ global without sharing virtual class Rollup {
   }
 
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
-    RollupSchedulable scheduledRollup = new RollupSchedulable(query, rollupObjectName, eval);
+    List<SObject> localCalcItems;
+    try {
+      localCalcItems = Database.query(query);
+    } catch (QueryException ex) {
+      throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
+    }
+    SObjectType calcItemType = localCalcItems.getSObjectType();
+    Rollup roll = getRollup(
+      getRollupMetadataBySObject(calcItemType),
+      calcItemType,
+      localCalcItems,
+      new Map<Id, SObject>(),
+      eval,
+      InvocationPoint.FROM_SCHEDULED
+    );
+    RollupSchedulable scheduledRollup = new RollupSchedulable(roll);
     return System.schedule(jobName, cronExp, scheduledRollup);
   }
 
@@ -1826,7 +1815,9 @@ global without sharing virtual class Rollup {
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         wrappedMeta = new RollupMetadata();
         wrappedMeta.recordCount = 0;
-        wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
+        if (fullRecalcMetas.size() == 1) {
+          wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
+        }
       } else {
         wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
       }
@@ -1837,7 +1828,7 @@ global without sharing virtual class Rollup {
           new List<String>{ 'Count()' },
           fullRecalcMeta.meta.LookupFieldOnLookupObject__c,
           '!=',
-          fullRecalcMeta.wrapper.getQuery()
+          wrappedMeta.whereClause
         );
         Integer localCount = getCountFromDb(countQuery, new Set<String>(), fullRecalcMeta.wrapper.recordIds);
         wrappedMeta.recordCount = localCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? localCount : wrappedMeta.recordCount + localCount;
@@ -1845,9 +1836,14 @@ global without sharing virtual class Rollup {
       typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
     }
 
+    final Integer maxQueryLength = 100000;
     List<Rollup> fullRecalcRollups = new List<Rollup>();
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
+      if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
+        wrappedMeta.whereClause = '';
+        wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+      }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, invokePoint);
       fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
@@ -1871,11 +1867,11 @@ global without sharing virtual class Rollup {
     if (
       wrappedMeta.whereClause.contains(':recordIds') == false &&
       wrappedMeta.recordIds.isEmpty() == false &&
-      String.isBlank(fullRecalcMeta.meta.GrandparentRelationshipFieldPath__c)
-    ) {
       // TODO - it would be nice to support the singular recalc button with grandparent rollups
       // but doing so requires that we validate the query ahead of time (to remove errors with trying to filter on
       // polymorphic fields). as it stands, this guard clause is a little TOO safe
+      String.isBlank(fullRecalcMeta.meta.GrandparentRelationshipFieldPath__c)
+    ) {
       String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
       wrappedMeta.whereClause += additionalClause;
     }
@@ -2223,7 +2219,7 @@ global without sharing virtual class Rollup {
     DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
-      Op rollupOp = opNameToOp.get(rollupMetadata.RollupOperation__c.toUpperCase());
+      Op rollupOp = Op.valueOf(rollupMetadata.RollupOperation__c);
       SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField calcLookupField = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
 
@@ -2548,28 +2544,5 @@ global without sharing virtual class Rollup {
       }
     }
     return results;
-  }
-
-  private without sharing class RollupSchedulable implements System.Schedulable {
-    private final String query;
-    private final SObjectType rollupObject;
-    private final Evaluator eval;
-
-    public RollupSchedulable(String query, String rollupObjectName, Evaluator eval) {
-      this.query = query;
-      this.rollupObject = getSObjectFromName(rollupObjectName).getSObjectType();
-      this.eval = eval;
-      try {
-        Database.query(this.query);
-      } catch (QueryException ex) {
-        throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
-      }
-    }
-
-    public void execute(SchedulableContext sc) {
-      List<Rollup__mdt> metadata = getRollupMetadataBySObject(this.rollupObject);
-      List<SObject> calcItems = Database.query(this.query);
-      getRollup(metadata, calcItems.getSObjectType(), calcItems, new Map<Id, SObject>(calcItems), this.eval, InvocationPoint.FROM_SCHEDULED).runCalc();
-    }
   }
 }

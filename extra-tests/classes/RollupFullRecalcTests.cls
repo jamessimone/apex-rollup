@@ -732,6 +732,27 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldNotBlowUpOnMassiveQuery() {
+    String endOfWhereClause = '2'.repeat(100001);
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'PreferenceRank = ' + endOfWhereClause
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    System.assert(true, 'Should make it here without exception being thrown');
+  }
+
+  @IsTest
   static void shouldNotAddToExistingAmountForFullRecalc() {
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 60;
