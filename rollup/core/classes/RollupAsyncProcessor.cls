@@ -418,7 +418,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
-      System.attachFinalizer(new RollupFinalizer(this));
       this.process(this.rollups);
       this.logFinish();
     }
@@ -1115,8 +1114,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (oldLookupItems.containsKey(key)) {
         // Yes, old parent record has already had a new rollup established in memory
         List<SObject> reparentedCalcItems = oldLookupItems.get(key);
+        Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
 
-        if (reparentedCalcItems.isEmpty()) {
+        if (reparentedCalcItems.isEmpty() || priorVal == null) {
           continue;
         }
 
@@ -1139,7 +1139,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
 
-        Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
         Object newVal = this.calculateNewRollupVal(oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
 
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
