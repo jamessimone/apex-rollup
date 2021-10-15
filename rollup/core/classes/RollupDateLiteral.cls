@@ -2,13 +2,6 @@
 public abstract class RollupDateLiteral {
   private static final String RELATIVE_LITERAL_REGEX = '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_​QUARTERS|FISCAL_​YEARS):?\\d*';
 
-  /**
-   * Begin the heinous but memory-friendly way to get at all these singletons ...
-   * We also have to use the blanket PMD suppression for these fields because
-   * otherwise the scanner complains that the map isn't first, but if the map is above these properties
-   * we get the compilation error "Illegal forward reference" - classic
-   */
-
   private static final Datetime NOWISH {
     get {
       if (NOWISH == null) {
@@ -19,62 +12,12 @@ public abstract class RollupDateLiteral {
     set;
   }
 
-  private static final RollupDateLiteral YESTERDAY_LITERAL {
-    get {
-      if (YESTERDAY_LITERAL == null) {
-        YESTERDAY_LITERAL = new YesterdayLiteral();
-      }
-      return YESTERDAY_LITERAL;
-    }
-    set;
-  }
-
-  private static final RollupDateLiteral TODAY_LITERAL {
-    get {
-      if (TODAY_LITERAL == null) {
-        TODAY_LITERAL = new TodayLiteral();
-      }
-      return TODAY_LITERAL;
-    }
-    set;
-  }
-
-  private static final RollupDateLiteral TOMORROW_LITERAL {
-    get {
-      if (TOMORROW_LITERAL == null) {
-        TOMORROW_LITERAL = new TomorrowLiteral();
-      }
-      return TOMORROW_LITERAL;
-    }
-    set;
-  }
-
-  private static final RollupDateLiteral LAST_WEEK_LITERAL {
-    get {
-      if (LAST_WEEK_LITERAL == null) {
-        LAST_WEEK_LITERAL = new LastWeekLiteral();
-      }
-      return LAST_WEEK_LITERAL;
-    }
-    set;
-  }
-
-  private static final RollupDateLiteral THIS_WEEK_LITERAL {
-    get {
-      if (THIS_WEEK_LITERAL == null) {
-        THIS_WEEK_LITERAL = new ThisWeekLiteral();
-      }
-      return THIS_WEEK_LITERAL;
-    }
-    set;
-  }
-
-  private static final Map<String, RollupDateLiteral> KEY_TO_DATE_LITERAL = new Map<String, RollupDateLiteral>{
-    'YESTERDAY' => YESTERDAY_LITERAL,
-    'TODAY' => TODAY_LITERAL,
-    'TOMORROW' => TOMORROW_LITERAL,
-    'LAST_WEEK' => LAST_WEEK_LITERAL,
-    'THIS_WEEK' => THIS_WEEK_LITERAL,
+  private static final Map<String, Object> KEY_TO_DATE_LITERAL = new Map<String, Object>{
+    'YESTERDAY' => YesterdayLiteral.class,
+    'TODAY' => TodayLiteral.class,
+    'TOMORROW' => TomorrowLiteral.class,
+    'LAST_WEEK' => LastWeekLiteral.class,
+    'THIS_WEEK' => ThisWeekLiteral.class,
     'NEXT_WEEK' => null,
     'LAST_MONTH' => null,
     'THIS_MONTH' => null,
@@ -114,11 +57,28 @@ public abstract class RollupDateLiteral {
 
   public static RollupDateLiteral get(String key) {
     List<String> possibleDynamicValues = key.split(':');
-    RollupDateLiteral literal = KEY_TO_DATE_LITERAL.get(possibleDynamicValues[0]);
+    RollupDateLiteral literal = getLazyLoadedLiteral(possibleDynamicValues[0]);
     if (possibleDynamicValues.size() > 1) {
       literal.setDynamicValue(possibleDynamicValues[1]);
     }
     return literal;
+  }
+
+  private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey) {
+    /**
+     * neatly solves a thorny issue - we want to cache the RollupDateLiteral instances,
+     * but if we key them directly in the map, the memory overhead is MUCH larger
+     * since everything will be initialized when the map is first accessed.
+     * Instead, each map entry is keyed to the Type of its corresponding literal,
+     * and only the Types that we need end up getting initialized
+     */
+    Object literal = KEY_TO_DATE_LITERAL.get(dictionaryKey);
+    if (literal instanceof Type) {
+      Type literalType = (Type) literal;
+      literal = (RollupDateLiteral) literalType.newInstance();
+      KEY_TO_DATE_LITERAL.put(dictionaryKey, literal);
+    }
+    return (RollupDateLiteral) literal;
   }
 
   public Boolean matches(String val, String comparison) {
