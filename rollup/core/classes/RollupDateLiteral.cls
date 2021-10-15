@@ -142,8 +142,7 @@ public abstract class RollupDateLiteral {
   }
 
   private class LastWeekLiteral extends RollupDateLiteral {
-    // TODO - need to align to ThisWeekLiteral, it's not a literal seven days back
-    private final Datetime ref = NOWISH.addDays(-7);
+    private final Datetime ref = Datetime.newInstance(NOWISH.date().toStartOfWeek().addDays(-7), Time.newInstance(0, 0, 0, 0));
     protected override Datetime getRef() {
       return this.ref;
     }

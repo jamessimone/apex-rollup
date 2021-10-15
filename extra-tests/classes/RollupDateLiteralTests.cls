@@ -111,8 +111,9 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForLastWeek() {
-    String lastWeekDate = System.today().addDays(-7).format();
-    String lastWeekDatetime = System.now().addDays(-7).date().format();
+    Date definitiveLastWeekDate = System.today().toStartOfWeek().addDays(-7);
+    String lastWeekDate = definitiveLastWeekDate.format();
+    String lastWeekDatetime = Datetime.newInstance(definitiveLastWeekDate, Time.newInstance(0, 0, 0, 0)).format();
     RollupDateLiteral lastWeek = RollupDateLiteral.get('LAST_WEEK');
 
     System.assertEquals(true, lastWeek.matches(lastWeekDate, '='), 'Date value should have matched: ' + lastWeekDate);
@@ -120,14 +121,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastWeek.matches(lastWeekDate, '>='));
     System.assertEquals(true, lastWeek.matches(lastWeekDatetime, '>='));
-    System.assertEquals(true, lastWeek.matches(System.today().addDays(-8).format(), '>'));
+    System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate.toStartOfWeek().addDays(-1).format(), '>'));
     System.assertNotEquals(true, lastWeek.matches(System.now().addDays(-6).format(), '>'));
     System.assertNotEquals(true, lastWeek.matches(lastWeekDate, '>'));
 
     System.assertEquals(true, lastWeek.matches(System.now().addDays(2).format(), '<'));
     System.assertEquals(true, lastWeek.matches(lastWeekDate, '<='));
     System.assertEquals(true, lastWeek.matches(lastWeekDatetime, '<='));
-    System.assertNotEquals(true, lastWeek.matches(System.today().addDays(-9).format(), '<='));
+    System.assertNotEquals(true, lastWeek.matches(System.today().toStartOfWeek().addDays(-9).format(), '<='));
   }
 
   @IsTest
