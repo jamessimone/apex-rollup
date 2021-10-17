@@ -93,14 +93,14 @@ public abstract class RollupDateLiteral {
     return (RollupDateLiteral) literal;
   }
 
-  public Boolean matches(String val, String comparison) {
+  public Boolean matches(Object val, String comparison) {
     Datetime castValue;
-    try {
-      castValue = Datetime.parse(val);
-      castValue = Datetime.newInstanceGmt(castValue.date(), castValue.timeGmt());
-    } catch (TypeException ex) {
-      Date dateVal = Date.parse(val);
-      castValue = Datetime.newInstanceGmt(dateVal, START_TIME);
+    if (val == null) {
+      return false;
+    } else if (val instanceof Date) {
+      castValue = Datetime.newInstanceGmt((Date) val, START_TIME);
+    } else {
+      castValue = (Datetime) val;
     }
 
     switch on comparison {
@@ -158,7 +158,7 @@ public abstract class RollupDateLiteral {
     // Starts 00:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days.
     // Your locale determines the first day of the week.
     public LastWeekLiteral() {
-      this.ref = Datetime.newInstance(START_OF_TODAY.date().toStartOfWeek().addDays(-7), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-7), START_TIME);
     }
   }
 
@@ -166,7 +166,7 @@ public abstract class RollupDateLiteral {
     // Starts 00:00:00 on the most recent first day of the week on or before the current day and continues for seven full days.
     // Your locale determines the first day of the week.
     public ThisWeekLiteral() {
-      this.ref = Datetime.newInstance(START_OF_TODAY.date().toStartOfWeek(), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek(), START_TIME);
     }
   }
 
@@ -174,28 +174,28 @@ public abstract class RollupDateLiteral {
     // Starts 00:00:00 on the most recent first day of the week after the current day and continues for seven full days.
     // Your locale determines the first day of the week.
     public NextWeekLiteral() {
-      this.ref = Datetime.newInstance(START_OF_TODAY.date().toStartOfWeek().addDays(7), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
     }
   }
 
   private class LastMonthLiteral extends RollupDateLiteral {
     // Starts 00:00:00 on the first day of the month before the current day and continues for all the days of that month.
     public LastMonthLiteral() {
-      this.ref = Datetime.newInstance(START_OF_TODAY.date().toStartOfMonth().addMonths(-1), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(-1), START_TIME);
     }
   }
 
   private class ThisMonthLiteral extends RollupDateLiteral {
     // 	Starts 00:00:00 on the first day of the month that the current day is in and continues for all the days of that month.
     public ThisMonthLiteral() {
-      this.ref = Datetime.newInstance(START_OF_TODAY.date().toStartOfMonth(), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth(), START_TIME);
     }
   }
 
   private class NextMonthLiteral extends RollupDateLiteral {
     // Starts 00:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.
     public NextMonthLiteral() {
-      this.ref = Datetime.newInstance(START_OF_TODAY.date().toStartOfMonth().addMonths(1), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(1), START_TIME);
     }
   }
 
