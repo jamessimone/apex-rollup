@@ -22,7 +22,7 @@ public abstract class RollupDateLiteral {
     set;
   }
 
-  protected final Datetime ref;
+  protected Datetime ref;
 
   private static final Map<String, Object> KEY_TO_DATE_LITERAL = new Map<String, Object>{
     'YESTERDAY' => YesterdayLiteral.class,
@@ -36,9 +36,9 @@ public abstract class RollupDateLiteral {
     'NEXT_MONTH' => NextMonthLiteral.class,
     'LAST_90_DAYS' => Last90DaysLiteral.class,
     'NEXT_90_DAYS' => Next90DaysLiteral.class,
-    'LAST_N_DAYS' => null,
-    'NEXT_N_DAYS' => null,
-    'LAST_N_WEEKS' => null,
+    'LAST_N_DAYS' => LastNDaysLiteral.class,
+    'NEXT_N_DAYS' => NextNDaysLiteral.class,
+    'LAST_N_WEEKS' => LastNWeeksLiteral.class,
     'NEXT_N_WEEKS' => null,
     'LAST_N_MONTHS' => null,
     'THIS_QUARTER' => null,
@@ -69,14 +69,11 @@ public abstract class RollupDateLiteral {
 
   public static RollupDateLiteral get(String key) {
     List<String> possibleDynamicValues = key.split(':');
-    RollupDateLiteral literal = getLazyLoadedLiteral(possibleDynamicValues[0]);
-    if (possibleDynamicValues.size() > 1) {
-      literal.setDynamicValue(possibleDynamicValues[1]);
-    }
+    RollupDateLiteral literal = getLazyLoadedLiteral(possibleDynamicValues[0], possibleDynamicValues.size() > 1 ? possibleDynamicValues[1] : '');
     return literal;
   }
 
-  private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey) {
+  private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey, String possibleDynamicValue) {
     /**
      * neatly solves a thorny issue - we want to cache the RollupDateLiteral instances,
      * but if we key them directly in the map, the memory overhead is MUCH larger
@@ -88,6 +85,7 @@ public abstract class RollupDateLiteral {
     if (literal instanceof Type) {
       Type literalType = (Type) literal;
       literal = (RollupDateLiteral) literalType.newInstance();
+      ((RollupDateLiteral) literal).setDynamicValue(possibleDynamicValue);
       KEY_TO_DATE_LITERAL.put(dictionaryKey, literal);
     }
     return (RollupDateLiteral) literal;
@@ -123,17 +121,17 @@ public abstract class RollupDateLiteral {
     return this.ref.format();
   }
 
-  protected Boolean isEqualTo(Datetime val) {
+  protected virtual Boolean isEqualTo(Datetime val) {
     return this.ref == val;
   }
-  protected Boolean isLessThan(Datetime val) {
+  protected virtual Boolean isLessThan(Datetime val) {
     return this.ref < val;
   }
-  protected Boolean isGreaterThan(Datetime val) {
+  protected virtual Boolean isGreaterThan(Datetime val) {
     return this.ref > val;
   }
 
-  protected virtual void setDynamicValue(String afterColon) {
+  protected virtual void setDynamicValue(String num) {
   }
 
   private class YesterdayLiteral extends RollupDateLiteral {
@@ -154,63 +152,147 @@ public abstract class RollupDateLiteral {
     }
   }
 
+  /**
+   * Starts 00:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days.
+   * Your locale determines the first day of the week.
+   */
   private class LastWeekLiteral extends RollupDateLiteral {
-    // Starts 00:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days.
-    // Your locale determines the first day of the week.
     public LastWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-7), START_TIME);
     }
   }
 
+  /**
+   * Starts 00:00:00 on the most recent first day of the week on or before the current day and continues for seven full days.
+   * Your locale determines the first day of the week.
+   */
   private class ThisWeekLiteral extends RollupDateLiteral {
-    // Starts 00:00:00 on the most recent first day of the week on or before the current day and continues for seven full days.
-    // Your locale determines the first day of the week.
     public ThisWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek(), START_TIME);
     }
   }
 
+  /**
+   * Starts 00:00:00 on the most recent first day of the week after the current day and continues for seven full days.
+   * Your locale determines the first day of the week.
+   */
   private class NextWeekLiteral extends RollupDateLiteral {
-    // Starts 00:00:00 on the most recent first day of the week after the current day and continues for seven full days.
-    // Your locale determines the first day of the week.
     public NextWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
     }
   }
 
+  /**
+   * Starts 00:00:00 on the first day of the month before the current day and continues for all the days of that month.
+   */
   private class LastMonthLiteral extends RollupDateLiteral {
-    // Starts 00:00:00 on the first day of the month before the current day and continues for all the days of that month.
     public LastMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(-1), START_TIME);
     }
   }
 
+  /**
+   * Starts 00:00:00 on the first day of the month that the current day is in and continues for all the days of that month.
+   */
   private class ThisMonthLiteral extends RollupDateLiteral {
-    // 	Starts 00:00:00 on the first day of the month that the current day is in and continues for all the days of that month.
     public ThisMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth(), START_TIME);
     }
   }
 
+  /**
+   * Starts 00:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.
+   */
   private class NextMonthLiteral extends RollupDateLiteral {
-    // Starts 00:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.
     public NextMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(1), START_TIME);
     }
   }
 
+  /**
+   * Starts with the current day and continues for the past 90 days.
+   * This includes the current day, not just previous days. So it includes 91 days in total.
+   */
   private class Last90DaysLiteral extends RollupDateLiteral {
-    // Starts with the current day and continues for the past 90 days.
-    // This includes the current day, not just previous days. So it includes 91 days in total.
     public Last90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(-91);
     }
   }
 
+  /**
+   * Starts 00:00:00 of the next day and continues for the next 90 days.
+   */
   private class Next90DaysLiteral extends RollupDateLiteral {
-    // Starts 00:00:00 of the next day and continues for the next 90 days.
-    public Next90DaysLiteral () {
+    public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(91);
+    }
+  }
+
+  /**
+   * For the number n provided, starts with the current day and continues for the past n days.
+   * This includes the current day, not just previous days. For example, LAST_N_DAYS:1 includes yesterday and today.
+   */
+  private class LastNDaysLiteral extends RollupDateLiteral {
+    private Datetime startBound;
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = START_OF_TODAY.addDays(1); // includes all of today
+      this.startBound = START_OF_TODAY.addDays(-dateRange);
+    }
+
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.startBound <= val && this.ref >= val;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return this.startBound < val && this.ref > val;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.startBound > val && this.ref < val;
+    }
+  }
+
+  /**
+   * For the number n provided, starts 00:00:00 of the next day and continues for the next n days.
+   * This does not include the current day. For example, NEXT_N_DAYS:1 is equivalent to TOMORROW.
+   */
+  private class NextNDaysLiteral extends RollupDateLiteral {
+    private Datetime endBound;
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = START_OF_TODAY.addDays(1); // excludes today
+      this.endBound = START_OF_TODAY.addDays(dateRange);
+    }
+
+    protected override Boolean isEqualTo(Datetime val) {
+      return val >= this.ref && this.endBound <= val;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return val > this.ref && val > this.endBound;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.endBound > val && this.ref > val;
+    }
+  }
+
+  /**
+   * For the number n provided, starts 00:00:00 of the last day of the previous week and continues for the past n weeks.
+   */
+  private class LastNWeeksLiteral extends RollupDateLiteral {
+    private Datetime startBound;
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = System.today().toStartOfWeek().addDays(-1);
+      this.startBound = this.ref.addDays(-1 * 7 * dateRange);
+    }
+
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.startBound <= val && this.ref >= val;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return this.startBound < val && this.ref > val;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.startBound > val && this.ref < val;
     }
   }
 }

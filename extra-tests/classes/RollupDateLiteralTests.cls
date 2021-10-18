@@ -287,4 +287,68 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextNinetyDays.matches(nextNinetyDaysDatetime, '<='));
     System.assertNotEquals(true, nextNinetyDays.matches(System.today().addDays(90), '<='));
   }
+
+  @IsTest
+  static void shouldWorkForLastNDays() {
+    Date lastNDaysDate = System.today().addDays(-5);
+    Datetime lastNDaysDatetime = Datetime.newInstanceGmt(lastNDaysDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastNDays = RollupDateLiteral.get('LAST_N_DAYS:5');
+
+    System.assertEquals(true, lastNDays.matches(lastNDaysDate, '='), 'Date value should have matched: ' + lastNDaysDate + ', ' + lastNDays);
+    System.assertEquals(true, lastNDays.matches(lastNDaysDatetime, '='), 'Datetime value should have matched: ' + lastNDaysDatetime + ', ' + lastNDays);
+    System.assertNotEquals(true, lastNDays.matches(System.today().addDays(2), '='), 'Should not include future days');
+
+    System.assertEquals(true, lastNDays.matches(lastNDaysDate, '>='));
+    System.assertEquals(true, lastNDays.matches(lastNDaysDatetime, '>='));
+    System.assertEquals(true, lastNDays.matches(System.today().addDays(-2), '>'));
+    System.assertNotEquals(true, lastNDays.matches(System.now().addDays(3), '>'));
+    System.assertNotEquals(true, lastNDays.matches(lastNDaysDate, '>'));
+
+    System.assertEquals(true, lastNDays.matches(lastNDaysDate, '<='));
+    System.assertEquals(true, lastNDays.matches(lastNDaysDatetime, '<='));
+    System.assertNotEquals(true, lastNDays.matches(System.today().addDays(-6), '<='));
+    System.assertNotEquals(true, lastNDays.matches(System.today().addDays(2), '<='));
+  }
+
+  @IsTest
+  static void shouldWorkForNextNDays() {
+    Date nextNDaysDate = System.today().addDays(5);
+    Datetime nextNDaysDatetime = Datetime.newInstanceGmt(nextNDaysDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastNDays = RollupDateLiteral.get('NEXT_N_DAYS:5');
+
+    System.assertEquals(true, lastNDays.matches(nextNDaysDate, '='), 'Date value should have matched: ' + nextNDaysDate + ', ' + lastNDays);
+    System.assertEquals(true, lastNDays.matches(nextNDaysDatetime, '='), 'Datetime value should have matched: ' + nextNDaysDatetime + ', ' + lastNDays);
+
+    System.assertEquals(true, lastNDays.matches(nextNDaysDate, '>='));
+    System.assertEquals(true, lastNDays.matches(nextNDaysDatetime, '>='));
+    System.assertEquals(true, lastNDays.matches(System.today().addDays(6), '>'));
+    System.assertNotEquals(true, lastNDays.matches(System.now().addDays(3), '>'));
+    System.assertNotEquals(true, lastNDays.matches(nextNDaysDate, '>'));
+
+    System.assertEquals(true, lastNDays.matches(System.today(), '<'), 'Today should be less than NEXT_N_DAYS');
+    System.assertEquals(true, lastNDays.matches(nextNDaysDate, '<='));
+    System.assertEquals(true, lastNDays.matches(nextNDaysDatetime, '<='));
+    System.assertEquals(true, lastNDays.matches(System.now().addDays(-2), '<'));
+    System.assertNotEquals(true, lastNDays.matches(System.today().addDays(2), '<='));
+  }
+
+  @IsTest
+  static void shouldWorkForLastNWeeks() {
+    Date lastNWeeksDate = System.today().toStartOfWeek().addDays(-1);
+    Datetime lastNWeeksDatetime = Datetime.newInstanceGmt(lastNWeeksDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastNWeeks = RollupDateLiteral.get('LAST_N_WEEKS:2');
+
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDate, '='), 'Date value should have matched: ' + lastNWeeksDate);
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDatetime, '='), 'Datetime value should have matched: ' + lastNWeeksDatetime);
+
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDate, '>='));
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDatetime, '>='));
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDate.addDays(-2), '>'));
+    System.assertNotEquals(true, lastNWeeks.matches(System.now().addDays(1), '>'));
+    System.assertNotEquals(true, lastNWeeks.matches(lastNWeeksDate, '>'));
+
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDate, '<='));
+    System.assertEquals(true, lastNWeeks.matches(lastNWeeksDatetime, '<='));
+    System.assertNotEquals(true, lastNWeeks.matches(System.now().addDays(2), '<'));
+  }
 }
