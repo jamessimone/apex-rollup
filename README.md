@@ -187,6 +187,7 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Object for "Prior records To rollup" (input)` - should be the same as the above
 - `Calc Item Calc Field` - the API Name of the field you’d like to aggregate (let's say Amount)
 - `Calc Item Lookup Field`- the API Name of the field storing the Id or String referencing a unique value on another object (In the example, Id)
+- `Rollup Object API Name` - the API name for the object that the calc item values will be rolled up to
 - `Rollup Object Lookup Field` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Object Calc Field` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
 - `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas by default, but you can use `Concat Delimiter` to change that.
