@@ -1,4 +1,4 @@
-global with sharing class RollupFlowFullRecalcDispatcher {
+global without sharing class RollupFlowFullRecalcDispatcher {
   private RollupFlowFullRecalcDispatcher() {
     //Only used for invocable
   }
