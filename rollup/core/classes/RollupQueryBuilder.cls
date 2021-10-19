@@ -102,13 +102,13 @@ public without sharing class RollupQueryBuilder {
   private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
     // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
-    if (this.hasPolymorphicOwnerClause(optionalWhereClause) == false || uniqueQueryFieldNames.contains('Count()')) {
+    if (this.hasPolymorphicOwnerClause(optionalWhereClause, sObjectType) == false || uniqueQueryFieldNames.contains('Count()')) {
       return optionalWhereClause;
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType);
     try {
       for (String whereClause : whereEval.getWhereClauses()) {
-        if (this.hasPolymorphicOwnerClause(whereClause) == false) {
+        if (this.hasPolymorphicOwnerClause(whereClause, sObjectType) == false) {
           continue;
         }
         String fieldName = whereClause.split(' ')[0];
@@ -133,8 +133,8 @@ public without sharing class RollupQueryBuilder {
     return optionalWhereClause;
   }
 
-  private Boolean hasPolymorphicOwnerClause(String whereClause) {
-    return whereClause?.contains('.Owner') == true;
+  private Boolean hasPolymorphicOwnerClause(String whereClause, SObjectType sObjectType) {
+    return whereClause?.contains('.Owner') == true && sObjectType.getDescribe().fields.getMap().get('Owner')?.getDescribe().isNamePointing() == true;
   }
 
   private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> uniqueQueryFieldNames, DescribeSObjectResult sObjectToken) {
