@@ -4,7 +4,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
   }
 
   global class FlowInput {
-    @InvocableVariable(label='Comma-separated list of API Names of the Rollup__mdt RecordsT you want to run')
+    @InvocableVariable(label='Comma-separated list of API Names of the Rollup__mdt Records you want to run')
     global String rollupDeveloperNames;
   }
 
