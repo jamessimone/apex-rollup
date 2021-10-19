@@ -280,7 +280,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
       this.process(syncRollups);
       RollupLogger.Instance.log('finished running sync rollups', LoggingLevel.DEBUG);
-      rollupProcessId = 'running rollups flagged to go synchronously';
     } else {
       Boolean hasMoreThanOneTarget = false;
       Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget, this.rollups);
@@ -309,6 +308,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     props = super.customizeToStringEntries(props);
     this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
+    this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
     return props;
   }
 

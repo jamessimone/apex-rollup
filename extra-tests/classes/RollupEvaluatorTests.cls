@@ -988,4 +988,28 @@ private class RollupEvaluatorTests {
     eval = new RollupEvaluator.WhereFieldEvaluator('Amount = 50.1', Opportunity.SObjectType);
     System.assertEquals(true, eval.matches(new Opportunity(Amount = 50.10)), 'Should detect trailing zero correctly');
   }
+
+  @IsTest
+  static void shouldProperlySupportNonPolymorphicOwnerClauses() {
+    String whereClause = 'Account.Owner.Id != null';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+    System.assertEquals('Account.Owner.Id', eval.getQueryFields()[0]);
+  }
+
+  @IsTest
+  static void shouldNotPassOwnerInQueryFieldsForPolymorphicField() {
+    String whereClause = 'Parent.Owner.Id != null';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
+    System.assertEquals(0, eval.getQueryFields().size(), 'Should not return polymorphic field');
+  }
+
+  @IsTest
+  static void shouldProperlyReturnMultipleParentLevelFields() {
+    String whereClause = 'Account.Name != null AND Account.Owner.Id != null';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+    List<String> queryFields = eval.getQueryFields();
+    System.assertEquals(2, queryFields.size(), 'Both fields should have been returned: ' + queryFields);
+    System.assertEquals('Account.Name', queryFields[0]);
+    System.assertEquals('Account.Owner.Id', queryFields[1]);
+  }
 }

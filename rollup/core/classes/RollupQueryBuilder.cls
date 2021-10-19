@@ -102,13 +102,14 @@ public without sharing class RollupQueryBuilder {
   private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
     // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
-    if (this.hasPolymorphicOwnerClause(optionalWhereClause, sObjectType) == false || uniqueQueryFieldNames.contains('Count()')) {
+    Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe().fields.getMap();
+    if (this.hasPolymorphicOwnerClause(optionalWhereClause, fieldNameToField) == false || uniqueQueryFieldNames.contains('Count()')) {
       return optionalWhereClause;
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType);
     try {
       for (String whereClause : whereEval.getWhereClauses()) {
-        if (this.hasPolymorphicOwnerClause(whereClause, sObjectType) == false) {
+        if (this.hasPolymorphicOwnerClause(whereClause, fieldNameToField) == false) {
           continue;
         }
         String fieldName = whereClause.split(' ')[0];
@@ -133,8 +134,20 @@ public without sharing class RollupQueryBuilder {
     return optionalWhereClause;
   }
 
-  private Boolean hasPolymorphicOwnerClause(String whereClause, SObjectType sObjectType) {
-    return whereClause?.contains('.Owner') == true && sObjectType.getDescribe().fields.getMap().get('Owner')?.getDescribe().isNamePointing() == true;
+  private Boolean hasPolymorphicOwnerClause(String whereClause, Map<String, SObjectField> fieldNameToField ) {
+    Boolean hasPolymorphicField = false;
+    if (whereClause?.contains('.Owner') == true) {
+      List<String> fields = whereClause.split('\\.');
+      for (String fieldPart : fields) {
+        String fieldName = fieldPart.endsWith('__r') ? fieldPart.substringBeforeLast('__r') + '__c' : fieldPart + 'Id';
+        SObjectField fieldToken = fieldNameToField.get(fieldName);
+        hasPolymorphicField = fieldToken?.getDescribe().isNamePointing() == true;
+        if (hasPolymorphicField) {
+          break;
+        }
+      }
+    }
+    return hasPolymorphicField;
   }
 
   private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> uniqueQueryFieldNames, DescribeSObjectResult sObjectToken) {

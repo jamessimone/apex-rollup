@@ -43,7 +43,7 @@ As of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), 
 1. Setup
 2. Custom Settings
 3. Click `Manage` next to the `Rollup Settings` entry
-4. Click `New` at the top to enter the Org Wide Defaults section - check off the `Is Enabled` field (it should be enabled by default) and click `Save`
+4. Click `New` at the top to enter the Org Wide Defaults section - make sure `Is Enabled` is marked true and click `Save`
 
 While you can still enable/disable individual rollups from running with the use of the `Rollup Control` CMDT (more details on that further on in the Readme), using a custom setting allows for several features that CMDT-based solutions currently lack:
 

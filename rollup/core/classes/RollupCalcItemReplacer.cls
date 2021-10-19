@@ -30,14 +30,19 @@ public without sharing class RollupCalcItemReplacer {
       return calcItems;
     } else if (String.isNotBlank(metadata.CalcItemWhereClause__c) && calcItems.isEmpty() == false) {
       this.processedMetadata.add(metadata);
-      calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, metadata);
-      return this.replaceCalcItemsWithParentWhereClauses(calcItems, metadata);
+      RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, calcItems[0].getSObjectType());
+      calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, metadata, whereEval);
+      return this.replaceCalcItemsWithParentWhereClauses(calcItems, metadata, whereEval);
     } else {
       return calcItems;
     }
   }
 
-  private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
+  private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(
+    List<SObject> calcItems,
+    Rollup__mdt metadata,
+    RollupEvaluator.WhereFieldEvaluator whereEval
+  ) {
     final String typeField = '.Type';
     final String owner = 'Owner.';
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
@@ -60,7 +65,7 @@ public without sharing class RollupCalcItemReplacer {
     Set<String> additionalQueryFields = new Set<String>();
     List<String> optionalWhereClauses = new List<String>();
 
-    this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata);
+    this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, whereEval);
 
     if (optionalWhereClauses.isEmpty()) {
       return calcItems;
@@ -99,12 +104,9 @@ public without sharing class RollupCalcItemReplacer {
     SObjectType sObjectType,
     String typeField,
     String owner,
-    Rollup__mdt metadata
+    Rollup__mdt metadata,
+    RollupEvaluator.WhereFieldEvaluator whereEval
   ) {
-    if (String.isBlank(metadata.CalcItemWhereClause__c)) {
-      return;
-    }
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, sObjectType);
     for (String whereClause : whereEval.getWhereClauses()) {
       if (whereClause.contains(typeField) || whereClause.contains(owner)) {
         List<String> splitWheres = whereClause.split(' ');
@@ -119,12 +121,12 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
-  private List<SObject> replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
+  private List<SObject> replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems, Rollup__mdt metadata, RollupEvaluator.WhereFieldEvaluator whereEval) {
     if (calcItems.isEmpty()) {
       return calcItems;
     }
     SObjectType calcItemType = calcItems[0].getSObjectType();
-    List<String> queryFields = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, calcItemType).getQueryFields();
+    List<String> queryFields = whereEval.getQueryFields();
     Map<String, SObjectField> fieldNameToToken = calcItemType.getDescribe().fields.getMap();
     Boolean hasUnqueriedParentFields = false;
     for (String queryField : queryFields) {
@@ -178,6 +180,8 @@ public without sharing class RollupCalcItemReplacer {
     try {
       return record.get(splitParts.remove(0)) != null;
     } catch (SObjectException ex) {
+      // for records passed in from non Trigger / RT flows, this handles the
+      // System.SObjectException: SObject row was retrieved via SOQL without querying the requested field ... exception
       return false;
     }
   }

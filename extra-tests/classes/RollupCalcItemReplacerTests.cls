@@ -44,5 +44,6 @@ private class RollupCalcItemReplacerTests {
     System.assertEquals(true, replacedContacts[0].getPopulatedFieldsAsMap().containsKey('Account'));
     con = (Contact) replacedContacts[0];
     System.assertEquals(RollupCalcItemReplacerTests.class.getName(), con.Account.Name);
+    System.assertNotEquals(null, con.Account.Owner.Id);
   }
 }
