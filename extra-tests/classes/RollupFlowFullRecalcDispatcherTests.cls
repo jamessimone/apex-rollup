@@ -1,0 +1,60 @@
+@isTest
+private class RollupFlowFullRecalcDispatcherTests {
+  @TestSetup
+  static void setup() {
+    Account acc = new Account(Name = RollupFlowFullRecalcDispatcherTests.class.getName());
+    insert acc;
+
+    upsert new RollupSettings__c(IsEnabled__c = true);
+  }
+
+  @isTest
+  static void shouldPerformCMDTFullRecalcFromFlowInput() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixCMDT', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'Dummy_Account_Revenue_Rollup',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+      )
+    };
+
+    Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
+    List<String> calcItemDeveloperNames = new List<String>();
+    for (Rollup__mdt rollup : calcItemToMetadata.get('ContactPointAddress')) {
+      calcItemDeveloperNames.add(rollup.DeveloperName);
+    }
+
+    String flowInputString = String.join(calcItemDeveloperNames, ',');
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
+    RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
+    input.rollupDeveloperNames = flowInputString;
+    flowInputs.add(input);
+
+    Test.startTest();
+    Rollup.onlyUseMockMetadata = true;
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+  }
+}
