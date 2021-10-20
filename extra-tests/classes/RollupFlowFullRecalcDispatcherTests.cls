@@ -1,4 +1,4 @@
-@isTest
+@IsTest
 private class RollupFlowFullRecalcDispatcherTests {
   @TestSetup
   static void setup() {
@@ -8,7 +8,7 @@ private class RollupFlowFullRecalcDispatcherTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
-  @isTest
+  @IsTest
   static void shouldPerformCMDTFullRecalcFromFlowInput() {
     Account acc = [SELECT Id FROM Account];
 
@@ -33,16 +33,21 @@ private class RollupFlowFullRecalcDispatcherTests {
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
         CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'Dummy_Account_Number_Of_Employees_Rollup',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT',
+        CalcItemWhereClause__c = 'Name = \'' + cpas[0].Name + '\''
       )
     };
 
-    Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
-    List<String> calcItemDeveloperNames = new List<String>();
-    for (Rollup__mdt rollup : calcItemToMetadata.get('ContactPointAddress')) {
-      calcItemDeveloperNames.add(rollup.DeveloperName);
-    }
-
-    String flowInputString = String.join(calcItemDeveloperNames, ',');
+    String flowInputString = 'Dummy_Account_Revenue_Rollup, Dummy_Account_Number_Of_Employees_Rollup';
     List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
     RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
     input.rollupDeveloperNames = flowInputString;
@@ -53,8 +58,9 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
+    System.assertEquals(1, acc.NumberOfEmployees);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 }

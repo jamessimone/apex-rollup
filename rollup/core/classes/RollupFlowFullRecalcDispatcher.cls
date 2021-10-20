@@ -1,6 +1,6 @@
 global without sharing class RollupFlowFullRecalcDispatcher {
   private RollupFlowFullRecalcDispatcher() {
-    //Only used for invocable
+    // Only used for invocable
   }
 
   global class FlowInput {
@@ -23,8 +23,8 @@ global without sharing class RollupFlowFullRecalcDispatcher {
         selectedRollupMetadata.add(rollup);
       }
     }
-    if (!selectedRollupMetadata.isEmpty()) {
-      Rollup.performBulkFullRecalc(selectedRollupMetadata, 'FROM_SCHEDULED_FLOW');
+    if (selectedRollupMetadata.isEmpty() == false) {
+      Rollup.performBulkFullRecalc(selectedRollupMetadata, Rollup.InvocationPoint.FROM_SCHEDULED_FLOW.name());
     }
   }
 }
