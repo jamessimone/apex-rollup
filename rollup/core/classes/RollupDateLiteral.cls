@@ -125,10 +125,10 @@ public abstract class RollupDateLiteral {
     return this.ref == val;
   }
   protected virtual Boolean isLessThan(Datetime val) {
-    return this.ref < val;
+    return this.ref > val;
   }
   protected virtual Boolean isGreaterThan(Datetime val) {
-    return this.ref > val;
+    return this.ref < val;
   }
 
   protected virtual void setDynamicValue(String num) {
@@ -312,20 +312,19 @@ public abstract class RollupDateLiteral {
 
   private class ThisYearLiteral extends RollupDateLiteral {
     public ThisYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year(),1,1, START_TIME.hour(), START_TIME.minute(),START_TIME.second());
+      this.ref = Datetime.newInstanceGmt(System.today().year(), 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 
   private class LastYearLiteral extends RollupDateLiteral {
     public LastYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year()-1,1,1,START_TIME.hour(), START_TIME.minute(),START_TIME.second());
+      this.ref = Datetime.newInstanceGmt(System.today().year() - 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 
   private class NextYearLiteral extends RollupDateLiteral {
     public NextYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year()+1,1,1,START_TIME.hour(), START_TIME.minute(),START_TIME.second());
+      this.ref = Datetime.newInstanceGmt(System.today().year() + 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
-
 }

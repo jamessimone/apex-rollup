@@ -374,28 +374,29 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForThisYear() {
-    Date startOfThisYearDate = Date.newInstance(System.today().year(),1,1);
+    Date startOfThisYearDate = Date.newInstance(System.today().year(), 1, 1);
     Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisYear = RollupDateLiteral.get('THIS_YEAR');
+    Date futureYearDate = System.today().addYears(2);
 
     System.assertEquals(true, thisYear.matches(startOfThisYearDate, '='), 'Date value should have matched: ' + startOfThisYearDate);
     System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '='), 'Datetime value should have matched: ' + startOfThisYearDatetime);
 
     System.assertEquals(true, thisYear.matches(startOfThisYearDate, '>='));
     System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '>='));
-    System.assertEquals(true, thisYear.matches(System.today().addYears(2), '>')); //why is this failing?
-    System.assertNotEquals(true, thisYear.matches(System.now(), '>'));
-    System.assertNotEquals(true, thisYear.matches(startOfThisYearDate, '>'));
+    System.assertEquals(true, thisYear.matches(futureYearDate, '>'), 'Year should be greater: ' + thisYear + ' | ' + futureYearDate);
+    System.assertNotEquals(true, thisYear.matches(System.now().addYears(-1), '>'));
+    System.assertNotEquals(true, thisYear.matches(startOfThisYearDate.addYears(-1), '>'));
 
     System.assertEquals(true, thisYear.matches(System.today().addYears(-1), '<'));
     System.assertEquals(true, thisYear.matches(startOfThisYearDate, '<='));
     System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '<='));
-    System.assertNotEquals(true, thisYear.matches(System.today().addYears(-2), '<='));
+    System.assertNotEquals(true, thisYear.matches(System.today().addYears(2), '<='));
   }
 
   @IsTest
   static void shouldWorkForLastYear() {
-    Date startOfLastYearDate = Date.newInstance(System.today().year()-1,1,1);
+    Date startOfLastYearDate = Date.newInstance(System.today().year() - 1, 1, 1);
     Datetime startOfLastYearDatetime = Datetime.newInstanceGmt(startOfLastYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastYear = RollupDateLiteral.get('LAST_YEAR');
 
@@ -404,19 +405,19 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastYear.matches(startOfLastYearDate, '>='));
     System.assertEquals(true, lastYear.matches(startOfLastYearDatetime, '>='));
-    System.assertEquals(true, lastYear.matches(System.today().addYears(-2), '>'));
-    System.assertNotEquals(true, lastYear.matches(System.now(), '>'));
-    System.assertNotEquals(true, lastYear.matches(startOfLastYearDatetime, '>'));
+    System.assertEquals(true, lastYear.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastYear.matches(System.now().addYears(-2), '>'));
+    System.assertNotEquals(true, lastYear.matches(startOfLastYearDatetime.addYears(-2), '>'));
 
-    System.assertEquals(true, lastYear.matches(System.now().addYears(-1), '<'));
+    System.assertEquals(true, lastYear.matches(System.now().addYears(-3), '<'));
     System.assertEquals(true, lastYear.matches(startOfLastYearDate, '<='));
     System.assertEquals(true, lastYear.matches(startOfLastYearDatetime, '<='));
-    System.assertNotEquals(true, lastYear.matches(System.today().addYears(-2), '<='));
+    System.assertNotEquals(true, lastYear.matches(System.today().addYears(1), '<='));
   }
 
   @IsTest
   static void shouldWorkForNextYear() {
-    Date startOfNextYearDate = Date.newInstance(System.today().year()+1,1,1);
+    Date startOfNextYearDate = Date.newInstance(System.today().year() + 1, 1, 1);
     Datetime startOfNextYearDatetime = Datetime.newInstanceGmt(startOfNextYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextYear = RollupDateLiteral.get('NEXT_YEAR');
 
@@ -425,13 +426,13 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nextYear.matches(startOfNextYearDate, '>='));
     System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '>='));
-    System.assertEquals(true, nextYear.matches(Date.newInstance(System.today().year()-1,1,1), '>'));
-    System.assertNotEquals(true, nextYear.matches(System.now().addYears(2), '>'));
-    System.assertNotEquals(true, nextYear.matches(startOfNextYearDate, '>'));
+    System.assertEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 1, 2, 1), '>'));
+    System.assertNotEquals(true, nextYear.matches(System.now(), '>'));
+    System.assertNotEquals(true, nextYear.matches(startOfNextYearDate.addDays(-2), '>'));
 
-    System.assertEquals(true, nextYear.matches(System.now().addYears(2), '<'));
+    System.assertEquals(true, nextYear.matches(System.now().addYears(-1), '<'));
     System.assertEquals(true, nextYear.matches(startOfNextYearDate, '<='));
     System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '<='));
-    System.assertNotEquals(true, nextYear.matches(Date.newInstance(System.today().year()-1,1,1), '<='));
+    System.assertNotEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 2, 1, 1), '<='));
   }
 }
