@@ -371,4 +371,25 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextNWeeks.matches(nextNWeeksDatetime, '<='));
     System.assertNotEquals(true, nextNWeeks.matches(System.now().addDays(22), '<'));
   }
+
+  @IsTest
+  static void shouldWorkForThisYear() {
+    Date startOfThisYearDate = Date.newInstance(System.today().year(),1,1);
+    Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral thisYear = RollupDateLiteral.get('THIS_YEAR');
+
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate, '='), 'Date value should have matched: ' + startOfThisYearDate);
+    System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '='), 'Datetime value should have matched: ' + startOfThisYearDatetime);
+
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate, '>='));
+    System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '>='));
+    System.assertEquals(true, thisYear.matches(System.today().addYears(2), '>')); //why is this failing?
+    System.assertNotEquals(true, thisYear.matches(System.now(), '>'));
+    System.assertNotEquals(true, thisYear.matches(startOfThisYearDate, '>'));
+
+    System.assertEquals(true, thisYear.matches(System.today().addYears(-1), '<'));
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate, '<='));
+    System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '<='));
+    System.assertNotEquals(true, thisYear.matches(System.today().addYears(-2), '<='));
+  }
 }

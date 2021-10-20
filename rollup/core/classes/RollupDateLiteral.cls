@@ -46,7 +46,7 @@ public abstract class RollupDateLiteral {
     'NEXT_QUARTER' => null,
     'NEXT_N_QUARTERS' => null,
     'LAST_N_QUARTERS' => null,
-    'THIS_YEAR' => null,
+    'THIS_YEAR' => ThisYearLiteral.class,
     'LAST_YEAR' => null,
     'NEXT_YEAR' => null,
     'LAST_N_YEARS' => null,
@@ -309,4 +309,11 @@ public abstract class RollupDateLiteral {
       this.bound = this.ref.addDays(7 * dateRange);
     }
   }
+
+  private class ThisYearLiteral extends RollupDateLiteral {
+    public ThisYearLiteral() {
+      this.ref = Datetime.newInstanceGmt(System.today().year(),1,1, START_TIME.hour(), START_TIME.minute(),START_TIME.second());
+    }
+  }
+
 }
