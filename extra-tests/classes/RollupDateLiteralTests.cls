@@ -351,4 +351,24 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, lastNWeeks.matches(lastNWeeksDatetime, '<='));
     System.assertNotEquals(true, lastNWeeks.matches(System.now().addDays(2), '<'));
   }
+
+  @IsTest
+  static void shouldWorkForNextNWeeks() {
+    Date nextNWeeksDate = System.today().toStartOfWeek().addDays(21);
+    Datetime nextNWeeksDatetime = Datetime.newInstanceGmt(nextNWeeksDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral nextNWeeks = RollupDateLiteral.get('NEXT_N_WEEKS:2');
+
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDate, '='), 'Date value should have matched: ' + nextNWeeksDate + ' | ' + nextNWeeks);
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDatetime, '='), 'Datetime value should have matched: ' + nextNWeeksDatetime);
+
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDate, '>='));
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDatetime, '>='));
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDate.addDays(2), '>'));
+    System.assertNotEquals(true, nextNWeeks.matches(System.now().date().toStartOfWeek().addDays(-1), '>'));
+    System.assertNotEquals(true, nextNWeeks.matches(nextNWeeksDate, '>'));
+
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDate, '<='));
+    System.assertEquals(true, nextNWeeks.matches(nextNWeeksDatetime, '<='));
+    System.assertNotEquals(true, nextNWeeks.matches(System.now().addDays(22), '<'));
+  }
 }

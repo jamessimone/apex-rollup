@@ -39,7 +39,7 @@ public abstract class RollupDateLiteral {
     'LAST_N_DAYS' => LastNDaysLiteral.class,
     'NEXT_N_DAYS' => NextNDaysLiteral.class,
     'LAST_N_WEEKS' => LastNWeeksLiteral.class,
-    'NEXT_N_WEEKS' => null,
+    'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
     'LAST_N_MONTHS' => null,
     'THIS_QUARTER' => null,
     'LAST_QUARTER' => null,
@@ -229,25 +229,50 @@ public abstract class RollupDateLiteral {
   }
 
   /**
+   * NEXT/LAST N Section. Since these are range-based comparisons, a new abstract class is introduced
+   */
+
+  private abstract class RangedLiteral extends RollupDateLiteral {
+    protected Datetime bound;
+
+    protected abstract override Boolean isEqualTo(Datetime val);
+    protected abstract override Boolean isGreaterThan(Datetime val);
+    protected abstract override Boolean isLessThan(Datetime val);
+  }
+
+  private abstract class LastRangedLiteral extends RangedLiteral {
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.bound <= val && this.ref >= val;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return this.bound < val && this.ref > val;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.bound > val && this.ref < val;
+    }
+  }
+
+  private abstract class NextRangedLiteral extends RangedLiteral {
+    protected override Boolean isEqualTo(Datetime val) {
+      return val >= this.ref && this.bound <= val;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return val > this.ref && val > this.bound;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.bound > val && this.ref > val;
+    }
+  }
+
+  /**
    * For the number n provided, starts with the current day and continues for the past n days.
    * This includes the current day, not just previous days. For example, LAST_N_DAYS:1 includes yesterday and today.
    */
-  private class LastNDaysLiteral extends RollupDateLiteral {
-    private Datetime startBound;
+  private class LastNDaysLiteral extends LastRangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = START_OF_TODAY.addDays(1); // includes all of today
-      this.startBound = START_OF_TODAY.addDays(-dateRange);
-    }
-
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.startBound <= val && this.ref >= val;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return this.startBound < val && this.ref > val;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.startBound > val && this.ref < val;
+      this.bound = START_OF_TODAY.addDays(-dateRange);
     }
   }
 
@@ -255,44 +280,33 @@ public abstract class RollupDateLiteral {
    * For the number n provided, starts 00:00:00 of the next day and continues for the next n days.
    * This does not include the current day. For example, NEXT_N_DAYS:1 is equivalent to TOMORROW.
    */
-  private class NextNDaysLiteral extends RollupDateLiteral {
-    private Datetime endBound;
+  private class NextNDaysLiteral extends NextRangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = START_OF_TODAY.addDays(1); // excludes today
-      this.endBound = START_OF_TODAY.addDays(dateRange);
-    }
-
-    protected override Boolean isEqualTo(Datetime val) {
-      return val >= this.ref && this.endBound <= val;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return val > this.ref && val > this.endBound;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.endBound > val && this.ref > val;
+      this.bound = START_OF_TODAY.addDays(dateRange);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 of the last day of the previous week and continues for the past n weeks.
    */
-  private class LastNWeeksLiteral extends RollupDateLiteral {
-    private Datetime startBound;
+  private class LastNWeeksLiteral extends LastRangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = System.today().toStartOfWeek().addDays(-1);
-      this.startBound = this.ref.addDays(-1 * 7 * dateRange);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1), START_TIME);
+      this.bound = this.ref.addDays(-1 * 7 * dateRange);
     }
+  }
 
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.startBound <= val && this.ref >= val;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return this.startBound < val && this.ref > val;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.startBound > val && this.ref < val;
+  /**
+   * For the number n provided, starts 00:00:00 of the first day of the next week and continues for the next n weeks.
+   */
+  private class NextNWeeksLiteral extends NextRangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
+      this.bound = this.ref.addDays(7 * dateRange);
     }
   }
 }
