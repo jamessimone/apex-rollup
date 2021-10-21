@@ -50,8 +50,8 @@ public abstract class RollupDateLiteral {
     'NEXT_N_DAYS' => NextNDaysLiteral.class,
     'LAST_N_WEEKS' => LastNWeeksLiteral.class,
     'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
-    'LAST_N_MONTHS' => null,
-    'NEXT_N_MONTHS' => null,
+    'LAST_N_MONTHS' => LastNMonthsLiteral.class,
+    'NEXT_N_MONTHS' => NextNMonthsLiteral.class,
     'THIS_QUARTER' => null,
     'LAST_QUARTER' => null,
     'NEXT_QUARTER' => null,
@@ -312,6 +312,30 @@ public abstract class RollupDateLiteral {
       Integer dateRange = Integer.valueOf(num);
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
       this.bound = this.ref.addDays(7 * dateRange);
+    }
+  }
+
+  /**
+   * For the number n provided, starts 00:00:00 of the last day of the previous month and continues for the past n months.
+   */
+  private class LastNMonthsLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      Date lastDayPreviousMonth = System.today().toStartOfMonth().addDays(-1);
+      this.bound = Datetime.newInstanceGmt(lastDayPreviousMonth, END_TIME);
+      this.ref = Datetime.newInstanceGmt(lastDayPreviousMonth.toStartOfMonth().addMonths(-dateRange), START_TIME);
+    }
+  }
+
+  /**
+   * For the number n provided, starts 00:00:00 of the first day of the next month and continues for the next n months.
+   */
+  private class NextNMonthsLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      Date startDayOfNextMonth = System.today().toStartOfMonth().addMonths(1);
+      this.ref = Datetime.newInstanceGmt(startDayOfNextMonth, START_TIME);
+      this.bound = Datetime.newInstanceGmt(startDayOfNextMonth.addMonths(dateRange).addDays(-1), END_TIME);
     }
   }
 

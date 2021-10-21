@@ -382,6 +382,48 @@ private class RollupDateLiteralTests {
   }
 
   @IsTest
+  static void shouldWorkForLastNMonths() {
+    Date lastNMonthsDate = System.today().toStartOfMonth().addMonths(-2);
+    Datetime lastNMonthsDatetime = Datetime.newInstanceGmt(lastNMonthsDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastNMonths = RollupDateLiteral.get('LAST_N_MONTHS:2');
+
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDate, '='), 'Date value should have matched: ' + lastNMonthsDate + ' | ' + lastNMonths);
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDate.addDays(30), '='), 'Date was within: ' + lastNMonths);
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDatetime, '='), 'Datetime value should have matched: ' + lastNMonthsDatetime);
+
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDate, '>='));
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDatetime, '>='));
+    System.assertEquals(true, lastNMonths.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastNMonths.matches(System.now().date().toStartOfMonth().addDays(-1), '>'));
+    System.assertNotEquals(true, lastNMonths.matches(lastNMonthsDate, '>'));
+
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDate, '<='));
+    System.assertEquals(true, lastNMonths.matches(lastNMonthsDatetime, '<='));
+    System.assertNotEquals(true, lastNMonths.matches(System.now(), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForNextNMonths() {
+    Date nextNMonthsDate = System.today().toStartOfMonth().addMonths(2);
+    Datetime nextNMonthsDatetime = Datetime.newInstanceGmt(nextNMonthsDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral nextNMonths = RollupDateLiteral.get('NEXT_N_MONTHS:2');
+
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDate, '='), 'Date value should have matched: ' + nextNMonthsDate + ' | ' + nextNMonths);
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDate.addDays(30), '='), 'Date was within: ' + nextNMonths);
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDatetime, '='), 'Datetime value should have matched: ' + nextNMonthsDatetime);
+
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDate, '>='));
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDatetime, '>='));
+    System.assertEquals(true, nextNMonths.matches(System.today().addMonths(3), '>'));
+    System.assertNotEquals(true, nextNMonths.matches(System.now().date().toStartOfMonth().addMonths(1), '>'));
+    System.assertNotEquals(true, nextNMonths.matches(nextNMonthsDate, '>'));
+
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDate, '<='));
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDatetime, '<='));
+    System.assertNotEquals(true, nextNMonths.matches(System.now().addMonths(3), '<'));
+  }
+
+  @IsTest
   static void shouldWorkForThisYear() {
     Date startOfThisYearDate = Date.newInstance(System.today().year(), 1, 1);
     Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
