@@ -12,6 +12,16 @@ public abstract class RollupDateLiteral {
     set;
   }
 
+  private static final Time END_TIME {
+    get {
+      if (END_TIME == null) {
+        END_TIME = Time.newInstance(11, 59, 59, 59);
+      }
+      return END_TIME;
+    }
+    set;
+  }
+
   private static final Datetime START_OF_TODAY {
     get {
       if (START_OF_TODAY == null) {
@@ -118,7 +128,7 @@ public abstract class RollupDateLiteral {
     }
   }
 
-  public override String toString() {
+  public virtual override String toString() {
     return this.ref.format();
   }
 
@@ -160,31 +170,18 @@ public abstract class RollupDateLiteral {
   private abstract class RangedLiteral extends RollupDateLiteral {
     protected Datetime bound;
 
-    protected abstract override Boolean isEqualTo(Datetime val);
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.ref <= val && val <= this.bound;
+    }
     protected override Boolean isGreaterThan(Datetime val) {
       return val > this.bound;
     }
     protected override Boolean isLessThan(Datetime val) {
       return val < this.bound;
     }
-  }
 
-  // TODO - possibly roll this into NextRangedLiteral, or expand to NextNRangedLiteral
-  private abstract class LastNRangedLiteral extends RangedLiteral {
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.ref >= val && val <= this.bound;
-    }
-  }
-
-  private abstract class LastRangedLiteral extends RangedLiteral {
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.ref <= val && val <= this.bound;
-    }
-  }
-
-  private abstract class NextRangedLiteral extends RangedLiteral {
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.ref <= val && val <= this.bound;
+    public override String toString() {
+      return 'ref: ' + this.ref + ' | bound: ' + this.bound;
     }
   }
 
@@ -192,10 +189,10 @@ public abstract class RollupDateLiteral {
    * Starts 00:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class LastWeekLiteral extends LastRangedLiteral {
+  private class LastWeekLiteral extends RangedLiteral {
     public LastWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-7), START_TIME);
-      this.bound = this.ref.addDays(7);
+      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
     }
   }
 
@@ -203,10 +200,10 @@ public abstract class RollupDateLiteral {
    * Starts 00:00:00 on the most recent first day of the week on or before the current day and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class ThisWeekLiteral extends NextRangedLiteral {
+  private class ThisWeekLiteral extends RangedLiteral {
     public ThisWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek(), START_TIME);
-      this.bound = this.ref.addDays(7);
+      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
     }
   }
 
@@ -214,40 +211,40 @@ public abstract class RollupDateLiteral {
    * Starts 00:00:00 on the most recent first day of the week after the current day and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class NextWeekLiteral extends NextRangedLiteral {
+  private class NextWeekLiteral extends RangedLiteral {
     public NextWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = this.ref.addDays(7);
+      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month before the current day and continues for all the days of that month.
    */
-  private class LastMonthLiteral extends LastRangedLiteral {
+  private class LastMonthLiteral extends RangedLiteral {
     public LastMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = this.ref.addMonths(1).addSeconds(-1);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month that the current day is in and continues for all the days of that month.
    */
-  private class ThisMonthLiteral extends NextRangedLiteral {
+  private class ThisMonthLiteral extends RangedLiteral {
     public ThisMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth(), START_TIME);
-      this.bound = this.ref.addMonths(1).addSeconds(-1);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.
    */
-  private class NextMonthLiteral extends NextRangedLiteral {
+  private class NextMonthLiteral extends RangedLiteral {
     public NextMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = this.ref.addMonths(1).addSeconds(-1);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
     }
   }
 
@@ -255,20 +252,20 @@ public abstract class RollupDateLiteral {
    * Starts with the current day and continues for the past 90 days.
    * This includes the current day, not just previous days. So it includes 91 days in total.
    */
-  private class Last90DaysLiteral extends RollupDateLiteral {
-    //  TODO - range
+  private class Last90DaysLiteral extends RangedLiteral {
     public Last90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(-91);
+      this.bound = Datetime.newInstanceGmt(System.today(), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 of the next day and continues for the next 90 days.
    */
-  private class Next90DaysLiteral extends RollupDateLiteral {
-    //  TODO - range
+  private class Next90DaysLiteral extends RangedLiteral {
     public Next90DaysLiteral() {
-      this.ref = START_OF_TODAY.addDays(91);
+      this.ref = START_OF_TODAY;
+      this.bound = Datetime.newInstanceGmt(System.today().addDays(91), END_TIME);
     }
   }
 
@@ -276,11 +273,11 @@ public abstract class RollupDateLiteral {
    * For the number n provided, starts with the current day and continues for the past n days.
    * This includes the current day, not just previous days. For example, LAST_N_DAYS:1 includes yesterday and today.
    */
-  private class LastNDaysLiteral extends LastNRangedLiteral {
+  private class LastNDaysLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = START_OF_TODAY.addDays(1); // includes all of today
-      this.bound = START_OF_TODAY.addDays(-dateRange);
+      this.bound = Datetime.newInstanceGmt(System.today(), END_TIME); // includes all of today
+      this.ref = START_OF_TODAY.addDays(-dateRange);
     }
   }
 
@@ -288,8 +285,7 @@ public abstract class RollupDateLiteral {
    * For the number n provided, starts 00:00:00 of the next day and continues for the next n days.
    * This does not include the current day. For example, NEXT_N_DAYS:1 is equivalent to TOMORROW.
    */
-  private class NextNDaysLiteral extends NextRangedLiteral {
-    // TODO - equality check for days within range
+  private class NextNDaysLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = START_OF_TODAY.addDays(1); // excludes today
@@ -300,20 +296,18 @@ public abstract class RollupDateLiteral {
   /**
    * For the number n provided, starts 00:00:00 of the last day of the previous week and continues for the past n weeks.
    */
-  private class LastNWeeksLiteral extends LastNRangedLiteral {
-    // TODO - equality check for days within range
+  private class LastNWeeksLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1), START_TIME);
-      this.bound = this.ref.addDays(-1 * 7 * dateRange);
+      this.bound = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1), END_TIME);
+      this.ref = Datetime.newInstanceGmt(this.bound.addDays(-1 * 7 * dateRange).date(), START_TIME);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 of the first day of the next week and continues for the next n weeks.
    */
-  private class NextNWeeksLiteral extends NextRangedLiteral {
-    // TODO - equality check for days within range
+  private class NextNWeeksLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
@@ -324,30 +318,32 @@ public abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 on January 1 of the current year and continues through the end of December 31 of the current year.
    */
-  private class ThisYearLiteral extends RollupDateLiteral {
-    // TODO - range and equality check
+  private class ThisYearLiteral extends RangedLiteral {
     public ThisYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year(), 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
+      this.ref = Datetime.newInstanceGmt(System.today().year(), 1, 1);
+      this.bound = Datetime.newInstance(Date.newInstance(System.today().year(), 12, 31), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the previous year and continues through the end of December 31 of that year.
    */
-  private class LastYearLiteral extends RollupDateLiteral {
-    // TODO - range and equality check
+  private class LastYearLiteral extends RangedLiteral {
     public LastYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year() - 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
+      Integer lastYearNumber = System.today().year() - 1;
+      this.ref = Datetime.newInstanceGmt(lastYearNumber, 1, 1);
+      this.bound = Datetime.newInstanceGmt(Date.newInstance(lastYearNumber, 12, 31), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of that year
    */
-  private class NextYearLiteral extends RollupDateLiteral {
-    // TODO - range and equality check
+  private class NextYearLiteral extends RangedLiteral {
     public NextYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year() + 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
+      Integer nextYearNumber = System.today().year() + 1;
+      this.ref = Datetime.newInstanceGmt(nextYearNumber, 1, 1);
+      this.bound = Datetime.newInstanceGmt(Date.newInstance(nextYearNumber, 12, 31), END_TIME);
     }
   }
 }
