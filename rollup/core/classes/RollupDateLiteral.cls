@@ -41,6 +41,7 @@ public abstract class RollupDateLiteral {
     'LAST_N_WEEKS' => LastNWeeksLiteral.class,
     'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
     'LAST_N_MONTHS' => null,
+    'NEXT_N_MONTHS' => null,
     'THIS_QUARTER' => null,
     'LAST_QUARTER' => null,
     'NEXT_QUARTER' => null,
@@ -153,38 +154,37 @@ public abstract class RollupDateLiteral {
   }
 
   /**
-   * NEXT/LAST Section. Since these are range-based comparisons, a new abstract class is introduced
+   * NEXT/LAST Section. Since these are range-based comparisons, we have to compare start/end bounds
    */
 
   private abstract class RangedLiteral extends RollupDateLiteral {
     protected Datetime bound;
 
     protected abstract override Boolean isEqualTo(Datetime val);
-    protected abstract override Boolean isGreaterThan(Datetime val);
-    protected abstract override Boolean isLessThan(Datetime val);
+    protected override Boolean isGreaterThan(Datetime val) {
+      return val > this.bound;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return val < this.bound;
+    }
+  }
+
+  // TODO - possibly roll this into NextRangedLiteral, or expand to NextNRangedLiteral
+  private abstract class LastNRangedLiteral extends RangedLiteral {
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.ref >= val && val <= this.bound;
+    }
   }
 
   private abstract class LastRangedLiteral extends RangedLiteral {
     protected override Boolean isEqualTo(Datetime val) {
-      return this.ref >= val && val <= this.bound;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return this.bound < val && this.ref < val;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.bound > val && this.ref > val;
+      return this.ref <= val && val <= this.bound;
     }
   }
 
   private abstract class NextRangedLiteral extends RangedLiteral {
     protected override Boolean isEqualTo(Datetime val) {
       return this.ref <= val && val <= this.bound;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return val > this.ref && val > this.bound;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.bound > val && this.ref > val;
     }
   }
 
@@ -214,36 +214,40 @@ public abstract class RollupDateLiteral {
    * Starts 00:00:00 on the most recent first day of the week after the current day and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class NextWeekLiteral extends RollupDateLiteral {
+  private class NextWeekLiteral extends NextRangedLiteral {
     public NextWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month before the current day and continues for all the days of that month.
    */
-  private class LastMonthLiteral extends RollupDateLiteral {
+  private class LastMonthLiteral extends LastRangedLiteral {
     public LastMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(-1), START_TIME);
+      this.ref = Datetime.newInstanceGmt(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
+      this.bound = this.ref.addMonths(1).addSeconds(-1);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month that the current day is in and continues for all the days of that month.
    */
-  private class ThisMonthLiteral extends RollupDateLiteral {
+  private class ThisMonthLiteral extends NextRangedLiteral {
     public ThisMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth(), START_TIME);
+      this.bound = this.ref.addMonths(1).addSeconds(-1);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.
    */
-  private class NextMonthLiteral extends RollupDateLiteral {
+  private class NextMonthLiteral extends NextRangedLiteral {
     public NextMonthLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(1), START_TIME);
+      this.bound = this.ref.addMonths(1).addSeconds(-1);
     }
   }
 
@@ -252,6 +256,7 @@ public abstract class RollupDateLiteral {
    * This includes the current day, not just previous days. So it includes 91 days in total.
    */
   private class Last90DaysLiteral extends RollupDateLiteral {
+    //  TODO - range
     public Last90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(-91);
     }
@@ -261,6 +266,7 @@ public abstract class RollupDateLiteral {
    * Starts 00:00:00 of the next day and continues for the next 90 days.
    */
   private class Next90DaysLiteral extends RollupDateLiteral {
+    //  TODO - range
     public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(91);
     }
@@ -270,7 +276,7 @@ public abstract class RollupDateLiteral {
    * For the number n provided, starts with the current day and continues for the past n days.
    * This includes the current day, not just previous days. For example, LAST_N_DAYS:1 includes yesterday and today.
    */
-  private class LastNDaysLiteral extends LastRangedLiteral {
+  private class LastNDaysLiteral extends LastNRangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = START_OF_TODAY.addDays(1); // includes all of today
@@ -283,6 +289,7 @@ public abstract class RollupDateLiteral {
    * This does not include the current day. For example, NEXT_N_DAYS:1 is equivalent to TOMORROW.
    */
   private class NextNDaysLiteral extends NextRangedLiteral {
+    // TODO - equality check for days within range
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = START_OF_TODAY.addDays(1); // excludes today
@@ -293,7 +300,8 @@ public abstract class RollupDateLiteral {
   /**
    * For the number n provided, starts 00:00:00 of the last day of the previous week and continues for the past n weeks.
    */
-  private class LastNWeeksLiteral extends LastRangedLiteral {
+  private class LastNWeeksLiteral extends LastNRangedLiteral {
+    // TODO - equality check for days within range
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1), START_TIME);
@@ -305,6 +313,7 @@ public abstract class RollupDateLiteral {
    * For the number n provided, starts 00:00:00 of the first day of the next week and continues for the next n weeks.
    */
   private class NextNWeeksLiteral extends NextRangedLiteral {
+    // TODO - equality check for days within range
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
@@ -312,19 +321,31 @@ public abstract class RollupDateLiteral {
     }
   }
 
+  /**
+   * Starts 00:00:00 on January 1 of the current year and continues through the end of December 31 of the current year.
+   */
   private class ThisYearLiteral extends RollupDateLiteral {
+    // TODO - range and equality check
     public ThisYearLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().year(), 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 
+  /**
+   * Starts 00:00:00 on January 1 of the previous year and continues through the end of December 31 of that year.
+   */
   private class LastYearLiteral extends RollupDateLiteral {
+    // TODO - range and equality check
     public LastYearLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().year() - 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 
+  /**
+   * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of that year
+   */
   private class NextYearLiteral extends RollupDateLiteral {
+    // TODO - range and equality check
     public NextYearLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().year() + 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }

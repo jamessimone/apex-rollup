@@ -19,6 +19,7 @@ private class RollupDateLiteralTests {
       'LAST_N_WEEKS:2',
       'NEXT_N_WEEKS:2',
       'LAST_N_MONTHS:2',
+      'NEXT_N_MONTHS:2',
       'THIS_QUARTER',
       'LAST_QUARTER',
       'NEXT_QUARTER',
@@ -168,17 +169,18 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDate, '='), 'Date value should have matched: ' + startOfNextWeekDate + ' | ' + nextWeek);
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDatetime, '='), 'Datetime value should have matched: ' + startOfNextWeekDatetime);
+    System.assertEquals(true, nextWeek.matches(startOfNextWeekDate.addDays(2), '='));
 
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDate, '>='));
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDatetime, '>='));
-    System.assertEquals(true, nextWeek.matches(System.today().addDays(-8), '>'));
-    System.assertNotEquals(true, nextWeek.matches(System.now().addDays(9), '>'));
+    System.assertEquals(true, nextWeek.matches(System.today().addDays(15), '>'));
+    System.assertNotEquals(true, nextWeek.matches(System.now().addDays(-15), '>'));
     System.assertNotEquals(true, nextWeek.matches(startOfNextWeekDate, '>'));
 
-    System.assertEquals(true, nextWeek.matches(System.now().addDays(15), '<'));
+    System.assertEquals(true, nextWeek.matches(System.now().addDays(-15), '<'));
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDate, '<='));
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDatetime, '<='));
-    System.assertNotEquals(true, nextWeek.matches(System.today().toStartOfWeek().addDays(6), '<='));
+    System.assertEquals(true, nextWeek.matches(System.today().toStartOfWeek().addDays(6), '<'));
   }
 
   @IsTest
@@ -189,6 +191,7 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate, '='), 'Date value should have matched: ' + startOfLastMonthDate + ' ' + lastMonth);
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDatetime, '='), 'Datetime value should have matched: ' + startOfLastMonthDatetime);
+    System.assertEquals(true, lastMonth.matches(startOfLastMonthDate.addDays(2), '='));
 
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate, '>='));
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDatetime, '>='));
@@ -305,14 +308,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastNDays.matches(lastNDaysDate, '>='));
     System.assertEquals(true, lastNDays.matches(lastNDaysDatetime, '>='));
-    System.assertEquals(true, lastNDays.matches(System.today().addDays(-2), '>'));
-    System.assertNotEquals(true, lastNDays.matches(System.now().addDays(3), '>'));
+    System.assertEquals(true, lastNDays.matches(System.today().addDays(1), '>'));
+    System.assertNotEquals(true, lastNDays.matches(System.now().addDays(-7), '>'));
     System.assertNotEquals(true, lastNDays.matches(lastNDaysDate, '>'));
 
     System.assertEquals(true, lastNDays.matches(lastNDaysDate, '<='));
     System.assertEquals(true, lastNDays.matches(lastNDaysDatetime, '<='));
-    System.assertNotEquals(true, lastNDays.matches(System.today().addDays(-6), '<='));
     System.assertNotEquals(true, lastNDays.matches(System.today().addDays(2), '<='));
+    System.assertNotEquals(true, lastNDays.matches(System.now().addDays(2), '<='));
   }
 
   @IsTest
