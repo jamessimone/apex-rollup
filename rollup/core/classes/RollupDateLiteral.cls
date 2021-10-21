@@ -153,12 +153,49 @@ public abstract class RollupDateLiteral {
   }
 
   /**
+   * NEXT/LAST Section. Since these are range-based comparisons, a new abstract class is introduced
+   */
+
+  private abstract class RangedLiteral extends RollupDateLiteral {
+    protected Datetime bound;
+
+    protected abstract override Boolean isEqualTo(Datetime val);
+    protected abstract override Boolean isGreaterThan(Datetime val);
+    protected abstract override Boolean isLessThan(Datetime val);
+  }
+
+  private abstract class LastRangedLiteral extends RangedLiteral {
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.ref >= val && val <= this.bound;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return this.bound < val && this.ref < val;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.bound > val && this.ref > val;
+    }
+  }
+
+  private abstract class NextRangedLiteral extends RangedLiteral {
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.ref <= val && val <= this.bound;
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return val > this.ref && val > this.bound;
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.bound > val && this.ref > val;
+    }
+  }
+
+  /**
    * Starts 00:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class LastWeekLiteral extends RollupDateLiteral {
+  private class LastWeekLiteral extends LastRangedLiteral {
     public LastWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-7), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
@@ -166,9 +203,10 @@ public abstract class RollupDateLiteral {
    * Starts 00:00:00 on the most recent first day of the week on or before the current day and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class ThisWeekLiteral extends RollupDateLiteral {
+  private class ThisWeekLiteral extends NextRangedLiteral {
     public ThisWeekLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek(), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
@@ -225,42 +263,6 @@ public abstract class RollupDateLiteral {
   private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(91);
-    }
-  }
-
-  /**
-   * NEXT/LAST N Section. Since these are range-based comparisons, a new abstract class is introduced
-   */
-
-  private abstract class RangedLiteral extends RollupDateLiteral {
-    protected Datetime bound;
-
-    protected abstract override Boolean isEqualTo(Datetime val);
-    protected abstract override Boolean isGreaterThan(Datetime val);
-    protected abstract override Boolean isLessThan(Datetime val);
-  }
-
-  private abstract class LastRangedLiteral extends RangedLiteral {
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.bound <= val && this.ref >= val;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return this.bound < val && this.ref > val;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.bound > val && this.ref < val;
-    }
-  }
-
-  private abstract class NextRangedLiteral extends RangedLiteral {
-    protected override Boolean isEqualTo(Datetime val) {
-      return val >= this.ref && this.bound <= val;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return val > this.ref && val > this.bound;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.bound > val && this.ref > val;
     }
   }
 

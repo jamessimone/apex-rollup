@@ -57,14 +57,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, yesterday.matches(yesterdayDate, '>='));
     System.assertEquals(true, yesterday.matches(yesterdayDatetime, '>='));
-    System.assertEquals(true, yesterday.matches(System.today().addDays(-2), '>'));
-    System.assertNotEquals(true, yesterday.matches(System.now(), '>'));
-    System.assertNotEquals(true, yesterday.matches(yesterdayDate, '>'));
+    System.assertEquals(true, yesterday.matches(System.today().addDays(2), '>'));
+    System.assertNotEquals(true, yesterday.matches(System.now().addDays(-3), '>'));
+    System.assertNotEquals(true, yesterday.matches(yesterdayDate.addDays(-1), '>'));
 
-    System.assertEquals(true, yesterday.matches(System.now(), '<'));
+    System.assertEquals(true, yesterday.matches(System.now().addDays(-2), '<'));
     System.assertEquals(true, yesterday.matches(yesterdayDate, '<='));
     System.assertEquals(true, yesterday.matches(yesterdayDatetime, '<='));
-    System.assertNotEquals(true, yesterday.matches(System.today().addDays(-2), '<='));
+    System.assertNotEquals(true, yesterday.matches(System.today().addDays(2), '<='));
   }
 
   @IsTest
@@ -78,14 +78,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, thisDay.matches(thisDate, '>='));
     System.assertEquals(true, thisDay.matches(thisDatetime, '>='));
-    System.assertEquals(true, thisDay.matches(System.today().addDays(-2), '>'));
-    System.assertNotEquals(true, thisDay.matches(System.now().addDays(1), '>'));
+    System.assertEquals(true, thisDay.matches(System.today().addDays(2), '>'));
+    System.assertNotEquals(true, thisDay.matches(System.now().addDays(-1), '>'));
     System.assertNotEquals(true, thisDay.matches(thisDate, '>'));
 
-    System.assertEquals(true, thisDay.matches(System.now(), '<'));
+    System.assertEquals(true, thisDay.matches(System.now().addDays(-1), '<'));
     System.assertEquals(true, thisDay.matches(thisDate, '<='));
     System.assertEquals(true, thisDay.matches(thisDatetime, '<='));
-    System.assertNotEquals(true, thisDay.matches(System.today().addDays(-2), '<='));
+    System.assertNotEquals(true, thisDay.matches(System.today().addDays(2), '<='));
   }
 
   @IsTest
@@ -99,14 +99,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, tomorrow.matches(tomorrowDate, '>='));
     System.assertEquals(true, tomorrow.matches(tomorrowDatetime, '>='));
-    System.assertEquals(true, tomorrow.matches(System.today().addDays(-1), '>'));
-    System.assertNotEquals(true, tomorrow.matches(System.now().addDays(2), '>'));
+    System.assertEquals(true, tomorrow.matches(System.today().addDays(2), '>'));
+    System.assertNotEquals(true, tomorrow.matches(System.now(), '>'));
     System.assertNotEquals(true, tomorrow.matches(tomorrowDate, '>'));
 
-    System.assertEquals(true, tomorrow.matches(System.now().addDays(2), '<'));
+    System.assertEquals(true, tomorrow.matches(System.now().addDays(-1), '<'));
     System.assertEquals(true, tomorrow.matches(tomorrowDate, '<='));
     System.assertEquals(true, tomorrow.matches(tomorrowDatetime, '<='));
-    System.assertNotEquals(true, tomorrow.matches(System.today(), '<='));
+    System.assertNotEquals(true, tomorrow.matches(System.today().addDays(2), '<='));
   }
 
   @IsTest
@@ -120,14 +120,18 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate, '>='));
     System.assertEquals(true, lastWeek.matches(lastWeekDatetime, '>='));
-    System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate.toStartOfWeek().addDays(-1), '>'));
-    System.assertNotEquals(true, lastWeek.matches(System.now().addDays(-6), '>'));
+    System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate.toStartOfWeek().addDays(8), '>'));
+    System.assertNotEquals(
+      true,
+      lastWeek.matches(definitiveLastWeekDate.toStartOfWeek().addDays(2), '>'),
+      'Should only consider days past last week as greater than'
+    );
     System.assertNotEquals(true, lastWeek.matches(definitiveLastWeekDate, '>'));
 
-    System.assertEquals(true, lastWeek.matches(System.now().addDays(2), '<'));
-    System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate, '<='));
+    System.assertEquals(true, lastWeek.matches(lastWeekDatetime.addDays(-2), '<'));
+    System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate.addDays(-2), '<='));
     System.assertEquals(true, lastWeek.matches(lastWeekDatetime, '<='));
-    System.assertNotEquals(true, lastWeek.matches(System.today().toStartOfWeek().addDays(-9), '<='));
+    System.assertNotEquals(true, lastWeek.matches(System.today().toStartOfWeek(), '<='));
   }
 
   @IsTest
@@ -138,17 +142,18 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, thisWeek.matches(startOfWeekDate, '='), 'Date value should have matched: ' + startOfWeekDate + ' | ' + thisWeek);
     System.assertEquals(true, thisWeek.matches(thisWeekDatetime, '='), 'Datetime value should have matched: ' + thisWeekDatetime);
+    System.assertEquals(true, thisWeek.matches(startOfWeekDate.addDays(2), '='));
 
     System.assertEquals(true, thisWeek.matches(startOfWeekDate, '>='));
     System.assertEquals(true, thisWeek.matches(thisWeekDatetime, '>='));
-    System.assertEquals(true, thisWeek.matches(System.today().addDays(-8), '>'));
-    System.assertNotEquals(true, thisWeek.matches(System.now().addDays(9), '>'));
+    System.assertEquals(true, thisWeek.matches(System.today().addDays(8), '>'));
+    System.assertNotEquals(true, thisWeek.matches(System.now().addDays(-9), '>'));
     System.assertNotEquals(true, thisWeek.matches(startOfWeekDate, '>'));
 
-    System.assertEquals(true, thisWeek.matches(System.now().addDays(11), '<'));
+    System.assertEquals(true, thisWeek.matches(System.now().addDays(-11), '<'));
     System.assertEquals(true, thisWeek.matches(startOfWeekDate, '<='));
     System.assertEquals(true, thisWeek.matches(thisWeekDatetime, '<='));
-    System.assertNotEquals(true, thisWeek.matches(System.today().addDays(-8), '<='));
+    System.assertNotEquals(true, thisWeek.matches(System.today().addDays(8), '<='));
   }
 
   @IsTest
@@ -187,14 +192,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate, '>='));
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDatetime, '>='));
-    System.assertEquals(true, lastMonth.matches(System.today().toStartOfMonth().addMonths(-2), '>'));
-    System.assertNotEquals(true, lastMonth.matches(System.now(), '>'));
+    System.assertEquals(true, lastMonth.matches(System.today().toStartOfMonth(), '>'));
+    System.assertNotEquals(true, lastMonth.matches(System.now().addMonths(-2), '>'));
     System.assertNotEquals(true, lastMonth.matches(startOfLastMonthDatetime, '>'));
 
-    System.assertEquals(true, lastMonth.matches(System.now().addMonths(1), '<'));
+    System.assertEquals(true, lastMonth.matches(System.now().addMonths(-2), '<'));
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate, '<='));
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDatetime, '<='));
-    System.assertNotEquals(true, lastMonth.matches(System.today().toStartOfMonth().addMonths(-2), '<='));
+    System.assertNotEquals(true, lastMonth.matches(System.today().toStartOfMonth(), '<='));
   }
 
   @IsTest
@@ -208,14 +213,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDate, '>='));
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDatetime, '>='));
-    System.assertEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(-2), '>'));
-    System.assertNotEquals(true, thisMonth.matches(System.now(), '>'));
+    System.assertEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(1), '>'));
+    System.assertNotEquals(true, thisMonth.matches(System.now().addMonths(-1), '>'));
     System.assertNotEquals(true, thisMonth.matches(startOfThisMonthDate, '>'));
 
-    System.assertEquals(true, thisMonth.matches(System.now().addMonths(1), '<'));
+    System.assertEquals(true, thisMonth.matches(System.now().addMonths(-2), '<'));
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDate, '<='));
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDatetime, '<='));
-    System.assertNotEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(-2), '<='));
+    System.assertNotEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(2), '<='));
   }
 
   @IsTest
@@ -229,14 +234,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nextMonth.matches(startOfNextMonthDate, '>='));
     System.assertEquals(true, nextMonth.matches(startOfNextMonthDatetime, '>='));
-    System.assertEquals(true, nextMonth.matches(System.today().toStartOfMonth().addMonths(-1), '>'));
-    System.assertNotEquals(true, nextMonth.matches(System.now().addMonths(2), '>'));
+    System.assertEquals(true, nextMonth.matches(System.today().toStartOfMonth().addMonths(2), '>'));
+    System.assertNotEquals(true, nextMonth.matches(System.now().addMonths(-1), '>'));
     System.assertNotEquals(true, nextMonth.matches(startOfNextMonthDate, '>'));
 
-    System.assertEquals(true, nextMonth.matches(System.now().addMonths(2), '<'));
+    System.assertEquals(true, nextMonth.matches(System.now().addMonths(-2), '<'));
     System.assertEquals(true, nextMonth.matches(startOfNextMonthDate, '<='));
     System.assertEquals(true, nextMonth.matches(startOfNextMonthDatetime, '<='));
-    System.assertNotEquals(true, nextMonth.matches(System.today().toStartOfMonth().addMonths(-1), '<='));
+    System.assertNotEquals(true, nextMonth.matches(System.today().toStartOfMonth().addMonths(2), '<='));
   }
 
   @IsTest
@@ -250,14 +255,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastNinetyDays.matches(lastNinetyDaysDate, '>='));
     System.assertEquals(true, lastNinetyDays.matches(lastNinetyDaysDatetime, '>='));
-    System.assertEquals(true, lastNinetyDays.matches(System.today().addMonths(-4), '>'));
-    System.assertNotEquals(true, lastNinetyDays.matches(System.now().addMonths(2), '>'));
+    System.assertEquals(true, lastNinetyDays.matches(System.today().addDays(1), '>'));
+    System.assertNotEquals(true, lastNinetyDays.matches(System.now().addMonths(-4), '>'));
     System.assertNotEquals(true, lastNinetyDays.matches(lastNinetyDaysDate, '>'));
 
-    System.assertEquals(true, lastNinetyDays.matches(System.now().addMonths(2), '<'));
+    System.assertEquals(true, lastNinetyDays.matches(System.now().addMonths(-4), '<'));
     System.assertEquals(true, lastNinetyDays.matches(lastNinetyDaysDate, '<='));
     System.assertEquals(true, lastNinetyDays.matches(lastNinetyDaysDatetime, '<='));
-    System.assertNotEquals(true, lastNinetyDays.matches(System.today().addMonths(-4), '<='));
+    System.assertNotEquals(true, lastNinetyDays.matches(System.today().addMonths(4), '<='));
   }
 
   @IsTest
@@ -278,14 +283,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nextNinetyDays.matches(nextNinetyDaysDate, '>='));
     System.assertEquals(true, nextNinetyDays.matches(nextNinetyDaysDatetime, '>='));
-    System.assertEquals(true, nextNinetyDays.matches(System.today().addDays(89), '>'));
-    System.assertNotEquals(true, nextNinetyDays.matches(System.now().addDays(95), '>'));
+    System.assertEquals(true, nextNinetyDays.matches(System.today().addDays(92), '>'));
+    System.assertNotEquals(true, nextNinetyDays.matches(System.now().addDays(88), '>'));
     System.assertNotEquals(true, nextNinetyDays.matches(nextNinetyDaysDate, '>'));
 
-    System.assertEquals(true, nextNinetyDays.matches(System.now().addDays(95), '<'));
+    System.assertEquals(true, nextNinetyDays.matches(System.now().addDays(60), '<'));
     System.assertEquals(true, nextNinetyDays.matches(nextNinetyDaysDate, '<='));
     System.assertEquals(true, nextNinetyDays.matches(nextNinetyDaysDatetime, '<='));
-    System.assertNotEquals(true, nextNinetyDays.matches(System.today().addDays(90), '<='));
+    System.assertNotEquals(true, nextNinetyDays.matches(System.today().addDays(93), '<='));
   }
 
   @IsTest
