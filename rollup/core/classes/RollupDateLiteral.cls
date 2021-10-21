@@ -324,30 +324,33 @@ public abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 on January 1 of the current year and continues through the end of December 31 of the current year.
    */
-  private class ThisYearLiteral extends RollupDateLiteral {
-    // TODO - range and equality check
+  private class ThisYearLiteral extends NextRangedLiteral {
+    // TODO - equality check
     public ThisYearLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().year(), 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
+      this.bound = Datetime.newInstanceGmt(System.today().year(), 12, 31, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the previous year and continues through the end of December 31 of that year.
    */
-  private class LastYearLiteral extends RollupDateLiteral {
-    // TODO - range and equality check
+  private class LastYearLiteral extends LastRangedLiteral {
+    // TODO - equality check
     public LastYearLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().year() - 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
+      this.bound = Datetime.newInstanceGmt(System.today().year() - 1, 12, 31, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of that year
    */
-  private class NextYearLiteral extends RollupDateLiteral {
-    // TODO - range and equality check
+  private class NextYearLiteral extends NextRangedLiteral {
+    // TODO - equality check
     public NextYearLiteral() {
       this.ref = Datetime.newInstanceGmt(System.today().year() + 1, 1, 1, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
+      this.bound = Datetime.newInstanceGmt(System.today().year() + 1, 12, 31, START_TIME.hour(), START_TIME.minute(), START_TIME.second());
     }
   }
 }

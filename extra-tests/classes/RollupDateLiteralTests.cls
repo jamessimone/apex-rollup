@@ -434,7 +434,7 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nextYear.matches(startOfNextYearDate, '>='));
     System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '>='));
-    System.assertEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 1, 2, 1), '>'));
+    System.assertEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 1, 2, 1), '>='));
     System.assertNotEquals(true, nextYear.matches(System.now(), '>'));
     System.assertNotEquals(true, nextYear.matches(startOfNextYearDate.addDays(-2), '>'));
 
