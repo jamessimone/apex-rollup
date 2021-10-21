@@ -488,4 +488,26 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '<='));
     System.assertNotEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 2, 1, 1), '<='));
   }
+
+  @IsTest
+  static void shouldWorkForLastNYears() {
+    Integer numOfYearsAgo = 3;
+    Date lastNYearsDate = Date.newInstance(System.today().year() - numOfYearsAgo, 12, 31);
+    Datetime lastNYearsDatetime = Datetime.newInstanceGmt(lastNYearsDate, Time.newInstance(11, 59, 59, 0));
+    RollupDateLiteral lastNYears = RollupDateLiteral.get('LAST_N_YEARS:' + String.valueOf(numOfYearsAgo));
+
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '='), 'Date value should have matched: ' + lastNYearsDate + ' | ' + lastNYears);
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate.addYears(numOfYearsAgo + 1), '='), 'Date was within: ' + lastNYears);
+    System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '='), 'Datetime value should have matched: ' + lastNYearsDatetime);
+
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '>='));
+    System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '>='));
+    System.assertEquals(true, lastNYears.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastNYears.matches(System.now().date().toStartOfMonth().addDays(-1), '>'));
+    System.assertNotEquals(true, lastNYears.matches(lastNYearsDate, '>'));
+
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '<='));
+    System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '<='));
+    System.assertNotEquals(true, lastNYears.matches(System.now(), '<'));
+  }
 }

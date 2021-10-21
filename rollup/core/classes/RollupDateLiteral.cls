@@ -60,7 +60,7 @@ public abstract class RollupDateLiteral {
     'THIS_YEAR' => ThisYearLiteral.class,
     'LAST_YEAR' => LastYearLiteral.class,
     'NEXT_YEAR' => NextYearLiteral.class,
-    'LAST_N_YEARS' => null,
+    'LAST_N_YEARS' => LastNYearsLiteral.class,
     'NEXT_N_YEARS' => null,
     'THIS_FISCAL_QUARTER' => null,
     'LAST_FISCAL_QUARTER' => null,
@@ -368,6 +368,21 @@ public abstract class RollupDateLiteral {
       Integer nextYearNumber = System.today().year() + 1;
       this.ref = Datetime.newInstanceGmt(nextYearNumber, 1, 1);
       this.bound = Datetime.newInstanceGmt(Date.newInstance(nextYearNumber, 12, 31), END_TIME);
+    }
+  }
+
+  /**
+   * For the number n provided, starts 00:00:00 on January 1 of the previous year and continues through the end of December 31 of the previous nth year.
+   */
+  private class LastNYearsLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      Integer lastYearNumber = System.today().year() - 1;
+      Date startOfLastYear = Date.newInstance(lastYearNumber, 1, 1);
+      Integer lastNYearNumber = System.today().year() - dateRange;
+      Date endOfNYear = Date.newInstance(lastNYearNumber, 12, 31);
+      this.ref = Datetime.newInstanceGmt(endOfNYear, END_TIME);
+      this.bound = Datetime.newInstanceGmt(startOfLastYear, START_TIME);
     }
   }
 }
