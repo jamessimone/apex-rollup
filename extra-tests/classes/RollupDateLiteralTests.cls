@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 @IsTest
 private class RollupDateLiteralTests {
   @IsTest
@@ -47,6 +48,9 @@ private class RollupDateLiteralTests {
       System.assertEquals(true, RollupDateLiteral.isDateLiteral(dateLiteral), 'Date literal was not detected properly: ' + dateLiteral);
     }
   }
+
+  // these tests are more or less in the order that the SOQL date literals appear within the corresponding Salesforce Developer doc page for them
+  // though I have standardized last/current/next ordering since ... that just makes sense
 
   @IsTest
   static void shouldWorkForYesterday() {
@@ -698,5 +702,104 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextNYears.matches(nextNYearsDate, '<='));
     System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '<='));
     System.assertNotEquals(true, nextNYears.matches(System.now().addYears(2), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForLastFiscalQuarter() {
+    Period lastFiscalQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_FISCAL_QUARTER];
+    Date lastFiscalQuarterDate = lastFiscalQuarterPeriod.StartDate.addMonths(1);
+    Datetime lastFiscalQuarterDatetime = Datetime.newInstanceGmt(lastFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastFiscalQuarter = RollupDateLiteral.get('LAST_FISCAL_QUARTER');
+
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterPeriod.StartDate, '='));
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterPeriod.EndDate, '='));
+    System.assertEquals(
+      true,
+      lastFiscalQuarter.matches(lastFiscalQuarterDate, '='),
+      'Date value should have matched: ' +
+      lastFiscalQuarterDate +
+      ' | ' +
+      lastFiscalQuarter
+    );
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDate.addDays(30), '='), 'Date was within: ' + lastFiscalQuarter);
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + lastFiscalQuarterDatetime);
+
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDate, '>='));
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDatetime, '>='));
+    System.assertEquals(true, lastFiscalQuarter.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastFiscalQuarter.matches(System.now().addMonths(-3), '>'));
+    System.assertNotEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDate, '>'));
+
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDate, '<='));
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterDatetime, '<='));
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterPeriod.StartDate, '<='));
+    System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterPeriod.StartDate.addDays(-1), '<'));
+    System.assertNotEquals(true, lastFiscalQuarter.matches(System.now().addMonths(-2), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForThisFiscalQuarter() {
+    Period thisFiscalQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = THIS_FISCAL_QUARTER];
+    Date thisFiscalQuarterDate = thisFiscalQuarterPeriod.StartDate.addMonths(1);
+    Datetime thisFiscalQuarterDatetime = Datetime.newInstanceGmt(thisFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral thisFiscalQuarter = RollupDateLiteral.get('THIS_FISCAL_QUARTER');
+
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterPeriod.StartDate, '='));
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterPeriod.EndDate, '='), thisFiscalQuarterPeriod.EndDate + ' | ' + thisFiscalQuarter);
+    System.assertEquals(
+      true,
+      thisFiscalQuarter.matches(thisFiscalQuarterDate, '='),
+      'Date value should have matched: ' +
+      thisFiscalQuarterDate +
+      ' | ' +
+      thisFiscalQuarter
+    );
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDate.addDays(28), '='), 'Date was within: ' + thisFiscalQuarter);
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + thisFiscalQuarterDatetime);
+
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDate, '>='));
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDatetime, '>='));
+    System.assertEquals(true, thisFiscalQuarter.matches(System.today().addMonths(4), '>'));
+    System.assertNotEquals(true, thisFiscalQuarter.matches(System.now().addMonths(-1), '>'));
+    System.assertNotEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDate, '>'));
+
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDate, '<='));
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterDatetime, '<='));
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterPeriod.StartDate, '<='));
+    System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterPeriod.StartDate.addDays(-1), '<'));
+    System.assertNotEquals(true, thisFiscalQuarter.matches(System.now().addMonths(4), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForNextFiscalQuarter() {
+    Period nextFiscalQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = NEXT_FISCAL_QUARTER];
+    Date nextFiscalQuarterDate = nextFiscalQuarterPeriod.StartDate.addMonths(1);
+    Datetime nextFiscalQuarterDatetime = Datetime.newInstanceGmt(nextFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral nextFiscalQuarter = RollupDateLiteral.get('NEXT_FISCAL_QUARTER');
+
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.StartDate, '='), nextFiscalQuarterPeriod.StartDate + ' | ' + nextFiscalQuarter);
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.EndDate, '='), nextFiscalQuarterPeriod.EndDate + ' | ' + nextFiscalQuarter);
+    System.assertEquals(
+      true,
+      nextFiscalQuarter.matches(nextFiscalQuarterDate, '='),
+      'Date value should have matched: ' +
+      nextFiscalQuarterDate +
+      ' | ' +
+      nextFiscalQuarter
+    );
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDate.addDays(28), '='), 'Date was within: ' + nextFiscalQuarter);
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + nextFiscalQuarterDatetime);
+
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDate, '>='));
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDatetime, '>='));
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.EndDate.addDays(1), '>'));
+    System.assertNotEquals(true, nextFiscalQuarter.matches(System.now().addMonths(-1), '>'));
+    System.assertNotEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDate, '>'));
+
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDate, '<='));
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterDatetime, '<='));
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.StartDate, '<='));
+    System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.StartDate.addDays(-1), '<'));
+    System.assertNotEquals(true, nextFiscalQuarter.matches(System.now().addMonths(4), '<'));
   }
 }
