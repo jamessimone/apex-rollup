@@ -377,12 +377,8 @@ public abstract class RollupDateLiteral {
   private class LastNYearsLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      Integer lastYearNumber = System.today().year() - 1;
-      Date startOfLastYear = Date.newInstance(lastYearNumber, 1, 1);
-      Integer lastNYearNumber = System.today().year() - dateRange;
-      Date endOfNYear = Date.newInstance(lastNYearNumber, 12, 31);
-      this.ref = Datetime.newInstanceGmt(endOfNYear, END_TIME);
-      this.bound = Datetime.newInstanceGmt(startOfLastYear, START_TIME);
+      this.bound = Datetime.newInstanceGmt(Date.newInstance(System.today().year() - 1, 1, 1), START_TIME);
+      this.ref = Datetime.newInstanceGmt(this.bound.addYears(-dateRange).date(), END_TIME);
     }
   }
 }

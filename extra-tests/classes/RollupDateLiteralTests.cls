@@ -492,18 +492,24 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastNYears() {
     Integer numOfYearsAgo = 3;
-    Date lastNYearsDate = Date.newInstance(System.today().year() - numOfYearsAgo, 12, 31);
-    Datetime lastNYearsDatetime = Datetime.newInstanceGmt(lastNYearsDate, Time.newInstance(11, 59, 59, 0));
+    Date lastNYearsDate = Date.newInstance(System.today().year() - (numOfYearsAgo - 1), 1, 1);
+    Datetime lastNYearsDatetime = Datetime.newInstanceGmt(lastNYearsDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNYears = RollupDateLiteral.get('LAST_N_YEARS:' + String.valueOf(numOfYearsAgo));
+    Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
 
-    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '='), 'Date value should have matched: ' + lastNYearsDate + ' | ' + lastNYears); // this test is faling
-    System.assertEquals(true, lastNYears.matches(lastNYearsDate.addYears(numOfYearsAgo + 1), '='), 'Date was within: ' + lastNYears);
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '='), 'Date value should have matched: ' + lastNYearsDate + ' | ' + lastNYears);
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate.addYears(1), '='), 'Date was within: ' + lastNYears);
     System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '='), 'Datetime value should have matched: ' + lastNYearsDatetime);
+    System.assertNotEquals(
+      true,
+      lastNYears.matches(Datetime.newInstanceGmt(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
+      'Should not equal anything past 00:00:00 on first date of last year'
+    );
 
     System.assertEquals(true, lastNYears.matches(lastNYearsDate, '>='));
     System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '>='));
     System.assertEquals(true, lastNYears.matches(System.today(), '>'));
-    System.assertNotEquals(true, lastNYears.matches(System.now().date().toStartOfMonth().addDays(-1), '>'));
+    System.assertNotEquals(true, lastNYears.matches(System.now().addYears(-5), '>'));
     System.assertNotEquals(true, lastNYears.matches(lastNYearsDate, '>'));
 
     System.assertEquals(true, lastNYears.matches(lastNYearsDate, '<='));
