@@ -61,7 +61,7 @@ public abstract class RollupDateLiteral {
     'LAST_YEAR' => LastYearLiteral.class,
     'NEXT_YEAR' => NextYearLiteral.class,
     'LAST_N_YEARS' => LastNYearsLiteral.class,
-    'NEXT_N_YEARS' => null,
+    'NEXT_N_YEARS' => NextNYearsLiteral.class,
     'THIS_FISCAL_QUARTER' => null,
     'LAST_FISCAL_QUARTER' => null,
     'NEXT_FISCAL_QUARTER' => null,
@@ -174,10 +174,10 @@ public abstract class RollupDateLiteral {
       return this.ref <= val && val <= this.bound;
     }
     protected override Boolean isGreaterThan(Datetime val) {
-      return val > this.bound;
+      return val > this.bound && val > this.ref;
     }
     protected override Boolean isLessThan(Datetime val) {
-      return val < this.bound;
+      return val < this.bound && val < this.ref;
     }
 
     public override String toString() {
@@ -379,6 +379,17 @@ public abstract class RollupDateLiteral {
       Integer dateRange = Integer.valueOf(num);
       this.bound = Datetime.newInstanceGmt(Date.newInstance(System.today().year() - 1, 1, 1), START_TIME);
       this.ref = Datetime.newInstanceGmt(this.bound.addYears(-dateRange).date(), END_TIME);
+    }
+  }
+
+  /**
+   * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of the nth year.
+   */
+  private class NextNYearsLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year() + 1, 1, 1), START_TIME);
+      this.bound = Datetime.newInstanceGmt(Date.newInstance(this.ref.year() + dateRange, 12, 31), END_TIME);
     }
   }
 }
