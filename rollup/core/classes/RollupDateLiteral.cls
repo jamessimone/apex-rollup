@@ -1,6 +1,6 @@
 @SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
 public without sharing abstract class RollupDateLiteral {
-  private static final String RELATIVE_LITERAL_REGEX = '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_​QUARTERS|FISCAL_​YEARS):?\\d*';
+  private static final String RELATIVE_LITERAL_REGEX = '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_​QUARTERS|FISCAL_​YEARS):\\s?\\d*';
 
   private static final Time START_TIME {
     get {
@@ -65,8 +65,8 @@ public without sharing abstract class RollupDateLiteral {
     'LAST_QUARTER' => LastQuarterLiteral.class,
     'THIS_QUARTER' => ThisQuarterLiteral.class,
     'NEXT_QUARTER' => NextQuarterLiteral.class,
-    'NEXT_N_QUARTERS' => null,
-    'LAST_N_QUARTERS' => null,
+    'LAST_N_QUARTERS' => LastNQuartersLiteral.class,
+    'NEXT_N_QUARTERS' => NextNQuartersLiteral.class,
     'THIS_YEAR' => ThisYearLiteral.class,
     'LAST_YEAR' => LastYearLiteral.class,
     'NEXT_YEAR' => NextYearLiteral.class,
@@ -90,7 +90,7 @@ public without sharing abstract class RollupDateLiteral {
 
   public static RollupDateLiteral get(String key) {
     List<String> possibleDynamicValues = key.split(':');
-    RollupDateLiteral literal = getLazyLoadedLiteral(possibleDynamicValues[0], possibleDynamicValues.size() > 1 ? possibleDynamicValues[1] : '');
+    RollupDateLiteral literal = getLazyLoadedLiteral(possibleDynamicValues[0], possibleDynamicValues.size() > 1 ? possibleDynamicValues[1].trim() : '');
     return literal;
   }
 
@@ -435,11 +435,39 @@ public without sharing abstract class RollupDateLiteral {
     public NextQuarterLiteral() {
       Integer nextQuarterStartingMonth = getNextQuarterStartingMonth();
       this.ref = Datetime.newInstanceGmt(
-        Date.newInstance(System.today().year() + (nextQuarterStartingMonth == 1 ? 1 : 0), getNextQuarterStartingMonth(), 1),
+        Date.newInstance(System.today().year() + (nextQuarterStartingMonth == 1 ? 1 : 0), nextQuarterStartingMonth, 1),
         START_TIME
       );
       Integer endMonth = this.ref.addMonths(3).month();
       this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+    }
+  }
+
+  /**
+   * Starts 00:00:00 of the previous quarter and continues to the end of the previous nth quarter.
+   */
+  private class LastNQuartersLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer quarterRange = Integer.valueOf(num) - 1;
+      Integer priorQuarterStartingMonth = getPriorQuarterStartingMonth();
+      Integer priorQuarterYearOffset = priorQuarterStartingMonth == 10 ? -1 : 0;
+
+      this.bound = Datetime.newInstanceGmt(Date.newInstance(System.today().year() + priorQuarterYearOffset, priorQuarterStartingMonth, 1), START_TIME);
+      this.ref = this.bound.addMonths(quarterRange * -3);
+    }
+  }
+
+  /**
+   * Starts 00:00:00 of the next quarter and continues to the end of the nth quarter.
+   */
+  private class NextNQuartersLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer quarterRange = Integer.valueOf(num);
+      Integer nextQuarterStartingMonth = getNextQuarterStartingMonth();
+      Integer yearForNextQuarterOffset = nextQuarterStartingMonth == 1 ? 1 : 0;
+
+      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year() + yearForNextQuarterOffset, nextQuarterStartingMonth, 1), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(quarterRange * 3).date(), END_TIME);
     }
   }
 
