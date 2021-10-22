@@ -424,6 +424,84 @@ private class RollupDateLiteralTests {
   }
 
   @IsTest
+  static void shouldWorkForLastQuarter() {
+    Period lastQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_QUARTER];
+    Date lastQuarterDate = lastQuarterPeriod.StartDate.addMonths(1);
+    Datetime lastQuarterDatetime = Datetime.newInstanceGmt(lastQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastQuarter = RollupDateLiteral.get('LAST_QUARTER');
+
+    System.assertEquals(true, lastQuarter.matches(lastQuarterPeriod.StartDate, '='));
+    System.assertEquals(true, lastQuarter.matches(lastQuarterPeriod.EndDate, '='));
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDate, '='), 'Date value should have matched: ' + lastQuarterDate + ' | ' + lastQuarter);
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDate.addDays(30), '='), 'Date was within: ' + lastQuarter);
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDatetime, '='), 'Datetime value should have matched: ' + lastQuarterDatetime);
+
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDate, '>='));
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDatetime, '>='));
+    System.assertEquals(true, lastQuarter.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastQuarter.matches(System.now().addMonths(-3), '>'));
+    System.assertNotEquals(true, lastQuarter.matches(lastQuarterDate, '>'));
+
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDate, '<='));
+    System.assertEquals(true, lastQuarter.matches(lastQuarterDatetime, '<='));
+    System.assertEquals(true, lastQuarter.matches(lastQuarterPeriod.StartDate, '<='));
+    System.assertEquals(true, lastQuarter.matches(lastQuarterPeriod.StartDate.addDays(-1), '<'));
+    System.assertNotEquals(true, lastQuarter.matches(System.now().addMonths(-2), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForThisQuarter() {
+    Period thisQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = THIS_QUARTER];
+    Date thisQuarterDate = thisQuarterPeriod.StartDate.addMonths(1);
+    Datetime thisQuarterDatetime = Datetime.newInstanceGmt(thisQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral thisQuarter = RollupDateLiteral.get('THIS_QUARTER');
+
+    System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.StartDate, '='));
+    System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.EndDate, '='), thisQuarterPeriod.EndDate + ' | ' + thisQuarter);
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDate, '='), 'Date value should have matched: ' + thisQuarterDate + ' | ' + thisQuarter);
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDate.addDays(28), '='), 'Date was within: ' + thisQuarter);
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDatetime, '='), 'Datetime value should have matched: ' + thisQuarterDatetime);
+
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDate, '>='));
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDatetime, '>='));
+    System.assertEquals(true, thisQuarter.matches(System.today().addMonths(4), '>'));
+    System.assertNotEquals(true, thisQuarter.matches(System.now().addMonths(-1), '>'));
+    System.assertNotEquals(true, thisQuarter.matches(thisQuarterDate, '>'));
+
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDate, '<='));
+    System.assertEquals(true, thisQuarter.matches(thisQuarterDatetime, '<='));
+    System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.StartDate, '<='));
+    System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.StartDate.addDays(-1), '<'));
+    System.assertNotEquals(true, thisQuarter.matches(System.now().addMonths(4), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForNextQuarter() {
+    Period nextQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = NEXT_QUARTER];
+    Date nextQuarterDate = nextQuarterPeriod.StartDate.addMonths(1);
+    Datetime nextQuarterDatetime = Datetime.newInstanceGmt(nextQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral nextQuarter = RollupDateLiteral.get('NEXT_QUARTER');
+
+    System.assertEquals(true, nextQuarter.matches(nextQuarterPeriod.StartDate, '='), nextQuarterPeriod.StartDate + ' | ' + nextQuarter);
+    System.assertEquals(true, nextQuarter.matches(nextQuarterPeriod.EndDate, '='), nextQuarterPeriod.EndDate + ' | ' + nextQuarter);
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDate, '='), 'Date value should have matched: ' + nextQuarterDate + ' | ' + nextQuarter);
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDate.addDays(28), '='), 'Date was within: ' + nextQuarter);
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDatetime, '='), 'Datetime value should have matched: ' + nextQuarterDatetime);
+
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDate, '>='));
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDatetime, '>='));
+    System.assertEquals(true, nextQuarter.matches(nextQuarterPeriod.EndDate.addDays(1), '>'));
+    System.assertNotEquals(true, nextQuarter.matches(System.now().addMonths(-1), '>'));
+    System.assertNotEquals(true, nextQuarter.matches(nextQuarterDate, '>'));
+
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDate, '<='));
+    System.assertEquals(true, nextQuarter.matches(nextQuarterDatetime, '<='));
+    System.assertEquals(true, nextQuarter.matches(nextQuarterPeriod.StartDate, '<='));
+    System.assertEquals(true, nextQuarter.matches(nextQuarterPeriod.StartDate.addDays(-1), '<'));
+    System.assertNotEquals(true, nextQuarter.matches(System.now().addMonths(4), '<'));
+  }
+
+  @IsTest
   static void shouldWorkForThisYear() {
     Date startOfThisYearDate = Date.newInstance(System.today().year(), 1, 1);
     Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));

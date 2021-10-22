@@ -1,5 +1,5 @@
 @SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
-public abstract class RollupDateLiteral {
+public without sharing abstract class RollupDateLiteral {
   private static final String RELATIVE_LITERAL_REGEX = '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_​QUARTERS|FISCAL_​YEARS):?\\d*';
 
   private static final Time START_TIME {
@@ -32,6 +32,16 @@ public abstract class RollupDateLiteral {
     set;
   }
 
+  private static final FiscalInfo FISCAL_INFO {
+    get {
+      if (FISCAL_INFO == null) {
+        FISCAL_INFO = getFiscalInfo();
+      }
+      return FISCAL_INFO;
+    }
+    set;
+  }
+
   protected Datetime ref;
 
   private static final Map<String, Object> KEY_TO_DATE_LITERAL = new Map<String, Object>{
@@ -52,9 +62,9 @@ public abstract class RollupDateLiteral {
     'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
     'LAST_N_MONTHS' => LastNMonthsLiteral.class,
     'NEXT_N_MONTHS' => NextNMonthsLiteral.class,
-    'THIS_QUARTER' => null,
-    'LAST_QUARTER' => null,
-    'NEXT_QUARTER' => null,
+    'LAST_QUARTER' => LastQuarterLiteral.class,
+    'THIS_QUARTER' => ThisQuarterLiteral.class,
+    'NEXT_QUARTER' => NextQuarterLiteral.class,
     'NEXT_N_QUARTERS' => null,
     'LAST_N_QUARTERS' => null,
     'THIS_YEAR' => ThisYearLiteral.class,
@@ -102,6 +112,52 @@ public abstract class RollupDateLiteral {
     return (RollupDateLiteral) literal;
   }
 
+  @SuppressWarnings('PMD.ApexCrudViolation')
+  private static FiscalInfo getFiscalInfo() {
+    FiscalInfo fiscalInfo = new FiscalInfo();
+    // using DateLiterals **in** RollupDateLiteral? Is this irony?
+    List<Period> fiscalPeriods = [SELECT StartDate, EndDate, Type FROM Period WHERE Type IN ('Quarter', 'Year') AND EndDate = THIS_FISCAL_QUARTER];
+    for (Period fiscalPeriod : fiscalPeriods) {
+      if (fiscalPeriod.Type == 'Year') {
+        fiscalInfo.FiscalYearStartDate = fiscalPeriod.StartDate;
+        fiscalInfo.FiscalYearEndDate = fiscalPeriod.EndDate;
+      } else if (fiscalPeriod.Type == 'Quarter') {
+        fiscalInfo.CurrentQuarterStartDate = fiscalPeriod.StartDate;
+        fiscalInfo.CurrentQuarterEndDate = fiscalPeriod.EndDate;
+      }
+    }
+    return fiscalInfo;
+  }
+
+  private static Integer getCurrentQuarter() {
+    Integer currentQuarterStartingMonth;
+    switch on System.today().month() {
+      when 1, 2, 3 {
+        currentQuarterStartingMonth = 1;
+      }
+      when 4, 5, 6 {
+        currentQuarterStartingMonth = 4;
+      }
+      when 7, 8, 9 {
+        currentQuarterStartingMonth = 7;
+      }
+      when else {
+        currentQuarterStartingMonth = 10;
+      }
+    }
+    return currentQuarterStartingMonth;
+  }
+
+  private static Integer getPriorQuarterStartingMonth() {
+    Integer currentQuarterStartMonth = getCurrentQuarter();
+    return currentQuarterStartMonth == 1 ? 10 : currentQuarterStartMonth - 3;
+  }
+
+  private static Integer getNextQuarterStartingMonth() {
+    Integer currentQuarterStartMonth = getCurrentQuarter();
+    return currentQuarterStartMonth == 10 ? 1 : currentQuarterStartMonth + 3;
+  }
+
   public Boolean matches(Object val, String comparison) {
     Datetime castValue;
     if (val == null) {
@@ -143,6 +199,13 @@ public abstract class RollupDateLiteral {
   }
 
   protected virtual void setDynamicValue(String num) {
+  }
+
+  private class FiscalInfo {
+    public Date CurrentQuarterStartDate { get; set; }
+    public Date CurrentQuarterEndDate { get; set; }
+    public Date FiscalYearStartDate { get; set; }
+    public Date FiscalYearEndDate { get; set; }
   }
 
   private class YesterdayLiteral extends RollupDateLiteral {
@@ -336,6 +399,47 @@ public abstract class RollupDateLiteral {
       Date startDayOfNextMonth = System.today().toStartOfMonth().addMonths(1);
       this.ref = Datetime.newInstanceGmt(startDayOfNextMonth, START_TIME);
       this.bound = Datetime.newInstanceGmt(startDayOfNextMonth.addMonths(dateRange).addDays(-1), END_TIME);
+    }
+  }
+
+  /**
+   * Starts 00:00:00 of the previous quarter and continues to the end of that quarter.
+   */
+  private class LastQuarterLiteral extends RangedLiteral {
+    public LastQuarterLiteral() {
+      Integer lastQuarterStartingMonth = getPriorQuarterStartingMonth();
+      this.ref = Datetime.newInstanceGmt(
+        Date.newInstance(System.today().year() - (lastQuarterStartingMonth == 10 ? 1 : 0), lastQuarterStartingMonth, 1),
+        START_TIME
+      );
+      Integer endMonth = this.ref.addMonths(3).month();
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+    }
+  }
+
+  /**
+   * Starts 00:00:00 of the current quarter and continues to the end of the current quarter.
+   */
+  private class ThisQuarterLiteral extends RangedLiteral {
+    public ThisQuarterLiteral() {
+      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year(), getCurrentQuarter(), 1), START_TIME);
+      Integer endMonth = this.ref.addMonths(3).month();
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+    }
+  }
+
+  /**
+   * Starts 00:00:00 of the next quarter and continues to the end of that quarter.
+   */
+  private class NextQuarterLiteral extends RangedLiteral {
+    public NextQuarterLiteral() {
+      Integer nextQuarterStartingMonth = getNextQuarterStartingMonth();
+      this.ref = Datetime.newInstanceGmt(
+        Date.newInstance(System.today().year() + (nextQuarterStartingMonth == 1 ? 1 : 0), getNextQuarterStartingMonth(), 1),
+        START_TIME
+      );
+      Integer endMonth = this.ref.addMonths(3).month();
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
     }
   }
 
