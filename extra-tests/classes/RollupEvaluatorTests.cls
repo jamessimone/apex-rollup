@@ -1012,4 +1012,11 @@ private class RollupEvaluatorTests {
     System.assertEquals('Account.Name', queryFields[0]);
     System.assertEquals('Account.Owner.Id', queryFields[1]);
   }
+
+  @IsTest
+  static void shouldProperlyEvaluateDateLiteral() {
+    String whereClause = 'CloseDate = THIS_YEAR';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+    System.assertEquals(true, eval.matches(new Opportunity(CloseDate = System.today().addDays(-1))));
+  }
 }

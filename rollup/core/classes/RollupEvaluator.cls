@@ -592,7 +592,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Object originalValue = this.getFieldValue(item, this.fieldName, this.sObjectType);
       String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
 
-      if (originalValue instanceof Decimal) {
+      if (this.originalValues.isEmpty() == false && RollupDateLiteral.isDateLiteral(this.originalValues[0])) {
+        return RollupDateLiteral.get(this.originalValues[0]).matches(originalValue, this.criteria);
+      } else if (originalValue instanceof Decimal) {
         for (Integer index = 0; index < this.values.size(); index++) {
           Object val = this.values[index];
           try {
