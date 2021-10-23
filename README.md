@@ -14,6 +14,7 @@ You have several different options when it comes to making use of `Rollup`:
 - From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
   - [Base Invocable action wiki](../../wiki/Perform-Rollup-On-Records---Base-Invocable-Action) - separate wiki link
   - [CMDT-driven action](../../wiki/Perform-Rollup__mdt-based-rollup-Invocable) - separate wiki link
+  - [Full recalc CMDT action](#full-recalc-flow-action)
   - Deferred rollup kickoff action (required for the CMDT-driven action)
 - [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
 - [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
@@ -231,6 +232,10 @@ Here are the fields for this invocable:
 #### Process Deferred Rollups
 
 Used in conjunction with the `Perform rollup on records` and `Perform Rollup__mdt-based rollup` when the `Defer Processing` input is set to `{!$GlobalConstant.True}` (the default on the CMDT invocable, opt-in for the vanilla `Perform rollup on records` action). Kicks off the actual rollup process when there are rollups with deferred processing.
+
+#### Full Recalc CMDT-driven Invocable
+
+Run full recalculation rollups directly from flow by passing in a comma-separated input variable with the API names of `Rollup__mdt` records. Functionality contributed by [@dschibster](https://github.com/dschibster)!
 
 ---
 
