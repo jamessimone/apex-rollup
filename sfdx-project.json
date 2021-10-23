@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.3.8.0",
-            "versionDescription": "Fix Schedulable rollup classes, rollup loggers now respect Is Rollup Logging Enabled, fix some broken query formatting",
+            "versionNumber": "1.3.9.0",
+            "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"
@@ -87,6 +87,7 @@
         "apex-rollup@1.3.5-0": "04t6g000008ShhXAAS",
         "apex-rollup@1.3.6-0": "04t6g000008Shn7AAC",
         "apex-rollup@1.3.7-0": "04t6g000008Si03AAC",
-        "apex-rollup@1.3.8-0": "04t6g000008Si24AAC"
+        "apex-rollup@1.3.8-0": "04t6g000008Si24AAC",
+        "apex-rollup@1.3.9-0": "04t6g000008Si5XAAS"
     }
 }

@@ -1,5 +1,5 @@
 public without sharing class RollupLogEventHandler {
-  @SuppressWarnings('PMD.ApexCRUDViolation')
+  @SuppressWarnings('PMD.ApexCrudViolation')
   public void handle(List<RollupLogEvent__e> logEvents) {
     Map<String, RollupLog__c> transactionIdToLogs = new Map<String, RollupLog__c>();
 

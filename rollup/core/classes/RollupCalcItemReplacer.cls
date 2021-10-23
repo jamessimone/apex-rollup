@@ -30,14 +30,19 @@ public without sharing class RollupCalcItemReplacer {
       return calcItems;
     } else if (String.isNotBlank(metadata.CalcItemWhereClause__c) && calcItems.isEmpty() == false) {
       this.processedMetadata.add(metadata);
-      calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, metadata);
-      return this.replaceCalcItemsWithParentWhereClauses(calcItems, metadata);
+      RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, calcItems[0].getSObjectType());
+      calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, metadata, whereEval);
+      return this.replaceCalcItemsWithParentWhereClauses(calcItems, metadata, whereEval);
     } else {
       return calcItems;
     }
   }
 
-  private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
+  private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(
+    List<SObject> calcItems,
+    Rollup__mdt metadata,
+    RollupEvaluator.WhereFieldEvaluator whereEval
+  ) {
     final String typeField = '.Type';
     final String owner = 'Owner.';
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
@@ -60,7 +65,7 @@ public without sharing class RollupCalcItemReplacer {
     Set<String> additionalQueryFields = new Set<String>();
     List<String> optionalWhereClauses = new List<String>();
 
-    this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata);
+    this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, whereEval);
 
     if (optionalWhereClauses.isEmpty()) {
       return calcItems;
@@ -99,12 +104,9 @@ public without sharing class RollupCalcItemReplacer {
     SObjectType sObjectType,
     String typeField,
     String owner,
-    Rollup__mdt metadata
+    Rollup__mdt metadata,
+    RollupEvaluator.WhereFieldEvaluator whereEval
   ) {
-    if (String.isBlank(metadata.CalcItemWhereClause__c)) {
-      return;
-    }
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, sObjectType);
     for (String whereClause : whereEval.getWhereClauses()) {
       if (whereClause.contains(typeField) || whereClause.contains(owner)) {
         List<String> splitWheres = whereClause.split(' ');
@@ -119,32 +121,68 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
-  private List<SObject> replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
+  private List<SObject> replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems, Rollup__mdt metadata, RollupEvaluator.WhereFieldEvaluator whereEval) {
     if (calcItems.isEmpty()) {
       return calcItems;
     }
     SObjectType calcItemType = calcItems[0].getSObjectType();
-    List<String> queryFields = RollupEvaluator.getWhereEval(metadata.CalcItemWhereClause__c, calcItemType).getQueryFields();
+    List<String> queryFields = whereEval.getQueryFields();
     Map<String, SObjectField> fieldNameToToken = calcItemType.getDescribe().fields.getMap();
-    List<String> validQueryFields = new List<String>();
+    Boolean hasUnqueriedParentFields = false;
     for (String queryField : queryFields) {
       String fieldPart = queryField.substringBefore('.');
-      String fieldName = fieldPart.endsWith('__r') ? fieldPart.removeEnd('__r') + '__c' : fieldPart + 'Id';
-      if (queryField.contains('.') && fieldNameToToken.containsKey(fieldName) && fieldNameToToken.get(fieldName).getDescribe().isNamePointing() == false) {
-        validQueryFields.add(queryField);
-        validQueryFields.add(fieldName);
+      String fieldName = this.getFullyQualifiedFieldName(fieldPart);
+      if (
+        queryField.contains('.') &&
+        fieldNameToToken.containsKey(fieldName) &&
+        fieldNameToToken.get(fieldName).getDescribe().isNamePointing() == false &&
+        this.hasParentField(calcItems[0], fieldNameToToken, queryField) == false
+      ) {
+        hasUnqueriedParentFields = true;
+        break;
       }
     }
 
-    if (validQueryFields.isEmpty() == false) {
-      // re-initialize the Set to avoid: System.FinalException: Collection is read-only
-      Set<String> includedFields = new Set<String>(calcItems[0].getPopulatedFieldsAsMap().keySet());
-      includedFields.addAll(queryFields);
+    if (hasUnqueriedParentFields) {
+      Set<String> fieldsToInclude = new Set<String>(queryFields);
+      for (String populatedFieldName : calcItems[0].getPopulatedFieldsAsMap().keySet()) {
+        if (fieldNameToToken.containsKey(populatedFieldName)) {
+          fieldsToInclude.add(populatedFieldName);
+        }
+      }
       List<SObject> objIds = calcItems; // for bind variable
-      String queryString = RollupQueryBuilder.Current.getQuery(calcItemType, new List<String>(includedFields), 'Id', '=');
+      String queryString = RollupQueryBuilder.Current.getQuery(calcItemType, new List<String>(fieldsToInclude), 'Id', '=');
       RollupLogger.Instance.log('replacing calc items with parent-level where clause using query string:', queryString, LoggingLevel.FINE);
       calcItems = Database.query(queryString);
     }
     return calcItems;
+  }
+
+  private String getFullyQualifiedFieldName(String fieldPart) {
+    return fieldPart.endsWith('__r') ? fieldPart.removeEnd('__r') + '__c' : fieldPart + 'Id';
+  }
+
+  private Boolean hasParentField(SObject record, Map<String, Schema.SObjectField> fieldNameToToken, String fieldPath) {
+    List<String> splitParts = fieldPath.split('\\.');
+    while (splitParts.size() > 1) {
+      String fieldPart = splitParts.remove(0);
+      String field = this.getFullyQualifiedFieldName(fieldPart);
+      Schema.SObjectField fieldToken = fieldNameToToken.get(field);
+      if (fieldToken.getDescribe().getReferenceTo().isEmpty() == false) {
+        SObject parentRecord = record.getSObject(fieldPart);
+        if (parentRecord == null) {
+          return false;
+        } else {
+          return this.hasParentField(parentRecord, parentRecord.getSObjectType().getDescribe().fields.getMap(), String.join(splitParts, '.'));
+        }
+      }
+    }
+    try {
+      return record.get(splitParts.remove(0)) != null;
+    } catch (SObjectException ex) {
+      // for records passed in from non Trigger / RT flows, this handles the
+      // System.SObjectException: SObject row was retrieved via SOQL without querying the requested field ... exception
+      return false;
+    }
   }
 }

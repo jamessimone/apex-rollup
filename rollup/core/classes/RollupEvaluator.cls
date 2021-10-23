@@ -153,6 +153,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   public class WhereFieldEvaluator extends RollupEvaluator {
+    private final SObjectType calcItemType;
     private final String originalWhereClause;
     private final String whereClause;
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
@@ -169,6 +170,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       }
       this.whereClause = whereClause;
+      this.calcItemType = calcItemSObjectType;
       this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
       RollupLogger.Instance.log('where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
@@ -224,8 +226,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             fieldNames.contains(condition.fieldName) == false &&
             condition.fieldName.contains('__c.') == false &&
             this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
-            POLYMORPHIC_FIELDS.contains(condition.fieldName.substringBetween('.')) == false &&
-            POLYMORPHIC_FIELDS.contains(condition.fieldName.substringAfter('.')) == false
+            this.isValidRelationshipField(condition.fieldName)
           ) {
             fieldNames.add(condition.fieldName);
           } else if (hasRelationshipField == false) {
@@ -455,6 +456,34 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private void logError(Exception ex) {
       RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
     }
+
+    private Boolean isValidRelationshipField(String fieldName) {
+      if (fieldName.contains('Owner.')) {
+        List<String> fieldParts = fieldName.split('\\.');
+        Integer ownerIndex = fieldParts.indexOf('Owner');
+        SObjectType recordSObjectType = this.calcItemType;
+        SObjectType ownerType;
+        if (ownerIndex > 0) {
+          Integer index = 0;
+          while (index < ownerIndex) {
+            String relationshipName = fieldParts[index];
+            Map<String, SObjectField> fieldNameToField = recordSObjectType.getDescribe().fields.getMap();
+            String fieldRef = relationshipName.endsWith('__r') ? relationshipName.substringBeforeLast('__r') + '__c' : relationshipName + 'Id';
+            SObjectField fieldToken = fieldNameToField.get(fieldRef);
+            if (fieldToken.getDescribe().isNamePointing()) {
+              return false;
+            }
+            ownerType = fieldToken.getDescribe().getReferenceTo()[0];
+            index++;
+          }
+        } else {
+          ownerType = this.calcItemType;
+        }
+        return ownerType.getDescribe().fields.getMap().get('OwnerId').getDescribe().isNamePointing() == false;
+      } else {
+        return POLYMORPHIC_FIELDS.contains(fieldName.substringBetween('.')) == false && POLYMORPHIC_FIELDS.contains(fieldName.substringAfter('.')) == false;
+      }
+    }
   }
 
   private abstract class ConditionalGrouping {
@@ -563,7 +592,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Object originalValue = this.getFieldValue(item, this.fieldName, this.sObjectType);
       String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
 
-      if (originalValue instanceof Decimal) {
+      if (this.originalValues.isEmpty() == false && RollupDateLiteral.isDateLiteral(this.originalValues[0])) {
+        return RollupDateLiteral.get(this.originalValues[0]).matches(originalValue, this.criteria);
+      } else if (originalValue instanceof Decimal) {
         for (Integer index = 0; index < this.values.size(); index++) {
           Object val = this.values[index];
           try {

@@ -84,6 +84,42 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldPerformFullRecalcWithGrandparentHierarchy() {
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id FROM Account];
+    Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
+    insert childAccount;
+    ParentApplication__c parentApp = new ParentApplication__c(Account__c = childAccount.Id, Name = 'Link to child account');
+    ParentApplication__c secondParentApp = new ParentApplication__c(Account__c = acc.Id, Name = 'Linked directly to parent account');
+    insert new List<ParentApplication__c>{ parentApp, secondParentApp };
+
+    // ensure that both a top-level child item linked only to the ultimate parent and one linked to the hierarchy child is included
+    List<Application__c> apps = new List<Application__c>{
+      new Application__c(Engagement_Score__c = 1000, ParentApplication__c = parentApp.Id, Name = 'Linked to Child Parent App'),
+      new Application__c(Engagement_Score__c = 1000, ParentApplication__c = secondParentApp.Id, Name = 'Linked to Direct Parent App')
+    };
+    insert apps;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(apps, 'REFRESH', 'SUM');
+    flowInputs[0].ultimateParentLookup = 'ParentId';
+    flowInputs[0].rollupToUltimateParent = true;
+    flowInputs[0].lookupFieldOnCalcItem = 'ParentApplication__c';
+    flowInputs[0].rollupFieldOnCalcItem = 'Engagement_Score__c';
+    flowInputs[0].grandparentRelationshipFieldPath = 'ParentApplication__r.Account__r.AnnualRevenue';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(2000, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @IsTest
   static void shouldBulkifyBatchFullRecalcsProperly() {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 2);
     Account acc = [SELECT Id FROM Account];
@@ -729,6 +765,45 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(2, acc.AnnualRevenue);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable'].Status);
+  }
+
+  @IsTest
+  static void shouldAllowForMutuallyExclusiveWhereClausesOnBulkFullRecalc() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    Task appliesToFirst = new Task(Subject = 'Task for first CMDT', WhatId = acc.Id);
+    Task appliesToSecond = new Task(Subject = 'Task for second CMDT', WhatId = acc.Id);
+    insert new List<Task>{ appliesToFirst, appliesToSecond };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT',
+        CalcItemWhereClause__c = 'Subject = \'' + appliesToFirst.Subject + '\' ||| WhatId = \'' + acc.Id + '\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItemWhereClause__c = 'Subject = \'' + appliesToSecond.Subject + '\''
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+
+    acc = [SELECT AccountNumber, Name FROM Account WHERE Id = :acc.Id];
+
+    System.assertEquals(appliesToFirst.Subject, acc.AccountNumber);
+    System.assertEquals(appliesToSecond.Subject, acc.Name);
   }
 
   @IsTest

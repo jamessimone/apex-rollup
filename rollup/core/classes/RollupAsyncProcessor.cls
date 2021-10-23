@@ -280,7 +280,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
       this.process(syncRollups);
       RollupLogger.Instance.log('finished running sync rollups', LoggingLevel.DEBUG);
-      rollupProcessId = 'running rollups flagged to go synchronously';
     } else {
       Boolean hasMoreThanOneTarget = false;
       Integer totalCountOfRecords = this.getLookupRecordsCount(hasMoreThanOneTarget, this.rollups);
@@ -309,6 +308,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     props = super.customizeToStringEntries(props);
     this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
+    this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
     return props;
   }
 
@@ -418,7 +418,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
-      System.attachFinalizer(new RollupFinalizer(this));
+      System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
       this.logFinish();
     }
@@ -1115,8 +1115,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (oldLookupItems.containsKey(key)) {
         // Yes, old parent record has already had a new rollup established in memory
         List<SObject> reparentedCalcItems = oldLookupItems.get(key);
+        Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
 
-        if (reparentedCalcItems.isEmpty()) {
+        if (reparentedCalcItems.isEmpty() || priorVal == null) {
           continue;
         }
 
@@ -1139,7 +1140,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
 
-        Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
         Object newVal = this.calculateNewRollupVal(oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
 
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, roll, recordsToUpdate, updater, 'reparented');

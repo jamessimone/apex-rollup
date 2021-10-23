@@ -14,6 +14,7 @@ You have several different options when it comes to making use of `Rollup`:
 - From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
   - [Base Invocable action wiki](../../wiki/Perform-Rollup-On-Records---Base-Invocable-Action) - separate wiki link
   - [CMDT-driven action](../../wiki/Perform-Rollup__mdt-based-rollup-Invocable) - separate wiki link
+  - [Full recalc CMDT action](#full-recalc-flow-action)
   - Deferred rollup kickoff action (required for the CMDT-driven action)
 - [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
 - [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
@@ -21,12 +22,12 @@ You have several different options when it comes to making use of `Rollup`:
 
 ## Deployment
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si24AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si5XAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si24AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Si5XAAS">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -43,7 +44,7 @@ As of [v1.2.2](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.2), 
 1. Setup
 2. Custom Settings
 3. Click `Manage` next to the `Rollup Settings` entry
-4. Click `New` at the top to enter the Org Wide Defaults section - check off the `Is Enabled` field (it should be enabled by default) and click `Save`
+4. Click `New` at the top to enter the Org Wide Defaults section - make sure `Is Enabled` is marked true and click `Save`
 
 While you can still enable/disable individual rollups from running with the use of the `Rollup Control` CMDT (more details on that further on in the Readme), using a custom setting allows for several features that CMDT-based solutions currently lack:
 
@@ -187,6 +188,7 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Object for "Prior records To rollup" (input)` - should be the same as the above
 - `Calc Item Calc Field` - the API Name of the field you’d like to aggregate (let's say Amount)
 - `Calc Item Lookup Field`- the API Name of the field storing the Id or String referencing a unique value on another object (In the example, Id)
+- `Rollup Object API Name` - the API name for the object that the calc item values will be rolled up to
 - `Rollup Object Lookup Field` - the API Name of the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Object Calc Field` - the API Name of the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
 - `Rollup Operation` - the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas by default, but you can use `Concat Delimiter` to change that.
@@ -230,6 +232,10 @@ Here are the fields for this invocable:
 #### Process Deferred Rollups
 
 Used in conjunction with the `Perform rollup on records` and `Perform Rollup__mdt-based rollup` when the `Defer Processing` input is set to `{!$GlobalConstant.True}` (the default on the CMDT invocable, opt-in for the vanilla `Perform rollup on records` action). Kicks off the actual rollup process when there are rollups with deferred processing.
+
+#### Full Recalc CMDT-driven Invocable
+
+Run full recalculation rollups directly from flow by passing in a comma-separated input variable with the API names of `Rollup__mdt` records. Functionality contributed by [@dschibster](https://github.com/dschibster)!
 
 ---
 
