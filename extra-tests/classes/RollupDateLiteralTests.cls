@@ -35,13 +35,13 @@ private class RollupDateLiteralTests {
       'THIS_FISCAL_QUARTER',
       'LAST_FISCAL_QUARTER',
       'NEXT_FISCAL_QUARTER',
-      'LAST_N_FISCAL_​QUARTERS:2',
-      'NEXT_N_FISCAL_​QUARTERS:2',
+      'LAST_N_FISCAL_QUARTERS:2',
+      'NEXT_N_FISCAL_QUARTERS:2',
       'LAST_FISCAL_YEAR',
       'THIS_FISCAL_YEAR',
       'NEXT_FISCAL_YEAR',
-      'LAST_N_FISCAL_​YEARS:2',
-      'NEXT_N_FISCAL_​YEARS:2'
+      'LAST_N_FISCAL_YEARS:2',
+      'NEXT_N_FISCAL_YEARS:2'
     };
 
     for (String dateLiteral : dateLiterals) {
@@ -690,7 +690,7 @@ private class RollupDateLiteralTests {
     System.assertNotEquals(
       true,
       nextNYears.matches(Datetime.newInstanceGmt(lastDayOfThisYear, Time.newInstance(11, 59, 59, 59)), '='),
-      'Should not equal anything befre 00:00:00 on first date of next year'
+      'Should not equal anything before 00:00:00 on first date of next year'
     );
 
     System.assertEquals(true, nextNYears.matches(nextNYearsDate, '>='));
@@ -801,5 +801,206 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.StartDate, '<='));
     System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.StartDate.addDays(-1), '<'));
     System.assertNotEquals(true, nextFiscalQuarter.matches(System.now().addMonths(4), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForLastNFiscalQuarters() {
+    AggregateResult lastNFiscalQuarterPeriod = [
+      SELECT MIN(StartDate) startDate, MIN(EndDate) endDate
+      FROM Period
+      WHERE Type = 'Quarter' AND EndDate = LAST_N_FISCAL_QUARTERS:7
+    ];
+    Date startDate = (Date) lastNFiscalQuarterPeriod.get('startDate');
+    Date endDate = (Date) lastNFiscalQuarterPeriod.get('endDate');
+    Date lastNFiscalQuarterDate = startDate.addMonths(1);
+    Datetime lastNFiscalQuarterDatetime = Datetime.newInstanceGmt(lastNFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastFiscalNQuarter = RollupDateLiteral.get('LAST_N_FISCAL_QUARTERS: 7');
+
+    System.assertEquals(true, lastFiscalNQuarter.matches(startDate, '='), startDate + ' | ' + lastFiscalNQuarter);
+    System.assertEquals(true, lastFiscalNQuarter.matches(endDate, '='), endDate + ' | ' + lastFiscalNQuarter);
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate, '='), 'Date value should have matched: ' + lastNFiscalQuarterDate + ' | ' + lastFiscalNQuarter);
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate.addDays(28), '='), 'Date was within: ' + lastFiscalNQuarter);
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + lastNFiscalQuarterDatetime);
+
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate, '>='));
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDatetime, '>='));
+    Date oneOverPriorQuarterStart = [SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_FISCAL_QUARTER].StartDate.addDays(1);
+    // ugly, but the only way to ensure the sentinel value is working ...
+    System.assertEquals(true, lastFiscalNQuarter.matches(oneOverPriorQuarterStart, '>'), oneOverPriorQuarterStart + ' | ' + lastFiscalNQuarter);
+    System.assertNotEquals(true, lastFiscalNQuarter.matches(oneOverPriorQuarterStart.addMonths(-1), '>'));
+    System.assertNotEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate, '>'));
+
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate, '<='));
+    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDatetime, '<='));
+    System.assertEquals(true, lastFiscalNQuarter.matches(startDate, '<='));
+    System.assertNotEquals(true, lastFiscalNQuarter.matches(System.now().addMonths(1), '<'));
+    System.assertEquals(
+      true,
+      lastFiscalNQuarter.matches(startDate.addDays(-1), '<'),
+      'End date + 1: ' +
+      startDate.addDays(-1) +
+      ' should be less than: ' +
+      lastFiscalNQuarter
+    );
+  }
+
+  @IsTest
+  static void shouldWorkForNextNFiscalQuarters() {
+    AggregateResult nextNFiscalQuarters = [
+      SELECT MAX(StartDate) startDate, MAX(EndDate) endDate
+      FROM Period
+      WHERE Type = 'Quarter' AND EndDate = NEXT_N_FISCAL_QUARTERS:7
+    ];
+    Date startDate = (Date) nextNFiscalQuarters.get('startDate');
+    Date endDate = (Date) nextNFiscalQuarters.get('endDate');
+    Date nextNFiscalQuarterDate = startDate.addMonths(1);
+    Datetime nextNFiscalQuarterDatetime = Datetime.newInstanceGmt(nextNFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral nextNFiscalQuarter = RollupDateLiteral.get('NEXT_N_FISCAL_QUARTERS: 7');
+
+    System.assertEquals(true, nextNFiscalQuarter.matches(startDate, '='), startDate + ' | ' + nextNFiscalQuarter);
+    System.assertEquals(true, nextNFiscalQuarter.matches(endDate, '='), endDate + ' | ' + nextNFiscalQuarter);
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '='), 'Date value should have matched: ' + nextNFiscalQuarterDate + ' | ' + nextNFiscalQuarter);
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate.addDays(28), '='), 'Date was within: ' + nextNFiscalQuarter);
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + nextNFiscalQuarterDatetime);
+
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '>='));
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDatetime, '>='));
+    System.assertEquals(true, nextNFiscalQuarter.matches(endDate.addDays(1), '>'), 'End date + 1: ' + endDate.addDays(1) + ' should exceed: ' + nextNFiscalQuarter);
+    System.assertNotEquals(true, nextNFiscalQuarter.matches(System.now().addMonths(-1), '>'));
+    System.assertNotEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '>'));
+
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '<='));
+    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDatetime, '<='));
+    System.assertEquals(true, nextNFiscalQuarter.matches(startDate, '<='));
+    System.assertEquals(
+      true,
+      nextNFiscalQuarter.matches([SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = NEXT_FISCAL_QUARTER].StartDate.addDays(-1), '<')
+    );
+    System.assertNotEquals(true, nextNFiscalQuarter.matches(System.now().addMonths(4), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForLastFiscalYear() {
+    // the fiscal years happen to align to the calendar years in our org, but these test a different code path
+    Date startOfLastFiscalYearDate = Date.newInstance(System.today().year() - 1, 1, 1);
+    Datetime startOfLastFiscalYearDatetime = Datetime.newInstanceGmt(startOfLastFiscalYearDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastFiscalYear = RollupDateLiteral.get('LAST_FISCAL_YEAR');
+
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate, '='), 'Date value should have matched: ' + startOfLastFiscalYearDate + ' ' + lastFiscalYear);
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDatetime, '='), 'Datetime value should have matched: ' + startOfLastFiscalYearDatetime);
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate.addMonths(6), '='), 'Date within bounds: ' + lastFiscalYear);
+
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate, '>='));
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDatetime, '>='));
+    System.assertEquals(true, lastFiscalYear.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastFiscalYear.matches(System.now().addYears(-2), '>'));
+    System.assertNotEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDatetime.addYears(-2), '>'));
+
+    System.assertEquals(true, lastFiscalYear.matches(System.now().addYears(-3), '<'));
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate, '<='));
+    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDatetime, '<='));
+    System.assertNotEquals(true, lastFiscalYear.matches(System.today().addYears(1), '<='));
+  }
+
+  @IsTest
+  static void shouldWorkForThisFiscalYear() {
+    Date startOfThisYearDate = Date.newInstance(System.today().year(), 1, 1);
+    Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral thisYear = RollupDateLiteral.get('THIS_FISCAL_YEAR');
+
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate, '='), 'Date value should have matched: ' + thisYear);
+    System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '='), 'Datetime value should have matched: ' + startOfThisYearDatetime);
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate.addMonths(6), '='), 'Date within bounds: ' + thisYear);
+
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate, '>='));
+    System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '>='));
+    System.assertEquals(true, thisYear.matches(System.today().addYears(2), '>'), 'Year should be greater: ' + thisYear);
+    System.assertNotEquals(true, thisYear.matches(System.now().addYears(-1), '>'));
+    System.assertNotEquals(true, thisYear.matches(startOfThisYearDate.addYears(-1), '>'));
+
+    System.assertEquals(true, thisYear.matches(System.today().addYears(-1), '<'));
+    System.assertEquals(true, thisYear.matches(startOfThisYearDate, '<='));
+    System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '<='));
+    System.assertNotEquals(true, thisYear.matches(System.today().addYears(2), '<='));
+  }
+
+
+  @IsTest
+  static void shouldWorkForNextFiscalYear() {
+    Date startOfNextYearDate = Date.newInstance(System.today().year() + 1, 1, 1);
+    Datetime startOfNextYearDatetime = Datetime.newInstanceGmt(startOfNextYearDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral nextYear = RollupDateLiteral.get('NEXT_FISCAL_YEAR');
+
+    System.assertEquals(true, nextYear.matches(startOfNextYearDate, '='), 'Date value should have matched: ' + startOfNextYearDate);
+    System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '='), 'Datetime value should have matched: ' + startOfNextYearDatetime);
+    System.assertEquals(true, nextYear.matches(startOfNextYearDate.addMonths(6), '='), 'Date within bounds: ' + nextYear);
+
+    System.assertEquals(true, nextYear.matches(startOfNextYearDate, '>='));
+    System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '>='));
+    System.assertEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 2, 1, 1), '>'));
+    System.assertNotEquals(true, nextYear.matches(System.now(), '>'));
+    System.assertNotEquals(true, nextYear.matches(startOfNextYearDate.addDays(-2), '>'));
+
+    System.assertEquals(true, nextYear.matches(System.now().addYears(-1), '<'));
+    System.assertEquals(true, nextYear.matches(startOfNextYearDate, '<='));
+    System.assertEquals(true, nextYear.matches(startOfNextYearDatetime, '<='));
+    System.assertNotEquals(true, nextYear.matches(Date.newInstance(System.today().year() + 2, 1, 1), '<='));
+  }
+
+  @IsTest
+  static void shouldWorkForLastNFiscalYears() {
+    Integer yearsInThePast = 3;
+    Date lastNYearsDate = Date.newInstance(System.today().year() - (yearsInThePast - 1), 1, 1);
+    Datetime lastNYearsDatetime = Datetime.newInstanceGmt(lastNYearsDate, Time.newInstance(0, 0, 0, 0));
+    RollupDateLiteral lastNYears = RollupDateLiteral.get('LAST_N_FISCAL_YEARS:' + yearsInThePast);
+    Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
+
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '='), 'Date value should have matched: ' + lastNYearsDate + ' | ' + lastNYears);
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate.addYears(1), '='), 'Date was within: ' + lastNYears);
+    System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '='), 'Datetime value should have matched: ' + lastNYearsDatetime);
+    System.assertNotEquals(
+      true,
+      lastNYears.matches(Datetime.newInstanceGmt(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
+      'Should not equal anything past 00:00:00 on first date of last year'
+    );
+
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '>='));
+    System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '>='));
+    System.assertEquals(true, lastNYears.matches(System.today(), '>'));
+    System.assertNotEquals(true, lastNYears.matches(System.now().addYears(-5), '>'));
+    System.assertNotEquals(true, lastNYears.matches(lastNYearsDate, '>'));
+
+    System.assertEquals(true, lastNYears.matches(lastNYearsDate, '<='));
+    System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '<='));
+    System.assertNotEquals(true, lastNYears.matches(System.now(), '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForNextNFiscalYears() {
+    Integer yearsInTheFuture = 3;
+    Date nextNYearsDate = Date.newInstance(System.today().year() + yearsInTheFuture, 1, 1);
+    Datetime nextNYearsDatetime = Datetime.newInstanceGmt(nextNYearsDate, Time.newInstance(11, 59, 59, 59));
+    RollupDateLiteral nextNYears = RollupDateLiteral.get('NEXT_N_FISCAL_YEARS:' + yearsInTheFuture);
+    Date lastDayOfThisYear = Date.newInstance(System.today().year(), 12, 31);
+
+    System.assertEquals(true, nextNYears.matches(nextNYearsDate, '='), 'Date value should have matched: ' + nextNYearsDate + ' | ' + nextNYears);
+    System.assertEquals(true, nextNYears.matches(nextNYearsDate.addYears(-1), '='), 'Date was within: ' + nextNYears);
+    System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '='), 'Datetime value should have matched: ' + nextNYearsDatetime);
+    System.assertNotEquals(
+      true,
+      nextNYears.matches(Datetime.newInstanceGmt(lastDayOfThisYear, Time.newInstance(11, 59, 59, 59)), '='),
+      'Should not equal anything before 00:00:00 on first date of next year'
+    );
+
+    System.assertEquals(true, nextNYears.matches(nextNYearsDate, '>='));
+    System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '>='));
+    System.assertEquals(true, nextNYears.matches(System.today().addYears(yearsInTheFuture + 1), '>'));
+    System.assertNotEquals(true, nextNYears.matches(System.now().addYears(-5), '>'));
+    System.assertNotEquals(true, nextNYears.matches(nextNYearsDate, '>'));
+
+    System.assertEquals(true, nextNYears.matches(nextNYearsDate, '<='));
+    System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '<='));
+    System.assertNotEquals(true, nextNYears.matches(System.now().addYears(2), '<'));
+    System.assertNotEquals(null, nextNYears.toString());
   }
 }
