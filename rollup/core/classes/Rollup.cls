@@ -1731,7 +1731,7 @@ global without sharing virtual class Rollup {
         return wrapper;
       }
     }
-    if (meta.IsRollupStartedFromParent__c == false && String.isBlank(meta.GrandparentRelationshipFieldPath__c)) {
+    if (meta.IsRollupStartedFromParent__c == false) {
       wrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
       for (SObject calcItem : calcItems) {
         wrapper.addRecordId((String) calcItem.get(meta.LookupFieldOnCalcItem__c));
