@@ -1,13 +1,11 @@
 @IsTest
 public class RollupTestUtils {
-
   // from https://salesforce.stackexchange.com/questions/21137/creating-unit-tests-without-interacting-with-the-database-creating-fake-ids
   private static Integer startingNumber = 1;
   public static String createId(Schema.SObjectType sObjectType) {
     String result = String.valueOf(startingNumber++);
     return sObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12 - result.length()) + result;
   }
-
 
   public static List<Rollup.FlowInput> prepareFlowTest(List<SObject> records, String rollupContext, String rollupOperation) {
     Rollup.records = null; // just to ensure this is coming from the correct place
@@ -21,6 +19,7 @@ public class RollupTestUtils {
     flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
     flowInput.rollupSObjectName = 'Account';
     flowInput.rollupOperation = rollupOperation;
+    flowInput.splitConcatDelimiterOnCalcItem = false;
 
     return new List<Rollup.FlowInput>{ flowInput };
   }
@@ -89,7 +88,7 @@ public class RollupTestUtils {
     if (UserInfo.isMultiCurrencyOrganization() && sObjectType.getDescribe().fields.getMap().containsKey(currencyIscoCodeFieldName)) {
       fieldNames.add(currencyIscoCodeFieldName);
     }
-    String whereClause = recordId == null ? '' :  '\nWHERE Id = :recordId';
+    String whereClause = recordId == null ? '' : '\nWHERE Id = :recordId';
     String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + sObjectType + whereClause;
     return Database.query(recordQuery);
   }

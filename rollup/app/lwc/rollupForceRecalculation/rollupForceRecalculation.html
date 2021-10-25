@@ -110,6 +110,18 @@
             oncommit={handleChange}
           >
           </lightning-input>
+          <div class="slds-grid">
+            <lightning-input
+              data-id="SplitConcatDelimiterOnCalcItem__c"
+              class="slds-col slds-form-element slds-form-element_horizontal slds-m-vertical_small"
+              type="checkbox"
+              label="Split Concat Delimiter On Calc Item, Too? (Optional)"
+              name="SplitConcatDelimiterOnCalcItem__c"
+              oncommit={handleChange}
+            >
+            </lightning-input>
+            <lightning-helptext content="Only include the split option for CONCAT_DISTINCT rollups"></lightning-helptext>
+          </div>
           <lightning-input
             data-id="OrderByFirstLast__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
@@ -119,13 +131,15 @@
             oncommit={handleChange}
           >
           </lightning-input>
-          <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
-          <lightning-textarea
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            onchange={handleChange}
-            label="SOQL Where Clause To Exclude Calc Items (Optional)"
-            name="CalcItemWhereClause__c"
-          ></lightning-textarea>
+          <div class="slds-grid">
+            <lightning-textarea
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              onchange={handleChange}
+              label="SOQL Where Clause To Exclude Calc Items (Optional)"
+              name="CalcItemWhereClause__c"
+            ></lightning-textarea>
+            <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
+          </div>
         </template>
         <lightning-button class="slds-col slds-m-top_small" variant="brand" onclick={handleSubmit} label="Start rollup!"></lightning-button>
       </div>

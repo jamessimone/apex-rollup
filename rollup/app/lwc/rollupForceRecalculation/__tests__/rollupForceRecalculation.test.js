@@ -114,7 +114,8 @@ describe('Rollup force recalc tests', () => {
           RollupOperation__c: 'CONCAT',
           CalcItemWhereClause__c: '',
           OrderByFirstLast__c: '',
-          ConcatDelimiter__c: ''
+          ConcatDelimiter__c: '',
+          SplitConcatDelimiterOnCalcItem__c: false
         }
       });
     });
@@ -134,16 +135,17 @@ describe('Rollup force recalc tests', () => {
 
     // flush to re-render, post-click
     return (
-      flushPromises().then(() => {
-        const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
-        combobox.dispatchEvent(
-          new CustomEvent('change', {
-            detail: {
-              value: 'Contact'
-            }
-          })
-        );
-      })
+      flushPromises()
+        .then(() => {
+          const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+          combobox.dispatchEvent(
+            new CustomEvent('change', {
+              detail: {
+                value: 'Contact'
+              }
+            })
+          );
+        })
         .then(() => {
           // flush to get the datatable to render post selection
           const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
@@ -156,7 +158,7 @@ describe('Rollup force recalc tests', () => {
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList, invokePointName: "FROM_LWC" });
+          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList, invokePointName: 'FROM_LWC' });
         })
     );
   });
@@ -215,11 +217,10 @@ describe('Rollup force recalc tests', () => {
     getObjectInfo.emitError();
 
     return flushPromises().then(() => {
-
-      const errorDiv = fullRecalc.shadowRoot.querySelector('div[data-id="rollupError"]')
+      const errorDiv = fullRecalc.shadowRoot.querySelector('div[data-id="rollupError"]');
       expect(errorDiv).toBeTruthy();
-    })
-  })
+    });
+  });
 
   it('succeeds even when exception is thrown', () => {
     performFullRecalculation.mockRejectedValue('error!');

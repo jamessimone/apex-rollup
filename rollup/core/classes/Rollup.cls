@@ -489,6 +489,11 @@ global without sharing virtual class Rollup {
     global String calcItemChangedFields;
     @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
     global String concatDelimiter;
+    @InvocableVariable(
+      label='Concat Delimiter Split Should Apply On Calc Item'
+      description='the text values on the Calc Item\'s field being rolled up can also be split if this field is enabled and set to {!$GlobalConstant.True}'
+    )
+    global Boolean splitConcatDelimiterOnCalcItem;
 
     @InvocableVariable(
       label='Full Recalculation Default Number Value'
@@ -1452,7 +1457,8 @@ global without sharing virtual class Rollup {
             OrderByFirstLast__c,
             RollupControl__c,
             RollupOperation__c,
-            RollupToUltimateParent__c
+            RollupToUltimateParent__c,
+            SplitConcatDelimiterOnCalcItem__c
           FROM Rollup__mdt
         ];
         // do the transforms
@@ -1950,10 +1956,16 @@ global without sharing virtual class Rollup {
       (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)
     ) {
       errorMessage = 'Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups';
-    } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false && String.isNotBlank(flowInput.concatDelimiter)) {
-      errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups';
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
       errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
+    } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
+      errorMessage = '';
+      if (String.isNotBlank(flowInput.concatDelimiter)) {
+        errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
+      }
+      if (flowInput.splitConcatDelimiterOnCalcItem == true) {
+        errorMessage += (String.isNotBlank(errorMessage) ? ' ' : '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
+      }
     }
 
     if (String.isNotBlank(errorMessage)) {

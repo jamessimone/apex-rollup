@@ -12,9 +12,10 @@ const mockRollupMetadata = {
       RollupFieldOnCalcItem__c: 'FirstName',
       RollupFieldOnLookupObject__c: 'Name',
       RollupOperation__c: 'CONCAT',
-      'CalcItem__r.QualifiedApiName': 'Something we expect to be removed'
+      'CalcItem__r.QualifiedApiName': 'Something we expect to be removed',
+      SplitConcatDelimiterOnCalcItem__c: ''
     }
   ]
 };
 
-export const mockMetadata = mockRollupMetadata
+export const mockMetadata = mockRollupMetadata;

@@ -2615,7 +2615,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Order By First/Last field required for FIRST operation', ex.getMessage());
+    System.assertEquals('Order By First/Last field required for FIRST operation', ex?.getMessage());
   }
 
   @IsTest
@@ -2637,7 +2637,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex.getMessage());
+    System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex?.getMessage());
   }
 
   @IsTest
@@ -2659,7 +2659,29 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups', ex.getMessage());
+    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups.', ex?.getMessage());
+  }
+
+  @IsTest
+  static void shouldReportErrorWhenConcatOptionSetAndNotConcat() {
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].splitConcatDelimiterOnCalcItem = true;
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Concat options should only be set for CONCAT_DISTINCT operations', ex?.getMessage());
   }
 
   @IsTest
@@ -2682,7 +2704,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex.getMessage());
+    System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex?.getMessage());
   }
 
   @IsTest

@@ -21,7 +21,8 @@ export default class RollupForceRecalculation extends LightningElement {
     RollupOperation__c: '',
     CalcItemWhereClause__c: '',
     OrderByFirstLast__c: '',
-    ConcatDelimiter__c: ''
+    ConcatDelimiter__c: '',
+    SplitConcatDelimiterOnCalcItem__c: false
   };
 
   @api isCMDTRecalc = false;

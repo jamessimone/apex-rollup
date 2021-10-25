@@ -202,6 +202,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Rollup__mdt.SplitConcatDelimiterOnCalcItem__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Rollup__mdt.UltimateParentLookup__c</field>
         <readable>true</readable>
     </fieldPermissions>

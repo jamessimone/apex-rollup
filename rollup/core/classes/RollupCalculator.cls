@@ -883,6 +883,15 @@ public without sharing abstract class RollupCalculator {
         if (String.isBlank(values[index])) {
           values.remove(index);
         }
+        if (this.metadata.SplitConcatDelimiterOnCalcItem__c == true) {
+          List<String> splitValues = values[index].split(this.concatDelimiter);
+          values.remove(index);
+          for (String splitVal : splitValues) {
+            if (values.contains(splitVal) == false) {
+              values.add(splitVal);
+            }
+          }
+        }
       }
       values.sort();
       this.stringVal = String.join(values, this.concatDelimiter);

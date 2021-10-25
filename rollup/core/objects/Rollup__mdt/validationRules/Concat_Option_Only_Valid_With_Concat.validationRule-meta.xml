@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Concat_Option_Only_Valid_With_Concat</fullName>
+    <active>true</active>
+    <description>It&apos;s not valid to specify concat options with a non concat operation</description>
+    <errorConditionFormula>
+    AND(
+      NOT(
+        ISPICKVAL(RollupOperation__c, &apos;CONCAT_DISTINCT&apos;)
+      ),
+      SplitConcatDelimiterOnCalcItem__c
+    )
+  </errorConditionFormula>
+  <errorMessage>Concat options should only be set for CONCAT_DISTINCT operations</errorMessage>
+</ValidationRule>
