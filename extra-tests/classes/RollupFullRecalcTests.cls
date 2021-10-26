@@ -1272,4 +1272,32 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(2, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void shouldNotBlowUpWithDateFunctionInWhereClause() {
+    Account acc = [SELECT Id FROM Account];
+
+    insert new List<Opportunity>{
+      new Opportunity(StageName = 'firstName', CloseDate = System.today(), AccountId = acc.Id, Name = 'one', Amount = 1),
+      new Opportunity(StageName = 'secondName', CloseDate = System.today(), AccountId = acc.Id, Name = 'two', Amount = 1)
+    };
+
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'Opportunity',
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupObject__c = 'Account',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'CALENDAR_YEAR(CreatedDate) = ' + System.today().year()
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, acc.AnnualRevenue);
+  }
 }

@@ -1018,5 +1018,14 @@ private class RollupEvaluatorTests {
     String whereClause = 'CloseDate = THIS_YEAR';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
     System.assertEquals(true, eval.matches(new Opportunity(CloseDate = System.today().addDays(-1))));
+    System.assertEquals(false, eval.matches(new Opportunity(CloseDate = System.today().addYears(-1))));
+  }
+
+  @IsTest
+  static void shouldStripOutDateFunctionsFromSelectStatements() {
+    String whereClause = 'CALENDAR_YEAR(CreatedDate) = ' + System.today().year();
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
+    List<String> queryFields = eval.getQueryFields();
+    System.assertEquals(true, queryFields.isEmpty(), 'Query fields should have been empty but contained: ' + queryFields);
   }
 }

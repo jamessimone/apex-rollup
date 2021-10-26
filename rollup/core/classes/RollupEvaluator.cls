@@ -401,6 +401,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
       localClause = localClause.trim();
       String fieldName = localClause.substring(0, localClause.indexOf(' '));
+      if (RollupDateFunction.isSoqlDateFunction(fieldName)) {
+        // TODO remove this after full support for SOQL date functions is introduced (like RollupDateLiteral)
+        return conditions;
+      }
       localClause = localClause.removeStart(fieldName).trim();
       String criteria = localClause.substring(0, localClause.indexOf(' ')).trim();
       String value = this.getValue(localClause.substringAfter(criteria));
