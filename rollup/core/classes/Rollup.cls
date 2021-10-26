@@ -112,7 +112,7 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
+  @SuppressWarnings('apex-assist')
   public enum Op {
     SUM,
     UPDATE_SUM,
@@ -1487,11 +1487,17 @@ global without sharing virtual class Rollup {
   }
 
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
+    Boolean hasExceededQueryNumberLimit = control?.MaxNumberOfQueries__c < Limits.getQueries();
+    Boolean hasExceededQueryRowLimit = control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows();
+    Boolean hasExceededHeapSizeLimit = (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
+    Boolean hasExceededDMLRowLimit = control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
+    Boolean hasExceededCPUTimeLimit = Limits.getLimitCpuTime() - 3000 < Limits.getCpuTime();
     Boolean hasExceededLimits =
-      control?.MaxNumberOfQueries__c < Limits.getQueries() ||
-      control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows() ||
-      (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize() ||
-      control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
+      hasExceededQueryNumberLimit ||
+      hasExceededQueryRowLimit ||
+      hasExceededHeapSizeLimit ||
+      hasExceededDMLRowLimit ||
+      hasExceededCPUTimeLimit;
     return hasExceededLimits && isDeferralAllowed;
   }
 

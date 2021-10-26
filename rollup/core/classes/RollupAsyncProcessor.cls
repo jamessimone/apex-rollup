@@ -331,7 +331,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (canEnqueue) {
       roll = this;
     } else {
-      this.logFatalRollups(this.rollups);
+      this.attemptToStaticallyDeferRollup();
     }
 
     return roll;
@@ -562,6 +562,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     this.splitUpdates(updatedLookupRecords);
     this.getDML().doUpdate(updatedLookupRecords.values());
+    if (this.getCachedRollups().isEmpty() == false) {
+      for (Rollup outerRollup : this.getCachedRollups()) {
+        this.deferredRollups.addAll(outerRollup.rollups);
+      }
+      this.getCachedRollups().clear();
+    }
     this.processDeferredRollups();
   }
 
@@ -666,15 +672,18 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
 
-        this.getAsyncRollup().beginAsyncRollup();
+        this.getAsyncRollup()?.beginAsyncRollup();
       } else if (this.deferredRollups.isEmpty() == false) {
-        this.logFatalRollups(this.deferredRollups);
+        this.attemptToStaticallyDeferRollup();
       }
     }
   }
 
-  private void logFatalRollups(List<Rollup> rolls) {
-    RollupLogger.Instance.log('rollup failed to re-queue for:', rolls, LoggingLevel.ERROR);
+  private void attemptToStaticallyDeferRollup() {
+    // if there's no possible avenue for starting an async rollup, it's possible that we've already called getAsyncRollup
+    // upstream, and we can try to process by piggybacking off of that procedure
+    this.getCachedRollups().add(this);
+    RollupLogger.Instance.log('attempting to statically defer rollup:', this, LoggingLevel.WARN);
     RollupLogger.Instance.save();
   }
 
