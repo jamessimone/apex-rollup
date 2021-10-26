@@ -820,7 +820,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
-    RollupControl__mdt orgDefaults = this.rollupControl;
+    Double minBatchSize = this.rollupControl.BatchChunkSize__c;
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = this.rollups[index];
       rollup.isFullRecalc = rollup.isFullRecalc || this.isFullRecalc;
@@ -833,7 +833,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.getIsRunningFromFlow() == false) ||
         System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs();
 
-      if (rollup.rollupControl.ShouldAbortRun__c || orgDefaults.ShouldAbortRun__c) {
+      if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
       } else if (couldRunSync && shouldRunSyncDeferred == false) {
         this.rollups.remove(index);
@@ -844,16 +844,20 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       // you can increase the default limits, but it would be too messy to try to rank the individual rollup operations in a batched context
-      if (rollup.rollupControl.MaxLookupRowsBeforeBatching__c > orgDefaults.MaxLookupRowsBeforeBatching__c) {
-        orgDefaults.MaxLookupRowsBeforeBatching__c = rollup.rollupControl.MaxLookupRowsBeforeBatching__c;
+      if (rollup.rollupControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
+        minBatchSize = rollup.rollupControl.BatchChunkSize__c;
       }
-      if (rollup.rollupControl.ShouldRunAs__c != orgDefaults.ShouldRunAs__c) {
-        orgDefaults.ShouldRunAs__c = rollup.rollupControl.ShouldRunAs__c;
+      if (rollup.rollupControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
+        this.rollupControl.MaxLookupRowsBeforeBatching__c = rollup.rollupControl.MaxLookupRowsBeforeBatching__c;
+      }
+      if (rollup.rollupControl.ShouldRunAs__c != this.rollupControl.ShouldRunAs__c) {
+        this.rollupControl.ShouldRunAs__c = rollup.rollupControl.ShouldRunAs__c;
       }
       if (rollup.rollupControl.MaxParentRowsUpdatedAtOnce__c == null) {
-        rollup.rollupControl.MaxParentRowsUpdatedAtOnce__c = orgDefaults.MaxParentRowsUpdatedAtOnce__c;
+        rollup.rollupControl.MaxParentRowsUpdatedAtOnce__c = this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
       }
     }
+    this.rollupControl.BatchChunkSize__c = minBatchSize;
   }
 
   private Boolean getShouldRunSyncDeferred(RollupAsyncProcessor roll) {

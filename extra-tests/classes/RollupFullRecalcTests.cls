@@ -724,6 +724,54 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldUseSmallerBatchSizeWhenSpecificRollupControlLowerThanOrgDefaults() {
+    Account acc = [SELECT Id FROM Account];
+    Account secondAccount = new Account(Name = 'Second');
+    insert secondAccount;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'secondAccount', ParentId = secondAccount.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 1,
+      BatchChunkSize__c = 100,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
+      IsRollupLoggingEnabled__c = true
+    );
+    Rollup.specificControl = new RollupControl__mdt(BatchChunkSize__c = 1);
+
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'Name != \'\''
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    List<AsyncApexJob> jobs = [SELECT Status, JobItemsProcessed FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'];
+    System.assertEquals(false, jobs.isEmpty());
+    for (AsyncApexJob job : jobs) {
+      System.assertEquals('Completed', job.Status);
+      System.assertEquals(1, job.JobItemsProcessed);
+    }
+  }
+
+  @IsTest
   static void shouldNotBatchForFullRecalcWhenWhereClausePlacesItemsUnderneathThreshold() {
     Account acc = [SELECT Id FROM Account];
 
