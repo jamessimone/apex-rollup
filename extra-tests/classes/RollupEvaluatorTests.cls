@@ -1028,4 +1028,30 @@ private class RollupEvaluatorTests {
     List<String> queryFields = eval.getQueryFields();
     System.assertEquals(true, queryFields.isEmpty(), 'Query fields should have been empty but contained: ' + queryFields);
   }
+
+  @IsTest
+  static void shouldThrowExceptionWhenRelationshipNameInvalid() {
+    String whereClause = 'Relationship__r.Waterloo__c = \'something\'';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+    Exception ex;
+    try {
+      eval.matches(new Opportunity());
+    } catch (SObjectException e) {
+      ex = e;
+    }
+
+    System.assertNotEquals(null, ex, 'Exception should have been thrown');
+    System.assertEquals('Invalid field Waterloo__c for Opportunity', ex.getMessage());
+  }
+
+  @IsTest
+  static void shouldStripAwayRelationshipNameWhenParentClauseAndTypeMatchesParent() {
+    String whereClause = 'Account.AnnualRevenue = 5';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Account.SObjectType);
+    System.assertEquals(true, eval.matches(new Account(AnnualRevenue = 5)));
+
+    whereClause = 'RollupParent__r.NumberField__c = 1';
+    eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, RollupParent__c.SObjectType);
+    System.assertEquals(true, eval.matches(new RollupParent__c(NumberField__c = 1)));
+  }
 }

@@ -472,7 +472,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           while (index < ownerIndex) {
             String relationshipName = fieldParts[index];
             Map<String, SObjectField> fieldNameToField = recordSObjectType.getDescribe().fields.getMap();
-            String fieldRef = relationshipName.endsWith('__r') ? relationshipName.substringBeforeLast('__r') + '__c' : relationshipName + 'Id';
+            String fieldRef = getRelationshipNameFromField(relationshipName);
             SObjectField fieldToken = fieldNameToField.get(fieldRef);
             if (fieldToken.getDescribe().isNamePointing()) {
               return false;
@@ -683,14 +683,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       // we need to recurse till the value itself can be captured
       String relationshipName = fieldNameParts.remove(0).trim();
       String originalName = relationshipName;
-
-      if (relationshipName.contains('__r')) {
-        relationshipName = relationshipName.replace('__r', '__c');
-      } else {
-        relationshipName += 'Id';
-      }
+      relationshipName = getRelationshipNameFromField(relationshipName);
 
       SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
+      if (fieldToken == null) {
+        // it could be a rollup started from the parent using a parent-level where clause
+        return item.get(fieldPath.substringAfter('.'));
+      }
       SObjectType parentSObjectType;
       if (fieldToken.getDescribe().isNamePointing() && item.get(relationshipName) != null) {
         Id fieldValue = (Id) item.get(relationshipName);
@@ -830,6 +829,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
       return matches;
     }
+  }
+
+  private static String getRelationshipNameFromField(String relationshipField) {
+    return relationshipField.endsWith('__r') ? relationshipField.substringBeforeLast('__r') + '__c' : relationshipField + 'Id';
   }
 
   private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {

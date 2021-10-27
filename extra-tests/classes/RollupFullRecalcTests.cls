@@ -239,6 +239,38 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldFilterOnParentFieldsProperlyWhenInvokedFromParent() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under wrong conditions');
+
+    insert new Contact(LastName = 'Parent field test', AccountId = acc.Id);
+
+    List<Account> accs = new List<Account>{ acc };
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(accs);
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'COUNT');
+    flowInputs[0].lookupFieldOnCalcItem = 'AccountId';
+    flowInputs[0].lookupFieldOnOpObject = 'Id';
+    flowInputs[0].rollupFieldOnCalcItem = 'Id';
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'Contact';
+    flowInputs[0].oldRecordsToRollup = new List<Account>{ new Account(Id = acc.Id, AnnualRevenue = 250) };
+    flowInputs[0].calcItemWhereClause = 'Account.AnnualRevenue != 250';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'REFRESH_COUNT from flow did not update account');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT did not refresh successfully');
+  }
+
+  @IsTest
   static void shouldProperlyBulkifyApexFullRecalcs() {
     // cheating, but we'll use REFRESH_ rollup operations to reproduce this issue (REFRESH is typically only available in Flow)
     Account acc = [SELECT Id, OwnerId FROM Account];
