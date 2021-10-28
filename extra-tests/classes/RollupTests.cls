@@ -165,7 +165,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, PreferenceRank = 25) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, PreferenceRank = 25, Id = cpa.Id) };
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -3065,8 +3065,8 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25),
-      reparentedCpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue())
+      cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Id = cpa.Id),
+      reparentedCpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue(), Id = reparentedCpa.Id)
     };
 
     Test.startTest();
@@ -3093,7 +3093,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue())
+      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue(), Id = cpa.Id)
     };
 
     Test.startTest();

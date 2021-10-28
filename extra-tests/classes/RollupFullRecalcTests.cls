@@ -486,7 +486,7 @@ private class RollupFullRecalcTests {
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
     Integer maxAccountNameLength = Account.Name.getDescribe().getLength();
-    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(maxAccountNameLength + 1), LastName = 'Truncate', Email = 'rollup@gmail.com');
+    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(maxAccountNameLength + 1), LastName = 'Truncate');
     insert con;
 
     Rollup__mdt meta = new Rollup__mdt(

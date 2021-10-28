@@ -15,7 +15,7 @@ private class RollupCalcItemReplacerTests {
     );
     List<SObject> replacedContacts = replacer.replace(
       new List<Contact>{ con },
-      new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\'')
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\'') }
     );
 
     System.assertEquals(true, replacedContacts[0].getPopulatedFieldsAsMap().containsKey('Account'));
@@ -38,7 +38,7 @@ private class RollupCalcItemReplacerTests {
     );
     List<SObject> replacedContacts = replacer.replace(
       new List<Contact>{ con },
-      new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\' AND Account.Owner.Id != null')
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\' AND Account.Owner.Id != null') }
     );
 
     System.assertEquals(true, replacedContacts[0].getPopulatedFieldsAsMap().containsKey('Account'));

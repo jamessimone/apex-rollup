@@ -1236,7 +1236,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.records = new List<ContactPointAddress>{ cpa };
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10) };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id) };
     Rollup.runFromTrigger();
 
     updatedAcc = [SELECT AnnualRevenue FROM Account];
@@ -1613,6 +1613,50 @@ private class RollupIntegrationTests {
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
+  }
+
+  @IsTest
+  static void shouldResetParentFieldsWhenItemsNoLongerMatch() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true, IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1);
+    Account acc = [SELECT Id, Name FROM Account];
+    acc.AnnualRevenue = 6176191911.0;
+    acc.NumberOfEmployees = 1;
+    update acc;
+
+    List<Contact> cons = new List<Contact>{ new Contact(LastName = 'somethingElse', AccountId = acc.Id, Number__c = acc.AnnualRevenue, Phone = '617619111') };
+    insert cons;
+    Rollup.defaultControl = null;
+
+    Contact oldContact = cons[0].clone(true, true);
+    cons[0].lastName = 'soloAdmin'; // simulating an update which has not yet been reflected in the database
+
+    Rollup.FlowInput flowInput = RollupTestUtils.prepareFlowTest(cons, 'UPSERT', 'SUM')[0];
+    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
+    flowInput.rollupFieldOnCalcItem = 'Id';
+    flowInput.lookupFieldOnCalcItem = 'AccountId';
+    flowInput.calcItemWhereClause = 'LastName != \'soloAdmin\' AND Account.Name = \'' + acc.Name + '\'';
+    flowInput.oldRecordsToRollup = new List<Contact>{ oldContact };
+    Rollup.FlowInput secondInput = (Rollup.FlowInput) JSON.deserialize(JSON.serialize(flowInput), Rollup.FlowInput.class);
+    secondInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
+    secondInput.rollupOperation = 'COUNT';
+    secondInput.calcItemWhereClause = 'LastName != \'soloAdmin\'';
+    secondInput.rollupFieldOnOpObject = 'NumberOfEmployees';
+    // also validate that a matching clause does NOT get reset
+    Rollup.FlowInput matchingInput = (Rollup.FlowInput) JSON.deserialize(JSON.serialize(flowInput), Rollup.FlowInput.class);
+    matchingInput.rollupOperation = 'MAX';
+    matchingInput.rollupFieldOnCalcItem = 'Phone';
+    matchingInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
+    matchingInput.calcItemWhereClause = 'LastName = \'soloAdmin\' AND Account.Name = \'' + acc.Name + '\'';
+    matchingInput.rollupFieldOnOpObject = 'Phone';
+
+    Test.startTest();
+    Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput, secondInput, matchingInput });
+    Test.stopTest();
+
+    Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees, Phone FROM Account];
+    System.assertEquals(0, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
+    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
+    System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since calc item matches');
   }
 
   @IsTest

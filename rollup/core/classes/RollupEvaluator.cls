@@ -113,7 +113,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     public override Boolean matches(Object calcItem) {
       Boolean matches = this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
-      addLog(this, matches, calcItem, LoggingLevel.FINER);
+      addLog(this, matches, calcItem, LoggingLevel.FINEST);
       return matches;
     }
 

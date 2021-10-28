@@ -93,6 +93,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
+  public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    return new QueueableProcessor(invokePoint, calcItems, oldCalcItems);
+  }
+
   public static RollupAsyncProcessor getProcessor(
     FilterResults filterResults,
     SObjectField opFieldOnCalcItem,
@@ -325,8 +329,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
-      roll = new RollupAsyncProcessor(this);
-    } else if (canEnqueue && System.isQueueable() == false) {
+      if (this instanceof QueueableProcessor) {
+        roll = new RollupAsyncProcessor(this);
+      } else {
+        roll = this;
+      }
+    } else if (canEnqueue && System.isQueueable() == false && (this instanceof QueueableProcessor) == false) {
       roll = new QueueableProcessor(this);
     } else if (canEnqueue) {
       roll = this;
@@ -338,6 +346,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private inherited sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+    private QueueableProcessor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      super(invokePoint, calcItems, oldCalcItems);
+    }
+
     private QueueableProcessor(
       FilterResults filterResults,
       SObjectField opFieldOnCalcItem,
@@ -451,7 +463,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected RollupAsyncProcessor getDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, FullRecalcProcessor fullRecalcProcessor) {
     // if we're already queued / batched, free to start running "sync"
     isRunningAsync = System.isBatch() || System.isQueueable();
-    RollupAsyncProcessor processor = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, oldCalcItems, null, this.invokePoint);
+    RollupAsyncProcessor processor = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     processor.isFullRecalc = true;
     processor.fullRecalcProcessor = fullRecalcProcessor;
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
@@ -710,10 +722,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void getFieldNamesForRollups(List<RollupAsyncProcessor> rollups) {
     this.lookupObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
     this.calcObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
+    List<Rollup__mdt> combinedMeta = new List<Rollup__mdt>();
     for (RollupAsyncProcessor roll : rollups) {
       if (roll.lookupObj == null) {
         continue;
       }
+      combinedMeta.add(roll.metadata);
       String rollupField = roll.opFieldOnLookupObject.getDescribe().getName();
       String lookupfield = roll.lookupFieldOnLookupObject.getDescribe().getName();
       if (this.lookupObjectToUniqueFieldNames.containsKey(roll.lookupObj)) {
@@ -735,6 +749,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.calcObjectToUniqueFieldNames.put(roll.calcItemType, new Set<String>(whereFields));
       }
     }
+    if (this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.calcItems) == false) {
+      this.calcItems = this.calcItemReplacer.replace(this.calcItems, combinedMeta);
+    }
   }
 
   private void winnowRollups(List<RollupAsyncProcessor> potentialRollups) {
@@ -754,9 +771,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (this.calcItems == null) {
       return lookupFieldToCalcItems;
-    }
-    if (this.calcItemReplacer.hasProcessedMetadata(rollup.metadata) == false) {
-      this.calcItems = this.calcItemReplacer.replace(this.calcItems, rollup.metadata);
     }
     if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
       if (rollup.traversal == null) {
@@ -828,9 +842,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) &&
-        isRunningAsync &&
-        this.getIsRunningFromFlow() == false) ||
+        ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync) ||
         System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs();
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
