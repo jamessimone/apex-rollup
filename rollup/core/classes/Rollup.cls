@@ -2233,10 +2233,10 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     InvocationPoint rollupInvokePoint
   ) {
+    calcItems = CALC_ITEM_REPLACER.replace(calcItems, rollupOperations);
     if (oldCalcItems?.isEmpty() == false) {
       oldCalcItems = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(oldCalcItems.values(), rollupOperations));
     }
-    calcItems = CALC_ITEM_REPLACER.replace(calcItems, rollupOperations);
     RollupAsyncProcessor rollupConductor = RollupAsyncProcessor.getConductor(rollupInvokePoint, calcItems, oldCalcItems);
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return rollupConductor;

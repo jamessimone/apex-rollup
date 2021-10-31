@@ -240,10 +240,12 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldFilterOnParentFieldsProperlyWhenInvokedFromParent() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldAbortRun__c = true);
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under wrong conditions');
 
     insert new Contact(LastName = 'Parent field test', AccountId = acc.Id);
+    Rollup.defaultControl = null;
 
     List<Account> accs = new List<Account>{ acc };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(accs);

@@ -27,6 +27,7 @@ public class RollupTestUtils {
   public class DMLMock extends RollupSObjectUpdater {
     public List<SObject> Records = new List<SObject>();
     public override void doUpdate(List<SObject> recordsToUpdate) {
+      RollupLogger.Instance.log('mock received the following for update:', recordsToUpdate, LoggingLevel.DEBUG);
       this.Records = recordsToUpdate;
     }
   }

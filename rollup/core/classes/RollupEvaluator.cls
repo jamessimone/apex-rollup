@@ -463,7 +463,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private Boolean isValidRelationshipField(String fieldName) {
       if (fieldName.contains('Owner.')) {
-        List<String> fieldParts = fieldName.split('\\.');
+        List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
         Integer ownerIndex = fieldParts.indexOf('Owner');
         SObjectType recordSObjectType = this.calcItemType;
         SObjectType ownerType;
@@ -693,7 +693,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObjectType parentSObjectType;
       if (fieldToken.getDescribe().isNamePointing() && item.get(relationshipName) != null) {
         Id fieldValue = (Id) item.get(relationshipName);
-        parentSObjectType = fieldValue.getSobjectType();
+        parentSObjectType = fieldValue.getSObjectType();
       } else {
         // there's only ever one item in the list for non-polymorphic fields
         parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
@@ -730,7 +730,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       } else if (storedValue instanceof Time) {
         List<String> timeDigits = comparisonText.substringBefore('Z').split(':');
-        List<String> secondDigits = timeDigits[2].split('\\.');
+        List<String> secondDigits = timeDigits[2].split(RELATIONSHIP_FIELD_DELIMITER);
         Time comparisonTime = Time.newInstance(
           Integer.valueOf(timeDigits[0]),
           Integer.valueOf(timeDigits[1]),

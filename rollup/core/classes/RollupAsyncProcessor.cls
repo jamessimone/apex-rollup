@@ -23,6 +23,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
 
+  private enum CollectionType {
+    DICTIONARY,
+    ITERABLE
+  }
+
   private final List<RollupAsyncProcessor> deferredRollups {
     get {
       if (deferredRollups == null) {
@@ -538,8 +543,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
     for (RollupAsyncProcessor roll : rollups) {
       roll.isProcessed = true;
-      CalcItemData data = new CalcItemData(this.calcItems, this.oldCalcItems);
-      this.setupCalcItemData(roll);
+      CalcItemData data = this.setupCalcItemData(roll);
       RollupLogger.Instance.log('starting rollup for:', roll, LoggingLevel.DEBUG);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
       if (hasExceededCurrentRollupLimits(roll.rollupControl)) {
@@ -699,7 +703,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupLogger.Instance.save();
   }
 
-  private void setupCalcItemData(Rollup roll) {
+  private CalcItemData setupCalcItemData(Rollup roll) {
+    CalcItemData data = new CalcItemData(this.calcItems, this.oldCalcItems);
     // if a rollup has calc items set, we take their calcItem dependencies as the source of truth
     if (roll.calcItems?.isEmpty() == false) {
       this.calcItems = roll.calcItems;
@@ -708,6 +713,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll.calcItems = this.calcItems;
       roll.oldCalcItems = this.oldCalcItems;
     }
+    return data;
   }
 
   private void resetCalcItemData(CalcItemData data) {
@@ -750,7 +756,38 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
     if (this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.calcItems) == false) {
+      Integer oldHashCode = this.calcItems?.hashCode();
       this.calcItems = this.calcItemReplacer.replace(this.calcItems, combinedMeta);
+      for (Rollup roll : rollups) {
+        this.replaceCalcItems(oldHashCode, this.calcItems, roll, CollectionType.ITERABLE);
+      }
+    }
+    if (this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.oldCalcItems?.values()) == false) {
+      Integer oldHashCode = this.oldCalcItems?.hashCode();
+      Map<Id, SObject> oldCalcItemsWithUpdatedFields = new Map<Id, SObject>();
+      for (SObject oldCalcItem : this.calcItemReplacer.replace(this.oldCalcItems?.values(), combinedMeta)) {
+        oldCalcItemsWithUpdatedFields.put(oldCalcItem.Id, oldCalcItem);
+      }
+      this.oldCalcItems = oldCalcItemsWithUpdatedFields;
+      for (Rollup roll : rollups) {
+        this.replaceCalcItems(oldHashCode, this.oldCalcItems, roll, CollectionType.DICTIONARY);
+      }
+    }
+  }
+
+  private void replaceCalcItems(Integer oldHashCode, Object updatedRecords, Rollup innerRollup, CollectionType collectionType) {
+    // this unfortunate statement wouldn't be nearly so bad if the collections were passed by reference - but they're not,
+    // they're passed by value, which means the reassignments below would not cascade back up to the innerRollup's
+    // calcItems / oldCalcItems properties without explicitly being re-set.
+    if (innerRollup.calcItems?.hashCode() == oldHashCode) {
+      switch on collectionType {
+        when ITERABLE {
+          innerRollup.calcItems = (List<SObject>) updatedRecords;
+        }
+        when DICTIONARY {
+          innerRollup.oldCalcItems = (Map<Id, SObject>) updatedRecords;
+        }
+      }
     }
   }
 
@@ -848,6 +885,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
       } else if (couldRunSync && shouldRunSyncDeferred == false) {
+        this.calcItemReplacer?.resetShouldRunAs(RollupMetaPicklists.ShouldRunAs.Synchronous);
         this.rollups.remove(index);
         syncRollups.add(rollup);
       } else if (couldRunSync && shouldRunSyncDeferred) {

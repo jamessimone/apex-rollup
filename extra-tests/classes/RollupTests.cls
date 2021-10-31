@@ -1665,11 +1665,13 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDateOnUpdate() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
     insert con;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
     insert taskOne;
+    Rollup.defaultControl = null;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = RollupTestUtils.createId(Task.SObjectType), WhoId = con.Id);
 
