@@ -1347,7 +1347,9 @@ global without sharing virtual class Rollup {
   global static void runFromTrigger() {
     List<SObject> triggerRecords = getTriggerRecords();
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(triggerRecords.getSObjectType());
-    runFromApex(matchingMetadata, null, triggerRecords, getOldTriggerRecordsMap()).runCalc();
+    if (matchingMetadata.isEmpty() == false) {
+      runFromApex(matchingMetadata, null, triggerRecords, getOldTriggerRecordsMap()).runCalc();
+    }
   }
 
   /**
