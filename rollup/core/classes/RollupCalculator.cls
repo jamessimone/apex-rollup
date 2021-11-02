@@ -150,8 +150,10 @@ public without sharing abstract class RollupCalculator {
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
       SObject calcItem = localCalcItems[index];
-      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
-      Boolean doesNotMatch = this.eval?.matches(calcItem) == false || this.eval?.matches(calcItem) == false && this.eval?.matches(oldCalcItem) == false;
+      Boolean doesNotMatch = this.eval?.matches(calcItem) == false;
+      if (doesNotMatch && oldCalcItems.containsKey(calcItem.Id)) {
+        doesNotMatch = doesNotMatch && this.eval?.matches(oldCalcItems.get(calcItem.Id)) == false;
+      }
 
       // it's only a full recalc situation if there are no items left after winnowing
       // otherwise, for even one item in the list, this should cause "shouldTriggerFullRecalc" to evaluate to false
@@ -173,7 +175,7 @@ public without sharing abstract class RollupCalculator {
             this.handleCountDistinct(calcItem);
           }
           when UPDATE_COUNT_DISTINCT {
-            this.handleUpdateCountDistinct(calcItem, oldCalcItems);
+            this.handleUpdateCountDistinct(calcItem);
           }
           when SUM, COUNT {
             this.handleSumOrCount(calcItem);
@@ -236,7 +238,7 @@ public without sharing abstract class RollupCalculator {
   // all of these are no-ops by default; child classes opt-in to the rollup types applicable
   public virtual void handleCountDistinct(SObject calcItem) {
   }
-  public virtual void handleUpdateCountDistinct(SObject calcItem, Map<Id, SObject> oldCalcItems) {
+  public virtual void handleUpdateCountDistinct(SObject calcItem) {
   }
   public virtual void handleSumOrCount(SObject calcItem) {
   }
@@ -265,11 +267,16 @@ public without sharing abstract class RollupCalculator {
     List<SObject> temporaryItems = new List<SObject>(items);
     items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
     for (SObject item : temporaryItems) {
-      SObject potentialOldItem = oldCalcItems.containsKey(item.Id) ? oldCalcItems.get(item.Id) : item;
-      if (this.eval?.matches(item) != false) {
+      Boolean currentItemMatches = this.eval?.matches(item) != false;
+      if (currentItemMatches) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
-      } else if (this.op == Rollup.Op.UPDATE_COUNT && this.eval?.matches(item) == false && this.eval?.matches(potentialOldItem) == true) {
+      } else if (
+        this.op == Rollup.Op.UPDATE_COUNT &&
+        currentItemMatches == false &&
+        oldCalcItems.containsKey(item.Id) &&
+        this.eval?.matches(oldCalcItems.get(item.Id)) == true
+      ) {
         // TODO - handle old item matching, new item not matching situation for (other non-full recalc) operations
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
@@ -376,7 +383,7 @@ public without sharing abstract class RollupCalculator {
 
     protected override void handleShortCircuit(SObject calcItem) {
       Object currentVal = calcItem.get(this.opFieldOnCalcItem);
-      if (currentVal != null) {
+      if (currentVal != null && this.op != Rollup.Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues.add(currentVal);
       }
     }
@@ -387,25 +394,15 @@ public without sharing abstract class RollupCalculator {
         this.distinctValues.add(potentiallyNullValue);
       } else if (this.op == Rollup.Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues.clear();
+        // TODO - what happens if multiple items are deleted at once??
+        this.calculateNewAggregateVAlue(this.op, new Set<Id>{ calcItem.Id }, calcItem.getSObjectType());
       }
       this.shouldShortCircuit = true;
-      this.calculateNewAggregateValue(this.op, new Set<Id>{ calcItem.Id }, calcItem.getSObjectType());
     }
 
-    public override void handleUpdateCountDistinct(SObject calcItem, Map<Id, SObject> oldCalcItems) {
-      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
-
-      Object currentVal = calcItem.get(this.opFieldOnCalcItem);
-      Object priorCalcVal = oldCalcItem.get(this.opFieldOnCalcItem);
-
-      if (currentVal != priorCalcVal || this.isReparented(calcItem, oldCalcItem)) {
-        this.distinctValues.clear();
-        if (currentVal != null) {
-          this.distinctValues.add(currentVal);
-        }
-        this.shouldShortCircuit = true;
-        this.calculateNewAggregateValue(this.op, oldCalcItems.keySet(), calcItem.getSObjectType());
-      }
+    public override void handleUpdateCountDistinct(SObject calcItem) {
+      this.shouldShortCircuit = true;
+      this.handleShortCircuit(calcItem);
     }
 
     @SuppressWarnings('PMD.ApexSOQLInjection')

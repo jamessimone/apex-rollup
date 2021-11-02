@@ -1414,7 +1414,7 @@ private class RollupTests {
     update acc;
 
     ContactPointAddress testCpaOne = new ContactPointAddress(PreferenceRank = 100, Name = 'Pre-existing one', ParentId = acc.Id);
-    ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing one', ParentId = acc.Id);
+    ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing two', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ testCpaOne, testCpaTwo };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ testCpaTwo };
@@ -2380,7 +2380,7 @@ private class RollupTests {
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'COUNT_DISTINCT');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+      new ContactPointAddress(ParentId = cpa.ParentId, Id = cpa.Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank;
 
@@ -3263,7 +3263,7 @@ private class RollupTests {
       new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) }
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 2);
     Rollup.specificControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       MaxLookupRowsBeforeBatching__c = 1,

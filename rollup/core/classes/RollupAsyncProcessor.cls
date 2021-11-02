@@ -482,7 +482,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @SuppressWarnings('PMD.UnusedLocalVariable')
   protected virtual void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     // TODO - incorporate grandparent rollups into this, as well
-    if (rollup.isFullRecalc == false || String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)) {
+    if (
+      (rollup.isFullRecalc == false && rollup.metadata.IsFullRecordSet__c == false) || String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c)
+    ) {
+      return;
+    } else if (rollup.op?.name().contains('DELETE') == true) {
+      // full recalc rollups won't have an op, hence the safe navigation above
       return;
     }
 
@@ -515,13 +520,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         '!=',
         whereClause
       );
+      RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.FINE);
       List<SObject> additionalCalcItems;
-      String fullRecalcKey = query + rollup.metadata.RollupOperation__c;
-      if (this.cachedFullRecalcs.containsKey(fullRecalcKey)) {
-        additionalCalcItems = this.cachedFullRecalcs.get(fullRecalcKey);
+      if (this.cachedFullRecalcs.containsKey(query)) {
+        additionalCalcItems = this.cachedFullRecalcs.get(query);
       } else {
         additionalCalcItems = Database.query(query);
-        this.cachedFullRecalcs.put(fullRecalcKey, additionalCalcItems);
+        this.cachedFullRecalcs.put(query, additionalCalcItems);
       }
 
       for (SObject additionalCalcItem : additionalCalcItems) {
@@ -857,8 +862,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void resetLookupFieldsForNullOrFullRecalcs(SObject lookupItem, RollupAsyncProcessor rollup) {
-    if (lookupItem.get(rollup.opFieldOnLookupObject) == null || this.isValidFullRecalcReset(rollup, lookupItem)) {
-      lookupItem.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
+    if (lookupItem.getSObjectType() == rollup.lookupObj) {
+      if (lookupItem.get(rollup.opFieldOnLookupObject) == null || this.isValidFullRecalcReset(rollup, lookupItem)) {
+        lookupItem.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
+      }
     }
   }
 
@@ -1013,6 +1020,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
+      if (lookupRecord.getSObjectType() != rollup.lookupObj) {
+        continue;
+      }
       String key = (String) lookupRecord.get(rollup.lookupFieldOnLookupObject);
       if (calcItemsByLookupField.containsKey(key)) {
         CalcItemBag bag = calcItemsByLookupField.get(key);
@@ -1174,6 +1184,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupSObjectUpdater updater
   ) {
     for (SObject lookupRecord : lookupItems) {
+      if (lookupRecord.getSObjectType() != roll.lookupObj) {
+        continue;
+      }
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
       if (oldLookupItems.containsKey(key)) {
         // Yes, old parent record has already had a new rollup established in memory

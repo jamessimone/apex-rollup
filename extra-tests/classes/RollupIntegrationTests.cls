@@ -1170,6 +1170,47 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldRetrieveAllCalcItemsOnUpdateConcatDistinct() {
+    Account acc = [SELECT Id, AccountNumber FROM Account];
+    acc.AccountNumber = 'test update';
+    update acc;
+
+    ContactPointAddress firstCpa = new ContactPointAddress(ParentId = acc.Id, Name = acc.AccountNumber);
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'something else');
+    insert new List<ContactPointAddress>{ firstCpa, cpa };
+
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = acc.AccountNumber) };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AccountNumber FROM Account];
+    System.assertEquals(
+      cpa.Name +
+      ', ' +
+      acc.AccountNumber,
+      updatedAcc.AccountNumber,
+      'CONCAT_DISTINCT AFTER_UPDATE should have both values when another matching item present'
+    );
+  }
+
+  @IsTest
   static void shouldProperlyQueryNotLikeCountDistinct() {
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
 
@@ -1308,7 +1349,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(1, updatedAcc.AnnualRevenue, 'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest
@@ -1418,7 +1459,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 2,
+      MaxNumberOfQueries__c = 3,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
@@ -1469,7 +1510,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 2,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 2,
+      MaxNumberOfQueries__c = 3,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
