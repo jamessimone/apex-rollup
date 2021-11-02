@@ -113,7 +113,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     public override Boolean matches(Object calcItem) {
       Boolean matches = this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
-      addLog(this, matches, calcItem, LoggingLevel.FINEST);
+      addLog(this, matches, calcItem, LoggingLevel.FINER);
       return matches;
     }
 
@@ -143,7 +143,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      addLog(this, matches, calcItem, LoggingLevel.FINER);
+      addLog(this, matches, calcItem, LoggingLevel.FINEST);
       return matches;
     }
 
@@ -401,8 +401,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
       localClause = localClause.trim();
       String fieldName = localClause.substring(0, localClause.indexOf(' '));
-      if (RollupDateFunction.isSoqlDateFunction(fieldName)) {
-        // TODO remove this after full support for SOQL date functions is introduced (like RollupDateLiteral)
+      if (RollupDateLiteral.isSoqlDateFunction(fieldName)) {
+        // TODO remove this after full support for SOQL date functions is introduced
         return conditions;
       }
       localClause = localClause.removeStart(fieldName).trim();
@@ -825,7 +825,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           matches = false;
         }
       }
-      addLog(this, matches, item, LoggingLevel.FINER);
+      addLog(this, matches, item, LoggingLevel.FINEST);
 
       return matches;
     }

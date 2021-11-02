@@ -3,6 +3,10 @@ public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN = Pattern.compile(
     '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS):\\s?\\d*'
   );
+  private static final Pattern DATE_FUNCTION_PATTERN = Pattern.compile(
+    '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH' +
+    '|FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
+  );
 
   private static final Time START_TIME {
     get {
@@ -46,45 +50,57 @@ public without sharing abstract class RollupDateLiteral {
 
   protected Datetime ref;
 
-  private static final Map<String, Object> KEY_TO_DATE_LITERAL = new Map<String, Object>{
-    'YESTERDAY' => YesterdayLiteral.class,
-    'TODAY' => TodayLiteral.class,
-    'TOMORROW' => TomorrowLiteral.class,
-    'LAST_WEEK' => LastWeekLiteral.class,
-    'THIS_WEEK' => ThisWeekLiteral.class,
-    'NEXT_WEEK' => NextWeekLiteral.class,
-    'LAST_MONTH' => LastMonthLiteral.class,
-    'THIS_MONTH' => ThisMonthLiteral.class,
-    'NEXT_MONTH' => NextMonthLiteral.class,
-    'LAST_90_DAYS' => Last90DaysLiteral.class,
-    'NEXT_90_DAYS' => Next90DaysLiteral.class,
-    'LAST_N_DAYS' => LastNDaysLiteral.class,
-    'NEXT_N_DAYS' => NextNDaysLiteral.class,
-    'LAST_N_WEEKS' => LastNWeeksLiteral.class,
-    'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
-    'LAST_N_MONTHS' => LastNMonthsLiteral.class,
-    'NEXT_N_MONTHS' => NextNMonthsLiteral.class,
-    'LAST_QUARTER' => LastQuarterLiteral.class,
-    'THIS_QUARTER' => ThisQuarterLiteral.class,
-    'NEXT_QUARTER' => NextQuarterLiteral.class,
-    'LAST_N_QUARTERS' => LastNQuartersLiteral.class,
-    'NEXT_N_QUARTERS' => NextNQuartersLiteral.class,
-    'THIS_YEAR' => ThisYearLiteral.class,
-    'LAST_YEAR' => LastYearLiteral.class,
-    'NEXT_YEAR' => NextYearLiteral.class,
-    'LAST_N_YEARS' => LastNYearsLiteral.class,
-    'NEXT_N_YEARS' => NextNYearsLiteral.class,
-    'LAST_FISCAL_QUARTER' => LastFiscalQuarterLiteral.class,
-    'THIS_FISCAL_QUARTER' => ThisFiscalQuarterLiteral.class,
-    'NEXT_FISCAL_QUARTER' => NextFiscalQuarterLiteral.class,
-    'LAST_N_FISCAL_QUARTERS' => LastNFiscalQuartersLiteral.class,
-    'NEXT_N_FISCAL_QUARTERS' => NextNFiscalQuartersLiteral.class,
-    'LAST_FISCAL_YEAR' => LastFiscalYearLiteral.class,
-    'THIS_FISCAL_YEAR' => ThisFiscalYearLiteral.class,
-    'NEXT_FISCAL_YEAR' => NextFiscalYearLiteral.class,
-    'LAST_N_FISCAL_YEARS' => LastNFiscalYearsLiteral.class,
-    'NEXT_N_FISCAL_YEARS' => NextNFiscalYearsLiteral.class
-  };
+  private static final Map<String, Object> KEY_TO_DATE_LITERAL {
+    get {
+      if (KEY_TO_DATE_LITERAL == null) {
+        KEY_TO_DATE_LITERAL = new Map<String, Object>{
+          'YESTERDAY' => YesterdayLiteral.class,
+          'TODAY' => TodayLiteral.class,
+          'TOMORROW' => TomorrowLiteral.class,
+          'LAST_WEEK' => LastWeekLiteral.class,
+          'THIS_WEEK' => ThisWeekLiteral.class,
+          'NEXT_WEEK' => NextWeekLiteral.class,
+          'LAST_MONTH' => LastMonthLiteral.class,
+          'THIS_MONTH' => ThisMonthLiteral.class,
+          'NEXT_MONTH' => NextMonthLiteral.class,
+          'LAST_90_DAYS' => Last90DaysLiteral.class,
+          'NEXT_90_DAYS' => Next90DaysLiteral.class,
+          'LAST_N_DAYS' => LastNDaysLiteral.class,
+          'NEXT_N_DAYS' => NextNDaysLiteral.class,
+          'LAST_N_WEEKS' => LastNWeeksLiteral.class,
+          'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
+          'LAST_N_MONTHS' => LastNMonthsLiteral.class,
+          'NEXT_N_MONTHS' => NextNMonthsLiteral.class,
+          'LAST_QUARTER' => LastQuarterLiteral.class,
+          'THIS_QUARTER' => ThisQuarterLiteral.class,
+          'NEXT_QUARTER' => NextQuarterLiteral.class,
+          'LAST_N_QUARTERS' => LastNQuartersLiteral.class,
+          'NEXT_N_QUARTERS' => NextNQuartersLiteral.class,
+          'THIS_YEAR' => ThisYearLiteral.class,
+          'LAST_YEAR' => LastYearLiteral.class,
+          'NEXT_YEAR' => NextYearLiteral.class,
+          'LAST_N_YEARS' => LastNYearsLiteral.class,
+          'NEXT_N_YEARS' => NextNYearsLiteral.class,
+          'LAST_FISCAL_QUARTER' => LastFiscalQuarterLiteral.class,
+          'THIS_FISCAL_QUARTER' => ThisFiscalQuarterLiteral.class,
+          'NEXT_FISCAL_QUARTER' => NextFiscalQuarterLiteral.class,
+          'LAST_N_FISCAL_QUARTERS' => LastNFiscalQuartersLiteral.class,
+          'NEXT_N_FISCAL_QUARTERS' => NextNFiscalQuartersLiteral.class,
+          'LAST_FISCAL_YEAR' => LastFiscalYearLiteral.class,
+          'THIS_FISCAL_YEAR' => ThisFiscalYearLiteral.class,
+          'NEXT_FISCAL_YEAR' => NextFiscalYearLiteral.class,
+          'LAST_N_FISCAL_YEARS' => LastNFiscalYearsLiteral.class,
+          'NEXT_N_FISCAL_YEARS' => NextNFiscalYearsLiteral.class
+        };
+      }
+      return KEY_TO_DATE_LITERAL;
+    }
+    set;
+  }
+
+  public static Boolean isSoqlDateFunction(String val) {
+    return DATE_FUNCTION_PATTERN.matcher(val).matches();
+  }
 
   public static Boolean isDateLiteral(String key) {
     return KEY_TO_DATE_LITERAL.containsKey(key) || RELATIVE_LITERAL_PATTERN.matcher(key).matches();
