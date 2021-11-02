@@ -448,7 +448,7 @@ global without sharing virtual class Rollup {
       InvocationPoint.FROM_LWC
     )[0];
     RollupLogger.Instance.save();
-    return fullRecalc.runCalc();
+    return fullRecalc?.runCalc();
   }
 
   global class FlowInput {
@@ -1341,14 +1341,14 @@ global without sharing virtual class Rollup {
     rollupToReturn.isCDCUpdate = apexContext == TriggerOperation.AFTER_UPDATE;
     // we're already async, so let's not waste any more time
     rollupToReturn.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
-    rollupToReturn.runCalc();
+    rollupToReturn?.runCalc();
   }
 
   global static void runFromTrigger() {
     List<SObject> triggerRecords = getTriggerRecords();
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(triggerRecords.getSObjectType());
     if (matchingMetadata.isEmpty() == false) {
-      runFromApex(matchingMetadata, null, triggerRecords, getOldTriggerRecordsMap()).runCalc();
+      runFromApex(matchingMetadata, null, triggerRecords, getOldTriggerRecordsMap())?.runCalc();
     }
   }
 

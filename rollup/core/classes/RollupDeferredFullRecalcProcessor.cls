@@ -10,7 +10,7 @@ public inherited sharing class RollupDeferredFullRecalcProcessor extends RollupA
   }
 
   public override String runCalc() {
-    return this.getProcessor().runCalc();
+    return this.getProcessor()?.runCalc();
   }
 
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
