@@ -25,10 +25,6 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>RollupDateFunction</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <classAccesses>
         <apexClass>RollupDateLiteral</apexClass>
         <enabled>true</enabled>
     </classAccesses>
