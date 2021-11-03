@@ -394,7 +394,6 @@ public without sharing abstract class RollupCalculator {
         this.distinctValues.add(potentiallyNullValue);
       } else if (this.op == Rollup.Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues.clear();
-        // TODO - what happens if multiple items are deleted at once??
         this.calculateNewAggregateVAlue(this.op, new Set<Id>{ calcItem.Id }, calcItem.getSObjectType());
       }
       this.shouldShortCircuit = true;
