@@ -1170,6 +1170,47 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldRetrieveAllCalcItemsOnUpdateConcatDistinct() {
+    Account acc = [SELECT Id, AccountNumber FROM Account];
+    acc.AccountNumber = 'test update';
+    update acc;
+
+    ContactPointAddress firstCpa = new ContactPointAddress(ParentId = acc.Id, Name = acc.AccountNumber);
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'something else');
+    insert new List<ContactPointAddress>{ firstCpa, cpa };
+
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = acc.AccountNumber) };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AccountNumber',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AccountNumber FROM Account];
+    System.assertEquals(
+      cpa.Name +
+      ', ' +
+      acc.AccountNumber,
+      updatedAcc.AccountNumber,
+      'CONCAT_DISTINCT AFTER_UPDATE should have both values when another matching item present'
+    );
+  }
+
+  @IsTest
   static void shouldProperlyQueryNotLikeCountDistinct() {
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
 
@@ -1236,7 +1277,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.records = new List<ContactPointAddress>{ cpa };
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10) };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id) };
     Rollup.runFromTrigger();
 
     updatedAcc = [SELECT AnnualRevenue FROM Account];
@@ -1308,7 +1349,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(1, updatedAcc.AnnualRevenue, 'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest
@@ -1418,7 +1459,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 2,
+      MaxNumberOfQueries__c = 3,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
@@ -1469,7 +1510,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 2,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 2,
+      MaxNumberOfQueries__c = 3,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
@@ -1613,6 +1654,50 @@ private class RollupIntegrationTests {
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(cpas[0].PreferenceRank, updatedAcc.AnnualRevenue, 'pseudo-upsert from flow should act like insert for PreferenceRank');
+  }
+
+  @IsTest
+  static void shouldResetParentFieldsWhenItemsNoLongerMatch() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true, IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1);
+    Account acc = [SELECT Id, Name FROM Account];
+    acc.AnnualRevenue = 6176191911.0;
+    acc.NumberOfEmployees = 1;
+    update acc;
+
+    List<Contact> cons = new List<Contact>{ new Contact(LastName = 'somethingElse', AccountId = acc.Id, Number__c = acc.AnnualRevenue, Phone = '617619111') };
+    insert cons;
+    Rollup.defaultControl = null;
+
+    Contact oldContact = cons[0].clone(true, true);
+    cons[0].lastName = 'soloAdmin'; // simulating an update which has not yet been reflected in the database
+
+    Rollup.FlowInput flowInput = RollupTestUtils.prepareFlowTest(cons, 'UPSERT', 'SUM')[0];
+    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
+    flowInput.rollupFieldOnCalcItem = 'Id';
+    flowInput.lookupFieldOnCalcItem = 'AccountId';
+    flowInput.calcItemWhereClause = 'LastName != \'soloAdmin\' AND Account.Name = \'' + acc.Name + '\'';
+    flowInput.oldRecordsToRollup = new List<Contact>{ oldContact };
+    Rollup.FlowInput secondInput = (Rollup.FlowInput) JSON.deserialize(JSON.serialize(flowInput), Rollup.FlowInput.class);
+    secondInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
+    secondInput.rollupOperation = 'COUNT';
+    secondInput.calcItemWhereClause = 'LastName != \'soloAdmin\'';
+    secondInput.rollupFieldOnOpObject = 'NumberOfEmployees';
+    // also validate that a matching clause does NOT get reset
+    Rollup.FlowInput matchingInput = (Rollup.FlowInput) JSON.deserialize(JSON.serialize(flowInput), Rollup.FlowInput.class);
+    matchingInput.rollupOperation = 'MAX';
+    matchingInput.rollupFieldOnCalcItem = 'Phone';
+    matchingInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
+    matchingInput.calcItemWhereClause = 'LastName = \'soloAdmin\' AND Account.Name = \'' + acc.Name + '\'';
+    matchingInput.rollupFieldOnOpObject = 'Phone';
+
+    Test.startTest();
+    Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput, secondInput, matchingInput });
+    Test.stopTest();
+
+    Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees, Phone FROM Account];
+    System.assertEquals(0, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
+    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
+    System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since calc item matches');
   }
 
   @IsTest

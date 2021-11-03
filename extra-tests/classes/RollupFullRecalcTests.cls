@@ -239,6 +239,40 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldFilterOnParentFieldsProperlyWhenInvokedFromParent() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldAbortRun__c = true);
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, acc.AnnualRevenue, 'Test has started under wrong conditions');
+
+    insert new Contact(LastName = 'Parent field test', AccountId = acc.Id);
+    Rollup.defaultControl = null;
+
+    List<Account> accs = new List<Account>{ acc };
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(accs);
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'COUNT');
+    flowInputs[0].lookupFieldOnCalcItem = 'AccountId';
+    flowInputs[0].lookupFieldOnOpObject = 'Id';
+    flowInputs[0].rollupFieldOnCalcItem = 'Id';
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'Contact';
+    flowInputs[0].oldRecordsToRollup = new List<Account>{ new Account(Id = acc.Id, AnnualRevenue = 250) };
+    flowInputs[0].calcItemWhereClause = 'Account.AnnualRevenue != 250';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    System.assertEquals(1, mock.Records.size(), 'REFRESH_COUNT from flow did not update account');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT did not refresh successfully');
+  }
+
+  @IsTest
   static void shouldProperlyBulkifyApexFullRecalcs() {
     // cheating, but we'll use REFRESH_ rollup operations to reproduce this issue (REFRESH is typically only available in Flow)
     Account acc = [SELECT Id, OwnerId FROM Account];
@@ -454,7 +488,7 @@ private class RollupFullRecalcTests {
   static void shouldNotFailForTruncatedTextFields() {
     Account acc = [SELECT Id FROM Account];
     Integer maxAccountNameLength = Account.Name.getDescribe().getLength();
-    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(maxAccountNameLength + 1), LastName = 'Truncate', Email = 'rollup@gmail.com');
+    Contact con = new Contact(AccountId = acc.Id, Description = '0'.repeat(maxAccountNameLength + 1), LastName = 'Truncate');
     insert con;
 
     Rollup__mdt meta = new Rollup__mdt(
@@ -721,6 +755,54 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
+  }
+
+  @IsTest
+  static void shouldUseSmallerBatchSizeWhenSpecificRollupControlLowerThanOrgDefaults() {
+    Account acc = [SELECT Id FROM Account];
+    Account secondAccount = new Account(Name = 'Second');
+    insert secondAccount;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixBatch', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'secondAccount', ParentId = secondAccount.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 1,
+      BatchChunkSize__c = 100,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
+      IsRollupLoggingEnabled__c = true
+    );
+    Rollup.specificControl = new RollupControl__mdt(BatchChunkSize__c = 1);
+
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'Name != \'\''
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    List<AsyncApexJob> jobs = [SELECT Status, JobItemsProcessed FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'];
+    System.assertEquals(false, jobs.isEmpty());
+    for (AsyncApexJob job : jobs) {
+      System.assertEquals('Completed', job.Status);
+      System.assertEquals(1, job.JobItemsProcessed);
+    }
   }
 
   @IsTest
@@ -1219,6 +1301,34 @@ private class RollupFullRecalcTests {
 
     Test.startTest();
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(2, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void shouldNotBlowUpWithDateFunctionInWhereClause() {
+    Account acc = [SELECT Id FROM Account];
+
+    insert new List<Opportunity>{
+      new Opportunity(StageName = 'firstName', CloseDate = System.today(), AccountId = acc.Id, Name = 'one', Amount = 1),
+      new Opportunity(StageName = 'secondName', CloseDate = System.today(), AccountId = acc.Id, Name = 'two', Amount = 1)
+    };
+
+    Rollup__mdt meta = new Rollup__mdt(
+      CalcItem__c = 'Opportunity',
+      RollupFieldOnCalcItem__c = 'Amount',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupObject__c = 'Account',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'CALENDAR_YEAR(CreatedDate) = ' + System.today().year()
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];

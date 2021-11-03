@@ -143,7 +143,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      addLog(this, matches, calcItem, LoggingLevel.FINER);
+      addLog(this, matches, calcItem, LoggingLevel.FINEST);
       return matches;
     }
 
@@ -401,6 +401,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
       localClause = localClause.trim();
       String fieldName = localClause.substring(0, localClause.indexOf(' '));
+      if (RollupDateLiteral.isSoqlDateFunction(fieldName)) {
+        // TODO remove this after full support for SOQL date functions is introduced
+        return conditions;
+      }
       localClause = localClause.removeStart(fieldName).trim();
       String criteria = localClause.substring(0, localClause.indexOf(' ')).trim();
       String value = this.getValue(localClause.substringAfter(criteria));
@@ -459,7 +463,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private Boolean isValidRelationshipField(String fieldName) {
       if (fieldName.contains('Owner.')) {
-        List<String> fieldParts = fieldName.split('\\.');
+        List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
         Integer ownerIndex = fieldParts.indexOf('Owner');
         SObjectType recordSObjectType = this.calcItemType;
         SObjectType ownerType;
@@ -468,7 +472,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           while (index < ownerIndex) {
             String relationshipName = fieldParts[index];
             Map<String, SObjectField> fieldNameToField = recordSObjectType.getDescribe().fields.getMap();
-            String fieldRef = relationshipName.endsWith('__r') ? relationshipName.substringBeforeLast('__r') + '__c' : relationshipName + 'Id';
+            String fieldRef = getRelationshipNameFromField(relationshipName);
             SObjectField fieldToken = fieldNameToField.get(fieldRef);
             if (fieldToken.getDescribe().isNamePointing()) {
               return false;
@@ -679,18 +683,17 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       // we need to recurse till the value itself can be captured
       String relationshipName = fieldNameParts.remove(0).trim();
       String originalName = relationshipName;
-
-      if (relationshipName.contains('__r')) {
-        relationshipName = relationshipName.replace('__r', '__c');
-      } else {
-        relationshipName += 'Id';
-      }
+      relationshipName = getRelationshipNameFromField(relationshipName);
 
       SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
+      if (fieldToken == null) {
+        // it could be a rollup started from the parent using a parent-level where clause
+        return item.get(fieldPath.substringAfter('.'));
+      }
       SObjectType parentSObjectType;
       if (fieldToken.getDescribe().isNamePointing() && item.get(relationshipName) != null) {
         Id fieldValue = (Id) item.get(relationshipName);
-        parentSObjectType = fieldValue.getSobjectType();
+        parentSObjectType = fieldValue.getSObjectType();
       } else {
         // there's only ever one item in the list for non-polymorphic fields
         parentSObjectType = fieldToken.getDescribe().getReferenceTo()[0];
@@ -727,7 +730,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
       } else if (storedValue instanceof Time) {
         List<String> timeDigits = comparisonText.substringBefore('Z').split(':');
-        List<String> secondDigits = timeDigits[2].split('\\.');
+        List<String> secondDigits = timeDigits[2].split(RELATIONSHIP_FIELD_DELIMITER);
         Time comparisonTime = Time.newInstance(
           Integer.valueOf(timeDigits[0]),
           Integer.valueOf(timeDigits[1]),
@@ -822,10 +825,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           matches = false;
         }
       }
-      addLog(this, matches, item, LoggingLevel.FINER);
+      addLog(this, matches, item, LoggingLevel.FINEST);
 
       return matches;
     }
+  }
+
+  private static String getRelationshipNameFromField(String relationshipField) {
+    return relationshipField.endsWith('__r') ? relationshipField.substringBeforeLast('__r') + '__c' : relationshipField + 'Id';
   }
 
   private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {

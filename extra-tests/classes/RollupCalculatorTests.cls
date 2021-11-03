@@ -4,7 +4,7 @@ private class RollupCalculatorTests {
 
   @TestSetup
   static void setup() {
-    insert new Account(Name = 'RollupCalculatorTests');
+    insert new Account(Name = RollupCalculatorTests.class.getName());
   }
 
   /** FIRST / LAST operations */
@@ -360,7 +360,12 @@ private class RollupCalculatorTests {
     ContactPointAddress first = new ContactPointAddress(Name = 'a', ParentId = acc.Id, PreferenceRank = 1);
     insert first;
 
-    ContactPointAddress cpa = new ContactPointAddress(Name = 'b', PreferenceRank = 1, ParentId = acc.Id, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    ContactPointAddress cpa = new ContactPointAddress(
+      Name = 'b',
+      PreferenceRank = 1,
+      ParentId = acc.Id,
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
+    );
 
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -496,6 +501,28 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
 
     System.assertEquals(0, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldNotDoubleCountDistinctForDeletions() {
+    Account acc = [SELECT Id FROM Account];
+    insert new Contact(LastName = 'Count Distinct', AccountId = acc.Id);
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      3,
+      Rollup.Op.DELETE_COUNT_DISTINCT,
+      Contact.Id,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Contact'),
+      acc.Id,
+      Contact.AccountId
+    );
+    calc.performRollup(
+      new List<SObject>{ new Contact(Id = RollupTestUtils.createId(Contact.SObjectType)), new Contact(Id = RollupTestUtils.createId(Contact.SObjectType)) },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(1, calc.getReturnValue(), 'Should not double count any deleted items');
   }
 
   @IsTest
@@ -669,7 +696,25 @@ private class RollupCalculatorTests {
     Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
     calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
 
-    System.assertEquals(distinct + ' -- ' + nonDistinctOpp.Name, (String) calc.getReturnValue(), 'distinct values should be concatenated with custom delimiter!');
+    System.assertEquals(distinct + ' -- ' + nonDistinctOpp.Name, calc.getReturnValue(), 'distinct values should be concatenated with custom delimiter!');
+  }
+
+  @IsTest
+  static void shouldSplitCalcItemsOnConcatDelimiterWhenSupplied() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      '',
+      Rollup.Op.CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(SplitConcatDelimiterOnCalcItem__c = true),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = '2017, 2018, 2019', AccountId = '0016g00003VDGbF001');
+    Opportunity secondOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = '2019, 2020, 2021', AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp, secondOpp }, new Map<Id, SObject>());
+
+    System.assertEquals('2017, 2018, 2019, 2020, 2021', calc.getReturnValue());
   }
 
   @IsTest
@@ -874,14 +919,14 @@ private class RollupCalculatorTests {
 
     Rollup__mdt meta = new Rollup__mdt(CalcItem__c = 'Case', LookupObject__c = 'Account', CalcItemWhereClause__c = 'Description != \'Something\'');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
-        '',
-        Rollup.Op.CONCAT_DISTINCT,
-        Case.Description,
-        Account.Description,
-        meta,
-        acc.Id,
-        Account.Id
-      );
+      '',
+      Rollup.Op.CONCAT_DISTINCT,
+      Case.Description,
+      Account.Description,
+      meta,
+      acc.Id,
+      Account.Id
+    );
     calc.setEvaluator(RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, Case.SObjectType));
     calc.performRollup(new List<Case>{ cas }, new Map<Id, Case>());
 
@@ -916,7 +961,7 @@ private class RollupCalculatorTests {
   static void shouldInvokeNoOpMethodsWithoutFail() {
     RollupCalculator calc = new RollupCalcEmptyMock();
     calc.handleCountDistinct(null);
-    calc.handleUpdateCountDistinct(null, null);
+    calc.handleUpdateCountDistinct(null);
     calc.handleSumOrCount(null);
     calc.handleUpdateSumOrCount(null, null);
     calc.handleDeleteSumOrCount(null);

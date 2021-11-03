@@ -34,7 +34,6 @@ private class InvocableDrivenTests {
 
     Test.startTest();
     insert matchesFlow;
-    acc = [SELECT Site FROM Account];
     matchesFlow.Subject = 'Now not a match';
     update matchesFlow;
     Test.stopTest();
@@ -63,10 +62,6 @@ private class InvocableDrivenTests {
   @IsTest
   static void shouldRollupMultipleDMLStatementsWithinSingleTransaction() {
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
-    // TODO - there were some WILD boxcarring / order of operation issues when the "shouldWorkWithRefreshContext" test
-    // was introduced (and the associated REFRESH action in the Rollup_Integration_Multiple_Deferred_Case_Rollups flow)
-    // come back at some point to re-explore why adding the full recalc rollup into the mix made it impossible to use the
-    // isRunningAsync flag in RollupAsyncProcessor
     Account acc = [SELECT Id FROM Account];
     Account reparentAccount = new Account(Name = 'Reparent');
     insert reparentAccount;

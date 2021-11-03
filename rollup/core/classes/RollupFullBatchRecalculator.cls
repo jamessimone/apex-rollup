@@ -28,7 +28,7 @@ public inherited sharing virtual class RollupFullBatchRecalculator extends Rollu
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.getDelegatedFullRecalcRollup(this.rollupInfo, calcItems, this).runCalc();
+    this.getDelegatedFullRecalcRollup(this.rollupInfo, calcItems, this)?.runCalc();
     RollupLogger.Instance.save();
   }
 

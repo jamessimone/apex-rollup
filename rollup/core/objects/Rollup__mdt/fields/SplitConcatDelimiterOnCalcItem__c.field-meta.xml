@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SplitConcatDelimiterOnCalcItem__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>By default, CONCAT_DISTINCT operations will only apply the concat delimiter to the parent-level rollup field. Enable this field to also split the rollup item&apos;s values before concatenating to the parent.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>By default, CONCAT_DISTINCT operations will only apply the concat delimiter to the parent-level rollup field. Enable this field to also split the rollup item&apos;s values before concatenating to the parent.</inlineHelpText>
+    <label>Split Concat Delimiter On Calc Item?</label>
+    <type>Checkbox</type>
+</CustomField>

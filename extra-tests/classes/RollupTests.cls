@@ -165,7 +165,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa });
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
-    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, PreferenceRank = 25) };
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, PreferenceRank = 25, Id = cpa.Id) };
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -1414,7 +1414,7 @@ private class RollupTests {
     update acc;
 
     ContactPointAddress testCpaOne = new ContactPointAddress(PreferenceRank = 100, Name = 'Pre-existing one', ParentId = acc.Id);
-    ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing one', ParentId = acc.Id);
+    ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing two', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ testCpaOne, testCpaTwo };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ testCpaTwo };
@@ -1665,11 +1665,13 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDateOnUpdate() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
     insert con;
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
     insert taskOne;
+    Rollup.defaultControl = null;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = RollupTestUtils.createId(Task.SObjectType), WhoId = con.Id);
 
@@ -2378,7 +2380,7 @@ private class RollupTests {
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'COUNT_DISTINCT');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+      new ContactPointAddress(ParentId = cpa.ParentId, Id = cpa.Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank;
 
@@ -2615,7 +2617,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Order By First/Last field required for FIRST operation', ex.getMessage());
+    System.assertEquals('Order By First/Last field required for FIRST operation', ex?.getMessage());
   }
 
   @IsTest
@@ -2637,7 +2639,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex.getMessage());
+    System.assertEquals('Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups', ex?.getMessage());
   }
 
   @IsTest
@@ -2659,7 +2661,29 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups', ex.getMessage());
+    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups.', ex?.getMessage());
+  }
+
+  @IsTest
+  static void shouldReportErrorWhenConcatOptionSetAndNotConcat() {
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
+      new List<ContactPointAddress>{
+        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+      },
+      'INSERT',
+      'MAX'
+    );
+
+    flowInputs[0].splitConcatDelimiterOnCalcItem = true;
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Concat options should only be set for CONCAT_DISTINCT operations', ex?.getMessage());
   }
 
   @IsTest
@@ -2682,7 +2706,7 @@ private class RollupTests {
       ex = e;
     }
 
-    System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex.getMessage());
+    System.assertEquals('Only one override - the default string value or number value - can be supplied for each rollup', ex?.getMessage());
   }
 
   @IsTest
@@ -3043,8 +3067,8 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25),
-      reparentedCpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue())
+      cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Id = cpa.Id),
+      reparentedCpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue(), Id = reparentedCpa.Id)
     };
 
     Test.startTest();
@@ -3071,7 +3095,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
-      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue())
+      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue(), Id = cpa.Id)
     };
 
     Test.startTest();
@@ -3239,7 +3263,7 @@ private class RollupTests {
       new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) }
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 2);
     Rollup.specificControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       MaxLookupRowsBeforeBatching__c = 1,
