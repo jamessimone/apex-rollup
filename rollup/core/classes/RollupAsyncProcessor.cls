@@ -491,50 +491,54 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return;
     }
 
-    Set<String> objIds = new Set<String>();
-    for (String lookupKey : lookupToCalcItems.keySet()) {
-      CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-      if (bag.hasQueriedForAdditionalItems == false) {
-        bag.hasQueriedForAdditionalItems = true;
-        for (SObject calcItem : bag.getAll()) {
-          objIds.add(calcItem.Id);
+    String key = rollup.calcItemType.getDescribe().getName();
+    List<SObject> additionalCalcItems;
+    if (this.cachedFullRecalcs?.containsKey(key) == true) {
+      additionalCalcItems = this.cachedFullRecalcs.get(key);
+    } else {
+      Set<String> objIds = new Set<String>();
+      for (String lookupKey : lookupToCalcItems.keySet()) {
+        CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+        if (bag.hasQueriedForAdditionalItems == false) {
+          bag.hasQueriedForAdditionalItems = true;
+          for (SObject calcItem : bag.getAll()) {
+            objIds.add(calcItem.Id);
+          }
         }
+      }
+
+      if (objIds.isEmpty() == false) {
+        if (this.cachedFullRecalcs == null) {
+          this.cachedFullRecalcs = new Map<String, List<SObject>>();
+        }
+        Set<String> lookupKeys = lookupToCalcItems.keySet();
+        String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :lookupKeys';
+        Map<Schema.SObjectType, Set<String>> localCalcToUniqueFieldNames = rollup.fullRecalcProcessor != null &&
+          rollup.calcObjectToUniqueFieldNames != null
+          ? rollup.calcObjectToUniqueFieldNames
+          : this.calcObjectToUniqueFieldNames;
+
+        String query = RollupQueryBuilder.Current.getQuery(
+          rollup.calcItemType,
+          new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
+          'Id',
+          '!=',
+          whereClause
+        );
+        RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.FINE);
+
+        additionalCalcItems = Database.query(query);
+        this.cachedFullRecalcs.put(key, additionalCalcItems);
+      } else {
+        additionalCalcItems = new List<SObject>();
       }
     }
 
-    if (objIds.isEmpty() == false) {
-      if (this.cachedFullRecalcs == null) {
-        this.cachedFullRecalcs = new Map<String, List<SObject>>();
-      }
-      Set<String> lookupKeys = lookupToCalcItems.keySet();
-      String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :lookupKeys';
-      Map<Schema.SObjectType, Set<String>> localCalcToUniqueFieldNames = rollup.fullRecalcProcessor != null &&
-        rollup.calcObjectToUniqueFieldNames != null
-        ? rollup.calcObjectToUniqueFieldNames
-        : this.calcObjectToUniqueFieldNames;
-
-      String query = RollupQueryBuilder.Current.getQuery(
-        rollup.calcItemType,
-        new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
-        'Id',
-        '!=',
-        whereClause
-      );
-      RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.FINE);
-      List<SObject> additionalCalcItems;
-      if (this.cachedFullRecalcs.containsKey(query)) {
-        additionalCalcItems = this.cachedFullRecalcs.get(query);
-      } else {
-        additionalCalcItems = Database.query(query);
-        this.cachedFullRecalcs.put(query, additionalCalcItems);
-      }
-
-      for (SObject additionalCalcItem : additionalCalcItems) {
-        String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
-        if (lookupToCalcItems.containsKey(lookupKey)) {
-          CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-          bag.add(additionalCalcItem);
-        }
+    for (SObject additionalCalcItem : additionalCalcItems) {
+      String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
+      if (lookupToCalcItems.containsKey(lookupKey)) {
+        CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+        bag.add(additionalCalcItem);
       }
     }
   }
