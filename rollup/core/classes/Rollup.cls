@@ -254,8 +254,13 @@ global without sharing virtual class Rollup {
     return baseString.removeEnd('\n');
   }
 
-  public virtual void resetFlags() {
-    isDeferralAllowed = true;
+  public virtual String runCalc() {
+    RollupLogger.Instance.log('no-op', LoggingLevel.DEBUG);
+    return 'Not implemented';
+  }
+
+  protected RollupControl__mdt getSpecificControl(Id rollupControlId) {
+    return getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, specificControl);
   }
 
   protected List<Rollup> getCachedRollups() {
@@ -287,11 +292,6 @@ global without sharing virtual class Rollup {
 
   protected RollupSObjectUpdater getDML() {
     return DML;
-  }
-
-  public virtual String runCalc() {
-    RollupLogger.Instance.log('no-op', LoggingLevel.DEBUG);
-    return 'Not implemented';
   }
 
   protected virtual String getHashedContents() {

@@ -54,6 +54,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.queryString = queryString;
       this.rollupInfo = rollupInfo;
       this.recordIds = recordIds;
+      this.overrideRollupControl();
     }
 
     protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
@@ -75,6 +76,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     private String getKey(RollupAsyncProcessor processor, SObject parent) {
       return String.valueOf(processor.opFieldOnLookupObject) + parent.Id;
+    }
+
+    private void overrideRollupControl() {
+      for (Rollup__mdt meta : this.rollupInfo) {
+        if (meta.RollupControl__c != null) {
+          RollupControl__mdt specificControl = this.getSpecificControl(meta.RollupControl__c);
+          this.overrideParentRollupControlValues(specificControl);
+        }
+      }
     }
   }
 
@@ -301,13 +311,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     RollupLogger.Instance.save();
     return rollupProcessId;
-  }
-
-  public override void resetFlags() {
-    super.resetFlags();
-    isRunningAsync = false;
-    shouldRunAsBatch = false;
-    stackDepth = 0;
   }
 
   protected virtual override String getTypeName() {
@@ -882,7 +885,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
-    Double minBatchSize = this.rollupControl.BatchChunkSize__c;
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = this.rollups[index];
       rollup.isFullRecalc = rollup.isFullRecalc || this.isFullRecalc;
@@ -904,21 +906,24 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.getCachedRollups().add(rollup);
       }
 
-      // you can increase the default limits, but it would be too messy to try to rank the individual rollup operations in a batched context
-      if (rollup.rollupControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
-        minBatchSize = rollup.rollupControl.BatchChunkSize__c;
-      }
-      if (rollup.rollupControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
-        this.rollupControl.MaxLookupRowsBeforeBatching__c = rollup.rollupControl.MaxLookupRowsBeforeBatching__c;
-      }
-      if (rollup.rollupControl.ShouldRunAs__c != this.rollupControl.ShouldRunAs__c) {
-        this.rollupControl.ShouldRunAs__c = rollup.rollupControl.ShouldRunAs__c;
-      }
-      if (rollup.rollupControl.MaxParentRowsUpdatedAtOnce__c == null) {
-        rollup.rollupControl.MaxParentRowsUpdatedAtOnce__c = this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
-      }
+      this.overrideParentRollupControlValues(rollup.rollupControl);
     }
-    this.rollupControl.BatchChunkSize__c = minBatchSize;
+  }
+
+  private void overrideParentRollupControlValues(RollupControl__mdt specificControl) {
+    // override section - most updates go from a rollup specific control -> this.rollupControl
+    if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
+      this.rollupControl.BatchChunkSize__c = specificControl.BatchChunkSize__c;
+    }
+    if (specificControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
+      this.rollupControl.MaxLookupRowsBeforeBatching__c = specificControl.MaxLookupRowsBeforeBatching__c;
+    }
+    if (specificControl.ShouldRunAs__c != this.rollupControl.ShouldRunAs__c) {
+      this.rollupControl.ShouldRunAs__c = specificControl.ShouldRunAs__c;
+    }
+    if (specificControl.MaxParentRowsUpdatedAtOnce__c == null) {
+      specificControl.MaxParentRowsUpdatedAtOnce__c = this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
+    }
   }
 
   private Boolean getShouldRunSyncDeferred(RollupAsyncProcessor roll) {
