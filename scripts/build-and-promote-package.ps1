@@ -60,7 +60,7 @@ if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
 }
 
 $sfdxProjectJson = Get-SFDX-Project-JSON
-$currentPackageVersion = $sfdxProjectJson.packageDirectories[0].versionNumber
+$currentPackageVersion = $sfdxProjectJson.packageDirectories[0].versionNumber.Remove($sfdxProjectJson.packageDirectories[0].versionNumber.Length - 2, 2)
 
 Write-Output "Current package version number: $currentPackageVersion"
 
