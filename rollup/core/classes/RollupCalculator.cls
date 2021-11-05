@@ -12,6 +12,7 @@ public without sharing abstract class RollupCalculator {
   protected final Rollup__mdt metadata;
   protected final String lookupKeyQuery;
   protected final String lookupRecordKey;
+  protected final Boolean isChangedFieldCalc;
 
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
@@ -113,6 +114,7 @@ public without sharing abstract class RollupCalculator {
       UserInfo.isMultiCurrencyOrganization() &&
       (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
       this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
+    this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
   }
   public virtual Object getReturnValue() {
     return this.returnVal;
@@ -272,12 +274,15 @@ public without sharing abstract class RollupCalculator {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
       } else if (
-        this.op == Rollup.Op.UPDATE_COUNT &&
+        (this.op == Rollup.Op.UPDATE_COUNT ||
+        this.op == Rollup.Op.UPDATE_CONCAT_DISTINCT ||
+        this.op == Rollup.Op.UPDATE_CONCAT ||
+        this.op == Rollup.Op.UPDATE_SUM) &&
+        this.isChangedFieldCalc == false &&
         currentItemMatches == false &&
         oldCalcItems.containsKey(item.Id) &&
         this.eval?.matches(oldCalcItems.get(item.Id)) == true
       ) {
-        // TODO - handle old item matching, new item not matching situation for (other non-full recalc) operations
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
       }
@@ -394,7 +399,7 @@ public without sharing abstract class RollupCalculator {
         this.distinctValues.add(potentiallyNullValue);
       } else if (this.op == Rollup.Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues.clear();
-        this.calculateNewAggregateVAlue(this.op, new Set<Id>{ calcItem.Id }, calcItem.getSObjectType());
+        this.calculateNewAggregateValue(this.op, new Set<Id>{ calcItem.Id }, calcItem.getSObjectType());
       }
       this.shouldShortCircuit = true;
     }
@@ -469,17 +474,22 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected virtual Decimal getNumericChangedValue(SObject calcItem, Map<Id, SObject> oldCalcItems) {
-      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+      SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
 
       Decimal newVal = this.getNumericValue(calcItem);
+      Decimal oldVal = oldCalcItem != null ? this.getNumericValue(oldCalcItem) : newVal;
+
+      Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
+      Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) == true;
 
       if (this.isReparented(calcItem, oldCalcItem)) {
         return newVal;
-      } else if (this.eval?.matches(calcItem) == true && this.eval?.matches(oldCalcItem) == false) {
+      } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false) {
         return newVal;
+      } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false) {
+        return oldVal * -1;
       }
 
-      Decimal oldVal = this.getNumericValue(oldCalcItem);
       // could be negative, could be positive ... could be 0!
       return newVal - oldVal;
     }
@@ -725,6 +735,9 @@ public without sharing abstract class RollupCalculator {
         return 1;
       }
 
+      Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
+      Boolean matchesPrior = this.eval?.matches(oldCalcItem) == true;
+
       // for updates, we have to decrement the count if the value has been cleared out
       Decimal retVal = 0;
       Object current = calcItem.get(this.opFieldOnCalcItem);
@@ -734,9 +747,9 @@ public without sharing abstract class RollupCalculator {
         retVal = -1;
       } else if (current != defaultVal && prior == defaultVal) {
         retVal = 1;
-      } else if (this.eval?.matches(oldCalcItem) == false && this.eval?.matches(calcItem) == true) {
+      } else if (matchesPrior == false && matchesCurrent) {
         retVal = 1;
-      } else if (this.eval?.matches(oldCalcItem) == true && this.eval?.matches(calcItem) == false) {
+      } else if (matchesPrior && matchesCurrent == false) {
         retVal = -1;
       }
       return retVal;
@@ -811,8 +824,11 @@ public without sharing abstract class RollupCalculator {
 
     public override void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
-      String priorString = String.valueOf((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id).get(this.opFieldOnCalcItem) : newVal));
-      if (this.shouldConcat(newVal)) {
+      SObject priorItem = oldCalcItems.get(calcItem.Id);
+      if (this.eval?.matches(calcItem) == false && priorItem != null && this.eval?.matches(priorItem) == true) {
+        this.handleDeleteConcat(calcItem);
+      } else if (this.shouldConcat(newVal)) {
+        String priorString = String.valueOf(priorItem != null ? priorItem.get(this.opFieldOnCalcItem) : newVal);
         this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
       }
     }
