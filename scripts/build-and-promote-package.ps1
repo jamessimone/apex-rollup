@@ -128,7 +128,7 @@ if($currentBranch -eq "main") {
   if ($packageJson.version -ne $currentPackageVersion) {
     Write-Output "Bumping package.json version to: $currentPackageVersion"
 
-    $packageJson.version = Update-Last-Substring $currentPackageVersion ".0" ""
+    $packageJson.version = $currentPackageVersion
     $packagePath = "./package.json"
     ConvertTo-Json -InputObject $packageJson | Set-Content -Path $packagePath -NoNewline
 
