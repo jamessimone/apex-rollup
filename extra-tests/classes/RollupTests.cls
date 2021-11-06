@@ -1140,33 +1140,6 @@ private class RollupTests {
   }
 
   @IsTest
-  static void shouldShortCircuitOnConcatDistinctDeleteEvenIfDeletedCalcItemDoesNotMatch() {
-    Account acc = [SELECT Id, Name FROM Account];
-    String originalAccountName = acc.Name;
-    String somethingElse = 'Something else';
-    acc.Name = acc.Name + ', ' + somethingElse;
-    update acc;
-
-    ContactPointAddress cpa = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 0);
-    ContactPointAddress toDelete = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 1);
-    ContactPointAddress toDeleteTwo = new ContactPointAddress(Name = somethingElse, ParentId = acc.Id, PreferenceRank = 1);
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa, toDelete, toDeleteTwo };
-    insert cpas;
-
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ toDelete, toDeleteTwo });
-    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
-    Rollup.Evaluator eval = RollupEvaluator.getWhereEval('PreferenceRank != 1', ContactPointAddress.SObjectType);
-
-    Test.startTest();
-    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Name, Account.SObjectType, null, eval).runCalc();
-    Test.stopTest();
-
-    System.assertEquals(1, mock.Records.size(), 'Account should be updated CONCAT_DISTINCT delete');
-    Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(originalAccountName, updatedAcc.Name);
-  }
-
-  @IsTest
   static void shouldMaxOnStringsOnInsert() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 

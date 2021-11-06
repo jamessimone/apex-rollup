@@ -111,6 +111,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldProperlyAverageWithSpecialFieldNamesAndFilteredItems() {
+    Rollup.onlyUseMockMetadata = true;
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
     insert parentApp;
 

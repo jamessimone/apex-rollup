@@ -16,7 +16,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private List<SObject> lookupItems;
-  private Map<String, List<SObject>> cachedFullRecalcs;
   private Integer stackDepth = 0;
 
   private static Boolean isRunningAsync = false;
@@ -26,6 +25,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private enum CollectionType {
     DICTIONARY,
     ITERABLE
+  }
+
+  private final Map<String, List<SObject>> cachedFullRecalcs {
+    get {
+      if (cachedFullRecalcs == null) {
+        cachedFullRecalcs = new Map<String, List<SObject>>();
+      }
+      return cachedFullRecalcs;
+    }
+    set;
   }
 
   private final List<RollupAsyncProcessor> deferredRollups {
@@ -496,7 +505,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     String key = rollup.calcItemType.getDescribe().getName();
     List<SObject> additionalCalcItems;
-    if (this.cachedFullRecalcs?.containsKey(key) == true) {
+    if (this.cachedFullRecalcs.containsKey(key)) {
       additionalCalcItems = this.cachedFullRecalcs.get(key);
     } else {
       Set<String> objIds = new Set<String>();
@@ -511,9 +520,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       if (objIds.isEmpty() == false) {
-        if (this.cachedFullRecalcs == null) {
-          this.cachedFullRecalcs = new Map<String, List<SObject>>();
-        }
         Set<String> lookupKeys = lookupToCalcItems.keySet();
         String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :lookupKeys';
         Map<Schema.SObjectType, Set<String>> localCalcToUniqueFieldNames = rollup.fullRecalcProcessor != null &&
