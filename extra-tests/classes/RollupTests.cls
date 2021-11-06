@@ -2400,10 +2400,10 @@ private class RollupTests {
   @IsTest
   static void shouldUpdateProperlyAfterSaveIfCurrentItemWouldBeExcludedButOldItemWouldNotSum() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
-    acc.AnnualRevenue = 2;
+    acc.AnnualRevenue = 18;
     update acc;
 
-    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'Sum non-match', ParentId = acc.Id);
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 2, Name = 'Sum non-match', ParentId = acc.Id);
     ContactPointAddress matchingCpa = new ContactPointAddress(PreferenceRank = 15, Name = 'sum match', ParentId = acc.Id);
     insert new List<ContactPointAddress>{ cpa, matchingCpa };
 
@@ -2412,7 +2412,7 @@ private class RollupTests {
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
+      new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = 3)
     };
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != ' + cpa.PreferenceRank;
 
@@ -2441,7 +2441,7 @@ private class RollupTests {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
 
-    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'FIRST');
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
@@ -2455,9 +2455,9 @@ private class RollupTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    System.assertEquals(1, mock.Records.size(), 'SUM AFTER_UPDATE from flow did not update accounts');
+    System.assertEquals(1, mock.Records.size(), 'FIRST AFTER_UPDATE from flow did not update accounts');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should get nulled out if no other matching items');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'FIRST AFTER_UPDATE from flow should get nulled out if no other matching items');
   }
 
   @IsTest

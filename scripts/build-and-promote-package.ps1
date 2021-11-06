@@ -60,7 +60,7 @@ if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
 }
 
 $sfdxProjectJson = Get-SFDX-Project-JSON
-$currentPackageVersion = $sfdxProjectJson.packageDirectories[0].versionNumber
+$currentPackageVersion = $sfdxProjectJson.packageDirectories[0].versionNumber.Remove($sfdxProjectJson.packageDirectories[0].versionNumber.Length - 2, 2)
 
 Write-Output "Current package version number: $currentPackageVersion"
 
@@ -128,7 +128,7 @@ if($currentBranch -eq "main") {
   if ($packageJson.version -ne $currentPackageVersion) {
     Write-Output "Bumping package.json version to: $currentPackageVersion"
 
-    $packageJson.version = Update-Last-Substring $currentPackageVersion ".0" ""
+    $packageJson.version = $currentPackageVersion
     $packagePath = "./package.json"
     ConvertTo-Json -InputObject $packageJson | Set-Content -Path $packagePath -NoNewline
 

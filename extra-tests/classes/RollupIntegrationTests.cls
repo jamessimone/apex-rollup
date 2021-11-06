@@ -111,6 +111,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldProperlyAverageWithSpecialFieldNamesAndFilteredItems() {
+    Rollup.onlyUseMockMetadata = true;
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
     insert parentApp;
 
@@ -1660,7 +1661,7 @@ private class RollupIntegrationTests {
   static void shouldResetParentFieldsWhenItemsNoLongerMatch() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true, IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1);
     Account acc = [SELECT Id, Name FROM Account];
-    acc.AnnualRevenue = 6176191911.0;
+    acc.AnnualRevenue = 1.0;
     acc.NumberOfEmployees = 1;
     update acc;
 
@@ -1696,7 +1697,7 @@ private class RollupIntegrationTests {
 
     Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees, Phone FROM Account];
     System.assertEquals(0, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
-    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
+    System.assertEquals(0, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
     System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since calc item matches');
   }
 

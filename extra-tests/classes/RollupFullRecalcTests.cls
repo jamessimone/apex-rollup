@@ -25,7 +25,7 @@ private class RollupFullRecalcTests {
     );
     List<RollupAsyncProcessor> processors = new List<RollupAsyncProcessor>{
       actualProcessor,
-      new RollupDeferredFullRecalcProcessor(null, null, null, null, null),
+      new RollupDeferredFullRecalcProcessor(new List<Rollup__mdt>(), null, null, null, null),
       actualProcessor
     };
     processors.sort();

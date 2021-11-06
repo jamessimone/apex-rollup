@@ -526,6 +526,32 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldProperlyRemoveCountDistinctOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
+    insert opp;
+
+    Opportunity newerOpp = opp.clone(true, true);
+    newerOpp.Amount = 0;
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      1,
+      Rollup.Op.UPDATE_COUNT_DISTINCT,
+      Opportunity.Id,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      acc.Id,
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
+
+    calc.performRollup(new List<Opportunity>{ newerOpp }, oldOppMap);
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
+  @IsTest
   static void shouldReturnCountIfRollupValueUnchangedButEvalStatusHas() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -632,6 +658,32 @@ private class RollupCalculatorTests {
     System.assertEquals(2, calc.getReturnValue(), 'Sum should be returned if item was previously excluded but now isn\t!');
   }
 
+  @IsTest
+  static void shouldProperlyRemoveSumOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
+    insert opp;
+
+    Opportunity newerOpp = opp.clone(true, true);
+    newerOpp.Amount = 0;
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      5,
+      Rollup.Op.UPDATE_SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      acc.Id,
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
+
+    calc.performRollup(new List<Opportunity>{ newerOpp }, oldOppMap);
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
   // CONCAT tests
 
   @IsTest
@@ -653,6 +705,27 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
 
     System.assertEquals(null, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldProperlyRemoveConcatOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
+    Opportunity opp = new Opportunity(AccountId = '0011g00003VDGbF002', Id = '0066g00003VDGbF001', Name = 'CDC', Amount = 0);
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      'GISS, CDC',
+      Rollup.Op.UPDATE_CONCAT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Amount = 5, Name = 'CDC') };
+
+    calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
+
+    System.assertEquals('GISS', calc.getReturnValue());
   }
 
   @IsTest
@@ -715,6 +788,51 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp, secondOpp }, new Map<Id, SObject>());
 
     System.assertEquals('2017, 2018, 2019, 2020, 2021', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldProperlyRemoveConcatDistinctOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
+    String accountId = '0011g00003VDGbF002';
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      'CDC, GISS',
+      Rollup.Op.UPDATE_CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(),
+      accountId,
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+    Opportunity opp = new Opportunity(Amount = 0, Id = '0066g00003VDGbF001', Name = 'CDC', AccountId = accountId);
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Amount = 5, Name = 'CDC') };
+
+    calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
+
+    System.assertEquals('GISS', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldNotRemoveValuesOnConcatDistinctDeleteIfItemDoesNotMatch() {
+    Account acc = [SELECT Id FROM Account];
+
+    insert new Opportunity(AccountId = acc.Id, StageName = 'hi', CloseDate = System.today(), Name = 'Delete');
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      'CDC, Delete',
+      Rollup.Op.DELETE_CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      acc.Id,
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity opp = new Opportunity(Amount = 0, Id = '0066g00003VDGbF001', Name = 'CDC', AccountId = acc.Id);
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, Opportunity>());
+
+    System.assertEquals('Delete', calc.getReturnValue());
   }
 
   @IsTest
@@ -907,6 +1025,62 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
 
     System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should be nulled out if no matching maximum');
+  }
+
+  @IsTest
+  static void shouldProperlyUpdateMinOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
+    Opportunity newMin = opp.clone();
+    newMin.Amount = 3;
+    insert new List<Opportunity>{ opp, newMin };
+
+    Opportunity newerOpp = opp.clone(true, true);
+    newerOpp.Amount = 0;
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      5,
+      Rollup.Op.UPDATE_MIN,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      acc.Id,
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
+
+    calc.performRollup(new List<Opportunity>{ newerOpp }, oldOppMap);
+
+    System.assertEquals(3, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldProperlyUpdateMaxOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
+    Account acc = [SELECT Id FROM Account];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
+    Opportunity newMax = opp.clone();
+    newMax.Amount = 7;
+    insert new List<Opportunity>{ opp, newMax };
+
+    Opportunity newerOpp = opp.clone(true, true);
+    newerOpp.Amount = 0;
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      5,
+      Rollup.Op.UPDATE_MAX,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      acc.Id,
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
+
+    calc.performRollup(new List<Opportunity>{ newerOpp }, oldOppMap);
+
+    System.assertEquals(7, calc.getReturnValue());
   }
 
   // Base recalculation tests
