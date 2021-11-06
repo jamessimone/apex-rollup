@@ -2379,14 +2379,14 @@ global without sharing virtual class Rollup {
       return records;
     }
 
-    return Trigger.isDelete ? Trigger.old : Trigger.new;
+    return (Trigger.isDelete ? Trigger.old : Trigger.new.clone()).deepClone(true, true, true);
   }
 
   private static Map<Id, SObject> getOldTriggerRecordsMap() {
     if (oldRecordsMap != null) {
       return oldRecordsMap;
     } else if (Trigger.oldMap != null) {
-      return Trigger.oldMap;
+      return Trigger.oldMap.deepClone();
     }
 
     return new Map<Id, SObject>();

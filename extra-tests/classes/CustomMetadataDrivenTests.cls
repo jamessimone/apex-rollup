@@ -120,4 +120,27 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
   }
+
+  @IsTest
+  static void shouldWorkForParentLevelWhereClausesFromTrigger() {
+    // relies on extra-tests\customMetadata\Rollup.ParentWhereClauseFromTrigger.md-meta.xml
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      IsRollupLoggingEnabled__c = true,
+      ReplaceCalcItemsAsyncWhenOverCount__c = 2
+    );
+    ParentApplication__c parentApp = new ParentApplication__c(Name = 'Parent');
+    insert parentApp;
+
+    Application__c app = new Application__c(Picklist__c = 'Standard', ParentApplication__c = parentApp.Id);
+    insert app;
+
+    parentApp = [SELECT Name FROM ParentApplication__c];
+    System.assertEquals(app.Picklist__c, parentApp.Name);
+
+    app.Picklist__c = 'Something with and in the name';
+    update app;
+
+    System.assert(true, 'Should make it here (validate update works with Trigger.oldMap)');
+  }
 }
