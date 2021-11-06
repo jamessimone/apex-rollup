@@ -688,7 +688,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
       if (fieldToken == null) {
         // it could be a rollup started from the parent using a parent-level where clause
-        return item.get(fieldPath.substringAfter('.'));
+        try {
+          return item.get(fieldPath.substringAfter('.'));
+        } catch (System.SObjectException ex) {
+          // if the field value is invalid, it's almost certainly a parent-level where clause targeting
+          // a different parent - pass the records through for now
+          return this.originalValues.isEmpty() == false ? this.originalValues[0] : null;
+        }
       }
       SObjectType parentSObjectType;
       if (fieldToken.getDescribe().isNamePointing() && item.get(relationshipName) != null) {
