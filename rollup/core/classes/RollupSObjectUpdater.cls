@@ -29,26 +29,21 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   public void updateField(SObject record, Object value) {
-    try {
-      record.put(this.fieldToken, value);
-    } catch (SObjectException sObjException) {
-      this.handleUpdateException(sObjException, record, value);
-    }
+    this.updateValue(record, value);
   }
 
-  private void handleUpdateException(SObjectException ex, SObject record, Object value) {
-    switch on ex.getMessage().substringAfter('Illegal assignment from ') {
-      when 'Datetime to Date' {
-        record.put(this.fieldToken, ((Datetime) value).dateGmt());
+  private void updateValue(SObject record, Object value) {
+    Schema.DisplayType fieldType = this.fieldToken.getDescribe().getType();
+
+    if (value instanceof Decimal) {
+      Decimal decimalValue = (Decimal) value;
+      if (fieldType == DisplayType.INTEGER) {
+        value = decimalValue.intValue();
       }
-      when 'Decimal to Integer' {
-        record.put(this.fieldToken, ((Decimal) value).intValue());
-      }
-      when else {
-        // this switch statement can be expanded as necessary to deal with other problems
-        throw ex;
-      }
+    } else if (fieldType == DisplayType.DATE && value instanceof Datetime) {
+      value = ((Datetime) value).dateGmt();
     }
+    record.put(this.fieldToken, value);
   }
 
   private void dispatch(List<SObject> updatedRecords) {

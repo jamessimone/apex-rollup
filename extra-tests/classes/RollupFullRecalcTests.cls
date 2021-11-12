@@ -1334,4 +1334,57 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(2, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void shouldNotRequeryForAverageItemsInFullRecalc() {
+    RollupAsyncProcessor.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      BatchChunkSize__c = 4,
+      MaxLookupRowsBeforeBatching__c = 2,
+      IsRollupLoggingEnabled__c = true
+    );
+    Account acc = [SELECT Id FROM Account];
+    Account second = new Account(Name = 'Second');
+    insert second;
+
+    insert new List<Opportunity>{
+      new Opportunity(StageName = 'firstName', CloseDate = System.today(), AccountId = acc.Id, Name = 'one', Amount = 1),
+      new Opportunity(StageName = 'secondName', CloseDate = System.today(), AccountId = acc.Id, Name = 'two', Amount = 3),
+      new Opportunity(StageName = 'thirdName', CloseDate = System.today(), AccountId = second.Id, Name = 'three', Amount = 5),
+      new Opportunity(StageName = 'thirdName', CloseDate = System.today(), AccountId = second.Id, Name = 'four', Amount = 3)
+    };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'AVERAGE'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    // only one of the records will have been updated since the query limit will have led to an
+    // unprocessable deferral (since tests can't re-queue/batch)
+    second = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :second.Id];
+    System.assertEquals(4.00, second.AnnualRevenue);
+    System.assertEquals(2.00, second.NumberOfEmployees);
+    System.assertEquals(3, Limits.getQueries()); // 2 in rollup (one to get the parents, one to get additional children, plus the query above)
+  }
 }
