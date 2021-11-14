@@ -1091,26 +1091,28 @@ public without sharing abstract class RollupCalculator {
 
     @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      SObjectType sObjectType = this.getCalcItemType();
-      // objIds is used as a bind variable in the resulting queryString
-      Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Set<String> queryFields = new Set<String>{
-        String.valueOf(this.opFieldOnCalcItem),
-        this.metadata.OrderByFirstLast__c,
-        this.metadata.LookupFieldOnCalcItem__c
-      };
-      if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
-        queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
-      }
-      // a full-recalc is always necessary because we don't retain the information about the order by field
-      String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
+      if (this.isFullRecalc == false) {
+        SObjectType sObjectType = this.getCalcItemType();
+        // objIds is used as a bind variable in the resulting queryString
+        Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+        Set<String> queryFields = new Set<String>{
+          String.valueOf(this.opFieldOnCalcItem),
+          this.metadata.OrderByFirstLast__c,
+          this.metadata.LookupFieldOnCalcItem__c
+        };
+        if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
+          queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+        }
+        // a full-recalc is always necessary because we don't retain the information about the order by field
+        String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
-      // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
-      List<SObject> additionalItems = Database.query(queryString);
-      if (this.op.name().contains('DELETE')) {
-        calcItems = additionalItems;
-      } else {
-        calcItems.addAll(additionalItems);
+        // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
+        List<SObject> additionalItems = Database.query(queryString);
+        if (this.op.name().contains('DELETE')) {
+          calcItems = additionalItems;
+        } else {
+          calcItems.addAll(additionalItems);
+        }
       }
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
