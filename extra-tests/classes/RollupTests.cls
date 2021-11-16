@@ -2196,6 +2196,31 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldSplitConcatCalcItemsFromFlow() {
+    Account acc = [SELECT Id FROM Account];
+    acc.Name = 'CDC';
+    update acc;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'CDC, GDG', ParentId = acc.Id),
+      new ContactPointAddress(Name = 'CDC, GDG', ParentId = acc.Id)
+    };
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'CONCAT_DISTINCT');
+    flowInputs[0].rollupFieldOnOpObject = 'Name';
+    flowInputs[0].rollupFieldOnCalcItem = 'Name';
+    flowInputs[0].splitConcatDelimiterOnCalcItem = true;
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'CONCAT_DISTINCT AFTER_INSERT from flow did not update account');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(cpas[0].Name, updatedAcc.Name, 'CONCAT_DISTINCT should have split on calc item values!');
+  }
+
+  @IsTest
   static void shouldBeInvokedRegardlessOfCasingFromFlow() {
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000) };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(cpas);

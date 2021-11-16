@@ -1021,29 +1021,32 @@ public without sharing abstract class RollupCalculator {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      SObjectType sObjectType = this.getCalcItemType();
-      Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
-      String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
-      Integer countOfPreExistingItems = isArchivable ? Database.query(query).size() : Database.countQuery(query);
+      List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
+      applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
+      Decimal oldSum;
+      Decimal denominator = Decimal.valueOf(applicableCalcItems.size());
+      if (this.isFullRecalc == false) {
+        SObjectType sObjectType = this.getCalcItemType();
+        Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+        String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ 'Id' }, 'Id', '!=', this.lookupKeyQuery);
+        // normally we could use countQuery here (except for Task/Event, which can be archived)
+        // something about this combination of steps led to exceptions on some code paths:
+        // System.UnexpectedException: class java.math.BigDecimal cannot be cast to class java.lang.Integer
+        // further downstream (when RollupSObjectUpdater.doUpdate was called). Incrementing by the size of the
+        // returned list works without issue.
+        denominator += Database.query(query).size();
+        oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, objIds, sObjectType);
+      }
 
-      Decimal oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, objIds, sObjectType);
       if (oldSum == null) {
         oldSum = 0;
       }
-
-      List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
-      applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
-
       Decimal newSum = 0;
-      Decimal currentDenominator = 0;
       for (SObject calcItem : applicableCalcItems) {
         Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
         newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
-        currentDenominator++;
       }
 
-      Decimal denominator = countOfPreExistingItems + currentDenominator;
       Decimal average = null;
       // We can't do the division if the denominator is 0
       if (denominator != 0) {
@@ -1088,26 +1091,28 @@ public without sharing abstract class RollupCalculator {
 
     @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      SObjectType sObjectType = this.getCalcItemType();
-      // objIds is used as a bind variable in the resulting queryString
-      Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-      Set<String> queryFields = new Set<String>{
-        String.valueOf(this.opFieldOnCalcItem),
-        this.metadata.OrderByFirstLast__c,
-        this.metadata.LookupFieldOnCalcItem__c
-      };
-      if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
-        queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
-      }
-      // a full-recalc is always necessary because we don't retain the information about the order by field
-      String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
+      if (this.isFullRecalc == false) {
+        SObjectType sObjectType = this.getCalcItemType();
+        // objIds is used as a bind variable in the resulting queryString
+        Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+        Set<String> queryFields = new Set<String>{
+          String.valueOf(this.opFieldOnCalcItem),
+          this.metadata.OrderByFirstLast__c,
+          this.metadata.LookupFieldOnCalcItem__c
+        };
+        if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
+          queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+        }
+        // a full-recalc is always necessary because we don't retain the information about the order by field
+        String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
-      // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
-      List<SObject> additionalItems = Database.query(queryString);
-      if (this.op.name().contains('DELETE')) {
-        calcItems = additionalItems;
-      } else {
-        calcItems.addAll(additionalItems);
+        // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
+        List<SObject> additionalItems = Database.query(queryString);
+        if (this.op.name().contains('DELETE')) {
+          calcItems = additionalItems;
+        } else {
+          calcItems.addAll(additionalItems);
+        }
       }
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);

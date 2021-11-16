@@ -1540,7 +1540,8 @@ global without sharing virtual class Rollup {
       CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
         ? flowInput.calcItemTypeWhenRollupStartedFromParent
         : String.valueOf(sObjectType),
-      IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent
+      IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
+      SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem
     );
   }
 
