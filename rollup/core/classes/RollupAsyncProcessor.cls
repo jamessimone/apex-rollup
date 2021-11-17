@@ -48,7 +48,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
-  public abstract inherited sharing class FullRecalcProcessor extends QueueableProcessor {
+  public abstract without sharing class FullRecalcProcessor extends QueueableProcessor {
     protected final String queryString;
     protected final List<Rollup__mdt> rollupInfo;
     protected final Set<Id> recordIds;
@@ -1044,7 +1044,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         List<SObject> localCalcItems = bag.getAll();
 
         if (hasExceededCurrentRollupLimits(this.rollupControl)) {
-          unprocessedCalcItems = new Map<Id, SObject>(localCalcItems).keySet();
+          unprocessedCalcItems.addAll(new Map<Id, SObject>(localCalcItems).keySet());
           lookupItems.remove(index);
           continue;
         }
@@ -1067,12 +1067,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, Set<Id> unprocessedCalcItems) {
     // remove the calc items that were successfully processed -
     // they're the ones that aren't in the unprocessed Set
-    List<SObject> mutableItems = this.calcItems?.clone();
-    if (mutableItems != null) {
-      for (Integer index = mutableItems.size() - 1; index >= 0; index--) {
-        SObject calcItem = mutableItems[index];
-        if (unprocessedCalcItems.contains(calcItem.Id) == false) {
-          mutableItems.remove(index);
+    List<SObject> mutableItems;
+    if (unprocessedCalcItems.isEmpty() == false) {
+      mutableItems = this.calcItems?.clone();
+      if (mutableItems != null) {
+        for (Integer index = mutableItems.size() - 1; index >= 0; index--) {
+          SObject calcItem = mutableItems[index];
+          if (unprocessedCalcItems.contains(calcItem.Id) == false) {
+            mutableItems.remove(index);
+          }
         }
       }
     }

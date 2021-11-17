@@ -1,5 +1,5 @@
-git config --global user.name "James Simone"
-git config --global user.email "16430727+jamessimone@users.noreply.github.com"
+git config --local user.email "action@github.com"
+git config --local user.name "GitHub Action Bot"
 git commit -m "Bumping package version from Github Action"
 git push
 
