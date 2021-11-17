@@ -111,8 +111,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
-          git commit -m "Bumping package version from Github Action"
-          git push
+        run: 'sh ./scripts/updateGithubCommitStatus.sh'
