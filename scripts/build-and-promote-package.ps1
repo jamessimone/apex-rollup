@@ -72,7 +72,7 @@ try {
   $priorPackageVersionId = $sfdxProjectJson.packageAliases[0] | Select-Object -ExpandProperty (Get-Apex-Rollup-Package-Alias $priorPackageVersionNumber)
 } catch {
   # if there hasn't been a current version of the package, get the previous version and its associated package Id
-  $currentPackageNumber = ([int]($currentPackageVersion | Select-String -Pattern '(\d|\d\d)\.0').Matches.Value)
+  $currentPackageNumber = ([int]($currentPackageVersion | Select-String -Pattern '(\d|\d\d)$').Matches.Value)
   $currentPackageNumberString = $currentPackageNumber.ToString()
   $priorPackageVersionString = ($currentPackageNumber - 1).ToString()
 
