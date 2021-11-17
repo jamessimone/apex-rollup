@@ -1067,12 +1067,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, Set<Id> unprocessedCalcItems) {
     // remove the calc items that were successfully processed -
     // they're the ones that aren't in the unprocessed Set
-    List<SObject> mutableItems = this.calcItems?.clone();
-    if (mutableItems != null) {
-      for (Integer index = mutableItems.size() - 1; index >= 0; index--) {
-        SObject calcItem = mutableItems[index];
-        if (unprocessedCalcItems.contains(calcItem.Id) == false) {
-          mutableItems.remove(index);
+    List<SObject> mutableItems;
+    if (unprocessedCalcItems.isEmpty() == false) {
+      mutableItems = this.calcItems?.clone();
+      if (mutableItems != null) {
+        for (Integer index = mutableItems.size() - 1; index >= 0; index--) {
+          SObject calcItem = mutableItems[index];
+          if (unprocessedCalcItems.contains(calcItem.Id) == false) {
+            mutableItems.remove(index);
+          }
         }
       }
     }
