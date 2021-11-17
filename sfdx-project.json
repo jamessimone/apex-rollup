@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionNumber": "1.3.12.0",
+            "versionNumber": "1.3.13.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -20,7 +20,7 @@
                 }
             ],
             "versionNumber": "0.0.9.0",
-            "versionDescription": "Only log when Is Rollup Logging is enabled",
+            "versionDescription": "Adds RollupLog__c and RollupLogEntry__c custom objects to allow storage of rollup debug logs",
             "default": false,
             "unpackagedMetadata": {
                 "path": "plugins/CustomObjectRollupLogger/tests"
@@ -38,7 +38,7 @@
                 }
             ],
             "versionNumber": "0.0.5.0",
-            "versionDescription": "Only log when Is Rollup Logging is enabled",
+            "versionDescription": "Provides an adapter that hooks rollup debug logging up to Nebula Logger",
             "default": false,
             "unpackagedMetadata": {
                 "path": "plugins/NebulaLogger/tests"
@@ -53,7 +53,7 @@
                 }
             ],
             "versionNumber": "0.0.2.0",
-            "versionDescription": "Upgrading to Winter22",
+            "versionDescription": "Use this plugin to dispatch updated rollup information using Platform Events or custom Apex",
             "default": false,
             "unpackagedMetadata": {
                 "path": "plugins/RollupCallback/tests"

@@ -1,4 +1,4 @@
-public inherited sharing virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
+public without sharing virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
   private final Map<String, CalcItemBag> statefulLookupToCalcItems;
 
   public RollupFullBatchRecalculator(
