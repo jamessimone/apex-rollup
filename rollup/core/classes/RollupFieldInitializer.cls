@@ -24,7 +24,10 @@ public virtual class RollupFieldInitializer {
     // this is a shame - all types *should* have default values. Instead, we have the privilege of getting to initialize them
     Object initializedDefault;
     switch on fieldDescribe.getType() {
-      when CURRENCY, DOUBLE, INTEGER, LONG, PERCENT {
+      when CURRENCY, DOUBLE, LONG, PERCENT {
+        initializedDefault = 0.0;
+      }
+      when INTEGER {
         initializedDefault = 0;
       }
       when DATETIME {
