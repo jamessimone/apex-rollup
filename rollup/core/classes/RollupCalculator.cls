@@ -423,10 +423,10 @@ public without sharing abstract class RollupCalculator {
       }
 
       String query =
-        RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
+        RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery + ('\nAND ' + this.opFieldOnCalcItem + '!= null')) +
         (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
       if (this.isIdCount) {
-        query = query.replace('Id,', '');
+        query = query.replaceAll('(?<=(\\s|,))Id,', '');
       }
 
       if (this.isIdCount) {
@@ -1028,13 +1028,8 @@ public without sharing abstract class RollupCalculator {
       if (this.isFullRecalc == false) {
         SObjectType sObjectType = this.getCalcItemType();
         Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-        String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ 'Id' }, 'Id', '!=', this.lookupKeyQuery);
-        // normally we could use countQuery here (except for Task/Event, which can be archived)
-        // something about this combination of steps led to exceptions on some code paths:
-        // System.UnexpectedException: class java.math.BigDecimal cannot be cast to class java.lang.Integer
-        // further downstream (when RollupSObjectUpdater.doUpdate was called). Incrementing by the size of the
-        // returned list works without issue.
-        denominator += Database.query(query).size();
+        String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
+        denominator += Database.countQuery(query);
         oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, objIds, sObjectType);
       }
 

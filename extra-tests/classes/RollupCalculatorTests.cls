@@ -395,7 +395,7 @@ private class RollupCalculatorTests {
       Account.AnnualRevenue,
       metadata,
       '0011g00003VDGbF002',
-      Account.Id
+      Opportunity.AccountId
     );
 
     calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
@@ -413,7 +413,7 @@ private class RollupCalculatorTests {
       Account.AnnualRevenue,
       metadata,
       '0011g00003VDGbF002',
-      Opportunity.Id
+      Opportunity.AccountId
     );
 
     calc.performRollup(
@@ -427,6 +427,29 @@ private class RollupCalculatorTests {
     );
 
     System.assertEquals(1, (Decimal) calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
+  }
+
+  @IsTest
+  static void shouldCorrectlyAverageForTasks() {
+    // Task/Event gets ALL ROWS appended to queries
+    Account acc = [SELECT Id FROM Account];
+    Task insertedTask = new Task(WhatId = acc.Id, CallDurationInSeconds = 5, Subject = 'Insert', ActivityDate = System.today());
+    insert insertedTask;
+
+    Task passedIn = new Task(WhatId = acc.Id, Subject = 'Passed In', CallDurationInSeconds = 3, Id = RollupTestUtils.createId(Task.SObjectType));
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.AVERAGE,
+      Task.CallDurationInSeconds,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Task'),
+      acc.Id,
+      Task.AccountId
+    );
+    calc.performRollup(new List<Task>{ passedIn }, new Map<Id, SObject>());
+
+    System.assertEquals(4, calc.getReturnValue());
   }
 
   // COUNT tests
@@ -501,6 +524,26 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
 
     System.assertEquals(0, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldNotCountNullsForCountDistinctDelete() {
+    Account acc = [SELECT Id FROM Account];
+    insert new Opportunity(CloseDate = System.today(), StageName = 'Hi', AccountId = acc.Id, Name = 'null amount');
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.DELETE_COUNT_DISTINCT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      acc.Id,
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = acc.Id);
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(0, calc.getReturnValue(), 'Null amount should be excluded');
   }
 
   @IsTest

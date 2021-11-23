@@ -99,4 +99,27 @@ private class RollupFieldInitializerTests {
 
     System.assertNotEquals(null, ex, 'Exception should have been thrown');
   }
+
+  @IsTest
+  static void shouldNotThrowBigDecimalErrorWhenIntsMixWithDecimals() {
+    /**
+     * Avoids the following error:
+     * System.UnexpectedException: class java.math.BigDecimal cannot be cast to class java.lang.Integer
+     * (java.math.BigDecimal and java.lang.Integer are in module java.base of loader 'bootstrap')
+     */
+    RollupFieldInitializer init = RollupFieldInitializer.Current;
+    Account one = new Account();
+    Account two = new Account();
+
+    one.put(Account.AnnualRevenue, init.getDefaultValue(Account.AnnualRevenue));
+    one.put(Account.NumberOfEmployees, init.getDefaultValue(Account.NumberOfEmployees));
+    two.put(Account.AnnualRevenue, init.getDefaultValue(Account.AnnualRevenue));
+    two.put(Account.NumberOfEmployees, init.getDefaultValue(Account.NumberOfEmployees));
+
+    one.AnnualRevenue = (4.00 / 2);
+
+    new List<Account>{ one, two }.sort(); // we sort parent records in rollup before updating them
+
+    System.assert(true, 'Should make it here'); // if .sort() throws, it's an uncatchable error
+  }
 }
