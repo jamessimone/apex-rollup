@@ -423,10 +423,10 @@ public without sharing abstract class RollupCalculator {
       }
 
       String query =
-        RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery) +
+        RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery + ('\nAND ' + this.opFieldOnCalcItem + '!= null')) +
         (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
       if (this.isIdCount) {
-        query = query.replace('Id,', '');
+        query = query.replaceAll('(?<=(\\s|,))Id,', '');
       }
 
       if (this.isIdCount) {
@@ -1028,9 +1028,8 @@ public without sharing abstract class RollupCalculator {
       if (this.isFullRecalc == false) {
         SObjectType sObjectType = this.getCalcItemType();
         Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
-        Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
-        String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ isArchivable ? 'Id' : 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
-        denominator += isArchivable ? Database.query(query).size() : Database.countQuery(query);
+        String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
+        denominator += Database.countQuery(query);
         oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, objIds, sObjectType);
       }
 
