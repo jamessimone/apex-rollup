@@ -894,6 +894,7 @@ public without sharing abstract class RollupCalculator {
       for (Integer index = values.size() - 1; index >= 0; index--) {
         if (String.isBlank(values[index])) {
           values.remove(index);
+          continue;
         }
         if (this.metadata.SplitConcatDelimiterOnCalcItem__c == true) {
           List<String> splitValues = values[index].split(this.concatDelimiter);

@@ -834,6 +834,24 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldNotSplitOnConcatDelimiterWhenOnlyBlankValueStillExists() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      '2019, 2020, 2021',
+      Rollup.Op.DELETE_CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(SplitConcatDelimiterOnCalcItem__c = true),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = '2019, 2020, 2021', AccountId = '0016g00003VDGbF001');
+    Opportunity secondOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = '2019, 2020, 2021', AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp, secondOpp }, new Map<Id, SObject>());
+
+    System.assertEquals('', calc.getReturnValue());
+  }
+
+  @IsTest
   static void shouldProperlyRemoveConcatDistinctOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
     String accountId = '0011g00003VDGbF002';
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
