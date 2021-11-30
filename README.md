@@ -4,20 +4,20 @@
 [![Rollup Code Coverage](https://codecov.io/gh/jamessimone/apex-rollup/branch/main/graph/badge.svg)](https://codecov.io/gh/jamessimone/apex-rollup)
 [![License](https://img.shields.io/npm/l/scanner.svg)](https://github.com/jamessimone/apex-rollup/blob/main/package.json)
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#replacing-dlrs)!
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with `Rollup`. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/migrating-from-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
 
 ## Features
 
 You have several different options when it comes to making use of `Rollup`:
 
-- The [Custom Metadata-driven solution](#cmdt-based-rollup): install with _one line of code_
-- From Flow / Process builder using [the included invocable actions](#flow-process-builder-invocable)
+- The [Custom Metadata-driven solution](#cmdt-based-rollup-solution): install with _one line of code_
+- From Flow / Process builder using [the included invocable actions](#flow--process-builder-invocable)
   - [Base Invocable action wiki](../../wiki/Perform-Rollup-On-Records---Base-Invocable-Action) - separate wiki link
   - [CMDT-driven action](../../wiki/Perform-Rollup__mdt-based-rollup-Invocable) - separate wiki link
-  - [Full recalc CMDT action](#full-recalc-flow-action)
+  - [Full recalc CMDT action](#full-recalc-cmdt-driven-invocable)
   - Deferred rollup kickoff action (required for the CMDT-driven action)
-- [One-off jobs, kicked off via the `Rollup` app](#calculating-rollup-after-install)
-- [Using the included LWC button on a parent record's flexipage](#parent-record-recalc-button)
+- [One-off jobs, kicked off via the `Rollup` app](#calculating-rollups-after-install)
+- [Using the included LWC button on a parent record's flexipage](#using-the-parent-record-recalc-button)
 - [Via a scheduled job](#scheduled-jobs), created by running some Anonymous Apex
 
 ## Deployment
@@ -53,8 +53,6 @@ While you can still enable/disable individual rollups from running with the use 
 
 ### CMDT-based Rollup Solution:
 
-<div id="cmdt-based-rollup"></div>
-
 All you need is one line of code in any trigger where you'd like to perform rollups to a "parent" object. If you were taking values from your Opportunity records and rolling some of them up to the Account, this single line would be put into your `Opportunity.trigger` file or within your Opportunity Handler class:
 
 ```java
@@ -81,9 +79,9 @@ To be clear - the following trigger contexts are necessary when using `runFromTr
 - after delete (**only necessary if your org does Account/Contact/Lead/Case merges** - repeated from the above comment). For more info please see [setting Rollup up to handle parent-level merges](#parent-level-merges)
 - after undelete
 
-This means that if you are invoking `Rollup.runFromTrigger();` from any other context (be it a quick action, LWC, Aura or wherever), nothing will happen; there won't be an error, but a rollup also won't be performed. For more information on one-off rollups, please see <a href="#calculating-rollup-after-install">Calculating Rollups After Install</a>.
+This means that if you are invoking `Rollup.runFromTrigger();` from any other context (be it a quick action, LWC, Aura or wherever), nothing will happen; there won't be an error, but a rollup also won't be performed. For more information on one-off rollups, please see <a href="#calculating-rollups-after-install">Calculating Rollups After Install</a>.
 
-The _only_ exception to the above is if you are using the `Is Rollup Started From Parent` checkbox field on the `Rollup__mdt` custom metadata (<a href="#rollup-metadata-details">more details on that below</a>). If the rollup starts from the parent, you are free to only list the trigger contexts that make sense for you - for example, if you are initiating a rollup from parent records and the children records whose values you are rolling up are only ever updated when the parent is being inserted, you are free to use `after insert` in your Apex trigger if you have no need of the other contexts.
+The _only_ exception to the above is if you are using the `Is Rollup Started From Parent` checkbox field on the `Rollup__mdt` custom metadata (<a href="#rollup-custom-metadata-field-breakdown">more details on that below</a>). If the rollup starts from the parent, you are free to only list the trigger contexts that make sense for you - for example, if you are initiating a rollup from parent records and the children records whose values you are rolling up are only ever updated when the parent is being inserted, you are free to use `after insert` in your Apex trigger if you have no need of the other contexts.
 
 That's it! Now you're ready to configure your rollups using Custom Metadata. `Rollup` makes heavy use of Entity Definition & Field Definition metadata fields, which allows you to simply select your options from within picklists, or dropdowns. This is great for giving you quick feedback on which objects/fields are available without requiring you to know the API name for every SObject and their corresponding field names.
 
@@ -95,8 +93,6 @@ If the SOQL queries used by `Rollup` becomes cause for concern, please [submit a
 
 #### Special Considerations For Usage Of The Calc Item Where Clause
 
-<div id="where-clause-considerations"></div>
-
 In addition to the above, some other considerations when it comes to the where clause:
 
 - Any time a polymorphic field is used in your `Calc Item Where Clause`, you must also have a constraint on the parent-level `Type` in order for it to work. If you are filtering on `Task.What`, for example, you must have only a single SObject-parent type as part of your where clause, e.g. `What.Name = 'someName' AND What.Type = 'Account'`.
@@ -105,8 +101,6 @@ In addition to the above, some other considerations when it comes to the where c
 #### Rollup Custom Metadata Field Breakdown
 
 Within the `Rollup__mdt` custom metadata type, add a new record with fields:
-
-<div id="rollup-metadata-details"/>
 
 - `Calc Item` - the SObject the calculation is derived from — in this case, Oppportunity
 - `Lookup Object` - the SObject you’d like to roll the values up to (in this case, Account)
@@ -120,11 +114,11 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#where-clause-considerations)
+- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#special-considerations-for-usage-of-the-calc-item-where-clause)
 - `Is Full Record Set` (optional, defaults to `false`) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
 - `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. Like DLRS, this field is optional on a first/last operation, and if a field is not supplied, the `Rollup field On Calc Item` is used.
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. `Rollup` will then go and retrieve the assorted children records before rolling the values up to the parents. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Calc Item Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
-- `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name (after the last period) should match up with what is being used in `Rollup Field On Lookup Object`. For caveats and more information on how to setup rollups looking to use this functionality, please refer to the linked section.
+- `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-or-greater-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name (after the last period) should match up with what is being used in `Rollup Field On Lookup Object`. For caveats and more information on how to setup rollups looking to use this functionality, please refer to the linked section.
 - `Rollup To Ultimate Parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
 - `Split Concat Delimiter On Calc Item?` (optional) - By default, CONCAT and CONCAT_DISTINCT operations will only apply the concat delimiter to the parent-level rollup field. Enable this field to also split the rollup item's values before concatenating to the parent.
 - `Ultimate Parent Lookup` (optional) - specify the API Name of the field on the `Lookup Object` using the dropdown that contains the hierarchy relationship. On Account, for example, this would be `Parent Account ID`. Must be filled out if `Rollup To Ultimate Parent` is checked.
@@ -132,8 +126,6 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
 #### Notes On The Use Of CMDT To Control Your Rollups
-
-<div id="notes-on-custom-metadata"></div>
 
 There are two limitations to Entity Definition relationships that currently exist:
 
@@ -166,8 +158,6 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Replace Calc Items Async When Over Count` - (defaults to 1) - in some instances, calc items passed into rollup need to be requeried - either to get additional fields (in the case of polymorphic queries), or if parent-level filters have been added to any rollup's `Calc Item Where Clause`. For these cases, we want to avoid adding unncessary queries to the sync portion of the run; we also want to avoid a slowdown in the sync processing time that `Rollup` requires. You can change this number from the default of 1 to 0 if you want any necessary replacement to _always_ happen in the async scope.
 
 ### Flow / Process Builder Invocable
-
-<div id="flow-process-builder-invocable"></div>
 
 I will touch only on Flows given that all indications from Salesforce would lead a person to believe they are the future of the "clicks" part in "clicks versus code":
 
@@ -203,13 +193,13 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Defer Processing` (optional, default `false`) - when checked and set to `{!$GlobalConstant.True}`, you have to call the separate invocable method `Process Deferred Rollups` at the end of your flow. Otherwise, each invocable action kicks off a separate queueable/batch job. **Note** - for extremely large flows calling dozens of rollup operations, it behooves the end user / admin to occasionally call the `Process Deferred Rollups` invocable action to separate rollup operations into different jobs. You'll avoid running out of memory by doing so. See the "Process Deferred Rollups" section below for more info.
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name should match up with what is being used in `Rollup Field On Lookup Object`. Please see the caveats in the linked section for more information on how to set up your rollups correctly when using this feature.
+- `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-or-greater-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name should match up with what is being used in `Rollup Field On Lookup Object`. Please see the caveats in the linked section for more information on how to set up your rollups correctly when using this feature.
 - `Is Full Record Set` (optional) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by toggling this field
 - `Is Rollup Started From Parent` (optional, defaults to `{!$GlobalConstant.False}`) - set to `{!$GlobalConstant.True}` if collection being passed in is the parent SObject, and you want to recalculate the defined rollup operation for the passed in parent records. Used in conjunction with `Calc Item Type When Rollup Started From Parent`. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Calc Item Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
 - `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. Like DLRS, this field is optional on a first/last operation, and if a field is not supplied, the `Rollup field On Calc Item` is used.
 - `Should rollup to ultimate hierarchy parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
 - `Should run sync` (optional) - Check this box if you'd like the parent items to be updated in a synchronous context. Note that if `Defer Processing` is set to true, the synchronous bit will only come into play whenever the `Process Deferred Rollup` action is called.
-- `SOQL Where Clause To Exclude Calc Items` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#where-clause-considerations)
+- `SOQL Where Clause To Exclude Calc Items` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#special-considerations-for-usage-of-the-calc-item-where-clause)
 - `Ultimate Parent Field` (optional) - specify the API Name of the field on the `Lookup Object` that contains the hierarchy relationship. On Account, for example, this would be `ParentId`. **Must** be filled out if `Rollup To Ultimate Parent` is checked.
 
 Here is an example of the base action filled out (not shown, but also important - the assignment of the collection to the `Records to rollup` variable):
@@ -249,8 +239,6 @@ In order to prevent blowing through the Flow Interview limit for each day, it's 
 
 #### Using SFDX To Update Your Flow XML
 
-<div id="using-sfdx-to-update-your-flow-xml"></div>
-
 if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreate it/them when updating from a version that lacked the `Prior Records To Rollup` collection variable. Follow these steps to painlessly update (this example will assume your flow uses the `Case` object:
 
 1. Pull down your flow's latest XML definition using `sfdx force:source:retrieve -m "Flow"`
@@ -277,8 +265,6 @@ if you use SFDX, you do _not_ have to delete your `Rollup` action(s) and recreat
 
 ### Calculating Rollups After Install
 
-<div id="calculating-rollup-after-install"></div>
-
 Use the included app and permission set (`See Rollup App`) permission set to uncover the `Rollup` app - a single-page-application where you can manually kick off rollup jobs. This is important because `Rollup` works on an ongoing basis; in order for your rollups to be correct, unless the child object you're starting to rollup has no rows when you implement `Rollup`, a one-off full recalculation is necessary. Here's how you would fill out the page to get things started:
 
 ![Example of Rollup App](./media/joys-of-apex-rollup-app.png 'Manually kicking off rollup jobs')
@@ -290,8 +276,6 @@ Use the included app and permission set (`See Rollup App`) permission set to unc
 In either case, if you fill out the form values _or_ start the full recalculation via your selected CMDT records, the screen will lock until the rollup recalculation has finished. There's a small piece of text at the bottom with information about what the recalculation job's status is, and the screen will only unlock after it has either finished, failed, or been manually aborted by you.
 
 ### Using The Parent Record Recalc Button
-
-<div id="parent-record-recalc-button"></div>
 
 There is an included Lightning Web Component (LWC) that will show up in the "Custom" section of the Lightning App Builder under the heading `Recalc Rollups Button`. As promised, you can drop this button anywhere on a parent SObject's record flexipage to enable users to recalculate the rollups just for that parent on the fly:
 
@@ -307,8 +291,6 @@ There is an included Lightning Web Component (LWC) that will show up in the "Cus
 - Triggering recalcs from a grandparent record for a grandparent rollup currently not supported
 
 ### Scheduled Jobs
-
-<div id="scheduled-jobs"></div>
 
 I would _highly_ recommend scheduling through Scheduled Flows.
 
@@ -335,8 +317,6 @@ Note that the third argument - the `String rollupObjectName` should be one of tw
 In either case, the SOQL query needs to correspond to either the parent or the children records that you'd like to operate on.
 
 ### Grandparent (Or Greater) Rollups
-
-<div id="grandparent-rollups"></div>
 
 [Check out the Wiki article for more information on Grandparent rollups](<../../wiki/Configuring-Grandparent-(or-Greater)-Rollups>), or follow along here -
 
@@ -789,11 +769,9 @@ trigger OpportunityTrigger on Opportunity(before update, after update, before in
 
 ## Migrating from DLRS
 
-<div id="replacing-dlrs"></div>
-
 If you are converting from DLRS to Rollup, you can automatically convert all of your DLRS rules using the included Apex scripts:
 
-1. [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org. There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-custom-metadata), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
+1. [scripts/convert-dlrs-rules.apex](scripts/convert-dlrs-rules.apex). Simply run this script in your org, and most DLRS rules (stored in `dlrs__LookupRollupSummary2__mdt`) will be converted to `Rollup__mdt` records and automatically deployed to the current org. There are exclusions as described [in the Notes On The Use Of CMDT To Control Your Rollups](#notes-on-the-use-of-cmdt-to-control-your-rollups), for these the script will write out how to implement the flow action equivalent in the debug logs [for more information see here](#flow-process-builder-invocable).
 2. [scripts/deactivate-converted-dlrs-rules.apex](scripts/deactivate-converted-dlrs-rules.apex). Once you've converted your `dlrs__LookupRollupSummary2__mdt` records into `Rollup__mdt` records, you can run this script to deactivate any converted DLRS rules in the current org. Please note that this script does not delete the existing DLRS rules, nor does it uninstall DLRS for you - after running it, you'll still have to clean up and remove DLRS from your org.
 
 ## Special Considerations
@@ -817,8 +795,6 @@ One of the reasons that `Rollup` can boast of superior performance is that, for 
 In these instances, `Rollup` _does_ requery the calculation object; it also does another loop through the calculation items supplied to it in search of _all_ the values necessary to find the true rollup value. This provides context, more than anything — the rollup operation should still be lightning fast.
 
 ### Parent Level Merges
-
-<div id="parent-level-merges"></div>
 
 Merging is possible on the following Salesforce standard objects: Account, Case, Contact, and Lead. If these objects serve as parent-level records within your rollups, you'll need to have _at the very least_ an Apex trigger looking at `after delete` on the associated object where merges are being performed:
 
@@ -908,8 +884,6 @@ Note that you're still selecting `Opportunity` as the `Calc Item` within your Ro
 
 ### Rollup Plugins
 
-<div id="rollup-plugins"></div>
-
 #### Rollup Logging Plugins
 
 You have several options for custom logging plugins for Rollup (all Rollup Plugin CMDT records should point to the `Org_Default` Rollup Control record). It's possible to use all of these options simultaneously - log to all the places!
@@ -970,12 +944,12 @@ Within a scratch org, validating that all of the tests run is as simple as invok
 
 I use Prettier in conjunction with the `prettier-apex` plugin for formatting Apex. There are (hopefully) minor stylistic choices that I have made and hope any contributors will respect when modifying the code:
 
-- Format On Save. I let Prettier do all the heavy lifting
-- Column length (set in `.prettierrc`) is set to `160`. That's a _little_ wide for laptop developers. I know, as I've spent a good portion of time on my personal Thinkpad working on this project. Still, for a desktop it's perfect for reducing lines of code. Forgive me - as the project matures, I am working to break down the dependency tree so that the individual classes are more manageable, with the end goal of reducing the column width to something more reasonable, like `120` or perhaps `140`.
+- Format On Save. I let Prettier do all the heavy lifting. There is also a pre-commit hook that runs all modified items through prettier, and runs PMD on the repository. [Don't forget to install the dependencies!](https://github.com/jamessimone/apex-rollup#contributing)
+- Column length (set in `.prettierrc`) is set to `160`. That's a _little_ wide for laptop developers. I know, as I've spent a good portion of time on my personal Thinkpad working on this project. Still, for a desktop it's perfect for reducing lines of code.
 - Spaces ... are .... set to `2`. Pretty unusual for Java-ish languages, but it really helps with increasing readability / reducing LOC
 
 Further instructions for contributions are listed [in the Contributing doc](./Contributing.md). Please ensure the guidelines enumerated there are respected when submitting pull requests.
 
 ## Contact Info
 
-Drop me <a href="mailto:james@sheandjim.com" title="Email me">a line</a>, <a title="contact me" href="https://www.jamessimone.net/contact/">contact me online</a> or raise an issue here with questions.
+Drop me <a href="mailto:james@sheandjim.com" title="Email me">a line</a>, <a title="contact me" href="https://www.jamessimone.net/contact/">contact me online</a> or [start a discussion here](../../discussions) with questions.
