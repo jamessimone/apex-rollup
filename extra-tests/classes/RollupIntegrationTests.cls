@@ -973,6 +973,28 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldEvaluateCorrectlyForCustomParentFields() {
+    String whereClause = 'RollupParent__r.NumberField__c = 1';
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, RollupParent__c.SObjectType);
+    System.assertEquals(true, eval.matches(new RollupParent__c(NumberField__c = 1)));
+  }
+
+  @IsTest
+  static void shouldFilterOnFormulaText() {
+    String whereClause = 'NameFormula__c = \'GermanyFormula\'';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Account.SObjectType);
+
+    Account acc = new Account(Name = 'Germany');
+
+    System.assertNotEquals(true, eval.matches(acc));
+
+    Formula.recalculateFormulas(new List<Account>{ acc });
+
+    System.assertEquals(true, eval.matches(acc));
+  }
+
+  @IsTest
   static void shouldCorrectlyRollupFromTriggerOnMerge() {
     Account parent = [SELECT Id, Name FROM Account];
 

@@ -510,7 +510,6 @@ private class RollupEvaluatorTests {
     Opportunity oppThree = new Opportunity(ForecastCategoryName = 'Best Case');
     Opportunity oppFour = new Opportunity(ForecastCategoryName = 'Commit');
     Opportunity oppFive = new Opportunity(Amount = 5, ForecastCategoryName = 'Closed');
-    Formula.recalculateFormulas(new List<Opportunity>{ oppOne, oppTwo, oppThree, oppFour, oppFive });
 
     String whereClause = 'ForecastCategoryName = \'Omitted\' OR ForecastCategoryName = \'Best Case\' OR ForecastCategoryName = \'Pipeline\' OR Amount = 5';
 
@@ -1034,10 +1033,6 @@ private class RollupEvaluatorTests {
     String whereClause = 'Account.AnnualRevenue = 5';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Account.SObjectType);
     System.assertEquals(true, eval.matches(new Account(AnnualRevenue = 5)));
-
-    whereClause = 'RollupParent__r.NumberField__c = 1';
-    eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, RollupParent__c.SObjectType);
-    System.assertEquals(true, eval.matches(new RollupParent__c(NumberField__c = 1)));
   }
 
   @IsTest
