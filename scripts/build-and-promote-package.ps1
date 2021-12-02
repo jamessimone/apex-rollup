@@ -4,6 +4,7 @@
 # this script generates a new package version Id per unique Action run, and promotes that package on merges to main
 # it also updates the Ids referenced in the README, and bumps the package version number in the package.json file
 $ErrorActionPreference = 'Stop'
+. .\scripts\helper-functions.ps1
 
 function Get-Current-Git-Branch() {
   Invoke-Expression 'git rev-parse --abbrev-ref HEAD'
@@ -18,10 +19,6 @@ function Get-Apex-Rollup-Package-Alias {
     $packageVersion = $packageVersion.Substring(0, $packageVersion.Length - $matchString.Length);
   }
   return "apex-rollup@$packageVersion-0"
-}
-
-function Get-SFDX-Project-JSON {
-  Get-Content -Path ./sfdx-project.json | ConvertFrom-Json
 }
 
 function Get-Package-JSON {
@@ -115,13 +112,7 @@ if($currentBranch -eq "main") {
   Write-Output "New package version: $currentPackageVersionId"
 
   if($currentPackageVersionId -ne $priorPackageVersionId) {
-    $readmePath = "./README.md"
-    $loginReplacement = "https://login.salesforce.com/packaging/installPackage.apexp?p0=" + $currentPackageVersionId
-    $testReplacement = "https://test.salesforce.com/packaging/installPackage.apexp?p0=" + $currentPackageVersionId
-    ((Get-Content -path $readmePath -Raw) -replace "https:\/\/login.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $loginReplacement) | Set-Content -Path $readmePath -NoNewline
-    ((Get-Content -path $readmePath -Raw) -replace "https:\/\/test.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $testReplacement) | Set-Content -Path $readmePath -NoNewline
-
-    git add $readmePath
+    Update-Package-Install-Links "./README.md" $currentPackageVersionId
   }
 
   $packageJson = Get-Package-JSON

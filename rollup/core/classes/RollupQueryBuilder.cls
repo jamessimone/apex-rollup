@@ -15,10 +15,7 @@ public without sharing class RollupQueryBuilder {
     String equality,
     String optionalWhereClause
   ) {
-    DescribeSObjectResult sObjectToken = sObjectType.getDescribe();
-    Map<String, SObjectField> baseFields = sObjectToken.fields.getMap();
     Set<String> lowerCaseFieldNames = new Set<String>();
-
     for (Integer index = uniqueQueryFieldNames.size() - 1; index >= 0; index--) {
       String uniqueFieldName = uniqueQueryFieldNames[index];
       if (String.isBlank(uniqueFieldName)) {
@@ -34,25 +31,9 @@ public without sharing class RollupQueryBuilder {
       } else {
         lowerCaseFieldNames.add(lowerCaseField);
       }
-      // ensure that the base relationship name field is transformed appropriately
-      if (baseFields.containsKey(uniqueFieldName + 'Id') || baseFields.containsKey(uniqueFieldName + '__c')) {
-        SObjectField baseField = baseFields.get(uniqueFieldName + 'Id') == null
-          ? baseFields.get(uniqueFieldName + '__c')
-          : baseFields.get(uniqueFieldName + 'Id');
-        DescribeFieldResult fieldToken = baseField.getDescribe();
-        if (fieldToken.getType() == DisplayType.REFERENCE && uniqueQueryFieldNames.contains(fieldToken.getName()) == false) {
-          uniqueQueryFieldNames[index] = fieldToken.getName();
-        }
-      } else if (
-        baseFields.containsKey(uniqueFieldName) &&
-        sObjectToken.getName() == uniqueFieldName.substringBefore('.') &&
-        uniqueQueryFieldNames.contains(uniqueFieldName) == false
-      ) {
-        uniqueQueryFieldNames[index] = uniqueFieldName;
-      }
     }
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, sObjectToken);
+    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, sObjectType.getDescribe());
 
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
 
@@ -134,7 +115,7 @@ public without sharing class RollupQueryBuilder {
     return optionalWhereClause;
   }
 
-  private Boolean hasPolymorphicOwnerClause(String whereClause, Map<String, SObjectField> fieldNameToField ) {
+  private Boolean hasPolymorphicOwnerClause(String whereClause, Map<String, SObjectField> fieldNameToField) {
     Boolean hasPolymorphicField = false;
     if (whereClause?.contains('.Owner') == true) {
       List<String> fields = whereClause.split('\\.');

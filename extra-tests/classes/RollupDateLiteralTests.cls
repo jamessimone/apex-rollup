@@ -414,7 +414,8 @@ private class RollupDateLiteralTests {
     RollupDateLiteral nextNMonths = RollupDateLiteral.get('NEXT_N_MONTHS:2');
 
     System.assertEquals(true, nextNMonths.matches(nextNMonthsDate, '='), 'Date value should have matched: ' + nextNMonthsDate + ' | ' + nextNMonths);
-    System.assertEquals(true, nextNMonths.matches(nextNMonthsDate.addDays(30), '='), 'Date was within: ' + nextNMonths);
+    // take February into account
+    System.assertEquals(true, nextNMonths.matches(nextNMonthsDate.addDays(27), '='), 'Date was within: ' + nextNMonths + ' | ' + nextNMonthsDate);
     System.assertEquals(true, nextNMonths.matches(nextNMonthsDatetime, '='), 'Datetime value should have matched: ' + nextNMonthsDatetime);
 
     System.assertEquals(true, nextNMonths.matches(nextNMonthsDate, '>='));
@@ -818,7 +819,14 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastFiscalNQuarter.matches(startDate, '='), startDate + ' | ' + lastFiscalNQuarter);
     System.assertEquals(true, lastFiscalNQuarter.matches(endDate, '='), endDate + ' | ' + lastFiscalNQuarter);
-    System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate, '='), 'Date value should have matched: ' + lastNFiscalQuarterDate + ' | ' + lastFiscalNQuarter);
+    System.assertEquals(
+      true,
+      lastFiscalNQuarter.matches(lastNFiscalQuarterDate, '='),
+      'Date value should have matched: ' +
+      lastNFiscalQuarterDate +
+      ' | ' +
+      lastFiscalNQuarter
+    );
     System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDate.addDays(28), '='), 'Date was within: ' + lastFiscalNQuarter);
     System.assertEquals(true, lastFiscalNQuarter.matches(lastNFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + lastNFiscalQuarterDatetime);
 
@@ -859,13 +867,27 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nextNFiscalQuarter.matches(startDate, '='), startDate + ' | ' + nextNFiscalQuarter);
     System.assertEquals(true, nextNFiscalQuarter.matches(endDate, '='), endDate + ' | ' + nextNFiscalQuarter);
-    System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '='), 'Date value should have matched: ' + nextNFiscalQuarterDate + ' | ' + nextNFiscalQuarter);
+    System.assertEquals(
+      true,
+      nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '='),
+      'Date value should have matched: ' +
+      nextNFiscalQuarterDate +
+      ' | ' +
+      nextNFiscalQuarter
+    );
     System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate.addDays(28), '='), 'Date was within: ' + nextNFiscalQuarter);
     System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDatetime, '='), 'Datetime value should have matched: ' + nextNFiscalQuarterDatetime);
 
     System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '>='));
     System.assertEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDatetime, '>='));
-    System.assertEquals(true, nextNFiscalQuarter.matches(endDate.addDays(1), '>'), 'End date + 1: ' + endDate.addDays(1) + ' should exceed: ' + nextNFiscalQuarter);
+    System.assertEquals(
+      true,
+      nextNFiscalQuarter.matches(endDate.addDays(1), '>'),
+      'End date + 1: ' +
+      endDate.addDays(1) +
+      ' should exceed: ' +
+      nextNFiscalQuarter
+    );
     System.assertNotEquals(true, nextNFiscalQuarter.matches(System.now().addMonths(-1), '>'));
     System.assertNotEquals(true, nextNFiscalQuarter.matches(nextNFiscalQuarterDate, '>'));
 
@@ -886,8 +908,19 @@ private class RollupDateLiteralTests {
     Datetime startOfLastFiscalYearDatetime = Datetime.newInstanceGmt(startOfLastFiscalYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastFiscalYear = RollupDateLiteral.get('LAST_FISCAL_YEAR');
 
-    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate, '='), 'Date value should have matched: ' + startOfLastFiscalYearDate + ' ' + lastFiscalYear);
-    System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDatetime, '='), 'Datetime value should have matched: ' + startOfLastFiscalYearDatetime);
+    System.assertEquals(
+      true,
+      lastFiscalYear.matches(startOfLastFiscalYearDate, '='),
+      'Date value should have matched: ' +
+      startOfLastFiscalYearDate +
+      ' ' +
+      lastFiscalYear
+    );
+    System.assertEquals(
+      true,
+      lastFiscalYear.matches(startOfLastFiscalYearDatetime, '='),
+      'Datetime value should have matched: ' + startOfLastFiscalYearDatetime
+    );
     System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate.addMonths(6), '='), 'Date within bounds: ' + lastFiscalYear);
 
     System.assertEquals(true, lastFiscalYear.matches(startOfLastFiscalYearDate, '>='));
@@ -923,7 +956,6 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, thisYear.matches(startOfThisYearDatetime, '<='));
     System.assertNotEquals(true, thisYear.matches(System.today().addYears(2), '<='));
   }
-
 
   @IsTest
   static void shouldWorkForNextFiscalYear() {

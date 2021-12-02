@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.3.16",
+  "version": "1.3.17",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -40,6 +40,7 @@
     "create:package:nebula:adapter": "sfdx force:package:version:create --package \"Apex Rollup - Nebula Logger\" -w 20 -x -c",
     "create:package:logger": "sfdx force:package:version:create --package \"Apex Rollup - Custom Logger\" -w 20 -x -c",
     "create:package:callback": "sfdx force:package:version:create --package \"Apex Rollup - Rollup Callback\" -w 20 -x -c",
+    "create:package:code-coverage": ". ./scripts/generateExtraCodeCoveragePlugin.ps1",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "eslint **/lwc/**",
     "prepare": "husky install",
