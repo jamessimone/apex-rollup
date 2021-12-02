@@ -141,7 +141,7 @@ public without sharing abstract class RollupCalculator {
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     // if we're already in a full recalc, we've got all the items we need already
     this.shouldTriggerFullRecalc = this.isFullRecalc == false;
-    Set<Id> exclusionIds = new Set<Id>();
+    List<Id> exclusionIds = new List<Id>();
     for (SObject calcItem : calcItems) {
       if (calcItem.Id != null) {
         exclusionIds.add(calcItem.Id);
@@ -168,7 +168,7 @@ public without sharing abstract class RollupCalculator {
         continue;
       } else if (this.isCDCUpdate) {
         // here we don't exclude items because the calc items have already been updated
-        this.returnVal = this.calculateNewAggregateValue(this.op, new Set<Id>(), calcItem.getSObjectType());
+        this.returnVal = this.calculateNewAggregateValue(this.op, new List<Id>(), calcItem.getSObjectType());
         // not just a break, a return. We don't want to pass go - we don't want to call "setReturnValue" below
         return;
       } else {
@@ -295,7 +295,7 @@ public without sharing abstract class RollupCalculator {
     return ((SObject) Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
   }
 
-  protected virtual Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
+  protected virtual Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
     String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
     List<SObject> aggregate = this.tryQuery(sObjectType, new Set<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias }, objIds);
@@ -310,7 +310,7 @@ public without sharing abstract class RollupCalculator {
     return RollupCurrencyInfo.getCalcItem(calcItem);
   }
 
-  protected Object performBaseCalculation(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
+  protected Object performBaseCalculation(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
     this.returnVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnLookupObject);
 
     if (this.isRecursiveRecalc == false) {
@@ -343,7 +343,7 @@ public without sharing abstract class RollupCalculator {
     return this.returnVal;
   }
 
-  private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, Set<Id> objIds) {
+  private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, List<Object> objIds) {
     String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
     List<SObject> results;
     try {
@@ -399,7 +399,7 @@ public without sharing abstract class RollupCalculator {
         this.distinctValues.add(potentiallyNullValue);
       } else if (this.op == Rollup.Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues.clear();
-        this.calculateNewAggregateValue(this.op, new Set<Id>{ calcItem.Id }, calcItem.getSObjectType());
+        this.calculateNewAggregateValue(this.op, new List<Id>{ calcItem.Id }, calcItem.getSObjectType());
       }
       this.shouldShortCircuit = true;
     }
@@ -410,7 +410,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     @SuppressWarnings('PMD.ApexSOQLInjection')
-    protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
+    protected override Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
       if (this.shouldTriggerFullRecalc == true) {
         this.distinctValues.clear();
       }
@@ -425,12 +425,9 @@ public without sharing abstract class RollupCalculator {
       String query =
         RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery + ('\nAND ' + this.opFieldOnCalcItem + '!= null')) +
         (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
-      if (this.isIdCount) {
-        query = query.replaceAll('(?<=(\\s|,))Id,', '');
-      }
 
       if (this.isIdCount) {
-        Integer result = Database.countQuery(query);
+        Integer result = Database.countQuery(query.replaceAll('(?<=(\\s|,))Id,', ''));
         for (Integer index = 0; index < result; index++) {
           this.distinctValues.add(index);
         }
@@ -558,7 +555,7 @@ public without sharing abstract class RollupCalculator {
         newVal >= thisPriorVal)
       ) {
         this.shouldShortCircuit = true;
-        Object potentialReturnValue = this.calculateNewAggregateValue(this.op, oldCalcItems.keySet(), calcItem.getSObjectType());
+        Object potentialReturnValue = this.calculateNewAggregateValue(this.op, oldCalcItems.values(), calcItem.getSObjectType());
         this.returnDecimal = this.getDecimalOrDefault(potentialReturnValue);
         if (this.returnDecimal == 0 && this.op.name().contains('DELETE') == false) {
           this.returnDecimal = newVal;
@@ -574,7 +571,7 @@ public without sharing abstract class RollupCalculator {
       this.returnVal = this.returnDecimal;
     }
 
-    protected virtual override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
+    protected virtual override Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
       Object aggregate;
       try {
         aggregate = super.calculateNewAggregateValue(op, objIds, sObjectType);
@@ -622,7 +619,7 @@ public without sharing abstract class RollupCalculator {
       return RollupFieldInitializer.Current.getApexCompliantDatetime(datetimeWithMs).getTime();
     }
 
-    protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> excludedItems, SObjectType sObjectType) {
+    protected override Object calculateNewAggregateValue(Rollup.Op op, List<Object> excludedItems, SObjectType sObjectType) {
       Object aggregate = super.calculateNewAggregateValue(op, excludedItems, sObjectType);
       if (aggregate instanceof Datetime) {
         aggregate = ((Datetime) aggregate).getTime();
@@ -867,14 +864,14 @@ public without sharing abstract class RollupCalculator {
         newVal >= this.stringVal)
       ) {
         this.shouldShortCircuit = true;
-        Object potentialReturnValue = this.calculateNewAggregateValue(this.op, oldCalcItems.keySet(), calcItem.getSObjectType());
+        Object potentialReturnValue = this.calculateNewAggregateValue(this.op, oldCalcItems.values(), calcItem.getSObjectType());
         this.stringVal = potentialReturnValue == null ? '' : String.valueOf(potentialReturnValue);
       } else if (this.isTrueFor(newVal, this.stringVal)) {
         this.stringVal = newVal;
       }
     }
 
-    protected override Object calculateNewAggregateValue(Rollup.Op op, Set<Id> objIds, SObjectType sObjectType) {
+    protected override Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
       this.stringVal = (String) super.performBaseCalculation(op, objIds, sObjectType);
       return this.stringVal;
     }
@@ -1021,6 +1018,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
     }
+    @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
@@ -1028,10 +1026,10 @@ public without sharing abstract class RollupCalculator {
       Decimal denominator = Decimal.valueOf(applicableCalcItems.size());
       if (this.isFullRecalc == false) {
         SObjectType sObjectType = this.getCalcItemType();
-        Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
+        List<SObject> objIds = calcItems;
         String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ 'Count()' }, 'Id', '!=', this.lookupKeyQuery);
         denominator += Database.countQuery(query);
-        oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, objIds, sObjectType);
+        oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems, sObjectType);
       }
 
       if (oldSum == null) {

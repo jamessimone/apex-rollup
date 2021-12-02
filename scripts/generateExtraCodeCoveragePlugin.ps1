@@ -1,9 +1,7 @@
 $ErrorActionPreference = 'Stop'
+. .\scripts\helper-functions.ps1
 
 $packageJsonPath = "./sfdx-project.json"
-function Get-SFDX-Project-JSON {
-  Get-Content -Path $packageJsonPath | ConvertFrom-Json
-}
 
 if (Test-Path "./plugins/ExtraCodeCoverage" ) {
   Write-Output "Dir exists"
@@ -32,6 +30,8 @@ $currentCodeCoveragePlugin.versionNumber = $currentPluginVersion
 Write-Output "Re-incrementing sfdx-project.json ExtraCodeCoverage version number ..."
 
 ConvertTo-Json -InputObject $packageJson -Depth 4 | Set-Content -Path $packageJsonPath -NoNewline
+# sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
+# to run on it
 yarn prettier --write $packageJsonPath --tab-width 4 --ignore-path .forceignore
 
 Write-Output "Creating package version: $currentPluginVersion"
@@ -43,14 +43,8 @@ $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionI
 Write-Output "Successfully created package Id: $currentPackageVersionId, promoting ..."
 sdfx force:package:version:promote -p $currentPackageVersionId -n
 
-$readmePath = "./plugins/ExtraCodeCoverage/README.md"
-$loginReplacement = "https://login.salesforce.com/packaging/installPackage.apexp?p0=" + $currentPackageVersionId
-$testReplacement = "https://test.salesforce.com/packaging/installPackage.apexp?p0=" + $currentPackageVersionId
-((Get-Content -path $readmePath -Raw) -replace "https:\/\/login.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $loginReplacement) | Set-Content -Path $readmePath -NoNewline
-((Get-Content -path $readmePath -Raw) -replace "https:\/\/test.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $testReplacement) | Set-Content -Path $readmePath -NoNewline
+Update-Package-Install-Links "./plugins/ExtraCodeCoverage/README.md" $currentPackageVersionId
 
-# have to force add, as the rest of the dir is gitignored
-git add $readmePath -f
 git add $packageJsonPath
 
 Write-Output "Done"
