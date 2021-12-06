@@ -82,6 +82,22 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldRunSyncForSingleRecordWhenControlRecordFlagged() {
+    RollupControl__mdt defaultControl = RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS).clone();
+    defaultControl.ShouldRunSingleRecordsSynchronously__c = true;
+    Rollup.defaultControl = defaultControl;
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    // specifically don't wrap in start/stopTest to prove it ran sync
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+
+    System.assertNotEquals(true, mock.Records.isEmpty(), 'Account should have been updated sync');
+    Account acc = (Account) mock.Records[0];
+    System.assertEquals(50, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldSumFromTriggerAfterInsert() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(
       new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 25), new ContactPointAddress(PreferenceRank = 25) }

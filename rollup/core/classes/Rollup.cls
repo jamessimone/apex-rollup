@@ -19,12 +19,13 @@ global without sharing virtual class Rollup {
   private static RollupControl__mdt specificControl;
   @TestVisible
   private static Boolean onlyUseMockMetadata = false;
+  @TestVisible
+  private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
-  private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
 
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
@@ -2506,8 +2507,6 @@ global without sharing virtual class Rollup {
 
   private static RollupControl__mdt getSingleControlOrDefault(SObjectField whereField, Object whereValue, RollupControl__mdt testOverrideData) {
     // there are multiple spots where testOverrideData can be supplied, which is why it's necessary to pass the argument to this method
-    // TODO - provide new parameter on RollupControl__mdt that can be used to swap to synchronous for single-record updates
-    // (a la updates made from datatables using LDS)
     if (testOverrideData != null) {
       return testOverrideData;
     } else if (whereField == RollupControl__mdt.Id || whereField == RollupControl__mdt.DeveloperName) {

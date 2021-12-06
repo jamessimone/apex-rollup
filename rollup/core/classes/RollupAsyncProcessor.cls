@@ -923,7 +923,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
         ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync) ||
-        System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs();
+        System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs() ||
+        this.calcItems?.size() == 1 &&
+        (this.rollupControl.ShouldRunSingleRecordsSynchronously__c || rollup.rollupControl.ShouldRunSingleRecordsSynchronously__c);
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
