@@ -427,12 +427,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
             }
           }
         } else {
-          String queryString = RollupQueryBuilder.Current.getQuery(
-            rollup.lookupObj,
-            new List<String>(uniqueQueryFieldNames),
-            String.valueOf(rollup.lookupFieldOnLookupObject),
-            '='
-          );
+          String queryString =
+            RollupQueryBuilder.Current.getQuery(
+              rollup.lookupObj,
+              new List<String>(uniqueQueryFieldNames),
+              String.valueOf(rollup.lookupFieldOnLookupObject),
+              '='
+            ) + '\nFOR UPDATE';
           // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
           localLookupItems = Database.query(queryString);
         }
