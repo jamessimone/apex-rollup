@@ -17,7 +17,7 @@ on:
       - '.prettierignore'
       - '.prettierrc'
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, synchronize, reopened]
     paths-ignore:
       - 'sfdx-project.json'
       - '**/README.md'
@@ -46,8 +46,19 @@ jobs:
         with:
           node-version: '14'
 
+      - name: 'Restore node_modules cache'
+        id: cache-npm
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-${{ env.cache-name }}-
+            npm-
+
       - name: 'Install NPM'
-        run: npm install
+        if: steps.cache-npm.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: 'Run LWC Unit Tests'
         run: npm run test:lwc

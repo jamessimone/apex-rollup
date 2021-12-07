@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldRunSingleRecordsSynchronously__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Apex Rollup typically uses the Should Run As picklist to determine the default execution context for rollups. This checkbox deviates from that methodology by forcing single record updates to run sync, which helps with handling updates from datatables or other features using Lightning Data Service (LDS).</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Apex Rollup typically uses the Should Run As picklist to determine the default execution context for rollups. This checkbox deviates from that methodology by forcing single record updates to run sync, which helps with handling updates from datatables or other features using Lightning Data Service (LDS).</inlineHelpText>
+    <label>Should Run Single Records Synchronously</label>
+    <type>Checkbox</type>
+</CustomField>

@@ -303,7 +303,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected Boolean isReparented(SObject calcItem, SObject oldCalcItem) {
-    return calcItem.get(this.lookupKeyField) != oldCalcItem.get(this.lookupKeyField);
+    return calcItem?.get(this.lookupKeyField) != oldCalcItem?.get(this.lookupKeyField);
   }
 
   protected SObject getTransformedCalcItem(SObject calcItem) {

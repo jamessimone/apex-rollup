@@ -39,6 +39,10 @@
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
+        <field>ShouldRunSingleRecordsSynchronously__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
         <field>ShouldRunAs__c</field>
         <value xsi:type="xsd:string">Queueable</value>
     </values>

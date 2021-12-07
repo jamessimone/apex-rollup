@@ -19,12 +19,13 @@ global without sharing virtual class Rollup {
   private static RollupControl__mdt specificControl;
   @TestVisible
   private static Boolean onlyUseMockMetadata = false;
+  @TestVisible
+  private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
-  private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
 
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
