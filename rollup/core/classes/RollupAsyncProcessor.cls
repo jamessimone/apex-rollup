@@ -11,6 +11,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected Boolean isProcessed = false;
   protected Boolean overridesRunCalc = false;
   protected FullRecalcProcessor fullRecalcProcessor;
+  protected Boolean shouldSortToFront = false;
 
   private RollupRelationshipFieldFinder.Traversal traversal;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
@@ -209,9 +210,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Integer numberToReturn = 0;
     if (otherRollup instanceof RollupAsyncProcessor) {
       RollupAsyncProcessor that = (RollupAsyncProcessor) otherRollup;
-      if (this.op == null && that.op != null) {
+      if (this.shouldSortToFront == false && that.shouldSortToFront) {
         numberToReturn = 1;
-      } else if (that.op == null && this.op != null) {
+      } else if (that.shouldSortToFront == false && this.shouldSortToFront) {
         numberToReturn = -1;
       } else if (this.op != null && that.op != null) {
         Boolean thisDelete = this.op.name().contains('DELETE');

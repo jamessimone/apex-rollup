@@ -25,12 +25,12 @@ private class RollupFullRecalcTests {
     );
     List<RollupAsyncProcessor> processors = new List<RollupAsyncProcessor>{
       actualProcessor,
-      new RollupDeferredFullRecalcProcessor(new List<Rollup__mdt>(), null, null, null, null),
-      actualProcessor
+      actualProcessor,
+      new RollupParentResetProcessor(new List<Rollup__mdt>(), null, '', new Set<Id>(), Rollup.InvocationPoint.FROM_APEX)
     };
     processors.sort();
 
-    System.assertEquals(true, processors[2] instanceof RollupDeferredFullRecalcProcessor, processors);
+    System.assertEquals(true, processors[0] instanceof RollupParentResetProcessor, processors[0]);
   }
 
   @IsTest

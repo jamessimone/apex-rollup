@@ -25,6 +25,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     super(getRefinedQueryString(queryString, matchingMeta), invokePoint, matchingMeta, calcItemType, recordIds);
     this.overridesRunCalc = true;
     this.isNoOp = false;
+    this.shouldSortToFront = true;
   }
 
   public override String runCalc() {
@@ -50,6 +51,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     for (SObject parentItem : calcItems) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
         parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
+        RollupLogger.Instance.log('resetting parent field:', parentItem, LoggingLevel.FINE);
       }
     }
     this.getDML().doUpdate(calcItems);

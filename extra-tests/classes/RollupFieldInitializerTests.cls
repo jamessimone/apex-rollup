@@ -108,6 +108,8 @@ private class RollupFieldInitializerTests {
      * (java.math.BigDecimal and java.lang.Integer are in module java.base of loader 'bootstrap')
      */
     RollupFieldInitializer init = RollupFieldInitializer.Current;
+    // never ever fill out the Name field here; there's a reason it's blank
+    // and it would cause this test to pass without exercising the actual underlying fix
     Account one = new Account();
     Account two = new Account();
 
