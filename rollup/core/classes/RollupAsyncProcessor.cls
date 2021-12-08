@@ -411,6 +411,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return System.enqueueJob(this);
     }
 
+    @SuppressWarnings('PMD.ApexSOQLInjection')
     protected override List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
       if (objIds.isEmpty()) {
         return new List<SObject>();
