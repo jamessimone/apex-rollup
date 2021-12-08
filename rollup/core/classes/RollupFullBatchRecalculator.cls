@@ -8,7 +8,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     SObjectType calcItemType,
     Set<Id> recordIds
   ) {
-    super(queryString, invokePoint, rollupInfo, calcItemType, recordIds);
+    super(getFullBatchQueryString(queryString, rollupInfo), invokePoint, rollupInfo, calcItemType, recordIds);
     this.statefulLookupToCalcItems = new Map<String, CalcItemBag>();
   }
 
@@ -64,5 +64,13 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
       this.statefulLookupToCalcItems.put(lookupKey, bag);
       lookupToCalcItems.put(lookupKey, bag);
     }
+  }
+
+  private static String getFullBatchQueryString(String query, List<Rollup__mdt> metas) {
+    List<String> orderByFields = new List<String>();
+    for (Rollup__mdt meta : metas) {
+      orderByFields.add(meta.LookupFieldOnCalcItem__c);
+    }
+    return (query.replace('ALL ROWS', '') + '\nORDER BY ' + String.join(orderByFields, ',')) + ' ALL ROWS';
   }
 }
