@@ -433,7 +433,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
               new List<String>(uniqueQueryFieldNames),
               String.valueOf(rollup.lookupFieldOnLookupObject),
               '='
-            ) + '\nFOR UPDATE';
+            ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
           // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
           localLookupItems = Database.query(queryString);
         }
@@ -925,8 +925,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
         ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync) ||
         System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs() ||
-        this.calcItems?.size() == 1 &&
-        (this.rollupControl.ShouldRunSingleRecordsSynchronously__c || rollup.rollupControl.ShouldRunSingleRecordsSynchronously__c);
+        this.isSingleRecordSyncUpdate(rollup);
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
@@ -941,6 +940,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       this.overrideParentRollupControlValues(rollup.rollupControl);
     }
+  }
+
+  private Boolean isSingleRecordSyncUpdate(RollupAsyncProcessor roll) {
+    return this.calcItems?.size() == 1 &&
+      (this.rollupControl.ShouldRunSingleRecordsSynchronously__c || roll.rollupControl.ShouldRunSingleRecordsSynchronously__c);
   }
 
   private void overrideParentRollupControlValues(RollupControl__mdt specificControl) {
