@@ -9,7 +9,7 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void shouldSortFullRecalcsToEnd() {
+  static void shouldSortParentResetProcessorsToBeginning() {
     RollupAsyncProcessor actualProcessor = RollupAsyncProcessor.getProcessor(
       new Rollup.FilterResults(),
       Contact.Id,
@@ -23,14 +23,26 @@ private class RollupFullRecalcTests {
       null,
       null
     );
+    RollupParentResetProcessor resetProcessor = new RollupParentResetProcessor(
+      new List<Rollup__mdt>(),
+      null,
+      '',
+      new Set<Id>(),
+      Rollup.InvocationPoint.FROM_APEX
+    );
     List<RollupAsyncProcessor> processors = new List<RollupAsyncProcessor>{
+      resetProcessor,
       actualProcessor,
       actualProcessor,
-      new RollupParentResetProcessor(new List<Rollup__mdt>(), null, '', new Set<Id>(), Rollup.InvocationPoint.FROM_APEX)
+      resetProcessor,
+      actualProcessor,
+      resetProcessor
     };
     processors.sort();
 
     System.assertEquals(true, processors[0] instanceof RollupParentResetProcessor, processors[0]);
+    System.assertEquals(true, processors[1] instanceof RollupParentResetProcessor, processors[0]);
+    System.assertEquals(true, processors[2] instanceof RollupParentResetProcessor, processors[0]);
   }
 
   @IsTest
