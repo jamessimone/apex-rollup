@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Adding more formula tests, created Code Coverage plugin",
-            "versionNumber": "1.3.18.0",
+            "versionName": "Removing record locking from all but single record sync updates to combat issues from 1.3.18",
+            "versionNumber": "1.3.19.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -107,6 +107,7 @@
         "apex-rollup@1.3.16-0": "04t6g000008SiSdAAK",
         "Apex Rollup - Extra Code Coverage@0.0.1-0": "04t6g000008SiTHAA0",
         "apex-rollup@1.3.17-0": "04t6g000008SiTgAAK",
-        "apex-rollup@1.3.18-0": "04t6g000008SiUyAAK"
+        "apex-rollup@1.3.18-0": "04t6g000008SiUyAAK",
+        "apex-rollup@1.3.19-0": "04t6g000008SiVIAA0"
     }
 }
