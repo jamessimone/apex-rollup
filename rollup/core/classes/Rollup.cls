@@ -1827,6 +1827,14 @@ global without sharing virtual class Rollup {
     return queryFields;
   }
 
+  private static String getFullRecalcQueryString(List<Rollup__mdt> metas) {
+    List<String> orderByFields = new List<String>();
+    for (Rollup__mdt meta : metas) {
+      orderByFields.add(meta.LookupFieldOnCalcItem__c);
+    }
+    return '\nORDER BY ' + String.join(orderByFields, ',');
+  }
+
   private static List<Rollup> getFullRecalcRollups(List<FullRecalculationMetadata> fullRecalcMetas, InvocationPoint invokePoint) {
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
     for (Integer index = 0; index < fullRecalcMetas.size(); index++) {
@@ -1919,7 +1927,8 @@ global without sharing virtual class Rollup {
     } else if (shouldQueue) {
       return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint);
     } else {
-      return new RollupFullBatchRecalculator(queryString, invokePoint, matchingMeta, calcItemType, recordIds);
+      String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta)).replace('ALL ROWS', '');
+      return new RollupFullBatchRecalculator(queryWithOrderBy, invokePoint, matchingMeta, calcItemType, recordIds);
     }
   }
 
