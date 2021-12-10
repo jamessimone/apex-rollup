@@ -229,6 +229,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             this.isValidRelationshipField(condition.fieldName)
           ) {
             fieldNames.add(condition.fieldName);
+          } else if (RollupDateLiteral.isSoqlDateFunction(condition.fieldName)) {
+            fieldNames.add(getDateFunctionField(condition.fieldName));
           } else if (hasRelationshipField == false) {
             fieldNames.add(condition.fieldName);
           }
@@ -401,10 +403,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
       localClause = localClause.trim();
       String fieldName = localClause.substring(0, localClause.indexOf(' '));
-      if (RollupDateLiteral.isSoqlDateFunction(fieldName)) {
-        // TODO remove this after full support for SOQL date functions is introduced
-        return conditions;
-      }
+
       localClause = localClause.removeStart(fieldName).trim();
       String criteria = localClause.substring(0, localClause.indexOf(' ')).trim();
       String value = this.getValue(localClause.substringAfter(criteria));
@@ -592,11 +591,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     public Boolean equals(Object o) {
       SObject item = (SObject) o;
       Boolean isEqual = true;
+      Boolean hasOnlyOneValue = this.originalValues.size() == 1;
+      Boolean isDateFunction = RollupDateLiteral.isSoqlDateFunction(this.fieldName);
 
-      Object originalValue = this.getFieldValue(item, this.fieldName, this.sObjectType);
+      String fieldNameToUse = isDateFunction ? getDateFunctionField(this.fieldName) : this.fieldName;
+      Object originalValue = this.getFieldValue(item, fieldNameToUse, this.sObjectType);
       String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
 
-      if (this.originalValues.isEmpty() == false && RollupDateLiteral.isDateLiteral(this.originalValues[0])) {
+      if (hasOnlyOneValue && isDateFunction) {
+        return RollupDateLiteral.getFunction(this.fieldName, this.originalValues[0]).matches(originalValue, this.criteria);
+      } else if (hasOnlyOneValue && RollupDateLiteral.isDateLiteral(this.originalValues[0])) {
         return RollupDateLiteral.get(this.originalValues[0]).matches(originalValue, this.criteria);
       } else if (originalValue instanceof Decimal) {
         for (Integer index = 0; index < this.values.size(); index++) {
@@ -666,7 +670,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (item == null) {
         return '';
       }
-
       // handle compound fields separately
       Boolean hasField = sObjectType.getDescribe().fields.getMap().containsKey(fieldPath);
       if (fieldPath.contains('.') && hasField == false) {
@@ -847,5 +850,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
   private static String getCurrentTransactionId() {
     return stubRequestId != null ? stubRequestId : Request.getCurrent().getRequestId();
+  }
+
+  private static String getDateFunctionField(String field) {
+    return field.substringBetween('(', ')');
   }
 }

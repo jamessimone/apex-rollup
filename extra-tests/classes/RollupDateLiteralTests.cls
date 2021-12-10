@@ -49,6 +49,29 @@ private class RollupDateLiteralTests {
     }
   }
 
+  @IsTest
+  static void shouldProperlyDetectDateFunctionStrings() {
+    List<String> dateFunctions = new List<String>{
+      'CALENDAR_MONTH(CreatedDate)',
+      'CALENDAR_QUARTER(CreatedDate)',
+      'CALENDAR_YEAR(CreatedDate)',
+      'CALENDAR_YEAR(CreatedDate)',
+      'DAY_IN_MONTH(CreatedDate)',
+      'DAY_IN_WEEK(CreatedDate)',
+      'DAY_IN_YEAR(CreatedDate)',
+      'DAY_ONLY(CreatedDate)',
+      'FISCAL_MONTH(CreatedDate)',
+      'FISCAL_QUARTER(CreatedDate)',
+      'FISCAL_YEAR(CreatedDate)',
+      'HOUR_IN_DAY(CreatedDate)',
+      'WEEK_IN_MONTH(CreatedDate)',
+      'WEEK_IN_YEAR(CreatedDate)'
+    };
+    for (String dateFunction : dateFunctions) {
+      System.assertEquals(true, RollupDateLiteral.isSoqlDateFunction(dateFunction), 'Date function not detected properly: ' + dateFunction);
+    }
+  }
+
   // these tests are more or less in the order that the SOQL date literals appear within the corresponding Salesforce Developer doc page for them
   // though I have standardized last/current/next ordering since ... that just makes sense
 
@@ -458,11 +481,11 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisQuarter() {
     Period thisQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = THIS_QUARTER];
-    Date thisQuarterDate = thisQuarterPeriod.StartDate.addMonths(1);
+    Date thisQuarterDate = thisQuarterPeriod.StartDate;
     Datetime thisQuarterDatetime = Datetime.newInstanceGmt(thisQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisQuarter = RollupDateLiteral.get('THIS_QUARTER');
 
-    System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.StartDate, '='));
+    System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.StartDate, '='), thisQuarterPeriod.StartDate + ' | ' + thisQuarter);
     System.assertEquals(true, thisQuarter.matches(thisQuarterPeriod.EndDate, '='), thisQuarterPeriod.EndDate + ' | ' + thisQuarter);
     System.assertEquals(true, thisQuarter.matches(thisQuarterDate, '='), 'Date value should have matched: ' + thisQuarterDate + ' | ' + thisQuarter);
     System.assertEquals(true, thisQuarter.matches(thisQuarterDate.addDays(28), '='), 'Date was within: ' + thisQuarter);
@@ -1034,5 +1057,306 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '<='));
     System.assertNotEquals(true, nextNYears.matches(System.now().addYears(2), '<'));
     System.assertNotEquals(null, nextNYears.toString());
+  }
+
+  @IsTest
+  static void shouldWorkForCalendarMonth() {
+    Integer november = 11;
+    RollupDateLiteral calendarMonth = RollupDateLiteral.getFunction('CALENDAR_MONTH(CloseDate)', String.valueOf(november));
+    Date monthDate = Date.newInstance(2021, november, 1);
+    Date oneMonthAhead = monthDate.addMonths(1);
+    Date oneMonthBehind = monthDate.addMonths(-1);
+
+    System.assertEquals(true, calendarMonth.matches(monthDate, '='));
+    System.assertEquals(false, calendarMonth.matches(oneMonthAhead, '='));
+    System.assertEquals(false, calendarMonth.matches(oneMonthBehind, '='));
+    System.assertEquals(false, calendarMonth.matches(monthDate, '!='));
+
+    System.assertEquals(true, calendarMonth.matches(oneMonthAhead, '>'));
+    System.assertEquals(true, calendarMonth.matches(oneMonthBehind, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForCalendarYearFunction() {
+    Integer year = 2021;
+    RollupDateLiteral calendarYear = RollupDateLiteral.getFunction('CALENDAR_YEAR(CloseDate)', String.valueOf(year));
+    Date twentyTwentyOne = Date.newInstance(year, 12, 1);
+    Date oneYearAhead = twentyTwentyOne.addYears(1);
+    Date oneYearBehind = twentyTwentyOne.addYears(-1);
+
+    System.assertEquals(true, calendarYear.matches(twentyTwentyOne, '='));
+    System.assertEquals(false, calendarYear.matches(oneYearAhead, '='));
+    System.assertEquals(false, calendarYear.matches(oneYearBehind, '='));
+    System.assertEquals(false, calendarYear.matches(twentyTwentyOne, '!='));
+
+    System.assertEquals(true, calendarYear.matches(oneYearAhead, '>'));
+    System.assertEquals(true, calendarYear.matches(oneYearBehind, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForCalendarQuarterFunction() {
+    Integer secondQuarterMonth = 4;
+    RollupDateLiteral quarter = RollupDateLiteral.getFunction('CALENDAR_QUARTER(CloseDate)', '2');
+    Date secondQuarterDate = Date.newInstance(2021, secondQuarterMonth, 1);
+    Date oneQuarterAhead = secondQuarterDate.addMonths(3);
+    Date oneQuarterBehind = secondQuarterDate.addMonths(-1);
+
+    System.assertEquals(true, quarter.matches(secondQuarterDate, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterAhead, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='));
+    System.assertEquals(false, quarter.matches(secondQuarterDate, '!='));
+
+    System.assertEquals(true, quarter.matches(oneQuarterAhead, '>'));
+    System.assertEquals(true, quarter.matches(oneQuarterBehind, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForDayInWeekFunction() {
+    Date startOfWeek = System.today().toStartOfWeek();
+    Date secondDayInWeek = startOfWeek.addDays(1);
+    Date thirdDayInWeek = startOfWeek.addDays(2);
+    RollupDateLiteral dayInWeek = RollupDateLiteral.getFunction('DAY_IN_WEEK(CloseDate)', '2');
+
+    System.assertEquals(true, dayInWeek.matches(secondDayInWeek, '='));
+    System.assertEquals(false, dayInWeek.matches(startOfWeek, '='));
+    System.assertEquals(false, dayInWeek.matches(thirdDayInWeek, '='));
+    System.assertEquals(false, dayInWeek.matches(secondDayInWeek, '!='));
+
+    System.assertEquals(true, dayInWeek.matches(thirdDayInWeek, '>'));
+    System.assertEquals(true, dayInWeek.matches(startOfWeek, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForDayInYearFunction() {
+    Datetime startOfYear = Datetime.newInstanceGmt(System.today().year(), 1, 1);
+    Datetime secondDayInYear = startOfYear.addDays(1);
+    Datetime thirdDayInYear = startOfYear.addDays(2);
+    RollupDateLiteral dayInYear = RollupDateLiteral.getFunction('DAY_IN_YEAR(CloseDate)', '2');
+
+    System.assertEquals(true, dayInYear.matches(secondDayInYear, '='));
+    System.assertEquals(false, dayInYear.matches(startOfYear, '='));
+    System.assertEquals(false, dayInYear.matches(thirdDayInYear, '='));
+    System.assertEquals(false, dayInYear.matches(secondDayInYear, '!='));
+
+    System.assertEquals(true, dayInYear.matches(thirdDayInYear, '>'));
+    System.assertEquals(true, dayInYear.matches(startOfYear, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForDayOnlyFunction() {
+    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 3, 7);
+    Datetime oneDayBefore = comparisonDate.addDays(-1);
+    Datetime oneDayAfter = comparisonDate.addDays(1);
+    RollupDateLiteral dayOnly = RollupDateLiteral.getFunction('DAY_ONLY(CreatedDate)', '2020-03-07');
+
+    System.assertEquals(true, dayOnly.matches(comparisonDate, '='), dayOnly);
+    System.assertEquals(false, dayOnly.matches(oneDayBefore, '='));
+    System.assertEquals(false, dayOnly.matches(oneDayAfter, '='));
+    System.assertEquals(false, dayOnly.matches(comparisonDate, '!='));
+
+    System.assertEquals(true, dayOnly.matches(oneDayAfter, '>'));
+    System.assertEquals(true, dayOnly.matches(oneDayBefore, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForFiscalMonthFunction() {
+    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 4, 1);
+    Datetime oneQuarterBefore = comparisonDate.addMonths(-1);
+    Datetime oneQuarterAfter = comparisonDate.addMonths(4);
+    RollupDateLiteral fiscalMonth = RollupDateLiteral.getFunction('FISCAL_MONTH(CreatedDate)', '4');
+
+    System.assertEquals(true, fiscalMonth.matches(comparisonDate, '='), fiscalMonth);
+    System.assertEquals(false, fiscalMonth.matches(oneQuarterBefore, '='));
+    System.assertEquals(false, fiscalMonth.matches(oneQuarterAfter, '='));
+    System.assertEquals(false, fiscalMonth.matches(comparisonDate, '!='));
+
+    System.assertEquals(true, fiscalMonth.matches(oneQuarterAfter, '>'));
+    System.assertEquals(true, fiscalMonth.matches(oneQuarterBefore, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForFiscalQuarterFunction() {
+    // sort of a nightmare test - I apologize in advance
+    RollupDateLiteral quarter = RollupDateLiteral.getFunction('FISCAL_QUARTER(CloseDate)', '2');
+    Date quarterDate = Date.newInstance(2021, 4, 1);
+    Date oneQuarterAhead = quarterDate.addMonths(3);
+    Date oneQuarterBehind = quarterDate.addMonths(-1);
+
+    System.assertEquals(true, quarter.matches(quarterDate, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterAhead, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='));
+    System.assertEquals(false, quarter.matches(quarterDate, '!='));
+
+    System.assertEquals(true, quarter.matches(oneQuarterAhead, '>'));
+    System.assertEquals(true, quarter.matches(oneQuarterBehind, '<'));
+
+    quarter = RollupDateLiteral.getFunction('FISCAL_QUARTER(CloseDate)', '1');
+    quarterDate = Date.newInstance(2021, 1, 1);
+    oneQuarterAhead = quarterDate.addMonths(3);
+    oneQuarterBehind = quarterDate.addMonths(-1);
+
+    System.assertEquals(true, quarter.matches(quarterDate, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterAhead, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='));
+    System.assertEquals(false, quarter.matches(quarterDate, '!='));
+
+    System.assertEquals(true, quarter.matches(oneQuarterAhead, '>'));
+    // deviation - last quarter is 4
+    System.assertEquals(true, quarter.matches(oneQuarterBehind, '>'), quarter);
+    System.assertEquals(true, quarter.matches(oneQuarterBehind.addYears(-2), '>'), quarter);
+
+    quarter = RollupDateLiteral.getFunction('FISCAL_QUARTER(CloseDate)', '3');
+    quarterDate = Date.newInstance(2021, 7, 1);
+    oneQuarterAhead = quarterDate.addMonths(3);
+    oneQuarterBehind = quarterDate.addMonths(-1);
+
+    System.assertEquals(true, quarter.matches(quarterDate, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterAhead, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='));
+    System.assertEquals(false, quarter.matches(quarterDate, '!='));
+
+    System.assertEquals(true, quarter.matches(oneQuarterAhead, '>'));
+    System.assertEquals(true, quarter.matches(oneQuarterBehind, '<'));
+
+    quarter = RollupDateLiteral.getFunction('FISCAL_QUARTER(CloseDate)', '4');
+    quarterDate = Date.newInstance(2021, 10, 1);
+    oneQuarterAhead = quarterDate.addMonths(3);
+    oneQuarterBehind = quarterDate.addMonths(-1);
+
+    System.assertEquals(true, quarter.matches(quarterDate, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterAhead, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='));
+    System.assertEquals(false, quarter.matches(quarterDate, '!='));
+
+    // deviation - next quarter is 1 again
+    System.assertEquals(true, quarter.matches(oneQuarterAhead, '<'));
+    System.assertEquals(true, quarter.matches(oneQuarterBehind, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForFiscalYearFunction() {
+    RollupDateLiteral fiscalYear = RollupDateLiteral.getFunction('FISCAL_YEAR(CloseDate)', '2021');
+    Date twentyTwentyOne = Date.newInstance(2021, 12, 1);
+    Date oneYearAhead = twentyTwentyOne.addYears(1);
+    Date oneYearBehind = twentyTwentyOne.addYears(-1);
+
+    System.assertEquals(true, fiscalYear.matches(twentyTwentyOne, '='));
+    System.assertEquals(false, fiscalYear.matches(oneYearAhead, '='));
+    System.assertEquals(false, fiscalYear.matches(oneYearBehind, '='));
+    System.assertEquals(false, fiscalYear.matches(twentyTwentyOne, '!='));
+
+    System.assertEquals(true, fiscalYear.matches(oneYearAhead, '>'));
+    System.assertEquals(true, fiscalYear.matches(oneYearBehind, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForHourInDayFunction() {
+    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 1, 1, 4, 0, 0);
+    Datetime oneHourBefore = comparisonDate.addHours(-1);
+    Datetime oneHourAfter = comparisonDate.addHours(1);
+    RollupDateLiteral hourInDay = RollupDateLiteral.getFunction('HOUR_IN_DAY(CreatedDate)', '4');
+
+    System.assertEquals(true, hourInDay.matches(comparisonDate, '='), hourInDay);
+    System.assertEquals(false, hourInDay.matches(oneHourBefore, '='));
+    System.assertEquals(false, hourInDay.matches(oneHourAfter, '='));
+    System.assertEquals(false, hourInDay.matches(comparisonDate, '!='));
+
+    System.assertEquals(true, hourInDay.matches(oneHourAfter, '>'));
+    System.assertEquals(true, hourInDay.matches(oneHourBefore, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForWeekInMonthFunction() {
+    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 1, 1);
+    Datetime oneWeekBefore = comparisonDate.addDays(-7);
+    Datetime oneWeekAfter = comparisonDate.addDays(7);
+    RollupDateLiteral weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '1');
+
+    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+
+    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
+    // deviation - last week of the last month exceeds the first week of this month
+    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '>'));
+
+    comparisonDate = Datetime.newInstanceGmt(2020, 1, 8);
+    oneWeekBefore = comparisonDate.addDays(-7);
+    oneWeekAfter = comparisonDate.addDays(7);
+    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '2');
+
+    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+
+    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
+    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+
+    comparisonDate = Datetime.newInstanceGmt(2020, 1, 15);
+    oneWeekBefore = comparisonDate.addDays(-7);
+    oneWeekAfter = comparisonDate.addDays(7);
+    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '3');
+
+    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+
+    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
+    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+
+    // ensure february is handled correctly
+    comparisonDate = Datetime.newInstanceGmt(2020, 2, 28);
+    oneWeekBefore = comparisonDate.addDays(-7);
+    oneWeekAfter = comparisonDate.addDays(7);
+    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '4');
+
+    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+
+    // deviation - week after is now week one of the next month
+    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
+    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+
+    comparisonDate = Datetime.newInstanceGmt(2020, 12, 29);
+    oneWeekBefore = comparisonDate.addDays(-7);
+    oneWeekAfter = comparisonDate.addDays(7);
+    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '5');
+
+    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+
+    // deviation - week after is now week one of the next month
+    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
+    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+  }
+
+  @IsTest
+  static void shouldWorkForWeekInYearFunction() {
+    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 4, 1);
+    Datetime oneWeekBefore = comparisonDate.addDays(-7);
+    Datetime oneWeekAfter = comparisonDate.addDays(7);
+    RollupDateLiteral weekInYear = RollupDateLiteral.getFunction('WEEK_IN_YEAR(CreatedDate)', '14');
+
+    System.assertEquals(true, weekInYear.matches(comparisonDate, '='), weekInYear);
+    System.assertEquals(false, weekInYear.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInYear.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInYear.matches(comparisonDate, '!='));
+
+    comparisonDate = Datetime.newInstanceGmt(2020, 12, 22);
+    oneWeekBefore = comparisonDate.addDays(-7);
+    oneWeekAfter = comparisonDate.addDays(7);
+    weekInYear = RollupDateLiteral.getFunction('WEEK_IN_YEAR(CreatedDate)', '52');
+
+    System.assertEquals(true, weekInYear.matches(comparisonDate, '='), weekInYear);
+    System.assertEquals(false, weekInYear.matches(oneWeekBefore, '='));
+    System.assertEquals(false, weekInYear.matches(oneWeekAfter, '='));
+    System.assertEquals(false, weekInYear.matches(comparisonDate, '!='));
   }
 }

@@ -689,6 +689,13 @@ private class RollupEvaluatorTests {
     System.assertEquals(new List<String>{ 'Owner.Name' }, eval.getQueryFields());
   }
 
+  @IsTest
+  static void shouldReturnDateFunctionFields() {
+    String queryString = 'HOUR_IN_DAY(CreatedDate) = 15';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(queryString, Account.SObjectType);
+    System.assertEquals(new List<String>{ 'CreatedDate' }, eval.getQueryFields());
+  }
+
   @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
   @IsTest
   static void shouldThrowExceptionForImproperlyEnteredWhereClause() {
@@ -1016,16 +1023,25 @@ private class RollupEvaluatorTests {
   static void shouldProperlyEvaluateDateLiteral() {
     String whereClause = 'CloseDate = THIS_YEAR';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
-    System.assertEquals(true, eval.matches(new Opportunity(CloseDate = System.today().addDays(-1))));
+    System.assertEquals(true, eval.matches(new Opportunity(CloseDate = System.today())));
     System.assertEquals(false, eval.matches(new Opportunity(CloseDate = System.today().addYears(-1))));
   }
 
   @IsTest
-  static void shouldStripOutDateFunctionsFromSelectStatements() {
-    String whereClause = 'CALENDAR_YEAR(CreatedDate) = ' + System.today().year();
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointAddress.SObjectType);
-    List<String> queryFields = eval.getQueryFields();
-    System.assertEquals(true, queryFields.isEmpty(), 'Query fields should have been empty but contained: ' + queryFields);
+  static void shouldProperlyEvaluateDateFunction() {
+    String whereClause = 'HOUR_IN_DAY(ReminderDateTime) = 5';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
+    Time fifthHour = Time.newInstance(5, 0, 0, 0);
+    Datetime fifthHourDt = Datetime.newInstanceGmt(System.today(), fifthHour);
+    System.assertEquals(true, eval.matches(new Task(ReminderDateTime = fifthHourDt)));
+  }
+
+  @IsTest
+  static void shouldProperlyEvaluateLiteralDateFunctions() {
+    Date comparisonDate = Date.newInstance(2020, 3, 7);
+    String whereClause = 'DAY_ONLY(ReminderDateTime) = 2020-03-07';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
+    System.assertEquals(true, eval.matches(new Task(ReminderDateTime = Datetime.newInstanceGmt(comparisonDate, Time.newInstance(0, 0, 0, 0)))));
   }
 
   @IsTest

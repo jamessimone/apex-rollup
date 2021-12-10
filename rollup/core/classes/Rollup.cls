@@ -1927,7 +1927,7 @@ global without sharing virtual class Rollup {
     } else if (shouldQueue) {
       return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint);
     } else {
-      String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta)).replace('ALL ROWS', '');
+      String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta));
       return new RollupFullBatchRecalculator(queryWithOrderBy, invokePoint, matchingMeta, calcItemType, recordIds);
     }
   }
