@@ -4,8 +4,8 @@ public without sharing abstract class RollupDateLiteral {
     '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS):\\s?\\d*'
   );
   private static final Pattern DATE_FUNCTION_PATTERN = Pattern.compile(
-    '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH' +
-    '|FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
+    '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|' +
+    'FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
   );
 
   private static final Time START_TIME {
@@ -90,7 +90,21 @@ public without sharing abstract class RollupDateLiteral {
           'THIS_FISCAL_YEAR' => ThisFiscalYearLiteral.class,
           'NEXT_FISCAL_YEAR' => NextFiscalYearLiteral.class,
           'LAST_N_FISCAL_YEARS' => LastNFiscalYearsLiteral.class,
-          'NEXT_N_FISCAL_YEARS' => NextNFiscalYearsLiteral.class
+          'NEXT_N_FISCAL_YEARS' => NextNFiscalYearsLiteral.class,
+          // Functions
+          'CALENDAR_MONTH(' => CalendarMonthFunctionLiteral.class,
+          'CALENDAR_YEAR(' => CalendarYearFunctionLiteral.class,
+          'CALENDAR_QUARTER(' => CalendarQuarterFunctionLiteral.class,
+          'DAY_IN_MONTH(' => DayInMonthFunctionLiteral.class,
+          'DAY_IN_WEEK(' => DayInWeekFunctionLiteral.class,
+          'DAY_IN_YEAR(' => DayInYearFunctionLiteral.class,
+          'DAY_ONLY(' => DayOnlyFunctionLiteral.class,
+          'FISCAL_MONTH(' => FiscalMonthFunctionLiteral.class,
+          'FISCAL_QUARTER(' => FiscalQuarterFunctionLiteral.class,
+          'FISCAL_YEAR(' => FiscalYearFunctionLiteral.class,
+          'HOUR_IN_DAY(' => HourInDayFunctionLiteral.class,
+          'WEEK_IN_MONTH(' => WeekInMonthFunctionLiteral.class,
+          'WEEK_IN_YEAR(' => WeekInYearFunctionLiteral.class
         };
       }
       return KEY_TO_DATE_LITERAL;
@@ -112,6 +126,10 @@ public without sharing abstract class RollupDateLiteral {
     return literal;
   }
 
+  public static RollupDateLiteral getFunction(String key, String val) {
+    return getLazyLoadedLiteral(key.substringBefore('(') + '(', val);
+  }
+
   private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey, String possibleDynamicValue) {
     /**
      * neatly solves a thorny issue - we want to cache the RollupDateLiteral instances,
@@ -124,9 +142,9 @@ public without sharing abstract class RollupDateLiteral {
     if (literal instanceof Type) {
       Type literalType = (Type) literal;
       literal = (RollupDateLiteral) literalType.newInstance();
-      ((RollupDateLiteral) literal).setDynamicValue(possibleDynamicValue);
       KEY_TO_DATE_LITERAL.put(dictionaryKey, literal);
     }
+    ((RollupDateLiteral) literal).setDynamicValue(possibleDynamicValue);
     return (RollupDateLiteral) literal;
   }
 
@@ -147,33 +165,57 @@ public without sharing abstract class RollupDateLiteral {
     return fiscalInfo;
   }
 
-  private static Integer getCurrentQuarter() {
-    Integer currentQuarterStartingMonth;
-    switch on System.today().month() {
+  private static Integer getQuarter(Integer month) {
+    Integer calendarQuarter;
+    switch on month {
       when 1, 2, 3 {
-        currentQuarterStartingMonth = 1;
+        calendarQuarter = 1;
       }
       when 4, 5, 6 {
-        currentQuarterStartingMonth = 4;
+        calendarQuarter = 2;
       }
       when 7, 8, 9 {
-        currentQuarterStartingMonth = 7;
+        calendarQuarter = 3;
       }
       when else {
-        currentQuarterStartingMonth = 10;
+        calendarQuarter = 4;
       }
     }
-    return currentQuarterStartingMonth;
+    return calendarQuarter;
+  }
+
+  private static Integer getCurrentQuarter() {
+    return getQuarter(System.today().month());
+  }
+
+  private static Integer getCurrentQuarterStartMonth() {
+    Integer currentQuarter = getCurrentQuarter();
+    Integer quarterStartMonth;
+    switch on currentQuarter {
+      when 1 {
+        quarterStartMonth = 1;
+      }
+      when 2 {
+        quarterStartMonth = 4;
+      }
+      when 3 {
+        quarterStartMonth = 7;
+      }
+      when else {
+        quarterStartMonth = 10;
+      }
+    }
+    return quarterStartMonth;
   }
 
   private static Date getPriorQuarterStart() {
-    Integer currentQuarterStartMonth = getCurrentQuarter();
+    Integer currentQuarterStartMonth = getCurrentQuarterStartMonth();
     Boolean isFirstQuarter = currentQuarterStartMonth == 1;
     return Date.newInstance(System.today().year() - (isFirstQuarter ? 1 : 0), isFirstQuarter ? 10 : (currentQuarterStartMonth - 3), 1);
   }
 
   private static Date getNextQuarterStart() {
-    Integer currentQuarterStartMonth = getCurrentQuarter();
+    Integer currentQuarterStartMonth = getCurrentQuarterStartMonth();
     Integer nextQuarterStartMonth = currentQuarterStartMonth == 10 ? 1 : currentQuarterStartMonth + 3;
     Integer yearForNextQuarterOffset = nextQuarterStartMonth == 1 ? 1 : 0;
     return Date.newInstance(System.today().year() + yearForNextQuarterOffset, nextQuarterStartMonth, 1);
@@ -206,7 +248,7 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   public virtual override String toString() {
-    return this.ref.format();
+    return this.ref?.format();
   }
 
   protected virtual Boolean isEqualTo(Datetime val) {
@@ -361,7 +403,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.bound = Datetime.newInstanceGmt(System.today(), END_TIME); // includes all of today
-      this.ref = START_OF_TODAY.addDays(-dateRange);
+      this.ref = Datetime.newInstanceGmt(START_OF_TODAY.addDays(-(dateRange + 1)).dateGmt(), END_TIME);
     }
   }
 
@@ -449,7 +491,7 @@ public without sharing abstract class RollupDateLiteral {
     }
 
     protected virtual Date getThisQuarterStart() {
-      return Date.newInstance(System.today().year(), getCurrentQuarter(), 1);
+      return Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1);
     }
   }
 
@@ -650,6 +692,174 @@ public without sharing abstract class RollupDateLiteral {
   private class NextNFiscalYearsLiteral extends NextNYearsLiteral {
     protected override Date getStartOfNextYear() {
       return FISCAL_INFO.FiscalYearStartDate.addYears(1);
+    }
+  }
+
+  /**
+   * Function Section.
+   */
+
+  private abstract class FunctionLiteral extends RollupDateLiteral {
+    protected Integer bound;
+
+    public override String toString() {
+      return String.valueOf(this.bound);
+    }
+
+    protected override void setDynamicValue(String num) {
+      this.bound = Integer.valueOf(num);
+    }
+
+    protected abstract Integer getComparisonNumber(Datetime val);
+
+    protected override Boolean isEqualTo(Datetime val) {
+      return this.bound == this.getComparisonNumber(val);
+    }
+    protected override Boolean isGreaterThan(Datetime val) {
+      return this.bound < this.getComparisonNumber(val);
+    }
+    protected override Boolean isLessThan(Datetime val) {
+      return this.bound > this.getComparisonNumber(val);
+    }
+  }
+
+  private class CalendarMonthFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return val.monthGmt();
+    }
+  }
+
+  private class CalendarYearFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return val.yearGmt();
+    }
+  }
+
+  private class CalendarQuarterFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return getQuarter(val.monthGmt());
+    }
+  }
+
+  private class DayInMonthFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return val.dayGmt();
+    }
+  }
+
+  private class DayInWeekFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      Date startOfWeek = val.dateGmt().toStartOfWeek();
+      Integer daysBetween = startOfWeek.daysBetween(val.dateGmt());
+      return daysBetween + 1;
+    }
+  }
+
+  private class DayInYearFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return val.dayOfYearGmt();
+    }
+  }
+
+  // there's always an exception to the rule!
+  /** Returns a Date representing the day portion of a DateTime field. */
+  private class DayOnlyFunctionLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String dateString) {
+      this.ref = Datetime.newInstanceGmt(Date.valueOf(dateString), START_TIME);
+      this.bound = this.ref;
+    }
+  }
+
+  private class FiscalMonthFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      Integer yearDiff = FISCAL_INFO.FiscalYearStartDate.year() - val.yearGmt();
+      if (yearDiff > 0) {
+        val = val.addYears(yearDiff);
+      }
+      Integer monthsBetween = FISCAL_INFO.FiscalYearStartDate.monthsBetween(val.dateGmt()) + 1;
+      return getFiscalMonthsOffset(monthsBetween);
+    }
+  }
+
+  private static Integer getFiscalMonthsOffset(Integer monthsSinceFiscalStart) {
+    if (Math.abs(monthsSinceFiscalStart) > 12) {
+      monthsSinceFiscalStart = Math.mod(monthsSinceFiscalStart, 12);
+    }
+    return monthsSinceFiscalStart;
+  }
+
+  private class FiscalQuarterFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      Integer fiscalQuarter;
+      Integer monthsSinceFiscalStart = getFiscalMonthsOffset(FISCAL_INFO.FiscalYearStartDate.monthsBetween(val.dateGmt()) + 1);
+      if (monthsSinceFiscalStart == 0) {
+        monthsSinceFiscalStart = 12;
+      }
+      switch on monthsSinceFiscalStart {
+        when 1, 2, 3, -10, -11, -12 {
+          fiscalQuarter = 1;
+        }
+        when 4, 5, 6, -7, -8, -9 {
+          fiscalQuarter = 2;
+        }
+        when 7, 8, 9, -4, -5, -6 {
+          fiscalQuarter = 3;
+        }
+        when 10, 11, 12, -1, -2, -3 {
+          fiscalQuarter = 4;
+        }
+        when else {
+          RollupLogger.Instance.log('unable to find fiscal quarter:', monthsSinceFiscalStart, LoggingLevel.ERROR);
+        }
+      }
+      return fiscalQuarter;
+    }
+  }
+
+  private class FiscalYearFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return val.monthGmt() >= FISCAL_INFO.FiscalYearStartDate.month() &&
+        val.yearGmt() > FISCAL_INFO.FiscalYearStartDate.year()
+        ? val.yearGmt() + 1
+        : val.yearGmt();
+    }
+  }
+
+  private class HourInDayFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return val.hourGmt();
+    }
+  }
+
+  private class WeekInMonthFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return getWeekNumber(val.dayGmt());
+    }
+  }
+
+  private static Integer getWeekNumber(Integer dayNumber) {
+    Integer currentWeek;
+    if (dayNumber <= 7) {
+      currentWeek = 1;
+    } else if (dayNumber > 7 && dayNumber <= 14) {
+      currentWeek = 2;
+    } else if (dayNumber > 14 && dayNumber <= 21) {
+      currentWeek = 3;
+    } else if (dayNumber > 21 && dayNumber <= 28) {
+      currentWeek = 4;
+    } else {
+      currentWeek = 5;
+    }
+    return currentWeek;
+  }
+
+  /**
+   * Week 1 is the first week that has at least 4 days in the current year - yikes!
+   * There can also be a week 53. The sadness.
+   */
+  private class WeekInYearFunctionLiteral extends FunctionLiteral {
+    protected override Integer getComparisonNumber(Datetime val) {
+      return Integer.valueOf(val.format('ww'));
     }
   }
 }
