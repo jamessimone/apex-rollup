@@ -663,6 +663,7 @@ private class RollupFullRecalcTests {
       )
     };
 
+    // no start/stopTest since singular parent recalc entry point _should_ run sync
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
     acc = [SELECT Name, AccountNumber FROM Account];
     System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');

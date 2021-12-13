@@ -224,6 +224,9 @@ public without sharing class RollupCalcItemReplacer {
     Map<String, SObjectField> fieldNameToFieldToken = calcItems[0].getSObjectType().getDescribe().fields.getMap();
     for (SObject calcItem : calcItems) {
       SObject calcItemWIthUpdatedParentField = idToCalcItemsWithParentFields.get(calcItem.Id);
+      if (calcItemWIthUpdatedParentField == null) {
+        continue;
+      }
       for (String fieldName : calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().keySet()) {
         if (fieldNameToFieldToken.containsKey(fieldName)) {
           DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName).getDescribe();

@@ -46,6 +46,15 @@ public without sharing class RollupRelationshipFieldFinder {
   private class CombinedHierarchy {
     private List<Id> oldHierarchy;
     private List<Id> currentHierarchy;
+
+    public Boolean hasEntries() {
+      return this.currentHierarchy?.size() > 0 && this.oldHierarchy?.size() > 0;
+    }
+
+    public Boolean isUltimatelyReparented() {
+      // the last Ids present in the chain have to match, otherwise it's a reparenting
+      return this.currentHierarchy[this.currentHierarchy.size() - 1] != this.oldHierarchy[this.oldHierarchy.size() - 1];
+    }
   }
 
   public class Traversal {
@@ -113,10 +122,8 @@ public without sharing class RollupRelationshipFieldFinder {
         return true;
       }
       CombinedHierarchy combinedHierarchy = this.getHierarchy(record, relationshipFieldName);
-      if (combinedHierarchy.currentHierarchy?.size() > 0 && combinedHierarchy.oldHierarchy?.size() > 0) {
-        // the last Ids present in the chain have to match, otherwise it's a reparenting
-        return combinedHierarchy.currentHierarchy[combinedHierarchy.currentHierarchy.size() - 1] !=
-          combinedHierarchy.oldHierarchy[combinedHierarchy.oldHierarchy.size() - 1];
+      if (combinedHierarchy.hasEntries()) {
+        return combinedHierarchy.isUltimatelyReparented();
       } else {
         // if there was only one hop, we can just compare the Ids. This comparison has to be last
         // because it's possible (as explained below, where the hierarchy is created)

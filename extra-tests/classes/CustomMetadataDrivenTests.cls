@@ -90,7 +90,7 @@ private class CustomMetadataDrivenTests {
   }
 
   @IsTest
-  static void shouldRunCorrectlyForGrandparentReparenting() {
+  static void shouldRunCorrectlyForGreatGrandparentReparenting() {
     // TODO - fix this test
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');

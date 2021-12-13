@@ -59,7 +59,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     public FullRecalcProcessor(String queryString, InvocationPoint invokePoint, List<Rollup__mdt> rollupInfo, SObjectType calcItemType, Set<Id> recordIds) {
       super(invokePoint);
       this.isFullRecalc = true;
-      this.isNoOp = false;
+      this.isNoOp = true; // consumers should either opt out of this or have it be set properly downstream
       this.calcItemType = calcItemType;
       this.queryString = queryString;
       this.rollupInfo = rollupInfo;
@@ -1157,11 +1157,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         String.isNotBlank(priorLookup) && roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName()) == true
       ) {
         Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName());
-        RollupLogger.Instance.log('current old lookup id:', oldLookupId, LoggingLevel.ERROR);
-
         oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, roll);
         this.populateOldLookupItems(oldLookupId, oldCalcItem, oldLookupItems);
-        RollupLogger.Instance.log('old lookup items:', oldLookupItems, LoggingLevel.ERROR);
       }
     }
   }
@@ -1227,7 +1224,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (oldLookupItems.isEmpty()) {
       return;
     }
-    RollupLogger.Instance.log('checking reparented records for:', lookupItems, LoggingLevel.ERROR);
     for (SObject lookupRecord : lookupItems) {
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
         continue;
