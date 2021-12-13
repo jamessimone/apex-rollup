@@ -420,14 +420,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         List<SObject> localLookupItems;
         if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
           localLookupItems = rollup.traversal.getAllParents();
-          // winnow the list, which would otherwise occur because of specifically only querying for the objIds passed in
-          for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
-            SObject lookupItem = localLookupItems[index];
-            String key = (String) lookupItem.get(rollup.lookupFieldOnLookupObject);
-            if (objIds.contains(key) == false) {
-              localLookupItems.remove(index);
-            }
-          }
         } else {
           String queryString =
             RollupQueryBuilder.Current.getQuery(
@@ -1161,19 +1153,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       if (newLookup != priorLookup && roll.traversal == null) {
         this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-      } else if (roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName()) == true) {
-        // slightly different, but with the same end result
-        // note that when the reparented record is not null
-        // it should be the same as the current "lookupRecord"
-        SObject reparentedRecord = roll.traversal.retrieveParent(oldCalcItem.Id);
-        if (reparentedRecord != null) {
-          priorLookup = (String) reparentedRecord.get(roll.lookupFieldOnLookupObject);
-          if (String.isNotBlank(priorLookup)) {
-            Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName());
-            oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, roll);
-            this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-          }
-        }
+      } else if (
+        String.isNotBlank(priorLookup) && roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName()) == true
+      ) {
+        Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName());
+        RollupLogger.Instance.log('current old lookup id:', oldLookupId, LoggingLevel.ERROR);
+
+        oldCalcItem = this.reassignOldCalcItemIfValueChanged(oldLookupId, oldCalcItem, roll);
+        this.populateOldLookupItems(oldLookupId, oldCalcItem, oldLookupItems);
+        RollupLogger.Instance.log('old lookup items:', oldLookupItems, LoggingLevel.ERROR);
       }
     }
   }
@@ -1236,6 +1224,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll,
     RollupSObjectUpdater updater
   ) {
+    if (oldLookupItems.isEmpty()) {
+      return;
+    }
+    RollupLogger.Instance.log('checking reparented records for:', lookupItems, LoggingLevel.ERROR);
     for (SObject lookupRecord : lookupItems) {
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
         continue;

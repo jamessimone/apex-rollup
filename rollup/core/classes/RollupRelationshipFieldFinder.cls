@@ -129,7 +129,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
     public Id getOldLookupId(SObject record, String relationshipFieldName) {
       CombinedHierarchy combinedHierarchy = this.getHierarchy(record, relationshipFieldName);
-      return combinedHierarchy.oldHierarchy?.isEmpty() == false ? combinedHierarchy.currentHierarchy[0] : null;
+      return combinedHierarchy.oldHierarchy?.isEmpty() == false ? combinedHierarchy.oldHierarchy[combinedHierarchy.oldHierarchy.size() - 1] : null;
     }
 
     private CombinedHierarchy getHierarchy(SObject record, String relationshipFieldName) {
@@ -261,9 +261,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private SObject getPotentialUltimateParent(SObject childRecord) {
     Map<String, Schema.SObjectField> fieldMap = childRecord.getSObjectType().getDescribe().fields.getMap();
-    this.currentRelationshipName = this.relationshipParts.size() == 1
-      ? this.relationshipParts[0]
-      : this.currentRelationshipName;
+    this.currentRelationshipName = this.relationshipParts.size() == 1 ? this.relationshipParts[0] : this.currentRelationshipName;
     SObjectField lookupField = this.getField(fieldMap, this.currentRelationshipName);
     String relationshipName = lookupField.getDescribe().getRelationshipName();
     if (childRecord.get(this.metadata.UltimateParentLookup__c) != null && childRecord.getPopulatedFieldsAsMap().containsKey(relationshipName)) {

@@ -91,6 +91,7 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldRunCorrectlyForGrandparentReparenting() {
+    // TODO - fix this test
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
@@ -142,5 +143,34 @@ private class CustomMetadataDrivenTests {
     update app;
 
     System.assert(true, 'Should make it here (validate update works with Trigger.oldMap)');
+  }
+
+  @isTest
+  public static void shouldRecalcRollupToGrandparentWhenChildIsReparented() {
+    // relies on extra-tests\customMetadata\Rollup.AmountFromChildrenToGrandparent.md-meta.xml
+    RollupGrandparent__c grandparentOne = new RollupGrandparent__c(AmountfromChildren__c = 0);
+    RollupGrandparent__c grandparentTwo = new RollupGrandparent__c(AmountfromChildren__c = 0);
+    insert new List<RollupGrandparent__c>{ grandparentOne, grandparentTwo };
+
+    RollupParent__c parentOne = new RollupParent__c(RollupGrandparent__c = grandparentOne.Id);
+    RollupParent__c parentTwo = new RollupParent__c(RollupGrandparent__c = grandparentTwo.Id);
+    insert new List<RollupParent__c>{ parentOne, parentTwo };
+
+    RollupChild__c child = new RollupChild__c(RollupParent__c = parentOne.Id, NumberField__c = 5.00);
+    insert child;
+
+    Test.startTest();
+    child.RollupParent__c = parentTwo.Id;
+    update child;
+    Test.stopTest();
+
+    child = [SELECT NumberField__c, RollupParent__r.RollupGrandparent__c FROM RollupChild__c WHERE Id = :child.Id];
+    System.assertEquals(grandparentTwo.Id, child.RollupParent__r.RollupGrandparent__c);
+
+    grandparentOne = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentOne.Id];
+    System.assertEquals(0, grandparentOne.AmountfromChildren__c);
+
+    grandparentTwo = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentTwo.Id];
+    System.assertEquals(child.NumberField__c, grandparentTwo.AmountfromChildren__c);
   }
 }
