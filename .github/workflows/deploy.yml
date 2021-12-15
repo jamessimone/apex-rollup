@@ -73,17 +73,9 @@ jobs:
         run: |
           rm coverage/ -rf
 
-      # Install Salesforce CLI
-      - name: Install Salesforce CLI
-        run: |
-          wget https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz
-          mkdir sfdx-cli
-          tar xJf sfdx-linux-amd64.tar.xz -C sfdx-cli --strip-components 1
-          ./sfdx-cli/install
-
       - name: Install & run SFDX Scanner
         run: |
-          sfdx plugins:install @salesforce/sfdx-scanner
+          npx sfdx plugins:install @salesforce/sfdx-scanner
           npm run scan
 
       # Store secret for dev hub

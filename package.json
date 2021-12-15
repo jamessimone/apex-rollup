@@ -23,7 +23,8 @@
     "husky": "latest",
     "lint-staged": "latest",
     "prettier-plugin-apex": "latest",
-    "prettier": "latest"
+    "prettier": "latest",
+    "sfdx-cli": "latest"
   },
   "keywords": [
     "salesforce",

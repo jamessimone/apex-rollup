@@ -50,8 +50,8 @@ function Get-Latest-Package-Id {
 }
 
 if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
-  sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
-  sfdx force:config:set defaultdevhubusername=packaging-org
+  npx sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
+  npx sfdx force:config:set defaultdevhubusername=packaging-org
 } else {
   throw 'No packaging auth info!'
 }
@@ -95,7 +95,7 @@ if($currentBranch -eq "main") {
   Write-Output "Promoting package version"
   $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
   try {
-    sfdx force:package:version:promote -p $currentPackageVersionId -n
+    npx sfdx force:package:version:promote -p $currentPackageVersionId -n
   } catch {
     # Make the assumption that the only reason "promote" would fail is if an unrelated change (like changing this script)
     # triggered a build with an already-promoted package version
@@ -104,7 +104,7 @@ if($currentBranch -eq "main") {
   # main is a push-protected branch; only create new package versions as part of PRs against main
   Write-Output "Creating new package version"
 
-  $packageVersionCreateResult = sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories[0].path -x -w 30 -c --json | ConvertFrom-Json
+  $packageVersionCreateResult = npx sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories[0].path -x -w 30 -c --json | ConvertFrom-Json
   git add ./sfdx-project.json
 
   $currentPackageVersionId = $packageVersionCreateResult.result.SubscriberPackageVersionId
