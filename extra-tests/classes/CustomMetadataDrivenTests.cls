@@ -115,8 +115,8 @@ private class CustomMetadataDrivenTests {
     update new List<ApplicationLog__c>{ child, secondChild };
     Test.stopTest();
 
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+    // Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    // Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
 
     System.assert(true, 'Made it here - TODO, fix the below asserts');
     // System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
