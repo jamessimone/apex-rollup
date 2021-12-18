@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.3.20",
+  "version": "1.3.21",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -23,7 +23,8 @@
     "husky": "latest",
     "lint-staged": "latest",
     "prettier-plugin-apex": "latest",
-    "prettier": "latest"
+    "prettier": "latest",
+    "sfdx-cli": "latest"
   },
   "keywords": [
     "salesforce",

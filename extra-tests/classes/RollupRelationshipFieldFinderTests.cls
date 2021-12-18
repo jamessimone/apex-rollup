@@ -60,11 +60,7 @@ private class RollupRelationshipFieldFinderTests {
 
     parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id];
     User expectedUser = (User) RollupTestUtils.queryRecord(parent.OwnerId);
-    System.assertEquals(
-      expectedUser,
-      traversal.retrieveParent(cpa.Id),
-      'User should have been retrieved correctly!'
-    );
+    System.assertEquals(expectedUser, traversal.retrieveParent(cpa.Id), 'User should have been retrieved correctly!');
   }
 
   @IsTest
@@ -123,7 +119,7 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cpas);
 
     System.assertEquals(false, traversal.isUltimatelyReparented(cpa, 'ParentId'), 'Should not report false positive!');
-    System.assertEquals(intermediateTwo.Id, traversal.getOldLookupId(cpa, 'ParentId'));
+    System.assertEquals(intermediateTwo.OwnerId, traversal.getOldLookupId(cpa, 'ParentId'));
 
     finder = new RollupRelationshipFieldFinder(
       control,
@@ -242,7 +238,9 @@ private class RollupRelationshipFieldFinderTests {
           parentOne.Name +
           '\' OR Parent.AccountNumber = \'' +
           parentOne.AccountNumber +
-          '\' OR Parent.Name = \'' + parentThree.Name + '\') AND Parent.Name != \'' +
+          '\' OR Parent.Name = \'' +
+          parentThree.Name +
+          '\') AND Parent.Name != \'' +
           parentTwo.Name +
           '\''
       ),
@@ -317,11 +315,7 @@ private class RollupRelationshipFieldFinderTests {
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
-      new Rollup__mdt(
-        RollupToUltimateParent__c = true,
-        UltimateParentLookup__c = 'ParentId',
-        LookupFieldOnCalcItem__c = 'AccountId'
-      ),
+      new Rollup__mdt(RollupToUltimateParent__c = true, UltimateParentLookup__c = 'ParentId', LookupFieldOnCalcItem__c = 'AccountId'),
       new Set<String>{ 'Name', 'Id' },
       Account.SObjectType,
       new Map<Id, SObject>()

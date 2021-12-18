@@ -45,7 +45,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     return RollupFullBatchRecalculator.class.getName();
   }
 
-  protected override String startAsyncWork() {
+  protected virtual override String startAsyncWork() {
     return this.startBatchProcessor();
   }
 

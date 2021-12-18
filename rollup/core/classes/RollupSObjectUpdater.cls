@@ -69,7 +69,7 @@ public without sharing virtual class RollupSObjectUpdater {
         this.fillDispatcher(dispatchers, pluginParameter.Value__c);
       }
 
-      RollupLogger.Instance.log('dispatching updated records to: ' + this.getLogString(dispatchers), LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('dispatching updated records to: ' + this.getLogString(dispatchers), LoggingLevel.FINE);
       for (IDispatcher dispatcher : dispatchers) {
         dispatcher.dispatch(updatedRecords);
       }

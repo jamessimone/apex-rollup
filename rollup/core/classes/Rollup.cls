@@ -411,18 +411,7 @@ global without sharing virtual class Rollup {
       }
     }
 
-    List<Rollup> processors = new List<Rollup>();
-    for (SObjectType childType : childToMetaWrapper.keySet()) {
-      RollupMetadata metaWrapper = childToMetaWrapper.get(childType);
-      String queryString = RollupQueryBuilder.Current.getQuery(childType, new List<String>(metaWrapper.queryFields), 'Id', '!=', metaWrapper.whereClause);
-      Rollup fullRecalcRoll = buildFullRecalcRollup(metaWrapper.metadata, amountOfCalcItems, queryString, recordIds, childType, localInvokePoint);
-      setControlToSyncForSingularParentRecalcs(fullRecalcRoll.rollupControl, localInvokePoint);
-      fullRecalcRoll.queryCount = metaWrapper.recordCount;
-      processors.add(fullRecalcRoll);
-    }
-
-    RollupLogger.Instance.log('bulk full recalc starting for:', processors, LoggingLevel.DEBUG);
-    RollupLogger.Instance.save();
+    List<Rollup> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
     return batch(processors, localInvokePoint);
   }
 
@@ -448,7 +437,6 @@ global without sharing virtual class Rollup {
       new List<FullRecalculationMetadata>{ new FullRecalculationMetadata(metadata, wrapper, getSObjectFromName(metadata.CalcItem__c).getSObjectType()) },
       InvocationPoint.FROM_LWC
     )[0];
-    RollupLogger.Instance.save();
     return fullRecalc?.runCalc();
   }
 
@@ -1864,6 +1852,13 @@ global without sharing virtual class Rollup {
       typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
     }
 
+    return transformWrappedMetadataToFullRecalcRollups(typeToWrappedMeta, invokePoint);
+  }
+
+  private static List<Rollup> transformWrappedMetadataToFullRecalcRollups(
+    Map<SObjectType, RollupMetadata> typeToWrappedMeta,
+    InvocationPoint localInvokePoint
+  ) {
     final Integer maxQueryLength = 100000;
     List<Rollup> fullRecalcRollups = new List<Rollup>();
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
@@ -1873,13 +1868,15 @@ global without sharing virtual class Rollup {
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
       }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
-      Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, invokePoint);
-      fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
+      Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, localInvokePoint);
+      setControlToSyncForSingularParentRecalcs(fullRecalc.rollupControl, localInvokePoint);
+      if (fullRecalc.isNoOp) {
+        fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
+      }
       fullRecalc.queryCount = wrappedMeta.recordCount;
       RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
       fullRecalcRollups.add(fullRecalc);
     }
-
     return fullRecalcRollups;
   }
 

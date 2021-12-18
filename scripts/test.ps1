@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
-$testInvocation = 'sfdx force:apex:test:run -r human -w 20 -c -d ./tests/apex'
+$testInvocation = 'npx sfdx force:apex:test:run -r human -w 20 -c -d ./tests/apex'
 
 function Start-Tests() {
   Write-Output "Starting test run ..."
@@ -15,7 +15,7 @@ function Start-Tests() {
 
   try {
     Write-Output "Deleting scratch org ..."
-    sfdx force:org:delete -p -u apex-rollup-scratch-org
+    npx sfdx force:org:delete -p -u apex-rollup-scratch-org
   } catch {
     Write-Output "Scratch org deletion failed, continuing ..."
   }
@@ -38,7 +38,7 @@ $userNameHasBeenSet = $false
 if(Test-Path ".\DEVHUB_SFDX_URL.txt") {
   Write-Output "Auth file already exists, continuing"
 } else {
-  $orgInfo = sfdx force:org:display --json --verbose | ConvertFrom-Json
+  $orgInfo = npx sfdx force:org:display --json --verbose | ConvertFrom-Json
   $orgInfo.result.sfdxAuthUrl | Out-File -FilePath ".\DEVHUB_SFDX_URL.txt"
 }
 
@@ -48,12 +48,12 @@ Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.j
 
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
-sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a she-and-jim
-sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
+npx sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a she-and-jim
+npx sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
-$scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
+$scratchOrgAllotment = ((npx sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 Write-Output "Test command to use: $testInvocation"
@@ -63,7 +63,7 @@ $shouldDeployToSandbox = $false
 if($scratchOrgAllotment -gt 0) {
   Write-Output "Beginning scratch org creation"
   # Create Scratch Org
-  $scratchOrgCreateMessage = sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+  $scratchOrgCreateMessage = npx sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
   # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
   # The other issue is that this doesn't throw, so we have to test the response message ourselves
   if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
@@ -72,10 +72,10 @@ if($scratchOrgAllotment -gt 0) {
   $userNameHasBeenSet = $true
   # Multi-currency prep
   Write-Output 'Importing multi-currency config data to scratch org ...'
-  sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
+  npx sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
   # Deploy
   Write-Output 'Pushing source to scratch org ...'
-  sfdx force:source:push
+  npx sfdx force:source:push
   # Run tests
   Start-Tests
 } else {
@@ -88,8 +88,8 @@ if($shouldDeployToSandbox) {
   try {
     # Deploy
     Write-Output "Deploying source to sandbox ..."
-    sfdx force:source:deploy -p rollup
-    sfdx force:source:deploy -p extra-tests
+    npx sfdx force:source:deploy -p rollup
+    npx sfdx force:source:deploy -p extra-tests
     Start-Tests
   } catch {
     Reset-SFDX-Json
@@ -103,7 +103,7 @@ if($null -ne $orgInfo -And $userNameHasBeenSet) {
   # whereas this works, no problem
   $priorUserName = $orgInfo.result.username
   Write-Output "Resetting SFDX to previously authorized org"
-  sfdx force:config:set defaultusername=$priorUserName
+  npx sfdx force:config:set defaultusername=$priorUserName
 }
 
 Reset-SFDX-Json

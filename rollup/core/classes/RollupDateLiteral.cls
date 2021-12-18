@@ -808,9 +808,6 @@ public without sharing abstract class RollupDateLiteral {
         when 10, 11, 12, -1, -2, -3 {
           fiscalQuarter = 4;
         }
-        when else {
-          RollupLogger.Instance.log('unable to find fiscal quarter:', monthsSinceFiscalStart, LoggingLevel.ERROR);
-        }
       }
       return fiscalQuarter;
     }
