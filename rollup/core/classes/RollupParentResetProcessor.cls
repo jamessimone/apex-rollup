@@ -38,20 +38,20 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     } else if (isOverLimit && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
-      this.swapToQueueableToStartBatch();
+      return this.startAsyncWork();
     } else {
       List<SObject> parentItems = Database.query(this.queryString);
       this.execute(null, parentItems);
     }
 
-    return 'No process Id';
+    return this.getNoProcessId();
   }
 
   public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
+    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems.size() + ' items', LoggingLevel.FINE);
     for (SObject parentItem : calcItems) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
         parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
-        RollupLogger.Instance.log('resetting parent field:', parentItem, LoggingLevel.FINE);
       }
     }
     this.getDML().doUpdate(calcItems);
@@ -61,8 +61,8 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     return RollupParentResetProcessor.class.getName();
   }
 
-  private void swapToQueueableToStartBatch() {
-    System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
+  protected override String startAsyncWork() {
+    return System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
   }
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
