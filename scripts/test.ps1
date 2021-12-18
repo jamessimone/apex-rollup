@@ -48,12 +48,12 @@ Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.j
 
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
-sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a she-and-jim
-sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
+npx sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a she-and-jim
+npx sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
-$scratchOrgAllotment = ((sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
+$scratchOrgAllotment = ((npx sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 
 Write-Output "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 Write-Output "Test command to use: $testInvocation"
