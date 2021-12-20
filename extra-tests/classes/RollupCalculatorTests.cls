@@ -784,7 +784,7 @@ private class RollupCalculatorTests {
       Opportunity.AccountId
     );
     Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = distinct, AccountId = '0016g00003VDGbF001');
-    Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
+    Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF002', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
     calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
 
     System.assertEquals(
@@ -794,6 +794,30 @@ private class RollupCalculatorTests {
       (String) calc.getReturnValue(),
       'Value containing original distinct value should also be concatenated'
     );
+  }
+
+  @IsTest
+  static void shouldRemoveOldValueForConcatDistinctUpdate() {
+    String accountId = '0016g00003VDGbF001';
+    String firstVal = '2011';
+    String secondVal = '2021';
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      firstVal +
+      ', ' +
+      secondVal,
+      Rollup.Op.UPDATE_CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(),
+      accountId,
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = secondVal, AccountId = accountId);
+    Opportunity oldOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = firstVal, AccountId = accountId);
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>{ oldOpp.Id => oldOpp });
+
+    System.assertEquals(secondVal, calc.getReturnValue(), 'Old value should be removed');
   }
 
   @IsTest
