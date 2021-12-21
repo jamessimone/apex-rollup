@@ -375,7 +375,7 @@ global without sharing virtual class Rollup {
         }
       }
 
-      SObjectType childType = getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
+      SObjectType childType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
       RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(matchingMeta.CalcItemWhereClause__c)
         ? null
         : RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType);
@@ -434,7 +434,9 @@ global without sharing virtual class Rollup {
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
     wrapper.setQuery(metadata.CalcItemWhereClause__c);
     Rollup fullRecalc = getFullRecalcRollups(
-      new List<FullRecalculationMetadata>{ new FullRecalculationMetadata(metadata, wrapper, getSObjectFromName(metadata.CalcItem__c).getSObjectType()) },
+      new List<FullRecalculationMetadata>{
+        new FullRecalculationMetadata(metadata, wrapper, RollupFieldInitializer.Current.getSObjectFromName(metadata.CalcItem__c).getSObjectType())
+      },
       InvocationPoint.FROM_LWC
     )[0];
     return fullRecalc?.runCalc();
@@ -1280,7 +1282,7 @@ global without sharing virtual class Rollup {
     }
     SObject firstRecord = cdcRecords[0];
     EventBus.ChangeEventHeader header = (EventBus.ChangeEventHeader) firstRecord.get('ChangeEventHeader');
-    SObjectType sObjectType = getSObjectFromName(header.getEntityName()).getSObjectType();
+    SObjectType sObjectType = RollupFieldInitializer.Current.getSObjectFromName(header.getEntityName()).getSObjectType();
 
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(sObjectType);
     if (matchingMetadata.isEmpty()) {
@@ -1652,7 +1654,7 @@ global without sharing virtual class Rollup {
         nonMatchingGrandparent == false &&
         calcItems.isEmpty() == false
         ? calcItems[0].getSObjectType()
-        : getSObjectFromName(meta.CalcItem__c).getSObjectType();
+        : RollupFieldInitializer.Current.getSObjectFromName(meta.CalcItem__c).getSObjectType();
       Boolean isIntermediateRollupForGrandparent =
         nonMatchingGrandparent &&
         calcItems.isEmpty() == false &&
@@ -1918,7 +1920,7 @@ global without sharing virtual class Rollup {
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
       amountOfCalcItems < instance.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false) {
-      SObjectType parentType = getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
+      SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
       String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
       return new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
     } else if (shouldQueue) {
@@ -1998,7 +2000,7 @@ global without sharing virtual class Rollup {
         throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
       } else if (String.isBlank(flowInput.grandparentRelationshipFieldPath)) {
         SObject firstRecord = flowInput.recordsToRollup[0];
-        SObject lookupItem = getSObjectFromName(
+        SObject lookupItem = RollupFieldInitializer.Current.getSObjectFromName(
           flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : flowInput.rollupSObjectName
         );
 
@@ -2251,18 +2253,19 @@ global without sharing virtual class Rollup {
      * We have rollup operations to perform. That's great!
      * Let's get ready to rollup!
      */
-    DescribeSObjectResult describeForSObject = sObjectType.getDescribe();
+    Map<String, SObjectField> calcItemFields = sObjectType.getDescribe().fields.getMap();
+    RollupFieldInitializer init = RollupFieldInitializer.Current;
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = Op.valueOf(rollupMetadata.RollupOperation__c);
-      SObjectField rollupFieldOnCalcItem = getSObjectFieldByName(describeForSObject, rollupMetadata.RollupFieldOnCalcItem__c);
-      SObjectField calcLookupField = getSObjectFieldByName(describeForSObject, rollupMetadata.LookupFieldOnCalcItem__c);
+      SObjectField rollupFieldOnCalcItem = init.getSObjectFieldByName(calcItemFields, rollupMetadata.RollupFieldOnCalcItem__c);
+      SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
       // NB - this SHOULD work even for SObjects part of managed packages
-      SObjectType lookupSObjectType = getSObjectFromName(rollupMetadata.LookupObject__c).getSObjectType();
-      DescribeSObjectResult lookupObjectDescribe = lookupSObjectType.getDescribe();
-      SObjectField lookupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.LookupFieldOnLookupObject__c);
-      SObjectField rollupFieldOnOpObject = getSObjectFieldByName(lookupObjectDescribe, rollupMetadata.RollupFieldOnLookupObject__c);
+      SObjectType lookupSObjectType = init.getSObjectFromName(rollupMetadata.LookupObject__c).getSObjectType();
+      Map<String, SObjectField> lookuopItemFields = lookupSObjectType.getDescribe().fields.getMap();
+      SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
+      SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
 
       // reset the CMDT field-level definitions using the SObjectField tokens
       rollupMetadata.RollupFieldOnCalcItem__c = rollupFieldOnCalcItem.getDescribe().getName();
@@ -2303,18 +2306,6 @@ global without sharing virtual class Rollup {
     }
     rollupConductor.isNoOp = rollupConductor.rollups.isEmpty();
     return rollupConductor;
-  }
-
-  private static SObjectField getSObjectFieldByName(DescribeSObjectResult objectDescribe, String desiredField) {
-    Map<String, SObjectField> fieldNameToField = objectDescribe.fields.getMap();
-    if (fieldNameToField.containsKey(desiredField)) {
-      return fieldNameToField.get(desiredField);
-    } else if (fieldNameToField.containsKey(desiredField + 'Id')) {
-      // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
-      return fieldNameToField.get(desiredField + 'Id');
-    }
-
-    return null;
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {
@@ -2391,10 +2382,6 @@ global without sharing virtual class Rollup {
     return new Map<Id, SObject>();
   }
 
-  private static SObject getSObjectFromName(String sObjectName) {
-    return ((SObject) Type.forName(sObjectName).newInstance());
-  }
-
   @SuppressWarnings('PMD.OperationWithLimitsInLoop')
   private static Boolean reparentAndGetMergedRecordIds(
     List<SObject> calcItems,
@@ -2431,7 +2418,7 @@ global without sharing virtual class Rollup {
         continue;
       }
 
-      SObjectType calcItemSObject = getSObjectFromName(meta.CalcItem__c).getSObjectType();
+      SObjectType calcItemSObject = RollupFieldInitializer.Current.getSObjectFromName(meta.CalcItem__c).getSObjectType();
 
       // SOQL in a for loop - with the caveat that it's once per child object of any given parent
       if (updatedChildTypes.contains(calcItemSObject) == false) {

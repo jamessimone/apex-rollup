@@ -5,7 +5,8 @@ const extraCodeCoveragePaths = [
   'extra-tests/classes/RollupRelationshipFieldFinderTests.cls',
   'extra-tests/classes/RollupLoggerTests.cls',
   'extra-tests/classes/RollupQueryBuilderTests.cls',
-  'extra-tests/classes/RollupRecursionItemTests.cls'
+  'extra-tests/classes/RollupRecursionItemTests.cls',
+  'extra-tests/classes/RollupParentResetProcessorTests.cls'
 ];
 
 module.exports = {
@@ -13,7 +14,7 @@ module.exports = {
   '*.{cls,cmp,component,css,html,js,json,md,page,trigger,yaml,yml}': filenames => {
     const commands = filenames.map(filename => `prettier --write '${filename}'`);
     if (filenames.filter(fileName => extraCodeCoveragePaths.includes(fileName)).length > 0) {
-      commands.push('npm run create:package:code-coverage')
+      commands.push('npm run create:package:code-coverage');
     }
     return commands;
   },

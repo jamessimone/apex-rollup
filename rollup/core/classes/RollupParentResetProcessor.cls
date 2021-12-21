@@ -1,6 +1,7 @@
 public inherited sharing class RollupParentResetProcessor extends RollupFullBatchRecalculator {
   @TestVisible
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
+  private static Boolean isValidRun = false;
 
   private without sharing class QueueableResetProcessor implements System.Queueable {
     private final RollupParentResetProcessor processor;
@@ -30,6 +31,9 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
 
   public override String runCalc() {
     this.isProcessed = true;
+    if (isValidRun == false) {
+      return this.getNoProcessId();
+    }
     Integer countOfItems = Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
     Boolean isOverLimit = countOfItems > maxQueryRows;
     if (isOverLimit && System.isBatch() == false) {
@@ -68,9 +72,20 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
     if (matchingMeta.isEmpty() == false) {
       localQueryString += '\nAND (';
+    } else {
+      return localQueryString;
     }
+
+    Map<String, SObjectField> fieldTokens = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c)
+      .getSObjectType()
+      .getDescribe()
+      .fields.getMap();
     for (Rollup__mdt meta : matchingMeta) {
-      localQueryString += meta.RollupFieldOnLookupObject__c + ' != null OR ';
+      SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
+      if (token.getDescribe().isFilterable()) {
+        isValidRun = true;
+        localQueryString += meta.RollupFieldOnLookupObject__c + ' != null OR ';
+      }
     }
     return localQueryString.removeEnd(' OR ') + ')';
   }

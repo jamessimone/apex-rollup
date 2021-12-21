@@ -41,7 +41,7 @@
     "create:package:nebula:adapter": "sfdx force:package:version:create --package \"Apex Rollup - Nebula Logger\" -w 20 -x -c",
     "create:package:logger": "sfdx force:package:version:create --package \"Apex Rollup - Custom Logger\" -w 20 -x -c",
     "create:package:callback": "sfdx force:package:version:create --package \"Apex Rollup - Rollup Callback\" -w 20 -x -c",
-    "create:package:code-coverage": ". ./scripts/generateExtraCodeCoveragePlugin.ps1",
+    "create:package:code-coverage": "pwsh ./scripts/generateExtraCodeCoveragePlugin.ps1",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "eslint **/lwc/**",
     "prepare": "husky install",

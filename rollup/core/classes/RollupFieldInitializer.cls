@@ -52,6 +52,20 @@ public virtual class RollupFieldInitializer {
     return initializedDefault;
   }
 
+  public SObjectField getSObjectFieldByName(Map<String, SObjectField> fieldNameToField, String desiredField) {
+    if (fieldNameToField.containsKey(desiredField)) {
+      return fieldNameToField.get(desiredField);
+    } else if (fieldNameToField.containsKey(desiredField + 'Id')) {
+      // for lookup fields, CMDT field-level definition fields store the field name, which is outrageous
+      return fieldNameToField.get(desiredField + 'Id');
+    }
+    return null;
+  }
+
+  public SObject getSObjectFromName(String sObjectName) {
+    return ((SObject) Type.forName(sObjectName).newInstance());
+  }
+
   public class PicklistController extends RollupFieldInitializer {
     private final Boolean isPicklist;
     private final Boolean isMultiSelectPicklist;
