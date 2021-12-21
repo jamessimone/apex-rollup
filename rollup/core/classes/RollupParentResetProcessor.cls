@@ -31,6 +31,8 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
 
   public override String runCalc() {
     this.isProcessed = true;
+    // reset isValidRun flag properly
+    getRefinedQueryString(this.queryString, this.rollupInfo);
     if (isValidRun == false) {
       return this.getNoProcessId();
     }
@@ -52,7 +54,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   }
 
   public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems.size() + ' items', LoggingLevel.FINE);
+    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems, LoggingLevel.DEBUG);
     for (SObject parentItem : calcItems) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
         parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
@@ -70,6 +72,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   }
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
+    isValidRun = false;
     if (matchingMeta.isEmpty() == false) {
       localQueryString += '\nAND (';
     } else {
@@ -83,7 +86,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     for (Rollup__mdt meta : matchingMeta) {
       SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
       if (token.getDescribe().isFilterable()) {
-        isValidRun = true;
+        isValidRun = isValidRun || true;
         localQueryString += meta.RollupFieldOnLookupObject__c + ' != null OR ';
       }
     }
