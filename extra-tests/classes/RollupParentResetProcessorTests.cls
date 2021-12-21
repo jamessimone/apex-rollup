@@ -9,6 +9,7 @@ private class RollupParentResetProcessorTests {
       new Set<Id>(),
       null
     );
+
     Exception ex;
     try {
       processor.runCalc();
@@ -28,6 +29,7 @@ private class RollupParentResetProcessorTests {
       new Set<Id>(),
       null
     );
+
     Exception ex;
     try {
       processor.runCalc();

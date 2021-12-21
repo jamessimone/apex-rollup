@@ -41,7 +41,7 @@ Write-Output $createPackageResult
 $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
 
 Write-Output "Successfully created package Id: $currentPackageVersionId, promoting ..."
-sdfx force:package:version:promote -p $currentPackageVersionId -n
+sfdx force:package:version:promote -p $currentPackageVersionId -n
 
 Update-Package-Install-Links "./plugins/ExtraCodeCoverage/README.md" $currentPackageVersionId
 
