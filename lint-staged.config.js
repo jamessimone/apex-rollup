@@ -13,8 +13,11 @@ const extraCodeCoveragePaths = [
   'extra-tests/classes/RollupParentResetProcessorTests.cls'
 ].map(fileName => path.resolve(__dirname + '/' + fileName));
 
+const nebulaLoggerAdapterPath = path.resolve(__dirname + '/plugins/NebulaLogger/classes/RollupNebulaLoggerAdapter.cls');
+
 let shouldRunSfdxScanner = false;
 let shouldRunExtraCodeCoveragePackageCreation = false;
+let shouldRunNebulaLoggerPackageCreation = false;
 
 module.exports = {
   '**/lwc/*.js': filenames => `eslint ${filenames.join(' ')} --fix`,
@@ -24,10 +27,14 @@ module.exports = {
         shouldRunSfdxScanner = true;
       }
 
-      if (extraCodeCoveragePaths.includes(path.resolve(filename))) {
+      const resolvedPath = path.resolve(filename);
+
+      if (extraCodeCoveragePaths.includes(resolvedPath)) {
         shouldRunExtraCodeCoveragePackageCreation = true;
       }
-
+      if (nebulaLoggerAdapterPath === resolvedPath) {
+        shouldRunNebulaLoggerPackageCreation = true;
+      }
       return `prettier --write '${filename}'`;
     });
 
@@ -36,6 +43,9 @@ module.exports = {
     }
     if (shouldRunExtraCodeCoveragePackageCreation) {
       commands.push('npm run create:package:code-coverage');
+    }
+    if (shouldRunNebulaLoggerPackageCreation) {
+      commands.push('npm run create:package:nebula:adapter');
     }
     return commands;
   }
