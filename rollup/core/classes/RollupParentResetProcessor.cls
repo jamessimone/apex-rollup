@@ -3,6 +3,8 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
   private static Boolean isValidRun = false;
 
+  private Integer countOfItems;
+
   private without sharing class QueueableResetProcessor implements System.Queueable {
     private final RollupParentResetProcessor processor;
     private final Integer batchChunkSize;
@@ -12,7 +14,12 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     }
 
     public void execute(QueueableContext qc) {
-      Database.executeBatch(this.processor, this.batchChunkSize);
+      this.processor.countOfItems = this.processor.getNumberOfItems();
+      if (this.processor.countOfItems > maxQueryRows) {
+        Database.executeBatch(this.processor, this.batchChunkSize);
+      } else {
+        this.processor.runSync();
+      }
     }
   }
 
@@ -33,24 +40,26 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     this.isProcessed = true;
     // reset isValidRun flag properly
     getRefinedQueryString(this.queryString, this.rollupInfo);
+    String processId = this.getNoProcessId();
     if (isValidRun == false) {
-      return this.getNoProcessId();
+      return processId;
     }
-    Integer countOfItems = Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
-    Boolean isOverLimit = countOfItems > maxQueryRows;
+    if (this.countOfItems == null) {
+      this.countOfItems = this.getNumberOfItems();
+    }
+    Boolean isOverLimit = this.countOfItems > maxQueryRows;
     if (isOverLimit && System.isBatch() == false) {
       // avoids: System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method
-      this.startAsyncWork();
+      processId = super.startAsyncWork();
     } else if (isOverLimit && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
-      return this.startAsyncWork();
+      processId = this.startAsyncWork();
     } else {
-      List<SObject> parentItems = Database.query(this.queryString);
-      this.execute(null, parentItems);
+      this.runSync();
     }
 
-    return this.getNoProcessId();
+    return processId;
   }
 
   public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
@@ -69,6 +78,15 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
 
   protected override String startAsyncWork() {
     return System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
+  }
+
+  private Integer getNumberOfItems() {
+    return Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
+  }
+
+  private void runSync() {
+    List<SObject> parentItems = Database.query(this.queryString);
+    this.execute(null, parentItems);
   }
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
