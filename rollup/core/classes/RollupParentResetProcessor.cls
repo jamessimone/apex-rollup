@@ -63,7 +63,7 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
   }
 
   public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems, LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems.size() + ' items', LoggingLevel.DEBUG);
     for (SObject parentItem : calcItems) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
         parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);

@@ -70,8 +70,8 @@ function Get-Latest-Package-Id {
 }
 
 if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
-  # npx sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
-  # npx sfdx force:config:set defaultdevhubusername=packaging-org
+  npx sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
+  npx sfdx force:config:set defaultdevhubusername=packaging-org
 } else {
   throw 'No packaging auth info!'
 }
