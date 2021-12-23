@@ -1,4 +1,5 @@
 public without sharing virtual class RollupLogger extends Rollup implements ILogger {
+  @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
   private static final String CURRENT_VERSION_NUMBER = 'v1.3.22';
   @TestVisible
