@@ -225,7 +225,7 @@ public without sharing abstract class RollupCalculator {
         }
       }
     }
-    // if, after iterating, every item doesn't match, it's time for a full recalc
+    // if there were no matching items, it's time for a full recalc
     // AVERAGE and FIRST/LAST *also* handle this operation, but they override the entirety of the method we're in
     // ("performRollup"); this means String, Number, and Datetime variant rollup calculations all need to correctly handle
     // recalculating via "calculateNewAggregateValue"

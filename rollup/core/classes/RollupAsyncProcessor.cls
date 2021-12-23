@@ -1126,7 +1126,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         roll.metadata?.IsFullRecordSet__c == true &&
         (doesNotMatchCurrentItem && (this.oldCalcItems.containsKey(calcItem.Id) == false || roll.eval.matches(this.oldCalcItems.get(calcItem.Id)) == false))
       ) {
-        RollupLogger.Instance.log('removed item!', calcItem, LoggingLevel.ERROR);
         // technically it should only be possible for a calc item that doesn't match
         // to still exist if it is a Full Record Set operation; this gives people the chance
         // to reset rollup values if none of the records passed in match the eval criteria
@@ -1135,7 +1134,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       // Check for reparented records
       SObject oldCalcItem = this.oldCalcItems?.get(calcItem.Id);
-
       if (oldCalcItem == null) {
         continue;
       }
