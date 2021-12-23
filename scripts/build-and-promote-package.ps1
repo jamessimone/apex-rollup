@@ -21,8 +21,28 @@ function Get-Apex-Rollup-Package-Alias {
   return "apex-rollup@$packageVersion-0"
 }
 
+$loggerClassPath = "./rollup/core/classes/RollupLogger.cls"
 function Get-Package-JSON {
   Get-Content -Path ./package.json | ConvertFrom-Json
+}
+
+function Get-Logger-Class {
+  Get-Content -Raw -Path $loggerClassPath
+}
+
+function Update-Logger-Class {
+  param (
+      $versionNumber
+  )
+  $versionNumber = "v" + $versionNumber
+  $loggerClassContents = Get-Logger-Class
+  Write-Output "Bumping RollupLogger.cls version number to: $versionNumber"
+
+  $targetRegEx = "(.+CURRENT_VERSION_NUMBER = ')(.+)(';)"
+  $replacementRegEx = '$1' + $versionNumber + '$3'
+  $loggerClassContents -replace $targetRegEx, $replacementRegEx | Set-Content -Path $loggerClassPath -NoNewline
+  npx prettier --write $loggerClassPath
+  git add $loggerClassPath
 }
 
 function Update-Last-Substring {
@@ -101,6 +121,8 @@ if($currentBranch -eq "main") {
     # triggered a build with an already-promoted package version
   }
 } else {
+  Update-Logger-Class $currentPackageVersion
+
   # main is a push-protected branch; only create new package versions as part of PRs against main
   Write-Output "Creating new package version"
 

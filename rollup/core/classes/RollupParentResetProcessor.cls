@@ -1,6 +1,9 @@
 public inherited sharing class RollupParentResetProcessor extends RollupFullBatchRecalculator {
   @TestVisible
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
+  private static Boolean isValidRun = false;
+
+  private Integer countOfItems;
 
   private without sharing class QueueableResetProcessor implements System.Queueable {
     private final RollupParentResetProcessor processor;
@@ -11,7 +14,12 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     }
 
     public void execute(QueueableContext qc) {
-      Database.executeBatch(this.processor, this.batchChunkSize);
+      this.processor.countOfItems = this.processor.getNumberOfItems();
+      if (this.processor.countOfItems > maxQueryRows) {
+        Database.executeBatch(this.processor, this.batchChunkSize);
+      } else {
+        this.processor.runSync();
+      }
     }
   }
 
@@ -30,25 +38,32 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
 
   public override String runCalc() {
     this.isProcessed = true;
-    Integer countOfItems = Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
-    Boolean isOverLimit = countOfItems > maxQueryRows;
+    // reset isValidRun flag properly
+    getRefinedQueryString(this.queryString, this.rollupInfo);
+    String processId = this.getNoProcessId();
+    if (isValidRun == false) {
+      return processId;
+    }
+    if (this.countOfItems == null) {
+      this.countOfItems = this.getNumberOfItems();
+    }
+    Boolean isOverLimit = this.countOfItems > maxQueryRows;
     if (isOverLimit && System.isBatch() == false) {
       // avoids: System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method
-      this.startAsyncWork();
+      processId = super.startAsyncWork();
     } else if (isOverLimit && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
-      return this.startAsyncWork();
+      processId = this.startAsyncWork();
     } else {
-      List<SObject> parentItems = Database.query(this.queryString);
-      this.execute(null, parentItems);
+      this.runSync();
     }
 
-    return this.getNoProcessId();
+    return processId;
   }
 
   public override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems.size() + ' items', LoggingLevel.FINE);
+    RollupLogger.Instance.log('resetting parent fields for: ' + calcItems.size() + ' items', LoggingLevel.DEBUG);
     for (SObject parentItem : calcItems) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
         parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
@@ -65,12 +80,33 @@ public inherited sharing class RollupParentResetProcessor extends RollupFullBatc
     return System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
   }
 
+  private Integer getNumberOfItems() {
+    return Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
+  }
+
+  private void runSync() {
+    List<SObject> parentItems = Database.query(this.queryString);
+    this.execute(null, parentItems);
+  }
+
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
+    isValidRun = false;
     if (matchingMeta.isEmpty() == false) {
       localQueryString += '\nAND (';
+    } else {
+      return localQueryString;
     }
+
+    Map<String, SObjectField> fieldTokens = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c)
+      .getSObjectType()
+      .getDescribe()
+      .fields.getMap();
     for (Rollup__mdt meta : matchingMeta) {
-      localQueryString += meta.RollupFieldOnLookupObject__c + ' != null OR ';
+      SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
+      if (token.getDescribe().isFilterable()) {
+        isValidRun = isValidRun || true;
+        localQueryString += meta.RollupFieldOnLookupObject__c + ' != null OR ';
+      }
     }
     return localQueryString.removeEnd(' OR ') + ')';
   }

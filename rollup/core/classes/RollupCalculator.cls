@@ -225,7 +225,7 @@ public without sharing abstract class RollupCalculator {
         }
       }
     }
-    // if, after iterating, every item doesn't match, it's time for a full recalc
+    // if there were no matching items, it's time for a full recalc
     // AVERAGE and FIRST/LAST *also* handle this operation, but they override the entirety of the method we're in
     // ("performRollup"); this means String, Number, and Datetime variant rollup calculations all need to correctly handle
     // recalculating via "calculateNewAggregateValue"
@@ -292,7 +292,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected SObjectType getCalcItemType() {
-    return ((SObject) Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
+    return RollupFieldInitializer.Current.getSObjectFromName(this.metadata.CalcItem__c).getSObjectType();
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
@@ -822,10 +822,10 @@ public without sharing abstract class RollupCalculator {
     public override void handleUpdateConcat(SObject calcItem, Map<Id, SObject> oldCalcItems) {
       String newVal = String.valueOf(calcItem.get(this.opFieldOnCalcItem));
       SObject priorItem = oldCalcItems.get(calcItem.Id);
+      String priorString = String.valueOf(priorItem != null ? priorItem.get(this.opFieldOnCalcItem) : newVal);
       if (this.eval?.matches(calcItem) == false && priorItem != null && this.eval?.matches(priorItem) == true) {
         this.handleDeleteConcat(calcItem);
-      } else if (this.shouldConcat(newVal)) {
-        String priorString = String.valueOf(priorItem != null ? priorItem.get(this.opFieldOnCalcItem) : newVal);
+      } else if (this.shouldConcat(newVal) || priorString != newVal) {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
       }
     }
@@ -888,6 +888,9 @@ public without sharing abstract class RollupCalculator {
 
     private void sortAndConcat() {
       List<String> values = this.stringVal.split(this.concatDelimiter);
+      if (this.isConcatDistinct) {
+        values = new List<String>(new Set<String>(values));
+      }
       for (Integer index = values.size() - 1; index >= 0; index--) {
         if (String.isBlank(values[index])) {
           values.remove(index);

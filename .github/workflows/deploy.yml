@@ -74,9 +74,7 @@ jobs:
           rm coverage/ -rf
 
       - name: Install & run SFDX Scanner
-        run: |
-          npx sfdx plugins:install @salesforce/sfdx-scanner
-          npm run scan
+        run: npm run scan
 
       # Store secret for dev hub
       - name: 'Populate auth file with DEVHUB_SFDX_URL secret'

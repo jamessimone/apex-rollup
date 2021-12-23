@@ -1,5 +1,8 @@
 public without sharing virtual class RollupLogger extends Rollup implements ILogger {
   @TestVisible
+  // this gets updated via the pipeline as the version number gets incremented
+  private static final String CURRENT_VERSION_NUMBER = 'v1.3.22';
+  @TestVisible
   private static List<RollupPlugin__mdt> pluginMocks;
   @TestVisible
   private static RollupPluginParameter__mdt loggingLevelMock;
@@ -52,6 +55,10 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
+  protected String getBaseLoggingMessage() {
+    return 'Rollup: ' + CURRENT_VERSION_NUMBER + ' ';
+  }
+
   @SuppressWarnings('PMD.AvoidDebugStatements')
   protected virtual void innerLog(String logString, Object logObject, LoggingLevel logLevel) {
     String appended = this.getLogStringFromObject(logObject);
@@ -70,7 +77,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
       innerStacktraces.remove(0);
     }
     messages.add(String.join(innerStacktraces, '\n'));
-    System.debug(logLevel, 'Rollup: ' + String.join(messages, '\n') + '\n');
+    System.debug(logLevel, this.getBaseLoggingMessage() + String.join(messages, '\n') + '\n');
   }
 
   private RollupPluginParameter__mdt loggingLevelPluginParameter {

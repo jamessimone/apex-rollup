@@ -1134,7 +1134,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       // Check for reparented records
       SObject oldCalcItem = this.oldCalcItems?.get(calcItem.Id);
-
       if (oldCalcItem == null) {
         continue;
       }
