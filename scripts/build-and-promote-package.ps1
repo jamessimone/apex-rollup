@@ -3,7 +3,6 @@
 # the versionDescription and versionNumber for the default package. Using those two pieces of information,
 # this script generates a new package version Id per unique Action run, and promotes that package on merges to main
 # it also updates the Ids referenced in the README, and bumps the package version number in the package.json file
-$ErrorActionPreference = 'Stop'
 . .\scripts\helper-functions.ps1
 
 function Get-Current-Git-Branch() {
@@ -36,7 +35,7 @@ function Update-Logger-Class {
   )
   $versionNumber = "v" + $versionNumber
   $loggerClassContents = Get-Logger-Class
-  Write-Output "Bumping RollupLogger.cls version number to: $versionNumber"
+  Write-Debug "Bumping RollupLogger.cls version number to: $versionNumber"
 
   $targetRegEx = "(.+CURRENT_VERSION_NUMBER = ')(.+)(';)"
   $replacementRegEx = '$1' + $versionNumber + '$3'
@@ -69,6 +68,8 @@ function Get-Latest-Package-Id {
   return $currentPackageVersionId
 }
 
+Init
+
 if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
   npx sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
   npx sfdx force:config:set defaultdevhubusername=packaging-org
@@ -79,7 +80,7 @@ if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
 $sfdxProjectJson = Get-SFDX-Project-JSON
 $currentPackageVersion = $sfdxProjectJson.packageDirectories[0].versionNumber.Remove($sfdxProjectJson.packageDirectories[0].versionNumber.Length - 2, 2)
 
-Write-Output "Current package version number: $currentPackageVersion"
+Write-Debug "Current package version number: $currentPackageVersion"
 
 # Cache the prior package version Id to replace in the README
 $priorPackageVersionId = $null
@@ -105,14 +106,14 @@ try {
   }
 }
 
-Write-Output "Prior package version: $priorPackageVersionId"
-Write-Output "Prior package version number: $priorPackageVersionNumber"
+Write-Debug "Prior package version: $priorPackageVersionId"
+Write-Debug "Prior package version number: $priorPackageVersionNumber"
 
 # Create/promote package version
 
 $currentBranch = Get-Current-Git-Branch
 if($currentBranch -eq "main") {
-  Write-Output "Promoting package version"
+  Write-Debug "Promoting package version"
   $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
   try {
     npx sfdx force:package:version:promote -p $currentPackageVersionId -n
@@ -124,14 +125,14 @@ if($currentBranch -eq "main") {
   Update-Logger-Class $currentPackageVersion
 
   # main is a push-protected branch; only create new package versions as part of PRs against main
-  Write-Output "Creating new package version"
+  Write-Debug "Creating new package version"
 
   $packageVersionCreateResult = npx sfdx force:package:version:create -d $sfdxProjectJson.packageDirectories[0].path -x -w 30 -c --json | ConvertFrom-Json
   git add ./sfdx-project.json
 
   $currentPackageVersionId = $packageVersionCreateResult.result.SubscriberPackageVersionId
 
-  Write-Output "New package version: $currentPackageVersionId"
+  Write-Debug "New package version: $currentPackageVersionId"
 
   if($currentPackageVersionId -ne $priorPackageVersionId) {
     Update-Package-Install-Links "./README.md" $currentPackageVersionId
@@ -139,7 +140,7 @@ if($currentBranch -eq "main") {
 
   $packageJson = Get-Package-JSON
   if ($packageJson.version -ne $currentPackageVersion) {
-    Write-Output "Bumping package.json version to: $currentPackageVersion"
+    Write-Debug "Bumping package.json version to: $currentPackageVersion"
 
     $packageJson.version = $currentPackageVersion
     $packagePath = "./package.json"
