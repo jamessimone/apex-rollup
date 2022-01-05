@@ -26,6 +26,7 @@ global without sharing virtual class Rollup {
   private static RollupControl__mdt cachedOrgDefault;
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
+  private static Boolean isFullRecalcApp = false;
 
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
@@ -345,6 +346,7 @@ global without sharing virtual class Rollup {
 
   @AuraEnabled
   global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
+    isFullRecalcApp = true;
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
     InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
 
@@ -412,6 +414,7 @@ global without sharing virtual class Rollup {
     }
 
     List<Rollup> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
+    isFullRecalcApp = false;
     return batch(processors, localInvokePoint);
   }
 
@@ -422,6 +425,7 @@ global without sharing virtual class Rollup {
 
   @AuraEnabled
   global static String performFullRecalculation(Rollup__mdt metadata) {
+    isFullRecalcApp = true;
     RollupLogger.Instance.log('beginning full recalculation for:', metadata, LoggingLevel.DEBUG);
     FlowInput validationRuleWrapper = new FlowInput();
     validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
@@ -439,6 +443,7 @@ global without sharing virtual class Rollup {
       },
       InvocationPoint.FROM_LWC
     )[0];
+    isFullRecalcApp = false;
     return fullRecalc?.runCalc();
   }
 
@@ -1919,7 +1924,7 @@ global without sharing virtual class Rollup {
     Boolean shouldQueue =
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
       amountOfCalcItems < instance.rollupControl.MaxLookupRowsBeforeBatching__c;
-    if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false) {
+    if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false && isFullRecalcApp) {
       SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
       String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
       return new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
