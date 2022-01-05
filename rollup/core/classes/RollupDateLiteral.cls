@@ -152,7 +152,11 @@ public without sharing abstract class RollupDateLiteral {
   private static FiscalInfo getFiscalInfo() {
     FiscalInfo fiscalInfo = new FiscalInfo();
     // using DateLiterals **in** RollupDateLiteral? Is this irony?
-    List<Period> fiscalPeriods = [SELECT StartDate, EndDate, Type FROM Period WHERE Type IN ('Quarter', 'Year') AND EndDate = THIS_FISCAL_QUARTER];
+    List<Period> fiscalPeriods = [
+      SELECT StartDate, EndDate, Type
+      FROM Period
+      WHERE (Type = 'Quarter' AND EndDate = THIS_FISCAL_QUARTER) OR (Type = 'Year' AND EndDate >= THIS_FISCAL_YEAR AND EndDate <= THIS_FISCAL_YEAR)
+    ];
     for (Period fiscalPeriod : fiscalPeriods) {
       if (fiscalPeriod.Type == 'Year') {
         fiscalInfo.FiscalYearStartDate = fiscalPeriod.StartDate;
@@ -796,16 +800,16 @@ public without sharing abstract class RollupDateLiteral {
         monthsSinceFiscalStart = 12;
       }
       switch on monthsSinceFiscalStart {
-        when 1, 2, 3, -10, -11, -12 {
+        when 1, 2, 3, -9, -10, -11 {
           fiscalQuarter = 1;
         }
-        when 4, 5, 6, -7, -8, -9 {
+        when 4, 5, 6, -6, -7, -8 {
           fiscalQuarter = 2;
         }
-        when 7, 8, 9, -4, -5, -6 {
+        when 7, 8, 9, -3, -4, -5 {
           fiscalQuarter = 3;
         }
-        when 10, 11, 12, -1, -2, -3 {
+        when 10, 11, 12, -1, -2, -12 {
           fiscalQuarter = 4;
         }
       }
