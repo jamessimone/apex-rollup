@@ -5,7 +5,7 @@ const path = require('path');
 const resolvePath = fileName => path.resolve(__dirname + '/' + fileName);
 const resolvePaths = paths => paths.map(fileName => resolvePath(fileName));
 
-const extraCodeCoveragePaths = resolvePaths([
+const EXTRA_CODE_COVERAGE_PATHS = resolvePaths([
   'extra-tests/classes/RollupTestUtils.cls',
   'extra-tests/classes/RollupTests.cls',
   'extra-tests/classes/RollupEvaluatorTests.cls',
@@ -15,15 +15,20 @@ const extraCodeCoveragePaths = resolvePaths([
   'extra-tests/classes/RollupRecursionItemTests.cls',
   'extra-tests/classes/RollupParentResetProcessorTests.cls'
 ]);
-const customLoggerPaths = resolvePaths([
+const CUSTOM_LOGGER_PATHS = resolvePaths([
   'plugins/CustomObjectRollupLogger/classes/RollupCustomObjectLogger.cls',
   'plugins/CustomObjectRollupLogger/classes/RollupLogBatchPurger.cls',
   'plugins/CustomObjectRollupLogger/classes/RollupLogControl.cls',
   'plugins/CustomObjectRollupLogger/classes/RollupLogEventHandler.cls',
-  'plugins/CustomObjectRollupLogger/classes/RollupPurgerSchedulable.cls'
+  'plugins/CustomObjectRollupLogger/classes/RollupPurgerSchedulable.cls',
+  'plugins/CustomObjectRollupLogger/tests/RollupCustomObjectLoggerTests.cls',
+  'plugins/CustomObjectRollupLogger/tests/RollupLogBatchPurgerTests.cls'
 ]);
-const nebulaLoggerAdapterPath = resolvePath('plugins/NebulaLogger/classes/RollupNebulaLoggerAdapter.cls');
-const callbackPath = resolvePath('plugins/RollupCallback/classes/RollupDispatch.cls');
+const NEBULA_LOGGER_ADAPTER_PATHS = resolvePaths([
+  'plugins/NebulaLogger/classes/RollupNebulaLoggerAdapter.cls',
+  'plugins/NebulaLogger/tests/RollupNebulaLoggerAdapterTest.cls'
+]);
+const CALLBACK_PATHS = resolvePaths(['plugins/RollupCallback/classes/RollupDispatch.cls', 'plugins/RollupCallback/tests/RollupDispatchTests.cls']);
 
 let shouldRunSfdxScanner = false;
 let shouldRunExtraCodeCoveragePackageCreation = false;
@@ -40,16 +45,16 @@ module.exports = {
       }
 
       const resolvedPath = path.resolve(filename);
-      if (extraCodeCoveragePaths.includes(resolvedPath)) {
+      if (EXTRA_CODE_COVERAGE_PATHS.includes(resolvedPath)) {
         shouldRunExtraCodeCoveragePackageCreation = true;
       }
-      if (nebulaLoggerAdapterPath === resolvedPath) {
+      if (NEBULA_LOGGER_ADAPTER_PATHS.includes(resolvedPath)) {
         shouldRunNebulaLoggerPackageCreation = true;
       }
-      if (customLoggerPaths.includes(resolvedPath)) {
+      if (CUSTOM_LOGGER_PATHS.includes(resolvedPath)) {
         shouldRunCustomLoggerPackageCreation = true;
       }
-      if (callbackPath === resolvedPath) {
+      if (CALLBACK_PATHS.includes(resolvedPath)) {
         shouldRunCallbackPackageCreation = true;
       }
       return `prettier --write '${filename}'`;

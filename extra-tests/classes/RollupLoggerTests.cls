@@ -41,7 +41,7 @@ public class RollupLoggerTests {
   @IsTest
   static void shouldGracefullyRecoverFromErrors() {
     setup();
-    RollupLogger.pluginMocks.add(new RollupPlugin__mdt(DeveloperName = 'Nonsense'));
+    RollupPlugin.pluginMocks.add(new RollupPlugin__mdt(DeveloperName = 'Nonsense'));
 
     RollupLogger.Instance.save();
 
@@ -50,7 +50,7 @@ public class RollupLoggerTests {
 
   private static void setup() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
-    RollupLogger.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
   }
 
   public class ExampleLogger implements RollupLogger.ILogger {
