@@ -3,7 +3,10 @@
 # the versionDescription and versionNumber for the default package. Using those two pieces of information,
 # this script generates a new package version Id per unique Action run, and promotes that package on merges to main
 # it also updates the Ids referenced in the README, and bumps the package version number in the package.json file
+$DebugPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 . .\scripts\helper-functions.ps1
+. .\scripts\promotePackages.ps1
 
 function Get-Current-Git-Branch() {
   Invoke-Expression 'git rev-parse --abbrev-ref HEAD'
@@ -68,8 +71,6 @@ function Get-Latest-Package-Id {
   return $currentPackageVersionId
 }
 
-Init
-
 if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
   npx sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
   npx sfdx force:config:set defaultdevhubusername=packaging-org
@@ -109,18 +110,11 @@ try {
 Write-Debug "Prior package version: $priorPackageVersionId"
 Write-Debug "Prior package version number: $priorPackageVersionNumber"
 
-# Create/promote package version
+# Create/promote package version(s)
 
 $currentBranch = Get-Current-Git-Branch
 if($currentBranch -eq "main") {
-  Write-Debug "Promoting package version"
-  $currentPackageVersionId = Get-Latest-Package-Id $currentPackageVersion $priorPackageVersionNumber
-  try {
-    npx sfdx force:package:version:promote -p $currentPackageVersionId -n
-  } catch {
-    # Make the assumption that the only reason "promote" would fail is if an unrelated change (like changing this script)
-    # triggered a build with an already-promoted package version
-  }
+  Start-Package-Promotion
 } else {
   Update-Logger-Class $currentPackageVersion
 

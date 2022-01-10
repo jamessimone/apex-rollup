@@ -2,11 +2,6 @@ function Get-SFDX-Project-JSON {
   Get-Content -Path ./sfdx-project.json | ConvertFrom-Json
 }
 
-function Init {
-  $DebugPreference = 'Continue'
-  $ErrorActionPreference = 'Stop'
-}
-
 function Update-Package-Install-Links {
   param (
     $filePath,

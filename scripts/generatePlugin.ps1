@@ -1,3 +1,5 @@
+$DebugPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 . .\scripts\helper-functions.ps1
 
 $packageJsonPath = "./sfdx-project.json"
@@ -27,7 +29,6 @@ function Generate() {
     $packageName,
     $readmePath
   )
-  Init
 
   Write-Debug "Starting up for $packageName"
 

@@ -1,3 +1,5 @@
+$DebugPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 . .\scripts\helper-functions.ps1
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
 # DEVHUB_SFDX_URL.txt file is populated in a build step
@@ -30,8 +32,6 @@ function Reset-SFDX-Json() {
   Copy-Item -Path ./scripts/sfdx-project.json -Destination ./sfdx-project.json -Force
   Remove-Item -Path ./scripts/sfdx-project.json
 }
-
-Init
 
 Write-Debug "Starting build script"
 
