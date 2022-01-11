@@ -44,7 +44,7 @@ function Update-Package-Install-Links {
 
 function Get-Is-Version-Promoted {
   param ($versionNumber, $packageName)
-  $promotedPackageVersions = (sfdx force:package:version:list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version
+  $promotedPackageVersions = (npx sfdx force:package:version:list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version
   $isPackagePromoted = $promotedPackageVersions.Contains($versionNumber)
   Write-Debug "Is $versionNumber for $packageName promoted? $isPackagePromoted"
   return $isPackagePromoted
@@ -126,7 +126,7 @@ function Generate() {
 
   Write-Debug "Creating package version: $currentPackageVersion"
 
-  $createPackageResult = sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion -a $currentPackageName --json | ConvertFrom-Json
+  $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion -a $currentPackageName --json | ConvertFrom-Json
   $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
   if ($null -eq $currentPackageVersionId) {
     throw $createPackageResult
