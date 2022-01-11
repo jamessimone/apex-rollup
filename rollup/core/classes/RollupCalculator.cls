@@ -746,6 +746,8 @@ public without sharing abstract class RollupCalculator {
         retVal = -1.00;
       } else if (current != defaultVal && prior == defaultVal || matchesPrior == false && matchesCurrent) {
         retVal = 1.00;
+      } else if (current == false && prior == true) {
+        retVal = -1.00;
       }
       return retVal;
     }

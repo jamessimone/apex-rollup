@@ -660,6 +660,24 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue(), 'Count should properly decrement when old item matches and new one does not');
   }
 
+  @IsTest
+  static void shouldDecrementBooleanCountProperly() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      1,
+      Rollup.Op.UPDATE_COUNT,
+      ContactPointAddress.IsPrimary,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'ContactPointAddress'),
+      '0011g00003VDGbF002',
+      ContactPointAddress.ParentId
+    );
+
+    ContactPointAddress cpa = new ContactPointAddress(IsPrimary = false, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    calc.performRollup(new List<SObject>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(IsPrimary = true) });
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
   // SUM tests
 
   @IsTest

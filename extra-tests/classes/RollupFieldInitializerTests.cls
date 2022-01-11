@@ -38,6 +38,11 @@ private class RollupFieldInitializerTests {
   }
 
   @IsTest
+  static void shouldProperlyInitializeCheckboxDefaults() {
+    System.assertEquals(false, RollupFieldInitializer.Current.getDefaultValue(Account.CheckboxFormula__c));
+  }
+
+  @IsTest
   static void shouldReturnDefaultsForPicklist() {
     List<Schema.PicklistEntry> picklistEntries = Account.Industry.getDescribe().getPicklistValues();
     if (picklistEntries.isEmpty()) {

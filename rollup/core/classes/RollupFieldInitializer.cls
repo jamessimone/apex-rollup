@@ -45,6 +45,9 @@ public virtual class RollupFieldInitializer {
       when PICKLIST, MULTIPICKLIST {
         initializedDefault = new PicklistController(fieldDescribe).getDefaultValue(field);
       }
+      when BOOLEAN {
+        initializedDefault = false;
+      }
       when else {
         throw new IllegalArgumentException('Field: ' + field + ' of type: ' + fieldDescribe.getType().name() + ' specified invalid for rollup operation');
       }
