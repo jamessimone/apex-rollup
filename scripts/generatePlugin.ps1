@@ -40,7 +40,12 @@ function Generate() {
   $currentPluginVersion = $currentCodeCoveragePlugin.versionNumber
   $currentPluginVersion = $currentPluginVersion.Remove($currentPluginVersion.LastIndexOf(".0"))
   # increment package version prior to calling SFDX
-  $currentVersionNumber = ([int]$currentPluginVersion.Substring(4)) + 1
+  $currentVersionNumber = ([int]$currentPluginVersion.Substring(4))
+  $shouldIncrement = Get-Is-Version-Promoted $currentCodeCoveragePlugin.versionNumber $packageName
+  if ($true -eq $shouldIncrement) {
+    $currentVersionNumber = $currentVersionNumber + 1
+  }
+  # TODO -don't reformat the base string here, need to support full version number with only minor being incremented
   $currentPluginVersion = "0.0." + $currentVersionNumber.ToString() + ".0"
   $currentCodeCoveragePlugin.versionNumber = $currentPluginVersion
 

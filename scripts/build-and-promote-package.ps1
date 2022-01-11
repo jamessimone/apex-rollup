@@ -6,7 +6,6 @@
 $DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
 . .\scripts\helper-functions.ps1
-. .\scripts\promotePackages.ps1
 
 function Get-Current-Git-Branch() {
   Invoke-Expression 'git rev-parse --abbrev-ref HEAD'
