@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.3.22",
+  "version": "1.3.23",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -38,11 +38,11 @@
     "aura"
   ],
   "scripts": {
-    "create:package:rollup": "sfdx force:package:version:create --package \"apex-rollup\" -w 20 -x -c",
-    "create:package:nebula:adapter": "pwsh -Command \"&{ . ./scripts/generatePlugin.ps1; Generate -PackageName '\"Apex Rollup - Nebula Logger\"' -ReadmePath \"./plugins/NebulaLogger/README.md\" }\"",
-    "create:package:logger": "pwsh -Command \"&{ . ./scripts/generatePlugin.ps1; Generate -PackageName '\"Apex Rollup - Custom Logger\"' -ReadmePath \"./plugins/CustomObjectRollupLogger/README.md\" }\"",
-    "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePlugin.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
-    "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePlugin.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
+    "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
+    "create:package:nebula:adapter": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Nebula Logger\"' -ReadmePath \"./plugins/NebulaLogger/README.md\" }\"",
+    "create:package:logger": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Custom Logger\"' -ReadmePath \"./plugins/CustomObjectRollupLogger/README.md\" }\"",
+    "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
+    "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "eslint **/lwc/**",
     "prepare": "husky install && sfdx plugins:link ./node_modules/@salesforce/sfdx-scanner",
