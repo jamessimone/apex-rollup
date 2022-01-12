@@ -660,6 +660,24 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue(), 'Count should properly decrement when old item matches and new one does not');
   }
 
+  @IsTest
+  static void shouldDecrementBooleanCountProperly() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      1,
+      Rollup.Op.UPDATE_COUNT,
+      ContactPointAddress.IsPrimary,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'ContactPointAddress'),
+      '0011g00003VDGbF002',
+      ContactPointAddress.ParentId
+    );
+
+    ContactPointAddress cpa = new ContactPointAddress(IsPrimary = false, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+    calc.performRollup(new List<SObject>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(IsPrimary = true) });
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
   // SUM tests
 
   @IsTest
@@ -1214,6 +1232,167 @@ private class RollupCalculatorTests {
     }
 
     System.assertNotEquals(null, ex, 'Exception should have been thrown');
+  }
+
+  @IsTest
+  static void shouldNotMixReturnTypesWithBigDecimalUnsortableValues() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.MAX,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    Opportunity badAmountOpp = new Opportunity(Amount = RollupFieldInitializer.Current.maximumLongValue);
+    calc.performRollup(new List<SObject>{ badAmountOpp }, new Map<Id, SObject>());
+
+    Account accountWithBadRevenue = new Account();
+    accountWithBadRevenue.put(Account.AnnualRevenue, calc.getReturnValue());
+    Account accountWithDecimalRevenue = new Account(AnnualRevenue = 15.154);
+
+    // normally, I'd wrap this in a try/catch block, but the error that gets thrown is uncatchable
+    new List<Account>{ accountWithBadRevenue, accountWithDecimalRevenue }.sort();
+
+    System.assert(true, 'Made it here!');
+  }
+
+  @IsTest
+  static void shouldRecalcCountDistinctWithoutBigDecimalUnsortableIssue() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.DELETE_COUNT_DISTINCT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    Opportunity badAmountOpp = new Opportunity(Amount = 0);
+    calc.performRollup(new List<SObject>{ badAmountOpp }, new Map<Id, SObject>());
+
+    Account accountWithBadRevenue = new Account();
+    accountWithBadRevenue.put(Account.AnnualRevenue, calc.getReturnValue());
+    Account accountWithDecimalRevenue = new Account(AnnualRevenue = 15.154);
+
+    // normally, I'd wrap this in a try/catch block, but the error that gets thrown is uncatchable
+    new List<Account>{ accountWithBadRevenue, accountWithDecimalRevenue }.sort();
+
+    System.assert(true, 'Made it here!');
+  }
+
+  @IsTest
+  static void shouldRecalcCountWithoutBigDecimalUnsortableIssue() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.COUNT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    Opportunity badAmountOpp = new Opportunity(Amount = 0);
+    calc.performRollup(new List<SObject>{ badAmountOpp }, new Map<Id, SObject>());
+
+    Account accountWithBadRevenue = new Account();
+    accountWithBadRevenue.put(Account.AnnualRevenue, calc.getReturnValue());
+    Account accountWithDecimalRevenue = new Account(AnnualRevenue = 15.154);
+
+    // normally, I'd wrap this in a try/catch block, but the error that gets thrown is uncatchable
+    new List<Account>{ accountWithBadRevenue, accountWithDecimalRevenue }.sort();
+
+    System.assert(true, 'Made it here!');
+  }
+
+  @IsTest
+  static void shouldRecalcCountUpdateWithoutBigDecimalUnsortableIssue() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.UPDATE_COUNT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    Opportunity badAmountOpp = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    calc.performRollup(new List<SObject>{ badAmountOpp }, new Map<Id, SObject>{ badAmountOpp.Id => new Opportunity(Amount = 15) });
+
+    Account accountWithBadRevenue = new Account();
+    accountWithBadRevenue.put(Account.AnnualRevenue, calc.getReturnValue());
+    Account accountWithDecimalRevenue = new Account(AnnualRevenue = 15.154);
+
+    // normally, I'd wrap this in a try/catch block, but the error that gets thrown is uncatchable
+    new List<Account>{ accountWithBadRevenue, accountWithDecimalRevenue }.sort();
+
+    System.assert(true, 'Made it here!');
+  }
+
+  @IsTest
+  static void shouldRecalcNullsWithoutBigDecimalUnsortableIssue() {
+    Integer oldMax = 2;
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      oldMax,
+      Rollup.Op.UPDATE_MAX,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    // need the old amount to be equal to the max; new amount to be less than max
+    // then have a second item which is less than the old max but greater than the new amount on the first item
+    Opportunity oldMaxOpp = new Opportunity(Amount = -1, Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    Opportunity newMaxOpp = new Opportunity(Amount = null, Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    calc.performRollup(
+      new List<SObject>{ oldMaxOpp, newMaxOpp },
+      new Map<Id, SObject>{
+        oldMaxOpp.Id => new Opportunity(Id = oldMaxOpp.Id, Amount = oldMax),
+        newMaxOpp.Id => new Opportunity(Id = newMaxOpp.Id, Amount = 0)
+      }
+    );
+
+    Account accountWithBadRevenue = new Account();
+    accountWithBadRevenue.put(Account.AnnualRevenue, calc.getReturnValue());
+    Account accountWithDecimalRevenue = new Account(AnnualRevenue = 15.154);
+
+    // normally, I'd wrap this in a try/catch block, but the error that gets thrown is uncatchable
+    new List<Account>{ accountWithBadRevenue, accountWithDecimalRevenue }.sort();
+
+    System.assert(true, 'Made it here!');
+  }
+
+  @IsTest
+  static void shouldSetDecimalsWithoutBigDecimalUnsortableIssue() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.MAX,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 2);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+    Account accountWithBadRevenue = new Account();
+    accountWithBadRevenue.put(Account.AnnualRevenue, calc.getReturnValue());
+    Account accountWithDecimalRevenue = new Account(AnnualRevenue = 15.154);
+
+    // normally, I'd wrap this in a try/catch block, but the error that gets thrown is uncatchable
+    new List<Account>{ accountWithBadRevenue, accountWithDecimalRevenue }.sort();
+
+    System.assert(true, 'Made it here!');
   }
 
   @IsTest

@@ -1184,7 +1184,7 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, quarter.matches(quarterDate, '='));
     System.assertEquals(false, quarter.matches(oneQuarterAhead, '='));
-    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='));
+    System.assertEquals(false, quarter.matches(oneQuarterBehind, '='), 'Quarter: ' + quarterDate + ' | oneQuarterBehind: ' + oneQuarterBehind);
     System.assertEquals(false, quarter.matches(quarterDate, '!='));
 
     System.assertEquals(true, quarter.matches(oneQuarterAhead, '>'));

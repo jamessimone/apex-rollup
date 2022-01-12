@@ -39,7 +39,7 @@ public class RollupDispatchTests {
 
   @IsTest
   static void shouldAllowForDispatcherParameterOverride() {
-    RollupSObjectUpdater.pluginParameterMock = new RollupPluginParameter__mdt(Value__c = DispatcherMock.class.getName());
+    RollupPlugin.parameterMock = new RollupPluginParameter__mdt(Value__c = DispatcherMock.class.getName());
     RollupSObjectUpdater updater = new RollupSObjectUpdater();
 
     Test.startTest();

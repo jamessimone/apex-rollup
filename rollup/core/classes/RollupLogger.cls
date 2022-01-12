@@ -1,12 +1,9 @@
 public without sharing virtual class RollupLogger extends Rollup implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.3.22';
-  @TestVisible
-  private static List<RollupPlugin__mdt> pluginMocks;
-  @TestVisible
-  private static RollupPluginParameter__mdt loggingLevelMock;
+  private static final String CURRENT_VERSION_NUMBER = 'v1.3.23';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
+  private static final RollupPlugin PLUGIN = new RollupPlugin();
 
   private final LoggingLevel currentLoggingLevel;
 
@@ -80,18 +77,12 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     System.debug(logLevel, this.getBaseLoggingMessage() + String.join(messages, '\n') + '\n');
   }
 
-  private RollupPluginParameter__mdt loggingLevelPluginParameter {
-    get {
-      if (loggingLevelPluginParameter == null) {
-        loggingLevelPluginParameter = loggingLevelMock != null ? loggingLevelMock : this.getLoggingLevelParameter();
-      }
-      return loggingLevelPluginParameter;
-    }
-    set;
+  protected RollupPluginParameter__mdt getLoggingLevelParameter() {
+    return PLUGIN.getParameterInstance(this.getLoggingLevelDeveloperName());
   }
 
-  protected virtual RollupPluginParameter__mdt getLoggingLevelParameter() {
-    return RollupPluginParameter__mdt.getInstance('LoggingDebugLevel');
+  protected virtual String getLoggingLevelDeveloperName() {
+    return 'LoggingDebugLevel';
   }
 
   protected override String getTypeName() {
@@ -99,8 +90,9 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
   }
 
   protected LoggingLevel getLogLevel() {
-    LoggingLevel toReturn;
-    String logLevelNameToSearch = this.loggingLevelPluginParameter != null ? this.loggingLevelPluginParameter.Value__c : toReturn.name();
+    LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
+    RollupPluginParameter__mdt loggingLevelParamater = this.getLoggingLevelParameter();
+    String logLevelNameToSearch = loggingLevelParamater != null ? loggingLevelParamater.Value__c : toReturn.name();
     try {
       toReturn = LoggingLevel.valueOf(logLevelNameToSearch);
     } catch (Exception ex) {
@@ -135,16 +127,15 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
 
   @SuppressWarnings('PMD.ApexCrudViolation')
   private static ILogger getRollupLogger() {
-    List<RollupPlugin__mdt> loggingPlugins = [
-      SELECT DeveloperName
-      FROM RollupPlugin__mdt
-      WHERE RollupControl__c = :SELF.rollupControl.Id AND DeveloperName LIKE '%Logger%'
-    ];
-    SELF.log('retrieved the following logging plugins:', loggingPlugins, LoggingLevel.FINE);
-    if (pluginMocks != null) {
-      loggingPlugins.addAll(pluginMocks);
+    List<RollupPlugin__mdt> plugins = PLUGIN.getInstances();
+    for (Integer index = plugins.size() - 1; index >= 0; index--) {
+      RollupPlugin__mdt plugin = plugins[index];
+      if (plugin.RollupControl__c != null && plugin.RollupControl__c != SELF.rollupControl.Id || plugin.DeveloperName?.contains('Logger') == false) {
+        plugins.remove(index);
+      }
     }
-    return combineLoggers(loggingPlugins);
+    SELF.log('retrieved the following logging plugins:', plugins, LoggingLevel.FINE);
+    return combineLoggers(plugins);
   }
 
   private static ILogger combineLoggers(List<RollupPlugin__mdt> loggingPlugins) {

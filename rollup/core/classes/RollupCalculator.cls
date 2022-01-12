@@ -383,7 +383,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void setReturnValue() {
-      this.returnVal = this.distinctValues.size();
+      this.returnVal = Decimal.valueOf(this.distinctValues.size());
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
@@ -439,6 +439,8 @@ public without sharing abstract class RollupCalculator {
           this.distinctValues.add(res.get(calcItemOpField));
         }
       }
+      // OK to return an int here; setReturnValue does the needful type conversion
+      // from Integer -> Decimal to avoid potential BigDecimal sorting issues downstream
       return this.distinctValues.size();
     }
   }
@@ -462,7 +464,7 @@ public without sharing abstract class RollupCalculator {
       if (potentiallyUnitializedDecimal instanceof Decimal) {
         return (Decimal) potentiallyUnitializedDecimal;
       } else {
-        return potentiallyUnitializedDecimal == null ? 0 : 1;
+        return Decimal.valueOf(potentiallyUnitializedDecimal == null ? 0 : 1);
       }
     }
 
@@ -484,7 +486,7 @@ public without sharing abstract class RollupCalculator {
       } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false) {
         return newVal;
       } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false) {
-        return oldVal * -1;
+        return oldVal * Decimal.valueOf(-1).setScale(oldVal.scale());
       }
 
       // could be negative, could be positive ... could be 0!
@@ -493,7 +495,7 @@ public without sharing abstract class RollupCalculator {
 
     public virtual override Object getReturnValue() {
       if (this.returnVal == RollupFieldInitializer.Current.maximumLongValue || this.returnVal == RollupFieldInitializer.Current.minimumLongValue) {
-        this.returnVal = 0;
+        this.returnVal = 0.00;
       }
       return this.returnVal;
     }
@@ -717,11 +719,11 @@ public without sharing abstract class RollupCalculator {
       // we shouldn't encourage negative counts. it's totally possible as a rollup is implemented and updates happen before
       // inserts or deletes, but it doesn't really make sense in the context of tracking
       Integer potentialReturnVal = ((Decimal) super.getReturnValue()).intValue();
-      return potentialReturnVal < 0 ? 0 : potentialReturnVal;
+      return potentialReturnVal < 0 ? 0.00 : potentialReturnVal;
     }
 
     protected override Decimal getNumericValue(SObject calcItem) {
-      return calcItem.get(this.opFieldOnCalcItem) != null ? 1 : 0;
+      return calcItem.get(this.opFieldOnCalcItem) != null ? 1.00 : 0.00;
     }
 
     protected override Decimal getNumericChangedValue(SObject calcItem, Map<Id, SObject> oldCalcItems) {
@@ -729,25 +731,23 @@ public without sharing abstract class RollupCalculator {
 
       // for a reparenting, the item counts towards the new record on an update
       if (this.isReparented(calcItem, oldCalcItem)) {
-        return 1;
+        return 1.00;
       }
 
       Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
       Boolean matchesPrior = this.eval?.matches(oldCalcItem) == true;
 
       // for updates, we have to decrement the count if the value has been cleared out
-      Decimal retVal = 0;
+      Decimal retVal = 0.00;
       Object current = calcItem.get(this.opFieldOnCalcItem);
       Object prior = oldCalcItem.get(this.opFieldOnCalcItem);
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
-      if (current == null && prior != null) {
-        retVal = -1;
-      } else if (current != defaultVal && prior == defaultVal) {
-        retVal = 1;
-      } else if (matchesPrior == false && matchesCurrent) {
-        retVal = 1;
-      } else if (matchesPrior && matchesCurrent == false) {
-        retVal = -1;
+      if (current == null && prior != null || matchesPrior && matchesCurrent == false) {
+        retVal = -1.00;
+      } else if (current != defaultVal && prior == defaultVal || matchesPrior == false && matchesCurrent) {
+        retVal = 1.00;
+      } else if (current == false && prior == true) {
+        retVal = -1.00;
       }
       return retVal;
     }
@@ -1036,12 +1036,12 @@ public without sharing abstract class RollupCalculator {
       }
 
       if (oldSum == null) {
-        oldSum = 0;
+        oldSum = 0.00;
       }
-      Decimal newSum = 0;
+      Decimal newSum = 0.00;
       for (SObject calcItem : applicableCalcItems) {
         Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
-        newSum += potentialDecimal == null ? 0 : (Decimal) potentialDecimal;
+        newSum += potentialDecimal == null ? 0.00 : (Decimal) potentialDecimal;
       }
 
       Decimal average = null;
@@ -1090,8 +1090,6 @@ public without sharing abstract class RollupCalculator {
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.isFullRecalc == false) {
         SObjectType sObjectType = this.getCalcItemType();
-        // objIds is used as a bind variable in the resulting queryString
-        Set<Id> objIds = new Map<Id, SObject>(calcItems).keySet();
         Set<String> queryFields = new Set<String>{
           String.valueOf(this.opFieldOnCalcItem),
           this.metadata.OrderByFirstLast__c,
@@ -1103,6 +1101,8 @@ public without sharing abstract class RollupCalculator {
         // a full-recalc is always necessary because we don't retain the information about the order by field
         String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
+        // objIds is used as a bind variable in the resulting queryString
+        List<SObject> objIds = calcItems;
         // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
         List<SObject> additionalItems = Database.query(queryString);
         if (this.op.name().contains('DELETE')) {

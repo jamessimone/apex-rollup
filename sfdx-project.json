@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Added current version to RollupLogger, bugfixes",
-            "versionNumber": "1.3.22.0",
+            "versionName": "Fixing BigDecimal issues, standardizing plugin infrastructure",
+            "versionNumber": "1.3.23.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -17,11 +17,11 @@
             "path": "plugins\\CustomObjectRollupLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.3.22-0"
+                    "package": "apex-rollup@1.3.23-0"
                 }
             ],
-            "versionNumber": "0.0.10.0",
-            "versionName": "Adding base Rollup string and version number",
+            "versionNumber": "0.0.11.0",
+            "versionName": "Standardizing plugin infrastructure",
             "versionDescription": "Adds RollupLog__c and RollupLogEntry__c custom objects to allow storage of rollup debug logs",
             "default": false,
             "unpackagedMetadata": {
@@ -52,10 +52,11 @@
             "path": "plugins\\RollupCallback",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.3.0-0"
+                    "package": "apex-rollup@1.3.23-0"
                 }
             ],
-            "versionNumber": "0.0.2.0",
+            "versionNumber": "0.0.3.0",
+            "versionName": "Standardizing plugin infrastructure",
             "versionDescription": "Use this plugin to dispatch updated rollup information using Platform Events or custom Apex",
             "default": false,
             "unpackagedMetadata": {
@@ -70,11 +71,11 @@
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.3.0",
+            "versionNumber": "0.0.4.0",
             "default": false,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.3.21-0"
+                    "package": "apex-rollup@1.3.23-0"
                 }
             ]
         }
@@ -87,23 +88,24 @@
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.9-0": "04t6g000008Si1GAAS",
         "Apex Rollup - Custom Logger@0.0.10-0": "04t6g000008SijqAAC",
+        "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.5-0": "04t6g000008Si1BAAS",
         "Apex Rollup - Nebula Logger@0.0.6-0": "04t6g000008SiisAAC",
         "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",
         "Apex Rollup - Rollup Callback": "0Ho6g000000GnA1CAK",
-        "Apex Rollup - Rollup Callback@0.0.1-0": "04t6g000008ShTJAA0",
         "Apex Rollup - Rollup Callback@0.0.2-0": "04t6g000008ShztAAC",
+        "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
-        "Apex Rollup - Extra Code Coverage@0.0.1-0": "04t6g000008SiTHAA0",
         "Apex Rollup - Extra Code Coverage@0.0.3-0": "04t6g000008Sii9AAC",
-        "apex-rollup@1.3.0-0": "04t6g000008ShUCAA0",
+        "Apex Rollup - Extra Code Coverage@0.0.4-0": "04t6g000008SirqAAC",
         "apex-rollup@1.3.16-0": "04t6g000008SiSdAAK",
         "apex-rollup@1.3.17-0": "04t6g000008SiTgAAK",
         "apex-rollup@1.3.18-0": "04t6g000008SiUyAAK",
         "apex-rollup@1.3.19-0": "04t6g000008SiVIAA0",
         "apex-rollup@1.3.20-0": "04t6g000008SiaJAAS",
         "apex-rollup@1.3.21-0": "04t6g000008SigrAAC",
-        "apex-rollup@1.3.22-0": "04t6g000008SijvAAC"
+        "apex-rollup@1.3.22-0": "04t6g000008SijvAAC",
+        "apex-rollup@1.3.23-0": "04t6g000008SitNAAS"
     }
 }

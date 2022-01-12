@@ -1,14 +1,18 @@
 public without sharing virtual class RollupSObjectUpdater {
   @TestVisible
-  private static RollupPluginParameter__mdt pluginParameterMock;
   private static final String DISPATCH_NAME = 'RollupDispatch';
+
   private final Schema.SObjectField fieldToken;
+  private final List<IDispatcher> dispatchers;
+  private final RollupPlugin plugin;
 
   public interface IDispatcher {
     void dispatch(List<SObject> records);
   }
 
   public RollupSObjectUpdater() {
+    this.plugin = new RollupPlugin();
+    this.dispatchers = this.fillDispatchers();
   }
 
   public RollupSObjectUpdater(Schema.SObjectField fieldToken) {
@@ -46,31 +50,25 @@ public without sharing virtual class RollupSObjectUpdater {
     record.put(this.fieldToken, value);
   }
 
-  private void dispatch(List<SObject> updatedRecords) {
-    if (updatedRecords.isEmpty() == false) {
-      RollupPlugin__mdt dispatchPlugin = RollupPlugin__mdt.getInstance(DISPATCH_NAME);
-      List<RollupPluginParameter__mdt> potentialRollupDispatchers = new List<RollupPluginParameter__mdt>();
-      if (dispatchPlugin != null) {
-        potentialRollupDispatchers.add(new RollupPluginParameter__mdt(Value__c = DISPATCH_NAME));
-        potentialRollupDispatchers.addAll(
-          [SELECT Value__c FROM RollupPluginParameter__mdt WHERE RollupPlugin__c = :dispatchPlugin.Id AND DeveloperName != 'ShouldFirePlatformEvent']
-        );
-      }
-      if (pluginParameterMock != null) {
-        potentialRollupDispatchers.add(pluginParameterMock);
-      }
+  private List<IDispatcher> fillDispatchers() {
+    List<IDispatcher> dispatchers = new List<IDispatcher>();
+    RollupPlugin__mdt dispatchPlugin = this.plugin.getInstance(DISPATCH_NAME);
 
-      if (potentialRollupDispatchers.isEmpty()) {
-        return;
-      }
-
-      List<IDispatcher> dispatchers = new List<IDispatcher>();
+    if (dispatchPlugin != null) {
+      List<RollupPluginParameter__mdt> potentialRollupDispatchers = this.plugin.getMatchingParameters(dispatchPlugin.Id);
+      potentialRollupDispatchers.add(new RollupPluginParameter__mdt(Value__c = DISPATCH_NAME));
       for (RollupPluginParameter__mdt pluginParameter : potentialRollupDispatchers) {
         this.fillDispatcher(dispatchers, pluginParameter.Value__c);
       }
+    }
 
-      RollupLogger.Instance.log('dispatching updated records to: ' + this.getLogString(dispatchers), LoggingLevel.FINE);
-      for (IDispatcher dispatcher : dispatchers) {
+    return dispatchers;
+  }
+
+  private void dispatch(List<SObject> updatedRecords) {
+    if (updatedRecords.isEmpty() == false && this.dispatchers.isEmpty() == false) {
+      RollupLogger.Instance.log('dispatching updated records to: ' + this.getLogString(this.dispatchers), LoggingLevel.FINE);
+      for (IDispatcher dispatcher : this.dispatchers) {
         dispatcher.dispatch(updatedRecords);
       }
     }
