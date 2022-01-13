@@ -102,8 +102,10 @@ public without sharing class RollupCalcItemReplacer {
     Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
     List<String> optionalWhereClauses = new List<String>();
     Set<String> additionalQueryFields = new Set<String>();
-    RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
-    this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+    if (this.metaToEval.containsKey(metadata)) {
+      RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
+      this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+    }
 
     Boolean hasOwnerPrepolulated = populatedFields.containsKey('Owner');
     Boolean hasTypePrepopulated = populatedFields.containsKey('Type');

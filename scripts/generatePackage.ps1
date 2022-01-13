@@ -90,7 +90,7 @@ function Get-Next-Package-Version() {
     ConvertTo-Json -InputObject $sfdxProjectJson -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
     # sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
     # to run on it
-    npx run prettier --write $sfdxProjectJsonPath --tab-width 4 --ignore-path .forceignore
+    npx prettier --write $sfdxProjectJsonPath --tab-width 4 --ignore-path ..\.forceignore
   }
   if ("apex-rollup" -eq $packageName) {
     $versionNumberToWrite = $currentPackageVersion.Remove($currentPackageVersion.LastIndexOf(".0"))

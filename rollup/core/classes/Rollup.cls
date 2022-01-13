@@ -1739,7 +1739,6 @@ global without sharing virtual class Rollup {
   }
 
   private static QueryWrapper getFullRecalcQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    // TODO - can we use the filter method here?
     QueryWrapper wrapper;
     meta.RollupOperation__c = meta.RollupOperation__c.replace('REFRESH_', '');
     if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
