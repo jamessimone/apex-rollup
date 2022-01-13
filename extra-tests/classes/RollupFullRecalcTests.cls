@@ -69,6 +69,30 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldCorrectlyFilterParentFieldsFromFlowChildren() {
+    Account acc = [SELECT Id, Name FROM Account];
+    // ensure another matching item exists outside of the passed in list
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    flowInputs[0].calcItemWhereClause = 'Parent.Name = \'' + acc.Name + '\'';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'Calc item where clause with parent filtering should work for REFRESH');
+  }
+
+  @IsTest
   static void shouldPerformFullRecalcWithHierarchy() {
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);

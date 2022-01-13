@@ -230,8 +230,20 @@ public without sharing class RollupCalcItemReplacer {
       for (String fieldName : calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().keySet()) {
         if (fieldNameToFieldToken.containsKey(fieldName)) {
           DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName).getDescribe();
-          if (fieldToken.getReferenceTo().isEmpty() == false && fieldToken.isNamePointing() == false && fieldToken.getName() != 'Id') {
+          Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
+          if (isAcceptableField && fieldToken.isNamePointing() == false) {
             calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+          } else if (isAcceptableField) {
+            // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,
+            // but can't be appended via .putSObject without reinitializing the parent object to its actual type
+            // this is because they are returned with type "Name", and avoids the dreaded:
+            // "System.SObjectException: Illegal assignment from Name to { the calcItem type }"
+            SObject parentFieldObject = calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName());
+            SObject replacementObject = parentFieldObject.Id.getSObjectType().newSObject();
+            for (String populatedFieldName : parentFieldObject.getPopulatedFieldsAsMap().keySet()) {
+              replacementObject.put(populatedFieldName, parentFieldObject.get(populatedFieldName));
+            }
+            calcItem.putSObject(fieldToken.getRelationshipName(), replacementObject);
           }
         }
       }

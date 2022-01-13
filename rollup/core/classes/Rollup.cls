@@ -554,10 +554,10 @@ global without sharing virtual class Rollup {
 
   private class FlowInputWrapper {
     private final FlowInput flowInput;
-    private final Map<Id, SObject> oldFlowRecords;
     private final String rollupContext;
     private final SObjectType sObjectType;
     private final Set<Rollup__mdt> rollupMetadata;
+    private Map<Id, SObject> oldFlowRecords;
 
     private FlowInputWrapper(FlowInput flowInput, String rollupContext, SObjectType sObjectType, Rollup__mdt meta) {
       this.oldFlowRecords = new Map<Id, SObject>(flowInput.oldRecordsToRollup);
@@ -620,6 +620,10 @@ global without sharing virtual class Rollup {
     for (String key : keyToInputWrapper.keySet()) {
       FlowInputWrapper wrapper = keyToInputWrapper.get(key);
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
+      wrapper.flowInput.recordsToRollup = CALC_ITEM_REPLACER.replace(wrapper.flowInput.recordsToRollup, metas);
+      if (wrapper.oldFlowRecords?.isEmpty() == false) {
+        wrapper.oldFlowRecords = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(wrapper.oldFlowRecords.values(), metas));
+      }
       processCustomMetadata(
         localRollups,
         metas,
@@ -1735,16 +1739,16 @@ global without sharing virtual class Rollup {
   }
 
   private static QueryWrapper getFullRecalcQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    // TODO - can we use the filter method here?
     QueryWrapper wrapper;
     meta.RollupOperation__c = meta.RollupOperation__c.replace('REFRESH_', '');
     if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
-      RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcItems[0].getSObjectType());
+      SObjectType calcItemType = calcItems[0].getSObjectType();
+      RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcItemType);
       Boolean matches = false;
+      FilterResults filter = filter(calcItems, oldCalcItems, eval, meta, calcItemType, CALC_ITEM_REPLACER);
       for (SObject calcItem : calcItems) {
-        matches = matches || eval.matches(calcItem);
-        if (oldCalcItems.containsKey(calcItem.Id)) {
-          matches = matches || eval.matches(oldCalcItems.get(calcItem.Id));
-        }
+        matches = matches || filter.matchingItemIds.contains(calcItem.Id);
         if (matches) {
           break;
         }
