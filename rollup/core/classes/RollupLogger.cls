@@ -53,7 +53,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
   }
 
   protected String getBaseLoggingMessage() {
-    return 'Rollup: ' + CURRENT_VERSION_NUMBER + ' ';
+    return 'Rollup ' + CURRENT_VERSION_NUMBER + ': ';
   }
 
   @SuppressWarnings('PMD.AvoidDebugStatements')
