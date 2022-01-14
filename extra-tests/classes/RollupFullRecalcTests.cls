@@ -93,6 +93,43 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldDecrementProperlyOnUpdateWithParentFilterFields() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Account second = new Account(Name = 'Second', AnnualRevenue = 1000);
+    insert second;
+    // ensure another matching item exists outside of the passed in list
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(
+        PreferenceRank = second.AnnualRevenue.intValue(),
+        ParentId = second.Id,
+        Name = 'Two'
+      )
+    };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    flowInputs[0].calcItemWhereClause = 'Parent.Name = \'' + acc.Name + '\'';
+    flowInputs[0].oldRecordsToRollup = new List<SObject>{
+      new ContactPointAddress(PreferenceRank = cpas[0].PreferenceRank, ParentId = acc.Id, Name = 'Two', Id = cpas[0].Id)
+    };
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(500, updatedAcc.AnnualRevenue, 'Calc item where clause with parent filtering should work for REFRESH');
+    Account secondUpdatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :second.Id];
+    System.assertEquals(0, secondUpdatedAcc.AnnualRevenue, 'Amount should have decremented on update!');
+  }
+
+  @IsTest
   static void shouldPerformFullRecalcWithHierarchy() {
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);

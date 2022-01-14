@@ -1759,7 +1759,7 @@ global without sharing virtual class Rollup {
     if (meta.IsRollupStartedFromParent__c == false) {
       wrapper = new QueryWrapper('', meta.LookupFieldOnCalcItem__c);
       for (SObject calcItem : calcItems) {
-        wrapper.addRecordId((String) calcItem.get(meta.LookupFieldOnCalcItem__c));
+        fillWrapper(wrapper, meta.LookupFieldOnCalcItem__c, calcItem, oldCalcItems);
       }
     } else {
       wrapper = getParentWhereClause(
@@ -2113,16 +2113,7 @@ global without sharing virtual class Rollup {
 
     QueryWrapper wrapper = new QueryWrapper(lookupObjectName, fieldName);
     for (SObject calcItem : calcItems) {
-      String lookupId = (String) calcItem.get(lookupFieldOnLookupObject);
-      if (String.isNotBlank(lookupId)) {
-        wrapper.addRecordId(lookupId);
-      }
-      if (oldCalcItems.containsKey(calcItem.Id)) {
-        String oldLookupId = (String) oldCalcItems.get(calcItem.Id).get(lookupFieldOnLookupObject);
-        if (String.isNotBlank(oldLookupId)) {
-          wrapper.addRecordId(oldLookupId);
-        }
-      }
+      fillWrapper(wrapper, lookupFieldOnLookupObject, calcItem, oldCalcItems);
     }
     if (String.isNotBlank(potentialWhereClause)) {
       String whereClause = '(' + potentialWhereClause + ') AND ';
@@ -2147,6 +2138,19 @@ global without sharing virtual class Rollup {
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       return RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+    }
+  }
+
+  private static void fillWrapper(QueryWrapper wrapper, String fieldName, SObject calcItem, Map<Id, SObject> oldCalcItems) {
+    String lookupId = (String) calcItem.get(fieldName);
+    if (String.isNotBlank(lookupId)) {
+      wrapper.addRecordId(lookupId);
+    }
+    if (oldCalcItems.containsKey(calcItem.Id)) {
+      String oldLookupId = (String) oldCalcItems.get(calcItem.Id).get(fieldName);
+      if (String.isNotBlank(oldLookupId)) {
+        wrapper.addRecordId(oldLookupId);
+      }
     }
   }
 
