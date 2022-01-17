@@ -224,7 +224,8 @@ public without sharing class RollupCalcItemReplacer {
 
   private void appendUpdatedParentFields(List<SObject> calcItems, Map<Id, SObject> idToCalcItemsWithParentFields) {
     Map<String, SObjectField> fieldNameToFieldToken = calcItems[0].getSObjectType().getDescribe().fields.getMap();
-    for (SObject calcItem : calcItems) {
+    for (Integer index = 0; index < calcItems.size(); index++) {
+      SObject calcItem = calcItems[index];
       SObject calcItemWIthUpdatedParentField = idToCalcItemsWithParentFields.get(calcItem.Id);
       if (calcItemWIthUpdatedParentField == null) {
         continue;
@@ -234,7 +235,12 @@ public without sharing class RollupCalcItemReplacer {
           DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName).getDescribe();
           Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
           if (isAcceptableField && fieldToken.isNamePointing() == false) {
-            calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+            try {
+              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+            } catch (SObjectException ex) {
+              // avoids "System.SObjectException: Relationship { relationship name } is not editable"
+              calcItems.set(index, this.serializeReplace(calcItem, calcItemWithUpdatedParentField, fieldToken.getRelationshipName()));
+            }
           } else if (isAcceptableField) {
             // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,
             // but can't be appended via .putSObject without reinitializing the parent object to its actual type
@@ -250,5 +256,11 @@ public without sharing class RollupCalcItemReplacer {
         }
       }
     }
+  }
+
+  private SObject serializeReplace(SObject calcItem, SObject calcItemWithUpdatedParent, String relationshipName) {
+    Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(calcItem));
+    deserialized.put(relationshipName, calcItemWithUpdatedParent.getSObject(relationshipName));
+    return (SObject) JSON.deserialize(JSON.serialize(deserialized), SObject.class);
   }
 }
