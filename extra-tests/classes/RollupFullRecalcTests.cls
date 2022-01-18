@@ -93,7 +93,7 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void shouldDecrementProperlyOnUpdateWithParentFilterFields() {
+  static void shouldDecrementProperlyOnRefreshUpdateWithParentFilterFields() {
     Account acc = [SELECT Id, Name FROM Account];
     Account second = new Account(Name = 'Second', AnnualRevenue = 1000);
     insert second;

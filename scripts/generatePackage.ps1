@@ -1,6 +1,4 @@
-$DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
-
 
 function Get-SFDX-Project-JSON {
   Get-Content -Path ./sfdx-project.json | ConvertFrom-Json
@@ -13,13 +11,13 @@ $loggerClassPath = "./rollup/core/classes/RollupLogger.cls"
 function Invoke-Extra-Code-Coverage-Prep() {
   $extraCodeCoveragePath = "./plugins/ExtraCodeCoverage"
   if (Test-Path $extraCodeCoveragePath) {
-    Write-Debug "Dir exists"
+    Write-Host "Dir exists"
   } else {
-    Write-Debug "Making ExtraCodeCoverage dir"
+    Write-Host "Making ExtraCodeCoverage dir"
     mkdir ./plugins/ExtraCodeCoverage
   }
 
-  Write-Debug "Copying rollup tests to gitignored $extraCodeCoveragePath directory"
+  Write-Host "Copying rollup tests to gitignored $extraCodeCoveragePath directory"
 
   $fileNames = "RollupTestUtils","RollupTests","RollupEvaluatorTests","RollupRelationshipFieldFinderTests","RollupLoggerTests","RollupQueryBuilderTests","RollupRecursionItemTests"
   foreach ($fileName in $fileNames) {
@@ -33,7 +31,7 @@ function Update-Package-Install-Links {
     $filePath,
     $newPackageVersionId
   )
-  Write-Debug "Updating $filePath with new package version Id ..."
+  Write-Host "Updating $filePath with new package version Id ..." -ForegroundColor Yellow
   $loginReplacement = "https://login.salesforce.com/packaging/installPackage.apexp?p0=" + $newPackageVersionId
   $testReplacement = "https://test.salesforce.com/packaging/installPackage.apexp?p0=" + $newPackageVersionId
   ((Get-Content -path $filePath -Raw) -replace "https:\/\/login.salesforce.com\/packaging\/installPackage.apexp\?p0=.{0,18}", $loginReplacement) | Set-Content -Path $filePath -NoNewline
@@ -46,7 +44,7 @@ function Get-Is-Version-Promoted {
   param ($versionNumber, $packageName)
   $promotedPackageVersions = (npx sfdx force:package:version:list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version
   $isPackagePromoted = $promotedPackageVersions.Contains($versionNumber)
-  Write-Debug "Is $versionNumber for $packageName promoted? $isPackagePromoted"
+  Write-Host "Is $versionNumber for $packageName promoted? $isPackagePromoted" -ForegroundColor Yellow
   return $isPackagePromoted
 }
 
@@ -64,7 +62,7 @@ function Update-Logger-Class {
   )
   $versionNumber = "v" + $versionNumber
   $loggerClassContents = Get-Logger-Class
-  Write-Debug "Bumping RollupLogger.cls version number to: $versionNumber"
+  Write-Host "Bumping RollupLogger.cls version number to: $versionNumber" -ForegroundColor Yellow
 
   $targetRegEx = "(.+CURRENT_VERSION_NUMBER = ')(.+)(';)"
   $replacementRegEx = '$1' + $versionNumber + '$3'
@@ -81,12 +79,12 @@ function Get-Next-Package-Version() {
     $currentPackageVersion = $currentPackageVersion.Remove($currentPackageVersion.LastIndexOf(".0"))
     $patchVersionIndex = $currentPackageVersion.LastIndexOf(".");
     $currentVersionNumber = ([int]$currentPackageVersion.Substring($patchVersionIndex + 1, $currentPackageVersion.Length - $patchVersionIndex - 1)) + 1
-    Write-Debug "Re-incrementing sfdx-project.json version number for $packageName to versionNumber: $currentVersionNumber"
+    Write-Host "Re-incrementing sfdx-project.json version number for $packageName to versionNumber: $currentVersionNumber" -ForegroundColor Yellow
     # increment package version prior to calling SFDX
     $currentPackageVersion = $currentPackageVersion.Substring(0, $patchVersionIndex + 1) + $currentVersionNumber.ToString() + ".0"
     $currentPackage.versionNumber = $currentPackageVersion
 
-    Write-Debug "Re-writing sfdx-project.json with updated package version number ..."
+    Write-Host "Re-writing sfdx-project.json with updated package version number ..."
     ConvertTo-Json -InputObject $sfdxProjectJson -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
     # sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
     # to run on it
@@ -95,7 +93,7 @@ function Get-Next-Package-Version() {
   if ("apex-rollup" -eq $packageName) {
     $versionNumberToWrite = $currentPackageVersion.Remove($currentPackageVersion.LastIndexOf(".0"))
     Update-Logger-Class $versionNumberToWrite
-    Write-Debug "Bumping package.json version to: $versionNumberToWrite"
+    Write-Host "Bumping package.json version to: $versionNumberToWrite" -ForegroundColor Yellow
 
     $packageJson = Get-Package-JSON
     $packageJson.version = $versionNumberToWrite
@@ -113,7 +111,7 @@ function Generate() {
     [string]$readmePath
   )
 
-  Write-Debug "Starting for $packageName"
+  Write-Host "Starting for $packageName" -ForegroundColor Yellow
 
   if ("Apex Rollup - Extra Code Coverage" -eq $packageName) {
     Invoke-Extra-Code-Coverage-Prep
@@ -124,7 +122,7 @@ function Generate() {
   $currentPackageVersion = $currentPackage.versionNumber
   $currentPackageName = $currentPackage.versionName
 
-  Write-Debug "Creating package version: $currentPackageVersion"
+  Write-Host "Creating package version: $currentPackageVersion ..." -ForegroundColor White
 
   $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion -a $currentPackageName --json | ConvertFrom-Json
   $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
@@ -134,9 +132,9 @@ function Generate() {
     git add $sfdxProjectJsonPath
   }
 
-  Write-Debug "Successfully created package Id: $currentPackageVersionId"
+  Write-Host "Successfully created package Id: $currentPackageVersionId" -ForegroundColor Green
 
   Update-Package-Install-Links $readmePath $currentPackageVersionId
 
-  Write-Debug "Finished successfully!"
+  Write-Host "Finished successfully!" -ForegroundColor Green
 }
