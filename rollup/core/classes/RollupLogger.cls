@@ -1,7 +1,7 @@
 public without sharing virtual class RollupLogger extends Rollup implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.3.23';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.3.24';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -53,7 +53,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
   }
 
   protected String getBaseLoggingMessage() {
-    return 'Rollup: ' + CURRENT_VERSION_NUMBER + ' ';
+    return 'Rollup ' + CURRENT_VERSION_NUMBER + ': ';
   }
 
   @SuppressWarnings('PMD.AvoidDebugStatements')

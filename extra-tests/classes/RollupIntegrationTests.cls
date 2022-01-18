@@ -1759,6 +1759,46 @@ private class RollupIntegrationTests {
     System.assert(true, 'Should make it here');
   }
 
+  @IsTest
+  static void shouldDecrementProperlyOnUpdateWithParentFilterFields() {
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 500;
+    acc.NumberOfEmployees = acc.AnnualRevenue.intValue() + 250;
+    update acc;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'Non-match')
+    };
+    insert cpas;
+
+    List<SObject> oldFlowRecords = new List<SObject>{
+      new ContactPointAddress(PreferenceRank = cpas[0].PreferenceRank, ParentId = acc.Id, Name = 'Two', Id = cpas[0].Id)
+    };
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM');
+    flowInputs[0].rollupFieldOnOpObject = 'NumberOfEmployees';
+    flowInputs[0].oldRecordsToRollup = oldFlowRecords;
+    flowInputs[0].calcItemWhereClause = 'Name = \'Two\'';
+    flowInputs.addAll(RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'SUM'));
+    flowInputs[1].calcItemWhereClause = 'Name = \'Two\' AND Parent.Name = \'' + acc.Name + '\'';
+    flowInputs[1].oldRecordsToRollup = oldFlowRecords;
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(2, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(
+      null,
+      updatedAcc.AnnualRevenue,
+      'Calc item where clause with parent filtering should decrement on update when old item matches and new item does not'
+    );
+    System.assertEquals(250, updatedAcc.NumberOfEmployees, 'Number of employees should also have been decremented');
+  }
+
   /** Schedulable tests */
   @IsTest
   static void shouldThrowExceptionForBadQuery() {

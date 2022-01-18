@@ -102,8 +102,10 @@ public without sharing class RollupCalcItemReplacer {
     Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
     List<String> optionalWhereClauses = new List<String>();
     Set<String> additionalQueryFields = new Set<String>();
-    RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
-    this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+    if (this.metaToEval.containsKey(metadata)) {
+      RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
+      this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+    }
 
     Boolean hasOwnerPrepolulated = populatedFields.containsKey('Owner');
     Boolean hasTypePrepopulated = populatedFields.containsKey('Type');
@@ -222,7 +224,8 @@ public without sharing class RollupCalcItemReplacer {
 
   private void appendUpdatedParentFields(List<SObject> calcItems, Map<Id, SObject> idToCalcItemsWithParentFields) {
     Map<String, SObjectField> fieldNameToFieldToken = calcItems[0].getSObjectType().getDescribe().fields.getMap();
-    for (SObject calcItem : calcItems) {
+    for (Integer index = 0; index < calcItems.size(); index++) {
+      SObject calcItem = calcItems[index];
       SObject calcItemWIthUpdatedParentField = idToCalcItemsWithParentFields.get(calcItem.Id);
       if (calcItemWIthUpdatedParentField == null) {
         continue;
@@ -230,11 +233,34 @@ public without sharing class RollupCalcItemReplacer {
       for (String fieldName : calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().keySet()) {
         if (fieldNameToFieldToken.containsKey(fieldName)) {
           DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName).getDescribe();
-          if (fieldToken.getReferenceTo().isEmpty() == false && fieldToken.isNamePointing() == false && fieldToken.getName() != 'Id') {
-            calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+          Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
+          if (isAcceptableField && fieldToken.isNamePointing() == false) {
+            try {
+              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+            } catch (SObjectException ex) {
+              // avoids "System.SObjectException: Relationship { relationship name } is not editable"
+              calcItems.set(index, this.serializeReplace(calcItem, calcItemWithUpdatedParentField, fieldToken.getRelationshipName()));
+            }
+          } else if (isAcceptableField) {
+            // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,
+            // but can't be appended via .putSObject without reinitializing the parent object to its actual type
+            // this is because they are returned with type "Name", and avoids the dreaded:
+            // "System.SObjectException: Illegal assignment from Name to { the calcItem type }"
+            SObject parentFieldObject = calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName());
+            SObject replacementObject = parentFieldObject.Id.getSObjectType().newSObject();
+            for (String populatedFieldName : parentFieldObject.getPopulatedFieldsAsMap().keySet()) {
+              replacementObject.put(populatedFieldName, parentFieldObject.get(populatedFieldName));
+            }
+            calcItem.putSObject(fieldToken.getRelationshipName(), replacementObject);
           }
         }
       }
     }
+  }
+
+  private SObject serializeReplace(SObject calcItem, SObject calcItemWithUpdatedParent, String relationshipName) {
+    Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(calcItem));
+    deserialized.put(relationshipName, calcItemWithUpdatedParent.getSObject(relationshipName));
+    return (SObject) JSON.deserialize(JSON.serialize(deserialized), SObject.class);
   }
 }
