@@ -8,7 +8,7 @@ private class RollupCalcItemReplacerTests {
   @IsTest
   static void shouldNotTryToQueryRelationshipFieldsWhenTheyAlreadyExistOnPassedInRecords() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id, Name FROM Account];
 
     Contact con = new Contact(LastName = 'Lookup to Account', AccountId = acc.Id);
     insert con;
@@ -30,7 +30,7 @@ private class RollupCalcItemReplacerTests {
   @IsTest
   static void shouldSafelyRequeryRelationshipFields() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id, Name FROM Account];
 
     Contact con = new Contact(LastName = 'Lookup to Account', AccountId = acc.Id);
     insert con;

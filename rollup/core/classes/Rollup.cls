@@ -557,10 +557,8 @@ global without sharing virtual class Rollup {
     private final String rollupContext;
     private final SObjectType sObjectType;
     private final Set<Rollup__mdt> rollupMetadata;
-    private Map<Id, SObject> oldFlowRecords;
 
     private FlowInputWrapper(FlowInput flowInput, String rollupContext, SObjectType sObjectType, Rollup__mdt meta) {
-      this.oldFlowRecords = new Map<Id, SObject>(flowInput.oldRecordsToRollup);
       this.flowInput = flowInput;
       this.rollupContext = rollupContext;
       this.sObjectType = sObjectType;
@@ -580,7 +578,7 @@ global without sharing virtual class Rollup {
 
     // Flow bulkifies things, but poorly. It's possible to get multiple FlowInputs with the same metadata, but different calc items (for example)
     // let's head that off at the pass by bulkifying here
-    Map<String, FlowInputWrapper> keyToInputWrapper = new Map<String, FlowInputWrapper>();
+    Map<Rollup__mdt, FlowInputWrapper> metaToInputWrapper = new Map<Rollup__mdt, FlowInputWrapper>();
     for (FlowInput flowInput : flowInputs) {
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
       RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.DEBUG);
@@ -596,46 +594,37 @@ global without sharing virtual class Rollup {
         enforceFlowSpecificRules(flowInput, sObjectType);
         winnowOldFlowRecords(flowInput);
 
-        Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(flowInput.oldRecordsToRollup);
-        String rollupContext = getFlowRollupContext(flowInput, flowInput.recordsToRollup[0], sObjectType, oldFlowRecords);
+        String rollupContext = getFlowRollupContext(flowInput, flowInput.recordsToRollup[0], sObjectType, flowInput.oldRecordsToRollup);
 
         Rollup__mdt meta = transformFlowInputToRollupMetadata(flowInput, rollupContext, sObjectType);
-        String key = String.valueOf(meta);
-        if (keyToInputWrapper.containsKey(key)) {
-          FlowInputWrapper wrapper = keyToInputWrapper.get(key);
+        if (metaToInputWrapper.containsKey(meta)) {
+          FlowInputWrapper wrapper = metaToInputWrapper.get(meta);
           if (wrapper.rollupMetadata.contains(meta)) {
             wrapper.flowInput.recordsToRollup.addAll(flowInput.recordsToRollup);
-            wrapper.oldFlowRecords.putAll(flowInput.oldRecordsToRollup);
+            wrapper.flowInput.oldRecordsToRollup.addAll(flowInput.oldRecordsToRollup);
           } else {
             wrapper.rollupMetadata.add(meta);
           }
         } else {
-          keyToInputWrapper.put(key, new FlowInputWrapper(flowInput, rollupContext, sObjectType, meta));
+          metaToInputWrapper.put(meta, new FlowInputWrapper(flowInput, rollupContext, sObjectType, meta));
         }
       }
 
       flowOutputs.add(flowOutput);
     }
 
-    for (String key : keyToInputWrapper.keySet()) {
-      FlowInputWrapper wrapper = keyToInputWrapper.get(key);
+    Map<Integer, List<SObject>> hashCodeToCalcItems = new Map<Integer, List<SObject>>();
+    for (Rollup__mdt key : metaToInputWrapper.keySet()) {
+      FlowInputWrapper wrapper = metaToInputWrapper.get(key);
+      // here we clone the list because it can get winnowed in "processCustomMetadata"
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
-      wrapper.flowInput.recordsToRollup = CALC_ITEM_REPLACER.replace(wrapper.flowInput.recordsToRollup, metas);
-      if (wrapper.oldFlowRecords?.isEmpty() == false) {
-        wrapper.oldFlowRecords = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(wrapper.oldFlowRecords.values(), metas));
-      }
-      processCustomMetadata(
-        localRollups,
-        metas,
-        wrapper.flowInput.recordsToRollup,
-        wrapper.oldFlowRecords,
-        new Set<String>(),
-        wrapper.rollupContext,
-        fromInvocable
-      );
+      wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
+      wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
+      Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(wrapper.flowInput.oldRecordsToRollup);
+      processCustomMetadata(localRollups, metas, wrapper.flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), wrapper.rollupContext, fromInvocable);
 
       if (metas.isEmpty() == false) {
-        Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, wrapper.oldFlowRecords, null, fromInvocable);
+        Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
         String logMessage = 'adding invocable rollup to list:';
         if (wrapper.flowInput.deferProcessing) {
           logMessage = 'deferring processing for rollup:';
@@ -1939,6 +1928,20 @@ global without sharing virtual class Rollup {
     }
   }
 
+  private static List<SObject> replaceFlowInputCalcItemsIfNecessary(
+    Map<Integer, List<SObject>> hashCodeToCalcItems,
+    List<SObject> calcItems,
+    List<Rollup__mdt> metas
+  ) {
+    Integer priorHashCode = calcItems.hashCode();
+    if (hashCodeToCalcItems.containsKey(priorHashCode)) {
+      return hashCodeToCalcItems.get(priorHashCode);
+    }
+    calcItems = CALC_ITEM_REPLACER.replace(calcItems, metas);
+    hashCodeToCalcItems.put(priorHashCode, calcItems);
+    return calcItems;
+  }
+
   private static String batch(List<Rollup> rollups, InvocationPoint invokePoint) {
     Rollup conductor;
     if (rollups.isEmpty()) {
@@ -2154,9 +2157,9 @@ global without sharing virtual class Rollup {
     }
   }
 
-  private static String getFlowRollupContext(FlowInput firstInput, SObject firstRecord, SObjectType sObjectType, Map<Id, SObject> oldFlowRecords) {
+  private static String getFlowRollupContext(FlowInput firstInput, SObject firstRecord, SObjectType sObjectType, List<SObject> oldFlowRecords) {
     String flowContext = firstInput.rollupContext.toUpperCase();
-    if (String.isBlank(flowContext) || flowContext == 'UPSERT' && oldFlowRecords.containsKey(firstRecord.Id) == false) {
+    if (String.isBlank(flowContext) || flowContext == 'UPSERT' && oldFlowRecords.isEmpty()) {
       flowContext = 'INSERT';
     } else if (flowContext == 'UPSERT') {
       flowContext = 'UPDATE';
