@@ -1478,6 +1478,7 @@ global without sharing virtual class Rollup {
       }
       if (rollupMetadata != null) {
         cachedMetadata.addAll(rollupMetadata);
+        rollupMetadata = null;
       }
       matchingMetadata = cachedMetadata.clone();
     } else if (metadataType == RollupControl__mdt.SObjectType) {

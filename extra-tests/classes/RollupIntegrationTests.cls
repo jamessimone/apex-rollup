@@ -591,8 +591,8 @@ private class RollupIntegrationTests {
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
-    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
-    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = secondGreatGrandparent.Id);
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = secondGreatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = greatGrandparent.Id);
     List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
     insert parentApps;
 
@@ -604,7 +604,6 @@ private class RollupIntegrationTests {
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
     insert new List<ApplicationLog__c>{ child, secondChild };
 
-    Rollup.records = parentApps;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ApplicationLog__c',
@@ -619,13 +618,11 @@ private class RollupIntegrationTests {
     };
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, SObject>{
-      grandParent.Id => new ParentApplication__c(Id = grandParent.Id, Account__c = secondGreatGrandparent.Id),
-      secondGrandparent.Id => new ParentApplication__c(Id = secondGrandparent.Id, Account__c = greatGrandparent.Id)
-    };
 
     Test.startTest();
-    Rollup.runFromTrigger();
+    parentApps[0].Account__c = greatGrandparent.Id;
+    parentApps[1].Account__c = secondGreatGrandparent.Id;
+    update parentApps;
     Test.stopTest();
 
     Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
@@ -637,6 +634,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromFlow() {
+    Rollup.onlyUseMockMetadata = true;
     Account greatGrandparent = new Account(Name = 'Great-grandparent Flow');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent Flow');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
@@ -998,6 +996,19 @@ private class RollupIntegrationTests {
   static void shouldCorrectlyRollupFromTriggerOnMerge() {
     Account parent = [SELECT Id, Name FROM Account];
 
+    // you can only merge contacts / accounts / leads / cases
+    Account parentToMerge = new Account(Name = 'Second parent');
+    insert parentToMerge;
+
+    List<ContactPointAddress> rollupChildren = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2)
+    };
+
+    // we don't even need the parent account's annual revenue to be set; rather
+    // we need to validate that post merge, the rollup is recalculated correctly
+    insert rollupChildren;
+
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -1031,19 +1042,6 @@ private class RollupIntegrationTests {
         RollupOperation__c = 'CONCAT'
       )
     };
-
-    // you can only merge contacts / accounts / leads / cases
-    Account parentToMerge = new Account(Name = 'Second parent');
-    insert parentToMerge;
-
-    List<ContactPointAddress> rollupChildren = new List<ContactPointAddress>{
-      new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2)
-    };
-
-    // we don't even need the parent account's annual revenue to be set; rather
-    // we need to validate that post merge, the rollup is recalculated correctly
-    insert rollupChildren;
 
     Test.startTest();
     Database.merge(parent, parentToMerge.Id, true);

@@ -326,4 +326,21 @@ private class RollupRelationshipFieldFinderTests {
     Account retrievedAcc = (Account) traversal.retrieveParent(con.Id);
     System.assertEquals(expectedAcc.Id, retrievedAcc.Id, 'Should correctly retrieve hierarchy');
   }
+
+  @IsTest
+  static void regressionTopLevelHierarchyDoesNotThrowException() {
+    Account hierarchyParent = [SELECT Id, ParentId FROM Account];
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(RollupToUltimateParent__c = true, UltimateParentLookup__c = 'ParentId', LookupFieldOnCalcItem__c = 'ParentId'),
+      new Set<String>{ 'Name', 'Id' },
+      Account.SObjectType,
+      new Map<Id, SObject>()
+    );
+
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Account>{ hierarchyParent });
+
+    System.assertEquals(true, traversal.getIsFinished());
+    System.assertEquals(true, traversal.getParentLookupToRecords().isEmpty());
+  }
 }

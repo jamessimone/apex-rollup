@@ -101,11 +101,7 @@ private class RollupFullRecalcTests {
     insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(
-        PreferenceRank = second.AnnualRevenue.intValue(),
-        ParentId = second.Id,
-        Name = 'Two'
-      )
+      new ContactPointAddress(PreferenceRank = second.AnnualRevenue.intValue(), ParentId = second.Id, Name = 'Two')
     };
     insert cpas;
 
@@ -154,6 +150,40 @@ private class RollupFullRecalcTests {
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+  }
+
+  @IsTest
+  static void shouldPerformBulkFullRecalcWithHierarchy() {
+    // also validates that RollupRelationshipFieldFinder aborts early if it's called
+    // for a top-level parent
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
+
+    Account acc = [SELECT Id FROM Account];
+    Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id, AnnualRevenue = 5);
+    insert childAccount;
+
+    Rollup.defaultControl = null;
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        LookupObject__c = 'Account',
+        RollupToUltimateParent__c = true,
+        LookupFieldOnCalcItem__c = 'ParentId',
+        UltimateParentLookup__c = 'ParentId',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupFieldOnLookupObject__c = 'Id'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(Rollup.rollupMetadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(childAccount.AnnualRevenue, acc.AnnualRevenue);
   }
 
   @IsTest

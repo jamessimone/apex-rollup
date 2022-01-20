@@ -93,7 +93,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
     public Map<String, Rollup.CalcItemBag> getParentLookupToRecords() {
       Map<String, Rollup.CalcItemBag> parentToLookupRecords = new Map<String, Rollup.CalcItemBag>();
-      if (this.isAbortedEarly) {
+      if (this.isAbortedEarly || this.finder.records == null) {
         return parentToLookupRecords;
       }
       for (SObject record : this.finder.records) {
@@ -300,6 +300,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
     // no matter how far up the chain we are, if we arrive at a point where there are no records, we're done
     if (firstId == null) {
+      this.setFirstRunFlags(records);
       this.prepFinishedObject(records);
       this.traversal.isAbortedEarly = true;
       return this.traversal;
@@ -329,13 +330,17 @@ public without sharing class RollupRelationshipFieldFinder {
       currentRelationshipName,
       nextFieldMap
     );
+    this.setFirstRunFlags(records);
 
     // recurse through till we get to the top/bottom of the chain
+    return this.getParents(Database.query(query));
+  }
+
+  private void setFirstRunFlags(List<SObject> records) {
     if (this.isFirstRun) {
       this.records = records;
       this.isFirstRun = false;
     }
-    return this.getParents(Database.query(query));
   }
 
   private void populateRelationshipNameToWhereClauses(Schema.SObjectType sObjectType) {
