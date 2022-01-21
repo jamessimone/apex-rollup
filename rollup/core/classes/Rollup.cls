@@ -432,7 +432,6 @@ global without sharing virtual class Rollup {
     validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
     validationRuleWrapper.fullRecalculationDefaultStringValue = metadata.FullRecalculationDefaultStringValue__c;
     validationRuleWrapper.fullRecalculationDefaultNumberValue = metadata.FullRecalculationDefaultNumberValue__c;
-    validationRuleWrapper.orderByFirstLast = metadata.OrderByFirstLast__c;
     enforceValidationRules(validationRuleWrapper);
 
     QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
@@ -517,7 +516,8 @@ global without sharing virtual class Rollup {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
-    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
+    // TODO - introduce Apex-defined type for Flow to configure FIRST/LAST properties
+    @InvocableVariable(label='Order By (First/Last) - Deprecated')
     global String orderByFirstLast;
 
     // these are listed with the optional properties because otherwise Flow builders always have to check for null after using a Get Records
@@ -1460,7 +1460,8 @@ global without sharing virtual class Rollup {
             RollupControl__c,
             RollupOperation__c,
             RollupToUltimateParent__c,
-            SplitConcatDelimiterOnCalcItem__c
+            SplitConcatDelimiterOnCalcItem__c,
+            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c)
           FROM Rollup__mdt
         ];
         // do the transforms
@@ -1543,17 +1544,16 @@ global without sharing virtual class Rollup {
     SObjectType lookupSObjectType,
     Op rollupOperation,
     Object defaultRecalculationValue,
-    String orderByFirstLast,
+    String orderByFirstLast, // TODO - make this List<RollupOrderBy__mdt>
     Evaluator eval
   ) {
     Rollup__mdt meta = new Rollup__mdt(
       RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
-      LookupObject__c = String.valueOf(lookupSObjectType),
+      LookupObject__c = lookupSObjectType.getDescribe().getName(),
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
       LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
       RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
-      RollupOperation__c = rollupOperation.name(),
-      OrderByFirstLast__c = orderByFirstLast
+      RollupOperation__c = rollupOperation.name()
     );
     if (defaultRecalculationValue instanceof Decimal) {
       meta.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
@@ -1977,13 +1977,6 @@ global without sharing virtual class Rollup {
   private static void enforceValidationRules(FlowInput flowInput) {
     String errorMessage;
     if (
-      (flowInput.rollupOperation == 'FIRST' ||
-      flowInput.rollupOperation == 'LAST') &&
-      String.isBlank(flowInput.orderByFirstLast) &&
-      String.isBlank(flowInput.rollupFieldOnCalcItem)
-    ) {
-      errorMessage = 'Order By First/Last field required for ' + flowInput.rollupOperation + ' operation';
-    } else if (
       (flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) ||
       (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)
     ) {

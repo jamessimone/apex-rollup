@@ -145,7 +145,6 @@ private class RollupFlowBulkProcessorTests {
     input.grandparentRelationshipFieldPath = 'Account.Owner.Name';
     input.isFullRecordSet = true;
     input.isRollupStartedFromParent = true;
-    input.orderByFirstLast = 'Amount';
     input.rollupToUltimateParent = true;
     input.ultimateParentLookup = 'AccountId';
 

@@ -533,6 +533,7 @@ global static Rollup countFromApex(
   Evaluator eval
 )
 
+// TODO - update these signatures to use new List<RollupOrderBy__mdt> !
 global static Rollup firstFromApex(
   SObjectField firstFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
@@ -820,9 +821,22 @@ trigger ContactTrigger on Contact(after delete) {
     RollupFieldOnLookupObject__c = 'Description',
     LookupObject__c = 'Contact',
     RollupOperation__c = 'FIRST',
-    OrderByFirstLast__c = 'ActivityDate',
     CalcItemWhereClause__c = 'Subject = \'Hello world!\''
   );
+
+  // if you are configuring FIRST/LAST task/event rollups from here, I'm afraid things get a little more complicated
+  // Apex doesn't have a native approach for the equivalent of selecting children records in SOQL
+  // and we need to perform this hack to get the corresponding list of RollupOrderBy__mdt records set correctly on the
+  // parent rollup
+  Map<String, Object> deserializedMeta = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(taskMetadata));
+  deserializedMeta.put('RollupOrderBys', new List<RollupOrderBy__mdt>{
+    new RollupOrderBy__mdt(
+      FieldName__c = 'ActivityDate',
+      Ranking__c = 0
+    )
+  });
+  taskMetadata = (Rollup__mdt) JSON.deserialize(JSON.serialize(deserializedMeta), Rollup__mdt.class);
+
   // create a Rollup__mdt rollup record, properly filled out, for each invocable you have set up
   // unfortunately, if your parent-level object has rollups configured within Rollup__mdt metadata AND
   // Task / Event / User, you'll need to write out each of them here and pass them into the "runFromApex"

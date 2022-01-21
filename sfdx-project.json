@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixing issue with ultimate parent rollups and full recalculation",
-            "versionNumber": "1.3.25.0",
+            "versionName": "Introducing Rollup Order By CMDT to replace Rollup__mdt.OrderByFirstLast__c - allows for multiple fields when arranging ordering for FIRST and LAST rollups",
+            "versionNumber": "1.4.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

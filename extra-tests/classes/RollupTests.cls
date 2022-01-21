@@ -2641,27 +2641,6 @@ private class RollupTests {
   }
 
   @IsTest
-  static void shouldReportErrorWhenOrderByNotIncludedForFirstLast() {
-    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
-      new List<ContactPointAddress>{
-        new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today(), Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
-      },
-      'INSERT',
-      'FIRST'
-    );
-    flowInputs[0].rollupFieldOnCalcItem = null;
-
-    Exception ex;
-    try {
-      Rollup.performRollup(flowInputs);
-    } catch (Exception e) {
-      ex = e;
-    }
-
-    System.assertEquals('Order By First/Last field required for FIRST operation', ex?.getMessage());
-  }
-
-  @IsTest
   static void shouldReportErrorWhenUltimateParentRollupAndNoLookupField() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(
       new List<ContactPointAddress>{
