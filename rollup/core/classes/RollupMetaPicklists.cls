@@ -2,6 +2,25 @@ public virtual without sharing class RollupMetaPicklists {
   private final Set<String> validValues;
 
   public static final ShouldRunAs ShouldRunAs = new ShouldRunAs();
+  public static final SortOrder SortOrder {
+    get {
+      if (SortOrder == null) {
+        SortOrder = new SortOrder();
+      }
+      return SortOrder;
+    }
+    private set;
+  }
+
+  public static final NullSortOrder NullSortOrder {
+    get {
+      if (NullSortOrder == null) {
+        NullSortOrder = new NullSortOrder();
+      }
+      return NullSortOrder;
+    }
+    private set;
+  }
 
   private RollupMetaPicklists(Schema.SObjectField fieldToken) {
     this.validValues = new Set<String>();
@@ -39,6 +58,36 @@ public virtual without sharing class RollupMetaPicklists {
     public String Queueable {
       get {
         return this.validate('Queueable');
+      }
+    }
+  }
+
+  public class SortOrder extends RollupMetaPicklists {
+    public SortOrder() {
+      super(RollupOrderBy__mdt.SortOrder__c);
+    }
+
+    public String Ascending {
+      get {
+        return this.validate('Ascending');
+      }
+    }
+  }
+
+  public class NullSortOrder extends RollupMetaPicklists {
+    public NullSortOrder() {
+      super(RollupOrderBy__mdt.NullSortOrder__c);
+    }
+
+    public String NullsFirst {
+      get {
+        return this.validate('NULLS FIRST');
+      }
+    }
+
+    public String NullsLast {
+      get {
+        return this.validate('NULLS LAST');
       }
     }
   }

@@ -687,6 +687,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return localLookupItems;
   }
 
+  // TODO - move this into RollupSObjectUpdater
   private void splitUpdates(Map<String, SObject> updatedLookupRecords) {
     if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size() && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
       Integer maxIndexToRemove = updatedLookupRecords.size() / 2;

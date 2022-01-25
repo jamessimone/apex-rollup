@@ -1021,6 +1021,28 @@ global without sharing virtual class Rollup {
     String orderByFirstLast,
     Evaluator eval
   ) {
+    return firstFromApex(
+      firstFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      firstFieldOnOpObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = orderByFirstLast) },
+      eval
+    );
+  }
+
+  global static Rollup firstFromApex(
+    SObjectField firstFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField firstFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    List<RollupOrderBy__mdt> orderByMetas,
+    Evaluator eval
+  ) {
     return operateFromApex(
       firstFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -1029,7 +1051,7 @@ global without sharing virtual class Rollup {
       lookupSobjectType,
       Op.FIRST,
       defaultRecalculationValue,
-      orderByFirstLast,
+      orderByMetas,
       eval
     );
   }
@@ -1085,6 +1107,28 @@ global without sharing virtual class Rollup {
     String orderByFirstLast,
     Evaluator eval
   ) {
+    return lastFromApex(
+      lastFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      lastFieldOnOpObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = orderByFirstLast) },
+      eval
+    );
+  }
+
+  global static Rollup lastFromApex(
+    SObjectField lastFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField lastFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    List<RollupOrderBy__mdt> orderByMetas,
+    Evaluator eval
+  ) {
     return operateFromApex(
       lastFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -1093,7 +1137,7 @@ global without sharing virtual class Rollup {
       lookupSobjectType,
       Op.LAST,
       defaultRecalculationValue,
-      orderByFirstLast,
+      orderByMetas,
       eval
     );
   }
@@ -1412,6 +1456,28 @@ global without sharing virtual class Rollup {
     return rollupConductor;
   }
 
+  /**
+   * @return `Rollup__mdt` the metadata with the `List<RollupOrderBy__mdt>` RollupOrderBys__r relationship set
+   * <br>
+   * Credit for this method (with some tweaking) goes to: https://github.com/tsalb
+   */
+  global static Rollup__mdt appendOrderByMetadata(Rollup__mdt meta, List<RollupOrderBy__mdt> children) {
+    String serializedMeta = JSON.serialize(meta).removeEnd('}');
+
+    JSONGenerator gen = JSON.createGenerator(false);
+    gen.writeStartObject();
+    gen.writeNumberField('totalSize', children.size());
+    gen.writeBooleanField('done', true);
+    gen.writeObjectField('records', children);
+    gen.writeEndObject();
+    // using Rollup__mdt.SObjectType.getDescribe().getChildRelationships() and doing that whole dance
+    // makes me ... sad ... so we'll just live with this little sin for now
+    String childrenJson = '"RollupOrderBys__r" : ' + gen.getAsString();
+    serializedMeta = serializedMeta += ',' + childrenJson + '}';
+
+    return (Rollup__mdt) JSON.deserialize(serializedMeta, Rollup__mdt.class);
+  }
+
   /** end global-facing section, begin public/private static helpers */
 
   public static void processStoredFlowRollups() {
@@ -1461,7 +1527,7 @@ global without sharing virtual class Rollup {
             RollupOperation__c,
             RollupToUltimateParent__c,
             SplitConcatDelimiterOnCalcItem__c,
-            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c)
+            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
           FROM Rollup__mdt
         ];
         // do the transforms
@@ -1544,7 +1610,7 @@ global without sharing virtual class Rollup {
     SObjectType lookupSObjectType,
     Op rollupOperation,
     Object defaultRecalculationValue,
-    String orderByFirstLast, // TODO - make this List<RollupOrderBy__mdt>
+    List<RollupOrderBy__mdt> orderByMetas,
     Evaluator eval
   ) {
     Rollup__mdt meta = new Rollup__mdt(
@@ -1559,6 +1625,9 @@ global without sharing virtual class Rollup {
       meta.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
     } else if (defaultRecalculationValue instanceof String) {
       meta.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
+    }
+    if (orderByMetas?.isEmpty() == false) {
+      meta = appendOrderByMetadata(meta, orderByMetas);
     }
     return runFromApex(new List<Rollup__mdt>{ meta }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }

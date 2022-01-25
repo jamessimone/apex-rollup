@@ -533,13 +533,13 @@ global static Rollup countFromApex(
   Evaluator eval
 )
 
-// TODO - update these signatures to use new List<RollupOrderBy__mdt> !
 global static Rollup firstFromApex(
   SObjectField firstFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
   SObjectField firstFieldOnOpObject,
   SObjectType lookupSobjectType,
+  // if you need to order by more than one field, use the last signature for FIRST
   String orderByFirstLast
 )
 
@@ -564,12 +564,24 @@ global static Rollup firstFromApex(
   Evaluator eval
 )
 
+global static Rollup firstFromApex(
+  SObjectField firstFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField firstFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue,
+  List<RollupOrderBy__mdt> orderByMetas,
+  Evaluator eval
+)
+
 global static Rollup lastFromApex(
   SObjectField lastFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
   SObjectField lastFieldOnOpObject,
   SObjectType lookupSobjectType,
+   // if you need to order by more than one field, use the last signature for LAST
   String orderByFirstLast
 )
 
@@ -591,6 +603,17 @@ global static Rollup lastFromApex(
   SObjectType lookupSobjectType,
   Object defaultRecalculationValue, // can be a string or a number for last
   String orderByFirstLast,
+  Evaluator eval
+)
+
+global static Rollup lastFromApex(
+  SObjectField lastFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField lastFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue,
+  List<RollupOrderBy__mdt> orderByMetas,
   Evaluator eval
 )
 
@@ -828,14 +851,12 @@ trigger ContactTrigger on Contact(after delete) {
   // Apex doesn't have a native approach for the equivalent of selecting children records in SOQL
   // and we need to perform this hack to get the corresponding list of RollupOrderBy__mdt records set correctly on the
   // parent rollup
-  Map<String, Object> deserializedMeta = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(taskMetadata));
-  deserializedMeta.put('RollupOrderBys', new List<RollupOrderBy__mdt>{
+  taskMetadata = Rollup.appendOrderByMetadata(taskMetadata, new List<RollupOrderBy__mdt>{
     new RollupOrderBy__mdt(
       FieldName__c = 'ActivityDate',
       Ranking__c = 0
     )
   });
-  taskMetadata = (Rollup__mdt) JSON.deserialize(JSON.serialize(deserializedMeta), Rollup__mdt.class);
 
   // create a Rollup__mdt rollup record, properly filled out, for each invocable you have set up
   // unfortunately, if your parent-level object has rollups configured within Rollup__mdt metadata AND

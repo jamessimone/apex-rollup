@@ -580,9 +580,9 @@ public without sharing class RollupRelationshipFieldFinder {
         Integer whereSecondIs = this.fullWhereClause.indexOf(second);
 
         if (whereFirstIs > whereSecondIs) {
-          returnVal = this.moveTowardFrontOfList;
-        } else if (whereSecondIs > whereFirstIs) {
           returnVal = this.moveTowardBackOfList;
+        } else if (whereSecondIs > whereFirstIs) {
+          returnVal = this.moveTowardFrontOfList;
         }
       }
 
