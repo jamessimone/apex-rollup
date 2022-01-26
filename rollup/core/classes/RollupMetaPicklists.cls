@@ -72,6 +72,12 @@ public virtual without sharing class RollupMetaPicklists {
         return this.validate('Ascending');
       }
     }
+
+    public String Descending {
+      get {
+        return this.validate('Descending');
+      }
+    }
   }
 
   public class NullSortOrder extends RollupMetaPicklists {
