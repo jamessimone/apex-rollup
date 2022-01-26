@@ -81,6 +81,7 @@ private class RollupCalculatorTests {
   @IsTest
   static void shouldReturnFirstValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    metadata.RollupOrderBys__r[0].NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast;
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -104,7 +105,7 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
-  static void shouldReturnMiddleValueWhenFirstAndLastAreNull() {
+  static void shouldReturnMiddleValueForFirst() {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
@@ -116,11 +117,12 @@ private class RollupCalculatorTests {
       Account.Id
     );
 
+    Date today = System.today();
     calc.performRollup(
       new List<Opportunity>{
-        new Opportunity(Id = '0066g00003VDGbF001', Amount = 1),
-        new Opportunity(Id = '0066g00003VDGbF002', Amount = 2, CloseDate = System.today()),
-        new Opportunity(Id = '0066g00003VDGbF003', Amount = 15)
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 1, CloseDate = today.addDays(1)),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 2, CloseDate = today),
+        new Opportunity(Id = '0066g00003VDGbF003', Amount = 15, CloseDate = today.addDays(1))
       },
       new Map<Id, SObject>()
     );
@@ -131,6 +133,7 @@ private class RollupCalculatorTests {
   @IsTest
   static void shouldReturnFirstValueWhenMiddleAndLastAreNull() {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    metadata.RollupOrderBys__r[0].NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast;
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,
@@ -156,6 +159,7 @@ private class RollupCalculatorTests {
   @IsTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    metadata.RollupOrderBys__r[0].NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast;
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
       0,
       Rollup.Op.FIRST,

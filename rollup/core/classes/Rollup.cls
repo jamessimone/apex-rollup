@@ -1881,6 +1881,9 @@ global without sharing virtual class Rollup {
     if (eval != null) {
       queryFields.addAll(eval.getQueryFields());
     }
+    for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
+      queryFields.add(orderByInfo.FieldName__c);
+    }
     return queryFields;
   }
 

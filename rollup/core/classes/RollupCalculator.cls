@@ -1075,7 +1075,7 @@ public without sharing abstract class RollupCalculator {
         (metadata.FullRecalculationDefaultNumberValue__c != null
           ? (Object) metadata.FullRecalculationDefaultNumberValue__c
           : (Object) metadata.FullRecalculationDefaultStringValue__c),
-        metadata,
+        getFirstLastMetadata(metadata),
         lookupRecordKey,
         lookupKeyField
       );
@@ -1118,5 +1118,13 @@ public without sharing abstract class RollupCalculator {
       new RollupFirstLastSorter(this.op, this.metadata.RollupOrderBys__r).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
     }
+  }
+
+  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt metadata) {
+    if (metadata.RollupOrderBys__r.isEmpty()) {
+      String fieldName = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
+      return Rollup.appendOrderByMetadata(metadata, new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = fieldName) });
+    }
+    return metadata;
   }
 }
