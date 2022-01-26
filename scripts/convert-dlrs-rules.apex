@@ -26,6 +26,9 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
 
   String operation;
   switch on dlrsRule.dlrs__AggregateOperation__c {
+    when 'Avg' {
+      operation = 'AVERAGE';
+    }
     when 'Concatenate' {
       operation = 'CONCAT';
     }
