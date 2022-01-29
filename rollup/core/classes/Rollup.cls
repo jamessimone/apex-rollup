@@ -345,8 +345,9 @@ global without sharing virtual class Rollup {
   }
 
   @AuraEnabled
-  global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
+  global static String performBulkFullRecalc(String serializedMetadata, String invokePointName) {
     isFullRecalcApp = true;
+    List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
     InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
 
@@ -360,6 +361,13 @@ global without sharing virtual class Rollup {
     Integer delimiterIndex = -1;
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
+      FlowInput validationRuleWrapper = new FlowInput();
+      validationRuleWrapper.rollupOperation = matchingMeta.RollupOperation__c.toUpperCase();
+      validationRuleWrapper.concatDelimiter = matchingMeta.ConcatDelimiter__c;
+      validationRuleWrapper.fullRecalculationDefaultStringValue = matchingMeta.FullRecalculationDefaultStringValue__c;
+      validationRuleWrapper.fullRecalculationDefaultNumberValue = matchingMeta.FullRecalculationDefaultNumberValue__c;
+      enforceValidationRules(validationRuleWrapper);
+
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
         delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
         potentialWhereClause = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length());
@@ -423,27 +431,14 @@ global without sharing virtual class Rollup {
     return [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
   }
 
+  /**
+   * Sending metadata from the frontend LWCs omits
+   * the RollupOrderBys__r children unless it's sent serialized (using the same
+   * child object format used in the "appendOrderByMetadata")
+   */
   @AuraEnabled
-  global static String performFullRecalculation(Rollup__mdt metadata) {
-    isFullRecalcApp = true;
-    RollupLogger.Instance.log('beginning full recalculation for:', metadata, LoggingLevel.DEBUG);
-    FlowInput validationRuleWrapper = new FlowInput();
-    validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
-    validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
-    validationRuleWrapper.fullRecalculationDefaultStringValue = metadata.FullRecalculationDefaultStringValue__c;
-    validationRuleWrapper.fullRecalculationDefaultNumberValue = metadata.FullRecalculationDefaultNumberValue__c;
-    enforceValidationRules(validationRuleWrapper);
-
-    QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
-    wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    Rollup fullRecalc = getFullRecalcRollups(
-      new List<FullRecalculationMetadata>{
-        new FullRecalculationMetadata(metadata, wrapper, RollupFieldInitializer.Current.getSObjectFromName(metadata.CalcItem__c).getSObjectType())
-      },
-      InvocationPoint.FROM_LWC
-    )[0];
-    isFullRecalcApp = false;
-    return fullRecalc?.runCalc();
+  global static String performFullRecalculation(String serializedMetadata) {
+    return performBulkFullRecalc('[' + serializedMetadata + ']', InvocationPoint.FROM_LWC.name());
   }
 
   global class FlowInput {

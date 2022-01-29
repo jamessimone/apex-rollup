@@ -829,56 +829,38 @@ trigger ContactTrigger on Contact(after delete) {
 }
 ```
 
-If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex. To that effect, your corresponding `ContactTrigger` (or after delete method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
+If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex (or that the globally exposed Apex rollup methods can't be used on those objects). To that effect, your corresponding `ContactTrigger` (or after delete method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
 
 ```java
 trigger ContactTrigger on Contact(after delete) {
-  // each of these records should directly correspond to the equivalent invocable Rollup action
+  // each of these Rollups should directly correspond to the equivalent invocable Rollup action
   // this is because merge-related rollups will bypass your record-triggered flows and do the work
-  // directly within the Apex trigger
-  Rollup__mdt taskMetadata = new Rollup__mdt(
-    CalcItem__c = 'Task',
-    RollupFieldOnCalcItem__c = 'Subject', // just for example
-    LookupFieldOnCalcItem__c = 'WhoId',
-    LookupFieldOnLookupObject__c = 'Id',
-    RollupFieldOnLookupObject__c = 'Description',
-    LookupObject__c = 'Contact',
-    RollupOperation__c = 'FIRST',
-    CalcItemWhereClause__c = 'Subject = \'Hello world!\''
-  );
-
-  // if you are configuring FIRST/LAST task/event rollups from here, I'm afraid things get a little more complicated
-  // Apex doesn't have a native approach for the equivalent of selecting children records in SOQL
-  // and we need to perform this hack to get the corresponding list of RollupOrderBy__mdt records set correctly on the
-  // parent rollup
-  taskMetadata = Rollup.appendOrderByMetadata(taskMetadata, new List<RollupOrderBy__mdt>{
-    new RollupOrderBy__mdt(
-      FieldName__c = 'ActivityDate',
-      Ranking__c = 0
+  // directly within the Apex trigger. If you aren't operating on Task/Event/User as the child object,
+  // set up your rollups using CMDT and use the snippet above instead!
+  Rollup.batch(
+    Rollup.firstFromApex(
+      Task.Subject,
+      Task.WhoId,
+      Contact.Id,
+      Contact.Description,
+      Contact.SObjectType,
+      null, // default recalc value
+      new List<RollupOrderBy__mdt>{
+        new RollupOrderBy__mdt(
+          FieldName__c = 'ActivityDate',
+          Ranking__c = 0
+        )
+      },
+      RollupEvaluator.getWhereEval(''Subject = \'Hello world!\'', Task.SObjectType)
+    ),
+    Rollup.concatDistinctFromApex(
+      Event.Subject,
+      Event.WhoId,
+      Contact.Id,
+      Contact.Description,
+      Contact.SObjectType
     )
-  });
-
-  // create a Rollup__mdt rollup record, properly filled out, for each invocable you have set up
-  // unfortunately, if your parent-level object has rollups configured within Rollup__mdt metadata AND
-  // Task / Event / User, you'll need to write out each of them here and pass them into the "runFromApex"
-  // method below. Otherwise, you can simply use the "runFromTrigger" method above if all of your rollups
-  // for this parent-level object are configured strictly within Rollup__mdt records
-  Rollup__mdt eventMetadata = new Rollup__mdt(
-    CalcItem__c = 'Event',
-    RollupFieldOnCalcItem__c = 'Subject',
-    LookupFieldOnCalcItem__c = 'WhoId',
-    LookupFieldOnLookupObject__c = 'Id',
-    RollupFieldOnLookupObject__c = 'Description',
-    LookupObject__c = 'Contact',
-    RollupOperation__c = 'CONCAT_DISTINCT'
   );
-
-  Rollup.runFromApex(
-    new List<Rollup__mdt>{ taskMetadata, eventMetadata },
-    null, // custom eval argument, doesn't need to be set unless you have some complicated, Apex-based filtering logic necessary
-    Trigger.old,
-    Trigger.oldMap
-  ).runCalc();
 }
 ```
 

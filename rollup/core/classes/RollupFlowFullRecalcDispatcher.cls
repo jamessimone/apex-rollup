@@ -25,7 +25,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
       }
     }
     if (selectedRollupMetadata.isEmpty() == false) {
-      Rollup.performBulkFullRecalc(selectedRollupMetadata, Rollup.InvocationPoint.FROM_SCHEDULED_FLOW.name());
+      Rollup.performBulkFullRecalc(JSON.serialize(selectedRollupMetadata), Rollup.InvocationPoint.FROM_SCHEDULED_FLOW.name());
     }
   }
 }

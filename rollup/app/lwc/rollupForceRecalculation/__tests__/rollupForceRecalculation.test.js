@@ -103,8 +103,8 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     return flushPromises().then(() => {
-      expect(performFullRecalculation.mock.calls[0][0]).toEqual({
-        metadata: {
+      expect(performFullRecalculation.mock.calls[0][0].metadata).toMatch(
+        JSON.stringify({
           RollupFieldOnCalcItem__c: 'FirstName',
           LookupFieldOnCalcItem__c: 'AccountId',
           LookupFieldOnLookupObject__c: 'Id',
@@ -113,11 +113,10 @@ describe('Rollup force recalc tests', () => {
           CalcItem__c: 'Contact',
           RollupOperation__c: 'CONCAT',
           CalcItemWhereClause__c: '',
-          OrderByFirstLast__c: '',
           ConcatDelimiter__c: '',
           SplitConcatDelimiterOnCalcItem__c: false
-        }
-      });
+        })
+      );
     });
   });
 
@@ -158,7 +157,7 @@ describe('Rollup force recalc tests', () => {
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: expectedList, invokePointName: 'FROM_LWC' });
+          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: JSON.stringify(expectedList), invokePointName: 'FROM_LWC' });
         })
     );
   });

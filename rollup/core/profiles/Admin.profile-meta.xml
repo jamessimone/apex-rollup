@@ -241,6 +241,9 @@
         <layout>Rollup__mdt-Rollup Layout</layout>
     </layoutAssignments>
     <layoutAssignments>
+        <layout>RollupOrderBy__mdt-Rollup Order By Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
         <layout>RollupPlugin__mdt-Rollup Plugin Layout</layout>
     </layoutAssignments>
     <layoutAssignments>

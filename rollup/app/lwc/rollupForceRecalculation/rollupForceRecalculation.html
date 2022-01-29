@@ -91,16 +91,23 @@
             required
           >
           </lightning-input>
-          <lightning-input
-            data-id="RollupOperation__c"
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
-            label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE/FIRST/LAST)"
-            name="RollupOperation__c"
-            oncommit={handleChange}
-            required
-          >
-          </lightning-input>
+          <div>
+            <lightning-input
+              data-id="RollupOperation__c"
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              type="text"
+              label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE/FIRST/LAST)"
+              name="RollupOperation__c"
+              oncommit={handleChange}
+              required
+            >
+            </lightning-input>
+            <template if:true={isFirstLast}>
+              <div>
+                <c-rollup-order-by data-id="RollupOrderBys__r"></c-rollup-order-by>
+              </div>
+            </template>
+          </div>
           <lightning-input
             data-id="ConcatDelimiter__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
@@ -122,16 +129,6 @@
             </lightning-input>
             <lightning-helptext content="Only include the split option for CONCAT_DISTINCT rollups"></lightning-helptext>
           </div>
-          <!-- TODO if FIRST/LAST is defined, conditionally show list section for RollupOrderBy__mdt -->
-          <lightning-input
-            data-id="OrderByFirstLast__c"
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
-            label="Order By (First/Last) (Optional)"
-            name="OrderByFirstLast__c"
-            oncommit={handleChange}
-          >
-          </lightning-input>
           <div class="slds-grid">
             <lightning-textarea
               class="slds-col slds-form-element slds-form-element_horizontal"

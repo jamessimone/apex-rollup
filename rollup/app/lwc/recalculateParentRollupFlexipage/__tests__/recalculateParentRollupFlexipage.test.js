@@ -87,7 +87,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
 
     const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
-    delete matchingMetadata[0]['CalcItem__r.QualifiedApiName'];
+    delete matchingMetadata[0].CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
 
