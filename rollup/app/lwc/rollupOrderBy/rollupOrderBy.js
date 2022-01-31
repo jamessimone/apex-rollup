@@ -61,17 +61,19 @@ export default class RollupOrderBy extends LightningElement {
   }
 
   handleCreate() {
-    if (!this._currentRecord[this.ranking.fieldName]) {
-      this._currentRecord[this.ranking.fieldName] = this.currentOrderBySize;
+    if (!this._currentRecord[this.ranking.apiName]) {
+      this._currentRecord[this.ranking.apiName] = this.currentOrderBySize;
     }
-    if (this.orderBys.length > 0) {
-      // TODO - update ranking if the one being submitted has already been chosen?
+    const flattenedRankings = this.orderBys.map(ordering => ordering[this.ranking.apiName]);
+    const hasRankingAlreadyBeenUsed = flattenedRankings.includes(Number(this._currentRecord[this.ranking.apiName]));
+    if (hasRankingAlreadyBeenUsed) {
+      this._currentRecord[this.ranking.apiName] = flattenedRankings.includes(this.currentOrderBySize) ? this.currentOrderBySize + 1 : this.currentOrderBySize;
     }
     this.orderBys = [...this.orderBys, this._currentRecord].sort((first, second) => {
       let sortIndex = 0;
-      if (first.Ranking__c < second.Ranking__c) {
+      if (first[this.ranking.apiName] < second[this.ranking.apiName]) {
         sortIndex = -1;
-      } else if (first.Ranking__c > second.Ranking__c) {
+      } else if (first[this.ranking.apiName] > second[this.ranking.apiName]) {
         sortIndex = 1;
       }
       return sortIndex;

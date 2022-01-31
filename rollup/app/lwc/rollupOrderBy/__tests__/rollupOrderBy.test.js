@@ -7,25 +7,25 @@ const mockOrderByInfo = {
   fields: {
     Ranking__c: {
       dataType: 'number',
-      fieldName: 'Ranking__c',
+      apiName: 'Ranking__c',
       inlineHelpText: 'Ranking help text',
       label: 'Ranking'
     },
     FieldName__c: {
       dataType: 'string',
-      fieldName: 'FieldName__c',
+      apiName: 'FieldName__c',
       inlineHelpText: 'Field Name help text',
       label: 'Field Name'
     },
     SortOrder__c: {
       dataType: 'string',
-      fieldName: 'SortOrder__c',
+      apiName: 'SortOrder__c',
       inlineHelpText: 'Sort Order help text',
       label: 'Sort Order'
     },
     NullSortOrder__c: {
       dataType: 'string',
-      fieldName: 'NullSortOrder__c',
+      apiName: 'NullSortOrder__c',
       inlineHelpText: 'Null Sort Order help text',
       label: 'Null Sort Order'
     }
@@ -149,6 +149,30 @@ describe('Rollup force recalc tests', () => {
     setElementValue(orderBy.shadowRoot.querySelector('lightning-input[data-id="FieldName__c"]'), 'TextField__c');
     setElementValue(orderBy.shadowRoot.querySelector('lightning-combobox[data-id="SortOrder__c"]'), 'Ascending');
     setElementValue(orderBy.shadowRoot.querySelector('lightning-combobox[data-id="NullSortOrder__c"]'), 'NULLS LAST');
+
+    orderBy.shadowRoot.querySelector('[data-id="save-button"]').click();
+    await Promise.resolve();
+
+    expect(orderBy.orderBys[0].Ranking__c).toEqual(0);
+    expect(orderBy.orderBys[1].Ranking__c).toEqual(1);
+  });
+
+  it('reincrements ranking if submitted ranking already exists', async () => {
+    const orderBy = await mountOrderByElement();
+    orderBy.shadowRoot.querySelector('[data-id="create-new-button"]').click();
+    await Promise.resolve();
+
+    setElementValue(orderBy.shadowRoot.querySelector('lightning-input[data-id="FieldName__c"]'), 'TextField__c');
+    setElementValue(orderBy.shadowRoot.querySelector('lightning-input[data-id="Ranking__c"]'), 0);
+
+    orderBy.shadowRoot.querySelector('[data-id="save-button"]').click();
+    await Promise.resolve();
+
+    orderBy.shadowRoot.querySelector('[data-id="create-new-button"]').click();
+    await Promise.resolve();
+
+    setElementValue(orderBy.shadowRoot.querySelector('lightning-input[data-id="FieldName__c"]'), 'AnotherField__c');
+    setElementValue(orderBy.shadowRoot.querySelector('lightning-input[data-id="Ranking__c"]'), 0);
 
     orderBy.shadowRoot.querySelector('[data-id="save-button"]').click();
     await Promise.resolve();

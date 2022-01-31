@@ -29,7 +29,7 @@
             <!-- Record modal body -->
             <div class="slds-modal__content slds-p-around_medium">
               <lightning-input
-                data-id={ranking.fieldName}
+                data-id={ranking.apiName}
                 field-level-help={ranking.inlineHelpText}
                 label={ranking.label}
                 onchange={handleRecordChange}
@@ -38,7 +38,7 @@
                 value={currentOrderBySize}
               ></lightning-input>
               <lightning-input
-                data-id={fieldName.fieldName}
+                data-id={fieldName.apiName}
                 field-level-help={fieldName.inlineHelpText}
                 label={fieldName.label}
                 onchange={handleRecordChange}
@@ -46,7 +46,7 @@
                 type="text"
               ></lightning-input>
               <lightning-combobox
-                data-id={sortOrder.fieldName}
+                data-id={sortOrder.apiName}
                 field-level-help={sortOrder.inlineHelpText}
                 label={sortOrder.label}
                 onchange={handleRecordChange}
@@ -54,7 +54,7 @@
                 placeholder="Select Sort Order (Optional)"
               ></lightning-combobox>
               <lightning-combobox
-                data-id={nullSortOrder.fieldName}
+                data-id={nullSortOrder.apiName}
                 field-level-help={nullSortOrder.inlineHelpText}
                 label={nullSortOrder.label}
                 onchange={handleRecordChange}
@@ -63,13 +63,7 @@
               ></lightning-combobox>
             </div>
             <footer class="slds-modal__footer">
-              <lightning-button
-                class="slds-p-around--xx-small"
-                data-id="save-button"
-                label="Create!"
-                onclick={handleCreate}
-                variant="brand"
-              ></lightning-button>
+              <lightning-button class="slds-p-around--xx-small" data-id="save-button" label="Create!" onclick={handleCreate} variant="brand"></lightning-button>
             </footer>
           </div>
         </section>
