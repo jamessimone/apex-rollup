@@ -909,6 +909,7 @@ private class RollupIntegrationTests {
     Rollup.records = opps;
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Opportunity',

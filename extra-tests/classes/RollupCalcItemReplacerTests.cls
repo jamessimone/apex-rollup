@@ -70,4 +70,30 @@ private class RollupCalcItemReplacerTests {
 
     System.assertEquals(opp.Amount, oppConRole.Opportunity.Amount, 'Should not fail due to Relationship not editable error');
   }
+
+  @IsTest
+  static void shouldNotQueryRelationshipFieldsFromAnotherObject() {
+    Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test non reparent', Name = 'opp', Amount = 5);
+    Contact con = new Contact(LastName = 'Con');
+    insert new List<SObject>{ opp, con };
+
+    OpportunityContactRole oppConRole = new OpportunityContactRole(OpportunityId = opp.Id, ContactId = con.Id);
+    insert oppConRole;
+
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
+    );
+    List<SObject> replacedOppContactRoles = replacer.replace(
+      new List<OpportunityContactRole>{ oppConRole },
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1')}
+    );
+
+    // now call replace on another object with
+    replacer.replace(
+      new List<SObject>{ new Account() },
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Parent.Name = \'someName\'') }
+    );
+
+    System.assert(true, 'should make it here');
+  }
 }
