@@ -1,9 +1,11 @@
 public without sharing class RollupFirstLastSorter extends RollupComparer {
   private final Boolean isFirst;
   private final List<RollupOrderBy__mdt> orderByOptions;
+  private final Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController> fieldToPicklistController;
 
   public RollupFirstLastSorter(Rollup.Op op, List<RollupOrderBy__mdt> orderBys) {
     this.isFirst = op.name().contains(Rollup.Op.FIRST.name());
+    this.fieldToPicklistController = new Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController>();
     this.orderByOptions = this.initializeOrderByOptions(orderBys);
   }
 
@@ -12,8 +14,17 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
     SObject objOne = (SObject) o1;
     SObject objTwo = (SObject) o2;
 
+    Map<String, SObjectField> fieldTokens = objOne.getSObjectType().getDescribe().fields.getMap();
     for (RollupOrderBy__mdt orderByOption : this.orderByOptions) {
-      returnVal = this.getSortRanking(objOne, objTwo, orderByOption);
+      Schema.DescribeFieldResult fieldDescribe = fieldTokens.get(orderByOption.FieldName__c)?.getDescribe();
+      RollupFieldInitializer.PicklistController picklistController;
+      if (this.fieldToPicklistController.containsKey(fieldDescribe)) {
+        picklistController = this.fieldToPicklistController.get(fieldDescribe);
+      } else {
+        picklistController = new RollupFieldInitializer.PicklistController(fieldDescribe);
+        this.fieldToPicklistController.put(fieldDescribe, picklistController);
+      }
+      returnVal = this.getSortRanking(objOne, objTwo, orderByOption, picklistController);
       if (returnVal != 0) {
         return returnVal;
       }
@@ -34,7 +45,7 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
     return orderByOptions;
   }
 
-  private Integer getSortRanking(SObject objOne, SObject objTwo, RollupOrderBy__mdt orderByOption) {
+  private Integer getSortRanking(SObject objOne, SObject objTwo, RollupOrderBy__mdt orderByOption, RollupFieldInitializer.PicklistController picklistController) {
     Object potentialFirstVal = objOne.get(orderByOption.FieldName__c);
     Object potentialSecondVal = objTwo.get(orderByOption.FieldName__c);
     Integer returnVal = 0;
@@ -56,11 +67,15 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
 
       returnVal = this.getSortOrder(firstVal > secondVal, orderByOption);
     } else if (potentialFirstVal instanceof String) {
-      // TODO picklist sorting: "sorting is defined by the picklist sort determined during setup"
       String firstVal = (String) potentialFirstVal;
       String secondVal = (String) potentialSecondVal;
 
-      returnVal = this.getSortOrder(firstVal > secondVal, orderByOption);
+      if (picklistController.isPicklist() || picklistController.isMultiSelectPicklist()) {
+        Rollup.Op picklistRankingOp = this.isFirst ? Rollup.Op.MIN : Rollup.Op.MAX;
+        returnVal = picklistController.isTrueFor(firstVal, secondVal, picklistRankingOp) ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+      } else {
+        returnVal = this.getSortOrder(firstVal > secondVal, orderByOption);
+      }
     } else if (potentialFirstVal instanceof Decimal) {
       Decimal firstVal = (Decimal) potentialFirstVal;
       Decimal secondVal = (Decimal) potentialSecondVal;

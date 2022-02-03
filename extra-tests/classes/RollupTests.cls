@@ -2507,9 +2507,10 @@ private class RollupTests {
     acc.AnnualRevenue = 250;
     update acc;
 
+    ContactPointAddress nullPrefRankCpa = new ContactPointAddress(PreferenceRank = null, Name = 'Null pref', ParentId = acc.Id);
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 0, Name = 'First', ParentId = acc.Id);
     ContactPointAddress cpaTwo = new ContactPointAddress(PreferenceRank = 1, Name = 'Second', ParentId = acc.Id);
-    insert new List<ContactPointAddress>{ cpa, cpaTwo };
+    insert new List<ContactPointAddress>{ cpa, cpaTwo, nullPrefRankCpa };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa }; // only pass cpa, which would be excluded normally (except for the PreferenceRank being set below to another val)
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
@@ -2519,7 +2520,7 @@ private class RollupTests {
       new ContactPointAddress(ParentId = cpas[0].ParentId, Id = cpas[0].Id, PreferenceRank = acc.AnnualRevenue.intValue())
     };
     flowInputs[0].calcItemWhereClause = 'PreferenceRank != 0';
-    flowInputs[0].orderByFirstLast = 'Name';
+    flowInputs[0].orderByFirstLast = 'Name descending nulls last, PreferenceRank';
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);

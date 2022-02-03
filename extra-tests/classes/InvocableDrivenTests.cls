@@ -123,7 +123,7 @@ private class InvocableDrivenTests {
     acc = [SELECT Phone FROM Account WHERE Id = :acc.Id];
     System.assertEquals(null, acc.Phone, 'Phone should not have been updated since calc item where clause does not match');
     matchingAccount = [SELECT Phone FROM Account WHERE Id = :matchingAccount.Id];
-    System.assertEquals(childThree.Phone, matchingAccount.Phone, 'Phone should have been ordered by LastName!');
+    System.assertEquals(childTwo.Phone, matchingAccount.Phone, 'Phone should have been ordered by LastName!');
   }
 
   @IsTest
@@ -148,7 +148,7 @@ private class InvocableDrivenTests {
 
     acc = [SELECT Phone FROM Account WHERE Id = :acc.Id];
     matchingAccount = [SELECT Phone FROM Account WHERE Id = :matchingAccount.Id];
-    System.assertEquals(childOne.Phone, matchingAccount.Phone, 'Phone should have been updated based on new ordering');
+    System.assertEquals(childTwo.Phone, matchingAccount.Phone, 'Phone should have been updated based on new ordering');
     System.assertEquals(null, acc.Phone, 'Account phone should be cleared out since parent name field does not match');
   }
 }

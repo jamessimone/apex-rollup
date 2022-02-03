@@ -357,7 +357,7 @@ public without sharing abstract class RollupCalculator {
 
   private void transformForMultiCurrencyOrgs(SObject calcItem) {
     if (this.isMultiCurrencyRollup) {
-      RollupCurrencyInfo.transformForMultiCurrencyOrgs(calcItem, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.OrderByFirstLast__c);
+      RollupCurrencyInfo.transformForMultiCurrencyOrgs(calcItem, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.RollupOrderBys__r);
     }
   }
 
@@ -1121,9 +1121,23 @@ public without sharing abstract class RollupCalculator {
   }
 
   private static Rollup__mdt getFirstLastMetadata(Rollup__mdt metadata) {
-    if (metadata.RollupOrderBys__r.isEmpty()) {
-      String fieldName = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
-      return Rollup.appendOrderByMetadata(metadata, new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = fieldName) });
+    if (metadata.RollupOrderBys__r.isEmpty() && metadata.OrderByFirstLast__c?.contains(',') == true) {
+      List<String> unparsedOrderBys = metadata.OrderByFirstLast__c.split(',');
+      for (Integer index = 0; index < unparsedOrderBys.size(); index++) {
+        String unparsedOrderBy = unparsedOrderBys[index];
+        RollupOrderBy__mdt orderBy = new RollupOrderBy__mdt(Ranking__c = index, FieldName__c = unparsedOrderBy.substringBefore(' '));
+        Boolean isAscendingSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Ascending);
+        if (isAscendingSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Descending)) {
+          orderBy.SortOrder__c = isAscendingSortOrder ? RollupMetaPicklists.SortOrder.Ascending : RollupMetaPicklists.SortOrder.Descending;
+        }
+        Boolean isAscendingNullSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsFirst);
+        if (isAscendingNullSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsLast)) {
+          orderBy.NullSortOrder__c = isAscendingNullSortOrder ? RollupMetaPicklists.NullSortOrder.NullsFirst : RollupMetaPicklists.NullSortOrder.NullsLast;
+        }
+        metadata.RollupOrderBys__r.add(orderBy);
+      }
+    } else if (metadata.RollupOrderBys__r.isEmpty()) {
+      metadata = Rollup.appendOrderByMetadata(metadata, new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = metadata.RollupFieldOnCalcItem__c) });
     }
     return metadata;
   }

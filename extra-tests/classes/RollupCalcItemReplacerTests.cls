@@ -83,7 +83,7 @@ private class RollupCalcItemReplacerTests {
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
     );
-    List<SObject> replacedOppContactRoles = replacer.replace(
+    replacer.replace(
       new List<OpportunityContactRole>{ oppConRole },
       new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1')}
     );

@@ -99,4 +99,30 @@ private class RollupFirstLastSorterTests {
     System.assertEquals(expectedSecondItem, oppsToSort[1]);
     System.assertEquals(expectedThirdItem, oppsToSort[2]);
   }
+
+  @IsTest
+  static void shouldProperlySortPicklists() {
+    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
+      Rollup.Op.FIRST,
+      new List<RollupOrderBy__mdt>{
+        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry')
+      }
+    );
+
+    List<Schema.PicklistEntry> picklistEntries = Account.Industry.getDescribe().getPicklistValues();
+    List<Account> accs = new List<Account>();
+
+    for (Integer reverseIndex = picklistEntries.size() - 1; reverseIndex >= 0; reverseIndex--) {
+      Schema.PicklistEntry entry = picklistEntries[reverseIndex];
+      accs.add(
+        new Account(Name = entry.getValue(), Industry = entry.getValue())
+      );
+    }
+
+    sorter.sort(accs);
+
+    for (Integer index = 0; index < accs.size(); index++) {
+      System.assertEquals(picklistEntries[index].getValue(), accs[index].Industry, 'Account at index: ' + index + ' should have matched');
+    }
+  }
 }

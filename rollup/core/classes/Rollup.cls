@@ -1872,7 +1872,7 @@ global without sharing virtual class Rollup {
   }
 
   private static Set<String> getQueryFieldsFromMetadata(Rollup__mdt meta, RollupEvaluator.WhereFieldEvaluator eval) {
-    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c, meta.OrderByFirstLast__c };
+    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c };
     if (eval != null) {
       queryFields.addAll(eval.getQueryFields());
     }
