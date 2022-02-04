@@ -343,4 +343,29 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(true, traversal.getIsFinished());
     System.assertEquals(true, traversal.getParentLookupToRecords().isEmpty());
   }
+
+  @IsTest
+  static void shouldSkipUltimateParentFieldInGrandparentFieldPathWhenHierarchyGrandparentRollup() {
+    Account hierarchyParent = [SELECT Id, ParentId FROM Account];
+    Contact hierarchyGrandchild = new Contact(LastName = 'Hierarchy grandchild', AccountId = hierarchyParent.Id);
+    insert hierarchyGrandchild;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(
+        RollupToUltimateParent__c = true,
+        UltimateParentLookup__c = 'ParentId',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        GrandparentRelationshipFieldPath__c = 'Account.Parent.Name'
+      ),
+      new Set<String>{ 'Name', 'Id' },
+      Account.SObjectType,
+      new Map<Id, SObject>()
+    );
+
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Contact>{ hierarchyGrandchild });
+    System.assertEquals(true, traversal.getIsFinished());
+    Account retrievedAcc = (Account) traversal.retrieveParent(hierarchyGrandchild.Id);
+    System.assertEquals(hierarchyParent.Id, retrievedAcc.Id, 'Should correctly retrieve hierarchy');
+  }
 }

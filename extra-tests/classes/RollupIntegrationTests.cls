@@ -372,6 +372,7 @@ private class RollupIntegrationTests {
     jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
+    Rollup.onlyUseMockMetadata = true;
     Rollup__mdt meta = Rollup.appendOrderByMetadata(
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Id',
@@ -428,6 +429,7 @@ private class RollupIntegrationTests {
     jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
+    Rollup.onlyUseMockMetadata = true;
     Rollup__mdt meta = Rollup.appendOrderByMetadata(
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Id',
