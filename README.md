@@ -124,6 +124,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Ultimate Parent Lookup` (optional) - specify the API Name of the field on the `Lookup Object` using the dropdown that contains the hierarchy relationship. On Account, for example, this would be `Parent Account ID`. Must be filled out if `Rollup To Ultimate Parent` is checked.
 
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
+- `Description` (optional) - note-taking field in the event you'd like to provide additional info to other admins/users about your configured rollup
 
 #### Rollup Order By Custom Metadata
 
