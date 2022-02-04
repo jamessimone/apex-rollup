@@ -125,4 +125,27 @@ private class RollupFirstLastSorterTests {
       System.assertEquals(picklistEntries[index].getValue(), accs[index].Industry, 'Account at index: ' + index + ' should have matched');
     }
   }
+
+  @IsTest
+  static void shouldSortParentFields() {
+    Account acc = new Account(Name = 'Parent');
+    insert acc;
+
+    Opportunity opp = new Opportunity(Account = acc, Amount = 1);
+    Opportunity second = new Opportunity(Account = acc, Amount = 2);
+
+    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
+      Rollup.Op.FIRST,
+      new List<RollupOrderBy__mdt>{
+        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Account.Name'),
+        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount')
+      }
+    );
+
+    List<Opportunity> opps = new List<Opportunity>{ second, opp };
+    sorter.sort(opps);
+
+    System.assertEquals(opp, opps[0]);
+    System.assertEquals(second, opps[1]);
+  }
 }

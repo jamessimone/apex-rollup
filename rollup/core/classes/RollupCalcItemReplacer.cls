@@ -55,17 +55,18 @@ public without sharing class RollupCalcItemReplacer {
     Boolean localNeedsReplacement = false;
     for (Rollup__mdt meta : metadata) {
       Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
-      Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c);
+      Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
       if (mightNeedReplacement && calcItems?.isEmpty() == false && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
         SObjectType calcType = calcItems[0].getSObjectType();
         RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
         this.metaToEval.put(meta, whereEval);
         Set<String> queryFields = this.queryFields.containsKey(calcType) ? this.queryFields.get(calcType) : new Set<String>();
+        for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
+          this.addParentField(orderBy.FieldName__c, queryFields);
+        }
         for (String queryField : whereEval.getQueryFields()) {
-          if (queryField.contains('.')) {
-            queryFields.add(queryField);
-          }
+          this.addParentField(queryField, queryFields);
         }
         this.queryFields.put(calcType, queryFields);
       } else if (isPresentInMapAlready) {
@@ -73,6 +74,12 @@ public without sharing class RollupCalcItemReplacer {
       }
     }
     return localNeedsReplacement;
+  }
+
+  private void addParentField(String fieldName, Set<String> queryFields) {
+    if (fieldName.contains('.')) {
+      queryFields.add(fieldName);
+    }
   }
 
   private List<SObject> potentiallyReplacePolymorphicWhereClauses(List<SObject> calcItems) {
@@ -88,8 +95,8 @@ public without sharing class RollupCalcItemReplacer {
     final String owner = 'Owner.';
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
-    Boolean hasOwnerClause = metadata.CalcItemWhereClause__c.contains(owner);
-    Boolean hasTypeClause = metadata.CalcItemWhereClause__c.contains(typeField);
+    Boolean hasOwnerClause = metadata.CalcItemWhereClause__c?.contains(owner) == true;
+    Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
     SObjectType sObjectType = firstItem.getSObjectType();
     Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
     Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;

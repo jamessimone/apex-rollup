@@ -46,8 +46,8 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
   }
 
   private Integer getSortRanking(SObject objOne, SObject objTwo, RollupOrderBy__mdt orderByOption, RollupFieldInitializer.PicklistController picklistController) {
-    Object potentialFirstVal = objOne.get(orderByOption.FieldName__c);
-    Object potentialSecondVal = objTwo.get(orderByOption.FieldName__c);
+    Object potentialFirstVal = this.getFieldValue(objOne, orderByOption.FieldName__c);
+    Object potentialSecondVal = this.getFieldValue(objTwo, orderByOption.FieldName__c);
     Integer returnVal = 0;
     // (from the developer docs): "Default [sort] order is ascending. By default, null values are sorted first."
     if (potentialFirstVal == null && potentialSecondVal != null) {
@@ -84,6 +84,27 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
     }
 
     return this.isFirst ? returnVal : returnVal * -1;
+  }
+
+  /**
+   * An extremely naive implementation of (basically) the same function: RollupEvaluator.getFieldValue()
+   * This one will throw if the parent field hasn't been explicitly queried for; in RollupCalcItemReplacer we trust!
+   */
+  private Object getFieldValue(SObject record, String fieldName) {
+    Object val;
+    if (fieldName.contains('.')) {
+      List<String> splitFieldNames = fieldName.split('\\.');
+      String firstRelationshipField = splitFieldNames.remove(0);
+      SObject parentRecord = record.getSObject(firstRelationshipField);
+      if (splitFieldNames.size() == 1) {
+        val = parentRecord.get(splitFieldNames[0]);
+      } else {
+        val = this.getFieldValue(parentRecord, String.join(splitFieldNames, '.'));
+      }
+    } else {
+      val = record.get(fieldName);
+    }
+    return val;
   }
 
   private Integer getSortOrder(Boolean equalityCheck, RollupOrderBy__mdt orderByOption) {
