@@ -90,6 +90,10 @@ jobs:
         shell: pwsh
         run: '. ./scripts/test.ps1'
 
+      # Delete temporary test files that Codecov is unable to parse
+      - name: 'Delete unparseable test coverage'
+        run: rm ./tests/apex/test-result-707*-codecoverage.json
+
       # Upload Apex code coverage data
       - name: 'Upload Apex code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v2
