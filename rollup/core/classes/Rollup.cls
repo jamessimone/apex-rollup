@@ -344,8 +344,19 @@ global without sharing virtual class Rollup {
     return calcItemToMetadata;
   }
 
+  /**
+   * v1.3.25 to v1.4.0 introduced a child CMDT relationship: Rollup__mdt.RollupOrderBys__r
+   * Unfortunately, data passed between the frontend and backend strips out child relationship values
+   * (even when they were set and initialized via the backend itself!). In order to avoid a breaking change
+   * on this method, it instead delegates to the new one.
+   */
   @AuraEnabled
-  global static String performBulkFullRecalc(String serializedMetadata, String invokePointName) {
+  global static String performBulkFullRecalc(List<Rollup__mdt> metadata, String invokePointName) {
+    return performSerializedBulkFullRecalc(JSON.serialize(metadata), invokePointName);
+  }
+
+  @AuraEnabled
+  global static String performSerializedBulkFullRecalc(String serializedMetadata, String invokePointName) {
     isFullRecalcApp = true;
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
@@ -434,11 +445,18 @@ global without sharing virtual class Rollup {
   /**
    * Sending metadata from the frontend LWCs omits
    * the RollupOrderBys__r children unless it's sent serialized (using the same
-   * child object format used in the "appendOrderByMetadata")
+   * child object format used in the "appendOrderByMetadata"). As with "performBulkFullRecalc",
+   * the original "performFullRecalculation" is kept to avoid breaking changes
+   * between v1.3.25 and v1.4.0
    */
   @AuraEnabled
-  global static String performFullRecalculation(String serializedMetadata) {
-    return performBulkFullRecalc('[' + serializedMetadata + ']', InvocationPoint.FROM_LWC.name());
+  global static String performSerializedFullRecalculation(String metadata) {
+    return performSerializedBulkFullRecalc('[' + metadata + ']', InvocationPoint.FROM_LWC.name());
+  }
+
+  @AuraEnabled
+  global static String performFullRecalculation(Rollup__mdt meta) {
+    return performSerializedFullRecalculation(JSON.serialize(meta));
   }
 
   global class FlowInput {

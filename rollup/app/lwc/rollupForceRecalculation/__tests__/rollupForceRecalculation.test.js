@@ -1,7 +1,7 @@
 import { createElement } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
-import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
-import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
+import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
+import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 
 import { mockMetadata } from '../../__mockData__';
@@ -24,7 +24,7 @@ jest.mock(
 );
 
 jest.mock(
-  '@salesforce/apex/Rollup.performFullRecalculation',
+  '@salesforce/apex/Rollup.performSerializedFullRecalculation',
   () => {
     return {
       default: jest.fn()
@@ -34,7 +34,7 @@ jest.mock(
 );
 
 jest.mock(
-  '@salesforce/apex/Rollup.performBulkFullRecalc',
+  '@salesforce/apex/Rollup.performSerializedBulkFullRecalc',
   () => {
     return {
       default: jest.fn()
@@ -103,7 +103,7 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     return flushPromises().then(() => {
-      expect(performFullRecalculation.mock.calls[0][0].metadata).toMatch(
+      expect(performSerializedFullRecalculation.mock.calls[0][0].metadata).toMatch(
         JSON.stringify({
           RollupFieldOnCalcItem__c: 'FirstName',
           LookupFieldOnCalcItem__c: 'AccountId',
@@ -157,7 +157,7 @@ describe('Rollup force recalc tests', () => {
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata: JSON.stringify(expectedList), invokePointName: 'FROM_LWC' });
+          expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({ serializedMetadata: JSON.stringify(expectedList), invokePointName: 'FROM_LWC' });
         })
     );
   });
@@ -222,7 +222,7 @@ describe('Rollup force recalc tests', () => {
   });
 
   it('succeeds even when exception is thrown', () => {
-    performFullRecalculation.mockRejectedValue('error!');
+    performSerializedFullRecalculation.mockRejectedValue('error!');
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });
@@ -242,7 +242,7 @@ describe('Rollup force recalc tests', () => {
   });
 
   it('succeeds even when no process id', () => {
-    performFullRecalculation.mockResolvedValue('No process Id');
+    performSerializedFullRecalculation.mockResolvedValue('No process Id');
 
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
@@ -265,7 +265,7 @@ describe('Rollup force recalc tests', () => {
   it('polls when process Id given', () => {
     // simulate second poll receiving one of the completed values
     getBatchRollupStatus.mockResolvedValueOnce('test').mockResolvedValueOnce('Completed');
-    performFullRecalculation.mockResolvedValueOnce('someProcessId');
+    performSerializedFullRecalculation.mockResolvedValueOnce('someProcessId');
 
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation

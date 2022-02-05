@@ -44,8 +44,7 @@ global without sharing class RollupFlowBulkProcessor {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent;
-    // TODO - introduce Apex-defined type for Flow to configure FIRST/LAST properties
-    @InvocableVariable(label='Order By (First/Last) - Deprecated')
+    @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
 
     @InvocableVariable(

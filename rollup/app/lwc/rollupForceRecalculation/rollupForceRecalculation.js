@@ -1,7 +1,7 @@
 import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
-import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
-import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
+import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
+import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
@@ -110,10 +110,10 @@ export default class RollupForceRecalculation extends LightningElement {
 
         const localMetas = [...this.selectedRows];
         this._getMetadataWithChildrenRecords(localMetas);
-        jobId = await performBulkFullRecalc({ matchingMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_LWC' });
+        jobId = await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_LWC' });
       } else {
-        this._getMetadataWithChildrenRecords([this.metadata])
-        jobId = await performFullRecalculation({
+        this._getMetadataWithChildrenRecords([this.metadata]);
+        jobId = await performSerializedFullRecalculation({
           metadata: JSON.stringify(this.metadata)
         });
       }
@@ -160,9 +160,17 @@ export default class RollupForceRecalculation extends LightningElement {
 
   _getMetadataWithChildrenRecords(metadatas) {
     for (const metadata of metadatas) {
-      const children = this.isCMDTRecalc ? metadata.RollupOrderBys__r : this.template.querySelector('c-rollup-order-by')?.orderBys;
+      let children;
+      if (this.isCMDTRecalc) {
+        children = metadata.RollupOrderBys__r != null ? metadata.RollupOrderBys__r : children;
+      } else {
+        const possibleOrderByComponent = this.template.querySelector('c-rollup-order-by');
+        if (possibleOrderByComponent) {
+          children = possibleOrderByComponent.orderBys;
+        }
+      }
       if (children) {
-        metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children }
+        metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children };
       }
     }
   }
