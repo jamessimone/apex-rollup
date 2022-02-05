@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NullSortOrder__c</fullName>
+    <defaultValue>&quot;NULLS FIRST&quot;</defaultValue>
+    <description>Orders null records at the beginning (NULLS FIRST) or end (NULLS LAST) of the results. By default, null values are sorted first.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Orders null records at the beginning (NULLS FIRST) or end (NULLS LAST) of the results. By default, null values are sorted first.</inlineHelpText>
+    <label>Null Sort Order</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>NULLS FIRST</fullName>
+                <default>true</default>
+                <label>NULLS FIRST</label>
+            </value>
+            <value>
+                <fullName>NULLS LAST</fullName>
+                <default>false</default>
+                <label>NULLS LAST</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

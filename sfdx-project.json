@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixing issue with ultimate parent rollups and full recalculation",
-            "versionNumber": "1.3.25.0",
+            "versionName": "Introducing Rollup Order By CMDT to replace Rollup__mdt.OrderByFirstLast__c - allows for multiple fields when arranging ordering for FIRST and LAST rollups. Bugfixes for grandparent/hierarchy rollups.",
+            "versionNumber": "1.4.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -71,11 +71,11 @@
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.5.0",
+            "versionNumber": "0.0.6.0",
             "default": false,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.3.25-0"
+                    "package": "apex-rollup@1.4.0-0"
                 }
             ]
         }
@@ -97,13 +97,12 @@
         "Apex Rollup - Rollup Callback@0.0.2-0": "04t6g000008ShztAAC",
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
-        "Apex Rollup - Extra Code Coverage@0.0.4-0": "04t6g000008SirqAAC",
         "Apex Rollup - Extra Code Coverage@0.0.5-0": "04t6g000008SizvAAC",
-        "apex-rollup@1.3.20-0": "04t6g000008SiaJAAS",
-        "apex-rollup@1.3.21-0": "04t6g000008SigrAAC",
+        "Apex Rollup - Extra Code Coverage@0.0.6-0": "04t6g000008Sj8jAAC",
         "apex-rollup@1.3.22-0": "04t6g000008SijvAAC",
         "apex-rollup@1.3.23-0": "04t6g000008SitNAAS",
         "apex-rollup@1.3.24-0": "04t6g000008Siv4AAC",
-        "apex-rollup@1.3.25-0": "04t6g000008Sj00AAC"
+        "apex-rollup@1.3.25-0": "04t6g000008Sj00AAC",
+        "apex-rollup@1.4.0-0": "04t6g000008Sj8oAAC"
     }
 }

@@ -687,6 +687,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return localLookupItems;
   }
 
+  // TODO - move this into RollupSObjectUpdater
   private void splitUpdates(Map<String, SObject> updatedLookupRecords) {
     if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size() && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
       Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
@@ -790,8 +791,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         ? new List<String>()
         : RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields();
       whereFields.addAll(new List<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() });
-      if (String.isNotBlank(roll.metadata.OrderByFirstLast__c)) {
-        whereFields.add(roll.metadata.OrderByFirstLast__c);
+      for (RollupOrderBy__mdt orderBy : roll.metadata.RollupOrderBys__r) {
+        whereFields.add(orderBy.FieldName__c);
       }
       if (this.calcObjectToUniqueFieldNames.containsKey(roll.calcItemType)) {
         this.calcObjectToUniqueFieldNames.get(roll.calcItemType).addAll(whereFields);

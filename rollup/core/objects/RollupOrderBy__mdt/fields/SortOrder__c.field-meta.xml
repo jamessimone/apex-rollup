@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SortOrder__c</fullName>
+    <defaultValue>&quot;Ascending&quot;</defaultValue>
+    <description>Sort Order for each field. Like SOQL, defaults to Ascending if not supplied</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Sort Order for each field. Like SOQL, defaults to Ascending if not supplied</inlineHelpText>
+    <label>Sort Order</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Ascending</fullName>
+                <default>true</default>
+                <label>Ascending</label>
+            </value>
+            <value>
+                <fullName>Descending</fullName>
+                <default>false</default>
+                <label>Descending</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

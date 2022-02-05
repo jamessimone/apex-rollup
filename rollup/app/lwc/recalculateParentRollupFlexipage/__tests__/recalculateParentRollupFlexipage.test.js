@@ -1,5 +1,5 @@
 import { createElement } from 'lwc';
-import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
+import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 
 import RecalculateParentRollupFlexipage from 'c/recalculateParentRollupFlexipage';
 import { mockMetadata } from '../../__mockData__';
@@ -15,7 +15,7 @@ jest.mock(
 );
 
 jest.mock(
-  '@salesforce/apex/Rollup.performBulkFullRecalc',
+  '@salesforce/apex/Rollup.performSerializedBulkFullRecalc',
   () => {
     return {
       default: jest.fn()
@@ -87,7 +87,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
 
     const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
-    delete matchingMetadata[0]['CalcItem__r.QualifiedApiName'];
+    delete matchingMetadata[0].CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
 
@@ -105,7 +105,10 @@ describe('recalc parent rollup from flexipage tests', () => {
         // we need to validate that what was sent includes our custom rollup invocation point
         matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
         expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
-        expect(performBulkFullRecalc.mock.calls[0][0]).toEqual({ matchingMetadata, invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
+        expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+          serializedMetadata: JSON.stringify(matchingMetadata),
+          invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+        });
 
         // validate that aura refresh was called
         expect(mockFunction).toHaveBeenCalled();

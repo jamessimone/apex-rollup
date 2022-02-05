@@ -64,7 +64,7 @@ jobs:
         run: npm run test:lwc
 
       - name: 'Upload code coverage for LWC to Codecov.io'
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v2.0.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: LWC
@@ -90,12 +90,17 @@ jobs:
         shell: pwsh
         run: '. ./scripts/test.ps1'
 
+      # Delete temporary test files that Codecov is unable to parse
+      - name: 'Delete unparseable test coverage'
+        run: rm ./tests/apex/test-result-707*-codecoverage.json -f
+
       # Upload Apex code coverage data
       - name: 'Upload Apex code coverage for Apex to Codecov.io'
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v2.0.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: Apex
+          verbose: true
 
       #  Only create new package versions if a PR is pointed to main or we are merging to main
       - name: 'Package & Promote'

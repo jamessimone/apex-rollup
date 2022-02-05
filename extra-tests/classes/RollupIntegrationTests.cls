@@ -372,7 +372,8 @@ private class RollupIntegrationTests {
     jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
+    Rollup.onlyUseMockMetadata = true;
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Id',
         LookupObject__c = 'Account',
@@ -380,10 +381,11 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'FIRST',
-        CalcItem__c = 'Opportunity',
-        OrderByFirstLast__c = 'Amount'
-      )
-    };
+        CalcItem__c = 'Opportunity'
+      ),
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Amount') }
+    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{ meta };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
     Rollup.shouldRun = true;
@@ -427,7 +429,8 @@ private class RollupIntegrationTests {
     jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
+    Rollup.onlyUseMockMetadata = true;
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Id',
         LookupObject__c = 'Account',
@@ -435,10 +438,11 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'LAST',
-        CalcItem__c = 'Opportunity',
-        OrderByFirstLast__c = 'Amount'
-      )
-    };
+        CalcItem__c = 'Opportunity'
+      ),
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Amount') }
+    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{ meta };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
     Rollup.shouldRun = true;
@@ -907,6 +911,7 @@ private class RollupIntegrationTests {
     Rollup.records = opps;
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Opportunity',

@@ -99,6 +99,10 @@
     </customMetadataTypeAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
+        <name>RollupOrderBy__mdt</name>
+    </customMetadataTypeAccesses>
+    <customMetadataTypeAccesses>
+        <enabled>true</enabled>
         <name>RollupPlugin__mdt</name>
     </customMetadataTypeAccesses>
     <customMetadataTypeAccesses>
@@ -153,6 +157,16 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RollupControl__mdt.TriggerOrInvocableName__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupOrderBy__mdt.NullSortOrder__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupOrderBy__mdt.SortOrder__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -225,6 +239,9 @@
     </layoutAssignments>
     <layoutAssignments>
         <layout>Rollup__mdt-Rollup Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>RollupOrderBy__mdt-Rollup Order By Layout</layout>
     </layoutAssignments>
     <layoutAssignments>
         <layout>RollupPlugin__mdt-Rollup Plugin Layout</layout>

@@ -9,13 +9,13 @@ public without sharing class RollupCalcItemReplacer {
   private final RollupControl__mdt control;
   private final Set<Rollup__mdt> processedMetadata;
   private final Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator> metaToEval;
-  private final Set<String> queryFields;
+  private final Map<SObjectType, Set<String>> queryFields;
   private final Set<Integer> calcItemHashCodes = new Set<Integer>();
   public RollupCalcItemReplacer(RollupControl__mdt control) {
     this.control = control;
     this.processedMetadata = new Set<Rollup__mdt>();
     this.metaToEval = new Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator>();
-    this.queryFields = new Set<String>();
+    this.queryFields = new Map<SObjectType, Set<String>>();
   }
 
   public Boolean hasProcessedMetadata(List<Rollup__mdt> metas, List<SObject> calcItems) {
@@ -55,21 +55,31 @@ public without sharing class RollupCalcItemReplacer {
     Boolean localNeedsReplacement = false;
     for (Rollup__mdt meta : metadata) {
       Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
-      Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c);
+      Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
       if (mightNeedReplacement && calcItems?.isEmpty() == false && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
-        RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcItems[0].getSObjectType());
+        SObjectType calcType = calcItems[0].getSObjectType();
+        RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
         this.metaToEval.put(meta, whereEval);
-        for (String queryField : whereEval.getQueryFields()) {
-          if (queryField.contains('.')) {
-            this.queryFields.add(queryField);
-          }
+        Set<String> queryFields = this.queryFields.containsKey(calcType) ? this.queryFields.get(calcType) : new Set<String>();
+        for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
+          this.addParentField(orderBy.FieldName__c, queryFields);
         }
+        for (String queryField : whereEval.getQueryFields()) {
+          this.addParentField(queryField, queryFields);
+        }
+        this.queryFields.put(calcType, queryFields);
       } else if (isPresentInMapAlready) {
         localNeedsReplacement = true;
       }
     }
     return localNeedsReplacement;
+  }
+
+  private void addParentField(String fieldName, Set<String> queryFields) {
+    if (fieldName.contains('.')) {
+      queryFields.add(fieldName);
+    }
   }
 
   private List<SObject> potentiallyReplacePolymorphicWhereClauses(List<SObject> calcItems) {
@@ -85,8 +95,8 @@ public without sharing class RollupCalcItemReplacer {
     final String owner = 'Owner.';
     // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
-    Boolean hasOwnerClause = metadata.CalcItemWhereClause__c.contains(owner);
-    Boolean hasTypeClause = metadata.CalcItemWhereClause__c.contains(typeField);
+    Boolean hasOwnerClause = metadata.CalcItemWhereClause__c?.contains(owner) == true;
+    Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
     SObjectType sObjectType = firstItem.getSObjectType();
     Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
     Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
@@ -170,7 +180,8 @@ public without sharing class RollupCalcItemReplacer {
     SObjectType calcItemType = calcItems[0].getSObjectType();
     Map<String, SObjectField> fieldNameToToken = calcItemType.getDescribe().fields.getMap();
     Boolean hasUnqueriedParentFields = false;
-    for (String queryField : this.queryFields) {
+    Set<String> parentQueryFields = this.queryFields.get(calcItemType);
+    for (String queryField : parentQueryFields) {
       String fieldPart = queryField.substringBefore('.');
       String fieldName = this.getFullyQualifiedFieldName(fieldPart);
       if (this.isParentFieldAlreadyPopulated(fieldNameToToken, fieldName, queryField, calcItems[0]) == false) {
@@ -181,7 +192,7 @@ public without sharing class RollupCalcItemReplacer {
 
     if (hasUnqueriedParentFields) {
       List<SObject> objIds = calcItems; // for bind variable
-      String queryString = RollupQueryBuilder.Current.getQuery(calcItemType, new List<String>(this.queryFields), 'Id', '=');
+      String queryString = RollupQueryBuilder.Current.getQuery(calcItemType, new List<String>(parentQueryFields), 'Id', '=');
       RollupLogger.Instance.log('replacing calc items with parent-level where clause using query string:', queryString, LoggingLevel.FINE);
       Map<Id, SObject> idToCalcItemsWithParentFields = new Map<Id, SObject>(Database.query(queryString));
       this.appendUpdatedParentFields(calcItems, idToCalcItemsWithParentFields);

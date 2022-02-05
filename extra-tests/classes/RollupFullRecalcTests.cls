@@ -164,7 +164,7 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = null;
     Rollup.onlyUseMockMetadata = true;
-    Rollup.rollupMetadata = new List<Rollup__mdt>{
+    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Account',
         LookupObject__c = 'Account',
@@ -179,7 +179,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(Rollup.rollupMetadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
@@ -697,16 +697,18 @@ private class RollupFullRecalcTests {
     insert cpas;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'ParentId',
-        LookupObject__c = 'Account',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupOperation__c = 'LAST',
-        OrderByFirstLast__c = 'PreferenceRank',
-        CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'Name',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Name',
+          RollupOperation__c = 'LAST',
+          CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+        ),
+        new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
       )
     };
 
@@ -732,16 +734,18 @@ private class RollupFullRecalcTests {
     insert new Task(Subject = 'Task rollup', WhatId = acc.Id);
 
     List<Rollup__mdt> metas = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'ParentId',
-        LookupObject__c = 'Account',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'Name',
-        RollupOperation__c = 'LAST',
-        OrderByFirstLast__c = 'PreferenceRank',
-        CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'Name',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Name',
+          RollupOperation__c = 'LAST',
+          CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+        ),
+        new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
       ),
       new Rollup__mdt(
         CalcItem__c = 'Task',
@@ -1084,15 +1088,17 @@ private class RollupFullRecalcTests {
     };
     insert cpas;
 
-    Rollup__mdt meta = new Rollup__mdt(
-      CalcItem__c = 'ContactPointAddress',
-      RollupFieldOnCalcItem__c = 'Name',
-      LookupFieldOnCalcItem__c = 'ParentId',
-      LookupFieldOnLookupObject__c = 'Id',
-      RollupFieldOnLookupObject__c = 'Name',
-      LookupObject__c = 'Account',
-      RollupOperation__c = 'FIRST',
-      OrderByFirstLast__c = 'PreferenceRank'
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'FIRST'
+      ),
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
     );
 
     Test.startTest();

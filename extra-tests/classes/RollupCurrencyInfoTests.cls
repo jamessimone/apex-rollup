@@ -16,7 +16,7 @@ private class RollupCurrencyInfoTests {
     Opportunity opp = new Opportunity(Amount = 0);
 
     RollupCurrencyInfo.setCurrencyIsoCode(opp, mockUsdInfo.IsoCode);
-    RollupCurrencyInfo.transformForMultiCurrencyOrgs(opp, Opportunity.Amount, mockEurInfo.IsoCode, null);
+    RollupCurrencyInfo.transformForMultiCurrencyOrgs(opp, Opportunity.Amount, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
 
     opp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp);
     System.assertEquals(0, opp.Amount, 'Should make it here without divide by zero error!');

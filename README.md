@@ -22,12 +22,12 @@ You have several different options when it comes to making use of `Rollup`:
 
 ## Deployment
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sj00AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sj8oAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sj00AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sj8oAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -116,7 +116,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
 - `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#special-considerations-for-usage-of-the-calc-item-where-clause)
 - `Is Full Record Set` (optional, defaults to `false`) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
-- `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. Like DLRS, this field is optional on a first/last operation, and if a field is not supplied, the `Rollup field On Calc Item` is used.
+- `Order By (First/Last)` (deprecated) - please see the the `Rollup Order By Custom Metadata` section below, as this field is deprecated as of [v1.4.0](<(https://github.com/jamessimone/apex-rollup/releases/tag/v1.4.0)>).
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. `Rollup` will then go and retrieve the assorted children records before rolling the values up to the parents. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Calc Item Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
 - `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-or-greater-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name (after the last period) should match up with what is being used in `Rollup Field On Lookup Object`. For caveats and more information on how to setup rollups looking to use this functionality, please refer to the linked section.
 - `Rollup To Ultimate Parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
@@ -124,6 +124,17 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Ultimate Parent Lookup` (optional) - specify the API Name of the field on the `Lookup Object` using the dropdown that contains the hierarchy relationship. On Account, for example, this would be `Parent Account ID`. Must be filled out if `Rollup To Ultimate Parent` is checked.
 
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
+
+- `Description` (optional) - note-taking field in the event you'd like to provide additional info to other admins/users about your configured rollup
+
+#### Rollup Order By Custom Metadata
+
+Only valid to be tied to a given `Rollup__mdt` record with a `FIRST` or `LAST` Rollup Operation defined. Use these records to set up rules for how the records associated with your rollup will be ordered. Note that if a `FIRST` or `LAST` rollup is defined _without_ one of these records, the `Rollup Field On Calc Item` is used to order things.
+
+- `Ranking` - number value defining the order priority for any given `Rollup Order By` CMDT record. It's fine to start with 0 or with 1; ranking must be unique amongst all the records you create here
+- `Field Name` - the API name for the field to order by
+- `Sort Order` (optional) - Default order is ascending
+- `Null Sort Order` (optional) - By default, nulls are sorted first
 
 #### Notes On The Use Of CMDT To Control Your Rollups
 
@@ -197,7 +208,7 @@ Here are the arguments necessary to invoke `Rollup` from a Flow / Process Builde
 - `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-or-greater-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name should match up with what is being used in `Rollup Field On Lookup Object`. Please see the caveats in the linked section for more information on how to set up your rollups correctly when using this feature.
 - `Is Full Record Set` (optional) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by toggling this field
 - `Is Rollup Started From Parent` (optional, defaults to `{!$GlobalConstant.False}`) - set to `{!$GlobalConstant.True}` if collection being passed in is the parent SObject, and you want to recalculate the defined rollup operation for the passed in parent records. Used in conjunction with `Calc Item Type When Rollup Started From Parent`. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Calc Item Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
-- `Order By (First/Last)` (optional) - at present, only valid when FIRST/LAST is used as the Rollup Operation. This is the API name of a text/date/number-based field that you would like to order the calculation items by. Like DLRS, this field is optional on a first/last operation, and if a field is not supplied, the `Rollup field On Calc Item` is used.
+- `Order By (First/Last)` (optional) - only valid when FIRST/LAST is used as the Rollup Operation. Accepts a comma-separated list associated with the fields you'd like to order by, including the sort order and null sort order. For example: `Name nulls last, Industry` would use the Name field on a record with nulls last, followed by a sort on the Industry field to do tie-breakers. Like DLRS, this field is optional on a first/last operation, and if a field is not supplied, the `Rollup Field On Calc Item` is used.
 - `Should rollup to ultimate hierarchy parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
 - `Should run sync` (optional) - Check this box if you'd like the parent items to be updated in a synchronous context. Note that if `Defer Processing` is set to true, the synchronous bit will only come into play whenever the `Process Deferred Rollup` action is called.
 - `SOQL Where Clause To Exclude Calc Items` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#special-considerations-for-usage-of-the-calc-item-where-clause)
@@ -539,6 +550,7 @@ global static Rollup firstFromApex(
   SObjectField lookupFieldOnOperationObject,
   SObjectField firstFieldOnOpObject,
   SObjectType lookupSobjectType,
+  // if you need to order by more than one field, use the last signature for FIRST
   String orderByFirstLast
 )
 
@@ -563,12 +575,24 @@ global static Rollup firstFromApex(
   Evaluator eval
 )
 
+global static Rollup firstFromApex(
+  SObjectField firstFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField firstFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue,
+  List<RollupOrderBy__mdt> orderByMetas,
+  Evaluator eval
+)
+
 global static Rollup lastFromApex(
   SObjectField lastFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
   SObjectField lookupFieldOnOperationObject,
   SObjectField lastFieldOnOpObject,
   SObjectType lookupSobjectType,
+   // if you need to order by more than one field, use the last signature for LAST
   String orderByFirstLast
 )
 
@@ -590,6 +614,17 @@ global static Rollup lastFromApex(
   SObjectType lookupSobjectType,
   Object defaultRecalculationValue, // can be a string or a number for last
   String orderByFirstLast,
+  Evaluator eval
+)
+
+global static Rollup lastFromApex(
+  SObjectField lastFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField lastFieldOnOpObject,
+  SObjectType lookupSobjectType,
+  Object defaultRecalculationValue,
+  List<RollupOrderBy__mdt> orderByMetas,
   Evaluator eval
 )
 
@@ -805,45 +840,38 @@ trigger ContactTrigger on Contact(after delete) {
 }
 ```
 
-If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex. To that effect, your corresponding `ContactTrigger` (or after delete method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
+If you are using record-triggered flows (or the invocable actions in general), _and_ your child records are targeting Task, Event, or User, this is one area you'll still need to conform to the above with some special caveats. While it's true that Custom Metadata `Rollup__mdt` records can't be created for these three objects, that doesn't mean those very same records can't be synthetically created in Apex (or that the globally exposed Apex rollup methods can't be used on those objects). To that effect, your corresponding `ContactTrigger` (or after delete method within your trigger handler class, since hopefully we're all using those ...) would look something like this:
 
 ```java
 trigger ContactTrigger on Contact(after delete) {
-  // each of these records should directly correspond to the equivalent invocable Rollup action
+  // each of these Rollups should directly correspond to the equivalent invocable Rollup action
   // this is because merge-related rollups will bypass your record-triggered flows and do the work
-  // directly within the Apex trigger
-  Rollup__mdt taskMetadata = new Rollup__mdt(
-    CalcItem__c = 'Task',
-    RollupFieldOnCalcItem__c = 'Subject', // just for example
-    LookupFieldOnCalcItem__c = 'WhoId',
-    LookupFieldOnLookupObject__c = 'Id',
-    RollupFieldOnLookupObject__c = 'Description',
-    LookupObject__c = 'Contact',
-    RollupOperation__c = 'FIRST',
-    OrderByFirstLast__c = 'ActivityDate',
-    CalcItemWhereClause__c = 'Subject = \'Hello world!\''
+  // directly within the Apex trigger. If you aren't operating on Task/Event/User as the child object,
+  // set up your rollups using CMDT and use the snippet above instead!
+  Rollup.batch(
+    Rollup.firstFromApex(
+      Task.Subject,
+      Task.WhoId,
+      Contact.Id,
+      Contact.Description,
+      Contact.SObjectType,
+      null, // default recalc value
+      new List<RollupOrderBy__mdt>{
+        new RollupOrderBy__mdt(
+          FieldName__c = 'ActivityDate',
+          Ranking__c = 0
+        )
+      },
+      RollupEvaluator.getWhereEval('Subject = \'Hello world!\'', Task.SObjectType)
+    ),
+    Rollup.concatDistinctFromApex(
+      Event.Subject,
+      Event.WhoId,
+      Contact.Id,
+      Contact.Description,
+      Contact.SObjectType
+    )
   );
-  // create a Rollup__mdt rollup record, properly filled out, for each invocable you have set up
-  // unfortunately, if your parent-level object has rollups configured within Rollup__mdt metadata AND
-  // Task / Event / User, you'll need to write out each of them here and pass them into the "runFromApex"
-  // method below. Otherwise, you can simply use the "runFromTrigger" method above if all of your rollups
-  // for this parent-level object are configured strictly within Rollup__mdt records
-  Rollup__mdt eventMetadata = new Rollup__mdt(
-    CalcItem__c = 'Event',
-    RollupFieldOnCalcItem__c = 'Subject',
-    LookupFieldOnCalcItem__c = 'WhoId',
-    LookupFieldOnLookupObject__c = 'Id',
-    RollupFieldOnLookupObject__c = 'Description',
-    LookupObject__c = 'Contact',
-    RollupOperation__c = 'CONCAT_DISTINCT'
-  );
-
-  Rollup.runFromApex(
-    new List<Rollup__mdt>{ taskMetadata, eventMetadata },
-    null, // custom eval argument, doesn't need to be set unless you have some complicated, Apex-based filtering logic necessary
-    Trigger.old,
-    Trigger.oldMap
-  ).runCalc();
 }
 ```
 

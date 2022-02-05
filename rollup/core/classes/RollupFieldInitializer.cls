@@ -77,7 +77,7 @@ public virtual class RollupFieldInitializer {
 
     public PicklistController(DescribeFieldResult fieldDescribe) {
       super();
-      DisplayType fieldType = fieldDescribe.getType();
+      DisplayType fieldType = fieldDescribe?.getType();
       this.isPicklist = fieldType == DisplayType.MULTIPICKLIST || fieldType == DisplayType.PICKLIST;
       this.isMultiSelectPicklist = fieldType == DisplayType.MULTIPICKLIST;
 

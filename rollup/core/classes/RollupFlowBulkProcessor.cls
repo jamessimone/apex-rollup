@@ -44,7 +44,7 @@ global without sharing class RollupFlowBulkProcessor {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent;
-    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
+    @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
 
     @InvocableVariable(
@@ -52,10 +52,7 @@ global without sharing class RollupFlowBulkProcessor {
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent;
-    @InvocableVariable(
-      label='Should run sync?'
-      description='Runs rollup calculations synchronously when set to true'
-    )
+    @InvocableVariable(label='Should run sync?' description='Runs rollup calculations synchronously when set to true')
     global Boolean shouldRunSync;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
     global String calcItemWhereClause;
@@ -95,7 +92,6 @@ global without sharing class RollupFlowBulkProcessor {
               ? flowInput.fullRecalculationDefaultStringValue
               : meta.FullRecalculationDefaultStringValue__c;
             input.isFullRecordSet = flowInput.isFullRecordSet != null ? flowInput.isFullRecordSet : meta.IsFullRecordSet__c;
-            input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : meta.OrderByFirstLast__c;
             input.isRollupStartedFromParent = flowInput.isRollupStartedFromParent != null
               ? flowInput.isRollupStartedFromParent
               : meta.IsRollupStartedFromParent__c;

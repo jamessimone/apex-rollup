@@ -13,7 +13,8 @@ const getRollupMetadata = async () => {
         // by removing relationship fields - this allows the Rollup__mdt records to be passed back
         // to Apex without issue
         Object.keys(rollupMetadata).forEach(propKey => {
-          if (propKey.indexOf('__r') === -1) {
+          const hasParentOrChild = propKey.indexOf('__r') !== -1;
+          if (!hasParentOrChild || Array.isArray(rollupMetadata[propKey])) {
             cleanedMeta[propKey] = rollupMetadata[propKey];
           }
         });

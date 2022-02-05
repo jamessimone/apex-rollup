@@ -1,7 +1,7 @@
 import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
-import performBulkFullRecalc from '@salesforce/apex/Rollup.performBulkFullRecalc';
-import performFullRecalculation from '@salesforce/apex/Rollup.performFullRecalculation';
+import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
+import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
@@ -20,7 +20,6 @@ export default class RollupForceRecalculation extends LightningElement {
     CalcItem__c: '',
     RollupOperation__c: '',
     CalcItemWhereClause__c: '',
-    OrderByFirstLast__c: '',
     ConcatDelimiter__c: '',
     SplitConcatDelimiterOnCalcItem__c: false
   };
@@ -36,10 +35,11 @@ export default class RollupForceRecalculation extends LightningElement {
   selectedMetadataCMDTRecords;
 
   isRollingUp = false;
+  isFirstLast = false;
   rollupStatus;
   error = '';
 
-  _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
+  _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted', NO_PROCESS_ID];
   _localMetadata = {};
   _cmdtFieldNames = [
     'MasterLabel',
@@ -75,6 +75,7 @@ export default class RollupForceRecalculation extends LightningElement {
 
   handleChange(event) {
     this.metadata[event.target.name] = event.target.value;
+    this.isFirstLast = this.metadata.RollupOperation__c.indexOf('FIRST') !== -1 || this.metadata.RollupOperation__c.indexOf('LAST') !== -1;
   }
 
   handleToggle() {
@@ -108,10 +109,13 @@ export default class RollupForceRecalculation extends LightningElement {
         }
 
         const localMetas = [...this.selectedRows];
-
-        jobId = await performBulkFullRecalc({ matchingMetadata: localMetas, invokePointName: 'FROM_LWC' });
+        this._getMetadataWithChildrenRecords(localMetas);
+        jobId = await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_LWC' });
       } else {
-        jobId = await performFullRecalculation({ metadata: this.metadata });
+        this._getMetadataWithChildrenRecords([this.metadata]);
+        jobId = await performSerializedFullRecalculation({
+          metadata: JSON.stringify(this.metadata)
+        });
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {
@@ -122,8 +126,8 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   async _getBatchJobStatus(jobId) {
-    if (!jobId || jobId === NO_PROCESS_ID) {
-      this.rollupStatus = 'Completed';
+    if (!jobId || this._resolvedBatchStatuses.includes(jobId)) {
+      this.rollupStatus = jobId;
       return Promise.resolve();
     }
     this.isRollingUp = true;
@@ -152,5 +156,22 @@ export default class RollupForceRecalculation extends LightningElement {
     });
     this.dispatchEvent(event);
     this.error = message;
+  }
+
+  _getMetadataWithChildrenRecords(metadatas) {
+    for (const metadata of metadatas) {
+      let children;
+      if (this.isCMDTRecalc) {
+        children = metadata.RollupOrderBys__r != null ? metadata.RollupOrderBys__r : children;
+      } else {
+        const possibleOrderByComponent = this.template.querySelector('c-rollup-order-by');
+        if (possibleOrderByComponent) {
+          children = possibleOrderByComponent.orderBys;
+        }
+      }
+      if (children) {
+        metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children };
+      }
+    }
   }
 }

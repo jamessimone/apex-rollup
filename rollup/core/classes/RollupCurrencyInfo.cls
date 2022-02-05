@@ -57,7 +57,7 @@ public without sharing class RollupCurrencyInfo {
     }
   }
 
-  public static void transformForMultiCurrencyOrgs(SObject calcItem, Schema.SObjectField opFieldOnCalcItem, String parentIsoCode, String orderByField) {
+  public static void transformForMultiCurrencyOrgs(SObject calcItem, Schema.SObjectField opFieldOnCalcItem, String parentIsoCode, List<RollupOrderBy__mdt> orderBys) {
     if (calcItem.getSObjectType().getDescribe().fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)) {
       String calcItemIsoCode = (String) calcItem.get(CURRENCY_ISO_CODE_FIELD_NAME);
       SObject clonedCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id);
@@ -76,8 +76,8 @@ public without sharing class RollupCurrencyInfo {
       clonedCalcItem = clonedCalcItem == null ? calcItem.clone(true, true, true, true) : clonedCalcItem;
       convertToParentCurrency(calcItem, clonedCalcItem, opFieldOnCalcItem, calcItemIsoCode, parentIsoCode);
 
-      if (orderByField != null) {
-        SObjectField orderByFirstLastField = calcItem.getSObjectType().getDescribe().fields.getMap().get(orderByField);
+      for (RollupOrderBy__mdt orderBy : orderBys) {
+        SObjectField orderByFirstLastField = calcItem.getSObjectType().getDescribe().fields.getMap().get(orderBy.FieldName__c);
         if (orderByFirstLastField != null && orderByFirstLastField != opFieldOnCalcItem) {
           convertToParentCurrency(calcItem, clonedCalcItem, orderByFirstLastField, calcItemIsoCode, parentIsoCode);
         }

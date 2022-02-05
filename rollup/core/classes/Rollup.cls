@@ -344,9 +344,21 @@ global without sharing virtual class Rollup {
     return calcItemToMetadata;
   }
 
+  /**
+   * v1.3.25 to v1.4.0 introduced a child CMDT relationship: Rollup__mdt.RollupOrderBys__r
+   * Unfortunately, data passed between the frontend and backend strips out child relationship values
+   * (even when they were set and initialized via the backend itself!). In order to avoid a breaking change
+   * on this method, it instead delegates to the new one.
+   */
   @AuraEnabled
-  global static String performBulkFullRecalc(List<Rollup__mdt> matchingMetadata, String invokePointName) {
+  global static String performBulkFullRecalc(List<Rollup__mdt> metadata, String invokePointName) {
+    return performSerializedBulkFullRecalc(JSON.serialize(metadata), invokePointName);
+  }
+
+  @AuraEnabled
+  global static String performSerializedBulkFullRecalc(String serializedMetadata, String invokePointName) {
     isFullRecalcApp = true;
+    List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
     InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
 
@@ -360,6 +372,13 @@ global without sharing virtual class Rollup {
     Integer delimiterIndex = -1;
 
     for (Rollup__mdt matchingMeta : matchingMetadata) {
+      FlowInput validationRuleWrapper = new FlowInput();
+      validationRuleWrapper.rollupOperation = matchingMeta.RollupOperation__c.toUpperCase();
+      validationRuleWrapper.concatDelimiter = matchingMeta.ConcatDelimiter__c;
+      validationRuleWrapper.fullRecalculationDefaultStringValue = matchingMeta.FullRecalculationDefaultStringValue__c;
+      validationRuleWrapper.fullRecalculationDefaultNumberValue = matchingMeta.FullRecalculationDefaultNumberValue__c;
+      enforceValidationRules(validationRuleWrapper);
+
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
         delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
         potentialWhereClause = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length());
@@ -423,28 +442,21 @@ global without sharing virtual class Rollup {
     return [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
   }
 
+  /**
+   * Sending metadata from the frontend LWCs omits
+   * the RollupOrderBys__r children unless it's sent serialized (using the same
+   * child object format used in the "appendOrderByMetadata"). As with "performBulkFullRecalc",
+   * the original "performFullRecalculation" is kept to avoid breaking changes
+   * between v1.3.25 and v1.4.0
+   */
   @AuraEnabled
-  global static String performFullRecalculation(Rollup__mdt metadata) {
-    isFullRecalcApp = true;
-    RollupLogger.Instance.log('beginning full recalculation for:', metadata, LoggingLevel.DEBUG);
-    FlowInput validationRuleWrapper = new FlowInput();
-    validationRuleWrapper.rollupOperation = metadata.RollupOperation__c.toUpperCase();
-    validationRuleWrapper.concatDelimiter = metadata.ConcatDelimiter__c;
-    validationRuleWrapper.fullRecalculationDefaultStringValue = metadata.FullRecalculationDefaultStringValue__c;
-    validationRuleWrapper.fullRecalculationDefaultNumberValue = metadata.FullRecalculationDefaultNumberValue__c;
-    validationRuleWrapper.orderByFirstLast = metadata.OrderByFirstLast__c;
-    enforceValidationRules(validationRuleWrapper);
+  global static String performSerializedFullRecalculation(String metadata) {
+    return performSerializedBulkFullRecalc('[' + metadata + ']', InvocationPoint.FROM_LWC.name());
+  }
 
-    QueryWrapper wrapper = new QueryWrapper(metadata.LookupObject__c, metadata.LookupFieldOnLookupObject__c);
-    wrapper.setQuery(metadata.CalcItemWhereClause__c);
-    Rollup fullRecalc = getFullRecalcRollups(
-      new List<FullRecalculationMetadata>{
-        new FullRecalculationMetadata(metadata, wrapper, RollupFieldInitializer.Current.getSObjectFromName(metadata.CalcItem__c).getSObjectType())
-      },
-      InvocationPoint.FROM_LWC
-    )[0];
-    isFullRecalcApp = false;
-    return fullRecalc?.runCalc();
+  @AuraEnabled
+  global static String performFullRecalculation(Rollup__mdt meta) {
+    return performSerializedFullRecalculation(JSON.serialize(meta));
   }
 
   global class FlowInput {
@@ -517,7 +529,7 @@ global without sharing virtual class Rollup {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
-    @InvocableVariable(label='Order By (First/Last)' description='First/Last order by field')
+    @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
 
     // these are listed with the optional properties because otherwise Flow builders always have to check for null after using a Get Records
@@ -1021,6 +1033,28 @@ global without sharing virtual class Rollup {
     String orderByFirstLast,
     Evaluator eval
   ) {
+    return firstFromApex(
+      firstFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      firstFieldOnOpObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = orderByFirstLast) },
+      eval
+    );
+  }
+
+  global static Rollup firstFromApex(
+    SObjectField firstFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField firstFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    List<RollupOrderBy__mdt> orderByMetas,
+    Evaluator eval
+  ) {
     return operateFromApex(
       firstFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -1029,7 +1063,7 @@ global without sharing virtual class Rollup {
       lookupSobjectType,
       Op.FIRST,
       defaultRecalculationValue,
-      orderByFirstLast,
+      orderByMetas,
       eval
     );
   }
@@ -1085,6 +1119,28 @@ global without sharing virtual class Rollup {
     String orderByFirstLast,
     Evaluator eval
   ) {
+    return lastFromApex(
+      lastFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      lastFieldOnOpObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = orderByFirstLast) },
+      eval
+    );
+  }
+
+  global static Rollup lastFromApex(
+    SObjectField lastFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField lastFieldOnOpObject,
+    SObjectType lookupSobjectType,
+    Object defaultRecalculationValue,
+    List<RollupOrderBy__mdt> orderByMetas,
+    Evaluator eval
+  ) {
     return operateFromApex(
       lastFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -1093,7 +1149,7 @@ global without sharing virtual class Rollup {
       lookupSobjectType,
       Op.LAST,
       defaultRecalculationValue,
-      orderByFirstLast,
+      orderByMetas,
       eval
     );
   }
@@ -1412,6 +1468,28 @@ global without sharing virtual class Rollup {
     return rollupConductor;
   }
 
+  /**
+   * @return `Rollup__mdt` the metadata with the `List<RollupOrderBy__mdt>` RollupOrderBys__r relationship set
+   * <br>
+   * Credit for this method (with some tweaking) goes to: https://github.com/tsalb
+   */
+  global static Rollup__mdt appendOrderByMetadata(Rollup__mdt meta, List<RollupOrderBy__mdt> children) {
+    String serializedMeta = JSON.serialize(meta).removeEnd('}');
+
+    JSONGenerator gen = JSON.createGenerator(false);
+    gen.writeStartObject();
+    gen.writeNumberField('totalSize', children.size());
+    gen.writeBooleanField('done', true);
+    gen.writeObjectField('records', children);
+    gen.writeEndObject();
+    // using Rollup__mdt.SObjectType.getDescribe().getChildRelationships() and doing that whole dance
+    // makes me ... sad ... so we'll just live with this little sin for now
+    String childrenJson = '"RollupOrderBys__r" : ' + gen.getAsString();
+    serializedMeta = serializedMeta += ',' + childrenJson + '}';
+
+    return (Rollup__mdt) JSON.deserialize(serializedMeta, Rollup__mdt.class);
+  }
+
   /** end global-facing section, begin public/private static helpers */
 
   public static void processStoredFlowRollups() {
@@ -1460,7 +1538,8 @@ global without sharing virtual class Rollup {
             RollupControl__c,
             RollupOperation__c,
             RollupToUltimateParent__c,
-            SplitConcatDelimiterOnCalcItem__c
+            SplitConcatDelimiterOnCalcItem__c,
+            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
           FROM Rollup__mdt
         ];
         // do the transforms
@@ -1543,22 +1622,24 @@ global without sharing virtual class Rollup {
     SObjectType lookupSObjectType,
     Op rollupOperation,
     Object defaultRecalculationValue,
-    String orderByFirstLast,
+    List<RollupOrderBy__mdt> orderByMetas,
     Evaluator eval
   ) {
     Rollup__mdt meta = new Rollup__mdt(
       RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
-      LookupObject__c = String.valueOf(lookupSObjectType),
+      LookupObject__c = lookupSObjectType.getDescribe().getName(),
       LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
       LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
       RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
-      RollupOperation__c = rollupOperation.name(),
-      OrderByFirstLast__c = orderByFirstLast
+      RollupOperation__c = rollupOperation.name()
     );
     if (defaultRecalculationValue instanceof Decimal) {
       meta.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
     } else if (defaultRecalculationValue instanceof String) {
       meta.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
+    }
+    if (orderByMetas?.isEmpty() == false) {
+      meta = appendOrderByMetadata(meta, orderByMetas);
     }
     return runFromApex(new List<Rollup__mdt>{ meta }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }
@@ -1808,9 +1889,12 @@ global without sharing virtual class Rollup {
   }
 
   private static Set<String> getQueryFieldsFromMetadata(Rollup__mdt meta, RollupEvaluator.WhereFieldEvaluator eval) {
-    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c, meta.OrderByFirstLast__c };
+    Set<String> queryFields = new Set<String>{ 'Id', meta.RollupFieldOnCalcItem__c, meta.LookupFieldOnCalcItem__c };
     if (eval != null) {
       queryFields.addAll(eval.getQueryFields());
+    }
+    for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
+      queryFields.add(orderByInfo.FieldName__c);
     }
     return queryFields;
   }
@@ -1977,13 +2061,6 @@ global without sharing virtual class Rollup {
   private static void enforceValidationRules(FlowInput flowInput) {
     String errorMessage;
     if (
-      (flowInput.rollupOperation == 'FIRST' ||
-      flowInput.rollupOperation == 'LAST') &&
-      String.isBlank(flowInput.orderByFirstLast) &&
-      String.isBlank(flowInput.rollupFieldOnCalcItem)
-    ) {
-      errorMessage = 'Order By First/Last field required for ' + flowInput.rollupOperation + ' operation';
-    } else if (
       (flowInput.rollupToUltimateParent && String.isBlank(flowInput.ultimateParentLookup)) ||
       (String.isNotBlank(flowInput.ultimateParentLookup) && flowInput.rollupToUltimateParent == false)
     ) {

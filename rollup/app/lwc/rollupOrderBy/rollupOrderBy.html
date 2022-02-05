@@ -1,0 +1,73 @@
+<template>
+  <template if:true={dataHasLoaded}>
+    <lightning-card class="slds-col" title="Add FIRST/LAST order by records" icon-name="custom:custom33">
+      <div slot="actions">
+        <lightning-button
+          class="slds-m-horizontal_xx-small"
+          data-id="create-new-button"
+          icon-name="action:new"
+          label="New"
+          onclick={createNewRecord}
+          title="New Record"
+          variant="brand"
+        ></lightning-button>
+      </div>
+
+      <lightning-datatable columns={columns} data={orderBys} hide-checkbox-column key-field="Id" show-row-number-column sorted-direction="asc">
+      </lightning-datatable>
+      <template if:true={showModal} onkeydown={handleKeyDown}>
+        <section class="slds-modal slds-fade-in-open" onkeydown={handleKeyDown} role="dialog" tabindex="-1">
+          <div class="slds-modal__container" onkeydown={handleKeyDown}>
+            <!-- Record modal header -->
+            <header class="slds-modal__header">
+              <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeModal}>
+                <lightning-icon icon-name="utility:close" alternative-text="close" size="small"></lightning-icon>
+              </button>
+              <h2 class="slds-text-heading_medium slds-hyphenate">Order By Details</h2>
+            </header>
+
+            <!-- Record modal body -->
+            <div class="slds-modal__content slds-p-around_medium">
+              <lightning-input
+                data-id={ranking.apiName}
+                field-level-help={ranking.inlineHelpText}
+                label={ranking.label}
+                onchange={handleRecordChange}
+                required
+                type="number"
+                value={currentOrderBySize}
+              ></lightning-input>
+              <lightning-input
+                data-id={fieldName.apiName}
+                field-level-help={fieldName.inlineHelpText}
+                label={fieldName.label}
+                onchange={handleRecordChange}
+                required
+                type="text"
+              ></lightning-input>
+              <lightning-combobox
+                data-id={sortOrder.apiName}
+                field-level-help={sortOrder.inlineHelpText}
+                label={sortOrder.label}
+                onchange={handleRecordChange}
+                options={sortOrderOptions}
+                placeholder="Select Sort Order (Optional)"
+              ></lightning-combobox>
+              <lightning-combobox
+                data-id={nullSortOrder.apiName}
+                field-level-help={nullSortOrder.inlineHelpText}
+                label={nullSortOrder.label}
+                onchange={handleRecordChange}
+                options={nullSortOrderOptions}
+                placeholder="Select Null Sort Order (Optional)"
+              ></lightning-combobox>
+            </div>
+            <footer class="slds-modal__footer">
+              <lightning-button class="slds-p-around--xx-small" data-id="save-button" label="Create!" onclick={handleCreate} variant="brand"></lightning-button>
+            </footer>
+          </div>
+        </section>
+      </template>
+    </lightning-card>
+  </template>
+</template>

@@ -12,8 +12,9 @@ const mockRollupMetadata = {
       RollupFieldOnCalcItem__c: 'FirstName',
       RollupFieldOnLookupObject__c: 'Name',
       RollupOperation__c: 'CONCAT',
-      'CalcItem__r.QualifiedApiName': 'Something we expect to be removed',
-      SplitConcatDelimiterOnCalcItem__c: ''
+      CalcItem__r: { QualifiedApiName: 'Something we expect to be removed' },
+      SplitConcatDelimiterOnCalcItem__c: '',
+      RollupOrderBys__r: []
     }
   ]
 };

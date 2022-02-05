@@ -357,7 +357,7 @@ public without sharing abstract class RollupCalculator {
 
   private void transformForMultiCurrencyOrgs(SObject calcItem) {
     if (this.isMultiCurrencyRollup) {
-      RollupCurrencyInfo.transformForMultiCurrencyOrgs(calcItem, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.OrderByFirstLast__c);
+      RollupCurrencyInfo.transformForMultiCurrencyOrgs(calcItem, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.RollupOrderBys__r);
     }
   }
 
@@ -1075,26 +1075,27 @@ public without sharing abstract class RollupCalculator {
         (metadata.FullRecalculationDefaultNumberValue__c != null
           ? (Object) metadata.FullRecalculationDefaultNumberValue__c
           : (Object) metadata.FullRecalculationDefaultStringValue__c),
-        metadata,
+        getFirstLastMetadata(metadata),
         lookupRecordKey,
         lookupKeyField
       );
-      this.metadata.OrderByFirstLast__c = String.isNotBlank(metadata.OrderByFirstLast__c) ? metadata.OrderByFirstLast__c : metadata.RollupFieldOnCalcItem__c;
       SObjectType calcItemSObjectType = ((SObject) Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
-      SObjectField orderByFirstLastField = calcItemSObjectType.getDescribe().fields.getMap().get(this.metadata.OrderByFirstLast__c);
-      this.isMultiCurrencyRollup =
-        this.isMultiCurrencyRollup || UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY;
+      Map<String, SObjectField> fieldMap = calcItemSObjectType.getDescribe().fields.getMap();
+      for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
+        SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
+        this.isMultiCurrencyRollup =
+          this.isMultiCurrencyRollup || UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY;
+      }
     }
 
     @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.isFullRecalc == false) {
         SObjectType sObjectType = this.getCalcItemType();
-        Set<String> queryFields = new Set<String>{
-          String.valueOf(this.opFieldOnCalcItem),
-          this.metadata.OrderByFirstLast__c,
-          this.metadata.LookupFieldOnCalcItem__c
-        };
+        Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.metadata.LookupFieldOnCalcItem__c };
+        for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
+          queryFields.add(orderByInfo.FieldName__c);
+        }
         if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
           queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
         }
@@ -1114,58 +1115,30 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      new FirstLastSorter(this.op, this.metadata.OrderByFirstLast__c).sort(calcItems);
+      new RollupFirstLastSorter(this.op, this.metadata.RollupOrderBys__r).sort(calcItems);
       this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
     }
   }
 
-  private class FirstLastSorter extends RollupComparer {
-    private final Boolean isFirst;
-    private final String orderByField;
-
-    public FirstLastSorter(Rollup.Op op, String orderByField) {
-      this.isFirst = op.name().contains(Rollup.Op.FIRST.name());
-      this.orderByField = orderByField;
-    }
-
-    public override Integer compare(Object o1, Object o2) {
-      Integer returnVal = 0;
-      SObject objOne = (SObject) o1;
-      SObject objTwo = (SObject) o2;
-
-      Object potentialFirstVal = objOne.get(this.orderByField);
-      Object potentialSecondVal = objTwo.get(this.orderByField);
-
-      // nulls last; return early if everything is null OR if the values match
-      if (potentialFirstVal == null && potentialSecondVal != null) {
-        returnVal = this.moveTowardFrontOfList;
-      } else if (potentialSecondVal == null && potentialFirstVal != null) {
-        returnVal = this.moveTowardBackOfList;
-      } else if ((potentialFirstVal == null && potentialSecondVal == null) || (potentialFirstVal == potentialSecondVal)) {
-        return returnVal;
+  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt metadata) {
+    if (metadata.RollupOrderBys__r.isEmpty() && metadata.OrderByFirstLast__c?.contains(',') == true) {
+      List<String> unparsedOrderBys = metadata.OrderByFirstLast__c.split(',');
+      for (Integer index = 0; index < unparsedOrderBys.size(); index++) {
+        String unparsedOrderBy = unparsedOrderBys[index];
+        RollupOrderBy__mdt orderBy = new RollupOrderBy__mdt(Ranking__c = index, FieldName__c = unparsedOrderBy.substringBefore(' '));
+        Boolean isAscendingSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Ascending);
+        if (isAscendingSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Descending)) {
+          orderBy.SortOrder__c = isAscendingSortOrder ? RollupMetaPicklists.SortOrder.Ascending : RollupMetaPicklists.SortOrder.Descending;
+        }
+        Boolean isAscendingNullSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsFirst);
+        if (isAscendingNullSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsLast)) {
+          orderBy.NullSortOrder__c = isAscendingNullSortOrder ? RollupMetaPicklists.NullSortOrder.NullsFirst : RollupMetaPicklists.NullSortOrder.NullsLast;
+        }
+        metadata.RollupOrderBys__r.add(orderBy);
       }
-
-      // otherwise, cast to one of the three most basic types in order to call the equality comparators
-      // all times / dates/ and datetimes will respond true to instanceof Datetime
-      // all numbers will respond true to instanceof Decimal
-      if (potentialFirstVal instanceof Datetime) {
-        Datetime firstVal = (Datetime) potentialFirstVal;
-        Datetime secondVal = (Datetime) potentialSecondVal;
-
-        returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
-      } else if (potentialFirstVal instanceof String) {
-        String firstVal = (String) potentialFirstVal;
-        String secondVal = (String) potentialSecondVal;
-
-        returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
-      } else if (potentialFirstVal instanceof Decimal) {
-        Decimal firstVal = (Decimal) potentialFirstVal;
-        Decimal secondVal = (Decimal) potentialSecondVal;
-
-        returnVal = firstVal > secondVal ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
-      }
-
-      return this.isFirst ? returnVal : returnVal * -1;
+    } else if (metadata.RollupOrderBys__r.isEmpty()) {
+      metadata = Rollup.appendOrderByMetadata(metadata, new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = metadata.RollupFieldOnCalcItem__c) });
     }
+    return metadata;
   }
 }

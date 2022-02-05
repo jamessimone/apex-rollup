@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Ranking__c</fullName>
+    <defaultValue>0</defaultValue>
+    <description>Rank order by fields in terms of priority. You can start with ranking 0 or with ranking 1</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Rank order by fields in terms of priority. You can start with ranking 0 or with ranking 1</inlineHelpText>
+    <label>Ranking</label>
+    <precision>18</precision>
+    <required>true</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>true</unique>
+</CustomField>
