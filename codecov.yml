@@ -2,11 +2,8 @@ coverage:
     status:
         project:
             default:
-                target: 90 # otherwise any regression in code coverage fails the build
+                target: 75 # otherwise any regression in code coverage fails the build
                 threshold: 2%
-                # range: 75...100
-                # round: down
-                # precision: 2
                 if_ci_failed: success
                 flags:
                     - Apex
