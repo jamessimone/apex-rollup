@@ -179,7 +179,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metadata), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
@@ -605,7 +605,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT Name FROM Account];
@@ -642,7 +642,7 @@ private class RollupFullRecalcTests {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(calcItemToMetadata.get('ContactPointAddress')), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -680,7 +680,7 @@ private class RollupFullRecalcTests {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     // specifically don't wrap in start/stopTest to prove it ran sync
-    Rollup.performBulkFullRecalc(JSON.serialize(calcItemToMetadata.get('ContactPointAddress')), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
@@ -715,7 +715,7 @@ private class RollupFullRecalcTests {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     // specifically don't wrap in start/stopTest to prove it ran sync
-    Rollup.performBulkFullRecalc(JSON.serialize(calcItemToMetadata.get('ContactPointAddress')), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
 
     acc = [SELECT Name FROM Account];
     System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
@@ -759,7 +759,7 @@ private class RollupFullRecalcTests {
     };
 
     // no start/stopTest since singular parent recalc entry point _should_ run sync
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
     acc = [SELECT Name, AccountNumber FROM Account];
     System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
     System.assertEquals('Task rollup', acc.AccountNumber);
@@ -784,7 +784,7 @@ private class RollupFullRecalcTests {
       )
     };
 
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
     acc = [SELECT AccountNumber FROM Account];
     System.assertEquals('Task rollup', acc.AccountNumber);
   }
@@ -814,7 +814,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -857,7 +857,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -902,7 +902,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     List<AsyncApexJob> jobs = [SELECT Status, JobItemsProcessed FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'];
@@ -949,7 +949,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -988,7 +988,7 @@ private class RollupFullRecalcTests {
       )
     };
 
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
 
     acc = [SELECT AccountNumber, Name FROM Account WHERE Id = :acc.Id];
 
@@ -1011,7 +1011,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     System.assert(true, 'Should make it here without exception being thrown');
@@ -1040,7 +1040,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -1071,7 +1071,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
@@ -1102,7 +1102,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     Account updatedAcc = [SELECT Name FROM Account];
@@ -1144,7 +1144,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
@@ -1182,7 +1182,7 @@ private class RollupFullRecalcTests {
       )
     };
 
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
     acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset');
     // seems like some standard fields default to null when you save an empty string to them, even if they have no default value 🙄
@@ -1223,7 +1223,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
@@ -1273,7 +1273,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
@@ -1324,7 +1324,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     List<Account> accounts = [SELECT AnnualRevenue, Name FROM Account];
@@ -1410,7 +1410,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -1438,7 +1438,7 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    Rollup.performFullRecalculation(JSON.serialize(meta));
+    Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -1487,7 +1487,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     // only one of the records will have been updated since the query limit will have led to an
@@ -1539,7 +1539,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(JSON.serialize(metas), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
     Test.stopTest();
 
     // only one of the records will have been updated since the query limit will have led to an
