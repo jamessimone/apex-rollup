@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "versionName": "Introducing Rollup Order By CMDT to replace Rollup__mdt.OrderByFirstLast__c - allows for multiple fields when arranging ordering for FIRST and LAST rollups. Bugfixes for grandparent/hierarchy rollups.",
-            "versionNumber": "1.4.0.0",
-            "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
+            "versionNumber": "1.4.1.0",
+            "versionDescription": "Upgrading to Spring 22, Rollup Order By fixes",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "extra-tests"
@@ -82,7 +82,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "53.0",
+    "sourceApiVersion": "54.0",
     "packageAliases": {
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
