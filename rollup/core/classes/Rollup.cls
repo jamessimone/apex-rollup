@@ -2369,6 +2369,9 @@ global without sharing virtual class Rollup {
       if (rollupMetadata.IsFullRecordSet__c != true && isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
+      if (rollupOp.name().contains(Op.FIRST.name()) || rollupOp.name().contains(Op.LAST.name())) {
+        rollupMetadata = getFirstLastMetadata(rollupMetadata);
+      }
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2399,6 +2402,33 @@ global without sharing virtual class Rollup {
     }
     rollupConductor.isNoOp = rollupConductor.rollups.isEmpty();
     return rollupConductor;
+  }
+
+  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta) {
+    List<RollupOrderBy__mdt> replacementOrderBys;
+    if (meta.RollupOrderBys__r.isEmpty() && meta.OrderByFirstLast__c?.contains(',') == true) {
+      List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');
+      replacementOrderBys = new List<RollupOrderBy__mdt>();
+      for (Integer index = 0; index < unparsedOrderBys.size(); index++) {
+        String unparsedOrderBy = unparsedOrderBys[index];
+        RollupOrderBy__mdt orderBy = new RollupOrderBy__mdt(Ranking__c = index, FieldName__c = unparsedOrderBy.substringBefore(' '));
+        Boolean isAscendingSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Ascending);
+        if (isAscendingSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Descending)) {
+          orderBy.SortOrder__c = isAscendingSortOrder ? RollupMetaPicklists.SortOrder.Ascending : RollupMetaPicklists.SortOrder.Descending;
+        }
+        Boolean isAscendingNullSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsFirst);
+        if (isAscendingNullSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsLast)) {
+          orderBy.NullSortOrder__c = isAscendingNullSortOrder ? RollupMetaPicklists.NullSortOrder.NullsFirst : RollupMetaPicklists.NullSortOrder.NullsLast;
+        }
+        replacementOrderBys.add(orderBy);
+      }
+    } else if (meta.RollupOrderBys__r.isEmpty()) {
+      replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
+    }
+    if (replacementOrderBys != null) {
+      meta = Rollup.appendOrderByMetadata(meta, replacementOrderBys);
+    }
+    return meta;
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {
