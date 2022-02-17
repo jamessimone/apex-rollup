@@ -104,9 +104,7 @@ private class RollupFirstLastSorterTests {
   static void shouldProperlySortPicklists() {
     RollupFirstLastSorter sorter = new RollupFirstLastSorter(
       Rollup.Op.FIRST,
-      new List<RollupOrderBy__mdt>{
-        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry')
-      }
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry') }
     );
 
     List<Schema.PicklistEntry> picklistEntries = Account.Industry.getDescribe().getPicklistValues();
@@ -114,9 +112,7 @@ private class RollupFirstLastSorterTests {
 
     for (Integer reverseIndex = picklistEntries.size() - 1; reverseIndex >= 0; reverseIndex--) {
       Schema.PicklistEntry entry = picklistEntries[reverseIndex];
-      accs.add(
-        new Account(Name = entry.getValue(), Industry = entry.getValue())
-      );
+      accs.add(new Account(Name = entry.getValue(), Industry = entry.getValue()));
     }
 
     sorter.sort(accs);
@@ -147,5 +143,20 @@ private class RollupFirstLastSorterTests {
 
     System.assertEquals(opp, opps[0]);
     System.assertEquals(second, opps[1]);
+  }
+
+  @IsTest
+  static void shouldNotFailOnBlankFieldNames() {
+    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
+      Rollup.Op.FIRST,
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'), new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = '') }
+    );
+
+    Opportunity expectedFirstItem = new Opportunity(Amount = null);
+    Opportunity expectedSecondItem = new Opportunity(Amount = 1);
+    List<Opportunity> oppsToSort = new List<Opportunity>{ new Opportunity(Amount = 1), new Opportunity(Amount = 3), expectedSecondItem, expectedFirstItem };
+    sorter.sort(oppsToSort);
+
+    System.assert(true, 'Should make it here');
   }
 }

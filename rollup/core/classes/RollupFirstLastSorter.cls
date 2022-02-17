@@ -45,10 +45,18 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
     return orderByOptions;
   }
 
-  private Integer getSortRanking(SObject objOne, SObject objTwo, RollupOrderBy__mdt orderByOption, RollupFieldInitializer.PicklistController picklistController) {
+  private Integer getSortRanking(
+    SObject objOne,
+    SObject objTwo,
+    RollupOrderBy__mdt orderByOption,
+    RollupFieldInitializer.PicklistController picklistController
+  ) {
+    Integer returnVal = 0;
+    if (String.isBlank(orderByOption.FieldName__c)) {
+      return returnVal;
+    }
     Object potentialFirstVal = this.getFieldValue(objOne, orderByOption.FieldName__c);
     Object potentialSecondVal = this.getFieldValue(objTwo, orderByOption.FieldName__c);
-    Integer returnVal = 0;
     // (from the developer docs): "Default [sort] order is ascending. By default, null values are sorted first."
     if (potentialFirstVal == null && potentialSecondVal != null) {
       return orderByOption.NullSortOrder__c == RollupMetaPicklists.NullSortOrder.NullsFirst ? this.moveTowardFrontOfList : this.moveTowardBackOfList;

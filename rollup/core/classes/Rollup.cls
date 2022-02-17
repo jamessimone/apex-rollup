@@ -1474,6 +1474,7 @@ global without sharing virtual class Rollup {
    * Credit for this method (with some tweaking) goes to: https://github.com/tsalb
    */
   global static Rollup__mdt appendOrderByMetadata(Rollup__mdt meta, List<RollupOrderBy__mdt> children) {
+    meta.OrderByFirstLast__c = null;
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
 
     JSONGenerator gen = JSON.createGenerator(false);
@@ -2410,8 +2411,9 @@ global without sharing virtual class Rollup {
       List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');
       replacementOrderBys = new List<RollupOrderBy__mdt>();
       for (Integer index = 0; index < unparsedOrderBys.size(); index++) {
-        String unparsedOrderBy = unparsedOrderBys[index];
-        RollupOrderBy__mdt orderBy = new RollupOrderBy__mdt(Ranking__c = index, FieldName__c = unparsedOrderBy.substringBefore(' '));
+        String unparsedOrderBy = unparsedOrderBys[index].trim();
+        String fieldName = unparsedOrderBy.indexOf(' ') > -1 ? unparsedOrderBy.substringBefore(' ') : unparsedOrderBy;
+        RollupOrderBy__mdt orderBy = new RollupOrderBy__mdt(Ranking__c = index, FieldName__c = fieldName);
         Boolean isAscendingSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Ascending);
         if (isAscendingSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Descending)) {
           orderBy.SortOrder__c = isAscendingSortOrder ? RollupMetaPicklists.SortOrder.Ascending : RollupMetaPicklists.SortOrder.Descending;
