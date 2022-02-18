@@ -257,7 +257,7 @@ global without sharing virtual class Rollup {
   }
 
   public virtual String runCalc() {
-    RollupLogger.Instance.log('no-op', LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('no-op!', LoggingLevel.ERROR);
     return 'Not implemented';
   }
 
@@ -305,12 +305,12 @@ global without sharing virtual class Rollup {
   }
 
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    this.addToMap(props, 'Rollup Metadata', this.metadata);
+    this.addToMap(props, 'Rollup Control', this.rollupControl);
     this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? (Object) '10 items or more ...' : (Object) this.calcItems);
     if (this.oldCalcItems?.isEmpty() == false) {
       this.addToMap(props, 'Old Calc Items', this.oldCalcItems.size() > 10 ? (Object) '10 items or more ...' : (Object) this.oldCalcItems);
     }
-    this.addToMap(props, 'Rollup Metadata', this.metadata);
-    this.addToMap(props, 'Rollup Control', this.rollupControl);
     this.addToMap(props, 'Query Count', this.queryCount);
     return props;
   }
@@ -1474,6 +1474,7 @@ global without sharing virtual class Rollup {
    * Credit for this method (with some tweaking) goes to: https://github.com/tsalb
    */
   global static Rollup__mdt appendOrderByMetadata(Rollup__mdt meta, List<RollupOrderBy__mdt> children) {
+    meta.OrderByFirstLast__c = null;
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
 
     JSONGenerator gen = JSON.createGenerator(false);
@@ -1573,7 +1574,8 @@ global without sharing virtual class Rollup {
     Boolean hasExceededQueryRowLimit = control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows();
     Boolean hasExceededHeapSizeLimit = (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
     Boolean hasExceededDMLRowLimit = control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
-    Boolean hasExceededCPUTimeLimit = Limits.getLimitCpuTime() - 3000 < Limits.getCpuTime();
+    Integer intervalTillTimeout = (System.isBatch() || System.isQueueable()) ? 10000 : 3000;
+    Boolean hasExceededCPUTimeLimit = Limits.getLimitCpuTime() - intervalTillTimeout < Limits.getCpuTime();
     Boolean hasExceededLimits =
       hasExceededQueryNumberLimit ||
       hasExceededQueryRowLimit ||
@@ -2369,6 +2371,9 @@ global without sharing virtual class Rollup {
       if (rollupMetadata.IsFullRecordSet__c != true && isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
+      if (rollupOp.name().contains(Op.FIRST.name()) || rollupOp.name().contains(Op.LAST.name())) {
+        rollupMetadata = getFirstLastMetadata(rollupMetadata);
+      }
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2399,6 +2404,34 @@ global without sharing virtual class Rollup {
     }
     rollupConductor.isNoOp = rollupConductor.rollups.isEmpty();
     return rollupConductor;
+  }
+
+  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta) {
+    List<RollupOrderBy__mdt> replacementOrderBys;
+    if (meta.RollupOrderBys__r.isEmpty() && meta.OrderByFirstLast__c?.contains(',') == true) {
+      List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');
+      replacementOrderBys = new List<RollupOrderBy__mdt>();
+      for (Integer index = 0; index < unparsedOrderBys.size(); index++) {
+        String unparsedOrderBy = unparsedOrderBys[index].trim();
+        String fieldName = unparsedOrderBy.indexOf(' ') > -1 ? unparsedOrderBy.substringBefore(' ') : unparsedOrderBy;
+        RollupOrderBy__mdt orderBy = new RollupOrderBy__mdt(Ranking__c = index, FieldName__c = fieldName);
+        Boolean isAscendingSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Ascending);
+        if (isAscendingSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.SortOrder.Descending)) {
+          orderBy.SortOrder__c = isAscendingSortOrder ? RollupMetaPicklists.SortOrder.Ascending : RollupMetaPicklists.SortOrder.Descending;
+        }
+        Boolean isAscendingNullSortOrder = unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsFirst);
+        if (isAscendingNullSortOrder || unparsedOrderBy.containsIgnoreCase(RollupMetaPicklists.NullSortOrder.NullsLast)) {
+          orderBy.NullSortOrder__c = isAscendingNullSortOrder ? RollupMetaPicklists.NullSortOrder.NullsFirst : RollupMetaPicklists.NullSortOrder.NullsLast;
+        }
+        replacementOrderBys.add(orderBy);
+      }
+    } else if (meta.RollupOrderBys__r.isEmpty()) {
+      replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
+    }
+    if (replacementOrderBys != null) {
+      meta = Rollup.appendOrderByMetadata(meta, replacementOrderBys);
+    }
+    return meta;
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {

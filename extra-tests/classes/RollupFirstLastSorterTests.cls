@@ -1,7 +1,7 @@
 @IsTest
 private class RollupFirstLastSorterTests {
   @IsTest
-  static void shouldOrderByTwoFields() {
+  static void shouldOrderByTwoFieldsFirst() {
     RollupFirstLastSorter sorter = new RollupFirstLastSorter(
       Rollup.Op.FIRST,
       new List<RollupOrderBy__mdt>{
@@ -17,6 +17,31 @@ private class RollupFirstLastSorterTests {
       new Opportunity(Amount = 1, CloseDate = System.today()),
       // this record should essentially be thrown out of sorting since it "loses" on the first ordering,
       // which is on Amount
+      new Opportunity(Amount = 3, CloseDate = severalDaysAgo.addDays(-1)),
+      expectedSecondItem,
+      expectedFirstItem
+    };
+    sorter.sort(oppsToSort);
+
+    System.assertEquals(expectedFirstItem, oppsToSort[0]);
+    System.assertEquals(expectedSecondItem, oppsToSort[1]);
+  }
+
+  @IsTest
+  static void shouldOrderByTwoFieldsLast() {
+    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
+      Rollup.Op.LAST,
+      new List<RollupOrderBy__mdt>{
+        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'),
+        new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = 'CloseDate')
+      }
+    );
+
+    Date severalDaysAgo = System.today().addDays(-2);
+    Opportunity expectedFirstItem = new Opportunity(Amount = 6, CloseDate = severalDaysAgo);
+    Opportunity expectedSecondItem = new Opportunity(Amount = 4, CloseDate = severalDaysAgo);
+    List<Opportunity> oppsToSort = new List<Opportunity>{
+      new Opportunity(Amount = 1, CloseDate = System.today()),
       new Opportunity(Amount = 3, CloseDate = severalDaysAgo.addDays(-1)),
       expectedSecondItem,
       expectedFirstItem
@@ -104,9 +129,7 @@ private class RollupFirstLastSorterTests {
   static void shouldProperlySortPicklists() {
     RollupFirstLastSorter sorter = new RollupFirstLastSorter(
       Rollup.Op.FIRST,
-      new List<RollupOrderBy__mdt>{
-        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry')
-      }
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry') }
     );
 
     List<Schema.PicklistEntry> picklistEntries = Account.Industry.getDescribe().getPicklistValues();
@@ -114,9 +137,7 @@ private class RollupFirstLastSorterTests {
 
     for (Integer reverseIndex = picklistEntries.size() - 1; reverseIndex >= 0; reverseIndex--) {
       Schema.PicklistEntry entry = picklistEntries[reverseIndex];
-      accs.add(
-        new Account(Name = entry.getValue(), Industry = entry.getValue())
-      );
+      accs.add(new Account(Name = entry.getValue(), Industry = entry.getValue()));
     }
 
     sorter.sort(accs);
@@ -147,5 +168,20 @@ private class RollupFirstLastSorterTests {
 
     System.assertEquals(opp, opps[0]);
     System.assertEquals(second, opps[1]);
+  }
+
+  @IsTest
+  static void shouldNotFailOnBlankFieldNames() {
+    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
+      Rollup.Op.FIRST,
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'), new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = '') }
+    );
+
+    Opportunity expectedFirstItem = new Opportunity(Amount = null);
+    Opportunity expectedSecondItem = new Opportunity(Amount = 1);
+    List<Opportunity> oppsToSort = new List<Opportunity>{ new Opportunity(Amount = 1), new Opportunity(Amount = 3), expectedSecondItem, expectedFirstItem };
+    sorter.sort(oppsToSort);
+
+    System.assert(true, 'Should make it here');
   }
 }

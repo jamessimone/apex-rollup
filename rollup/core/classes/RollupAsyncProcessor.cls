@@ -925,9 +925,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        // TODO - look into platform cache replacement for isRunningAsync; this was probably
-        // guilty of causing CPU timeouts on the main thread when an upstream rollup had already
-        // triggered the static bool to flip to true
+        // TODO - fix this, as it's been guilty of causing CPU timeouts on the main thread
+        // when an upstream rollup had already triggered the static bool to flip to true
         ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync) ||
         System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs() ||
         this.isSingleRecordSyncUpdate(rollup);
