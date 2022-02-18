@@ -4,7 +4,7 @@
     <defaultValue>2000</defaultValue>
     <description>The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default.</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default.</inlineHelpText>
     <label>Batch Chunk Size</label>
     <precision>18</precision>
