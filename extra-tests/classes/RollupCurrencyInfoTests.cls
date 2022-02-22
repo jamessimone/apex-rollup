@@ -23,6 +23,29 @@ private class RollupCurrencyInfoTests {
   }
 
   @IsTest
+  static void shouldFallbackToExistingAmountIfFieldIsNull() {
+    RollupCurrencyInfo mockUsdInfo = new RollupCurrencyInfo();
+    mockUsdInfo.ConversionRate = 0;
+    mockUsdInfo.DecimalPlaces = 2;
+    mockUsdInfo.IsoCode = 'USD';
+
+    RollupCurrencyInfo mockEurInfo = new RollupCurrencyInfo();
+    mockEurInfo.ConversionRate = 0;
+    mockEurInfo.DecimalPlaces = 2;
+    mockEurInfo.IsoCode = 'EUR';
+
+    RollupCurrencyInfo.mockCurrencyData = new Map<String, RollupCurrencyInfo>{ mockUsdInfo.IsoCode => mockUsdInfo, mockEurInfo.IsoCode => mockEurInfo };
+
+    Opportunity opp = new Opportunity(Amount = null);
+
+    RollupCurrencyInfo.setCurrencyIsoCode(opp, 'USD');
+    RollupCurrencyInfo.transformForMultiCurrencyOrgs(opp, Opportunity.Amount, 'EUR', new List<RollupOrderBy__mdt>());
+
+    opp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp);
+    System.assertEquals(null, opp.Amount, 'Should make it here without NPE!');
+  }
+
+  @IsTest
   static void shouldReturnSafeFallbackForCurrencyInfo() {
     RollupCurrencyInfo.IS_MULTICURRENCY = false;
 
