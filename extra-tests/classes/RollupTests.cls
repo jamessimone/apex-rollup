@@ -3135,6 +3135,45 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldReparentSameObjectRollups() {
+    Rollup.onlyUseMockmetadata = true;
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 1;
+    update acc;
+
+    Account clearedParent = new Account(AnnualRevenue = 25, Name = 'clear parent same object');
+    insert clearedParent;
+
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.oldRecordsMap = new Map<Id, Account>{
+      clearedParent.Id => new Account(ParentId = acc.Id, AnnualRevenue = 25, Id = clearedParent.Id)
+    };
+    Rollup.shouldRun = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Account'
+      )
+    };
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.records = new List<Account>{ clearedParent };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertNotEquals(0, mock.Records.size());
+    Account updatedAcc = (Account) new Map<Id, SObject>(mock.Records).get(acc.Id);
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Count should have been decremented');
+  }
+
+  @IsTest
   static void shouldCorrectlyReparentForStrings() {
     Account acc = [SELECT Id FROM Account];
 
