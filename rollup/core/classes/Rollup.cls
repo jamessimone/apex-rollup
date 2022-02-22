@@ -862,6 +862,28 @@ global without sharing virtual class Rollup {
     String defaultRecalculationValue,
     Evaluator eval
   ) {
+    return concatDistinctFromApex(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSobjectType,
+      defaultRecalculationValue,
+      eval,
+      null
+    );
+  }
+
+  global static Rollup concatDistinctFromApex(
+    SObjectField concatFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField concatFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    String defaultRecalculationValue,
+    Evaluator eval,
+    List<RollupOrderBy__mdt> orderBys
+  ) {
     return operateFromApex(
       concatFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -870,6 +892,7 @@ global without sharing virtual class Rollup {
       lookupSobjectType,
       Op.CONCAT_DISTINCT,
       defaultRecalculationValue,
+      orderBys,
       eval
     );
   }
@@ -920,6 +943,28 @@ global without sharing virtual class Rollup {
     String defaultRecalculationValue,
     Evaluator eval
   ) {
+    return concatFromApex(
+      concatFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      concatFieldOnOperationObject,
+      lookupSObjectType,
+      defaultRecalculationValue,
+      eval,
+      null
+    );
+  }
+
+  global static Rollup concatFromApex(
+    SObjectField concatFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField concatFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    String defaultRecalculationValue,
+    Evaluator eval,
+    List<RollupOrderBy__mdt> orderBys
+  ) {
     return operateFromApex(
       concatFieldOnCalcItem,
       lookupFieldOnCalcItem,
@@ -928,6 +973,7 @@ global without sharing virtual class Rollup {
       lookupSobjectType,
       Op.CONCAT,
       defaultRecalculationValue,
+      orderBys,
       eval
     );
   }
@@ -1304,29 +1350,6 @@ global without sharing virtual class Rollup {
     );
   }
 
-  private static Rollup operateFromApex(
-    SObjectField operationFieldOnCalcItem,
-    SObjectField lookupFieldOnCalcItem,
-    SObjectField lookupFieldOnOperationObject,
-    SObjectField operationFieldOnOperationObject,
-    SObjectType lookupSObjectType,
-    Op rollupOperation,
-    Object defaultRecalculationValue,
-    Evaluator eval
-  ) {
-    return operateFromApex(
-      operationFieldOnCalcItem,
-      lookupFieldOnCalcItem,
-      lookupFieldOnOperationObject,
-      operationFieldOnOperationObject,
-      lookupSObjectType,
-      rollupOperation,
-      defaultRecalculationValue,
-      null,
-      eval
-    );
-  }
-
   global static void runFromCDCTrigger() {
     isCDC = true;
     // CDC always uses Trigger.new
@@ -1613,6 +1636,29 @@ global without sharing virtual class Rollup {
         : String.valueOf(sObjectType),
       IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
       SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem
+    );
+  }
+
+  private static Rollup operateFromApex(
+    SObjectField operationFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField operationFieldOnOperationObject,
+    SObjectType lookupSObjectType,
+    Op rollupOperation,
+    Object defaultRecalculationValue,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      operationFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      operationFieldOnOperationObject,
+      lookupSObjectType,
+      rollupOperation,
+      defaultRecalculationValue,
+      null,
+      eval
     );
   }
 
@@ -2439,6 +2485,7 @@ global without sharing virtual class Rollup {
       baseOperationName == Op.LAST.name() ||
       baseOperationName == Op.AVERAGE.name() ||
       baseOperationName == Op.CONCAT_DISTINCT.name() ||
+      baseOperationName == Op.CONCAT.name() ||
       baseOperationName == Op.COUNT_DISTINCT.name();
   }
 

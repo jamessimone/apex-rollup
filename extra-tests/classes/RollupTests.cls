@@ -1038,6 +1038,26 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldSortConcatStringWithCustomOptions() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'a', PreferenceRank = 1);
+    ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = acc.Id, Name = 'b', PreferenceRank = 0);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa, cpaTwo });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType, null, null, new List<RollupOrderBy__mdt>{
+      new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank', SortOrder__c = RollupMetaPicklists.SortOrder.Ascending, Ranking__c = 0)
+    }).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('b, a', updatedAcc.AccountNumber, 'Should have been sorted according to rollup order bys');
+  }
+
+  @IsTest
   static void shouldConcatDistinctOnInsert() {
     ContactPointAddress cpa = new ContactPointAddress(Name = 'test string');
     ContactPointAddress secondCpa = new ContactPointAddress(Name = 'hello another string');
