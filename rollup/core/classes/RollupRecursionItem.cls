@@ -45,7 +45,7 @@ public without sharing class RollupRecursionItem {
     return false;
   }
 
-  public Integer hashCode() {
+  public override Integer hashCode() {
     return this.hasher.get();
   }
 
