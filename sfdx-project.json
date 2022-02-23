@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "RollupCurrencyInfo now takes into account when currency values are null. Added sorting support for CONCAT/CONCAT_DISTINCT operations. Fixed same-object rollup reparenting.",
-            "versionNumber": "1.4.2.0",
+            "versionName": "Fixes hashing implementation to reduce CPU time spent detecting recursion",
+            "versionNumber": "1.4.3.0",
             "versionDescription": "Upgrading to Spring 22, Rollup Order By fixes",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
