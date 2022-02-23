@@ -99,10 +99,12 @@ public without sharing class RollupCurrencyInfo {
     }
 
     Decimal calcItemDenominator = (Decimal) calcItem.get(fieldOnCalcItem);
-    Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / calcItemDenominator;
-    Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
-    clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
-    clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
+    if (calcItemDenominator != null) {
+      Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / calcItemDenominator;
+      Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
+      clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
+      clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
+    }
   }
 
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {

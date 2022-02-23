@@ -1536,7 +1536,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 2,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 3,
+      MaxNumberOfQueries__c = 4,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );

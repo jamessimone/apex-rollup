@@ -868,6 +868,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         continue;
       }
       String key = (String) calcItem.get(rollup.lookupFieldOnCalcItem);
+      if (String.isBlank(key) && this.oldCalcItems?.containsKey(calcItem.Id) == true) {
+        key = (String) this.oldCalcItems.get(calcItem.Id).get(rollup.lookupFieldOnCalcItem);
+      }
       if (lookupFieldToCalcItems.containsKey(key) == false) {
         lookupFieldToCalcItems.put(key, new CalcItemBag(new List<SObject>{ calcItem }));
       } else {
@@ -880,7 +883,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(rollup.lookupFieldOnCalcItem);
 
-        if (key == oldKey) {
+        if (key == oldKey || String.isBlank(key)) {
           continue;
         }
 
@@ -1151,6 +1154,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         if (oldLookupId != null) {
           this.populateOldLookupItems(oldLookupId, oldCalcItem, oldLookupItems);
         }
+      }
+
+      // once the reparenting logic has been done, if the lookup field isn't set on the current calc item, remove it
+      if (String.isBlank((String) calcItem.get(roll.lookupFieldOnCalcItem))) {
+        localCalcItems.remove(index);
       }
     }
   }

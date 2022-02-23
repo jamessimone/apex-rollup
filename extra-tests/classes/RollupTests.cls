@@ -1038,6 +1038,26 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldSortConcatStringWithCustomOptions() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'a', PreferenceRank = 1);
+    ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = acc.Id, Name = 'b', PreferenceRank = 0);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa, cpaTwo });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType, null, null, new List<RollupOrderBy__mdt>{
+      new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank', SortOrder__c = RollupMetaPicklists.SortOrder.Ascending, Ranking__c = 0)
+    }).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('b, a', updatedAcc.AccountNumber, 'Should have been sorted according to rollup order bys');
+  }
+
+  @IsTest
   static void shouldConcatDistinctOnInsert() {
     ContactPointAddress cpa = new ContactPointAddress(Name = 'test string');
     ContactPointAddress secondCpa = new ContactPointAddress(Name = 'hello another string');
@@ -3132,6 +3152,45 @@ private class RollupTests {
     );
     Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+  }
+
+  @IsTest
+  static void shouldReparentSameObjectRollups() {
+    Rollup.onlyUseMockmetadata = true;
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 1;
+    update acc;
+
+    Account clearedParent = new Account(AnnualRevenue = 25, Name = 'clear parent same object');
+    insert clearedParent;
+
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.oldRecordsMap = new Map<Id, Account>{
+      clearedParent.Id => new Account(ParentId = acc.Id, AnnualRevenue = 25, Id = clearedParent.Id)
+    };
+    Rollup.shouldRun = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Account'
+      )
+    };
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+    Rollup.records = new List<Account>{ clearedParent };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertNotEquals(0, mock.Records.size());
+    Account updatedAcc = (Account) new Map<Id, SObject>(mock.Records).get(acc.Id);
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Count should have been decremented');
   }
 
   @IsTest

@@ -22,12 +22,12 @@ You have several different options when it comes to making use of `Rollup`:
 
 ## Deployment
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SjGKAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SjHhAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SjGKAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SjHhAAK">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -108,13 +108,13 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Lookup Field On Calc Item`- the field storing the Id or String referencing a unique value on another object (In the example, Id)
 - `Lookup Field On Lookup Object` - the field on the lookup object that matches the value stored in `Lookup Field On Calc Item`
 - `Rollup Field On Lookup Object` - the field on the lookup object where the rolled-up values will be stored (I've been using AnnualRevenue on the account as an example)
-- `Rollup Operation` - A picklist field to select the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas by default in the rollup field itself, but you can use `Concat Delimiter` to change that.
+- `Rollup Operation` - A picklist field to select the operation you're looking to perform. Acceptable values are SUM / MIN / MAX / AVERAGE / COUNT / COUNT_DISTINCT / CONCAT / CONCAT_DISTINCT / FIRST / LAST. Both CONCAT and CONCAT_DISTINCT separate values with commas by default in the rollup field itself, but you can use `Concat Delimiter` to change that. FIRST/LAST/CONCAT/CONCAT_DISTINCT operations support the usage of `Rollup Order By` Custom Metadata to stipulate how to select the first/last record, or how to sort the concatenated values.
 - `Rollup Control` - link to the Org Defaults for controlling rollups, or set a specific Rollup Control CMDT to be used with this rollup. Multiple rollups can be tied to one specific Control record, or simply use the Org Default record (included) for all of your rollups.
 - `Concat Delimiter` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the delimiter used between text defaults to a comma (unless you are rolling up to a multi-select picklist, in which case it defaults to a semi-colon), but you can override the default delimiter here. At this time, only single character delimiters are supported - please file [an issue](/issues) if you are looking to use multi-character delimiters!
-- `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed
+- `Changed Fields On Calc Item` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed. If you are using a `Calc Item Where Clause`, I would not recommend using this field.
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior). **NB**: it's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. **Note** - the fields, especially parent-level fields, _must_ be present on the calculation items or the filtering will not work correctly. As of [v1.0.9](https://github.com/jamessimone/apex-rollup/releases/tag/v1.0.9), nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#special-considerations-for-usage-of-the-calc-item-where-clause)
+- `Calc Item Where Clause` (optional) - add conditions to filter the calculation items that are used. Nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways. Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places. For more, see [Special Considerations For Usage Of Calc Item Where Clauses](#special-considerations-for-usage-of-the-calc-item-where-clause)
 - `Is Full Record Set` (optional, defaults to `false`) - by default, if the records you are passing in comprise the full set of child items for a given lookup item but none of them "qualify" to be rolled up (either due to the use of the Calc Item Where Clause, Changed Fields On Calc Item, or a custom Evaluator), Rollup aborts early. If you know you have the exhaustive list of records to be used for a given lookup item **and** you stipulate the Full Recalculation Default Number (or String) Value, you can override the existing rollup item's amount by checking off this field
 - `Order By (First/Last)` (deprecated) - please see the the `Rollup Order By Custom Metadata` section below, as this field is deprecated as of [v1.4.0](<(https://github.com/jamessimone/apex-rollup/releases/tag/v1.4.0)>).
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. `Rollup` will then go and retrieve the assorted children records before rolling the values up to the parents. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Calc Item Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
@@ -122,10 +122,9 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Rollup To Ultimate Parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
 - `Split Concat Delimiter On Calc Item?` (optional) - By default, CONCAT and CONCAT_DISTINCT operations will only apply the concat delimiter to the parent-level rollup field. Enable this field to also split the rollup item's values before concatenating to the parent.
 - `Ultimate Parent Lookup` (optional) - specify the API Name of the field on the `Lookup Object` using the dropdown that contains the hierarchy relationship. On Account, for example, this would be `Parent Account ID`. Must be filled out if `Rollup To Ultimate Parent` is checked.
+- `Description` (optional) - note-taking field in the event you'd like to provide additional info to other admins/users about your configured rollup
 
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
-
-- `Description` (optional) - note-taking field in the event you'd like to provide additional info to other admins/users about your configured rollup
 
 #### Rollup Order By Custom Metadata
 
@@ -463,6 +462,8 @@ global static Rollup countDistinctFromApex(
   Evaluator eval
 )
 
+// if you want to have a custom sort for your CONCAT_DISTINCT values
+// use the last method for concatDistinct listed here
 global static Rollup concatDistinctFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
@@ -490,6 +491,19 @@ global static Rollup concatDistinctFromApex(
   Evaluator eval
 )
 
+global static Rollup concatDistinctFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  String defaultRecalculationValue,
+  Evaluator eval,
+  List<RollupOrderBy__mdt> orderBys
+)
+
+// if you want to have a custom sort for your CONCAT values
+// use the last method for concat listed here
 global static Rollup concatFromApex(
   SObjectField concatFieldOnCalcItem,
   SObjectField lookupFieldOnCalcItem,
@@ -515,6 +529,17 @@ global static Rollup concatFromApex(
   SObjectType lookupSobjectType,
   String defaultRecalculationValue,
   Evaluator eval
+)
+
+global static Rollup concatFromApex(
+  SObjectField concatFieldOnCalcItem,
+  SObjectField lookupFieldOnCalcItem,
+  SObjectField lookupFieldOnOperationObject,
+  SObjectField concatFieldOnOperationObject,
+  SObjectType lookupSobjectType,
+  String defaultRecalculationValue,
+  Evaluator eval,
+  List<RollupOrderBy__mdt> orderBys
 )
 
 global static Rollup countFromApex(

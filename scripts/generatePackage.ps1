@@ -125,6 +125,7 @@ function Generate() {
   Write-Host "Creating package version: $currentPackageVersion ..." -ForegroundColor White
 
   $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion -a $currentPackageName --json | ConvertFrom-Json
+  npx sfdx bummer:package:aliases:sort
   $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
   if ($null -eq $currentPackageVersionId) {
     throw $createPackageResult

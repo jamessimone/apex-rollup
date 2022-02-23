@@ -148,6 +148,9 @@ public without sharing abstract class RollupCalculator {
       }
     }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
+    if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.metadata.RollupOrderBys__r.isEmpty() == false) {
+      new RollupFirstLastSorter(Rollup.Op.FIRST, this.metadata.RollupOrderBys__r).sort(localCalcItems);
+    }
 
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
@@ -906,7 +909,9 @@ public without sharing abstract class RollupCalculator {
           }
         }
       }
-      values.sort();
+      if (this.metadata.RollupOrderBys__r.isEmpty()) {
+        values.sort();
+      }
       this.stringVal = String.join(values, this.concatDelimiter);
     }
 
