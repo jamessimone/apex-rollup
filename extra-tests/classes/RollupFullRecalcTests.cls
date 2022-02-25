@@ -1548,4 +1548,34 @@ private class RollupFullRecalcTests {
     System.assertEquals(3.00, second.AnnualRevenue);
     System.assertEquals(2.00, second.NumberOfEmployees);
   }
+
+  @IsTest
+  static void shouldWorkForTopLevelOrInWhereClause() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    insert new List<Opportunity>{
+      new Opportunity(StageName = 'one', CloseDate = System.today(), AccountId = acc.Id, Name = 'one', Amount = 2),
+      new Opportunity(StageName = 'two', CloseDate = System.today(), AccountId = acc.Id, Name = 'two', Amount = 2),
+      new Opportunity(StageName = 'three', CloseDate = System.today(), AccountId = acc.Id, Name = 'three', Amount = 2),
+      new Opportunity(StageName = 'four', CloseDate = System.today(), AccountId = acc.Id, Name = 'four', Amount = 2)
+    };
+
+    Test.startTest();
+    Rollup.performFullRecalculation(
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Amount > 0 OR CloseDate = TODAY'
+      )
+    );
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(8, acc.AnnualRevenue);
+  }
 }
