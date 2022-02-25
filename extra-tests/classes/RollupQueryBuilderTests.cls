@@ -75,4 +75,16 @@ private class RollupQueryBuilderTests {
     List<SObject> records = Database.query(queryString);
     System.assertEquals(Event.SObjectType, records.getSObjectType());
   }
+
+  @IsTest
+  static void shouldWrapTopLevelOrClauses() {
+    String queryString = RollupQueryBuilder.Current.getQuery(
+      Opportunity.SObjectType,
+      new List<String>{ 'Amount' },
+      Opportunity.AccountId.getDescribe().getName(),
+      '=',
+      'Amount > 0 OR CloseDate = YESTERDAY'
+    );
+    System.assert(queryString.contains('(Amount > 0 OR CloseDate = YESTERDAY)'), 'top-level OR clause should be wrapped');
+  }
 }
