@@ -1,6 +1,7 @@
 public without sharing virtual class RollupSObjectUpdater {
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
+  private static final SObjectSorter SORTER = new SObjectSorter();
 
   private final Schema.SObjectField fieldToken;
   private final List<IDispatcher> dispatchers;
@@ -24,7 +25,7 @@ public without sharing virtual class RollupSObjectUpdater {
     // getting updated is a no-op, but the addition of the logging item is annoying ...
     if (recordsToUpdate.isEmpty() == false) {
       RollupLogger.Instance.log('updating the following records:', recordsToUpdate, LoggingLevel.FINE);
-      recordsToUpdate.sort();
+      SORTER.sort(recordsToUpdate);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
       Database.update(recordsToUpdate, dmlOptions);
@@ -91,6 +92,22 @@ public without sharing virtual class RollupSObjectUpdater {
     IDispatcher dispatcher = (IDispatcher) Type.forName(typeName)?.newInstance();
     if (dispatcher != null) {
       dispatchers.add(dispatcher);
+    }
+  }
+
+  private class SObjectSorter extends RollupComparer {
+    public override Integer compare(Object first, Object second) {
+      Integer returnVal = 0;
+      if (first instanceof SObject && second instanceof SObject) {
+        String firstSObjectType = String.valueOf(((SObject) first).getSObjectType());
+        String secondSObjectType = String.valueOf(((SObject) second).getSObjectType());
+        if (firstSObjectType > secondSObjectType) {
+          returnVal = this.moveTowardBackOfList;
+        } else if (secondSObjectType > firstSObjectType) {
+          returnVal = this.moveTowardFrontOfList;
+        }
+      }
+      return returnVal;
     }
   }
 }
