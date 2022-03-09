@@ -174,7 +174,7 @@ public without sharing class RollupCalcItemReplacer {
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
   private void replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems) {
-    if (calcItems.isEmpty()) {
+    if (calcItems.isEmpty() || this.queryFields.containsKey(calcItems[0].getSObjectType()) == false) {
       return;
     }
     SObjectType calcItemType = calcItems[0].getSObjectType();

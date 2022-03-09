@@ -19,9 +19,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private List<SObject> lookupItems;
   private Integer stackDepth = 0;
 
-  private static Boolean isRunningAsync = false;
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
+  @TestVisible
+  private static Boolean shouldFlattenAsyncProcesses;
 
   private enum CollectionType {
     DICTIONARY,
@@ -69,10 +70,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
       props = super.customizeToStringEntries(props);
-
       this.addToMap(props, 'Rollup Metadata', this.rollupInfo);
       this.addToMap(props, 'Query String', this.queryString);
-
       return props;
     }
 
@@ -277,7 +276,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> lookupItems) {
-    isRunningAsync = true;
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor roll = this.rollups[index];
       if (lookupItems.getSObjectType() != roll.lookupObj) {
@@ -448,7 +446,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
-      isRunningAsync = true;
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
       this.logFinish();
@@ -480,8 +477,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected RollupAsyncProcessor getDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, FullRecalcProcessor fullRecalcProcessor) {
-    // if we're already queued / batched, free to start running "sync"
-    isRunningAsync = System.isBatch() || System.isQueueable();
     RollupAsyncProcessor processor = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     processor.isFullRecalc = true;
     processor.fullRecalcProcessor = fullRecalcProcessor;
@@ -928,10 +923,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        // TODO - fix this, as it's been guilty of causing CPU timeouts on the main thread
-        // when an upstream rollup had already triggered the static bool to flip to true
-        ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync) ||
-        System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs() ||
+        (this.getIsRunningAsync() && hasExceededCurrentRollupLimits(rollup.rollupControl) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
@@ -1264,5 +1256,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll.fullRecalcProcessor?.storeParentResetField(roll, lookupRecord);
     }
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
+  }
+
+  private Boolean getIsRunningAsync() {
+    return System.isBatch() || System.isQueueable() || shouldFlattenAsyncProcesses == true;
   }
 }
