@@ -645,7 +645,9 @@ global without sharing virtual class Rollup {
           localRollups.add(rollupConductor);
         }
         if (wrapper.flowInput.shouldRunSync) {
-          rollupConductor.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
+          for (Rollup roll : rollupConductor.rollups) {
+            roll.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
+          }
         }
         RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.DEBUG);
       }

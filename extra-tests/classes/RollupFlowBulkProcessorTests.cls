@@ -103,7 +103,6 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(5, acc.AnnualRevenue);
   }
 
-
   @IsTest
   static void shouldPassOrderBysThroughSuccessfully() {
     Account acc = [SELECT Id FROM Account];
