@@ -19,9 +19,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private List<SObject> lookupItems;
   private Integer stackDepth = 0;
 
-  private static Boolean isRunningAsync = false;
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
+  @TestVisible
+  private static Boolean shouldFlattenAsyncProcesses;
 
   private enum CollectionType {
     DICTIONARY,
@@ -69,10 +70,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
       props = super.customizeToStringEntries(props);
-
       this.addToMap(props, 'Rollup Metadata', this.rollupInfo);
       this.addToMap(props, 'Query String', this.queryString);
-
       return props;
     }
 
@@ -277,7 +276,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> lookupItems) {
-    isRunningAsync = true;
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor roll = this.rollups[index];
       if (lookupItems.getSObjectType() != roll.lookupObj) {
@@ -448,7 +446,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
-      isRunningAsync = true;
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
       this.logFinish();
@@ -480,8 +477,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected RollupAsyncProcessor getDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, FullRecalcProcessor fullRecalcProcessor) {
-    // if we're already queued / batched, free to start running "sync"
-    isRunningAsync = System.isBatch() || System.isQueueable();
     RollupAsyncProcessor processor = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     processor.isFullRecalc = true;
     processor.fullRecalcProcessor = fullRecalcProcessor;
@@ -928,10 +923,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        // TODO - fix this, as it's been guilty of causing CPU timeouts on the main thread
-        // when an upstream rollup had already triggered the static bool to flip to true
-        ((hasExceededCurrentRollupLimits(rollup.rollupControl) == false) && isRunningAsync) ||
-        System.isBatch() && Limits.getQueueableJobs() >= Limits.getLimitQueueableJobs() ||
+        (this.getIsRunningAsync() && hasExceededCurrentRollupLimits(rollup.rollupControl) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
@@ -1056,6 +1048,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
     }
 
+    RollupCalculator calc;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != rollup.lookupObj) {
@@ -1076,9 +1069,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
-        // Check for changed values
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.calculateNewRollupVal(rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
+        Object newVal = this.calculateNewRollupVal(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
       }
     }
@@ -1172,6 +1164,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Object calculateNewRollupVal(
+    RollupCalculator rollupCalc,
     RollupAsyncProcessor roll,
     List<SObject> calcItems,
     SObject lookupRecord,
@@ -1179,18 +1172,23 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     String lookupRecordKey,
     SObjectField lookupKeyField
   ) {
-    RollupCalculator rollupCalc = RollupCalculator.Factory.getCalculator(
-      priorVal,
-      roll.op,
-      roll.opFieldOnCalcItem,
-      roll.opFieldOnLookupObject,
-      roll.metadata,
-      lookupRecordKey,
-      lookupKeyField
-    );
-    rollupCalc.setFullRecalc(roll.isFullRecalc);
-    rollupCalc.setEvaluator(roll.eval);
-    rollupCalc.setCDCUpdate(this.isCDCUpdate);
+    if (rollupCalc == null) {
+      rollupCalc = RollupCalculator.Factory.getCalculator(
+        priorVal,
+        roll.op,
+        roll.opFieldOnCalcItem,
+        roll.opFieldOnLookupObject,
+        roll.metadata,
+        lookupRecordKey,
+        lookupKeyField
+      );
+      rollupCalc.setFullRecalc(roll.isFullRecalc);
+      rollupCalc.setEvaluator(roll.eval);
+      rollupCalc.setCDCUpdate(this.isCDCUpdate);
+    } else {
+      rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
+    }
+
     rollupCalc.setMultiCurrencyInfo(lookupRecord);
     rollupCalc.performRollup(calcItems, this.oldCalcItems);
     return rollupCalc.getReturnValue();
@@ -1206,6 +1204,23 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (oldLookupItems.isEmpty()) {
       return;
     }
+
+    Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
+    RollupAsyncProcessor oldLookupsRollup = getProcessor(
+      new FilterResults(),
+      roll.opFieldOnCalcItem,
+      roll.lookupFieldOnCalcItem,
+      roll.lookupFieldOnLookupObject,
+      roll.opFieldOnLookupObject,
+      roll.lookupObj,
+      roll.calcItemType,
+      deleteOp,
+      this.invokePoint,
+      this.rollupControl,
+      roll.metadata
+    );
+    RollupCalculator calc;
+
     for (SObject lookupRecord : lookupItems) {
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
         continue;
@@ -1220,26 +1235,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           continue;
         }
 
-        Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
-
-        RollupAsyncProcessor oldLookupsRollup = getProcessor(
-          new FilterResults(),
-          roll.opFieldOnCalcItem,
-          roll.lookupFieldOnCalcItem,
-          roll.lookupFieldOnLookupObject,
-          roll.opFieldOnLookupObject,
-          roll.lookupObj,
-          roll.calcItemType,
-          deleteOp,
-          this.invokePoint,
-          this.rollupControl,
-          roll.metadata
-        );
         oldLookupsRollup.calcItems = reparentedCalcItems;
 
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
 
-        Object newVal = this.calculateNewRollupVal(oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
+        Object newVal = this.calculateNewRollupVal(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
 
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
       }
@@ -1264,5 +1264,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll.fullRecalcProcessor?.storeParentResetField(roll, lookupRecord);
     }
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
+  }
+
+  private Boolean getIsRunningAsync() {
+    return System.isBatch() || System.isQueueable() || shouldFlattenAsyncProcesses == true;
   }
 }

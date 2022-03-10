@@ -90,40 +90,6 @@ private class CustomMetadataDrivenTests {
   }
 
   @IsTest
-  static void shouldRunCorrectlyForGreatGrandparentReparenting() {
-    // TODO - fix this test
-    Account greatGrandparent = new Account(Name = 'Great-grandparent');
-    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
-
-    ParentApplication__c grandparent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
-    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = secondGreatGrandparent.Id);
-    insert new List<ParentApplication__c>{ grandparent, secondGrandparent };
-
-    Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandparent.Id);
-    Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
-
-    ApplicationLog__c child = new ApplicationLog__c(Application__c = parent.Id, Name = greatGrandparent.Name);
-    ApplicationLog__c secondChild = new ApplicationLog__c(Application__c = secondParent.Id, Name = secondGreatGrandparent.Name);
-    insert new List<ApplicationLog__c>{ child, secondChild };
-
-    child = new ApplicationLog__c(Id = child.Id, Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
-    secondChild = new ApplicationLog__c(Id = secondChild.Id, Name = 'Reparenting deux', Application__c = parent.Id);
-
-    Test.startTest();
-    update new List<ApplicationLog__c>{ child, secondChild };
-    Test.stopTest();
-
-    // Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    // Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
-
-    System.assert(true, 'Made it here - TODO, fix the below asserts');
-    // System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'CONCAT_DISTINCT and reparenting should have worked');
-    // System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'CONCAT_DISTINCT and reparenting should have worked again');
-  }
-
-  @IsTest
   static void shouldWorkForParentLevelWhereClausesFromTrigger() {
     // relies on extra-tests\customMetadata\Rollup.ParentWhereClauseFromTrigger.md-meta.xml
     Rollup.defaultControl = new RollupControl__mdt(

@@ -100,6 +100,11 @@ global without sharing class RollupFlowBulkProcessor {
               : meta.GrandparentRelationshipFieldPath__c;
             input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
             input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
+            input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
+            for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
+              input.orderByFirstLast += orderBy.FieldName__c + ' ' + orderBy.NullSortOrder__c + ' ' + orderBy.SortOrder__c + ',';
+            }
+            input.orderByFirstLast = input.orderByFirstLast.removeEnd(',');
             // metadata values that don't get overridden
             input.lookupFieldOnCalcItem = meta.LookupFieldOnCalcItem__c;
             input.lookupFieldOnOpObject = meta.LookupFieldOnLookupObject__c;

@@ -1047,9 +1047,19 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType, null, null, new List<RollupOrderBy__mdt>{
-      new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank', SortOrder__c = RollupMetaPicklists.SortOrder.Ascending, Ranking__c = 0)
-    }).runCalc();
+    Rollup.concatFromApex(
+        ContactPointAddress.Name,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AccountNumber,
+        Account.SObjectType,
+        null,
+        null,
+        new List<RollupOrderBy__mdt>{
+          new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank', SortOrder__c = RollupMetaPicklists.SortOrder.Ascending, Ranking__c = 0)
+        }
+      )
+      .runCalc();
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT AFTER_INSERT');
@@ -1072,6 +1082,24 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals('hello another string, test string', updatedAcc.AccountNumber, 'CONCAT_DISTINCT AFTER_INSERT should only add unique values');
+  }
+
+  @IsTest
+  static void shouldDistinctifyForConcatDistinct() {
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'apples, oranges, pears');
+    ContactPointAddress secondCpa = new ContactPointAddress(Name = 'apples, pears');
+    ContactPointAddress thirdCpa = new ContactPointAddress(Name = 'apples, oranges, plums, peaches');
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa, secondCpa, thirdCpa });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Name, Account.SObjectType, '').runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT_DISTINCT AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('apples, oranges, peaches, pears, plums', updatedAcc.Name, 'CONCAT_DISTINCT AFTER_INSERT should only add unique values');
   }
 
   @IsTest
@@ -3165,9 +3193,7 @@ private class RollupTests {
     insert clearedParent;
 
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Account>{
-      clearedParent.Id => new Account(ParentId = acc.Id, AnnualRevenue = 25, Id = clearedParent.Id)
-    };
+    Rollup.oldRecordsMap = new Map<Id, Account>{ clearedParent.Id => new Account(ParentId = acc.Id, AnnualRevenue = 25, Id = clearedParent.Id) };
     Rollup.shouldRun = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(

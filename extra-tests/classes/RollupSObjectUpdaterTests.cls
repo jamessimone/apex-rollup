@@ -37,7 +37,7 @@ public class RollupSObjectUpdaterTests {
   @IsTest
   static void shouldDispatchOnUpdate() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
-    // replicated dispatch plugin existing
+    // replicate the existence of a dispatch plugin
     RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = RollupSObjectUpdater.DISPATCH_NAME) };
     RollupPlugin.parameterMock = new RollupPluginParameter__mdt(Value__c = DispatcherMock.class.getName());
     RollupSObjectUpdater updater = new RollupSObjectUpdater();
@@ -45,6 +45,23 @@ public class RollupSObjectUpdaterTests {
     updater.doUpdate(new List<SObjecT>{ new Account() });
 
     System.assertEquals(true, dispatcherMockWasCalled);
+  }
+
+  @IsTest
+  static void shouldSortBySObjectTypePriorToUpdate() {
+    Account one = new Account(Name = RollupSObjectUpdaterTests.class.getName());
+    Individual two = new Individual(LastName = 'Two');
+    Account three = new Account(Name = 'Three');
+    Individual four = new Individual(LastName = 'Four');
+    List<SObject> records = new List<SObject>{ one, two, three, four };
+    insert records;
+
+    new RollupSObjectUpdater().doUpdate(records);
+
+    System.assertEquals(one, records[0]);
+    System.assertEquals(three, records[1]);
+    System.assertEquals(two, records[2]);
+    System.assertEquals(four, records[3]);
   }
 
   public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {

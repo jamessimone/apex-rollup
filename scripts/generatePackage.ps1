@@ -39,13 +39,16 @@ function Update-Package-Install-Links {
   git add $filePath -f
 }
 
-
 function Get-Is-Version-Promoted {
   param ($versionNumber, $packageName)
   $promotedPackageVersions = (npx sfdx force:package:version:list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version
-  $isPackagePromoted = $promotedPackageVersions.Contains($versionNumber)
-  Write-Host "Is $versionNumber for $packageName promoted? $isPackagePromoted" -ForegroundColor Yellow
-  return $isPackagePromoted
+  if ($null -eq $promotedPackageVersions) {
+    return $false
+  } else {
+    $isPackagePromoted = $promotedPackageVersions.Contains($versionNumber)
+    Write-Host "Is $versionNumber for $packageName promoted? $isPackagePromoted" -ForegroundColor Yellow
+    return $isPackagePromoted
+  }
 }
 
 function Get-Package-JSON {
