@@ -103,6 +103,42 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(5, acc.AnnualRevenue);
   }
 
+
+  @IsTest
+  static void shouldPassOrderBysThroughSuccessfully() {
+    Account acc = [SELECT Id FROM Account];
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{
+      new Opportunity(Amount = 7, CloseDate = System.today(), AccountId = acc.Id, Id = RollupTestUtils.createId(Opportunity.SObjectType)),
+      new Opportunity(Amount = 3, AccountId = acc.Id, Id = RollupTestUtils.createId(Opportunity.SObjectType)),
+      new Opportunity(Amount = 4, CloseDate = System.today().addDays(-1), AccountId = acc.Id, Id = RollupTestUtils.createId(Opportunity.SObjectType))
+    };
+    input.rollupContext = 'INSERT';
+    input.orderByFirstLast = 'CloseDate ascending nulls last';
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'FIRST',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      )
+    };
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    RollupFlowBulkSaver.processDeferredRollups();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(4, acc.AnnualRevenue);
+  }
+
   @IsTest
   static void shouldNotReportSuccessForInnerFailure() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();

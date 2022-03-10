@@ -2454,7 +2454,7 @@ global without sharing virtual class Rollup {
 
   private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta) {
     List<RollupOrderBy__mdt> replacementOrderBys;
-    if (meta.RollupOrderBys__r.isEmpty() && meta.OrderByFirstLast__c?.contains(',') == true) {
+    if (meta.RollupOrderBys__r.isEmpty() && String.isNotBlank(meta.OrderByFirstLast__c)) {
       List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');
       replacementOrderBys = new List<RollupOrderBy__mdt>();
       for (Integer index = 0; index < unparsedOrderBys.size(); index++) {
