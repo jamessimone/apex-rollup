@@ -1048,6 +1048,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.retrieveAdditionalCalcItems(calcItemsByLookupField, rollup);
     }
 
+    RollupCalculator calc;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != rollup.lookupObj) {
@@ -1068,9 +1069,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
-        // Check for changed values
         Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.calculateNewRollupVal(rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
+        Object newVal = this.calculateNewRollupVal(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
       }
     }
@@ -1164,6 +1164,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Object calculateNewRollupVal(
+    RollupCalculator rollupCalc,
     RollupAsyncProcessor roll,
     List<SObject> calcItems,
     SObject lookupRecord,
@@ -1171,18 +1172,23 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     String lookupRecordKey,
     SObjectField lookupKeyField
   ) {
-    RollupCalculator rollupCalc = RollupCalculator.Factory.getCalculator(
-      priorVal,
-      roll.op,
-      roll.opFieldOnCalcItem,
-      roll.opFieldOnLookupObject,
-      roll.metadata,
-      lookupRecordKey,
-      lookupKeyField
-    );
-    rollupCalc.setFullRecalc(roll.isFullRecalc);
-    rollupCalc.setEvaluator(roll.eval);
-    rollupCalc.setCDCUpdate(this.isCDCUpdate);
+    if (rollupCalc == null) {
+      rollupCalc = RollupCalculator.Factory.getCalculator(
+        priorVal,
+        roll.op,
+        roll.opFieldOnCalcItem,
+        roll.opFieldOnLookupObject,
+        roll.metadata,
+        lookupRecordKey,
+        lookupKeyField
+      );
+      rollupCalc.setFullRecalc(roll.isFullRecalc);
+      rollupCalc.setEvaluator(roll.eval);
+      rollupCalc.setCDCUpdate(this.isCDCUpdate);
+    } else {
+      rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
+    }
+
     rollupCalc.setMultiCurrencyInfo(lookupRecord);
     rollupCalc.performRollup(calcItems, this.oldCalcItems);
     return rollupCalc.getReturnValue();
@@ -1198,6 +1204,23 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (oldLookupItems.isEmpty()) {
       return;
     }
+
+    Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
+    RollupAsyncProcessor oldLookupsRollup = getProcessor(
+      new FilterResults(),
+      roll.opFieldOnCalcItem,
+      roll.lookupFieldOnCalcItem,
+      roll.lookupFieldOnLookupObject,
+      roll.opFieldOnLookupObject,
+      roll.lookupObj,
+      roll.calcItemType,
+      deleteOp,
+      this.invokePoint,
+      this.rollupControl,
+      roll.metadata
+    );
+    RollupCalculator calc;
+
     for (SObject lookupRecord : lookupItems) {
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
         continue;
@@ -1212,26 +1235,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           continue;
         }
 
-        Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
-
-        RollupAsyncProcessor oldLookupsRollup = getProcessor(
-          new FilterResults(),
-          roll.opFieldOnCalcItem,
-          roll.lookupFieldOnCalcItem,
-          roll.lookupFieldOnLookupObject,
-          roll.opFieldOnLookupObject,
-          roll.lookupObj,
-          roll.calcItemType,
-          deleteOp,
-          this.invokePoint,
-          this.rollupControl,
-          roll.metadata
-        );
         oldLookupsRollup.calcItems = reparentedCalcItems;
 
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
 
-        Object newVal = this.calculateNewRollupVal(oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
+        Object newVal = this.calculateNewRollupVal(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
 
         this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
       }

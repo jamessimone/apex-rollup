@@ -5,15 +5,16 @@ public without sharing abstract class RollupCalculator {
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
 
+  private final Object defaultVal;
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
   protected final SObjectField lookupKeyField;
   protected final Rollup.Op op;
   protected final Rollup__mdt metadata;
-  protected final String lookupKeyQuery;
-  protected final String lookupRecordKey;
   protected final Boolean isChangedFieldCalc;
 
+  protected String lookupKeyQuery;
+  protected String lookupRecordKey;
   protected Rollup.Evaluator eval;
   protected Boolean shouldShortCircuit = false;
   protected Object returnVal;
@@ -94,28 +95,33 @@ public without sharing abstract class RollupCalculator {
   ) {
     this.opFieldOnLookupObject = opFieldOnLookupObject;
     this.opFieldOnCalcItem = opFieldOnCalcItem;
-    this.lookupRecordKey = lookupRecordKey;
-    this.lookupKeyField = lookupKeyField;
     this.op = op;
     this.metadata = metadata;
-
-    if (defaultVal != null) {
-      this.returnVal = defaultVal;
-    } else {
-      this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject) : priorVal;
-    }
-    this.lookupKeyQuery =
-      lookupKeyField +
-      ' = \'' +
-      lookupRecordKey +
-      '\'' +
-      (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
+    this.lookupKeyField = lookupKeyField;
+    this.defaultVal = defaultVal;
+    this.setDefaultValues(lookupRecordKey, priorVal);
     this.isMultiCurrencyRollup =
       UserInfo.isMultiCurrencyOrganization() &&
       (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
       this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
   }
+
+  public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
+    this.lookupRecordKey = lookupRecordKey;
+    if (this.defaultVal != null) {
+      this.returnVal = this.defaultVal;
+    } else {
+      this.returnVal = priorVal == null ? RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnLookupObject) : priorVal;
+    }
+    this.lookupKeyQuery =
+      this.lookupKeyField +
+      ' = \'' +
+      lookupRecordKey +
+      '\'' +
+      (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
+  }
+
   public virtual Object getReturnValue() {
     return this.returnVal;
   }
@@ -365,8 +371,8 @@ public without sharing abstract class RollupCalculator {
   }
 
   private inherited sharing class CountDistinctRollupCalculator extends RollupCalculator {
-    private final Set<Object> distinctValues;
-    private final Boolean isIdCount;
+    private final Set<Object> distinctValues = new Set<Object>();
+    private Boolean isIdCount;
     public CountDistinctRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -377,7 +383,11 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
-      this.distinctValues = new Set<Object>();
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      super.setDefaultValues(lookupRecordKey, priorVal);
+      this.distinctValues.clear();
       this.isIdCount = this.opFieldOnCalcItem.getDescribe().getName() == 'Id';
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject);
       if (defaultVal != 0 && this.returnVal != defaultVal && this.isIdCount == false) {
@@ -460,6 +470,10 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      super.setDefaultValues(lookupRecordKey, priorVal);
       this.returnDecimal = (Decimal) this.returnVal;
     }
 
@@ -774,11 +788,15 @@ public without sharing abstract class RollupCalculator {
       String customConcatDelimiter
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultStringValue__c, metadata, lookupRecordKey, lookupKeyField);
-      this.stringVal = (String) this.returnVal;
       if (String.isNotBlank(customConcatDelimiter)) {
         this.concatDelimiter = customConcatDelimiter + ' ';
       }
       this.isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      super.setDefaultValues(lookupRecordKey, priorVal);
+      this.stringVal = (String) this.returnVal;
     }
 
     protected override void setReturnValue() {

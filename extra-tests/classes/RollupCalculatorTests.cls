@@ -534,6 +534,30 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void resetsDefaultValuesBetweenCountDistinctRuns() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      0,
+      Rollup.Op.COUNT_DISTINCT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2);
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(1, calc.getReturnValue());
+
+    calc.setDefaultValues('0011g00003VDGbF001', 5); // for COUNT_DISTINCT the prior value isn't used since we assume each one is a full recalc
+    calc.performRollup(new List<Opportunity>{ opp, new Opportunity(Amount = 3) }, new Map<Id, SObject>());
+
+    System.assertEquals(2, calc.getReturnValue());
+  }
+
+  @IsTest
   static void shouldNotCountNullsForCountDistinctDelete() {
     Account acc = [SELECT Id FROM Account];
     insert new Opportunity(CloseDate = System.today(), StageName = 'Hi', AccountId = acc.Id, Name = 'null amount');
