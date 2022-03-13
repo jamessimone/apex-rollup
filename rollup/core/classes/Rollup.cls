@@ -225,10 +225,10 @@ global without sharing virtual class Rollup {
     this.rollupControl = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
     if (invokePoint != InvocationPoint.FROM_STATIC_LOGGER) {
       this.calcItemReplacer = CALC_ITEM_REPLACER;
+      this.isConductor = true;
+      // a batch only becomes valid if other Rollups are added to it
+      this.isNoOp = true;
     }
-    this.isConductor = true;
-    // a batch only becomes valid if other Rollups are added to it
-    this.isNoOp = true;
   }
 
   protected Rollup(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {

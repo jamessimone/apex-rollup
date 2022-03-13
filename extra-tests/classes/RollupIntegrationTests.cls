@@ -1731,7 +1731,7 @@ private class RollupIntegrationTests {
   static void shouldFilterNonMatchingRollupsOutOfBatch() {
     Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
     insert con;
-    RollupControl__mdt control = RollupControl__mdt.getInstance('Org_Defaults');
+    RollupControl__mdt control = RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS);
     Rollup.FilterResults results = new Rollup.FilterResults();
     results.matchingItemIds.add(con.Id);
     RollupAsyncProcessor batchProcessor = new RollupAsyncProcessor(

@@ -151,4 +151,24 @@ private class InvocableDrivenTests {
     System.assertEquals(childOne.Phone, matchingAccount.Phone, 'Phone should have been updated based on new ordering');
     System.assertEquals(null, acc.Phone, 'Account phone should be cleared out since parent name field does not match');
   }
+
+  @IsTest
+  static void clearingParentFieldShouldProperlyDecrementSum() {
+    // driven by extra-tests\flows\Rollup_Integration_Clear_Lookup_Fields.flow-meta.xml
+    // Rollup operation is SUM with defer processing set to false
+    Integer initialNumber = 3;
+    Account acc = [SELECT Id FROM Account];
+
+    Contact con = new Contact(AccountId = acc.Id, LastName = 'Sum clear', Number__c = 1);
+    Contact two = new Contact(AccountId = acc.Id, LastName = 'retained sum', Number__c = initialNumber);
+    insert new List<Contact>{ con, two };
+
+    Test.startTest();
+    con.AccountId = null;
+    update con;
+    Test.stopTest();
+
+    acc = [SELECT NumberofLocations__c FROM Account];
+    System.assertEquals(initialNumber, acc.NumberofLocations__c?.intValue(), 'Amount should have properly decremented');
+  }
 }

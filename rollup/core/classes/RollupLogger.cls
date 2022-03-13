@@ -1,9 +1,10 @@
 public without sharing virtual class RollupLogger extends Rollup implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.4.5';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.4.6';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
+  private static Boolean disabledMessageHasBeenLogged = false;
 
   private final LoggingLevel currentLoggingLevel;
 
@@ -45,6 +46,9 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
   public void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
+    } else if (this.rollupControl?.IsRollupLoggingEnabled__c == false && disabledMessageHasBeenLogged == false) {
+      disabledMessageHasBeenLogged = true;
+      this.innerLog('logging isn\'t enabled, no further output', null, LoggingLevel.DEBUG);
     }
   }
 
@@ -103,7 +107,9 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
 
   protected String getLogStringFromObject(Object logObject) {
     String appended = '';
-    if (logObject instanceof String) {
+    if (logObject == null) {
+      return appended;
+    } else if (logObject instanceof String) {
       appended = (String) logObject;
     } else if (logObject instanceof List<Rollup>) {
       List<Rollup> rolls = (List<Rollup>) logObject;
@@ -130,7 +136,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     List<RollupPlugin__mdt> plugins = PLUGIN.getInstances();
     for (Integer index = plugins.size() - 1; index >= 0; index--) {
       RollupPlugin__mdt plugin = plugins[index];
-      if (plugin.RollupControl__c != null && plugin.RollupControl__c != SELF.rollupControl.Id || plugin.DeveloperName?.contains('Logger') == false) {
+      if ((plugin.RollupControl__c != null && plugin.RollupControl__c != SELF.rollupControl.Id) || plugin.DeveloperName?.contains('Logger') == false) {
         plugins.remove(index);
       }
     }
@@ -162,11 +168,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
         rollLogger = SELF;
       }
     }
-    if (loggingPlugins.isEmpty() == false) {
-      rollLogger = new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
-    }
-
-    return rollLogger;
+    return loggingPlugins.isEmpty() ? rollLogger : new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
   }
 
   private class CombinedLogger implements ILogger {
