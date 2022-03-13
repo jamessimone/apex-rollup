@@ -1069,9 +1069,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
-        Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-        Object newVal = this.calculateNewRollupVal(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
-        this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
+        // local calculations and reparenting can step on one another (due to full recalculations happening)
+        if (localCalcItems.isEmpty() == false || localCalcItems.isEmpty() && oldLookupItems.isEmpty()) {
+          Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
+          Object newVal = this.calculateNewRollupVal(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
+          this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
+        }
       }
     }
 

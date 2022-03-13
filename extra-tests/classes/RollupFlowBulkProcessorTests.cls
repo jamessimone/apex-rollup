@@ -104,6 +104,43 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @IsTest
+  static void syncUpdatesWithReparentingRunProperly() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    Opportunity opp = new Opportunity(Amount = acc.AnnualRevenue.intValue(), AccountId = null, Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    Opportunity oldOpp = opp.clone(true, true, true);
+    oldOpp.AccountId = acc.Id;
+
+    input.recordsToRollup = new List<SObject>{ opp };
+    input.oldRecordsToRollup = new List<SObject>{ oldOpp };
+    input.rollupContext = 'UPDATE';
+    input.shouldRunSync = true;
+    input.deferProcessing = false;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      )
+    };
+
+    // since it should run sync, we don't wrap in start/stopTest
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    // reparenting should purely subtract from account ...
+    System.assertEquals(0, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldPassOrderBysThroughSuccessfully() {
     Account acc = [SELECT Id FROM Account];
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);

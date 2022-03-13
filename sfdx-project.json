@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Scripting updates pulled back from salesforce-round-robin, rollup calculator uses less memory/CPU time now",
-            "versionNumber": "1.4.5.0",
+            "versionName": "Fixes issue when lookup fields are cleared - some rollup operations were running twice in this specific reparenting context",
+            "versionNumber": "1.4.6.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

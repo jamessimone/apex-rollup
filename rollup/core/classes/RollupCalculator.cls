@@ -177,9 +177,9 @@ public without sharing abstract class RollupCalculator {
         continue;
       } else if (this.isCDCUpdate) {
         // here we don't exclude items because the calc items have already been updated
-        this.returnVal = this.calculateNewAggregateValue(this.op, new List<Id>(), calcItem.getSObjectType());
-        // not just a break, a return. We don't want to pass go - we don't want to call "setReturnValue" below
-        return;
+        exclusionIds = new List<Id>();
+        this.shouldTriggerFullRecalc = true;
+        break;
       } else {
         switch on op {
           when COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
@@ -452,8 +452,6 @@ public without sharing abstract class RollupCalculator {
           this.distinctValues.add(res.get(calcItemOpField));
         }
       }
-      // OK to return an int here; setReturnValue does the needful type conversion
-      // from Integer -> Decimal to avoid potential BigDecimal sorting issues downstream
       return this.distinctValues.size();
     }
   }
