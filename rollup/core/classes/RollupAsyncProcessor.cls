@@ -916,6 +916,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
+    Boolean isRunningAsnyc = this.getIsRunningAsync();
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = this.rollups[index];
       rollup.isFullRecalc = rollup.isFullRecalc || this.isFullRecalc;
@@ -923,7 +924,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        (this.getIsRunningAsync() && hasExceededCurrentRollupLimits(rollup.rollupControl) == false) ||
+        (isRunningAsnyc && hasExceededCurrentRollupLimits(rollup.rollupControl) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
@@ -1070,6 +1071,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
 
         // local calculations and reparenting can step on one another (due to full recalculations happening)
+        // this guard clause prevents a full recalculation from taking place unnecessarily if a reparenting operation
+        // has already been setup to adjust the lookup item's rollup field
         if (localCalcItems.isEmpty() == false || localCalcItems.isEmpty() && oldLookupItems.isEmpty()) {
           Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
           Object newVal = this.calculateNewRollupVal(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
@@ -1270,6 +1273,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean getIsRunningAsync() {
-    return System.isBatch() || System.isQueueable() || shouldFlattenAsyncProcesses == true;
+    return System.isBatch() || System.isQueueable() || System.isScheduled() || shouldFlattenAsyncProcesses == true;
   }
 }
