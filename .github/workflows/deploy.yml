@@ -76,15 +76,17 @@ jobs:
       - name: Install & run SFDX Scanner
         run: npm run scan
 
-      # Store secret for dev hub
-      - name: 'Populate auth file with DEVHUB_SFDX_URL secret'
+      # Authenticate using JWT flow
+      - name: 'Auth to dev hub'
         shell: bash
         run: |
-          echo ${{ env.DEVHUB_SFDX_URL }} > ./DEVHUB_SFDX_URL.txt
-          echo ${{ env.PACKAGING_SFDX_URL }} > ./PACKAGING_SFDX_URL.txt
+          echo "${{ env.DEVHUB_SERVER_KEY }}" > ./jwt-server.key
+          npx sfdx force:auth:jwt:grant --clientid ${{ env.DEVHUB_CONSUMER_KEY }} --username ${{ env.DEVHUB_USERNAME }} --jwtkeyfile ./jwt-server.key --setdefaultdevhubusername
+          npx sfdx config:set defaultusername=${{ env.DEVHUB_USERNAME }}
         env:
-          DEVHUB_SFDX_URL: ${{ secrets.DEVHUB_SFDX_URL }}
-          PACKAGING_SFDX_URL: ${{ secrets.PACKAGING_SFDX_URL }}
+          DEVHUB_USERNAME: ${{ secrets.DEVHUB_USERNAME }}
+          DEVHUB_CONSUMER_KEY: ${{ secrets.DEVHUB_CONSUMER_KEY }}
+          DEVHUB_SERVER_KEY: ${{ secrets.DEVHUB_SERVER_KEY }}
 
       - name: 'Deploy & Test'
         shell: pwsh

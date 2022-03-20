@@ -29,13 +29,6 @@ function Start-Package-Promotion {
   Write-Debug "Finished package promotion!"
 }
 
-if(Test-Path ".\PACKAGING_SFDX_URL.txt") {
-  npx sfdx auth:sfdxurl:store -f ./PACKAGING_SFDX_URL.txt -a packaging-org
-  npx sfdx force:config:set defaultdevhubusername=packaging-org
-} else {
-  throw 'No packaging auth info!'
-}
-
 # Create/promote package version(s)
 $currentBranch = Get-Current-Git-Branch
 if ($currentBranch -eq "main") {

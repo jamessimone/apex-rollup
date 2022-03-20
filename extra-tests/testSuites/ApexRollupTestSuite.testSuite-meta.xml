@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexTestSuite xmlns="http://soap.sforce.com/2006/04/metadata">
+    <testClassName>CustomMetadataDrivenTests</testClassName>
+    <testClassName>InvocableDrivenTests</testClassName>
+    <testClassName>RollupCalcItemReplacerTests</testClassName>
+    <testClassName>RollupCalculatorTests</testClassName>
+    <testClassName>RollupCurrencyInfoTests</testClassName>
+    <testClassName>RollupDateLiteralTests</testClassName>
+    <testClassName>RollupEvaluatorTests</testClassName>
+    <testClassName>RollupFieldInitializerTests</testClassName>
+    <testClassName>RollupFinalizerTests</testClassName>
+    <testClassName>RollupFirstLastSorterTests</testClassName>
+    <testClassName>RollupFlowBulkProcessorTests</testClassName>
+    <testClassName>RollupFlowFullRecalcDispatcherTests</testClassName>
+    <testClassName>RollupFullRecalcTests</testClassName>
+    <testClassName>RollupIntegrationTests</testClassName>
+    <testClassName>RollupLoggerTests</testClassName>
+    <testClassName>RollupParentResetProcessorTests</testClassName>
+    <testClassName>RollupQueryBuilderTests</testClassName>
+    <testClassName>RollupRecursionItemTests</testClassName>
+    <testClassName>RollupRelationshipFieldFinderTests</testClassName>
+    <testClassName>RollupSObjectUpdaterTests</testClassName>
+    <testClassName>RollupTests</testClassName>
+    <testClassName>RollupTestUtils</testClassName>
+</ApexTestSuite>
