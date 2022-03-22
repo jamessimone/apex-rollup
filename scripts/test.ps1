@@ -1,10 +1,13 @@
 $DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
-# This is also the same script that runs on Github via the Github Action configured in .github/workflows - there, the
-# DEVHUB_SFDX_URL.txt file is populated in a build step
-$testInvocation = 'npx sfdx force:apex:test:run -r human -w 20 -c -d ./tests/apex'
-
+# This is also the same script that runs on Github via the Github Action configured in .github/workflows
+$testInvocation = 'npx sfdx force:apex:test:run -s ApexRollupTestSuite -r human -w 20 -c -d ./tests/apex'
+$currentUserAlias = 'apex-rollup-scratch-org'
 function Start-Tests() {
+  Write-Debug "Deploying metadata ..."
+  npx sfdx force:source:deploy -p rollup
+  npx sfdx force:source:deploy -p extra-tests
+
   Write-Debug "Starting test run ..."
   Invoke-Expression $testInvocation
   $testRunId = Get-Content tests/apex/test-run-id.txt
@@ -16,44 +19,18 @@ function Start-Tests() {
 
   try {
     Write-Debug "Deleting scratch org ..."
-    npx sfdx force:org:delete -p -u apex-rollup-scratch-org
+    npx sfdx force:org:delete -p
   } catch {
     Write-Debug "Scratch org deletion failed, continuing ..."
   }
 
   if ($true -eq $testFailure) {
-    throw 'Test run failure!'
+    throw $specificTestRunJson.summary
   }
-}
-
-function Reset-SFDX-Json() {
-  Write-Debug "Resetting SFDX project JSON at project root"
-  Copy-Item -Path ./scripts/sfdx-project.json -Destination ./sfdx-project.json -Force
-  Remove-Item -Path ./scripts/sfdx-project.json
 }
 
 Write-Debug "Starting build script"
 
-$orgInfo = $null
-$userNameHasBeenSet = $false
-if(Test-Path ".\DEVHUB_SFDX_URL.txt") {
-  Write-Debug "Auth file already exists, continuing"
-} else {
-  $orgInfo = npx sfdx force:org:display --json --verbose | ConvertFrom-Json
-  $orgInfo.result.sfdxAuthUrl | Out-File -FilePath ".\DEVHUB_SFDX_URL.txt"
-}
-
-Write-Debug "Copying deploy SFDX project json file to root directory, storing backup in /scripts"
-Copy-Item -Path ./sfdx-project.json -Destination ./scripts/sfdx-project.json
-Copy-Item -Path ./scripts/deploy-sfdx-project.json -Destination ./sfdx-project.json -Force
-
-# Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
-
-npx sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a she-and-jim
-npx sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
-
-# For local dev, store currently auth'd org to return to
-# Also store test command shared between script branches, below
 $scratchOrgAllotment = ((npx sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 
 Write-Debug "Total remaining scratch orgs for the day: $scratchOrgAllotment"
@@ -64,19 +41,15 @@ $shouldDeployToSandbox = $false
 if($scratchOrgAllotment -gt 0) {
   Write-Debug "Beginning scratch org creation"
   # Create Scratch Org
-  $scratchOrgCreateMessage = npx sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+  $scratchOrgCreateMessage = npx sfdx force:org:create -f config/project-scratch-def.json -a $currentUserAlias -s -d 1
   # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
   # The other issue is that this doesn't throw, so we have to test the response message ourselves
   if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
     throw $1
   }
-  $userNameHasBeenSet = $true
   # Multi-currency prep
   Write-Debug 'Importing multi-currency config data to scratch org ...'
   npx sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
-  # Deploy
-  Write-Debug 'Pushing source to scratch org ...'
-  npx sfdx force:source:push
   # Run tests
   Start-Tests
 } else {
@@ -85,29 +58,9 @@ if($scratchOrgAllotment -gt 0) {
 
 if($shouldDeployToSandbox) {
   Write-Debug "No scratch orgs remaining, running tests on sandbox"
-
-  try {
-    # Deploy
-    Write-Debug "Deploying source to sandbox ..."
-    npx sfdx force:source:deploy -p rollup
-    npx sfdx force:source:deploy -p extra-tests
-    Start-Tests
-  } catch {
-    Reset-SFDX-Json
-    throw 'Error!'
-  }
+  # Deploy and test
+  Start-Tests
 }
-
-# If the priorUserName is not blank and we used a scratch org, reset to it
-if($null -ne $orgInfo -And $userNameHasBeenSet) {
-  # for some reason, setting straight from $orgInfo.result.username results in some weird destructuring
-  # whereas this works, no problem
-  $priorUserName = $orgInfo.result.username
-  Write-Debug "Resetting SFDX to previously authorized org"
-  npx sfdx force:config:set defaultusername=$priorUserName
-}
-
-Reset-SFDX-Json
 
 Write-Debug "Build + testing finished successfully"
 
