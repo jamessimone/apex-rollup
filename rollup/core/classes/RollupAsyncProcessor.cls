@@ -347,7 +347,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this.rollups[0];
     } else if (this instanceof FullRecalcProcessor) {
       roll = this;
-    } else if ((shouldRunAsBatch && System.isBatch() == false) || (canEnqueue == false && System.isBatch() == false)) {
+    } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
       // at this point, and without re-initialization we get "System.UnexpectedException: Error processing messages"
@@ -420,29 +420,28 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     protected override List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
       if (objIds.isEmpty()) {
         return new List<SObject>();
-      } else {
-        List<SObject> localLookupItems;
-        if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
-          localLookupItems = rollup.traversal.getAllParents();
-        } else {
-          String queryString =
-            RollupQueryBuilder.Current.getQuery(
-              rollup.lookupObj,
-              new List<String>(uniqueQueryFieldNames),
-              String.valueOf(rollup.lookupFieldOnLookupObject),
-              '='
-            ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
-          // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
-          localLookupItems = Database.query(queryString);
-        }
-        this.initializeRollupFieldDefaults(localLookupItems, rollup);
-        for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
-          if (rollup.fullRecalcProcessor?.parentRollupFieldHasBeenReset(rollup, localLookupItems[index]) == true) {
-            localLookupItems.remove(index);
-          }
-        }
-        return localLookupItems;
       }
+      List<SObject> localLookupItems;
+      if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
+        localLookupItems = rollup.traversal.getAllParents();
+      } else {
+        String queryString =
+          RollupQueryBuilder.Current.getQuery(
+            rollup.lookupObj,
+            new List<String>(uniqueQueryFieldNames),
+            String.valueOf(rollup.lookupFieldOnLookupObject),
+            '='
+          ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
+        // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
+        localLookupItems = Database.query(queryString);
+      }
+      this.initializeRollupFieldDefaults(localLookupItems, rollup);
+      for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
+        if (rollup.fullRecalcProcessor?.parentRollupFieldHasBeenReset(rollup, localLookupItems[index]) == true) {
+          localLookupItems.remove(index);
+        }
+      }
+      return localLookupItems;
     }
 
     public void execute(System.QueueableContext qc) {

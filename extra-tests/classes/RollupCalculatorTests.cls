@@ -709,6 +709,24 @@ private class RollupCalculatorTests {
     System.assertEquals(0, calc.getReturnValue());
   }
 
+  @IsTest
+  static void shouldConsiderDateChangesCorrectlyCount() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      1,
+      Rollup.Op.UPDATE_COUNT,
+      Opportunity.CloseDate,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    calc.performRollup(new List<SObject>{ opp }, new Map<Id, SObject>{ opp.Id => new Opportunity(CloseDate = opp.CloseDate.addDays(-1)) });
+
+    System.assertEquals(1, calc.getReturnValue());
+  }
+
   // SUM tests
 
   @IsTest
