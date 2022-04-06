@@ -9,6 +9,22 @@ private class RollupFlowFullRecalcDispatcherTests {
   }
 
   @IsTest
+  static void returnsSensibleErrorWhenDeveloperNameStringNotFilledOut() {
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
+    RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
+    flowInputs.add(input);
+
+    Exception ex;
+    try {
+      RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('Comma-separated list of Rollup__mdt DeveloperName(s) was not provided', ex?.getMessage());
+  }
+
+  @IsTest
   static void shouldPerformCMDTFullRecalcFromFlowInput() {
     Account acc = [SELECT Id FROM Account];
 

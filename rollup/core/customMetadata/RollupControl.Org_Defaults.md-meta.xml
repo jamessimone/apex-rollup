@@ -1,5 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+>
     <label>Org Defaults</label>
     <protected>false</protected>
     <values>
@@ -39,6 +43,10 @@
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
+        <field>ShouldDuplicateRulesBeIgnored__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
         <field>ShouldRunSingleRecordsSynchronously__c</field>
         <value xsi:type="xsd:boolean">false</value>
     </values>
@@ -48,6 +56,6 @@
     </values>
     <values>
         <field>TriggerOrInvocableName__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
 </CustomMetadata>

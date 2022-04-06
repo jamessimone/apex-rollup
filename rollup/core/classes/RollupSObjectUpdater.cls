@@ -7,6 +7,8 @@ public without sharing virtual class RollupSObjectUpdater {
   private final List<IDispatcher> dispatchers;
   private final RollupPlugin plugin;
 
+  private RollupControl__mdt rollupControl;
+
   public interface IDispatcher {
     void dispatch(List<SObject> records);
   }
@@ -20,7 +22,16 @@ public without sharing virtual class RollupSObjectUpdater {
     this.fieldToken = fieldToken;
   }
 
+  public void addRollupControl(RollupControl__mdt rollupControl) {
+    this.rollupControl = rollupControl;
+  }
+
   public virtual void doUpdate(List<SObject> recordsToUpdate) {
+    if (Rollup.hasExceededCurrentRollupLimits(this.rollupControl)) {
+      this.performAsyncUpdate(recordsToUpdate);
+      return;
+    }
+    this.splitUpdates(recordsToUpdate);
     // typically I wouldn't advocate for the use of a guard clause here since an empty list
     // getting updated is a no-op, but the addition of the logging item is annoying ...
     if (recordsToUpdate.isEmpty() == false) {
@@ -28,6 +39,9 @@ public without sharing virtual class RollupSObjectUpdater {
       SORTER.sort(recordsToUpdate);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
+      if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
+        dmlOptions.DuplicateRuleHeader.AllowSave = true;
+      }
       Database.update(recordsToUpdate, dmlOptions);
       this.dispatch(recordsToUpdate);
     }
@@ -95,6 +109,23 @@ public without sharing virtual class RollupSObjectUpdater {
     }
   }
 
+  private void splitUpdates(List<SObject> recordsToUpdate) {
+    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < recordsToUpdate.size()) {
+      Integer maxIndexToRemove = recordsToUpdate.size() / 2;
+      List<SObject> asyncUpdateList = new List<SObject>();
+      while (recordsToUpdate.size() > maxIndexToRemove) {
+        asyncUpdateList.add(recordsToUpdate.remove(recordsToUpdate.size() - 1));
+      }
+      this.performAsyncUpdate(asyncUpdateList);
+    }
+  }
+
+  private void performAsyncUpdate(List<SObject> recordsToUpdate) {
+    if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs() && recordsToUpdate.isEmpty() == false) {
+      System.enqueueJob(new RollupAsyncSaver(recordsToUpdate, this.rollupControl));
+    }
+  }
+
   private class SObjectSorter extends RollupComparer {
     public override Integer compare(Object first, Object second) {
       Integer returnVal = 0;
@@ -108,6 +139,21 @@ public without sharing virtual class RollupSObjectUpdater {
         }
       }
       return returnVal;
+    }
+  }
+
+  private class RollupAsyncSaver implements System.Queueable {
+    private final List<SObject> records;
+    private final RollupControl__mdt control;
+    public RollupAsyncSaver(List<SObject> records, RollupControl__mdt control) {
+      this.records = records;
+      this.control = control;
+    }
+
+    public void execute(QueueableContext context) {
+      RollupSObjectUpdater updater = new RollupSObjectUpdater();
+      updater.addRollupControl(this.control);
+      new RollupSObjectUpdater().doUpdate(this.records);
     }
   }
 }
