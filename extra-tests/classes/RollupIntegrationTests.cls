@@ -285,6 +285,7 @@ private class RollupIntegrationTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.records = new List<Opportunity>{ usdOpp, eurOpp, jpyOpp };
     Rollup.shouldRun = true;
+    Rollup.onlyUseMockMetadata = true;
 
     Test.startTest();
     Rollup.runFromTrigger();

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldDuplicateRulesBeIgnored__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>By default, duplicate rules are enforced on rollup updates. Set this to true to bypass duplicate rules for rollups.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>By default, duplicate rules are enforced on rollup updates. Set this to true to bypass duplicate rules for rollups.</inlineHelpText>
+    <label>Should Duplicate Rules Be Ignored</label>
+    <type>Checkbox</type>
+</CustomField>

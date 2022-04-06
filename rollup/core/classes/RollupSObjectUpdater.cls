@@ -7,6 +7,8 @@ public without sharing virtual class RollupSObjectUpdater {
   private final List<IDispatcher> dispatchers;
   private final RollupPlugin plugin;
 
+  private RollupControl__mdt rollupControl;
+
   public interface IDispatcher {
     void dispatch(List<SObject> records);
   }
@@ -20,6 +22,10 @@ public without sharing virtual class RollupSObjectUpdater {
     this.fieldToken = fieldToken;
   }
 
+  public void addRollupControl(RollupControl__mdt rollupControl) {
+    this.rollupControl = rollupControl;
+  }
+
   public virtual void doUpdate(List<SObject> recordsToUpdate) {
     // typically I wouldn't advocate for the use of a guard clause here since an empty list
     // getting updated is a no-op, but the addition of the logging item is annoying ...
@@ -28,6 +34,9 @@ public without sharing virtual class RollupSObjectUpdater {
       SORTER.sort(recordsToUpdate);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
+      if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
+        dmlOptions.DuplicateRuleHeader.AllowSave = true;
+      }
       Database.update(recordsToUpdate, dmlOptions);
       this.dispatch(recordsToUpdate);
     }

@@ -23,7 +23,7 @@ private class RollupCustomObjectLoggerTests {
     // Rollup Log Entries
     System.assertEquals(2, firstEntry.RollupLogEntry__r.size());
     System.assertEquals(LoggingLevel.DEBUG.name(), firstEntry.RollupLogEntry__r[0].LoggingLevel__c);
-    System.assertEquals('Rollup: ' + RollupLogger.CURRENT_VERSION_NUMBER + ' Test log', firstEntry.RollupLogEntry__r[0].Message__c);
+    System.assertEquals('Rollup ' + RollupLogger.CURRENT_VERSION_NUMBER + ': Test log', firstEntry.RollupLogEntry__r[0].Message__c);
 
     System.assertEquals(LoggingLevel.ERROR.name(), firstEntry.RollupLogEntry__r[1].LoggingLevel__c);
     System.assertEquals(true, firstEntry.RollupLogEntry__r[1].Message__c.contains('Second test log with record' + '\n' + JSON.serializePretty(new Account())));

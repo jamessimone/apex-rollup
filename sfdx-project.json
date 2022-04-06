@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "TODO",
+            "versionName": "Further efficiency improvements, cut down on memory usage and CPU time spent async. Added option to ignore duplicate rules on SObject updates for solo-1234",
             "versionNumber": "1.4.8.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -17,11 +17,11 @@
             "path": "plugins\\CustomObjectRollupLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.3.23-0"
+                    "package": "apex-rollup@1.4.7-0"
                 }
             ],
-            "versionNumber": "0.0.11.0",
-            "versionName": "Standardizing plugin infrastructure",
+            "versionNumber": "0.0.12.0",
+            "versionName": "Corrected assertion in one of the custom logger tests",
             "versionDescription": "Adds RollupLog__c and RollupLogEntry__c custom objects to allow storage of rollup debug logs",
             "default": false,
             "unpackagedMetadata": {
@@ -85,9 +85,9 @@
     "sourceApiVersion": "54.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
-        "Apex Rollup - Custom Logger@0.0.9-0": "04t6g000008Si1GAAS",
         "Apex Rollup - Custom Logger@0.0.10-0": "04t6g000008SijqAAC",
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
+        "Apex Rollup - Custom Logger@0.0.12-0": "04t6g000008SjqIAAS",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.5-0": "04t6g000008SizvAAC",
         "Apex Rollup - Extra Code Coverage@0.0.6-0": "04t6g000008Sj8jAAC",
