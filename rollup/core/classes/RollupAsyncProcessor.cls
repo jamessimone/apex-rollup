@@ -678,7 +678,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           this.rollupControl,
           LoggingLevel.DEBUG
         );
-        this.setIsDeferralAllowed(isAllowedToContinue);
+        this.setIsDeferralAllowed(this.rollupControl.MaxRollupRetries__c > stackDepth);
 
         this.rollups.clear();
         this.rollups.addAll(this.deferredRollups);
@@ -688,6 +688,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         this.getAsyncRollup()?.beginAsyncRollup();
       } else if (this.deferredRollups.isEmpty() == false) {
+        this.setIsDeferralAllowed(false);
         this.attemptToStaticallyDeferRollup();
       }
     }

@@ -1600,8 +1600,8 @@ global without sharing virtual class Rollup {
     Boolean hasExceededQueryRowLimit = control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows();
     Boolean hasExceededHeapSizeLimit = (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
     Boolean hasExceededDMLRowLimit = control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
-    Integer intervalTillTimeout = (System.isBatch() || System.isQueueable()) ? 14000 : 3000;
-    Boolean hasExceededCPUTimeLimit = Limits.getLimitCpuTime() - intervalTillTimeout < Limits.getCpuTime();
+    Integer intervalTillTimeout = ((System.isBatch() || System.isQueueable()) && Test.isRunningTest() == false) ? 14000 : 3000;
+    Boolean hasExceededCPUTimeLimit = (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
     Boolean hasExceededLimits =
       hasExceededQueryNumberLimit ||
       hasExceededQueryRowLimit ||

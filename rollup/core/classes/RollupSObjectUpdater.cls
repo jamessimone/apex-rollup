@@ -121,7 +121,7 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void performAsyncUpdate(List<SObject> recordsToUpdate) {
-    if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
+    if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs() && recordsToUpdate.isEmpty() == false) {
       System.enqueueJob(new RollupAsyncSaver(recordsToUpdate, this.rollupControl));
     }
   }
