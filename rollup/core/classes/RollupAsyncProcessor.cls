@@ -101,26 +101,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private class RollupAsyncSaver implements System.Queueable {
-    private final List<SObject> records;
-    public RollupAsyncSaver(List<SObject> records) {
-      this.records = records;
-    }
-
-    public void execute(QueueableContext context) {
-      new RollupSObjectUpdater().doUpdate(this.records);
-    }
-  }
-
-  private class CalcItemData {
-    public final List<SObject> items;
-    public final Map<Id, SObject> oldItems;
-    public CalcItemData(List<SObject> items, Map<Id, SObject> oldItems) {
-      this.items = items?.clone();
-      this.oldItems = oldItems?.clone();
-    }
-  }
-
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     return new QueueableProcessor(invokePoint, calcItems, oldCalcItems);
   }
@@ -603,7 +583,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    this.splitUpdates(updatedLookupRecords);
     this.getDML().doUpdate(updatedLookupRecords.values());
     if (this.getCachedRollups().isEmpty() == false) {
       for (Rollup outerRollup : this.getCachedRollups()) {
@@ -678,25 +657,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
     return localLookupItems;
-  }
-
-  // TODO - move this into RollupSObjectUpdater
-  private void splitUpdates(Map<String, SObject> updatedLookupRecords) {
-    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < updatedLookupRecords.size() && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
-      Integer maxIndexToRemove = updatedLookupRecords.size() / 2;
-      Integer removalIndex = 0;
-      List<SObject> asyncUpdateList = new List<SObject>();
-      for (String lookupKey : updatedLookupRecords.keySet()) {
-        SObject lookupRecordToUpdate = updatedLookupRecords.get(lookupKey);
-        asyncUpdateList.add(lookupRecordToUpdate);
-        updatedLookupRecords.remove(lookupKey);
-        removalIndex++;
-        if (removalIndex >= maxIndexToRemove) {
-          break;
-        }
-      }
-      System.enqueueJob(new RollupAsyncSaver(asyncUpdateList));
-    }
   }
 
   private void processDeferredRollups() {
