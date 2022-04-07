@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Further efficiency improvements, cut down on memory usage and CPU time spent async. Added option to ignore duplicate rules on SObject updates for solo-1234",
-            "versionNumber": "1.4.8.0",
+            "versionName": "Adding FLS for RollupControl__mdt.ShouldDuplicateRulesBeIgnored__c, adding to page layout",
+            "versionNumber": "1.4.9.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -108,6 +108,7 @@
         "apex-rollup@1.4.5-0": "04t6g000008SjRTAA0",
         "apex-rollup@1.4.6-0": "04t6g000008SjSWAA0",
         "apex-rollup@1.4.7-0": "04t6g000008SjYzAAK",
-        "apex-rollup@1.4.8-0": "04t6g000008SjuVAAS"
+        "apex-rollup@1.4.8-0": "04t6g000008SjuVAAS",
+        "apex-rollup@1.4.9-0": "04t6g000008SjufAAC"
     }
 }
