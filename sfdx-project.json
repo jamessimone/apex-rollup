@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Revamped README",
+            "versionName": "Revamped README, added ability to filter on non-polymorphic Type fields",
             "versionNumber": "1.4.10.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -71,11 +71,11 @@
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.7.0",
+            "versionNumber": "0.0.8.0",
             "default": false,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.4.4-0"
+                    "package": "apex-rollup@1.4.10-0"
                 }
             ]
         }
@@ -92,6 +92,7 @@
         "Apex Rollup - Extra Code Coverage@0.0.5-0": "04t6g000008SizvAAC",
         "Apex Rollup - Extra Code Coverage@0.0.6-0": "04t6g000008Sj8jAAC",
         "Apex Rollup - Extra Code Coverage@0.0.7-0": "04t6g000008SjIVAA0",
+        "Apex Rollup - Extra Code Coverage@0.0.8-0": "04t6g000008SjuzAAC",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.5-0": "04t6g000008Si1BAAS",
         "Apex Rollup - Nebula Logger@0.0.6-0": "04t6g000008SiisAAC",
@@ -100,15 +101,9 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.4.0-0": "04t6g000008Sj8oAAC",
-        "apex-rollup@1.4.1-0": "04t6g000008SjGKAA0",
-        "apex-rollup@1.4.2-0": "04t6g000008SjHhAAK",
-        "apex-rollup@1.4.3-0": "04t6g000008SjHwAAK",
-        "apex-rollup@1.4.4-0": "04t6g000008SjIaAAK",
-        "apex-rollup@1.4.5-0": "04t6g000008SjRTAA0",
-        "apex-rollup@1.4.6-0": "04t6g000008SjSWAA0",
         "apex-rollup@1.4.7-0": "04t6g000008SjYzAAK",
         "apex-rollup@1.4.8-0": "04t6g000008SjuVAAS",
-        "apex-rollup@1.4.9-0": "04t6g000008SjufAAC"
+        "apex-rollup@1.4.9-0": "04t6g000008SjufAAC",
+        "apex-rollup@1.4.10-0": "04t6g000008SjuuAAC"
     }
 }

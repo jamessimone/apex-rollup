@@ -1020,6 +1020,15 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void supportsNonPolymorphicTypeFields() {
+    String whereClause = 'Campaign.Type <> \'Something Else\'';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+    List<String> queryFields = eval.getQueryFields();
+    System.assertEquals(1, queryFields.size(), queryFields);
+    System.assertEquals('Campaign.Type', queryFields[0]);
+  }
+
+  @IsTest
   static void shouldProperlyEvaluateDateLiteral() {
     String whereClause = 'CloseDate = THIS_YEAR';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);

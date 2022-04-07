@@ -461,16 +461,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private Boolean isValidRelationshipField(String fieldName) {
+      Map<String, SObjectField> fieldNameToField = this.calcItemType.getDescribe().fields.getMap();
       if (fieldName.contains('Owner.')) {
         List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
         Integer ownerIndex = fieldParts.indexOf('Owner');
-        SObjectType recordSObjectType = this.calcItemType;
         SObjectType ownerType;
         if (ownerIndex > 0) {
           Integer index = 0;
           while (index < ownerIndex) {
             String relationshipName = fieldParts[index];
-            Map<String, SObjectField> fieldNameToField = recordSObjectType.getDescribe().fields.getMap();
             String fieldRef = getRelationshipNameFromField(relationshipName);
             SObjectField fieldToken = fieldNameToField.get(fieldRef);
             if (fieldToken.getDescribe().isNamePointing()) {
@@ -484,7 +483,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
         return ownerType.getDescribe().fields.getMap().get('OwnerId').getDescribe().isNamePointing() == false;
       } else {
-        return POLYMORPHIC_FIELDS.contains(fieldName.substringBetween('.')) == false && POLYMORPHIC_FIELDS.contains(fieldName.substringAfter('.')) == false;
+        String endPart = fieldName.substringAfter('.');
+        return fieldNameToField.containsKey(endPart) ||
+          (POLYMORPHIC_FIELDS.contains(fieldName.substringBetween('.')) == false &&
+          POLYMORPHIC_FIELDS.contains(endPart) == false);
       }
     }
   }
