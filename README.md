@@ -6,7 +6,7 @@
 
 ## Getting Started
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/migrating-from-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
+Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
 
 ## Deployment & Setup
 
