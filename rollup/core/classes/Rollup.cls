@@ -2697,13 +2697,17 @@ global without sharing virtual class Rollup {
         sensibleDefault = new RollupControl__mdt(
           DeveloperName = CONTROL_ORG_DEFAULTS,
           BatchChunkSize__c = 2000,
+          IsMergeReparentingEnabled__c = true,
+          IsRollupLoggingEnabled__c = false,
           MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
-          MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
-          MaxRollupRetries__c = 100,
           MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
+          MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
+          MaxRollupRetries__c = 10,
           ReplaceCalcItemsAsyncWhenOverCount__c = 1,
           ShouldAbortRun__c = false,
-          ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable
+          ShouldDuplicateRulesBeIgnored__c = false,
+          ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
+          ShouldRunSingleRecordsSynchronously__c = false
         );
       } else {
         sensibleDefault = sensibleDefault.clone(true, true);

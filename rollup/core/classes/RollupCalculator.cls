@@ -1076,6 +1076,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private inherited sharing class FirstLastRollupCalculator extends RollupCalculator {
+    private final SObjectType calcItemSObjectType;
     public FirstLastRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1100,7 +1101,7 @@ public without sharing abstract class RollupCalculator {
         lookupRecordKey,
         lookupKeyField
       );
-      SObjectType calcItemSObjectType = ((SObject) Type.forName(this.metadata.CalcItem__c).newInstance()).getSObjectType();
+      this.calcItemSObjectType = this.getCalcItemType();
       Map<String, SObjectField> fieldMap = calcItemSObjectType.getDescribe().fields.getMap();
       for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
@@ -1112,16 +1113,15 @@ public without sharing abstract class RollupCalculator {
     @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.isFullRecalc == false) {
-        SObjectType sObjectType = this.getCalcItemType();
         Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.metadata.LookupFieldOnCalcItem__c };
         for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
           queryFields.add(orderByInfo.FieldName__c);
         }
         if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
-          queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
+          queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, this.calcItemSObjectType).getQueryFields());
         }
         // a full-recalc is always necessary because we don't retain the information about the order by field
-        String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
+        String queryString = RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 
         // objIds is used as a bind variable in the resulting queryString
         List<SObject> objIds = calcItems;
