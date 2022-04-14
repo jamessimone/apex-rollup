@@ -37,6 +37,8 @@ global without sharing class RollupFlowBulkProcessor {
 
     @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
     global String grandparentRelationshipFieldPath;
+    @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
+    global String oneToManyGrandparentFields;
     @InvocableVariable(
       label='Is Full Record Set'
       description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
@@ -70,7 +72,6 @@ global without sharing class RollupFlowBulkProcessor {
         output.message = 'No records';
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
-
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
         String sObjectName = flowInput.recordsToRollup == null ? '' : flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
         List<Rollup.FlowInput> rollupFlowInputs = new List<Rollup.FlowInput>();
@@ -98,8 +99,12 @@ global without sharing class RollupFlowBulkProcessor {
             input.grandparentRelationshipFieldPath = flowInput.grandparentRelationshipFieldPath != null
               ? flowInput.grandparentRelationshipFieldPath
               : meta.GrandparentRelationshipFieldPath__c;
+            input.oneToManyGrandparentFields = flowInput.oneToManyGrandparentFields != null
+              ? flowInput.oneToManyGrandparentFields
+              : meta.OneToManyGrandparentFields__c;
             input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
             input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
+            // fixup order by children records
             input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
             for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
               input.orderByFirstLast += orderBy.FieldName__c + ' ' + orderBy.NullSortOrder__c + ' ' + orderBy.SortOrder__c + ',';
@@ -113,12 +118,12 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupOperation = meta.RollupOperation__c;
             input.rollupSObjectName = meta.LookupObject__c;
             // everything else is supplied from the invocable
-            input.rollupContext = flowInput.rollupContext;
-            input.recordsToRollup = flowInput.recordsToRollup;
-            input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
-            input.deferProcessing = flowInput.deferProcessing != null ? flowInput.deferProcessing : true;
-            input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
             input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
+            input.deferProcessing = flowInput.deferProcessing != null ? flowInput.deferProcessing : true;
+            input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
+            input.recordsToRollup = flowInput.recordsToRollup;
+            input.rollupContext = flowInput.rollupContext;
+            input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
             rollupFlowInputs.add(input);
 
             output.message = 'Rollup queued for context: ' + meta.RollupOperation__c + ' with metadata values: ' + JSON.serialize(input);

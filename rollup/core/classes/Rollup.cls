@@ -523,6 +523,8 @@ global without sharing virtual class Rollup {
 
     @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
     global String grandparentRelationshipFieldPath;
+    @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
+    global String oneToManyGrandparentFields;
     @InvocableVariable(
       label='Is Full Record Set'
       description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
@@ -1561,6 +1563,7 @@ global without sharing virtual class Rollup {
             GrandparentRelationshipFieldPath__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
+            OneToManyGrandparentFields__c,
             OrderByFirstLast__c,
             RollupControl__c,
             RollupOperation__c,
@@ -1618,27 +1621,28 @@ global without sharing virtual class Rollup {
 
   private static Rollup__mdt transformFlowInputToRollupMetadata(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
     return new Rollup__mdt(
-      RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
-      LookupObject__c = flowInput.rollupSObjectName,
-      LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
-      LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
-      RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-      RollupOperation__c = rollupContext + flowInput.rollupOperation,
-      ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
-      FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-      FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
-      CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-      IsFullRecordSet__c = flowInput.isFullRecordSet,
-      OrderByFirstLast__c = flowInput.orderByFirstLast,
-      GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
-      ConcatDelimiter__c = flowInput.concatDelimiter,
-      UltimateParentLookup__c = flowInput.ultimateParentLookup,
-      RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
       CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
         ? flowInput.calcItemTypeWhenRollupStartedFromParent
         : String.valueOf(sObjectType),
+      CalcItemWhereClause__c = flowInput.calcItemWhereClause,
+      ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+      ConcatDelimiter__c = flowInput.concatDelimiter,
+      FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+      FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+      GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+      IsFullRecordSet__c = flowInput.isFullRecordSet,
       IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
-      SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem
+      LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
+      LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
+      LookupObject__c = flowInput.rollupSObjectName,
+      OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
+      OrderByFirstLast__c = flowInput.orderByFirstLast,
+      RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
+      RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
+      RollupOperation__c = rollupContext + flowInput.rollupOperation,
+      RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
+      SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
+      UltimateParentLookup__c = flowInput.ultimateParentLookup
     );
   }
 

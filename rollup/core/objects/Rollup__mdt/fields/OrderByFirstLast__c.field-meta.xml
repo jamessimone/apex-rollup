@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>OrderByFirstLast__c</fullName>
     <description>Deprecated (as of v1.4.0) - use RollupOrderBy__mdt instead</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>Deprecated (as of v1.4.0) - use RollupOrderBy__mdt instead</inlineHelpText>
     <label>Order By (First/Last) - Deprecated</label>
     <length>255</length>

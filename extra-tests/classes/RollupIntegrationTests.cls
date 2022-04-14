@@ -538,11 +538,11 @@ private class RollupIntegrationTests {
 
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(appLogs);
     System.assertEquals(true, traversal.getIsFinished(), 'Traversal should not have aborted early');
-    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Account should match!');
+    System.assertEquals(greatGrandparent, traversal.retrieveParents(child.Id)[0], 'Account should match!');
 
     System.assertEquals(
       null,
-      traversal.retrieveParent(nonMatchingChild.Id),
+      traversal.retrieveParents(nonMatchingChild.Id),
       'No matching records should be returned for relationship that does not go fully up the chain'
     );
 
@@ -552,8 +552,8 @@ private class RollupIntegrationTests {
 
     // this also validates that the internal state of the finder is resilient; that it can be called more than once
     traversal = finder.getParents(appLogs);
-    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Should still match!');
-    System.assertEquals(secondGreatGrandparent, traversal.retrieveParent(nonMatchingChild.Id), 'Should now match!');
+    System.assertEquals(greatGrandparent, traversal.retrieveParents(child.Id)[0], 'Should still match!');
+    System.assertEquals(secondGreatGrandparent, traversal.retrieveParents(nonMatchingChild.Id)[0], 'Should now match!');
   }
 
   @IsTest

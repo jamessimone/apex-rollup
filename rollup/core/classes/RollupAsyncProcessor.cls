@@ -473,6 +473,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isValidAdditionalCalcItemRetrieval(rollup) == false) {
       return;
     }
+    // rollup.isFullRecalc = true;
 
     String key = rollup.calcItemType.getDescribe().getName();
     List<SObject> additionalCalcItems;
