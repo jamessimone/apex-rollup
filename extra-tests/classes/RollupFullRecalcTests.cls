@@ -792,6 +792,8 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldEnqueueFullRecalculationWhenBelowQueryLimits() {
     Account acc = [SELECT Id FROM Account];
+    Account secondAccount = new Account(Name = 'Second');
+    insert secondAccount;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'one', ParentId = acc.Id, PreferenceRank = 1),
@@ -799,7 +801,8 @@ private class RollupFullRecalcTests {
       new ContactPointAddress(Name = 'three', ParentId = acc.Id, PreferenceRank = 1),
       new ContactPointAddress(Name = 'four', ParentId = acc.Id, PreferenceRank = 1),
       new ContactPointAddress(Name = 'five', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'six', ParentId = acc.Id, PreferenceRank = 1)
+      new ContactPointAddress(Name = 'six', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'secondAccount', ParentId = secondAccount.Id, PreferenceRank = 1)
     };
     insert cpas;
 
@@ -817,8 +820,11 @@ private class RollupFullRecalcTests {
     Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(6, acc.AnnualRevenue);
+    List<Account> accounts = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(2, accounts.size());
+    for (Account account : accounts) {
+      System.assertEquals(account.Id == acc.Id ? 6 : 1, account.AnnualRevenue);
+    }
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
   }
 
