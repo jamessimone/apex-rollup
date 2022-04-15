@@ -347,7 +347,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return roll;
   }
 
-  private inherited sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+  private without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
     private QueueableProcessor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       super(invokePoint, calcItems, oldCalcItems);
     }

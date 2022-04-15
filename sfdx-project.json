@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Added support for junction objects as the intermediate hop for grandparent rollups",
-            "versionNumber": "1.4.11.0",
+            "versionName": "Remove inherited sharing in favor of always explicitly using without sharing. Added missing SOQL date literals",
+            "versionNumber": "1.4.12.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
