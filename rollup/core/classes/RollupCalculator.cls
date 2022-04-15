@@ -242,6 +242,9 @@ public without sharing abstract class RollupCalculator {
       this.returnVal = this.calculateNewAggregateValue(this.op, exclusionIds, this.getCalcItemType());
       // bail on calling setReturnValue below
       return;
+    } else if (this.shouldTriggerFullRecalc == false && localCalcItems.isEmpty()) {
+      this.returnVal = this.defaultVal;
+      return;
     }
     this.setReturnValue();
   }
@@ -396,7 +399,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void setReturnValue() {
-      this.returnVal = Decimal.valueOf(this.distinctValues.size());
+      this.returnVal = this.distinctValues.size() == 0 ? this.defaultVal : Decimal.valueOf(this.distinctValues.size());
     }
 
     protected override void handleShortCircuit(SObject calcItem) {
@@ -670,7 +673,7 @@ public without sharing abstract class RollupCalculator {
 
     public override Object getReturnValue() {
       Object superReturnVal = super.getReturnValue();
-      return superReturnVal == 0 ? null : ((Datetime) superReturnVal).dateGmt();
+      return superReturnVal == 0 ? this.defaultVal : ((Datetime) superReturnVal).dateGmt();
     }
   }
 
@@ -700,7 +703,7 @@ public without sharing abstract class RollupCalculator {
       if (returnValue instanceof Datetime) {
         returnValue = ((Datetime) returnValue).timeGmt();
       } else if (returnValue == 0) {
-        returnValue = null;
+        returnValue = this.defaultVal;
       }
       return returnValue;
     }

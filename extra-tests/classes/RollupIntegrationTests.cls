@@ -82,7 +82,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
+    System.assertEquals(0, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 
   @IsTest
@@ -1273,6 +1273,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldNotIncludeNullForCountDistinct() {
+    // TODO fixme
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT null PreferenceRank');
@@ -1446,7 +1447,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest

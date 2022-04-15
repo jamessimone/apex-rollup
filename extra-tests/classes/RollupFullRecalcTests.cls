@@ -122,7 +122,7 @@ private class RollupFullRecalcTests {
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(500, updatedAcc.AnnualRevenue, 'Calc item where clause with parent filtering should work for REFRESH');
     Account secondUpdatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :second.Id];
-    System.assertEquals(0, secondUpdatedAcc.AnnualRevenue, 'Amount should have decremented on update!');
+    System.assertEquals(null, secondUpdatedAcc.AnnualRevenue, 'Amount should have decremented on update!');
   }
 
   @IsTest
