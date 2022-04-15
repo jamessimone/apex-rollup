@@ -473,6 +473,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isValidAdditionalCalcItemRetrieval(rollup) == false) {
       return;
     }
+    // if, at any point, we're requerying for all other possible calc items
+    // the rollup _becomes_ a full recalc
+    rollup.isFullRecalc = true;
 
     String key = rollup.calcItemType.getDescribe().getName();
     List<SObject> additionalCalcItems;
@@ -1014,8 +1017,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // has already been setup to adjust the lookup item's rollup field
         if (localCalcItems.isEmpty() == false || localCalcItems.isEmpty() && oldLookupItems.isEmpty()) {
           Object priorVal = lookupRecord.get(rollup.opFieldOnLookupObject);
-          Object newVal = this.calculateNewRollupVal(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
-          this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
+          calc = this.getCalculator(calc, rollup, localCalcItems, lookupRecord, priorVal, key, rollup.lookupFieldOnCalcItem);
+          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, rollup, recordsToUpdate, updater, 'lookup');
         }
       }
     }
@@ -1108,7 +1111,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private Object calculateNewRollupVal(
+  private RollupCalculator getCalculator(
     RollupCalculator rollupCalc,
     RollupAsyncProcessor roll,
     List<SObject> calcItems,
@@ -1127,16 +1130,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         lookupRecordKey,
         lookupKeyField
       );
-      rollupCalc.setFullRecalc(roll.isFullRecalc);
-      rollupCalc.setEvaluator(roll.eval);
-      rollupCalc.setCDCUpdate(this.isCDCUpdate);
     } else {
       rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
     }
-
+    rollupCalc.setFullRecalc(roll.isFullRecalc);
+    rollupCalc.setEvaluator(roll.eval);
+    rollupCalc.setCDCUpdate(this.isCDCUpdate);
     rollupCalc.setMultiCurrencyInfo(lookupRecord);
     rollupCalc.performRollup(calcItems, roll.oldCalcItems);
-    return rollupCalc.getReturnValue();
+    return rollupCalc;
   }
 
   private void removeRolledUpValuesFromReparentedRecords(
@@ -1149,7 +1151,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (oldLookupItems.isEmpty()) {
       return;
     }
-
+    RollupCalculator calc;
     Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
     RollupAsyncProcessor oldLookupsRollup = getProcessor(
       new FilterResults(),
@@ -1164,8 +1166,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.rollupControl,
       roll.metadata
     );
-    RollupCalculator calc;
-
     for (SObject lookupRecord : lookupItems) {
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
         continue;
@@ -1181,19 +1181,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
 
         oldLookupsRollup.calcItems = reparentedCalcItems;
-
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
-
-        Object newVal = this.calculateNewRollupVal(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
-
-        this.conditionallyPerformUpdate(priorVal, newVal, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
+        calc = this.getCalculator(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
+        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
       }
     }
   }
 
   private void conditionallyPerformUpdate(
     Object priorVal,
-    Object newVal,
+    RollupCalculator calc,
     SObject lookupRecord,
     RollupAsyncProcessor roll,
     Map<String, SObject> recordsToUpdate,
@@ -1201,6 +1198,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     String logKey
   ) {
     RollupLogger.Instance.log(logKey + ' record prior to rolling up:', lookupRecord, LoggingLevel.DEBUG);
+    Object newVal = calc.getReturnValue();
     if (priorVal != newVal || this.isFullRecalc || roll.isFullRecalc) {
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
       RollupLogger.Instance.log('updating record ...', LoggingLevel.FINE);

@@ -260,7 +260,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT_DISTINCT BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT BEFORE_DELETE should simply decrement');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT BEFORE_DELETE should simply decrement');
   }
 
   @IsTest
@@ -543,8 +543,7 @@ private class RollupTests {
         RollupOperation__c = 'SUM',
         CalcItemWhereClause__c = 'Name != \'RollupZ\'',
         IsFullRecordSet__c = true,
-        CalcItem__c = 'ContactPointAddress',
-        FullRecalculationDefaultNumberValue__c = 0
+        CalcItem__c = 'ContactPointAddress'
       )
     };
 
@@ -3283,7 +3282,7 @@ private class RollupTests {
       if (updatedAcc.Id == acc.Id) {
         System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should count only the distinct entries');
       } else if (updatedAcc.Id == oldAcc.Id) {
-        System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
+        System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT DISTINCT AFTER_UPDATE should be empty after reparenting');
       }
     }
   }
@@ -3354,10 +3353,10 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
-    Account updatedAcc = (Account) mock.Records[0];
+    Account updatedAcc = (Account) mock.Records[1];
     System.assertEquals(acc.Id, updatedAcc.Id);
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
-    Account updatedOldAcc = (Account) mock.Records[1];
+    Account updatedOldAcc = (Account) mock.Records[0];
     System.assertEquals(oldAcc.Id, updatedOldAcc.Id);
     System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
@@ -3369,7 +3368,7 @@ private class RollupTests {
       new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) }
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 3);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 1);
     Rollup.specificControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       MaxLookupRowsBeforeBatching__c = 1,

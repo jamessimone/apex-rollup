@@ -82,7 +82,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(null, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
+    System.assertEquals(0, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 
   @IsTest
@@ -538,11 +538,11 @@ private class RollupIntegrationTests {
 
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(appLogs);
     System.assertEquals(true, traversal.getIsFinished(), 'Traversal should not have aborted early');
-    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Account should match!');
+    System.assertEquals(greatGrandparent, traversal.retrieveParents(child.Id)[0], 'Account should match!');
 
     System.assertEquals(
       null,
-      traversal.retrieveParent(nonMatchingChild.Id),
+      traversal.retrieveParents(nonMatchingChild.Id),
       'No matching records should be returned for relationship that does not go fully up the chain'
     );
 
@@ -552,8 +552,8 @@ private class RollupIntegrationTests {
 
     // this also validates that the internal state of the finder is resilient; that it can be called more than once
     traversal = finder.getParents(appLogs);
-    System.assertEquals(greatGrandparent, traversal.retrieveParent(child.Id), 'Should still match!');
-    System.assertEquals(secondGreatGrandparent, traversal.retrieveParent(nonMatchingChild.Id), 'Should now match!');
+    System.assertEquals(greatGrandparent, traversal.retrieveParents(child.Id)[0], 'Should still match!');
+    System.assertEquals(secondGreatGrandparent, traversal.retrieveParents(nonMatchingChild.Id)[0], 'Should now match!');
   }
 
   @IsTest
@@ -1273,6 +1273,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldNotIncludeNullForCountDistinct() {
+    // TODO fixme
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT null PreferenceRank');
@@ -1446,7 +1447,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest

@@ -574,7 +574,7 @@ private class RollupCalculatorTests {
     Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = acc.Id);
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
 
-    System.assertEquals(0, calc.getReturnValue(), 'Null amount should be excluded');
+    System.assertEquals(null, calc.getReturnValue(), 'Null amount should be excluded');
   }
 
   @IsTest
@@ -1336,7 +1336,7 @@ private class RollupCalculatorTests {
   @IsTest
   static void shouldRecalcCountWithoutBigDecimalUnsortableIssue() {
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
-      0,
+      0.00,
       Rollup.Op.COUNT,
       Opportunity.Amount,
       Account.AnnualRevenue,

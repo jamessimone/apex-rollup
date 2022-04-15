@@ -126,6 +126,10 @@
                 <behavior>Edit</behavior>
                 <field>GrandparentRelationshipFieldPath__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>OneToManyGrandparentFields__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
