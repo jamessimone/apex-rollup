@@ -1068,13 +1068,13 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
-  static void someting() {
+  static void worksWithNYearsAgo() {
     Id accountId = RollupTestUtils.createId(Account.SObjectType);
     String whereClause =
       'AccountId = \'' +
       accountId +
       '\' AND CloseDate <= LAST_YEAR AND CloseDate > N_YEARS_AGO:3 AND StageName != \'Closed Lost\' AND StageName != \'Closed/No Event Fees Only';
-    Opportunity matchingOpp = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2));
+    Opportunity matchingOpp = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-1));
     Opportunity stageClosedLostNonMatch = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2), StageName = 'Closed Lost');
     Opportunity stageClosedNonMatch = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2), StageName = 'Closed/No Event Fees Only');
     Opportunity idNonMatch = new Opportunity(CloseDate = System.today().addYears(-2));

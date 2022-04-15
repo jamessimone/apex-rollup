@@ -1,7 +1,7 @@
 @SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
 public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN = Pattern.compile(
-    '(LAST|NEXT)_N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS):\\s?\\d*'
+    '(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*'
   );
   private static final Pattern DATE_FUNCTION_PATTERN = Pattern.compile(
     '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|' +
@@ -66,30 +66,37 @@ public without sharing abstract class RollupDateLiteral {
           'LAST_90_DAYS' => Last90DaysLiteral.class,
           'NEXT_90_DAYS' => Next90DaysLiteral.class,
           'LAST_N_DAYS' => LastNDaysLiteral.class,
+          'N_DAYS_AGO' => LastNDaysLiteral.class,
           'NEXT_N_DAYS' => NextNDaysLiteral.class,
           'LAST_N_WEEKS' => LastNWeeksLiteral.class,
+          'N_WEEKS_AGO' => LastNWeeksLiteral.class,
           'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
           'LAST_N_MONTHS' => LastNMonthsLiteral.class,
+          'N_MONTHS_AGO' => LastNMonthsLiteral.class,
           'NEXT_N_MONTHS' => NextNMonthsLiteral.class,
           'LAST_QUARTER' => LastQuarterLiteral.class,
           'THIS_QUARTER' => ThisQuarterLiteral.class,
           'NEXT_QUARTER' => NextQuarterLiteral.class,
           'LAST_N_QUARTERS' => LastNQuartersLiteral.class,
+          'N_QUARTERS_AGO' => LastNQuartersLiteral.class,
           'NEXT_N_QUARTERS' => NextNQuartersLiteral.class,
           'THIS_YEAR' => ThisYearLiteral.class,
           'LAST_YEAR' => LastYearLiteral.class,
           'NEXT_YEAR' => NextYearLiteral.class,
           'LAST_N_YEARS' => LastNYearsLiteral.class,
+          'N_YEARS_AGO' => LastNYearsLiteral.class,
           'NEXT_N_YEARS' => NextNYearsLiteral.class,
           'LAST_FISCAL_QUARTER' => LastFiscalQuarterLiteral.class,
           'THIS_FISCAL_QUARTER' => ThisFiscalQuarterLiteral.class,
           'NEXT_FISCAL_QUARTER' => NextFiscalQuarterLiteral.class,
           'LAST_N_FISCAL_QUARTERS' => LastNFiscalQuartersLiteral.class,
+          'N_FISCAL_QUARTERS_AGO' => LastNFiscalQuartersLiteral.class,
           'NEXT_N_FISCAL_QUARTERS' => NextNFiscalQuartersLiteral.class,
           'LAST_FISCAL_YEAR' => LastFiscalYearLiteral.class,
           'THIS_FISCAL_YEAR' => ThisFiscalYearLiteral.class,
           'NEXT_FISCAL_YEAR' => NextFiscalYearLiteral.class,
           'LAST_N_FISCAL_YEARS' => LastNFiscalYearsLiteral.class,
+          'N_FISCAL_YEARS_AGO' => LastNFiscalYearsLiteral.class,
           'NEXT_N_FISCAL_YEARS' => NextNFiscalYearsLiteral.class,
           // Functions
           'CALENDAR_MONTH(' => CalendarMonthFunctionLiteral.class,
