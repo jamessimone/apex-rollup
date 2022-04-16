@@ -373,7 +373,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class CountDistinctRollupCalculator extends RollupCalculator {
+  private without sharing class CountDistinctRollupCalculator extends RollupCalculator {
     private final Set<Object> distinctValues = new Set<Object>();
     private Boolean isIdCount;
     public CountDistinctRollupCalculator(
@@ -459,7 +459,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing virtual class DecimalRollupCalculator extends RollupCalculator {
+  private without sharing virtual class DecimalRollupCalculator extends RollupCalculator {
     private Decimal returnDecimal;
     public DecimalRollupCalculator(
       Object priorVal,
@@ -607,7 +607,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing virtual class DatetimeRollupCalculator extends DecimalRollupCalculator {
+  private without sharing virtual class DatetimeRollupCalculator extends DecimalRollupCalculator {
     public DatetimeRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -648,7 +648,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class DateRollupCalculator extends DatetimeRollupCalculator {
+  private without sharing class DateRollupCalculator extends DatetimeRollupCalculator {
     // for Date, it's not necessary to override the "getDecimalOrDefault" method in DatetimeRollupCalculator
     // because the conversion only happens in "getReturnValue"
     public DateRollupCalculator(
@@ -677,7 +677,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class TimeRollupCalculator extends DatetimeRollupCalculator {
+  private without sharing class TimeRollupCalculator extends DatetimeRollupCalculator {
     public TimeRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -719,7 +719,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class CountRollupCalculator extends DecimalRollupCalculator {
+  private without sharing class CountRollupCalculator extends DecimalRollupCalculator {
     public CountRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -771,7 +771,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing virtual class StringRollupCalculator extends RollupCalculator {
+  private without sharing virtual class StringRollupCalculator extends RollupCalculator {
     protected String concatDelimiter = ', ';
     private String stringVal;
 
@@ -993,7 +993,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class PicklistRollupCalculator extends StringRollupCalculator {
+  private without sharing class PicklistRollupCalculator extends StringRollupCalculator {
     private final RollupFieldInitializer.PicklistController picklistController;
     private final RollupFieldInitializer.PicklistController rollupFieldController;
     public PicklistRollupCalculator(
@@ -1033,7 +1033,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class AverageRollupCalculator extends RollupCalculator {
+  private without sharing class AverageRollupCalculator extends RollupCalculator {
     public AverageRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1078,7 +1078,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private inherited sharing class FirstLastRollupCalculator extends RollupCalculator {
+  private without sharing class FirstLastRollupCalculator extends RollupCalculator {
     private final SObjectType calcItemSObjectType;
     public FirstLastRollupCalculator(
       Object priorVal,

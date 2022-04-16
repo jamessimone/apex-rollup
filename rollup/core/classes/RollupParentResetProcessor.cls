@@ -1,4 +1,4 @@
-public inherited sharing class RollupParentResetProcessor extends RollupFullBatchRecalculator {
+public without sharing class RollupParentResetProcessor extends RollupFullBatchRecalculator {
   @TestVisible
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
   private static Boolean isValidRun = false;

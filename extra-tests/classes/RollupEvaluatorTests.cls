@@ -1066,4 +1066,26 @@ private class RollupEvaluatorTests {
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Account.SObjectType);
     System.assertEquals(true, eval.matches(new Account()));
   }
+
+  @IsTest
+  static void worksWithNYearsAgo() {
+    Id accountId = RollupTestUtils.createId(Account.SObjectType);
+    String whereClause =
+      'AccountId = \'' +
+      accountId +
+      '\' AND CloseDate <= LAST_YEAR AND CloseDate > N_YEARS_AGO:3 AND StageName != \'Closed Lost\' AND StageName != \'Closed/No Event Fees Only';
+    Opportunity matchingOpp = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-1));
+    Opportunity stageClosedLostNonMatch = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2), StageName = 'Closed Lost');
+    Opportunity stageClosedNonMatch = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2), StageName = 'Closed/No Event Fees Only');
+    Opportunity idNonMatch = new Opportunity(CloseDate = System.today().addYears(-2));
+    Opportunity closeDateNonMatch = new Opportunity(CloseDate = System.today(), AccountId = accountId);
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(true, eval.matches(matchingOpp));
+    System.assertEquals(false, eval.matches(stageClosedLostNonMatch));
+    System.assertEquals(false, eval.matches(stageClosedNonMatch));
+    System.assertEquals(false, eval.matches(idNonMatch));
+    System.assertEquals(false, eval.matches(closeDateNonMatch));
+  }
 }
