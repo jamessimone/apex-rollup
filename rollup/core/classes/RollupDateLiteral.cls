@@ -66,37 +66,37 @@ public without sharing abstract class RollupDateLiteral {
           'LAST_90_DAYS' => Last90DaysLiteral.class,
           'NEXT_90_DAYS' => Next90DaysLiteral.class,
           'LAST_N_DAYS' => LastNDaysLiteral.class,
-          'N_DAYS_AGO' => LastNDaysLiteral.class,
+          'N_DAYS_AGO' => NDaysAgoLiteral.class,
           'NEXT_N_DAYS' => NextNDaysLiteral.class,
           'LAST_N_WEEKS' => LastNWeeksLiteral.class,
-          'N_WEEKS_AGO' => LastNWeeksLiteral.class,
+          'N_WEEKS_AGO' => NWeeksAgoLiteral.class,
           'NEXT_N_WEEKS' => NextNWeeksLiteral.class,
           'LAST_N_MONTHS' => LastNMonthsLiteral.class,
-          'N_MONTHS_AGO' => LastNMonthsLiteral.class,
+          'N_MONTHS_AGO' => NMonthsAgoLiteral.class,
           'NEXT_N_MONTHS' => NextNMonthsLiteral.class,
           'LAST_QUARTER' => LastQuarterLiteral.class,
           'THIS_QUARTER' => ThisQuarterLiteral.class,
           'NEXT_QUARTER' => NextQuarterLiteral.class,
           'LAST_N_QUARTERS' => LastNQuartersLiteral.class,
-          'N_QUARTERS_AGO' => LastNQuartersLiteral.class,
+          'N_QUARTERS_AGO' => NQuartersAgoLiteral.class,
           'NEXT_N_QUARTERS' => NextNQuartersLiteral.class,
           'THIS_YEAR' => ThisYearLiteral.class,
           'LAST_YEAR' => LastYearLiteral.class,
           'NEXT_YEAR' => NextYearLiteral.class,
           'LAST_N_YEARS' => LastNYearsLiteral.class,
-          'N_YEARS_AGO' => LastNYearsLiteral.class,
+          'N_YEARS_AGO' => NYearsAgoLiteral.class,
           'NEXT_N_YEARS' => NextNYearsLiteral.class,
           'LAST_FISCAL_QUARTER' => LastFiscalQuarterLiteral.class,
           'THIS_FISCAL_QUARTER' => ThisFiscalQuarterLiteral.class,
           'NEXT_FISCAL_QUARTER' => NextFiscalQuarterLiteral.class,
           'LAST_N_FISCAL_QUARTERS' => LastNFiscalQuartersLiteral.class,
-          'N_FISCAL_QUARTERS_AGO' => LastNFiscalQuartersLiteral.class,
+          'N_FISCAL_QUARTERS_AGO' => NFiscalQuartersAgoLiteral.class,
           'NEXT_N_FISCAL_QUARTERS' => NextNFiscalQuartersLiteral.class,
           'LAST_FISCAL_YEAR' => LastFiscalYearLiteral.class,
           'THIS_FISCAL_YEAR' => ThisFiscalYearLiteral.class,
           'NEXT_FISCAL_YEAR' => NextFiscalYearLiteral.class,
           'LAST_N_FISCAL_YEARS' => LastNFiscalYearsLiteral.class,
-          'N_FISCAL_YEARS_AGO' => LastNFiscalYearsLiteral.class,
+          'N_FISCAL_YEARS_AGO' => NFiscalYearsAgoLiteral.class,
           'NEXT_N_FISCAL_YEARS' => NextNFiscalYearsLiteral.class,
           // Functions
           'CALENDAR_MONTH(' => CalendarMonthFunctionLiteral.class,
@@ -419,6 +419,17 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   /**
+   * For the number n provided, creates a fixed bound set n days in the past
+   */
+  private class NDaysAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(START_OF_TODAY.addDays(-dateRange).dateGmt(), START_TIME);
+      this.bound = this.ref;
+    }
+  }
+
+  /**
    * For the number n provided, starts 00:00:00 of the next day and continues for the next n days.
    * This does not include the current day. For example, NEXT_N_DAYS:1 is equivalent to TOMORROW.
    */
@@ -442,6 +453,16 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   /**
+   * For the number n provided, creates a fixed week bound set n weeks ago in the past
+   */
+  private class NWeeksAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1 * 7 * Integer.valueOf(num)), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+    }
+  }
+
+  /**
    * For the number n provided, starts 00:00:00 of the first day of the next week and continues for the next n weeks.
    */
   private class NextNWeeksLiteral extends RangedLiteral {
@@ -461,6 +482,17 @@ public without sharing abstract class RollupDateLiteral {
       Date lastDayPreviousMonth = System.today().toStartOfMonth().addDays(-1);
       this.bound = Datetime.newInstanceGmt(lastDayPreviousMonth, END_TIME);
       this.ref = Datetime.newInstanceGmt(lastDayPreviousMonth.toStartOfMonth().addMonths(-dateRange), START_TIME);
+    }
+  }
+
+  /**
+   * For the number n provided, creates a fixed month bound set n months ago in the past
+   */
+  private class NMonthsAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(-dateRange), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).date(), END_TIME);
     }
   }
 
@@ -537,6 +569,17 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   /**
+   * For the number n provided, creates a fixed quarter bound set n quarters ago in the past
+   */
+  private class NQuartersAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer quarterRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(3).date(), END_TIME);
+    }
+  }
+
+  /**
    * Starts 00:00:00 of the next quarter and continues to the end of the nth quarter.
    */
   private virtual class NextNQuartersLiteral extends RangedLiteral {
@@ -599,6 +642,17 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   /**
+   * For the number n provided, creates a fixed year bound set n years ago in the past
+   */
+  private class NYearsAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer dateRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year(), 1, 1).addYears(-dateRange), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addYears(1).date(), END_TIME);
+    }
+  }
+
+  /**
    * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of the nth year.
    */
   private virtual class NextNYearsLiteral extends RangedLiteral {
@@ -650,6 +704,17 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   /**
+   * For the number n provided, creates a fixed fiscal quarter bound set n fiscal quarters ago in the past
+   */
+  private class NFiscalQuartersAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer quarterRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.CurrentQuarterStartDate.addMonths(-3 * quarterRange), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(3).date(), END_TIME);
+    }
+  }
+
+  /**
    * Starts 00:00:00 on the first day of the next fiscal quarter and continues through the end of the last day of the nth fiscal quarter.
    */
   private class NextNFiscalQuartersLiteral extends NextNQuartersLiteral {
@@ -694,6 +759,17 @@ public without sharing abstract class RollupDateLiteral {
   private class LastNFiscalYearsLiteral extends LastNYearsLiteral {
     protected override Date getStartOfLastYear() {
       return FISCAL_INFO.FiscalYearStartDate.addYears(-1);
+    }
+  }
+
+  /**
+   * For the number n provided, creates a fixed fiscal year bound set n fiscal years ago in the past
+   */
+  private class NFiscalYearsAgoLiteral extends RangedLiteral {
+    protected override void setDynamicValue(String num) {
+      Integer yearRange = Integer.valueOf(num);
+      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearStartDate.addYears(-yearRange), START_TIME);
+      this.bound = Datetime.newInstanceGmt(this.ref.addYears(1).date(), END_TIME);
     }
   }
 

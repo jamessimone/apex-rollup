@@ -358,7 +358,6 @@ private class RollupDateLiteralTests {
     RollupDateLiteral nDaysAgo = RollupDateLiteral.get('N_DAYS_AGO:5');
 
     System.assertEquals(true, nDaysAgo.matches(nDaysAgoDate, '='), 'Date value should have matched: ' + nDaysAgoDate + ', ' + nDaysAgo);
-    System.assertEquals(true, nDaysAgo.matches(nDaysAgoDate.addDays(1), '='), 'Date value is within: ' + nDaysAgo);
     System.assertEquals(true, nDaysAgo.matches(nDaysAgoDatetime, '='), 'Datetime value should have matched: ' + nDaysAgoDatetime + ', ' + nDaysAgo);
     System.assertNotEquals(true, nDaysAgo.matches(System.today().addDays(2), '='), 'Should not include future days');
 
@@ -431,7 +430,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nWeeksAgo.matches(nWeeksAgoDate, '>='));
     System.assertEquals(true, nWeeksAgo.matches(nWeeksAgoDatetime, '>='));
     System.assertEquals(true, nWeeksAgo.matches(System.today(), '>'));
-    System.assertNotEquals(true, nWeeksAgo.matches(System.now().addDays(-9), '>'));
+    System.assertNotEquals(true, nWeeksAgo.matches(System.now().addDays(-15), '>'));
     System.assertNotEquals(true, nWeeksAgo.matches(nWeeksAgoDate, '>'));
 
     System.assertEquals(true, nWeeksAgo.matches(nWeeksAgoDate, '<='));
@@ -488,13 +487,12 @@ private class RollupDateLiteralTests {
     RollupDateLiteral nMonthsAgo = RollupDateLiteral.get('N_MONTHS_AGO:2');
 
     System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDate, '='), 'Date value should have matched: ' + nMonthsAgoDate + ' | ' + nMonthsAgo);
-    System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDate.addDays(30), '='), 'Date was within: ' + nMonthsAgo);
+    System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDate.addDays(2), '='), 'Date was within: ' + nMonthsAgo);
     System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDatetime, '='), 'Datetime value should have matched: ' + nMonthsAgoDatetime);
 
     System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDate, '>='));
     System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDatetime, '>='));
     System.assertEquals(true, nMonthsAgo.matches(System.today(), '>'));
-    System.assertNotEquals(true, nMonthsAgo.matches(System.now().date().toStartOfMonth().addDays(-1), '>'));
     System.assertNotEquals(true, nMonthsAgo.matches(nMonthsAgoDate, '>'));
 
     System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDate, '<='));
@@ -650,7 +648,7 @@ private class RollupDateLiteralTests {
     Date endDate = (Date) nQuartersPeriod.get('endDate');
     Date nQuartersAgoDate = startDate.addMonths(1);
     Datetime nQuartersAgoDatetime = Datetime.newInstanceGmt(nQuartersAgoDate, Time.newInstance(0, 0, 0, 0));
-    RollupDateLiteral nQuartersAgo = RollupDateLiteral.get('N_QUARTERS_AGO: 7');
+    RollupDateLiteral nQuartersAgo = RollupDateLiteral.get('N_QUARTERS_AGO:7');
 
     System.assertEquals(true, nQuartersAgo.matches(startDate, '='), startDate + ' | ' + nQuartersAgo);
     System.assertEquals(true, nQuartersAgo.matches(endDate, '='), endDate + ' | ' + nQuartersAgo);
@@ -660,10 +658,9 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nQuartersAgo.matches(nQuartersAgoDate, '>='));
     System.assertEquals(true, nQuartersAgo.matches(nQuartersAgoDatetime, '>='));
-    Date oneOverPriorQuarterStart = [SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_QUARTER].StartDate.addDays(1);
+    Date oneOverPriorQuarterStart = [SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = N_QUARTERS_AGO:6].StartDate.addDays(1);
     // ugly, but the only way to ensure the sentinel value is working ...
     System.assertEquals(true, nQuartersAgo.matches(oneOverPriorQuarterStart, '>'), oneOverPriorQuarterStart + ' | ' + nQuartersAgo);
-    System.assertNotEquals(true, nQuartersAgo.matches(oneOverPriorQuarterStart.addMonths(-1), '>'));
     System.assertNotEquals(true, nQuartersAgo.matches(nQuartersAgoDate, '>'));
 
     System.assertEquals(true, nQuartersAgo.matches(nQuartersAgoDate, '<='));
@@ -812,18 +809,18 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNYearsAgo() {
     Integer yearsInThePast = 3;
-    Date nYearsAgoDate = Date.newInstance(System.today().year() - (yearsInThePast - 1), 1, 1);
+    Date nYearsAgoDate = Date.newInstance(System.today().year() - (yearsInThePast), 1, 1);
     Datetime nYearsAgoDatetime = Datetime.newInstanceGmt(nYearsAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nYearsAgo = RollupDateLiteral.get('N_YEARS_AGO:' + yearsInThePast);
-    Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
+    Date firstOfNextYear = nYearsAgoDate.addYears(1).addDays(1);
 
     System.assertEquals(true, nYearsAgo.matches(nYearsAgoDate, '='), 'Date value should have matched: ' + nYearsAgoDate + ' | ' + nYearsAgo);
-    System.assertEquals(true, nYearsAgo.matches(nYearsAgoDate.addYears(1), '='), 'Date was within: ' + nYearsAgo);
+    System.assertEquals(true, nYearsAgo.matches(nYearsAgoDate.addYears(1).addDays(-1), '='), 'Date was within: ' + nYearsAgo);
     System.assertEquals(true, nYearsAgo.matches(nYearsAgoDatetime, '='), 'Datetime value should have matched: ' + nYearsAgoDatetime);
     System.assertNotEquals(
       true,
-      nYearsAgo.matches(Datetime.newInstanceGmt(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
-      'Should not equal anything past 00:00:00 on first date of last year'
+      nYearsAgo.matches(Datetime.newInstanceGmt(firstOfNextYear, Time.newInstance(0, 0, 0, 0)), '='),
+      'Should not equal anything past 00:00:00 on first date of the next year'
     );
 
     System.assertEquals(true, nYearsAgo.matches(nYearsAgoDate, '>='));
@@ -1017,13 +1014,13 @@ private class RollupDateLiteralTests {
     AggregateResult nFiscalQuartersAgoResult = [
       SELECT MIN(StartDate) startDate, MIN(EndDate) endDate
       FROM Period
-      WHERE Type = 'Quarter' AND EndDate = N_FISCAL_QUARTERS_AGO:7
+      WHERE Type = 'Quarter' AND EndDate = N_FISCAL_QUARTERS_AGO:2
     ];
     Date startDate = (Date) nFiscalQuartersAgoResult.get('startDate');
     Date endDate = (Date) nFiscalQuartersAgoResult.get('endDate');
     Date nFiscalQuartersAgoDate = startDate.addMonths(1);
     Datetime nFiscalQuartersAgoDatetime = Datetime.newInstanceGmt(nFiscalQuartersAgoDate, Time.newInstance(0, 0, 0, 0));
-    RollupDateLiteral nFiscalQuartersAgo = RollupDateLiteral.get('N_FISCAL_QUARTERS_AGO: 7');
+    RollupDateLiteral nFiscalQuartersAgo = RollupDateLiteral.get('N_FISCAL_QUARTERS_AGO: 2');
 
     System.assertEquals(true, nFiscalQuartersAgo.matches(startDate, '='), startDate + ' | ' + nFiscalQuartersAgo);
     System.assertEquals(true, nFiscalQuartersAgo.matches(endDate, '='), endDate + ' | ' + nFiscalQuartersAgo);
@@ -1040,7 +1037,7 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, nFiscalQuartersAgo.matches(nFiscalQuartersAgoDate, '>='));
     System.assertEquals(true, nFiscalQuartersAgo.matches(nFiscalQuartersAgoDatetime, '>='));
-    Date oneOverPriorQuarterStart = [SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_FISCAL_QUARTER].StartDate.addDays(1);
+    Date oneOverPriorQuarterStart = [SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = N_FISCAL_QUARTERS_AGO:1].StartDate.addDays(1);
     // ugly, but the only way to ensure the sentinel value is working ...
     System.assertEquals(true, nFiscalQuartersAgo.matches(oneOverPriorQuarterStart, '>'), oneOverPriorQuarterStart + ' | ' + nFiscalQuartersAgo);
     System.assertNotEquals(true, nFiscalQuartersAgo.matches(oneOverPriorQuarterStart.addMonths(-1), '>'));
@@ -1218,7 +1215,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNFiscalYearsAgo() {
     Integer yearsInThePast = 3;
-    Date nFiscalYearsAgoDate = Date.newInstance(System.today().year() - (yearsInThePast - 1), 1, 1);
+    Date nFiscalYearsAgoDate = Date.newInstance(System.today().year() - (yearsInThePast), 1, 1);
     Datetime nFiscalYearsAgoDatetime = Datetime.newInstanceGmt(nFiscalYearsAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nFiscalYearsAgo = RollupDateLiteral.get('N_FISCAL_YEARS_AGO:' + yearsInThePast);
     Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
@@ -1231,7 +1228,7 @@ private class RollupDateLiteralTests {
       ' | ' +
       nFiscalYearsAgo
     );
-    System.assertEquals(true, nFiscalYearsAgo.matches(nFiscalYearsAgoDate.addYears(1), '='), 'Date was within: ' + nFiscalYearsAgo);
+    System.assertEquals(true, nFiscalYearsAgo.matches(nFiscalYearsAgoDate.addDays(1), '='), 'Date was within: ' + nFiscalYearsAgo);
     System.assertEquals(true, nFiscalYearsAgo.matches(nFiscalYearsAgoDatetime, '='), 'Datetime value should have matched: ' + nFiscalYearsAgoDatetime);
     System.assertNotEquals(
       true,
