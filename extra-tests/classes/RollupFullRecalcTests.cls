@@ -1584,4 +1584,33 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(8, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void parentLevelResetAffectsAllParents() {
+    Account acc = [SELECT Id, Name FROM Account];
+    Account nonMatching = new Account(Name = 'Non-matching', AnnualRevenue = 5);
+    insert nonMatching;
+
+    insert new Opportunity(Amount = 5, AccountId = acc.Id, CloseDate = System.today(), StageName = 'A', Name = 'Matching opp');
+
+    Test.startTest();
+    Rollup.performFullRecalculation(
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Account.Name != \'' + nonMatching.Name + '\''
+      )
+    );
+    Test.stopTest();
+
+    nonMatching = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :nonMatching.Id];
+    System.assertEquals(null, nonMatching.AnnualRevenue, 'Non matching account should have been cleared');
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(5, acc.AnnualRevenue);
+  }
 }
