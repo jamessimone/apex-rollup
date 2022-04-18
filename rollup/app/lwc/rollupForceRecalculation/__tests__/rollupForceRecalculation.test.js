@@ -43,9 +43,13 @@ jest.mock(
   { virtual: true }
 );
 
-function setElementValue(element, value) {
+function setElementValue(element, value, isCombobox = false) {
+  let eventName = 'commit';
+  if (isCombobox) {
+    eventName = 'change';
+  }
   element.value = value;
-  element.dispatchEvent(new CustomEvent('commit'));
+  element.dispatchEvent(new CustomEvent(eventName, isCombobox ? { detail: { value: element.value } } : undefined));
 }
 
 describe('Rollup force recalc tests', () => {
@@ -96,8 +100,14 @@ describe('Rollup force recalc tests', () => {
     const lookupSObjectName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="LookupObject__c"]');
     setElementValue(lookupSObjectName, 'Account');
 
-    const operationName = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="RollupOperation__c"]');
-    setElementValue(operationName, 'CONCAT');
+    const operationName = fullRecalc.shadowRoot.querySelector('lightning-combobox[data-id="RollupOperation__c"]');
+    setElementValue(operationName, 'CONCAT', true);
+
+    const grandparentFieldPath = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="GrandparentRelationshipFieldPath__c"]');
+    setElementValue(grandparentFieldPath, 'Something__r.SomethingElse__r.Name');
+
+    const oneToManyGrandparentFields = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="OneToManyGrandparentFields__c"]');
+    setElementValue(oneToManyGrandparentFields, 'Something__c.SomethingElse__c, SomethingElse__c.Name');
 
     const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
     submitButton.click();
@@ -114,7 +124,9 @@ describe('Rollup force recalc tests', () => {
           RollupOperation__c: 'CONCAT',
           CalcItemWhereClause__c: '',
           ConcatDelimiter__c: '',
-          SplitConcatDelimiterOnCalcItem__c: false
+          SplitConcatDelimiterOnCalcItem__c: false,
+          GrandparentRelationshipFieldPath__c: 'Something__r.SomethingElse__r.Name',
+          OneToManyGrandparentFields__c: 'Something__c.SomethingElse__c, SomethingElse__c.Name'
         })
       );
     });
@@ -202,7 +214,7 @@ describe('Rollup force recalc tests', () => {
     });
   });
 
-  it('sets error when CMDT is not returned', () => {
+  it('sets error when CMDT is not returned', async () => {
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
     });
@@ -221,7 +233,7 @@ describe('Rollup force recalc tests', () => {
     });
   });
 
-  it('succeeds even when exception is thrown', () => {
+  it('succeeds even when exception is thrown', async () => {
     performSerializedFullRecalculation.mockRejectedValue('error!');
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
@@ -241,7 +253,7 @@ describe('Rollup force recalc tests', () => {
       });
   });
 
-  it('succeeds even when no process id', () => {
+  it('succeeds even when no process id', async () => {
     performSerializedFullRecalculation.mockResolvedValue('No process Id');
 
     const fullRecalc = createElement('c-rollup-force-recalculation', {
@@ -262,9 +274,31 @@ describe('Rollup force recalc tests', () => {
       });
   });
 
-  it('polls when process Id given', () => {
+  it('polls when process Id given', async () => {
     // simulate second poll receiving one of the completed values
-    getBatchRollupStatus.mockResolvedValueOnce('test').mockResolvedValueOnce('Completed');
+    getBatchRollupStatus.mockResolvedValueOnce('Completed').mockResolvedValueOnce('test');
+    performSerializedFullRecalculation.mockResolvedValueOnce('someProcessId');
+
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+    submitButton.click();
+
+    let hasError = false;
+    return flushPromises()
+      .catch(() => {
+        hasError = true;
+      })
+      .finally(() => {
+        expect(hasError).toBeFalsy();
+      });
+  });
+
+  it('returns immediately when first poll is success', async () => {
+    getBatchRollupStatus.mockResolvedValue('Completed');
     performSerializedFullRecalculation.mockResolvedValueOnce('someProcessId');
 
     const fullRecalc = createElement('c-rollup-force-recalculation', {

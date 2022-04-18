@@ -27,7 +27,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,
     String queryString,
-    Set<Id> recordIds,
+    Set<String> recordIds,
     InvocationPoint invokePoint
   ) {
     super(getRefinedQueryString(queryString, matchingMeta), invokePoint, matchingMeta, calcItemType, recordIds, null);
@@ -70,7 +70,9 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     RollupLogger.Instance.log('resetting parent fields for: ' + calcItems.size() + ' items', LoggingLevel.DEBUG);
     for (SObject parentItem : calcItems) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
-        parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
+        if (this.parentRollupFieldHasBeenReset(rollupMeta, parentItem) == false) {
+          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
+        }
       }
     }
     this.getDML().doUpdate(calcItems);

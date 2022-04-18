@@ -3,7 +3,7 @@ public without sharing class RollupDeferredFullRecalcProcessor extends RollupAsy
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,
     String queryString,
-    Set<Id> recordIds,
+    Set<String> recordIds,
     InvocationPoint invokePoint,
     FullRecalcProcessor postProcessor
   ) {

@@ -167,7 +167,7 @@ global without sharing virtual class Rollup {
   }
 
   private class RollupMetadata {
-    public final Set<Id> recordIds = new Set<Id>();
+    public final Set<String> recordIds = new Set<String>();
     public final Set<String> queryFields = new Set<String>();
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
     public String whereClause = '';
@@ -370,7 +370,7 @@ global without sharing virtual class Rollup {
 
     Integer amountOfCalcItems = 0;
     Set<String> objIds = new Set<String>(); // will always be present as a bind var, below
-    Set<Id> recordIds = new Set<Id>(); // always empty, here, but necessary for the "getCountFromDb" call
+    Set<String> recordIds = new Set<String>(); // always empty, here, but necessary for the "getCountFromDb" call
     Map<SObjectType, RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
     String potentialWhereClause = '';
     String delimiter = ' ||| ';
@@ -466,6 +466,15 @@ global without sharing virtual class Rollup {
   @AuraEnabled
   global static String performFullRecalculation(Rollup__mdt meta) {
     return performSerializedFullRecalculation(JSON.serialize(meta));
+  }
+
+  @AuraEnabled
+  public static List<String> getRollupOperationValues() {
+    List<String> picklistValues = new List<String>();
+    for (Schema.PicklistEntry entry : Rollup__mdt.RollupOperation__c.getDescribe().getPicklistValues()) {
+      picklistValues.add(entry.getValue());
+    }
+    return picklistValues;
   }
 
   global class FlowInput {
@@ -2053,20 +2062,20 @@ global without sharing virtual class Rollup {
     List<Rollup__mdt> matchingMeta,
     Integer amountOfCalcItems,
     String queryString,
-    Set<Id> recordIds,
+    Set<String> recordIds,
     SObjectType calcItemType,
     InvocationPoint invokePoint
   ) {
     for (Rollup__mdt meta : matchingMeta) {
       meta.IsFullRecordSet__c = true;
     }
-    Boolean shouldQueue =
-      amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
-      amountOfCalcItems < getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).MaxLookupRowsBeforeBatching__c;
     RollupAsyncProcessor.FullRecalcProcessor parentResetProcessor;
     SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
     parentResetProcessor = new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
+    Boolean shouldQueue =
+      amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
+      amountOfCalcItems < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false && isFullRecalcApp) {
       return parentResetProcessor;
     } else if (invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
@@ -2207,7 +2216,7 @@ global without sharing virtual class Rollup {
   private class QueryWrapper {
     private Boolean hasQuery = false;
     private String query;
-    public final Set<Id> recordIds = new Set<Id>();
+    public final Set<String> recordIds = new Set<String>();
     private final List<String> stringifiedRecordIds = new List<String>();
     private QueryWrapper() {
     }
@@ -2275,7 +2284,7 @@ global without sharing virtual class Rollup {
     return getCountFromDb(countQuery, objIds, null);
   }
 
-  public static Integer getCountFromDb(String countQuery, Set<String> objIds, Set<Id> recordIds) {
+  public static Integer getCountFromDb(String countQuery, Set<String> objIds, Set<String> recordIds) {
     if (countQuery.contains('ALL ROWS')) {
       countQuery = countQuery.replace('ALL ROWS', '');
     }

@@ -6,7 +6,7 @@ private class RollupParentResetProcessorTests {
       new List<Rollup__mdt>{ new Rollup__mdt(RollupFieldOnLookupObject__c = 'Description', LookupObject__c = 'Account') },
       Account.SObjectType,
       'SELECT Id\nFROM Account WHERE Id != null',
-      new Set<Id>(),
+      new Set<String>(),
       null
     );
 
@@ -26,7 +26,7 @@ private class RollupParentResetProcessorTests {
       new List<Rollup__mdt>(),
       Account.SObjectType,
       'SELECT Id\nFROM Account WHERE Id != null',
-      new Set<Id>(),
+      new Set<String>(),
       null
     );
 
@@ -46,7 +46,7 @@ private class RollupParentResetProcessorTests {
       new List<Rollup__mdt>{ new Rollup__mdt(RollupFieldOnLookupObject__c = 'AnnualRevenue', LookupObject__c = 'Account') },
       Account.SObjectType,
       'SELECT Id\nFROM Account WHERE Id != null',
-      new Set<Id>(),
+      new Set<String>(),
       null
     );
     processor.runCalc(); // this one is valid
@@ -55,7 +55,7 @@ private class RollupParentResetProcessorTests {
       new List<Rollup__mdt>{ new Rollup__mdt(RollupFieldOnLookupObject__c = 'Description', LookupObject__c = 'Account') },
       Account.SObjectType,
       'SELECT Id\nFROM Account WHERE Id != null',
-      new Set<Id>(),
+      new Set<String>(),
       null
     );
 

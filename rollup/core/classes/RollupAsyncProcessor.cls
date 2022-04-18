@@ -53,21 +53,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   public abstract without sharing class FullRecalcProcessor extends QueueableProcessor {
     protected final String queryString;
     protected final List<Rollup__mdt> rollupInfo;
-    protected final Set<Id> recordIds;
-    protected final Set<Id> objIds = new Set<Id>(); // necessary; there's a bind variable in the query string
+    protected final Set<String> recordIds;
+    protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
     private final Set<String> previouslyResetParents = new Set<String>();
     private final FullRecalcProcessor postProcessor;
-
-    public FullRecalcProcessor(String queryString, InvocationPoint invokePoint, List<Rollup__mdt> rollupInfo, SObjectType calcItemType, Set<Id> recordIds) {
-      this(queryString, invokePoint, rollupInfo, calcItemType, recordIds, null);
-    }
 
     public FullRecalcProcessor(
       String queryString,
       InvocationPoint invokePoint,
       List<Rollup__mdt> rollupInfo,
       SObjectType calcItemType,
-      Set<Id> recordIds,
+      Set<String> recordIds,
       FullRecalcProcessor postProcessor
     ) {
       super(invokePoint);
@@ -102,17 +98,22 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
+    protected Boolean parentRollupFieldHasBeenReset(Rollup__mdt meta, SObject parent) {
+      return this.previouslyResetParents.contains(this.getKey(meta.RollupFieldOnLookupObject__c, parent));
+    }
+
     private Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-      return this.previouslyResetParents.contains(this.getKey(processor, parent));
+      return this.previouslyResetParents.contains(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
     }
 
     private void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-      this.previouslyResetParents.add(this.getKey(processor, parent));
+      this.previouslyResetParents.add(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
       this.postProcessor?.recordIds.add(parent.Id);
+      this.postProcessor?.storeParentResetField(processor, parent);
     }
 
-    private String getKey(RollupAsyncProcessor processor, SObject parent) {
-      return String.valueOf(processor.opFieldOnLookupObject) + parent.Id;
+    private String getKey(String fieldKey, SObject parent) {
+      return fieldKey + parent.Id;
     }
 
     private void overrideRollupControl() {
