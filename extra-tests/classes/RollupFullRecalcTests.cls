@@ -1376,7 +1376,8 @@ private class RollupFullRecalcTests {
         )
       },
       ContactPointAddress.SObjectType,
-      new Set<Id>()
+      new Set<Id>(),
+      null
     );
 
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });

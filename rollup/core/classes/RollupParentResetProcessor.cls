@@ -30,7 +30,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     Set<Id> recordIds,
     InvocationPoint invokePoint
   ) {
-    super(getRefinedQueryString(queryString, matchingMeta), invokePoint, matchingMeta, calcItemType, recordIds);
+    super(getRefinedQueryString(queryString, matchingMeta), invokePoint, matchingMeta, calcItemType, recordIds, null);
     this.overridesRunCalc = true;
     this.isNoOp = false;
     this.shouldSortToFront = true;
@@ -40,6 +40,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     this.isProcessed = true;
     // reset isValidRun flag properly
     getRefinedQueryString(this.queryString, this.rollupInfo);
+    this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
     if (isValidRun == false) {
       return processId;

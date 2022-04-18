@@ -27,6 +27,7 @@ global without sharing virtual class Rollup {
   private static Boolean isCDC = false;
   private static Boolean isDeferralAllowed = true;
   private static Boolean isFullRecalcApp = false;
+  private static String currentJobId;
 
   protected final RollupControl__mdt rollupControl;
   protected final InvocationPoint invokePoint;
@@ -281,6 +282,10 @@ global without sharing virtual class Rollup {
     isDeferralAllowed = value;
   }
 
+  protected void setCurrentJobId(String jobId) {
+    currentJobId = jobId;
+  }
+
   protected RollupAsyncProcessor getAsyncRollup(
     List<Rollup__mdt> rollupOperations,
     SObjectType sObjectType,
@@ -440,6 +445,9 @@ global without sharing virtual class Rollup {
 
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
+    if (currentJobId != null) {
+      jobId = currentJobId;
+    }
     return [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
   }
 
@@ -2052,19 +2060,24 @@ global without sharing virtual class Rollup {
     for (Rollup__mdt meta : matchingMeta) {
       meta.IsFullRecordSet__c = true;
     }
-    Rollup instance = new Rollup(invokePoint);
     Boolean shouldQueue =
       amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
-      amountOfCalcItems < instance.rollupControl.MaxLookupRowsBeforeBatching__c;
+      amountOfCalcItems < getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl).MaxLookupRowsBeforeBatching__c;
+    RollupAsyncProcessor.FullRecalcProcessor parentResetProcessor;
+    SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
+    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
+    parentResetProcessor = new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
     if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false && isFullRecalcApp) {
-      SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
-      String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
-      return new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
-    } else if (shouldQueue) {
-      return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint);
+      return parentResetProcessor;
+    } else if (invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
+      parentResetProcessor = null;
+    }
+
+    if (shouldQueue) {
+      return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint, parentResetProcessor);
     } else {
       String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta));
-      return new RollupFullBatchRecalculator(queryWithOrderBy, invokePoint, matchingMeta, calcItemType, recordIds);
+      return new RollupFullBatchRecalculator(queryWithOrderBy, invokePoint, matchingMeta, calcItemType, recordIds, parentResetProcessor);
     }
   }
 
