@@ -771,6 +771,10 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
+  private static Boolean isConcatDistinct(Rollup.Op op) {
+    return op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
+  }
+
   private without sharing virtual class StringRollupCalculator extends RollupCalculator {
     protected String concatDelimiter = ', ';
     private String stringVal;
@@ -788,11 +792,20 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField,
       String customConcatDelimiter
     ) {
-      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultStringValue__c, metadata, lookupRecordKey, lookupKeyField);
+      super(
+        isConcatDistinct(op) ? '' : priorVal,
+        op,
+        opFieldOnCalcItem,
+        opFieldOnLookupObject,
+        metadata.FullRecalculationDefaultStringValue__c,
+        metadata,
+        lookupRecordKey,
+        lookupKeyField
+      );
       if (String.isNotBlank(customConcatDelimiter)) {
         this.concatDelimiter = customConcatDelimiter + ' ';
       }
-      this.isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
+      this.isConcatDistinct = isConcatDistinct(this.op);
     }
 
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -908,6 +921,10 @@ public without sharing abstract class RollupCalculator {
       return isTrueFor;
     }
 
+    protected virtual void sort(List<String> values) {
+      values.sort();
+    }
+
     private void sortAndConcat() {
       List<String> values = this.stringVal.split(this.concatDelimiter);
       if (this.isConcatDistinct) {
@@ -929,7 +946,7 @@ public without sharing abstract class RollupCalculator {
         }
       }
       if (this.metadata.RollupOrderBys__r.isEmpty()) {
-        values.sort();
+        this.sort(values);
       }
       this.stringVal = String.join(values, this.concatDelimiter);
     }
@@ -1030,6 +1047,14 @@ public without sharing abstract class RollupCalculator {
         return this.op.name().contains(Rollup.Op.MIN.name()) ? newValRank < priorValRank : newValRank > priorValRank;
       }
       return this.picklistController.isTrueFor(newVal, priorVal, this.op);
+    }
+
+    protected override void sort(List<String> picklistValues) {
+      if (this.picklistController.isPicklist() == false) {
+        super.sort(picklistValues);
+      } else {
+        this.picklistController.sort(picklistValues);
+      }
     }
   }
 

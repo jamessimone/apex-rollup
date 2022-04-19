@@ -1,5 +1,6 @@
 import { createElement } from 'lwc';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
+import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
 import RecalculateParentRollupFlexipage from 'c/recalculateParentRollupFlexipage';
 import { mockMetadata } from '../../__mockData__';
@@ -8,7 +9,7 @@ jest.mock(
   '@salesforce/apex/Rollup.getRollupMetadataByCalcItem',
   () => {
     return {
-      default: () => mockMetadata
+      default: jest.fn()
     };
   },
   { virtual: true }
@@ -29,11 +30,30 @@ function flushPromises() {
 }
 
 describe('recalc parent rollup from flexipage tests', () => {
+  beforeEach(() => {
+    getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
+    performSerializedBulkFullRecalc.mockReset();
+  });
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+  });
+
+  it('should handle error on load gracefully', async () => {
+    getRollupMetadataByCalcItem.mockReset();
+    getRollupMetadataByCalcItem.mockRejectedValue('error!');
+
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
+      is: RecalculateParentRollupFlexipage
+    });
+    parentRecalcEl.objectApiName = mockMetadata[Object.keys(mockMetadata)[0]][0].LookupObject__c;
+    document.body.appendChild(parentRecalcEl);
+
+    return flushPromises().then(() => {
+      expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeFalsy();
+    });
   });
 
   it('should not render anything if object api name has no match for parent in retrieved metadata', async () => {
@@ -64,6 +84,25 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
   });
 
+  it('should fail gracefully if server fails to process', async () => {
+    performSerializedBulkFullRecalc.mockRejectedValue('ERROR!!');
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
+      is: RecalculateParentRollupFlexipage
+    });
+
+    const FAKE_RECORD_ID = '00100000000001';
+    const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
+    delete matchingMetadata[0].CalcItem__r;
+    parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
+    parentRecalcEl.recordId = FAKE_RECORD_ID;
+    document.body.appendChild(parentRecalcEl);
+
+    await flushPromises();
+    parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
+    await flushPromises();
+    expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeTruthy();
+  });
+
   // instead of passing the mock down through several promise layers
   // we'll keep it in the outer scope
   const mockFunction = jest.fn();
@@ -80,38 +119,36 @@ describe('recalc parent rollup from flexipage tests', () => {
       }
     });
 
-    const FAKE_RECORD_ID = '00100000000001';
-
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
 
+    const FAKE_RECORD_ID = '00100000000001';
     const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
     delete matchingMetadata[0].CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
-
     document.body.appendChild(parentRecalcEl);
 
-    return flushPromises()
+    await flushPromises()
       .then(() => {
         parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
       })
       .then(() => {
         expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeTruthy();
-      })
-      .then(() => {
-        // once recalc has finished ...
-        // we need to validate that what was sent includes our custom rollup invocation point
-        matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
-        expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
-        expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
-          serializedMetadata: JSON.stringify(matchingMetadata),
-          invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
-        });
-
-        // validate that aura refresh was called
-        expect(mockFunction).toHaveBeenCalled();
       });
+    await flushPromises();
+
+    // once recalc has finished ...
+    // we need to validate that what was sent includes our custom rollup invocation point
+    matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
+    expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
+    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+      serializedMetadata: JSON.stringify(matchingMetadata),
+      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+    });
+
+    // validate that aura refresh was called
+    expect(mockFunction).toHaveBeenCalled();
   });
 });

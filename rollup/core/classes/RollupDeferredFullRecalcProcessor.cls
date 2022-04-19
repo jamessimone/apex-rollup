@@ -3,10 +3,11 @@ public without sharing class RollupDeferredFullRecalcProcessor extends RollupAsy
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,
     String queryString,
-    Set<Id> recordIds,
-    InvocationPoint invokePoint
+    Set<String> recordIds,
+    InvocationPoint invokePoint,
+    FullRecalcProcessor postProcessor
   ) {
-    super(queryString, invokePoint, matchingMeta, calcItemType, recordIds);
+    super(queryString, invokePoint, matchingMeta, calcItemType, recordIds, postProcessor);
   }
 
   public override String runCalc() {

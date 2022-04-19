@@ -10,12 +10,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk1rAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk7CAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk1rAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk7CAAS">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -148,6 +148,8 @@ Only valid to be tied to a given `Rollup__mdt` record with a `FIRST`, `LAST`, or
 - `Field Name` - the API name for the field to order by
 - `Sort Order` (optional) - Default order is ascending
 - `Null Sort Order` (optional) - By default, nulls are sorted first
+
+**Special note** - for `CONCAT`-based rollups whose parent field is a picklist (including multi-select picklists), the _default sort_ in the absence of Rollup Order By CMDT uses the "ranking" for that picklist. However, if you define Rollup Order By CMDT children for a rollup like this, _only_ the custom sorting logic you've defined using Rollup Order By will be run.
 
 </details>
 

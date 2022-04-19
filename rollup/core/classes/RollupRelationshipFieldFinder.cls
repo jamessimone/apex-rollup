@@ -303,15 +303,18 @@ public without sharing class RollupRelationshipFieldFinder {
     this.populateRelationshipNameToWhereClauses(baseSObjectType);
     // cache the latest records through in case we need to continue later
     this.recommencementRecords = records;
+    String priorLookup = this.currentRelationshipName;
     this.currentRelationshipName = this.getCurrentRelationshipName(baseSObjectType);
 
     String relationshipObject = this.getChildRelationshipFromType(baseSObjectType, this.currentRelationshipName);
     if (this.oneToManyParts.containsKey(relationshipObject)) {
-      records = this.getJunctionRecords(records, relationshipObject);
+      priorLookup = priorLookup == null ? this.oneToManyParts.get(relationshipObject) : priorLookup.replace('__r', '__c');
+      this.setFirstRunFlags(records);
+      records = this.getJunctionRecords(records, relationshipObject, priorLookup);
       baseSObjectType = records.isEmpty() ? baseSObjectType : records.get(0).getSObjectType();
       relationshipObject = this.getChildRelationshipFromType(baseSObjectType, this.currentRelationshipName);
       if (this.oneToManyParts.containsKey(relationshipObject)) {
-        return this.getParents(records);
+        return this.recurseThroughObjectChain(records, baseSObjectType);
       }
     }
 
@@ -336,18 +339,23 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     String nextFieldToLookup = this.relationshipParts[0].replace('__r', '__c');
-    SObjectType nextSObjectType = firstId.getSObjectType();
-    Map<String, SObjectField> nextFieldMap = nextSObjectType.getDescribe().fields.getMap();
-    SObjectField nextFieldToken = this.getField(nextFieldMap, nextFieldToLookup);
+    baseSObjectType = firstId.getSObjectType();
+    relationshipObject = this.getChildRelationshipFromType(baseSObjectType, nextFieldToLookup);
+    if (this.oneToManyParts.containsKey(relationshipObject)) {
+      return this.recurseThroughObjectChain(records, baseSObjectType);
+    }
+
+    fieldMap = baseSObjectType.getDescribe().fields.getMap();
+    field = this.getField(fieldMap, nextFieldToLookup);
 
     Set<String> fieldNames = new Set<String>();
-    if (nextSObjectType == this.ultimateParent) {
+    if (baseSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalFieldNames);
       if (this.metadata.RollupToUltimateParent__c == true) {
-        this.populateHierarchicalLookupFields(fieldNames, this.getField(nextFieldMap, this.metadata.UltimateParentLookup__c));
+        this.populateHierarchicalLookupFields(fieldNames, this.getField(fieldMap, this.metadata.UltimateParentLookup__c));
       }
     } else {
-      fieldNames.add(nextFieldToken.getDescribe().getName());
+      fieldNames.add(field.getDescribe().getName());
     }
     if (fieldNames.contains('Id') == false) {
       fieldNames.add('Id');
@@ -355,9 +363,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
     String query = this.appendAdditionalWhereClauses(
-      RollupQueryBuilder.Current.getQuery(nextSObjectType, new List<String>(fieldNames), 'Id', '='),
+      RollupQueryBuilder.Current.getQuery(baseSObjectType, new List<String>(fieldNames), 'Id', '='),
       currentRelationshipName,
-      nextFieldMap
+      fieldMap
     );
     this.setFirstRunFlags(records);
 
@@ -611,7 +619,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
-  private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName) {
+  private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
     SObject junctionObject = RollupFieldInitializer.Current.getSObjectFromName(junctionObjectName);
     String oneToManyFieldName = this.oneToManyParts.get(junctionObjectName);
     this.oneToManyParts.remove(junctionObjectName);
@@ -627,7 +635,11 @@ public without sharing class RollupRelationshipFieldFinder {
       oneToManyFieldName,
       '='
     );
-    List<SObject> objIds = records;
+    Set<Id> objIds = new Set<Id>();
+    for (SObject record : records) {
+      priorLookup = record.getPopulatedFieldsAsMap().containsKey(priorLookup) ? priorLookup : 'Id';
+      objIds.add((Id) record.get(priorLookup));
+    }
     records = Database.query(query);
 
     Map<String, SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();

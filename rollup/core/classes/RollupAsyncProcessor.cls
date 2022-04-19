@@ -53,11 +53,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   public abstract without sharing class FullRecalcProcessor extends QueueableProcessor {
     protected final String queryString;
     protected final List<Rollup__mdt> rollupInfo;
-    protected final Set<Id> recordIds;
-    protected final Set<Id> objIds = new Set<Id>(); // necessary; there's a bind variable in the query string
+    protected final Set<String> recordIds;
+    protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
     private final Set<String> previouslyResetParents = new Set<String>();
+    private final FullRecalcProcessor postProcessor;
 
-    public FullRecalcProcessor(String queryString, InvocationPoint invokePoint, List<Rollup__mdt> rollupInfo, SObjectType calcItemType, Set<Id> recordIds) {
+    public FullRecalcProcessor(
+      String queryString,
+      InvocationPoint invokePoint,
+      List<Rollup__mdt> rollupInfo,
+      SObjectType calcItemType,
+      Set<String> recordIds,
+      FullRecalcProcessor postProcessor
+    ) {
       super(invokePoint);
       this.isFullRecalc = true;
       this.isNoOp = true; // consumers should either opt out of this or have it be set properly downstream
@@ -65,6 +73,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.queryString = queryString;
       this.rollupInfo = rollupInfo;
       this.recordIds = recordIds;
+      this.postProcessor = postProcessor;
       this.overrideRollupControl();
     }
 
@@ -79,16 +88,32 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return String.valueOf(this.rollupInfo);
     }
 
+    protected void finish() {
+      if (this.postProcessor != null) {
+        RollupLogger.Instance.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
+        // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
+        // job continuity is established between the full recalc and then any downstream job that runs
+        // (as the postProcessor)
+        this.setCurrentJobId(this.postProcessor.runCalc());
+      }
+    }
+
+    protected Boolean parentRollupFieldHasBeenReset(Rollup__mdt meta, SObject parent) {
+      return this.previouslyResetParents.contains(this.getKey(meta.RollupFieldOnLookupObject__c, parent));
+    }
+
     private Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-      return this.previouslyResetParents.contains(this.getKey(processor, parent));
+      return this.previouslyResetParents.contains(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
     }
 
     private void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-      this.previouslyResetParents.add(this.getKey(processor, parent));
+      this.previouslyResetParents.add(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+      this.postProcessor?.recordIds.add(parent.Id);
+      this.postProcessor?.storeParentResetField(processor, parent);
     }
 
-    private String getKey(RollupAsyncProcessor processor, SObject parent) {
-      return String.valueOf(processor.opFieldOnLookupObject) + parent.Id;
+    private String getKey(String fieldKey, SObject parent) {
+      return fieldKey + parent.Id;
     }
 
     private void overrideRollupControl() {
@@ -273,6 +298,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public virtual void finish(Database.BatchableContext context) {
     this.logFinish();
+    this.fullRecalcProcessor?.finish();
   }
 
   public virtual override String runCalc() {
@@ -427,6 +453,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     public void execute(System.QueueableContext qc) {
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
+      this.fullRecalcProcessor?.finish();
       this.logFinish();
     }
   }
@@ -464,6 +491,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = calcItems;
     }
+    this.fullRecalcProcessor = fullRecalcProcessor;
     return processor;
   }
 

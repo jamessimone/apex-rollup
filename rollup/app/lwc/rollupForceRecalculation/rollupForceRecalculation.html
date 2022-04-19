@@ -92,16 +92,16 @@
           >
           </lightning-input>
           <div>
-            <lightning-input
+            <lightning-combobox
               data-id="RollupOperation__c"
               class="slds-col slds-form-element slds-form-element_horizontal"
-              type="text"
-              label="Rollup Operation Name (SUM/MIN/MAX/COUNT/COUNT_DISTINCT/CONCAT/CONCAT_DISTINCT/AVERAGE/FIRST/LAST)"
               name="RollupOperation__c"
-              oncommit={handleChange}
+              label="Rollup Operation Name"
+              value={rollupOperation}
+              options={rollupOperationValues}
+              onchange={handleChange}
               required
-            >
-            </lightning-input>
+            ></lightning-combobox>
             <template if:true={isFirstLast}>
               <div>
                 <c-rollup-order-by data-id="RollupOrderBys__r"></c-rollup-order-by>
@@ -117,6 +117,29 @@
             oncommit={handleChange}
           >
           </lightning-input>
+          <div class="slds-grid">
+            <lightning-input
+              data-id="GrandparentRelationshipFieldPath__c"
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              type="text"
+              label="Grandparent Relationship Field Path (optional)"
+              name="GrandparentRelationshipFieldPath__c"
+              oncommit={handleChange}
+            >
+            </lightning-input>
+            <lightning-input
+              data-id="OneToManyGrandparentFields__c"
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              type="text"
+              label="One To Many Grandparent Fields (optional)"
+              name="OneToManyGrandparentFields__c"
+              oncommit={handleChange}
+            >
+            </lightning-input>
+            <lightning-helptext
+              content="Use ObjectApiName.FieldName (or ObjectApiName__c.CustomField__c for custom objects and fields). Can be a comma-separated list for multiple junction object hops"
+            ></lightning-helptext>
+          </div>
           <div class="slds-grid">
             <lightning-input
               data-id="SplitConcatDelimiterOnCalcItem__c"

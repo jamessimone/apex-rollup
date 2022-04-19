@@ -136,7 +136,11 @@ public virtual class RollupFieldInitializer {
     }
 
     public Integer getRank(String picklistVal, Rollup.Op operation) {
-      return this.picklistToRank.containsKey(picklistVal) ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
+      return this.picklistToRank?.containsKey(picklistVal) == true ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
+    }
+
+    public void sort(List<String> picklistValues) {
+      new PicklistSorter(this).sort(picklistValues);
     }
 
     private Boolean isMin(Rollup.Op operation) {
@@ -145,6 +149,30 @@ public virtual class RollupFieldInitializer {
 
     private Integer getSentinelValue(Rollup.Op operation) {
       return this.isMin(operation) ? this.maximumIntegerValue : this.minimumIntegerValue;
+    }
+  }
+
+  private class PicklistSorter extends RollupComparer {
+    private final PicklistController picklistController;
+    public PicklistSorter(PicklistController picklistController) {
+      this.picklistController = picklistController;
+    }
+    public override Integer compare(Object o1, Object o2) {
+      String firstVal = (String) o1;
+      String secondVal = (String) o2;
+
+      Integer sortValue = 0;
+      Integer firstRank = this.picklistController.getRank(firstVal, Rollup.Op.FIRST);
+      Integer secondRank = this.picklistController.getRank(secondVal, Rollup.Op.FIRST);
+      if (firstRank == this.picklistController.minimumIntegerValue || secondRank == this.picklistController.minimumIntegerValue) {
+        // fall back to standard sorting if sentinel value is returned
+        return firstVal.compareTo(secondVal);
+      } else if (firstRank > secondRank) {
+        sortValue = this.moveTowardBackOfList;
+      } else if (firstRank < secondRank) {
+        sortValue = this.moveTowardFrontOfList;
+      }
+      return sortValue;
     }
   }
 }

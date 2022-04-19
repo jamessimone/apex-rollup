@@ -6,9 +6,10 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     InvocationPoint invokePoint,
     List<Rollup__mdt> rollupInfo,
     SObjectType calcItemType,
-    Set<Id> recordIds
+    Set<String> recordIds,
+    FullRecalcProcessor postProcessor
   ) {
-    super(queryString, invokePoint, rollupInfo, calcItemType, recordIds);
+    super(queryString, invokePoint, rollupInfo, calcItemType, recordIds, postProcessor);
     this.statefulLookupToCalcItems = new Map<String, CalcItemBag>();
   }
 
@@ -67,6 +68,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
       CalcItemBag bag = local.get(lookupKey);
       this.statefulLookupToCalcItems.put(lookupKey, bag);
       lookupToCalcItems.put(lookupKey, bag);
+      this.recordIds.add(lookupKey);
     }
   }
 }

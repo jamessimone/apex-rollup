@@ -2,6 +2,7 @@ import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
+import getRollupOperationValues from '@salesforce/apex/Rollup.getRollupOperationValues';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
@@ -29,6 +30,7 @@ export default class RollupForceRecalculation extends LightningElement {
   selectedRows = [];
   rollupMetadataOptions = [];
   cmdtColumns = [];
+  rollupOperationValues = [];
 
   maxRowSelection = MAX_ROW_SELECTION;
   selectedMetadata;
@@ -55,6 +57,7 @@ export default class RollupForceRecalculation extends LightningElement {
   async connectedCallback() {
     document.title = 'Recalculate Rollup';
     await this._fetchAvailableCMDT();
+    await this._fetchRollupOperations();
   }
 
   @wire(getObjectInfo, { objectApiName: 'Rollup__mdt' })
@@ -74,18 +77,27 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   handleChange(event) {
-    this.metadata[event.target.name] = event.target.value;
-    this.isFirstLast = this.metadata.RollupOperation__c.indexOf('FIRST') !== -1 || this.metadata.RollupOperation__c.indexOf('LAST') !== -1;
+    const value = event.detail ? event.detail.value : event.target.value;
+    this.metadata[event.target.name] = value;
+    this.isFirstLast = this.rollupOperation.indexOf('FIRST') !== -1 || this.rollupOperation.indexOf('LAST') !== -1;
   }
 
   handleToggle() {
     this.rollupStatus = null;
+    this.rollupOperation = null;
     this.isCMDTRecalc = !this.isCMDTRecalc;
     this.error = '';
   }
 
   handleRowSelect(event) {
     this.selectedRows = event.detail.selectedRows;
+  }
+
+  get rollupOperation() {
+    return this.metadata.RollupOperation__c;
+  }
+  set rollupOperation(value) {
+    this.metadata.RollupOperation__c = value;
   }
 
   async _fetchAvailableCMDT() {
@@ -172,6 +184,15 @@ export default class RollupForceRecalculation extends LightningElement {
       if (children) {
         metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children };
       }
+    }
+  }
+
+  async _fetchRollupOperations() {
+    try {
+      const picklistValues = await getRollupOperationValues();
+      this.rollupOperationValues = picklistValues.map(picklistValue => ({ value: picklistValue, label: picklistValue }));
+    } catch (ex) {
+      this._displayErrorToast('Error retrieving Rollup Operation values', ex.stack);
     }
   }
 }
