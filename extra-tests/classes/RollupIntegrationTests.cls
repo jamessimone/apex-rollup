@@ -762,7 +762,7 @@ private class RollupIntegrationTests {
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
-        RollupOperation__c = 'CONCAT_DISTINCT',
+        RollupOperation__c = 'CONCAT',
         GrandparentRelationshipFieldPath__c = 'What.Account.Name',
         CalcItemWhereClause__c = 'What.Type = \'Opportunity\''
       )
@@ -811,13 +811,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(
-      matchingTask.Subject +
-      ', ' +
-      acc.Name,
-      updatedAcc.Name,
-      'Only matching task subject should have been appended via Who.Type requerying'
-    );
+    System.assertEquals(matchingTask.Subject, updatedAcc.Name, 'Only matching task subject should have been appended via Who.Type requerying');
   }
 
   @IsTest
@@ -840,7 +834,7 @@ private class RollupIntegrationTests {
         LookupObject__c = 'Lead',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'LastName',
-        RollupOperation__c = 'CONCAT_DISTINCT',
+        RollupOperation__c = 'CONCAT',
         CalcItemWhereClause__c = 'Who.Type = \'Lead\''
       )
     };
@@ -1803,6 +1797,15 @@ private class RollupIntegrationTests {
       'Calc item where clause with parent filtering should decrement on update when old item matches and new item does not'
     );
     System.assertEquals(250, updatedAcc.NumberOfEmployees, 'Number of employees should also have been decremented');
+  }
+
+  @IsTest
+  static void returnsPicklistEntriesCorrectlyToFrontend() {
+    List<String> expectedValues = new List<String>();
+    for (Schema.PicklistEntry entry : Rollup__mdt.RollupOperation__c.getDescribe().getPicklistValues()) {
+      expectedValues.add(entry.getValue());
+    }
+    System.assertEquals(expectedValues, Rollup.getRollupOperationValues());
   }
 
   /** Schedulable tests */

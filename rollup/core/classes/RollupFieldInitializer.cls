@@ -139,12 +139,37 @@ public virtual class RollupFieldInitializer {
       return this.picklistToRank.containsKey(picklistVal) ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
     }
 
+    public void sort(List<String> picklistValues) {
+      new PicklistSorter(this).sort(picklistValues);
+    }
+
     private Boolean isMin(Rollup.Op operation) {
       return operation.name().contains(Rollup.Op.MIN.name());
     }
 
     private Integer getSentinelValue(Rollup.Op operation) {
       return this.isMin(operation) ? this.maximumIntegerValue : this.minimumIntegerValue;
+    }
+  }
+
+  private class PicklistSorter extends RollupComparer {
+    private final PicklistController picklistController;
+    public PicklistSorter(PicklistController picklistController) {
+      this.picklistController = picklistController;
+    }
+    public override Integer compare(Object o1, Object o2) {
+      String firstVal = (String) o1;
+      String secondVal = (String) o2;
+
+      Integer sortValue = 0;
+      Integer firstRank = this.picklistController.getRank(firstVal, Rollup.Op.FIRST);
+      Integer secondRank = this.picklistController.getRank(secondVal, Rollup.Op.FIRST);
+      if (firstRank > secondRank) {
+        sortValue = this.moveTowardBackOfList;
+      } else if (firstRank < secondRank) {
+        sortValue = this.moveTowardFrontOfList;
+      }
+      return sortValue;
     }
   }
 }

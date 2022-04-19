@@ -944,18 +944,23 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldProperlyRemoveConcatDistinctOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
-    String accountId = '0011g00003VDGbF002';
+    Account acc = [SELECT Id FROM Account];
+    String toRemove = 'CDC';
+    String extantString = 'GISS';
+    insert new Opportunity(Name = extantString, CloseDate = System.today(), StageName = 'A', AccountId = acc.Id);
     RollupCalculator calc = RollupCalculator.Factory.getCalculator(
-      'CDC, GISS',
+      toRemove +
+      ', ' +
+      extantString,
       Rollup.Op.UPDATE_CONCAT_DISTINCT,
       Opportunity.Name,
       Account.Name,
       new Rollup__mdt(),
-      accountId,
+      acc.Id,
       Opportunity.AccountId
     );
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
-    Opportunity opp = new Opportunity(Amount = 0, Id = '0066g00003VDGbF001', Name = 'CDC', AccountId = accountId);
+    Opportunity opp = new Opportunity(Amount = 0, Id = '0066g00003VDGbF001', Name = 'CDC', AccountId = acc.Id);
     Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Amount = 5, Name = 'CDC') };
 
     calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
@@ -1061,6 +1066,74 @@ private class RollupCalculatorTests {
     );
 
     System.assertEquals(firstVal + ';' + secondVal, calc.getReturnValue(), 'Min should take first entries for multi-select picklists');
+  }
+
+  @IsTest
+  static void concatDistinctOnMultiSelectPicklistSortsProperly() {
+    List<Schema.PicklistEntry> picklistVals = QuickText.Channel.getDescribe().getPicklistValues();
+    if (picklistVals.size() < 3) {
+      return;
+    }
+
+    String firstVal = picklistVals[0].getValue();
+    String secondVal = picklistVals[1].getValue();
+    String thirdVal = picklistVals[2].getValue();
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      firstVal,
+      Rollup.Op.CONCAT_DISTINCT,
+      QuickText.Channel,
+      QuickText.Channel,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Opportunity.SObjectType),
+      QuickText.Name
+    );
+
+    calc.performRollup(
+      new List<QuickText>{
+        new QuickText(Channel = firstVal + ';' + secondVal),
+        new QuickText(Channel = secondVal + ';' + thirdVal),
+        new QuickText(Channel = thirdVal + ';' + firstVal)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(firstVal + ';' + secondVal + ';' + thirdVal, calc.getReturnValue(), 'Concat distinct works properly for MSP');
+  }
+
+  @IsTest
+  static void concatDistinctOnMSPDoesNotIncludeFirstValueWhenNotPartOfChildren() {
+    List<Schema.PicklistEntry> picklistVals = QuickText.Channel.getDescribe().getPicklistValues();
+    if (picklistVals.size() < 3) {
+      return;
+    }
+
+    String firstVal = picklistVals[0].getValue();
+    String secondVal = picklistVals[1].getValue();
+    String thirdVal = picklistVals[2].getValue();
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      firstVal,
+      Rollup.Op.CONCAT_DISTINCT,
+      QuickText.Channel,
+      QuickText.Channel,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Opportunity.SObjectType),
+      QuickText.Name
+    );
+
+    calc.performRollup(
+      new List<QuickText>{
+        new QuickText(Channel = secondVal),
+        new QuickText(Channel = secondVal + ';' + thirdVal),
+        new QuickText(Channel = thirdVal + ';' + secondVal)
+      },
+      new Map<Id, SObject>()
+    );
+
+    String returnVal = String.valueOf(calc.getReturnValue());
+    System.assertEquals(false, returnVal.contains(firstVal), returnVal + ' should not have included: ' + firstVal);
+    System.assertEquals(secondVal + ';' + thirdVal, returnVal, 'Concat distinct does not include first value');
   }
 
   // MIN / MAX

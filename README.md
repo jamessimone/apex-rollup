@@ -149,6 +149,8 @@ Only valid to be tied to a given `Rollup__mdt` record with a `FIRST`, `LAST`, or
 - `Sort Order` (optional) - Default order is ascending
 - `Null Sort Order` (optional) - By default, nulls are sorted first
 
+**Special note** - for `CONCAT`-based rollups whose parent field is a picklist (including multi-select picklists), the _default sort_ in the absence of Rollup Order By CMDT uses the "ranking" for that picklist. However, if you define Rollup Order By CMDT children for a rollup like this, _only_ the custom sorting logic you've defined using Rollup Order By will be run.
+
 </details>
 
 ### Rollup Control Custom Metadata
