@@ -27,7 +27,7 @@ private class RollupFullRecalcTests {
       new List<Rollup__mdt>(),
       null,
       '',
-      new Set<Id>(),
+      new Set<String>(),
       Rollup.InvocationPoint.FROM_APEX
     );
     List<RollupAsyncProcessor> processors = new List<RollupAsyncProcessor>{
@@ -187,7 +187,122 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void shouldPerformFullRecalcWithGrandparentHierarchy() {
+  static void shouldPerformFullRecalcWithGrandparentHierarchyApex() {
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id FROM Account];
+    Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
+    insert childAccount;
+    ParentApplication__c parentApp = new ParentApplication__c(Account__c = childAccount.Id, Name = 'Link to child account');
+    ParentApplication__c secondParentApp = new ParentApplication__c(Account__c = acc.Id, Name = 'Linked directly to parent account');
+    insert new List<ParentApplication__c>{ parentApp, secondParentApp };
+
+    // ensure that both a top-level child item linked only to the ultimate parent and one linked to the hierarchy child is included
+    List<Application__c> apps = new List<Application__c>{
+      new Application__c(Engagement_Score__c = 1000, ParentApplication__c = parentApp.Id, Name = 'Linked to Child Parent App'),
+      new Application__c(Engagement_Score__c = 1000, ParentApplication__c = secondParentApp.Id, Name = 'Linked to Direct Parent App')
+    };
+    insert apps;
+
+    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Application__c',
+        LookupObject__c = 'Account',
+        RollupToUltimateParent__c = true,
+        LookupFieldOnCalcItem__c = 'ParentApplication__c',
+        UltimateParentLookup__c = 'ParentId',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupFieldOnCalcItem__c = 'Engagement_Score__c',
+        LookupFieldOnLookupObject__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.AnnualRevenue'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(2000, updatedAcc.AnnualRevenue, 'Apex grandparent rollup should fully recalc');
+  }
+
+  @IsTest
+  static void supportsOneToManyFullRecalcInMiddleOfChain() {
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id FROM Account];
+    Individual indy = new Individual(LastName = 'Indy');
+    insert indy;
+    Contact con = new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id);
+    insert con;
+
+    ParentApplication__c parentApp = new ParentApplication__c(Account__c = acc.Id, Name = 'One');
+    ParentApplication__c secondParentApp = new ParentApplication__c(Account__c = acc.Id, Name = 'Two');
+    insert new List<ParentApplication__c>{ parentApp, secondParentApp };
+
+    List<Application__c> apps = new List<Application__c>{
+      new Application__c(Engagement_Score__c = 1000, ParentApplication__c = parentApp.Id, Name = 'App One'),
+      new Application__c(Engagement_Score__c = 1000, ParentApplication__c = secondParentApp.Id, Name = 'App Two')
+    };
+    insert apps;
+
+    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Application__c',
+        LookupObject__c = 'Individual',
+        LookupFieldOnCalcItem__c = 'ParentApplication__c',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
+        RollupFieldOnCalcItem__c = 'Engagement_Score__c',
+        LookupFieldOnLookupObject__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.Contacts.Individual.ConsumerCreditScore',
+        OneToManyGrandparentFields__c = 'Contact.AccountId'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
+    System.assertEquals(2000, updatedIndy.ConsumerCreditScore, 'Apex grandparent rollup should fully recalc with one to many field path');
+  }
+
+  @IsTest
+  static void supportsOneToManyAtBeginningOfChain() {
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 67;
+    update acc;
+
+    Individual indy = new Individual(LastName = 'Indy');
+    insert indy;
+    Contact con = new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id);
+    insert con;
+
+    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        LookupObject__c = 'Individual',
+        LookupFieldOnCalcItem__c = 'Id',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupFieldOnLookupObject__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'Contacts.Individual.ConsumerCreditScore',
+        OneToManyGrandparentFields__c = 'Contact.AccountId'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Test.stopTest();
+
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
+    System.assertEquals(acc.AnnualRevenue, updatedIndy.ConsumerCreditScore, 'Apex grandparent rollup should fully recalc with one to many field path');
+  }
+
+  @IsTest
+  static void shouldPerformFullRecalcWithGrandparentHierarchyFlow() {
     Rollup.onlyUseMockMetadata = true;
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
@@ -1376,7 +1491,7 @@ private class RollupFullRecalcTests {
         )
       },
       ContactPointAddress.SObjectType,
-      new Set<Id>(),
+      new Set<String>(),
       null
     );
 
@@ -1592,7 +1707,8 @@ private class RollupFullRecalcTests {
     Account nonMatching = new Account(Name = 'Non-matching', AnnualRevenue = 5);
     insert nonMatching;
 
-    insert new Opportunity(Amount = 5, AccountId = acc.Id, CloseDate = System.today(), StageName = 'A', Name = 'Matching opp');
+    Opportunity opp = new Opportunity(Amount = 15, AccountId = acc.Id, CloseDate = System.today(), StageName = 'A', Name = 'Matching opp');
+    insert opp;
 
     Test.startTest();
     Rollup.performFullRecalculation(
@@ -1612,6 +1728,6 @@ private class RollupFullRecalcTests {
     nonMatching = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :nonMatching.Id];
     System.assertEquals(null, nonMatching.AnnualRevenue, 'Non matching account should have been cleared');
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(5, acc.AnnualRevenue);
+    System.assertEquals(opp.Amount, acc.AnnualRevenue);
   }
 }
