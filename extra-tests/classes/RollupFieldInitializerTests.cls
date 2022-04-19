@@ -129,4 +129,14 @@ private class RollupFieldInitializerTests {
 
     System.assert(true, 'Should make it here'); // if .sort() throws, it's an uncatchable error
   }
+
+  @IsTest
+  static void sortsCorrectlyForNonPicklistValues() {
+    RollupFieldInitializer.PicklistController picklistController = new RollupFieldInitializer.PicklistController(Account.Name.getDescribe());
+    List<String> standardList = new List<String>{ 'c', 'a', 'd', 'b' };
+
+    picklistController.sort(standardList);
+
+    System.assertEquals(new List<String>{ 'a', 'b', 'c', 'd' }, standardList);
+  }
 }

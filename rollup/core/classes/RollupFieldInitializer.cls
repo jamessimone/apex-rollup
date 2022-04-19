@@ -136,7 +136,7 @@ public virtual class RollupFieldInitializer {
     }
 
     public Integer getRank(String picklistVal, Rollup.Op operation) {
-      return this.picklistToRank.containsKey(picklistVal) ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
+      return this.picklistToRank?.containsKey(picklistVal) == true ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
     }
 
     public void sort(List<String> picklistValues) {
@@ -164,7 +164,10 @@ public virtual class RollupFieldInitializer {
       Integer sortValue = 0;
       Integer firstRank = this.picklistController.getRank(firstVal, Rollup.Op.FIRST);
       Integer secondRank = this.picklistController.getRank(secondVal, Rollup.Op.FIRST);
-      if (firstRank > secondRank) {
+      if (firstRank == this.picklistController.minimumIntegerValue || secondRank == this.picklistController.minimumIntegerValue) {
+        // fall back to standard sorting if sentinel value is returned
+        return firstVal.compareTo(secondVal);
+      } else if (firstRank > secondRank) {
         sortValue = this.moveTowardBackOfList;
       } else if (firstRank < secondRank) {
         sortValue = this.moveTowardFrontOfList;
