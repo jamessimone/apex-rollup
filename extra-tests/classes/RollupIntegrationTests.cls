@@ -1798,15 +1798,6 @@ private class RollupIntegrationTests {
     System.assertEquals(250, updatedAcc.NumberOfEmployees, 'Number of employees should also have been decremented');
   }
 
-  @IsTest
-  static void returnsPicklistEntriesCorrectlyToFrontend() {
-    List<String> expectedValues = new List<String>();
-    for (Schema.PicklistEntry entry : Rollup__mdt.RollupOperation__c.getDescribe().getPicklistValues()) {
-      expectedValues.add(entry.getValue());
-    }
-    System.assertEquals(expectedValues, Rollup.getRollupOperationValues());
-  }
-
   /** Schedulable tests */
   @IsTest
   static void shouldThrowExceptionForBadQuery() {

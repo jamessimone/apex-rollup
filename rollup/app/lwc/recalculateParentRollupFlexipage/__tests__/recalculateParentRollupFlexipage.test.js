@@ -32,10 +32,12 @@ function flushPromises() {
 // instead of passing the mock down through several promise layers
 // we'll keep it in the outer scope
 const mockFunction = jest.fn();
+let metadata;
 
 describe('recalc parent rollup from flexipage tests', () => {
   beforeEach(() => {
-    getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
+    metadata = JSON.parse(JSON.stringify(mockMetadata));
+    getRollupMetadataByCalcItem.mockResolvedValue(metadata);
     performSerializedBulkFullRecalc.mockReset();
   });
   afterEach(() => {
@@ -43,17 +45,15 @@ describe('recalc parent rollup from flexipage tests', () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
-    mockMetadata.Contact[0].CalcItemWhereClause__c = ''; // ensure state is reset properly
   });
 
   it('should handle error on load gracefully', async () => {
-    getRollupMetadataByCalcItem.mockReset();
     getRollupMetadataByCalcItem.mockRejectedValue('error!');
 
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
-    parentRecalcEl.objectApiName = mockMetadata[Object.keys(mockMetadata)[0]][0].LookupObject__c;
+    parentRecalcEl.objectApiName = metadata[Object.keys(metadata)[0]][0].LookupObject__c;
     document.body.appendChild(parentRecalcEl);
 
     return flushPromises().then(() => {
@@ -63,7 +63,7 @@ describe('recalc parent rollup from flexipage tests', () => {
 
   it('should not render anything if object api name has no match for parent in retrieved metadata', async () => {
     const fakeObjectName = 'Lead';
-    expect(mockMetadata[fakeObjectName]).toBeFalsy();
+    expect(metadata[fakeObjectName]).toBeFalsy();
 
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
@@ -81,7 +81,7 @@ describe('recalc parent rollup from flexipage tests', () => {
       is: RecalculateParentRollupFlexipage
     });
 
-    parentRecalcEl.objectApiName = mockMetadata[Object.keys(mockMetadata)[0]][0].LookupObject__c;
+    parentRecalcEl.objectApiName = metadata[Object.keys(metadata)[0]][0].LookupObject__c;
     document.body.appendChild(parentRecalcEl);
 
     return flushPromises().then(() => {
@@ -96,7 +96,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
 
     const FAKE_RECORD_ID = '00100000000001';
-    const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
+    const matchingMetadata = metadata[Object.keys(metadata)[0]];
     delete matchingMetadata[0].CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
@@ -124,7 +124,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
 
     const FAKE_RECORD_ID = '00100000000001';
-    const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
+    const matchingMetadata = metadata[Object.keys(metadata)[0]];
     delete matchingMetadata[0].CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
@@ -158,7 +158,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
 
     const FAKE_RECORD_ID = '00100000000001';
-    const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
+    const matchingMetadata = metadata[Object.keys(metadata)[0]];
     delete matchingMetadata[0].CalcItem__r;
     matchingMetadata[0].GrandparentRelationshipFieldPath__c = 'RollupParent__r.RollupGrandparent__r.Name';
     matchingMetadata[0].LookupObject__c = 'RollupGrandparent__c';

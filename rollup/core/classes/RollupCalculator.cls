@@ -673,7 +673,7 @@ public without sharing abstract class RollupCalculator {
 
     public override Object getReturnValue() {
       Object superReturnVal = super.getReturnValue();
-      return superReturnVal == 0 ? this.defaultVal : ((Datetime) superReturnVal).dateGmt();
+      return superReturnVal == 0 ? this.defaultVal : ((Datetime) superReturnVal)?.dateGmt();
     }
   }
 

@@ -2,9 +2,8 @@ import { api, LightningElement, wire } from 'lwc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
-import getRollupOperationValues from '@salesforce/apex/Rollup.getRollupOperationValues';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+import { getObjectInfo, getPicklistValues } from 'lightning/uiObjectInfoApi';
 
 import { getRollupMetadata } from 'c/rollupUtils';
 
@@ -57,7 +56,6 @@ export default class RollupForceRecalculation extends LightningElement {
   async connectedCallback() {
     document.title = 'Recalculate Rollup';
     await this._fetchAvailableCMDT();
-    await this._fetchRollupOperations();
   }
 
   @wire(getObjectInfo, { objectApiName: 'Rollup__mdt' })
@@ -66,6 +64,15 @@ export default class RollupForceRecalculation extends LightningElement {
       this._cmdtFieldNames.forEach(fieldName => {
         this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
       });
+    } else if (error) {
+      this.error = error;
+    }
+  }
+
+  @wire(getPicklistValues, { recordTypeId: '012000000000000AAA', fieldApiName: 'Rollup__mdt.RollupOperation__c' })
+  getRollupOperationValues({ error, data }) {
+    if (data) {
+      this.rollupOperationValues = data.values;
     } else if (error) {
       this.error = error;
     }
@@ -184,15 +191,6 @@ export default class RollupForceRecalculation extends LightningElement {
       if (children) {
         metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children };
       }
-    }
-  }
-
-  async _fetchRollupOperations() {
-    try {
-      const picklistValues = await getRollupOperationValues();
-      this.rollupOperationValues = picklistValues.map(picklistValue => ({ value: picklistValue, label: picklistValue }));
-    } catch (ex) {
-      this._displayErrorToast('Error retrieving Rollup Operation values', ex.stack);
     }
   }
 }
