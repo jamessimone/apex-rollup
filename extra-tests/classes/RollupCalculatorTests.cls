@@ -1183,7 +1183,25 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Task>{ t }, new Map<Id, SObject>{ t.Id => new Task(ActivityDate = today) });
 
-    System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should be nulled out if no matching minimum');
+    System.assertEquals(t.ActivityDate, calc.getReturnValue(), 'Should correctly find minimum');
+  }
+
+  @IsTest
+  static void dateMinDoesNotBlowUpOnNullValue() {
+    Date firstPossibleDate = Date.newInstance(1970, 1, 1);
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      firstPossibleDate,
+      Rollup.Op.MIN,
+      Opportunity.CloseDate, // not a "MIN"-able field in SOQL; crucial for this test
+      Opportunity.CloseDate,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      RollupTestUtils.createId(Opportunity.SObjectType),
+      Opportunity.Name
+    );
+
+    calc.performRollup(new List<SObject>(), new Map<Id, SObject>());
+
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   @IsTest
