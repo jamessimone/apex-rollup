@@ -43,6 +43,7 @@ describe('recalc parent rollup from flexipage tests', () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+    mockMetadata.Contact[0].CalcItemWhereClause__c = ''; // ensure state is reset properly
   });
 
   it('should handle error on load gracefully', async () => {
