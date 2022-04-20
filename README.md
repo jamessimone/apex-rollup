@@ -10,12 +10,12 @@ Create fast, scalable custom rollups driven by Custom Metadata in your Salesforc
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk7CAAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk7WAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk7CAAS">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk7WAAS">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -46,7 +46,7 @@ You have several different options when it comes to making use of Apex Rollup:
 | [Custom Metadata-driven rollups](#cmdt-based-rollup-solution)          | Install with _one line of Apex code_                                                |
 | [Flow-driven rollups](#flow--process-builder-invocable)                | There are several Readme & Wiki sections dedicated specifically to setting up Flows |
 | [Full Recalculations](#calculating-rollups-after-install)              | Useful especially upon first install to prepopulate the existing rollup values      |
-| [From the included LWC button](#using-the-parent-record-recalc-button) | Gets embedded on a parent record's flexipage. Grandparent rollups not yet supported |
+| [From the included LWC button](#using-the-parent-record-recalc-button) | Gets embedded on a parent record's flexipage. Grandparent rollups supported         |
 | [Via Scheduled Job](#scheduled-jobs)                                   | Use Anonymous Apex or Scheduled Flow to setup                                       |
 
 ## CMDT-based Rollup Solution
@@ -291,7 +291,7 @@ There is an included Lightning Web Component (LWC) that will show up in the "Cus
 - The button _will_ display even if a given parent record has no matching children associated with the rollup(s) in question.
 - This particular rollup runs synchronously, so it won't eat into your Asynchronous Job limits for the day; it also refreshes any Aura/page-layout sections of the page (LWC-based sections of the page should update automatically).
 - Editing `Rollup__mdt` records with a parent record's page open can lead to unexpected behavior. This is because the `Rollup__mdt` records are cached on page load, so any updates made to those records will require a page refresh prior to clicking the `Recalc Rollup` button
-- Triggering recalcs from a grandparent record for a grandparent rollup currently not supported
+- Triggering recalcs from a grandparent record is supported, but polymorphic grandparents (for example, and Account rollup that starts from Task -> Opportunity -> Account through the `WhatId` is not yet supported).
 
 ## Scheduled Jobs
 

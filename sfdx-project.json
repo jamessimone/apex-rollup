@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Make parent-reset calculator more reliable when used in conjunction with full recalcs",
-            "versionNumber": "1.4.13.0",
+            "versionName": "Minor verision bump to reflect breaking changes between 1.4.10 and versions up to 1.4.13. Added preliminary support for using parent recalc button with grandparent rollups.",
+            "versionNumber": "1.5.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -71,11 +71,11 @@
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.9.0",
+            "versionNumber": "0.0.10.0",
             "default": false,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.4.11-0"
+                    "package": "apex-rollup@1.5.0-0"
                 }
             ]
         }
@@ -89,11 +89,9 @@
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
         "Apex Rollup - Custom Logger@0.0.12-0": "04t6g000008SjqIAAS",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
-        "Apex Rollup - Extra Code Coverage@0.0.5-0": "04t6g000008SizvAAC",
-        "Apex Rollup - Extra Code Coverage@0.0.6-0": "04t6g000008Sj8jAAC",
-        "Apex Rollup - Extra Code Coverage@0.0.7-0": "04t6g000008SjIVAA0",
         "Apex Rollup - Extra Code Coverage@0.0.8-0": "04t6g000008SjuzAAC",
         "Apex Rollup - Extra Code Coverage@0.0.9-0": "04t6g000008Sk13AAC",
+        "Apex Rollup - Extra Code Coverage@0.0.10-0": "04t6g000008Sk7gAAC",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.5-0": "04t6g000008Si1BAAS",
         "Apex Rollup - Nebula Logger@0.0.6-0": "04t6g000008SiisAAC",
@@ -102,12 +100,10 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Unlocked Package@4.5.2-0-plugin-framework-enhancements": "04t5Y0000027FNaQAM",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.4.7-0": "04t6g000008SjYzAAK",
-        "apex-rollup@1.4.8-0": "04t6g000008SjuVAAS",
-        "apex-rollup@1.4.9-0": "04t6g000008SjufAAC",
         "apex-rollup@1.4.10-0": "04t6g000008Sjv4AAC",
         "apex-rollup@1.4.11-0": "04t6g000008Sk1IAAS",
         "apex-rollup@1.4.12-0": "04t6g000008Sk1rAAC",
-        "apex-rollup@1.4.13-0": "04t6g000008Sk7CAAS"
+        "apex-rollup@1.4.13-0": "04t6g000008Sk7CAAS",
+        "apex-rollup@1.5.0-0": "04t6g000008Sk7WAAS"
     }
 }

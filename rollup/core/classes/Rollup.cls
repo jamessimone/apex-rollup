@@ -212,7 +212,7 @@ global without sharing virtual class Rollup {
     FROM_APEX,
     FROM_INVOCABLE,
     FROM_SCHEDULED,
-    FROM_LWC,
+    FROM_FULL_RECALC_LWC,
     FROM_SINGULAR_PARENT_RECALC_LWC,
     FROM_STATIC_LOGGER,
     FROM_SCHEDULED_FLOW
@@ -351,7 +351,7 @@ global without sharing virtual class Rollup {
   }
 
   /**
-   * v1.3.25 to v1.4.0 introduced a child CMDT relationship: Rollup__mdt.RollupOrderBys__r
+   * Rollup__mdt has a child CMDT relationship: Rollup__mdt.RollupOrderBys__r
    * Unfortunately, data passed between the frontend and backend strips out child relationship values
    * (even when they were set and initialized via the backend itself!). In order to avoid a breaking change
    * on this method, it instead delegates to the new one.
@@ -454,13 +454,11 @@ global without sharing virtual class Rollup {
   /**
    * Sending metadata from the frontend LWCs omits
    * the RollupOrderBys__r children unless it's sent serialized (using the same
-   * child object format used in the "appendOrderByMetadata"). As with "performBulkFullRecalc",
-   * the original "performFullRecalculation" is kept to avoid breaking changes
-   * between v1.3.25 and v1.4.0
+   * child object format used in the "appendOrderByMetadata").
    */
   @AuraEnabled
   global static String performSerializedFullRecalculation(String metadata) {
-    return performSerializedBulkFullRecalc('[' + metadata + ']', InvocationPoint.FROM_LWC.name());
+    return performSerializedBulkFullRecalc('[' + metadata + ']', InvocationPoint.FROM_FULL_RECALC_LWC.name());
   }
 
   @AuraEnabled
@@ -2045,14 +2043,7 @@ global without sharing virtual class Rollup {
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
-    if (
-      wrappedMeta.whereClause.contains(':recordIds') == false &&
-      wrappedMeta.recordIds.isEmpty() == false &&
-      // TODO - it would be nice to support the singular recalc button with grandparent rollups
-      // but doing so requires that we validate the query ahead of time (to remove errors with trying to filter on
-      // polymorphic fields). as it stands, this guard clause is a little TOO safe
-      String.isBlank(fullRecalcMeta.meta.GrandparentRelationshipFieldPath__c)
-    ) {
+    if (wrappedMeta.whereClause.contains(':recordIds') == false && wrappedMeta.recordIds.isEmpty() == false) {
       String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
       wrappedMeta.whereClause += additionalClause;
     }
@@ -2078,7 +2069,7 @@ global without sharing virtual class Rollup {
       amountOfCalcItems < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (amountOfCalcItems == 0 && matchingMeta.isEmpty() == false && isFullRecalcApp) {
       return parentResetProcessor;
-    } else if (invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC) {
+    } else if (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC) {
       parentResetProcessor = null;
     }
 

@@ -122,7 +122,7 @@ export default class RollupForceRecalculation extends LightningElement {
 
         const localMetas = [...this.selectedRows];
         this._getMetadataWithChildrenRecords(localMetas);
-        jobId = await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_LWC' });
+        jobId = await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_FULL_RECALC_LWC' });
       } else {
         this._getMetadataWithChildrenRecords([this.metadata]);
         jobId = await performSerializedFullRecalculation({

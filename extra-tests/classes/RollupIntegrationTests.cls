@@ -1267,7 +1267,6 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldNotIncludeNullForCountDistinct() {
-    // TODO fixme
     Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT null PreferenceRank');
