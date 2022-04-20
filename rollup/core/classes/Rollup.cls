@@ -466,15 +466,6 @@ global without sharing virtual class Rollup {
     return performSerializedFullRecalculation(JSON.serialize(meta));
   }
 
-  @AuraEnabled
-  public static List<String> getRollupOperationValues() {
-    List<String> picklistValues = new List<String>();
-    for (Schema.PicklistEntry entry : Rollup__mdt.RollupOperation__c.getDescribe().getPicklistValues()) {
-      picklistValues.add(entry.getValue());
-    }
-    return picklistValues;
-  }
-
   global class FlowInput {
     @InvocableVariable(label='Calc Item Calc Field' description='The API Name of the field on each of the records passed in to rollup.' required=true)
     global String rollupFieldOnCalcItem;

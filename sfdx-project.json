@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Minor verision bump to reflect breaking changes between 1.4.10 and versions up to 1.4.13. Added preliminary support for using parent recalc button with grandparent rollups.",
-            "versionNumber": "1.5.0.0",
+            "versionName": "Reduced code surrounding the display of Rollup Operation picklist values for the full recalc app.",
+            "versionNumber": "1.5.1.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

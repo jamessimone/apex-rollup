@@ -3,6 +3,7 @@ import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
+import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
 import { mockMetadata } from '../../__mockData__';
 import RollupForceRecalculation from 'c/rollupForceRecalculation';
@@ -17,7 +18,7 @@ jest.mock(
   '@salesforce/apex/Rollup.getRollupMetadataByCalcItem',
   () => {
     return {
-      default: () => mockMetadata
+      default: jest.fn()
     };
   },
   { virtual: true }
@@ -53,6 +54,9 @@ function setElementValue(element, value, isCombobox = false) {
 }
 
 describe('Rollup force recalc tests', () => {
+  beforeEach(() => {
+    getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
+  });
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
