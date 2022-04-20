@@ -636,7 +636,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
-    if ((roll.isFullRecalc == false && roll.metadata.IsFullRecordSet__c == false) || String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c)) {
+    if ((roll.isFullRecalc == false && roll.metadata.IsFullRecordSet__c == false)) {
       return false;
     } else if (roll.op?.name().contains('DELETE') == true) {
       // full recalc rollups won't have an op, hence the safe navigation above

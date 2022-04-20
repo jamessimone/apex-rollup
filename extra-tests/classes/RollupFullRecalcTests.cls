@@ -48,8 +48,13 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildren() {
     Account acc = [SELECT Id FROM Account];
-    // ensure another matching item exists outside of the passed in list
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+    Account secondParent = new Account(Name = 'Second', AnnualRevenue = 10);
+    insert secondParent;
+    insert new List<ContactPointAddress>{
+      // ensure another matching item exists outside of the passed in list
+      new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(PreferenceRank = secondParent.AnnualRevenue.intValue(), ParentId = secondParent.Id, Name = 'Two')
+    };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
     insert cpas;
@@ -64,8 +69,10 @@ private class RollupFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+    Account updatedSecondParent = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :secondParent.Id];
+    System.assertEquals(secondParent.AnnualRevenue, updatedSecondParent.AnnualRevenue, 'Out of scope parent values should not have been affected');
   }
 
   @IsTest
@@ -179,7 +186,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
@@ -219,7 +226,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
@@ -260,7 +267,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
@@ -294,7 +301,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
@@ -757,7 +764,7 @@ private class RollupFullRecalcTests {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -1118,6 +1125,40 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void grandparentRollupsCanUseSingularParentRecalcButton() {
+    RollupGrandparent__c grandparent = new RollupGrandparent__c();
+    insert grandparent;
+
+    RollupParent__c parent = new RollupParent__c(Name = 'Parent', RollupGrandparent__c = grandparent.Id);
+    insert parent;
+
+    insert new List<RollupChild__c>{
+      new RollupChild__c(RollupParent__c = parent.Id, NumberField__c = 1),
+      new RollupChild__c(RollupParent__c = parent.Id, NumberField__c = 1),
+      new RollupChild__c(RollupParent__c = parent.Id, NumberField__c = 1)
+    };
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'RollupChild__c',
+        RollupFieldOnCalcItem__c = 'NumberField__c',
+        LookupFieldOnCalcItem__c = 'RollupParent__c',
+        LookupObject__c = 'RollupGrandparent__c',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AmountFromChildren__c',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = ' ||| RollupParent__r.RollupGrandparent__r.Id = \'' + grandparent.Id + '\'',
+        GrandparentRelationshipFieldPath__c = 'RollupParent__r.RollupGrandparent__r.AmountFromChildren__c'
+      )
+    };
+
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+
+    grandparent = [SELECT AmountFromChildren__c FROM RollupGrandparent__c WHERE Id = :grandparent.Id];
+    System.assertEquals(3, grandparent.AmountFromChildren__c);
+  }
+
+  @IsTest
   static void shouldNotBlowUpOnMassiveQuery() {
     String endOfWhereClause = '2'.repeat(100001);
     Rollup__mdt meta = new Rollup__mdt(
@@ -1265,7 +1306,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
@@ -1344,7 +1385,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
@@ -1394,7 +1435,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
@@ -1445,7 +1486,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     List<Account> accounts = [SELECT AnnualRevenue, Name FROM Account];
@@ -1532,7 +1573,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
@@ -1609,7 +1650,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     // only one of the records will have been updated since the query limit will have led to an
@@ -1661,7 +1702,7 @@ private class RollupFullRecalcTests {
     };
 
     Test.startTest();
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_LWC.name());
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
     // only one of the records will have been updated since the query limit will have led to an

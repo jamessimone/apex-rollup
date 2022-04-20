@@ -169,7 +169,10 @@ describe('Rollup force recalc tests', () => {
         .then(() => {
           const expectedList = mockMetadata['Contact'];
           delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({ serializedMetadata: JSON.stringify(expectedList), invokePointName: 'FROM_LWC' });
+          expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+            serializedMetadata: JSON.stringify(expectedList),
+            invokePointName: 'FROM_FULL_RECALC_LWC'
+          });
         })
     );
   });

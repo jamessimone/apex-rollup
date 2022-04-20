@@ -57,7 +57,10 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
   }
 
   _addMatchingMetadata(metadata) {
-    const equalsParent = metadata.LookupFieldOnCalcItem__c + " = '" + this.recordId + "'";
+    const parentLookup = metadata.GrandparentRelationshipFieldPath__c
+      ? metadata.GrandparentRelationshipFieldPath__c.substring(0, metadata.GrandparentRelationshipFieldPath__c.lastIndexOf('.')) + '.Id'
+      : metadata.LookupFieldOnCalcItem__c;
+    const equalsParent = parentLookup + " = '" + this.recordId + "'";
 
     if (metadata.CalcItemWhereClause__c && metadata.CalcItemWhereClause__c.length > 0) {
       metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c + DELIMITER + equalsParent;

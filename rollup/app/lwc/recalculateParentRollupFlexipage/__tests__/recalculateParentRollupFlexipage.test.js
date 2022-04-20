@@ -29,6 +29,10 @@ function flushPromises() {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
+// instead of passing the mock down through several promise layers
+// we'll keep it in the outer scope
+const mockFunction = jest.fn();
+
 describe('recalc parent rollup from flexipage tests', () => {
   beforeEach(() => {
     getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
@@ -39,6 +43,7 @@ describe('recalc parent rollup from flexipage tests', () => {
       document.body.removeChild(document.body.firstChild);
     }
     jest.clearAllMocks();
+    mockMetadata.Contact[0].CalcItemWhereClause__c = ''; // ensure state is reset properly
   });
 
   it('should handle error on load gracefully', async () => {
@@ -103,10 +108,6 @@ describe('recalc parent rollup from flexipage tests', () => {
     expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeTruthy();
   });
 
-  // instead of passing the mock down through several promise layers
-  // we'll keep it in the outer scope
-  const mockFunction = jest.fn();
-
   it('should send CMDT to apex with parent record id when clicked', async () => {
     // set up pseudo-Aura on global window
     Object.defineProperty(global.window, '$A', {
@@ -118,7 +119,6 @@ describe('recalc parent rollup from flexipage tests', () => {
         }
       }
     });
-
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
@@ -150,5 +150,31 @@ describe('recalc parent rollup from flexipage tests', () => {
 
     // validate that aura refresh was called
     expect(mockFunction).toHaveBeenCalled();
+  });
+
+  it('should properly massage delimited parent Id string for grandparent rollups', async () => {
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
+      is: RecalculateParentRollupFlexipage
+    });
+
+    const FAKE_RECORD_ID = '00100000000001';
+    const matchingMetadata = mockMetadata[Object.keys(mockMetadata)[0]];
+    delete matchingMetadata[0].CalcItem__r;
+    matchingMetadata[0].GrandparentRelationshipFieldPath__c = 'RollupParent__r.RollupGrandparent__r.Name';
+    matchingMetadata[0].LookupObject__c = 'RollupGrandparent__c';
+    parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
+    parentRecalcEl.recordId = FAKE_RECORD_ID;
+    document.body.appendChild(parentRecalcEl);
+    await flushPromises().then(() => {
+      parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
+    });
+    await flushPromises();
+
+    matchingMetadata[0].CalcItemWhereClause__c = " ||| RollupParent__r.RollupGrandparent__r.Id = '" + FAKE_RECORD_ID + "'";
+    expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
+    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+      serializedMetadata: JSON.stringify(matchingMetadata),
+      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+    });
   });
 });
