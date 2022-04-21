@@ -1088,4 +1088,14 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(idNonMatch));
     System.assertEquals(false, eval.matches(closeDateNonMatch));
   }
+
+  @IsTest
+  static void stringsAreComparedCaseInsensitive() {
+    String whereClause = 'StageName = \'closed lost\'';
+    Opportunity opp = new Opportunity(StageName = 'Closed Lost');
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, opp.getSObjectType());
+
+    System.assertEquals(true, eval.matches(opp));
+  }
 }

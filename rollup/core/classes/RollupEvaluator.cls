@@ -623,7 +623,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
       switch on this.criteria {
         when '=', '!=' {
-          isEqual = this.values.contains(storedValue) || this.hasValues == false && String.isBlank(storedValue);
+          if (this.hasValues == false) {
+            isEqual = String.isBlank(storedValue);
+          } else {
+            for (String value : this.values) {
+              isEqual = value?.equalsIgnoreCase(storedValue) == true || value == null && storedValue == null;
+              if (isEqual) {
+                break;
+              }
+            }
+          }
           isEqual = this.criteria == '!=' ? !isEqual : isEqual;
         }
         when 'like', '!like' {
@@ -632,7 +641,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           isEqual = false;
           if (storedValue != null) {
             for (String val : this.values) {
-              isEqual = storedValue.contains(val);
+              isEqual = storedValue.containsIgnoreCase(val);
               if (isEqual) {
                 break;
               }
