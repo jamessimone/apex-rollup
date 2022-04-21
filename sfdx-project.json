@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Reduced code surrounding the display of Rollup Operation picklist values for the full recalc app. Fixed NPE exposed when trying to MIN on Date fields with no matching items.",
-            "versionNumber": "1.5.1.0",
+            "versionName": "Added case-insensitivity to RollupEvaluator",
+            "versionNumber": "1.5.2.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
