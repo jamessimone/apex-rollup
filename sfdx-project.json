@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Added case-insensitivity to RollupEvaluator",
-            "versionNumber": "1.5.2.0",
+            "versionName": "Added ability to perform parent-level recalc using LWC button for one-to-many grandparent rollups",
+            "versionNumber": "1.5.3.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

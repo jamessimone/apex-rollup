@@ -8,6 +8,10 @@
 
 Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
 
+Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
+
+As well, don't miss [the Wiki](../../wiki), which includes more advanced information available on many topics.
+
 ## Deployment & Setup
 
 <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk93AAC">
@@ -291,7 +295,7 @@ There is an included Lightning Web Component (LWC) that will show up in the "Cus
 - The button _will_ display even if a given parent record has no matching children associated with the rollup(s) in question.
 - This particular rollup runs synchronously, so it won't eat into your Asynchronous Job limits for the day; it also refreshes any Aura/page-layout sections of the page (LWC-based sections of the page should update automatically).
 - Editing `Rollup__mdt` records with a parent record's page open can lead to unexpected behavior. This is because the `Rollup__mdt` records are cached on page load, so any updates made to those records will require a page refresh prior to clicking the `Recalc Rollup` button
-- Triggering recalcs from a grandparent record is supported, but polymorphic grandparents (for example, and Account rollup that starts from Task -> Opportunity -> Account through the `WhatId` is not yet supported).
+- Triggering recalcs from a grandparent record is supported, but polymorphic grandparents (for example, an Account rollup that starts from Task -> Opportunity -> Account through the `WhatId` is not yet supported).
 
 ## Scheduled Jobs
 
