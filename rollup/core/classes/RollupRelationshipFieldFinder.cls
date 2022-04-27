@@ -516,42 +516,32 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void retrieveAdditionalHierarchyRecords(List<SObject> records, Set<Id> objIds) {
-    String whereClause = 'Id != :records';
     if (this.metadata.RollupToUltimateParent__c == false) {
       return;
-    } else if (records.isEmpty()) {
-      List<SObject> otherMatchingParentRecords = this.performQuery(
-        this.ultimateParent,
-        new List<String>{ this.metadata.UltimateParentLookup__c, 'Id' },
-        this.metadata.UltimateParentLookup__c,
-        '=',
-        objIds,
-        whereClause,
-        records
-      );
-      if (otherMatchingParentRecords.isEmpty() == false) {
-        this.retrieveAdditionalHierarchyRecords(otherMatchingParentRecords, objIds);
-      }
-    } else {
-      Set<Id> additionalParentIds = new Set<Id>();
+    }
+
+    String whereClause = 'Id != :records';
+    List<String> queryFields = new List<String>{ 'Id', this.metadata.UltimateParentLookup__c };
+    if (records.isEmpty() == false) {
+      objIds = new Set<Id>();
       for (SObject otherMatchingParent : records) {
-        additionalParentIds.add(otherMatchingParent.Id);
-        this.trackTraversalIds(otherMatchingParent.Id, (Id) otherMatchingParent.get(this.metadata.UltimateParentLookup__c), null, additionalParentIds);
+        objIds.add(otherMatchingParent.Id);
+        this.trackTraversalIds(otherMatchingParent.Id, (Id) otherMatchingParent.get(this.metadata.UltimateParentLookup__c), null, objIds);
       }
-      List<SObject> otherPotentialParents = this.performQuery(
-        this.ultimateParent,
-        new List<String>{ this.metadata.UltimateParentLookup__c, 'Id' },
-        this.metadata.UltimateParentLookup__c,
-        '=',
-        additionalParentIds,
-        whereClause,
-        records
-      );
-      if (otherPotentialParents.isEmpty()) {
-        this.retrieveAdditionalCalcItems();
-      } else {
-        this.retrieveAdditionalHierarchyRecords(otherPotentialParents, additionalParentIds);
-      }
+    }
+    List<SObject> otherPotentialParents = this.performQuery(
+      this.ultimateParent,
+      queryFields,
+      this.metadata.UltimateParentLookup__c,
+      '=',
+      objIds,
+      whereClause,
+      records
+    );
+    if (otherPotentialParents.isEmpty()) {
+      this.retrieveAdditionalCalcItems();
+    } else {
+      this.retrieveAdditionalHierarchyRecords(otherPotentialParents, objIds);
     }
   }
 
@@ -574,9 +564,11 @@ public without sharing class RollupRelationshipFieldFinder {
       Set<String> queryFields = new Set<String>{
         this.metadata.LookupFieldOnCalcItem__c,
         this.metadata.RollupFieldOnCalcItem__c,
-        this.metadata.OrderByFirstLast__c,
-        this.metadata.UltimateParentLookup__c
+        this.metadata.OrderByFirstLast__c
       };
+      if (childType == this.ultimateParent) {
+        queryFields.add(this.metadata.UltimateParentLookup__c);
+      }
       queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, childType).getQueryFields());
       String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), this.metadata.LookupFieldOnCalcItem__c, '=');
       query += '\nAND Id != :records';
