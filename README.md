@@ -8,14 +8,18 @@
 
 Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
 
+Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
+
+As well, don't miss [the Wiki](../../wiki), which includes more advanced information available on many topics.
+
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk93AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkBEAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Sk93AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkBEAA0">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -291,7 +295,7 @@ There is an included Lightning Web Component (LWC) that will show up in the "Cus
 - The button _will_ display even if a given parent record has no matching children associated with the rollup(s) in question.
 - This particular rollup runs synchronously, so it won't eat into your Asynchronous Job limits for the day; it also refreshes any Aura/page-layout sections of the page (LWC-based sections of the page should update automatically).
 - Editing `Rollup__mdt` records with a parent record's page open can lead to unexpected behavior. This is because the `Rollup__mdt` records are cached on page load, so any updates made to those records will require a page refresh prior to clicking the `Recalc Rollup` button
-- Triggering recalcs from a grandparent record is supported, but polymorphic grandparents (for example, and Account rollup that starts from Task -> Opportunity -> Account through the `WhatId` is not yet supported).
+- Triggering recalcs from a grandparent record is supported, but polymorphic grandparents (for example, an Account rollup that starts from Task -> Opportunity -> Account through the `WhatId` is not yet supported).
 
 ## Scheduled Jobs
 
@@ -324,7 +328,7 @@ In either case, the SOQL query needs to correspond to either the parent or the c
 <details>
   <summary>Expand for Grandparent rollup info</summary>
 
-[Check out the Wiki article for more information on Grandparent rollups](<../../wiki/Configuring-Grandparent-(or-Greater)-Rollups>), or follow along here -
+[Check out the Wiki article for more information on Grandparent rollups](<../../wiki/Configuring-Grandparent-(or-Greater)-Rollups>), the [Wiki article for Ultimate Parent Rollups](../../wiki/Configuring-Hierarchy-Ultimate-Parent-Rollups) or follow along here -
 
 It's not all that uncommon, especially with custom objects, to get into the practice of rolling up values from one object merely so that _another_ parent object can receive _those_ rolled up values; that is to say, we occasionally use intermediate objects in order to roll values up from a grandchild record to a grandparent (and there's no need to stop there; it's totally possible to want to roll up values from great-grandchildren to the great-grandparent record, and so on). Apex Rollup offers the never-before-seen functionality of skipping the intermediate records so that you can go directly to the ultimate parent object. This is supported through the invocable rollup actions, as well as through the CMDT-based rollup approach by filling out the optional field `Grandparent Relationship Field Path`:
 
@@ -344,7 +348,7 @@ In this example, there are four objects in scope:
 - if you are using `Grandparent Relationship Field Path` with a polymorphic standard field like `Task.WhatId` or `Task.WhoId`, you should also supply a `Calc Item Where Clause` to ensure you are filtering the calculation items to only be related to one type of parent at a time (eg: your `Calc Item Where Clause` would look like `What.Type = 'Account'`)
 - grandparent rollups respect [SOQL's map relationship-field hopping of 5 levels](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_relationships_query_limits.htm):
 
-> In each specified relationship, no more than five levels can be specified in a child-to-parent relationship. For example, Contact.Account.Owner.FirstName (three levels)
+> In each specified relationship, no more than five levels can be specified in a child-to-parent relationship. For example, `Contact.Account.Owner.FirstName` would be three levels.
 
 While the base architecture for retrieving grand(or greater)parent items has no technical limit on the number of relationship field hops that can be made, correctly re-triggering the rollup calculations after an intermediate object has been updated made it necessary to respect this limit (for now).
 

@@ -1350,6 +1350,52 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue());
   }
 
+  @IsTest
+  static void properlyConvertsDownstreamTypesToDecimals() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      System.today().addDays(-10),
+      Rollup.Op.MAX,
+      Opportunity.CloseDate,
+      Contact.BirthDate,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      RollupTestUtils.createId(Contact.SObjectType),
+      Opportunity.Name
+    );
+
+    Object newDefaultValue = System.today();
+    calc.setDefaultValues(RollupTestUtils.createId(Contact.SObjectType), newDefaultValue);
+
+    System.assertEquals(newDefaultValue, calc.getReturnValue());
+
+    calc = RollupCalculator.Factory.getCalculator(
+      System.now().addDays(-10),
+      Rollup.Op.MAX,
+      Opportunity.CloseDate,
+      Contact.BirthDate,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      RollupTestUtils.createId(Contact.SObjectType),
+      Opportunity.Name
+    );
+    newDefaultValue = System.now();
+    calc.setDefaultValues(RollupTestUtils.createId(Contact.SObjectType), newDefaultValue);
+
+    System.assertEquals(newDefaultValue, calc.getReturnValue());
+
+    calc = RollupCalculator.Factory.getCalculator(
+      Time.newInstance(0, 0, 0, 0),
+      Rollup.Op.MAX,
+      Opportunity.CloseDate,
+      Contact.BirthDate,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      RollupTestUtils.createId(Contact.SObjectType),
+      Opportunity.Name
+    );
+    newDefaultValue = Time.newInstance(1, 0, 0, 0);
+    calc.setDefaultValues(RollupTestUtils.createId(Contact.SObjectType), newDefaultValue);
+
+    System.assertEquals(newDefaultValue, calc.getReturnValue());
+  }
+
   // Factory tests
 
   @IsTest
