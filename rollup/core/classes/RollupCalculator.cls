@@ -473,7 +473,7 @@ public without sharing abstract class RollupCalculator {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupRecordKey, lookupKeyField);
     }
 
-    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+    public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
       this.returnDecimal = (Decimal) this.returnVal;
     }
@@ -628,6 +628,13 @@ public without sharing abstract class RollupCalculator {
       return superReturnVal;
     }
 
+    public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      if (priorVal instanceof Datetime) {
+        priorVal = ((Datetime) priorVal).getTime();
+      }
+      super.setDefaultValues(lookupRecordKey, priorVal);
+    }
+
     protected virtual override Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
       if (potentiallyUnitializedDecimal == null) {
         return RollupFieldInitializer.Current.defaultDateTime.getTime();
@@ -649,8 +656,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class DateRollupCalculator extends DatetimeRollupCalculator {
-    // for Date, it's not necessary to override the "getDecimalOrDefault" method in DatetimeRollupCalculator
-    // because the conversion only happens in "getReturnValue"
     public DateRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -669,6 +674,13 @@ public without sharing abstract class RollupCalculator {
         lookupRecordKey,
         lookupKeyField
       );
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      if (priorVal instanceof Date) {
+        priorVal = Datetime.newInstanceGmt((Date) priorVal, Time.newInstance(0, 0, 0, 0)).getTime();
+      }
+      super.setDefaultValues(lookupRecordKey, priorVal);
     }
 
     public override Object getReturnValue() {
@@ -696,6 +708,13 @@ public without sharing abstract class RollupCalculator {
         lookupRecordKey,
         lookupKeyField
       );
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      if (priorVal instanceof Time) {
+        priorVal = Datetime.newInstanceGmt(RollupFieldInitializer.Current.defaultDateTime.dateGmt(), (Time) priorVal);
+      }
+      super.setDefaultValues(lookupRecordKey, priorVal);
     }
 
     public override Object getReturnValue() {
