@@ -591,6 +591,51 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void performsRollupWhenIntermediateOneToManyChildrenUpdated() {
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 47;
+    update acc;
+    Account initialParent = new Account(Name = 'Initial', AnnualRevenue = acc.AnnualRevenue);
+    insert initialParent;
+
+    Individual indy = new Individual(LastName = 'Indy');
+    insert indy;
+    Contact con = new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id);
+    insert con;
+
+    RollupAsyncProcessor.shouldFlattenAsyncProcesses = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        LookupObject__c = 'Individual',
+        LookupFieldOnCalcItem__c = 'Id',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupFieldOnLookupObject__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'Contacts.Individual.ConsumerCreditScore',
+        OneToManyGrandparentFields__c = 'Contact.AccountId'
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.records = new List<Contact>{ con };
+    Rollup.oldRecordsMap = new Map<Id, Contact>{ con.Id => new Contact(Id = con.Id, AccountId = initialParent.Id) };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
+    System.assertEquals(
+      acc.AnnualRevenue,
+      updatedIndy.ConsumerCreditScore,
+      'Apex grandparent rollup should run with reparenting change to intermediate records'
+    );
+  }
+
+  @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromApex() {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');

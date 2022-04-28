@@ -1831,7 +1831,7 @@ global without sharing virtual class Rollup {
           meta.CalcItemWhereClause__c
         );
       } else if (isIntermediateRollupForGrandparent) {
-        queryWrapper = getIntermediateGrandparentQueryWrapper(meta.GrandparentRelationshipFieldPath__c, calcItems, oldCalcItems);
+        queryWrapper = getIntermediateGrandparentQueryWrapper(meta, calcItems, oldCalcItems);
       }
 
       if (queryWrapper != null) {
@@ -2171,18 +2171,27 @@ global without sharing virtual class Rollup {
     throw ex;
   }
 
-  private static QueryWrapper getIntermediateGrandparentQueryWrapper(String grandparentFieldPath, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+  private static QueryWrapper getIntermediateGrandparentQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     if (isCDC) {
       return new QueryWrapper();
     }
 
     SObjectType sObjectType = calcItems[0].getSObjectType();
-    SObjectField fieldToken = getPartOfGrandparentChain(grandparentFieldPath, sObjectType);
+    SObjectField fieldToken = getPartOfGrandparentChain(meta, sObjectType);
     String relationshipName = fieldToken.getDescribe().getRelationshipName();
-    Integer relationshipIndex = grandparentFieldPath.indexOf(relationshipName) + relationshipName.length();
-    String priorFieldPath = grandparentFieldPath.substring(0, relationshipIndex) + '.Id';
-    QueryWrapper wrapper = new QueryWrapper('', priorFieldPath);
+    Integer relationshipIndex = meta.GrandparentRelationshipFieldPath__c.indexOf(relationshipName) + relationshipName.length();
+    String priorFieldPath = meta.GrandparentRelationshipFieldPath__c.substring(0, relationshipIndex) + '.Id';
+    if (meta.OneToManyGrandparentFields__c != null && meta.OneToManyGrandparentFields__c.contains(fieldToken.getDescribe().getName())) {
+      List<String> fieldPathTuples = meta.OneToManyGrandparentFields__c.split(',');
+      for (String fieldPathTuple : fieldPathTuples) {
+        if (fieldToken.getDescribe().getName().equalsIgnoreCase(fieldPathTuple.substringAfter('.'))) {
+          priorFieldPath = 'Id';
+          break;
+        }
+      }
+    }
 
+    QueryWrapper wrapper = new QueryWrapper('', priorFieldPath);
     for (SObject calcItem : calcItems) {
       SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
       String currentLookup = (String) calcItem.get(fieldToken);
@@ -2345,7 +2354,7 @@ global without sharing virtual class Rollup {
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
       if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
-        if (getPartOfGrandparentChain(meta.GrandparentRelationshipFieldPath__c, sObjectType) != null) {
+        if (getPartOfGrandparentChain(meta, sObjectType) != null) {
           continue;
         } else if (isNotTriggeredByMatchingObject(meta, sObjectName)) {
           rollupMetadatas.remove(index);
@@ -2366,15 +2375,24 @@ global without sharing virtual class Rollup {
       (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c);
   }
 
-  private static SObjectField getPartOfGrandparentChain(String grandParentFieldPath, SObjectType sObjectType) {
-    List<String> validRelationshipNames = grandParentFieldPath.split('\\.');
+  private static SObjectField getPartOfGrandparentChain(Rollup__mdt meta, SObjectType sObjectType) {
+    List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
-    validRelationshipNames.remove(validRelationShipNames.size() - 1);
-    DescribeSObjectResult describeObject = sObjectType.getDescribe();
-    List<SObjectField> fieldTokens = describeObject.fields.getMap().values();
-    for (SObjectField fieldToken : fieldTokens) {
-      if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
+    validRelationshipNames.remove(validRelationshipNames.size() - 1);
+    for (SObjectField fieldToken : sObjectType.getDescribe().fields.getMap().values()) {
+      if (fieldToken.getDescribe().getRelationshipName() == null) {
+        continue;
+      } else if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
         return fieldToken;
+      } else if (String.isNotBlank(meta.OneToManyGrandparentFields__c)) {
+        List<SObjectType> parents = fieldToken.getDescribe().getReferenceTo();
+        for (SObjectType parent : parents) {
+          for (ChildRelationship child : parent.getDescribe().getChildRelationships()) {
+            if (validRelationshipNames.contains(child.getRelationshipName())) {
+              return fieldToken;
+            }
+          }
+        }
       }
     }
     return null;
