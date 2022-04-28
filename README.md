@@ -328,7 +328,7 @@ In either case, the SOQL query needs to correspond to either the parent or the c
 <details>
   <summary>Expand for Grandparent rollup info</summary>
 
-[Check out the Wiki article for more information on Grandparent rollups](<../../wiki/Configuring-Grandparent-(or-Greater)-Rollups>), or follow along here -
+[Check out the Wiki article for more information on Grandparent rollups](<../../wiki/Configuring-Grandparent-(or-Greater)-Rollups>), the [Wiki article for Ultimate Parent Rollups](../../wiki/Configuring-Hierarchy-Ultimate-Parent-Rollups) or follow along here -
 
 It's not all that uncommon, especially with custom objects, to get into the practice of rolling up values from one object merely so that _another_ parent object can receive _those_ rolled up values; that is to say, we occasionally use intermediate objects in order to roll values up from a grandchild record to a grandparent (and there's no need to stop there; it's totally possible to want to roll up values from great-grandchildren to the great-grandparent record, and so on). Apex Rollup offers the never-before-seen functionality of skipping the intermediate records so that you can go directly to the ultimate parent object. This is supported through the invocable rollup actions, as well as through the CMDT-based rollup approach by filling out the optional field `Grandparent Relationship Field Path`:
 
@@ -348,7 +348,7 @@ In this example, there are four objects in scope:
 - if you are using `Grandparent Relationship Field Path` with a polymorphic standard field like `Task.WhatId` or `Task.WhoId`, you should also supply a `Calc Item Where Clause` to ensure you are filtering the calculation items to only be related to one type of parent at a time (eg: your `Calc Item Where Clause` would look like `What.Type = 'Account'`)
 - grandparent rollups respect [SOQL's map relationship-field hopping of 5 levels](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_relationships_query_limits.htm):
 
-> In each specified relationship, no more than five levels can be specified in a child-to-parent relationship. For example, Contact.Account.Owner.FirstName (three levels)
+> In each specified relationship, no more than five levels can be specified in a child-to-parent relationship. For example, `Contact.Account.Owner.FirstName` would be three levels.
 
 While the base architecture for retrieving grand(or greater)parent items has no technical limit on the number of relationship field hops that can be made, correctly re-triggering the rollup calculations after an intermediate object has been updated made it necessary to respect this limit (for now).
 
