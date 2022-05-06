@@ -18,7 +18,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     ' NOT IN ' => ' != ',
     ' not like ' => ' !like ',
     ' NOT LIKE ' => ' !like ',
-    ' <> ' => ' != ',
     ' in ' => ' = ',
     ' IN ' => ' = ',
     ' LIKE ' => ' like ',
@@ -622,7 +621,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
 
       switch on this.criteria {
-        when '=', '!=' {
+        when '=', '!=', '<>' {
           if (this.hasValues == false) {
             isEqual = String.isBlank(storedValue);
           } else {
@@ -633,7 +632,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
               }
             }
           }
-          isEqual = this.criteria == '!=' ? !isEqual : isEqual;
+          isEqual = this.criteria == '=' ? isEqual : !isEqual;
         }
         when 'like', '!like' {
           // like/not like have to be handled separately because it's the storedValue
