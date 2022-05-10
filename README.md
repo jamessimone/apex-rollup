@@ -984,6 +984,22 @@ You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Le
 
 - If you need to generate additional test code coverage for `apex-rollup` (which might be necessary in a highly declarative org), you can install the [Extra Code Coverage plugin](plugins/ExtraCodeCoverage), which automatically gets updated any time I make changes to tests here.
 
+- To customize how updates are made to the parent-level records in Rollup, create a `Rollup Plugin` custom metadata record with the name field set to `RollupCustomUpdater`. Create an Apex class with the same name and implement the `IUpdater` interface from `RollupSObjectUpdater`:
+
+```java
+public class RollupCustomUpdater implements RollupSObjectUpdater.IUpdater {
+  public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
+      // do whatever you'd like, and don't forget to commit using
+      // something like Database.update!
+      // assuming you have a TriggerHandler framework with a static "disable" method
+      // to bypass other logic
+      TriggerHandler.disable();
+      Database.update(recordsToUpdate, options);
+      TriggerHandler.enable();
+    }
+}
+```
+
 ## Commit History
 
 This repository comes after the result of [dozens of commits](https://github.com/jamessimone/apex-mocks-stress-test/commits/rollup) on my working repository. You can view the full history of the evolution of Apex Rollup there.

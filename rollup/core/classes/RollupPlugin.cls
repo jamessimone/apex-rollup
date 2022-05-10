@@ -5,7 +5,7 @@ public without sharing class RollupPlugin {
   private static RollupPluginParameter__mdt parameterMock;
 
   public RollupPlugin__mdt getInstance(String developerNameOrId) {
-    return pluginMocks != null ? pluginMocks[0] : RollupPlugin__mdt.getInstance(developerNameOrId);
+    return pluginMocks != null && pluginMocks.isEmpty() == false ? pluginMocks.remove(0) : RollupPlugin__mdt.getInstance(developerNameOrId);
   }
 
   public List<RollupPlugin__mdt> getInstances() {

@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Evaluator CPU time improvements",
+            "versionName": "Small RollupEvaluator improvements (hopefully more to come, there), and added Rollup Plugin capability to customize how parent-level records are updated.",
             "versionNumber": "1.5.4.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",

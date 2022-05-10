@@ -1,4 +1,5 @@
 public without sharing virtual class RollupSObjectUpdater {
+  private static final String UPDATER_NAME = 'RollupCustomUpdater';
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
   private static final SObjectSorter SORTER = new SObjectSorter();
@@ -11,6 +12,10 @@ public without sharing virtual class RollupSObjectUpdater {
 
   public interface IDispatcher {
     void dispatch(List<SObject> records);
+  }
+
+  public interface IUpdater {
+    void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options);
   }
 
   public RollupSObjectUpdater() {
@@ -42,7 +47,7 @@ public without sharing virtual class RollupSObjectUpdater {
       if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
         dmlOptions.DuplicateRuleHeader.AllowSave = true;
       }
-      Database.update(recordsToUpdate, dmlOptions);
+      this.updateRecords(recordsToUpdate, dmlOptions);
       this.dispatch(recordsToUpdate);
     }
   }
@@ -126,6 +131,12 @@ public without sharing virtual class RollupSObjectUpdater {
     }
   }
 
+  private void updateRecords(List<SObject> recordsToUpdate, Database.DMLOptions options) {
+    RollupPlugin__mdt updaterPlugin = new RollupPlugin().getInstance(UPDATER_NAME);
+    Type updaterType = updaterPlugin != null ? Type.forName(updaterPlugin.DeveloperName) : DefaultUpdater.class;
+    ((IUpdater) updaterType.newInstance()).performUpdate(recordsToUpdate, options);
+  }
+
   private class SObjectSorter extends RollupComparer {
     public override Integer compare(Object first, Object second) {
       Integer returnVal = 0;
@@ -154,6 +165,12 @@ public without sharing virtual class RollupSObjectUpdater {
       RollupSObjectUpdater updater = new RollupSObjectUpdater();
       updater.addRollupControl(this.control);
       new RollupSObjectUpdater().doUpdate(this.records);
+    }
+  }
+
+  private without sharing class DefaultUpdater implements IUpdater {
+    public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
+      Database.update(recordsToUpdate, options);
     }
   }
 }
