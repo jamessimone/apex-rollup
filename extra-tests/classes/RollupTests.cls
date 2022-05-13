@@ -2259,6 +2259,30 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldProperlyShortCircuitWhenOldItemMatchesAndNewOneDoesNotConcatDistinct() {
+    Account acc = [SELECT Id FROM Account];
+
+    insert new ContactPointAddress(Name = 'CDC, GDG', ParentId = acc.Id);
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'GDG', ParentId = acc.Id, PreferenceRank = 5) };
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'UPDATE', 'CONCAT_DISTINCT');
+    flowInputs[0].oldRecordsToRollup = new List<SObject>{ new ContactPointAddress(Id = cpas[0].Id, ParentId = acc.Id, Name = 'CDC') };
+    flowInputs[0].rollupFieldOnOpObject = 'Name';
+    flowInputs[0].rollupFieldOnCalcItem = 'Name';
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank != 5';
+    flowInputs[0].splitConcatDelimiterOnCalcItem = true;
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'CONCAT_DISTINCT AFTER_UPDATE from flow did not update account');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals('CDC, GDG', updatedAcc.Name, 'CONCAT_DISTINCT should have properly pulled all records!');
+  }
+
+  @IsTest
   static void shouldSplitConcatCalcItemsFromFlow() {
     Account acc = [SELECT Id FROM Account];
     acc.Name = 'CDC';

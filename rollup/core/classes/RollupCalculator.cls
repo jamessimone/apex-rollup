@@ -154,6 +154,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
+    System.debug(localCalcItems);
     if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.metadata.RollupOrderBys__r.isEmpty() == false) {
       new RollupFirstLastSorter(Rollup.Op.FIRST, this.metadata.RollupOrderBys__r).sort(localCalcItems);
     }
@@ -889,7 +890,7 @@ public without sharing abstract class RollupCalculator {
       if (String.isBlank(existingVal)) {
         return;
       } else if (this.isConcatDistinct) {
-        this.shouldShortCircuit = true;
+        this.shouldShortCircuit = this.op.name().contains('DELETE');
         this.handleConcatDistinctDelete(calcItem);
       } else {
         this.stringVal = this.replaceWithDelimiter(this.stringVal, existingVal, '');
@@ -971,23 +972,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     private Boolean shouldConcat(String newVal) {
-      Boolean shouldConcat = false;
-      Boolean hasVal = String.isNotBlank(newVal);
-      if (this.isConcatDistinct == false && hasVal) {
-        shouldConcat = true;
-      } else if (this.isConcatDistinct && hasVal) {
-        List<String> existingVals = this.stringVal.split(this.concatDelimiter);
-        Boolean matches = false;
-        for (String existingVal : existingVals) {
-          matches = existingVal == newVal;
-          if (matches) {
-            break;
-          }
-        }
-        shouldConcat = matches == false;
-      }
-
-      return shouldConcat;
+      return String.isNotBlank(newVal);
     }
 
     private String concatWithDelimiter(String newVal) {
