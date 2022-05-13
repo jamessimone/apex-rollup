@@ -1037,7 +1037,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           continue;
         }
 
-        this.winnowCalcItemsAndCheckReparenting(rollup, localCalcItems, oldLookupItems);
+        this.populateReparentedItems(rollup, localCalcItems, oldLookupItems);
 
         // local calculations and reparenting can step on one another (due to full recalculations happening)
         // this guard clause prevents a full recalculation from taking place unnecessarily if a reparenting operation
@@ -1088,26 +1088,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private void winnowCalcItemsAndCheckReparenting(RollupAsyncProcessor roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
+  private void populateReparentedItems(RollupAsyncProcessor roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
       SObject calcItem = localCalcItems[index];
-      Boolean doesNotMatchCurrentItem = roll.eval.matches(calcItem) == false;
-      if (
-        roll.metadata?.IsFullRecordSet__c == true &&
-        (doesNotMatchCurrentItem && (roll.oldCalcItems.containsKey(calcItem.Id) == false || roll.eval.matches(roll.oldCalcItems.get(calcItem.Id)) == false))
-      ) {
-        // technically it should only be possible for a calc item that doesn't match
-        // to still exist if it is a Full Record Set operation; this gives people the chance
-        // to reset rollup values if none of the records passed in match the eval criteria
-        localCalcItems.remove(index);
+      if (roll.oldCalcItems?.containsKey(calcItem.Id) != true) {
         continue;
       }
-      // Check for reparented records
-      SObject oldCalcItem = roll.oldCalcItems?.get(calcItem.Id);
-      if (oldCalcItem == null) {
-        continue;
-      }
-
+      SObject oldCalcItem = roll.oldCalcItems.get(calcItem.Id);
       String priorLookup = (String) oldCalcItem.get(roll.lookupFieldOnCalcItem);
       // if the lookup wasn't previously populated, there's nothing to update
       if (String.isBlank(priorLookup)) {
