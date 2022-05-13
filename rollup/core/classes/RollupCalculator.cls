@@ -154,6 +154,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
+    System.debug(localCalcItems);
     if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.metadata.RollupOrderBys__r.isEmpty() == false) {
       new RollupFirstLastSorter(Rollup.Op.FIRST, this.metadata.RollupOrderBys__r).sort(localCalcItems);
     }
