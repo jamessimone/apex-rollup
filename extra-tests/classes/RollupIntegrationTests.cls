@@ -1677,6 +1677,39 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void limitsCorrectlyOnInsert() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
+    insert new List<ContactPointAddress>{ cpa, two };
+
+    Rollup.records = new List<ContactPointAddress>{ two };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .addLimit(1)
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
+  }
+
+  @IsTest
+  static void limitsCorrectlyOnUpdate() {
+    System.assert(false, 'TODO!');
+  }
+
+  @IsTest
+  static void limitsCorrectlyOnDelete() {
+    // delete in particular is sus at the moment
+    // due to the current implementation for RollupAsyncProcessor.isValidAdditionalCalcItemRetrieval
+    System.assert(false, 'TODO!');
+  }
+
+  @IsTest
   static void shouldThrowExceptionWhenTryingToOperateOnDisallowedFieldTypes() {
     Account acc = [SELECT Id FROM Account];
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };

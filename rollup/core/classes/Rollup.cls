@@ -262,6 +262,13 @@ global without sharing virtual class Rollup {
     return 'Not implemented';
   }
 
+  public virtual Rollup addLimit(Integer limitAmount) {
+    for (Rollup roll : this.rollups) {
+      roll.metadata.LimitAmount__c = limitAmount;
+    }
+    return this;
+  }
+
   protected RollupControl__mdt getSpecificControl(Id rollupControlId) {
     return getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, specificControl);
   }
@@ -540,6 +547,8 @@ global without sharing virtual class Rollup {
     global Boolean isRollupStartedFromParent = false;
     @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
+    @InvocableVariable(label='Limit Amount')
+    global Decimal limitAmount;
 
     // these are listed with the optional properties because otherwise Flow builders always have to check for null after using a Get Records
     // element with filter conditions; the Flow engine otherwise isn't satisfied because Get Records returns null instead of an empty list
@@ -2503,10 +2512,7 @@ global without sharing virtual class Rollup {
     } else if (meta.RollupOrderBys__r.isEmpty()) {
       replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
     }
-    if (replacementOrderBys != null) {
-      meta = Rollup.appendOrderByMetadata(meta, replacementOrderBys);
-    }
-    return meta;
+    return replacementOrderBys != null ? Rollup.appendOrderByMetadata(meta, replacementOrderBys) : meta;
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {

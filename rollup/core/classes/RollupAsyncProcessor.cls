@@ -77,6 +77,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.overrideRollupControl();
     }
 
+    public override Rollup addLimit(Integer limitAmount) {
+      for (Rollup__mdt rollupMeta : this.rollupInfo) {
+        rollupMeta.LimitAmount__c = limitAmount;
+      }
+      return this;
+    }
+
     protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
       props = super.customizeToStringEntries(props);
       this.addToMap(props, 'Rollup Metadata', this.rollupInfo);

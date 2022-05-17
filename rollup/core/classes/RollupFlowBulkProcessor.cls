@@ -48,6 +48,8 @@ global without sharing class RollupFlowBulkProcessor {
     global Boolean isRollupStartedFromParent;
     @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
+    @InvocableVariable(label='Limit Amount')
+    global Decimal limitAmount;
 
     @InvocableVariable(
       label='Should rollup to ultimate hierarchy parent'
@@ -104,6 +106,7 @@ global without sharing class RollupFlowBulkProcessor {
               : meta.OneToManyGrandparentFields__c;
             input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
             input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
+            input.limitAmount = flowInput.limitAmount != null ? flowInput.limitAmount : meta.LimitAmount__c;
             // fixup order by children records
             input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
             for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {

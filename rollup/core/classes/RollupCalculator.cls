@@ -155,7 +155,7 @@ public without sharing abstract class RollupCalculator {
     }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
     if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.metadata.RollupOrderBys__r.isEmpty() == false) {
-      new RollupFirstLastSorter(Rollup.Op.FIRST, this.metadata.RollupOrderBys__r).sort(localCalcItems);
+      new RollupCalcItemSorter(this.metadata.RollupOrderBys__r).sort(localCalcItems);
     }
 
     for (Integer index = 0; index < localCalcItems.size(); index++) {
@@ -1167,8 +1167,14 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      new RollupFirstLastSorter(this.op, this.metadata.RollupOrderBys__r).sort(calcItems);
-      this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
+      new RollupCalcItemSorter(this.metadata.RollupOrderBys__r).sort(calcItems);
+      Integer retrievalIndex = 0;
+      switch on this.op {
+        when LAST, UPDATE_LAST, DELETE_LAST {
+          retrievalIndex = calcItems.size() - 1;
+        }
+      }
+      this.returnVal = calcItems.isEmpty() ? null : calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
     }
   }
 }
