@@ -87,7 +87,7 @@ private class RollupCalcItemReplacerTests {
     );
     replacer.replace(
       new List<OpportunityContactRole>{ oppConRole },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1')}
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1') }
     );
 
     // now call replace on another object without the field used above
@@ -111,14 +111,8 @@ private class RollupCalcItemReplacerTests {
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
     );
-    Rollup__mdt meta = Rollup.appendOrderByMetadata(new Rollup__mdt(), new List<RollupOrderBy__mdt>{
-      new RollupOrderBy__mdt(FieldName__c = 'Account.Name')
-    });
-
-    List<Contact> replacedContacts = replacer.replace(
-      new List<Contact>{ con },
-      new List<Rollup__mdt>{ meta }
-    );
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(new Rollup__mdt(), new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Account.Name') });
+    List<Contact> replacedContacts = replacer.replace(new List<Contact>{ con }, new List<Rollup__mdt>{ meta });
 
     System.assertNotEquals(null, replacedContacts[0].Account.Name);
   }

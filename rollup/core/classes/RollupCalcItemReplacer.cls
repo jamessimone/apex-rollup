@@ -250,7 +250,9 @@ public without sharing class RollupCalcItemReplacer {
               calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
             } catch (SObjectException ex) {
               // avoids "System.SObjectException: Relationship { relationship name } is not editable"
-              calcItems.set(index, this.serializeReplace(calcItem, calcItemWithUpdatedParentField, fieldToken.getRelationshipName()));
+              if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {
+                calcItems.set(index, this.serializeReplace(calcItem, calcItemWithUpdatedParentField, fieldToken.getRelationshipName()));
+              }
             }
           } else if (isAcceptableField) {
             // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,

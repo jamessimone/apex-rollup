@@ -2103,6 +2103,13 @@ private class RollupTests {
     System.assertEquals(cp2.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
+  // MOST
+
+  @IsTest
+  static void usesMostCommonValue() {
+
+  }
+
   /** CDC trigger tests */
 
   @IsTest

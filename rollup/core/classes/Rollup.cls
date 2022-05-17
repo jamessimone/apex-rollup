@@ -141,6 +141,7 @@ global without sharing virtual class Rollup {
     MIN,
     UPDATE_MIN,
     DELETE_MIN,
+    MOST,
     CONCAT,
     UPDATE_CONCAT,
     DELETE_CONCAT,
@@ -1856,7 +1857,7 @@ global without sharing virtual class Rollup {
       } else if (isRefresh) {
         // remove non-matches
         metas.remove(index);
-      } else {
+      } else if (meta.RollupOperation__c != Op.MOST.name()) {
         // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
         // we need to reset the CMDT to the correct base operation prior to appending the new context
         meta.RollupOperation__c =
@@ -2524,7 +2525,7 @@ global without sharing virtual class Rollup {
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
     switch on Op.valueOf(baseOperationName) {
-      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST {
+      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, MOST {
         isFullRecalcOp = true;
       }
     }
