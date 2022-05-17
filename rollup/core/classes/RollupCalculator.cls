@@ -9,10 +9,10 @@ public without sharing abstract class RollupCalculator {
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
   protected final SObjectField lookupKeyField;
-  protected final Rollup.Op op;
   protected final Rollup__mdt metadata;
   protected final Boolean isChangedFieldCalc;
 
+  protected Rollup.Op op;
   protected String lookupKeyQuery;
   protected String lookupRecordKey;
   protected Rollup.Evaluator eval;
@@ -297,6 +297,19 @@ public without sharing abstract class RollupCalculator {
       ) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
+      }
+    }
+    if (this.metadata?.LimitAmount__c != null) {
+      List<RollupOrderBy__mdt> orderBys = this.metadata.RollupOrderBys__r.isEmpty() == false
+        ? this.metadata.RollupOrderBys__r
+        : new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) };
+      new RollupCalcItemSorter(orderBys).sort(items);
+      while (items.size() > this.metadata.LimitAmount__c && items.isEmpty() == false) {
+        items.remove(items.size() - 1);
+      }
+      // Limit-based rollups always reset the field's value, and always act as a fresh start
+      if (this.metadata.RollupOperation__c.contains('DELETE') || this.metadata.RollupOperation__c.contains('UPDATE')) {
+        this.op = Rollup.Op.valueOf(this.metadata.RollupOperation__c.substringAfter('_'));
       }
     }
 

@@ -264,9 +264,14 @@ global without sharing virtual class Rollup {
 
   public virtual Rollup addLimit(Integer limitAmount) {
     for (Rollup roll : this.rollups) {
-      roll.metadata.LimitAmount__c = limitAmount;
+      this.addLimitToMetadata(roll.metadata, limitAmount);
     }
     return this;
+  }
+
+  protected void addLimitToMetadata(Rollup__mdt localMeta, Integer limitAmount) {
+    localMeta.LimitAmount__c = limitAmount;
+    localMeta.IsFullRecordSet__c = true;
   }
 
   protected RollupControl__mdt getSpecificControl(Id rollupControlId) {
@@ -1578,6 +1583,7 @@ global without sharing virtual class Rollup {
             GrandparentRelationshipFieldPath__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
+            LimitAmount__c,
             OneToManyGrandparentFields__c,
             OrderByFirstLast__c,
             RollupControl__c,
@@ -2516,12 +2522,13 @@ global without sharing virtual class Rollup {
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {
-    return baseOperationName == Op.FIRST.name() ||
-      baseOperationName == Op.LAST.name() ||
-      baseOperationName == Op.AVERAGE.name() ||
-      baseOperationName == Op.CONCAT_DISTINCT.name() ||
-      baseOperationName == Op.CONCAT.name() ||
-      baseOperationName == Op.COUNT_DISTINCT.name();
+    Boolean isFullRecalcOp = false;
+    switch on Op.valueOf(baseOperationName) {
+      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST {
+        isFullRecalcOp = true;
+      }
+    }
+    return isFullRecalcOp;
   }
 
   private static String getRollupControlKey(

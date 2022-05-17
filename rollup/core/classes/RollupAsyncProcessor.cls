@@ -79,7 +79,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     public override Rollup addLimit(Integer limitAmount) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
-        rollupMeta.LimitAmount__c = limitAmount;
+        this.addLimitToMetadata(rollupMeta, limitAmount);
       }
       return this;
     }
@@ -644,7 +644,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
     if ((roll.isFullRecalc == false && roll.metadata.IsFullRecordSet__c == false)) {
       return false;
-    } else if (roll.op?.name().contains('DELETE') == true) {
+    } else if (roll.op?.name().contains('DELETE') == true && roll.metadata.LimitAmount__c == null) {
       // full recalc rollups won't have an op, hence the safe navigation above
       return false;
     }
