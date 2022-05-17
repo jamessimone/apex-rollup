@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixed an issue reported by Katherine West where CONCAT_DISTINCT was not always properly retrieving additional calc items",
-            "versionNumber": "1.5.5.0",
+            "versionName": "Added support for limiting the number of calc items considered for various rollup operations - allowing for things like SUM of top five opportunities this month",
+            "versionNumber": "1.5.6.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
