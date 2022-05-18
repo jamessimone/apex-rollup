@@ -511,7 +511,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // the rollup _becomes_ a full recalc
     rollup.isFullRecalc = true;
 
-    String key = rollup.calcItemType.getDescribe().getName();
+    String key = rollup.calcItemType.getDescribe().getName() + rollup.lookupFieldOnCalcItem;
     List<SObject> additionalCalcItems;
     Boolean shouldLimitCalcItemQuery = false;
     if (this.cachedFullRecalcs.containsKey(key)) {
