@@ -21,7 +21,8 @@ export default class RollupForceRecalculation extends LightningElement {
     RollupOperation__c: '',
     CalcItemWhereClause__c: '',
     ConcatDelimiter__c: '',
-    SplitConcatDelimiterOnCalcItem__c: false
+    SplitConcatDelimiterOnCalcItem__c: false,
+    LimitAmount__c: 0
   };
 
   @api isCMDTRecalc = false;
@@ -36,7 +37,7 @@ export default class RollupForceRecalculation extends LightningElement {
   selectedMetadataCMDTRecords;
 
   isRollingUp = false;
-  isFirstLast = false;
+  isOrderByRollup = false;
   rollupStatus;
   error = '';
 
@@ -85,8 +86,8 @@ export default class RollupForceRecalculation extends LightningElement {
 
   handleChange(event) {
     const value = event.detail ? event.detail.value : event.target.value;
-    this.metadata[event.target.name] = value;
-    this.isFirstLast = this.rollupOperation.indexOf('FIRST') !== -1 || this.rollupOperation.indexOf('LAST') !== -1;
+    this.metadata[event.target.name] = event.target.name === 'LimitAmount__c' ? Number(value) : value;
+    this.isOrderByRollup = this.rollupOperation.indexOf('FIRST') !== -1 || this.rollupOperation.indexOf('LAST') !== -1 || this.metadata.LimitAmount__c !== 0;
   }
 
   handleToggle() {

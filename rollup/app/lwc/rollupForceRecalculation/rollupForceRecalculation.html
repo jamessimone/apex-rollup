@@ -102,12 +102,21 @@
               onchange={handleChange}
               required
             ></lightning-combobox>
-            <template if:true={isFirstLast}>
+            <template if:true={isOrderByRollup}>
               <div>
                 <c-rollup-order-by data-id="RollupOrderBys__r"></c-rollup-order-by>
               </div>
             </template>
           </div>
+          <lightning-input
+            data-id="LimitAmount__c"
+            class="slds-col slds-form-element slds-form-element_horizontal"
+            type="number"
+            label="Limit Amount (Optional) - you can add Order By info optionally after entering this, as well"
+            name="LimitAmount__c"
+            oncommit={handleChange}
+          >
+          </lightning-input>
           <lightning-input
             data-id="ConcatDelimiter__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
