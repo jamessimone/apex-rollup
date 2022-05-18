@@ -1376,6 +1376,36 @@ global without sharing virtual class Rollup {
     );
   }
 
+  global static Rollup mostFromApex(
+    SObjectField mostFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField mostFieldOnOperationObject,
+    SObjectType lookupSobjectType
+  ) {
+    return mostFromApex(mostFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, mostFieldOnOperationObject, lookupSobjectType, null);
+  }
+
+  global static Rollup mostFromApex(
+    SObjectField mostFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField mostFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      mostFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      mostFieldOnOperationObject,
+      lookupSobjectType,
+      Op.MOST,
+      null,
+      eval
+    );
+  }
+
   global static void runFromCDCTrigger() {
     isCDC = true;
     // CDC always uses Trigger.new
@@ -1593,6 +1623,7 @@ global without sharing virtual class Rollup {
             SplitConcatDelimiterOnCalcItem__c,
             (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
           FROM Rollup__mdt
+          WHERE RollupControl__r.ShouldAbortRun__c = FALSE
         ];
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {
@@ -2562,15 +2593,13 @@ global without sharing virtual class Rollup {
     if (Trigger.operationType != null && isCDC == false) {
       apexContext = Trigger.operationType;
     }
-    Set<TriggerOperation> validTriggerOps = new Set<TriggerOperation>{
-      TriggerOperation.AFTER_INSERT,
-      TriggerOperation.AFTER_UPDATE,
-      TriggerOperation.BEFORE_DELETE,
-      TriggerOperation.AFTER_DELETE,
-      TriggerOperation.AFTER_UNDELETE
-    };
-    if (shouldRun && validTriggerOps.contains(apexContext) == false) {
-      shouldRun = false;
+    switch on apexContext {
+      when AFTER_INSERT, AFTER_UPDATE, BEFORE_DELETE, AFTER_DELETE, AFTER_UNDELETE {
+        shouldRun = shouldRun && true;
+      }
+      when else {
+        shouldRun = false;
+      }
     }
     // an undelete behaviors **strictly** the same as an insert
     // because the underlying SObject can't be modified till afterwards
@@ -2585,7 +2614,7 @@ global without sharing virtual class Rollup {
       return records;
     }
 
-    return (Trigger.isDelete ? Trigger.old : Trigger.new.clone()).deepClone(true, true, true);
+    return (Trigger.isDelete ? Trigger.old : Trigger.new).deepClone(true, true, true);
   }
 
   private static Map<Id, SObject> getOldTriggerRecordsMap() {

@@ -46,39 +46,52 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       RollupCalculator calc;
-      if (op.name().contains(Rollup.Op.COUNT_DISTINCT.name())) {
-        calc = new CountDistinctRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (op.name().contains(Rollup.Op.COUNT.name())) {
-        calc = new CountRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (op.name().contains(Rollup.Op.AVERAGE.name())) {
-        calc = new AverageRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (op.name().contains(Rollup.Op.FIRST.name()) || op.name().contains(Rollup.Op.LAST.name())) {
-        calc = new FirstLastRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorVal instanceof Decimal) {
-        calc = new DecimalRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorVal instanceof String) {
-        calc = new PicklistRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata,
-          lookupRecordKey,
-          lookupKeyField,
-          metadata.ConcatDelimiter__c
-        );
-      } else if (priorVal instanceof Date) {
-        // not obvious: the order of these else if's is of supreme importance
-        // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
-        // all Dates test true as Datetimes ...
-        calc = new DateRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorVal instanceof Time) {
-        calc = new TimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorval instanceof Datetime) {
-        calc = new DatetimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else {
-        throw new IllegalArgumentException('Calculation not defined for: ' + JSON.serialize(priorVal));
+      switch on op {
+        when COUNT_DISTINCT, UPDATE_COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
+          calc = new CountDistinctRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when COUNT, UPDATE_COUNT, DELETE_COUNT {
+          calc = new CountRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
+          calc = new AverageRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when FIRST, UPDATE_FIRST, DELETE_FIRST, LAST, UPDATE_LAST, DELETE_LAST {
+          calc = new FirstLastRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when MOST {
+          calc = new MostRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when else {
+          if (priorVal instanceof Decimal) {
+            calc = new DecimalRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          } else if (priorVal instanceof String) {
+            calc = new PicklistRollupCalculator(
+              priorVal,
+              op,
+              opFieldOnCalcItem,
+              opFieldOnLookupObject,
+              metadata,
+              lookupRecordKey,
+              lookupKeyField,
+              metadata.ConcatDelimiter__c
+            );
+          } else if (priorVal instanceof Date) {
+            // not obvious: the order of these else if's is of supreme importance
+            // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
+            // all Dates test true as Datetimes ...
+            calc = new DateRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          } else if (priorVal instanceof Time) {
+            calc = new TimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          } else if (priorval instanceof Datetime) {
+            calc = new DatetimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          }
+        }
       }
+      if (calc == null) {
+        throw new IllegalArgumentException('Calculation not defined for prior value: ' + JSON.serialize(priorVal) + ' and op: ' + op);
+      }
+
       return calc;
     }
   }
@@ -1188,6 +1201,42 @@ public without sharing abstract class RollupCalculator {
         }
       }
       this.returnVal = calcItems.isEmpty() ? null : calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
+    }
+  }
+
+  private class MostRollupCalculator extends RollupCalculator {
+    private final Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
+    private Integer largestCountPointer = -1;
+    public MostRollupCalculator(
+      Object priorVal,
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      String lookupRecordKey,
+      SObjectField lookupKeyField
+    ) {
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupRecordKey, lookupKeyField);
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      for (SObject calcItem : calcItems) {
+        Object value = calcItem.get(this.opFieldOnCalcItem);
+        Integer localCount = 0;
+        if (this.occurrenceToCount.containsKey(value)) {
+          localCount = this.occurrenceToCount.get(value);
+        }
+        this.occurrenceToCount.put(value, ++localCount);
+        if (this.largestCountPointer < localCount) {
+          this.largestCountPointer = localCount;
+          this.returnVal = value;
+        }
+      }
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      this.occurrenceToCount.clear();
+      this.largestCountPointer = -1;
     }
   }
 }

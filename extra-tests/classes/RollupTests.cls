@@ -2107,7 +2107,21 @@ private class RollupTests {
 
   @IsTest
   static void usesMostCommonValue() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress commonOne = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
+    ContactPointAddress commonTwo = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
+    ContactPointAddress uncommon = new ContactPointAddress(PreferenceRank = 300, Name = 'two', ParentId = acc.Id);
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ commonOne, commonTwo, uncommon });
 
+    Test.startTest();
+    Rollup.mostFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MOST');
+    acc = (Account) mock.Records[0];
+    System.assertEquals(commonOne.PreferenceRank, acc.AnnualRevenue);
   }
 
   /** CDC trigger tests */
