@@ -1689,7 +1689,8 @@ private class RollupIntegrationTests {
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
-      .addLimit(1)
+      .addLimit(1, ContactPointAddress.PreferenceRank)
+      .addOrderBys(new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Id') }, ContactPointAddress.PreferenceRank)
       .runCalc();
     Test.stopTest();
 
@@ -1711,7 +1712,7 @@ private class RollupIntegrationTests {
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
-      .addLimit(1)
+      .addLimit(1, ContactPointAddress.PreferenceRank)
       .runCalc();
     Test.stopTest();
 
@@ -1732,7 +1733,7 @@ private class RollupIntegrationTests {
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
-      .addLimit(1)
+      .addLimit(1, ContactPointAddress.PreferenceRank)
       .runCalc();
     Test.stopTest();
 

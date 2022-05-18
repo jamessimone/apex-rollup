@@ -263,16 +263,32 @@ global without sharing virtual class Rollup {
     return 'Not implemented';
   }
 
-  public virtual Rollup addLimit(Integer limitAmount) {
+  public virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
-      this.addLimitToMetadata(roll.metadata, limitAmount);
+      this.addLimitToMetadata(roll.metadata, limitAmount, calcItemRollupField);
     }
     return this;
   }
 
-  protected void addLimitToMetadata(Rollup__mdt localMeta, Integer limitAmount) {
-    localMeta.LimitAmount__c = limitAmount;
-    localMeta.IsFullRecordSet__c = true;
+  public virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+    for (Rollup roll : this.rollups) {
+      roll.metadata = this.addOrderBys(roll.metadata, orderBys, calcItemRollupField);
+    }
+    return this;
+  }
+
+  protected Rollup__mdt addOrderBys(Rollup__mdt localMeta, List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.getDescribe().getName()) {
+      localMeta = appendOrderByMetadata(localMeta, orderBys);
+    }
+    return localMeta;
+  }
+
+  protected void addLimitToMetadata(Rollup__mdt localMeta, Integer limitAmount, Schema.SObjectField calcItemRollupField) {
+    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.getDescribe().getName()) {
+      localMeta.LimitAmount__c = limitAmount;
+      localMeta.IsFullRecordSet__c = true;
+    }
   }
 
   protected RollupControl__mdt getSpecificControl(Id rollupControlId) {

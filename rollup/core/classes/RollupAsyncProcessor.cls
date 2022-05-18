@@ -77,9 +77,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.overrideRollupControl();
     }
 
-    public override Rollup addLimit(Integer limitAmount) {
+    public override Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
       for (Rollup__mdt rollupMeta : this.rollupInfo) {
-        this.addLimitToMetadata(rollupMeta, limitAmount);
+        this.addLimitToMetadata(rollupMeta, limitAmount, calcItemRollupField);
+      }
+      return this;
+    }
+
+    public override Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+      for (Integer index = 0; index < this.rollupInfo.size(); index++) {
+        Rollup__mdt rollupMeta = this.addOrderBys(this.rollupInfo[index], orderBys, calcItemRollupField);
+        this.rollupInfo.set(index, rollupMeta);
       }
       return this;
     }

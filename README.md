@@ -389,11 +389,19 @@ The following methods are exposed:
 ```java
 // in Rollup.cls
 
+// instance methods
+public Rollup runCalc() // more on this method below
+// see RollupIntegrationTests for examples of how to use addLimit with imperative Apex
+public Rollup addLimit(Integer limitAmount, Schema.SObjectField rollupFieldOnCalcItem)
+// imperative Apex can add RollupOrderBy__mdt records to any rollup operation (matching by the "calcItemRollupField")
+// for use in conjunction with "addLimit" above
+public Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField)
+
+// static methods
 public static void batch(Rollup rollup, Rollup secondRollup)
 public static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup)
 public static void batch(List<Rollup> rollups)
 
-public static Rollup runCalc() // more on this method below
 
 // for using as the "one line of code" and CMDT-driven rollups
 public static void runFromTrigger()

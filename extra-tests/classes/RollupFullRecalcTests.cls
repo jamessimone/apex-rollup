@@ -1535,7 +1535,7 @@ private class RollupFullRecalcTests {
       new Set<String>(),
       null
     );
-
+    fullRecalc.addOrderBys(new List<RollupOrderBy__mdt>(), ContactPointAddress.PreferenceRank);
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[1] });
 
