@@ -746,8 +746,6 @@ private class RollupCalculatorTests {
 
     System.assertEquals(opp.CloseDate, calc.getReturnValue());
 
-    calc.setDefaultValues('0011g00003VDGbF003', null);
-
     opp.CloseDate = opp.CloseDate.addDays(-1);
     calc.performRollup(new List<SObject>{ opp }, new Map<Id, SObject>());
 

@@ -1206,7 +1206,7 @@ public without sharing abstract class RollupCalculator {
 
   private class MostRollupCalculator extends RollupCalculator {
     private final Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
-    private Integer largestCountPointer = -1;
+    private Integer largestCountPointer;
     public MostRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1220,6 +1220,10 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.occurrenceToCount.clear();
+      this.largestCountPointer = -1;
+      this.returnVal = null;
+
       for (SObject calcItem : calcItems) {
         Object value = calcItem.get(this.opFieldOnCalcItem);
         Integer localCount = 0;
@@ -1232,11 +1236,6 @@ public without sharing abstract class RollupCalculator {
           this.returnVal = value;
         }
       }
-    }
-
-    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      this.occurrenceToCount.clear();
-      this.largestCountPointer = -1;
     }
   }
 }
