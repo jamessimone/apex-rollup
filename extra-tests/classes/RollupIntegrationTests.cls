@@ -1677,6 +1677,71 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void limitsCorrectlyOnInsert() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
+    insert new List<ContactPointAddress>{ cpa, two };
+
+    Rollup.records = new List<ContactPointAddress>{ two };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .addLimit(1, ContactPointAddress.PreferenceRank)
+      .addOrderBys(new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Id') }, ContactPointAddress.PreferenceRank)
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
+  }
+
+  @IsTest
+  static void limitsCorrectlyOnUpdate() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
+    insert new List<ContactPointAddress>{ cpa, two };
+
+    Rollup.records = new List<ContactPointAddress>{ two };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ two.Id => new ContactPointAddress(Id = two.Id, PreferenceRank = 1) };
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .addLimit(1, ContactPointAddress.PreferenceRank)
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
+  }
+
+  @IsTest
+  static void limitsCorrectlyOnDelete() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
+    insert new List<ContactPointAddress>{ cpa, two };
+
+    Rollup.records = new List<ContactPointAddress>{ two };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .addLimit(1, ContactPointAddress.PreferenceRank)
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
+  }
+
+  @IsTest
   static void shouldThrowExceptionWhenTryingToOperateOnDisallowedFieldTypes() {
     Account acc = [SELECT Id FROM Account];
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };

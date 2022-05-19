@@ -141,6 +141,7 @@ global without sharing virtual class Rollup {
     MIN,
     UPDATE_MIN,
     DELETE_MIN,
+    MOST,
     CONCAT,
     UPDATE_CONCAT,
     DELETE_CONCAT,
@@ -260,6 +261,34 @@ global without sharing virtual class Rollup {
   public virtual String runCalc() {
     RollupLogger.Instance.log('no-op!', LoggingLevel.ERROR);
     return 'Not implemented';
+  }
+
+  public virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
+    for (Rollup roll : this.rollups) {
+      this.addLimitToMetadata(roll.metadata, limitAmount, calcItemRollupField);
+    }
+    return this;
+  }
+
+  public virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+    for (Rollup roll : this.rollups) {
+      roll.metadata = this.addOrderBys(roll.metadata, orderBys, calcItemRollupField);
+    }
+    return this;
+  }
+
+  protected Rollup__mdt addOrderBys(Rollup__mdt localMeta, List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.getDescribe().getName()) {
+      localMeta = appendOrderByMetadata(localMeta, orderBys);
+    }
+    return localMeta;
+  }
+
+  protected void addLimitToMetadata(Rollup__mdt localMeta, Integer limitAmount, Schema.SObjectField calcItemRollupField) {
+    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.getDescribe().getName()) {
+      localMeta.LimitAmount__c = limitAmount;
+      localMeta.IsFullRecordSet__c = true;
+    }
   }
 
   protected RollupControl__mdt getSpecificControl(Id rollupControlId) {
@@ -540,6 +569,8 @@ global without sharing virtual class Rollup {
     global Boolean isRollupStartedFromParent = false;
     @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
+    @InvocableVariable(label='Limit Amount')
+    global Decimal limitAmount;
 
     // these are listed with the optional properties because otherwise Flow builders always have to check for null after using a Get Records
     // element with filter conditions; the Flow engine otherwise isn't satisfied because Get Records returns null instead of an empty list
@@ -1361,6 +1392,36 @@ global without sharing virtual class Rollup {
     );
   }
 
+  global static Rollup mostFromApex(
+    SObjectField mostFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField mostFieldOnOperationObject,
+    SObjectType lookupSobjectType
+  ) {
+    return mostFromApex(mostFieldOnCalcItem, lookupFieldOnCalcItem, lookupFieldOnOperationObject, mostFieldOnOperationObject, lookupSobjectType, null);
+  }
+
+  global static Rollup mostFromApex(
+    SObjectField mostFieldOnCalcItem,
+    SObjectField lookupFieldOnCalcItem,
+    SObjectField lookupFieldOnOperationObject,
+    SObjectField mostFieldOnOperationObject,
+    SObjectType lookupSobjectType,
+    Evaluator eval
+  ) {
+    return operateFromApex(
+      mostFieldOnCalcItem,
+      lookupFieldOnCalcItem,
+      lookupFieldOnOperationObject,
+      mostFieldOnOperationObject,
+      lookupSobjectType,
+      Op.MOST,
+      null,
+      eval
+    );
+  }
+
   global static void runFromCDCTrigger() {
     isCDC = true;
     // CDC always uses Trigger.new
@@ -1569,6 +1630,7 @@ global without sharing virtual class Rollup {
             GrandparentRelationshipFieldPath__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
+            LimitAmount__c,
             OneToManyGrandparentFields__c,
             OrderByFirstLast__c,
             RollupControl__c,
@@ -1577,6 +1639,7 @@ global without sharing virtual class Rollup {
             SplitConcatDelimiterOnCalcItem__c,
             (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
           FROM Rollup__mdt
+          WHERE RollupControl__r.ShouldAbortRun__c = FALSE
         ];
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {
@@ -1841,7 +1904,7 @@ global without sharing virtual class Rollup {
       } else if (isRefresh) {
         // remove non-matches
         metas.remove(index);
-      } else {
+      } else if (meta.RollupOperation__c != Op.MOST.name()) {
         // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
         // we need to reset the CMDT to the correct base operation prior to appending the new context
         meta.RollupOperation__c =
@@ -2503,19 +2566,17 @@ global without sharing virtual class Rollup {
     } else if (meta.RollupOrderBys__r.isEmpty()) {
       replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
     }
-    if (replacementOrderBys != null) {
-      meta = Rollup.appendOrderByMetadata(meta, replacementOrderBys);
-    }
-    return meta;
+    return replacementOrderBys != null ? Rollup.appendOrderByMetadata(meta, replacementOrderBys) : meta;
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {
-    return baseOperationName == Op.FIRST.name() ||
-      baseOperationName == Op.LAST.name() ||
-      baseOperationName == Op.AVERAGE.name() ||
-      baseOperationName == Op.CONCAT_DISTINCT.name() ||
-      baseOperationName == Op.CONCAT.name() ||
-      baseOperationName == Op.COUNT_DISTINCT.name();
+    Boolean isFullRecalcOp = false;
+    switch on Op.valueOf(baseOperationName) {
+      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, MOST {
+        isFullRecalcOp = true;
+      }
+    }
+    return isFullRecalcOp;
   }
 
   private static String getRollupControlKey(
@@ -2548,15 +2609,13 @@ global without sharing virtual class Rollup {
     if (Trigger.operationType != null && isCDC == false) {
       apexContext = Trigger.operationType;
     }
-    Set<TriggerOperation> validTriggerOps = new Set<TriggerOperation>{
-      TriggerOperation.AFTER_INSERT,
-      TriggerOperation.AFTER_UPDATE,
-      TriggerOperation.BEFORE_DELETE,
-      TriggerOperation.AFTER_DELETE,
-      TriggerOperation.AFTER_UNDELETE
-    };
-    if (shouldRun && validTriggerOps.contains(apexContext) == false) {
-      shouldRun = false;
+    switch on apexContext {
+      when AFTER_INSERT, AFTER_UPDATE, BEFORE_DELETE, AFTER_DELETE, AFTER_UNDELETE {
+        shouldRun = shouldRun && true;
+      }
+      when else {
+        shouldRun = false;
+      }
     }
     // an undelete behaviors **strictly** the same as an insert
     // because the underlying SObject can't be modified till afterwards
@@ -2571,7 +2630,7 @@ global without sharing virtual class Rollup {
       return records;
     }
 
-    return (Trigger.isDelete ? Trigger.old : Trigger.new.clone()).deepClone(true, true, true);
+    return (Trigger.isDelete ? Trigger.old : Trigger.new).deepClone(true, true, true);
   }
 
   private static Map<Id, SObject> getOldTriggerRecordsMap() {

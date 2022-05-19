@@ -1,16 +1,14 @@
-public without sharing class RollupFirstLastSorter extends RollupComparer {
-  private final Boolean isFirst;
+public without sharing class RollupCalcItemSorter extends RollupComparer {
   private final List<RollupOrderBy__mdt> orderByOptions;
   private final Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController> fieldToPicklistController;
 
-  public RollupFirstLastSorter(Rollup.Op op, List<RollupOrderBy__mdt> orderBys) {
-    this.isFirst = op.name().contains(Rollup.Op.FIRST.name());
+  public RollupCalcItemSorter(List<RollupOrderBy__mdt> orderBys) {
     this.fieldToPicklistController = new Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController>();
     this.orderByOptions = this.initializeOrderByOptions(orderBys);
   }
 
   public override Integer compare(Object o1, Object o2) {
-    Integer returnVal = 0;
+    Integer comparisonVal = 0;
     SObject objOne = (SObject) o1;
     SObject objTwo = (SObject) o2;
 
@@ -24,13 +22,13 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
         picklistController = new RollupFieldInitializer.PicklistController(fieldDescribe);
         this.fieldToPicklistController.put(fieldDescribe, picklistController);
       }
-      returnVal = this.getSortRanking(objOne, objTwo, orderByOption, picklistController);
-      if (returnVal != 0) {
-        return returnVal;
+      comparisonVal = this.getSortRanking(objOne, objTwo, orderByOption, picklistController);
+      if (comparisonVal != 0) {
+        return comparisonVal;
       }
     }
 
-    return returnVal;
+    return comparisonVal;
   }
 
   private List<RollupOrderBy__mdt> initializeOrderByOptions(List<RollupOrderBy__mdt> orderByOptions) {
@@ -51,9 +49,9 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
     RollupOrderBy__mdt orderByOption,
     RollupFieldInitializer.PicklistController picklistController
   ) {
-    Integer returnVal = 0;
+    Integer sortRanking = 0;
     if (String.isBlank(orderByOption.FieldName__c)) {
-      return returnVal;
+      return sortRanking;
     }
     Object potentialFirstVal = this.getFieldValue(objOne, orderByOption.FieldName__c);
     Object potentialSecondVal = this.getFieldValue(objTwo, orderByOption.FieldName__c);
@@ -63,7 +61,7 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
     } else if (potentialSecondVal == null && potentialFirstVal != null) {
       return orderByOption.NullSortOrder__c == RollupMetaPicklists.NullSortOrder.NullsFirst ? this.moveTowardBackOfList : this.moveTowardFrontOfList;
     } else if (potentialFirstVal == potentialSecondVal) {
-      return returnVal;
+      return sortRanking;
     }
 
     // otherwise, cast to one of the three most basic types in order to call the equality comparators
@@ -73,25 +71,24 @@ public without sharing class RollupFirstLastSorter extends RollupComparer {
       Datetime firstVal = (Datetime) potentialFirstVal;
       Datetime secondVal = (Datetime) potentialSecondVal;
 
-      returnVal = this.getSortOrder(firstVal > secondVal, orderByOption);
+      sortRanking = this.getSortOrder(firstVal > secondVal, orderByOption);
     } else if (potentialFirstVal instanceof String) {
       String firstVal = (String) potentialFirstVal;
       String secondVal = (String) potentialSecondVal;
 
       if (picklistController.isPicklist() || picklistController.isMultiSelectPicklist()) {
-        Rollup.Op picklistRankingOp = this.isFirst ? Rollup.Op.MIN : Rollup.Op.MAX;
-        returnVal = picklistController.isTrueFor(firstVal, secondVal, picklistRankingOp) ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+        sortRanking = picklistController.isTrueFor(firstVal, secondVal, Rollup.Op.MIN) ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
       } else {
-        returnVal = this.getSortOrder(firstVal > secondVal, orderByOption);
+        sortRanking = this.getSortOrder(firstVal > secondVal, orderByOption);
       }
     } else if (potentialFirstVal instanceof Decimal) {
       Decimal firstVal = (Decimal) potentialFirstVal;
       Decimal secondVal = (Decimal) potentialSecondVal;
 
-      returnVal = this.getSortOrder(firstVal > secondVal, orderByOption);
+      sortRanking = this.getSortOrder(firstVal > secondVal, orderByOption);
     }
 
-    return this.isFirst ? returnVal : returnVal * -1;
+    return sortRanking;
   }
 
   /**

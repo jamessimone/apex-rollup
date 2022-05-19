@@ -9,10 +9,10 @@ public without sharing abstract class RollupCalculator {
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
   protected final SObjectField lookupKeyField;
-  protected final Rollup.Op op;
   protected final Rollup__mdt metadata;
   protected final Boolean isChangedFieldCalc;
 
+  protected Rollup.Op op;
   protected String lookupKeyQuery;
   protected String lookupRecordKey;
   protected Rollup.Evaluator eval;
@@ -46,39 +46,52 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       RollupCalculator calc;
-      if (op.name().contains(Rollup.Op.COUNT_DISTINCT.name())) {
-        calc = new CountDistinctRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (op.name().contains(Rollup.Op.COUNT.name())) {
-        calc = new CountRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (op.name().contains(Rollup.Op.AVERAGE.name())) {
-        calc = new AverageRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (op.name().contains(Rollup.Op.FIRST.name()) || op.name().contains(Rollup.Op.LAST.name())) {
-        calc = new FirstLastRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorVal instanceof Decimal) {
-        calc = new DecimalRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorVal instanceof String) {
-        calc = new PicklistRollupCalculator(
-          priorVal,
-          op,
-          opFieldOnCalcItem,
-          opFieldOnLookupObject,
-          metadata,
-          lookupRecordKey,
-          lookupKeyField,
-          metadata.ConcatDelimiter__c
-        );
-      } else if (priorVal instanceof Date) {
-        // not obvious: the order of these else if's is of supreme importance
-        // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
-        // all Dates test true as Datetimes ...
-        calc = new DateRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorVal instanceof Time) {
-        calc = new TimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else if (priorval instanceof Datetime) {
-        calc = new DatetimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
-      } else {
-        throw new IllegalArgumentException('Calculation not defined for: ' + JSON.serialize(priorVal));
+      switch on op {
+        when COUNT_DISTINCT, UPDATE_COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
+          calc = new CountDistinctRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when COUNT, UPDATE_COUNT, DELETE_COUNT {
+          calc = new CountRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
+          calc = new AverageRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when FIRST, UPDATE_FIRST, DELETE_FIRST, LAST, UPDATE_LAST, DELETE_LAST {
+          calc = new FirstLastRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when MOST {
+          calc = new MostRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+        }
+        when else {
+          if (priorVal instanceof Decimal) {
+            calc = new DecimalRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          } else if (priorVal instanceof String) {
+            calc = new PicklistRollupCalculator(
+              priorVal,
+              op,
+              opFieldOnCalcItem,
+              opFieldOnLookupObject,
+              metadata,
+              lookupRecordKey,
+              lookupKeyField,
+              metadata.ConcatDelimiter__c
+            );
+          } else if (priorVal instanceof Date) {
+            // not obvious: the order of these else if's is of supreme importance
+            // Date has to go before Datetime; in the same way that all numbers test true as an instanceof Decimal
+            // all Dates test true as Datetimes ...
+            calc = new DateRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          } else if (priorVal instanceof Time) {
+            calc = new TimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          } else if (priorval instanceof Datetime) {
+            calc = new DatetimeRollupCalculator(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField);
+          }
+        }
       }
+      if (calc == null) {
+        throw new IllegalArgumentException('Calculation not defined for prior value: ' + JSON.serialize(priorVal) + ' and op: ' + op);
+      }
+
       return calc;
     }
   }
@@ -154,10 +167,6 @@ public without sharing abstract class RollupCalculator {
       }
     }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
-    System.debug(localCalcItems);
-    if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.metadata.RollupOrderBys__r.isEmpty() == false) {
-      new RollupFirstLastSorter(Rollup.Op.FIRST, this.metadata.RollupOrderBys__r).sort(localCalcItems);
-    }
 
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
@@ -298,6 +307,22 @@ public without sharing abstract class RollupCalculator {
       ) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
+      }
+    }
+    List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
+      ? new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) }
+      : this.metadata.RollupOrderBys__r;
+    if (orderBys.isEmpty() == false) {
+      new RollupCalcItemSorter(orderBys).sort(items);
+    }
+    if (this.metadata?.LimitAmount__c != null) {
+      // we can only safely remove the items after sorting
+      while (items.size() > this.metadata.LimitAmount__c && items.isEmpty() == false) {
+        items.remove(items.size() - 1);
+      }
+      // Limit-based rollups always reset the field's value, and always act as a fresh start
+      if (this.metadata.RollupOperation__c.contains('DELETE_') || this.metadata.RollupOperation__c.contains('UPDATE_')) {
+        this.op = Rollup.Op.valueOf(this.metadata.RollupOperation__c.substringAfter('_'));
       }
     }
 
@@ -1168,8 +1193,49 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      new RollupFirstLastSorter(this.op, this.metadata.RollupOrderBys__r).sort(calcItems);
-      this.returnVal = calcItems.isEmpty() ? null : calcItems[0].get(this.opFieldOnCalcItem);
+      Integer retrievalIndex = 0;
+      switch on this.op {
+        when LAST, UPDATE_LAST, DELETE_LAST {
+          retrievalIndex = calcItems.size() - 1;
+        }
+      }
+      this.returnVal = calcItems.isEmpty() ? null : calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
+    }
+  }
+
+  private class MostRollupCalculator extends RollupCalculator {
+    private final Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
+    private Integer largestCountPointer;
+    public MostRollupCalculator(
+      Object priorVal,
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      String lookupRecordKey,
+      SObjectField lookupKeyField
+    ) {
+      super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupRecordKey, lookupKeyField);
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.occurrenceToCount.clear();
+      this.largestCountPointer = -1;
+      this.returnVal = null;
+      List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
+
+      for (SObject calcItem : localCalcItems) {
+        Object value = calcItem.get(this.opFieldOnCalcItem);
+        Integer localCount = 0;
+        if (this.occurrenceToCount.containsKey(value)) {
+          localCount = this.occurrenceToCount.get(value);
+        }
+        this.occurrenceToCount.put(value, ++localCount);
+        if (this.largestCountPointer < localCount) {
+          this.largestCountPointer = localCount;
+          this.returnVal = value;
+        }
+      }
     }
   }
 }

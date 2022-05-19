@@ -129,6 +129,7 @@ describe('Rollup force recalc tests', () => {
           CalcItemWhereClause__c: '',
           ConcatDelimiter__c: '',
           SplitConcatDelimiterOnCalcItem__c: false,
+          LimitAmount__c: 0,
           GrandparentRelationshipFieldPath__c: 'Something__r.SomethingElse__r.Name',
           OneToManyGrandparentFields__c: 'Something__c.SomethingElse__c, SomethingElse__c.Name'
         })

@@ -1,9 +1,8 @@
 @IsTest
-private class RollupFirstLastSorterTests {
+private class RollupCalcItemSorterTests {
   @IsTest
-  static void shouldOrderByTwoFieldsFirst() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
+  static void shouldOrderByTwoFields() {
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(
       new List<RollupOrderBy__mdt>{
         new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'),
         new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = 'CloseDate')
@@ -28,34 +27,8 @@ private class RollupFirstLastSorterTests {
   }
 
   @IsTest
-  static void shouldOrderByTwoFieldsLast() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.LAST,
-      new List<RollupOrderBy__mdt>{
-        new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'),
-        new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = 'CloseDate')
-      }
-    );
-
-    Date severalDaysAgo = System.today().addDays(-2);
-    Opportunity expectedFirstItem = new Opportunity(Amount = 6, CloseDate = severalDaysAgo);
-    Opportunity expectedSecondItem = new Opportunity(Amount = 4, CloseDate = severalDaysAgo);
-    List<Opportunity> oppsToSort = new List<Opportunity>{
-      new Opportunity(Amount = 1, CloseDate = System.today()),
-      new Opportunity(Amount = 3, CloseDate = severalDaysAgo.addDays(-1)),
-      expectedSecondItem,
-      expectedFirstItem
-    };
-    sorter.sort(oppsToSort);
-
-    System.assertEquals(expectedFirstItem, oppsToSort[0]);
-    System.assertEquals(expectedSecondItem, oppsToSort[1]);
-  }
-
-  @IsTest
   static void shouldOrderByMultipleFields() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(
       new List<RollupOrderBy__mdt>{
         new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'),
         new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = 'CloseDate'),
@@ -79,8 +52,7 @@ private class RollupFirstLastSorterTests {
 
   @IsTest
   static void shouldOrderNullsLast() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(
       new List<RollupOrderBy__mdt>{
         new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount', NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast),
         new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = 'CloseDate')
@@ -103,8 +75,7 @@ private class RollupFirstLastSorterTests {
 
   @IsTest
   static void shouldOrderDescWhenStipulated() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(
       new List<RollupOrderBy__mdt>{
         new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount', SortOrder__c = RollupMetaPicklists.SortOrder.Descending),
         new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = 'CloseDate')
@@ -127,10 +98,7 @@ private class RollupFirstLastSorterTests {
 
   @IsTest
   static void shouldProperlySortPicklists() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
-      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry') }
-    );
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Industry') });
 
     List<Schema.PicklistEntry> picklistEntries = Account.Industry.getDescribe().getPicklistValues();
     List<Account> accs = new List<Account>();
@@ -155,8 +123,7 @@ private class RollupFirstLastSorterTests {
     Opportunity opp = new Opportunity(Account = acc, Amount = 1);
     Opportunity second = new Opportunity(Account = acc, Amount = 2);
 
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(
       new List<RollupOrderBy__mdt>{
         new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Account.Name'),
         new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount')
@@ -172,8 +139,7 @@ private class RollupFirstLastSorterTests {
 
   @IsTest
   static void shouldNotFailOnBlankFieldNames() {
-    RollupFirstLastSorter sorter = new RollupFirstLastSorter(
-      Rollup.Op.FIRST,
+    RollupCalcItemSorter sorter = new RollupCalcItemSorter(
       new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Amount'), new RollupOrderBy__mdt(Ranking__c = 1, FieldName__c = '') }
     );
 

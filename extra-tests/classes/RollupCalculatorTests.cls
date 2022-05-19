@@ -727,6 +727,31 @@ private class RollupCalculatorTests {
     System.assertEquals(1, calc.getReturnValue());
   }
 
+  // MOST tests
+
+  @IsTest
+  static void mostCalculatesSequentialValuesCorrectly() {
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      null,
+      Rollup.Op.MOST,
+      Opportunity.CloseDate,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    calc.performRollup(new List<SObject>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(opp.CloseDate, calc.getReturnValue());
+
+    opp.CloseDate = opp.CloseDate.addDays(-1);
+    calc.performRollup(new List<SObject>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(opp.CloseDate, calc.getReturnValue());
+  }
+
   // SUM tests
 
   @IsTest

@@ -2103,6 +2103,62 @@ private class RollupTests {
     System.assertEquals(cp2.BestTimeToContactEndTime, cpe.BestTimeToContactEndTime);
   }
 
+  // MOST
+
+  @IsTest
+  static void usesMostCommonValue() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress commonOne = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
+    ContactPointAddress commonTwo = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
+    ContactPointAddress uncommon = new ContactPointAddress(PreferenceRank = 300, Name = 'two', ParentId = acc.Id);
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ commonOne, commonTwo, uncommon });
+
+    Test.startTest();
+    Rollup.mostFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MOST');
+    acc = (Account) mock.Records[0];
+    System.assertEquals(commonOne.PreferenceRank, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void mostReparentsCorrectly() {
+    Account acc = [SELECT Id FROM Account];
+    Account secondParent = new Account(Name = 'Reparented');
+    insert secondParent;
+    insert new ContactPointAddress(Name = 'remaining value on second parent', PreferenceRank = 200, ParentId = secondParent.Id);
+    ContactPointAddress commonOne = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
+
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ commonOne });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{
+      commonOne.Id => new ContactPointAddress(ParentId = secondParent.Id, PreferenceRank = commonOne.PreferenceRank, Id = commonOne.Id)
+    };
+
+    Test.startTest();
+    Rollup.mostFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), 'MOST should have run correctly for reparenting');
+    Boolean updatedFirstParent = false;
+    Boolean updatedSecondParent = false;
+    for (SObject updated : mock.Records) {
+      if (updated.Id == secondParent.Id) {
+        updatedSecondParent = true;
+        System.assertEquals(200, updated.get(Account.AnnualRevenue));
+      } else if (updated.Id == acc.Id) {
+        updatedFirstParent = true;
+        System.assertEquals(commonOne.PreferenceRank, updated.get(Account.AnnualRevenue));
+      }
+    }
+    System.assertEquals(true, updatedFirstParent);
+    System.assertEquals(true, updatedSecondParent);
+  }
+
   /** CDC trigger tests */
 
   @IsTest
