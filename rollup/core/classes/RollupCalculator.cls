@@ -167,9 +167,6 @@ public without sharing abstract class RollupCalculator {
       }
     }
     List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
-    if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.metadata.RollupOrderBys__r.isEmpty() == false) {
-      new RollupCalcItemSorter(this.metadata.RollupOrderBys__r).sort(localCalcItems);
-    }
 
     for (Integer index = 0; index < localCalcItems.size(); index++) {
       this.isLastItem = index == localCalcItems.size() - 1;
@@ -312,16 +309,19 @@ public without sharing abstract class RollupCalculator {
         items.add(this.getTransformedCalcItem(item));
       }
     }
-    if (this.metadata?.LimitAmount__c != null) {
-      List<RollupOrderBy__mdt> orderBys = this.metadata.RollupOrderBys__r.isEmpty() == false
-        ? this.metadata.RollupOrderBys__r
-        : new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) };
+    List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
+      ? new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) }
+      : this.metadata.RollupOrderBys__r;
+    if (orderBys.isEmpty() == false) {
       new RollupCalcItemSorter(orderBys).sort(items);
+    }
+    if (this.metadata?.LimitAmount__c != null) {
+      // we can only safely remove the items after sorting
       while (items.size() > this.metadata.LimitAmount__c && items.isEmpty() == false) {
         items.remove(items.size() - 1);
       }
       // Limit-based rollups always reset the field's value, and always act as a fresh start
-      if (this.metadata.RollupOperation__c.contains('DELETE') || this.metadata.RollupOperation__c.contains('UPDATE')) {
+      if (this.metadata.RollupOperation__c.contains('DELETE_') || this.metadata.RollupOperation__c.contains('UPDATE_')) {
         this.op = Rollup.Op.valueOf(this.metadata.RollupOperation__c.substringAfter('_'));
       }
     }
@@ -1193,7 +1193,6 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      new RollupCalcItemSorter(this.metadata.RollupOrderBys__r).sort(calcItems);
       Integer retrievalIndex = 0;
       switch on this.op {
         when LAST, UPDATE_LAST, DELETE_LAST {
@@ -1223,8 +1222,9 @@ public without sharing abstract class RollupCalculator {
       this.occurrenceToCount.clear();
       this.largestCountPointer = -1;
       this.returnVal = null;
+      List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      for (SObject calcItem : calcItems) {
+      for (SObject calcItem : localCalcItems) {
         Object value = calcItem.get(this.opFieldOnCalcItem);
         Integer localCount = 0;
         if (this.occurrenceToCount.containsKey(value)) {

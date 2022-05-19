@@ -87,7 +87,11 @@ export default class RollupForceRecalculation extends LightningElement {
   handleChange(event) {
     const value = event.detail ? event.detail.value : event.target.value;
     this.metadata[event.target.name] = event.target.name === 'LimitAmount__c' ? Number(value) : value;
-    this.isOrderByRollup = this.rollupOperation.indexOf('FIRST') !== -1 || this.rollupOperation.indexOf('LAST') !== -1 || this.metadata.LimitAmount__c !== 0;
+    this.isOrderByRollup =
+      this.rollupOperation.indexOf('FIRST') !== -1 ||
+      this.rollupOperation.indexOf('LAST') !== -1 ||
+      this.metadata.LimitAmount__c !== 0 ||
+      this.rollupOperation.indexOf('MOST') !== -1;
   }
 
   handleToggle() {

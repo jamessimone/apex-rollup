@@ -5,102 +5,102 @@
       Alternatively, you can select a single Calc Item based off of your CMDT rollup records and have the recalculation run for all CMDT associated with that
       SObject type:
     </div>
-    <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" type="toggle" label="Run off of CMDT?" onchange={handleToggle}></lightning-input>
+    <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
     <lightning-layout vertical-align="center">
       <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
         <template if:true={isCMDTRecalc}>
           <lightning-combobox
-            name="Select Calc Item"
             label="Select Calc Item"
-            value={selectedMetadata}
-            options={rollupMetadataOptions}
+            name="Select Calc Item"
             onchange={handleComboChange}
+            options={rollupMetadataOptions}
+            value={selectedMetadata}
           ></lightning-combobox>
           <template if:true={selectedMetadataCMDTRecords}>
             <lightning-datatable
               class="slds-m-top_large"
-              data-id="datatable"
-              key-field="DeveloperName"
-              data={selectedMetadataCMDTRecords}
-              onrowselection={handleRowSelect}
-              max-row-selection={maxRowSelection}
-              show-row-number-column
               columns={cmdtColumns}
+              data-id="datatable"
+              data={selectedMetadataCMDTRecords}
+              key-field="DeveloperName"
+              max-row-selection={maxRowSelection}
+              onrowselection={handleRowSelect}
+              show-row-number-column
             >
             </lightning-datatable>
           </template>
         </template>
         <template if:false={isCMDTRecalc}>
           <lightning-input
-            data-id="CalcItem__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="CalcItem__c"
             label="Calc Item SObject API Name"
             name="CalcItem__c"
             oncommit={handleChange}
             required
+            type="text"
           >
           </lightning-input>
           <lightning-input
-            data-id="RollupFieldOnCalcItem__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="RollupFieldOnCalcItem__c"
             label="Calc Item Calc Field"
             name="RollupFieldOnCalcItem__c"
             oncommit={handleChange}
             required
+            type="text"
           >
           </lightning-input>
           <lightning-input
-            data-id="LookupFieldOnCalcItem__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="LookupFieldOnCalcItem__c"
             label="Calc Item Lookup Field"
             name="LookupFieldOnCalcItem__c"
             oncommit={handleChange}
             required
+            type="text"
           >
           </lightning-input>
           <lightning-input
-            data-id="LookupObject__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="LookupObject__c"
             label="Rollup Object API Name"
             name="LookupObject__c"
             oncommit={handleChange}
             required
+            type="text"
           >
           </lightning-input>
           <lightning-input
-            data-id="RollupFieldOnLookupObject__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="RollupFieldOnLookupObject__c"
             label="Rollup Object Calc Field"
             name="RollupFieldOnLookupObject__c"
             oncommit={handleChange}
             required
+            type="text"
           >
           </lightning-input>
           <lightning-input
-            data-id="LookupFieldOnLookupObject__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="LookupFieldOnLookupObject__c"
             label="Rollup Object Lookup Field"
             name="LookupFieldOnLookupObject__c"
             oncommit={handleChange}
             required
+            type="text"
           >
           </lightning-input>
           <div>
             <lightning-combobox
-              data-id="RollupOperation__c"
               class="slds-col slds-form-element slds-form-element_horizontal"
-              name="RollupOperation__c"
+              data-id="RollupOperation__c"
               label="Rollup Operation Name"
-              value={rollupOperation}
-              options={rollupOperationValues}
+              name="RollupOperation__c"
               onchange={handleChange}
+              options={rollupOperationValues}
               required
+              value={rollupOperation}
             ></lightning-combobox>
             <template if:true={isOrderByRollup}>
               <div>
@@ -109,40 +109,41 @@
             </template>
           </div>
           <lightning-input
-            data-id="LimitAmount__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="number"
+            data-id="LimitAmount__c"
             label="Limit Amount (Optional) - you can add Order By info optionally after entering this, as well"
+            min="1"
             name="LimitAmount__c"
             oncommit={handleChange}
+            type="number"
           >
           </lightning-input>
           <lightning-input
-            data-id="ConcatDelimiter__c"
             class="slds-col slds-form-element slds-form-element_horizontal"
-            type="text"
+            data-id="ConcatDelimiter__c"
             label="Concat Delimiter (Optional)"
             name="ConcatDelimiter__c"
             oncommit={handleChange}
+            type="text"
           >
           </lightning-input>
           <div class="slds-grid">
             <lightning-input
-              data-id="GrandparentRelationshipFieldPath__c"
               class="slds-col slds-form-element slds-form-element_horizontal"
-              type="text"
+              data-id="GrandparentRelationshipFieldPath__c"
               label="Grandparent Relationship Field Path (optional)"
               name="GrandparentRelationshipFieldPath__c"
               oncommit={handleChange}
+              type="text"
             >
             </lightning-input>
             <lightning-input
-              data-id="OneToManyGrandparentFields__c"
               class="slds-col slds-form-element slds-form-element_horizontal"
-              type="text"
+              data-id="OneToManyGrandparentFields__c"
               label="One To Many Grandparent Fields (optional)"
               name="OneToManyGrandparentFields__c"
               oncommit={handleChange}
+              type="text"
             >
             </lightning-input>
             <lightning-helptext
@@ -151,12 +152,12 @@
           </div>
           <div class="slds-grid">
             <lightning-input
-              data-id="SplitConcatDelimiterOnCalcItem__c"
               class="slds-col slds-form-element slds-form-element_horizontal slds-m-vertical_small"
-              type="checkbox"
+              data-id="SplitConcatDelimiterOnCalcItem__c"
               label="Split Concat Delimiter On Calc Item, Too? (Optional)"
               name="SplitConcatDelimiterOnCalcItem__c"
               oncommit={handleChange}
+              type="checkbox"
             >
             </lightning-input>
             <lightning-helptext content="Only include the split option for CONCAT_DISTINCT rollups"></lightning-helptext>
@@ -164,14 +165,14 @@
           <div class="slds-grid">
             <lightning-textarea
               class="slds-col slds-form-element slds-form-element_horizontal"
-              onchange={handleChange}
               label="SOQL Where Clause To Exclude Calc Items (Optional)"
               name="CalcItemWhereClause__c"
+              onchange={handleChange}
             ></lightning-textarea>
             <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
           </div>
         </template>
-        <lightning-button class="slds-col slds-m-top_small" variant="brand" onclick={handleSubmit} label="Start rollup!"></lightning-button>
+        <lightning-button class="slds-col slds-m-top_small" label="Start rollup!" onclick={handleSubmit} variant="brand"></lightning-button>
       </div>
     </lightning-layout>
     <template if:true={isRollingUp}>
@@ -182,7 +183,7 @@
       <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus}</b></div>
     </template>
     <template if:true={error}>
-      <div data-id="rollupError" class="slds-m-top_small">There was an error performing your rollup: {error}</div>
+      <div class="slds-m-top_small" data-id="rollupError">There was an error performing your rollup: {error}</div>
     </template>
   </div>
 </template>
