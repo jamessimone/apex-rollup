@@ -80,7 +80,7 @@ To be clear - the following trigger contexts are necessary when using `runFromTr
 - after insert
 - after update
 - before delete
-- after delete (**only necessary if your org does Account/Contact/Lead/Case merges** - repeated from the above comment). For more info please see [setting Rollup up to handle parent-level merges](#parent-level-merges)
+- after delete (**only necessary if your org does Account/Contact/Lead/Case merges** - repeated from the above comment). For more info please see [setting Rollup up to handle parent-level merges](#parent-level-merges) - note that the "Special Consideration" section needs to be expanded to properly scroll to the parent-level merge section.
 - after undelete
 
 This means that if you are invoking `Rollup.runFromTrigger();` from any other context (be it a quick action, LWC, Aura or wherever), nothing will happen; there won't be an error, but a rollup also won't be performed. For more information on one-off rollups, please see <a href="#calculating-rollups-after-install">Calculating Rollups After Install</a>.
@@ -145,7 +145,7 @@ There are two limitations to Entity Definition relationships that currently exis
 1. They cannot refer to the User object
 2. They cannot refer to the Task/Event objects
 
-For rollups referring to these objects, you can use either the Invocable or the static methods exposed on Apex Rollup from Apex to roll values up. For a specialized use-case for this, please see [setting Rollup up to handle parent-level merges](#parent-level-merges).
+For rollups referring to these objects, you can use either the Invocable or the static methods exposed on Apex Rollup from Apex to roll values up. For a specialized use-case for this, please see [setting Rollup up to handle parent-level merges](#parent-level-merges). Note that the "Special Consideration" section needs to be expanded to properly scroll to the parent-level merge section.
 
 </details>
 

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Added support for limiting the number of calc items considered for various rollup operations - allowing for things like SUM of top five opportunities this month. Fixed an issue which would sometimes occur while evaluating parent-level fields. Added support for MOST as a new rollup operation",
-            "versionNumber": "1.5.6.0",
+            "versionName": "Updating documentation",
+            "versionNumber": "1.5.7.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
