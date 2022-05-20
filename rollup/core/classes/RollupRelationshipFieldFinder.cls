@@ -12,7 +12,8 @@ public without sharing class RollupRelationshipFieldFinder {
   private final SObjectType ultimateParent;
   private final RollupControl__mdt rollupControl;
   private final Map<Id, SObject> oldRecords;
-  private final Set<String> uniqueFinalFieldNames;
+  private final Set<String> uniqueChildrenFieldNames;
+  private final Set<String> uniqueFinalParentFieldNames;
   private final Map<String, List<String>> relationshipNameToWhereClauses;
 
   private String calcItemWhereClause;
@@ -27,7 +28,8 @@ public without sharing class RollupRelationshipFieldFinder {
   public RollupRelationshipFieldFinder(
     RollupControl__mdt rollupControl,
     Rollup__mdt rollupMetadata,
-    Set<String> uniqueFinalFieldNames,
+    Set<String> uniqueChildrenFieldNames,
+    Set<String> uniqueFinalParentFieldNames,
     SObjectType ultimateParent,
     Map<Id, SObject> oldRecords
   ) {
@@ -37,7 +39,8 @@ public without sharing class RollupRelationshipFieldFinder {
     this.rollupControl = rollupControl;
     this.ultimateParent = ultimateParent;
     this.oldRecords = oldRecords;
-    this.uniqueFinalFieldNames = uniqueFinalFieldNames;
+    this.uniqueChildrenFieldNames = uniqueChildrenFieldNames;
+    this.uniqueFinalParentFieldNames = uniqueFinalParentFieldNames;
     this.calcItemWhereClause = rollupMetadata.CalcItemWhereClause__c;
 
     this.originalParts = new List<String>(this.relationshipParts);
@@ -350,7 +353,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
     Set<String> fieldNames = new Set<String>();
     if (baseSObjectType == this.ultimateParent) {
-      fieldNames.addAll(this.uniqueFinalFieldNames);
+      fieldNames.addAll(this.uniqueFinalParentFieldNames);
       if (this.metadata.RollupToUltimateParent__c == true) {
         this.populateHierarchicalLookupFields(fieldNames, this.getField(fieldMap, this.metadata.UltimateParentLookup__c));
       }
@@ -561,15 +564,11 @@ public without sharing class RollupRelationshipFieldFinder {
   private void retrieveAdditionalCalcItems() {
     if (this.records?.isEmpty() == false) {
       SObjectType childType = this.records[0].getSObjectType();
-      Set<String> queryFields = new Set<String>{
-        this.metadata.LookupFieldOnCalcItem__c,
-        this.metadata.RollupFieldOnCalcItem__c,
-        this.metadata.OrderByFirstLast__c
-      };
+      Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c };
+      queryFields.addAll(this.uniqueChildrenFieldNames);
       if (childType == this.ultimateParent) {
         queryFields.add(this.metadata.UltimateParentLookup__c);
       }
-      queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, childType).getQueryFields());
       String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), this.metadata.LookupFieldOnCalcItem__c, '=');
       query += '\nAND Id != :records';
       Set<Id> objIds = this.traversal.hierarchy.keySet();

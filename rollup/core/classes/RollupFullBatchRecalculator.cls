@@ -1,4 +1,4 @@
-public without sharing virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
+public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful {
   private final Map<String, CalcItemBag> statefulLookupToCalcItems;
 
   public RollupFullBatchRecalculator(
@@ -7,7 +7,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     List<Rollup__mdt> rollupInfo,
     SObjectType calcItemType,
     Set<String> recordIds,
-    FullRecalcProcessor postProcessor
+    RollupFullRecalcProcessor postProcessor
   ) {
     super(queryString, invokePoint, rollupInfo, calcItemType, recordIds, postProcessor);
     this.statefulLookupToCalcItems = new Map<String, CalcItemBag>();
@@ -50,7 +50,11 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     return this.startBatchProcessor();
   }
 
-  protected override void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+  protected override void retrieveAdditionalCalcItems(
+    Map<String, CalcItemBag> lookupToCalcItems,
+    RollupAsyncProcessor rollup,
+    Map<String, List<SObject>> localCachedFullRecalcs
+  ) {
     RollupLogger.Instance.log('checking on cached calc items ...', LoggingLevel.FINE);
     Map<String, CalcItemBag> local = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
@@ -62,7 +66,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
       }
     }
 
-    super.retrieveAdditionalCalcItems(local, rollup);
+    super.retrieveAdditionalCalcItems(local, rollup, localCachedFullRecalcs);
 
     for (String lookupKey : local.keySet()) {
       CalcItemBag bag = local.get(lookupKey);

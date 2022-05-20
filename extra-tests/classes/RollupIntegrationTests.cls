@@ -532,6 +532,7 @@ private class RollupIntegrationTests {
       new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000),
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'),
       new Set<String>{ 'Id', 'Name' },
+      new Set<String>{ 'Id', 'Name' },
       Account.SObjectType,
       new Map<Id, SObject>()
     );
