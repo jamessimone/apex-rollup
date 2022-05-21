@@ -78,10 +78,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return String.valueOf(this.rollupInfo);
   }
 
-  protected virtual override String startAsyncWork() {
-    return this.enqueue();
-  }
-
   public void finish() {
     if (this.postProcessor != null) {
       RollupLogger.Instance.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);

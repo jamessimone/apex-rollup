@@ -56,20 +56,20 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     Map<String, List<SObject>> localCachedFullRecalcs
   ) {
     RollupLogger.Instance.log('checking on cached calc items ...', LoggingLevel.FINE);
-    Map<String, CalcItemBag> local = new Map<String, CalcItemBag>();
+    Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       CalcItemBag bag = lookupToCalcItems.get(lookupKey);
       if (this.statefulLookupToCalcItems.containsKey(lookupKey)) {
         lookupToCalcItems.put(lookupKey, this.statefulLookupToCalcItems.get(lookupKey));
       } else {
-        local.put(lookupKey, bag);
+        lookupKeysThatNeedFilling.put(lookupKey, bag);
       }
     }
 
-    super.retrieveAdditionalCalcItems(local, rollup, localCachedFullRecalcs);
+    super.retrieveAdditionalCalcItems(lookupKeysThatNeedFilling, rollup, localCachedFullRecalcs);
 
-    for (String lookupKey : local.keySet()) {
-      CalcItemBag bag = local.get(lookupKey);
+    for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
+      CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);
       this.statefulLookupToCalcItems.put(lookupKey, bag);
       lookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);

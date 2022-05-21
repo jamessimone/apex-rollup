@@ -528,11 +528,12 @@ private class RollupIntegrationTests {
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, nonMatchingChild };
     insert appLogs;
 
+    Set<String> childAndParentFieldsToSelect = new Set<String>{ 'Id', 'Name' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000),
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'),
-      new Set<String>{ 'Id', 'Name' },
-      new Set<String>{ 'Id', 'Name' },
+      childAndParentFieldsToSelect,
+      childAndParentFieldsToSelect,
       Account.SObjectType,
       new Map<Id, SObject>()
     );

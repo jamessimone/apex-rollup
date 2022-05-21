@@ -190,9 +190,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       sObjectType = firstRollup.lookupObj;
       lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
       Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
-      objIds.addAll(
-        this.getCalcItemsByLookupField(firstRollup, this.calcObjectToUniqueFieldNames.get(firstRollup.calcItemType), uniqueLookupObjectFields).keySet()
-      );
+      objIds.addAll(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
       RollupLogger.Instance.log('starting batch with query:', query, LoggingLevel.DEBUG);
     }
@@ -499,7 +497,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
       if (lookupToCalcItems.containsKey(lookupKey)) {
         CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-        bag.hasQueriedForAdditionalItems = shouldLimitCalcItemQuery == false;
+        bag.hasQueriedForAdditionalItems = bag.hasQueriedForAdditionalItems || shouldLimitCalcItemQuery == false;
         bag.add(additionalCalcItem);
       }
     }
@@ -527,11 +525,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         roll.traversal = grandparentRollups.get(roll.lookupObj);
       }
 
-      Map<String, CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(
-        roll,
-        this.calcObjectToUniqueFieldNames.get(roll.calcItemType),
-        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)
-      );
+      Map<String, CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj));
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (roll.traversal?.getIsFinished() == false) {
@@ -706,10 +700,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       combinedMeta.add(roll.metadata);
       String rollupField = roll.opFieldOnLookupObject.getDescribe().getName();
       String lookupfield = roll.lookupFieldOnLookupObject.getDescribe().getName();
+      Set<String> rollupFieldNames = new Set<String>{ rollupField, lookupfield };
       if (this.lookupObjectToUniqueFieldNames.containsKey(roll.lookupObj)) {
-        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj).addAll(new List<String>{ rollupField, lookupField });
+        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj).addAll(rollupFieldNames);
       } else {
-        this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, new Set<String>{ rollupField, lookupfield });
+        this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, rollupFieldNames);
       }
 
       List<String> whereFields = String.isBlank(roll.metadata.CalcItemWhereClause__c)
@@ -768,11 +763,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private Map<String, CalcItemBag> getCalcItemsByLookupField(
-    RollupAsyncProcessor roll,
-    Set<String> uniqueCalcObjectFields,
-    Set<String> uniqueLookupObjectFields
-  ) {
+  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (roll.calcItems == null) {
       return lookupFieldToCalcItems;
@@ -782,7 +773,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         roll.traversal = new RollupRelationshipFieldFinder(
             roll.rollupControl,
             roll.metadata,
-            uniqueCalcObjectFields,
+            this.calcObjectToUniqueFieldNames.get(roll.calcItemType),
             uniqueLookupObjectFields,
             roll.lookupObj,
             roll.oldCalcItems
