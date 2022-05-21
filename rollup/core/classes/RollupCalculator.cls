@@ -11,6 +11,7 @@ public without sharing abstract class RollupCalculator {
   protected final SObjectField lookupKeyField;
   protected final Rollup__mdt metadata;
   protected final Boolean isChangedFieldCalc;
+  protected final SObjectType calcItemSObjectType;
 
   protected Rollup.Op op;
   protected String lookupKeyQuery;
@@ -118,6 +119,9 @@ public without sharing abstract class RollupCalculator {
       (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
       this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
+    if (this.metadata.CalcItem__c != null) {
+      this.calcItemSObjectType = this.getCalcItemType();
+    }
   }
 
   public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -295,18 +299,21 @@ public without sharing abstract class RollupCalculator {
       if (currentItemMatches) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
-      } else if (
-        (this.op == Rollup.Op.UPDATE_COUNT ||
-        this.op == Rollup.Op.UPDATE_CONCAT_DISTINCT ||
-        this.op == Rollup.Op.UPDATE_CONCAT ||
-        this.op == Rollup.Op.UPDATE_SUM) &&
-        this.isChangedFieldCalc == false &&
-        currentItemMatches == false &&
-        oldCalcItems.containsKey(item.Id) &&
-        this.eval?.matches(oldCalcItems.get(item.Id)) == true
-      ) {
-        this.transformForMultiCurrencyOrgs(item);
-        items.add(this.getTransformedCalcItem(item));
+      }
+      switch on this.op {
+        // not all downstream updates for old item matching when new item doesn't have been defined
+        // and this switch statement is how other operations opt-in
+        when UPDATE_COUNT, UPDATE_CONCAT_DISTINCT, UPDATE_CONCAT, UPDATE_SUM {
+          if (
+            this.isChangedFieldCalc == false &&
+            currentItemMatches == false &&
+            oldCalcItems.containsKey(item.Id) &&
+            this.eval?.matches(oldCalcItems.get(item.Id)) != false
+          ) {
+            this.transformForMultiCurrencyOrgs(item);
+            items.add(this.getTransformedCalcItem(item));
+          }
+        }
       }
     }
     List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
@@ -353,10 +360,7 @@ public without sharing abstract class RollupCalculator {
 
     if (this.isRecursiveRecalc == false) {
       this.isRecursiveRecalc = true; // now we're cooking with gas
-      Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, String.valueOf(this.opFieldOnCalcItem) };
-      if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
-        queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, sObjectType).getQueryFields());
-      }
+      Set<String> queryFields = this.getQueryFields();
 
       List<SObject> allOtherItems = this.tryQuery(sObjectType, queryFields, objIds);
       if (allOtherItems.isEmpty()) {
@@ -379,6 +383,17 @@ public without sharing abstract class RollupCalculator {
       }
     }
     return this.returnVal;
+  }
+
+  protected Set<String> getQueryFields() {
+    Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.metadata.LookupFieldOnCalcItem__c };
+    for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
+      queryFields.add(orderByInfo.FieldName__c);
+    }
+    if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
+      queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, this.calcItemSObjectType).getQueryFields());
+    }
+    return queryFields;
   }
 
   private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, List<Object> objIds) {
@@ -1133,7 +1148,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class FirstLastRollupCalculator extends RollupCalculator {
-    private final SObjectType calcItemSObjectType;
     public FirstLastRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1158,8 +1172,7 @@ public without sharing abstract class RollupCalculator {
         lookupRecordKey,
         lookupKeyField
       );
-      this.calcItemSObjectType = this.getCalcItemType();
-      Map<String, SObjectField> fieldMap = calcItemSObjectType.getDescribe().fields.getMap();
+      Map<String, SObjectField> fieldMap = this.calcItemSObjectType.getDescribe().fields.getMap();
       for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
         this.isMultiCurrencyRollup =
@@ -1170,13 +1183,7 @@ public without sharing abstract class RollupCalculator {
     @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.isFullRecalc == false) {
-        Set<String> queryFields = new Set<String>{ String.valueOf(this.opFieldOnCalcItem), this.metadata.LookupFieldOnCalcItem__c };
-        for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
-          queryFields.add(orderByInfo.FieldName__c);
-        }
-        if (String.isNotBlank(this.metadata.CalcItemWhereClause__c)) {
-          queryFields.addAll(RollupEvaluator.getWhereEval(this.metadata.CalcItemWhereClause__c, this.calcItemSObjectType).getQueryFields());
-        }
+        Set<String> queryFields = this.getQueryFields();
         // a full-recalc is always necessary because we don't retain the information about the order by field
         String queryString = RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
 

@@ -1,11 +1,11 @@
-public without sharing class RollupDeferredFullRecalcProcessor extends RollupAsyncProcessor.FullRecalcProcessor {
+public without sharing class RollupDeferredFullRecalcProcessor extends RollupFullRecalcProcessor {
   public RollupDeferredFullRecalcProcessor(
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,
     String queryString,
     Set<String> recordIds,
     InvocationPoint invokePoint,
-    FullRecalcProcessor postProcessor
+    RollupFullRecalcProcessor postProcessor
   ) {
     super(queryString, invokePoint, matchingMeta, calcItemType, recordIds, postProcessor);
   }
@@ -24,7 +24,6 @@ public without sharing class RollupDeferredFullRecalcProcessor extends RollupAsy
 
   private RollupAsyncProcessor getProcessor() {
     this.isProcessed = true;
-    List<SObject> localCalcItems = Database.query(this.queryString);
-    return this.getDelegatedFullRecalcRollup(this.rollupInfo, localCalcItems, this);
+    return this.getDelegatedFullRecalcRollup(this.rollupInfo, this.getCalcItemsByQuery(), this);
   }
 }

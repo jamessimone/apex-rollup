@@ -160,6 +160,37 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void multipleHierarchyRollupsSuccessfullyFullRecalc() {
+    Account acc = [SELECT Id FROM Account];
+    Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
+    insert childAccount;
+    insert new ContactPointAddress(PreferenceRank = 500, ParentId = childAccount.Id, Name = 'One');
+
+    // ensure that a top-level child item linked only to the ultimate parent is included
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
+    insert cpas;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    Rollup.FlowInput secondInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'CONCAT_DISTINCT')[0];
+    secondInput.rollupFieldOnOpObject = 'Name';
+    secondInput.rollupFieldOnCalcItem = 'Name';
+    flowInputs.add(secondInput);
+
+    for (Rollup.FlowInput flowInput : flowInputs) {
+      flowInput.ultimateParentLookup = 'ParentId';
+      flowInput.rollupToUltimateParent = true;
+    }
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue, Name FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH hierarchy from flow should fully recalc');
+    System.assertEquals('One, Two', updatedAcc.Name, 'CONCAT_DISTINCT REFRESH hierarchy from flow should full recalc');
+  }
+
+  @IsTest
   static void shouldPerformBulkFullRecalcWithHierarchy() {
     // also validates that RollupRelationshipFieldFinder aborts early if it's called
     // for a top-level parent

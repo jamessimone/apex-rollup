@@ -1,6 +1,7 @@
 @IsTest
 private class RollupRelationshipFieldFinderTests {
-  static RollupControl__mdt control = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 10000);
+  static final RollupControl__mdt control = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 10000);
+  static final Set<String> uniqueFieldNames = new Set<String>{ 'Id', 'Name' };
 
   @TestSetup
   static void setup() {
@@ -14,10 +15,10 @@ private class RollupRelationshipFieldFinderTests {
     ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child cpa');
     insert cpa;
 
-    Set<String> uniqueFieldNames = new Set<String>{ 'Name', 'Id' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Name'),
+      uniqueFieldNames,
       uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
@@ -33,6 +34,7 @@ private class RollupRelationshipFieldFinderTests {
     finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
+      uniqueFieldNames,
       uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
@@ -52,7 +54,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       User.SObjectType,
       new Map<Id, SObject>()
     );
@@ -73,7 +76,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       User.SObjectType,
       new Map<Id, SObject>()
     );
@@ -108,10 +112,10 @@ private class RollupRelationshipFieldFinderTests {
 
     Map<Id, SObject> oldCpas = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = intermediateOne.Id) };
 
-    Set<String> uniqueFieldNames = new Set<String>{ 'Name', 'Id' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Account.Owner.Name'),
+      uniqueFieldNames,
       uniqueFieldNames,
       User.SObjectType,
       oldCpas
@@ -124,6 +128,7 @@ private class RollupRelationshipFieldFinderTests {
     finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Account.Name'),
+      uniqueFieldNames,
       uniqueFieldNames,
       Account.SObjectType,
       oldCpas
@@ -143,10 +148,10 @@ private class RollupRelationshipFieldFinderTests {
 
     Map<Id, SObject> oldOpps = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = null) };
 
-    Set<String> uniqueFieldNames = new Set<String>{ 'Id', 'Name' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
+      uniqueFieldNames,
       uniqueFieldNames,
       User.SObjectType,
       oldOpps
@@ -162,6 +167,7 @@ private class RollupRelationshipFieldFinderTests {
     finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Parent.Owner.Name'),
+      uniqueFieldNames,
       uniqueFieldNames,
       User.SObjectType,
       oldOpps
@@ -184,7 +190,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       oldCpas
     );
@@ -206,7 +213,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Name'),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -244,7 +252,8 @@ private class RollupRelationshipFieldFinderTests {
           parentTwo.Name +
           '\''
       ),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -292,7 +301,8 @@ private class RollupRelationshipFieldFinderTests {
         GrandparentRelationshipFieldPath__c = 'Parent.Name',
         LookupFieldOnCalcItem__c = 'ParentId'
       ),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -316,7 +326,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(RollupToUltimateParent__c = true, UltimateParentLookup__c = 'ParentId', LookupFieldOnCalcItem__c = 'AccountId'),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -333,7 +344,8 @@ private class RollupRelationshipFieldFinderTests {
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(RollupToUltimateParent__c = true, UltimateParentLookup__c = 'ParentId', LookupFieldOnCalcItem__c = 'ParentId'),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -358,7 +370,8 @@ private class RollupRelationshipFieldFinderTests {
         LookupFieldOnCalcItem__c = 'AccountId',
         GrandparentRelationshipFieldPath__c = 'Account.Parent.Name'
       ),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -386,7 +399,8 @@ private class RollupRelationshipFieldFinderTests {
         GrandparentRelationshipFieldPath__c = 'Contacts.Individual.Name',
         OneToManyGrandparentFields__c = 'Contact.AccountId'
       ),
-      new Set<String>{ 'Name', 'Id' },
+      uniqueFieldNames,
+      uniqueFieldNames,
       Individual.SObjectType,
       new Map<Id, SObject>()
     );

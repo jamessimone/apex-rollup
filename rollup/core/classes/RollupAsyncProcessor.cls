@@ -2,15 +2,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private final SObjectField opFieldOnCalcItem;
   private final SObjectField lookupFieldOnCalcItem;
   private final SObjectField lookupFieldOnLookupObject;
-  private final SObjectField opFieldOnLookupObject;
   private final SObjectType lookupObj;
   private final Evaluator eval;
   private final Op op;
 
+  protected final SObjectField opFieldOnLookupObject;
   protected final SObjectType calcItemType;
   protected Boolean isProcessed = false;
   protected Boolean overridesRunCalc = false;
-  protected FullRecalcProcessor fullRecalcProcessor;
+  protected RollupFullRecalcProcessor fullRecalcProcessor;
   protected Boolean shouldSortToFront = false;
 
   private RollupRelationshipFieldFinder.Traversal traversal;
@@ -47,98 +47,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return deferredRollups;
     }
     set;
-  }
-
-  @SuppressWarnings('PMD.UnusedLocalVariable')
-  public abstract without sharing class FullRecalcProcessor extends QueueableProcessor {
-    protected final String queryString;
-    protected final List<Rollup__mdt> rollupInfo;
-    protected final Set<String> recordIds;
-    protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
-    private final Set<String> previouslyResetParents = new Set<String>();
-    private final FullRecalcProcessor postProcessor;
-
-    public FullRecalcProcessor(
-      String queryString,
-      InvocationPoint invokePoint,
-      List<Rollup__mdt> rollupInfo,
-      SObjectType calcItemType,
-      Set<String> recordIds,
-      FullRecalcProcessor postProcessor
-    ) {
-      super(invokePoint);
-      this.isFullRecalc = true;
-      this.isNoOp = true; // consumers should either opt out of this or have it be set properly downstream
-      this.calcItemType = calcItemType;
-      this.queryString = queryString;
-      this.rollupInfo = rollupInfo;
-      this.recordIds = recordIds;
-      this.postProcessor = postProcessor;
-      this.overrideRollupControl();
-    }
-
-    public override Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
-      for (Rollup__mdt rollupMeta : this.rollupInfo) {
-        this.addLimitToMetadata(rollupMeta, limitAmount, calcItemRollupField);
-      }
-      return this;
-    }
-
-    public override Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
-      for (Integer index = 0; index < this.rollupInfo.size(); index++) {
-        Rollup__mdt rollupMeta = this.addOrderBys(this.rollupInfo[index], orderBys, calcItemRollupField);
-        this.rollupInfo.set(index, rollupMeta);
-      }
-      return this;
-    }
-
-    protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-      props = super.customizeToStringEntries(props);
-      this.addToMap(props, 'Rollup Metadata', this.rollupInfo);
-      this.addToMap(props, 'Query String', this.queryString);
-      return props;
-    }
-
-    protected override String getHashedContents() {
-      return String.valueOf(this.rollupInfo);
-    }
-
-    protected void finish() {
-      if (this.postProcessor != null) {
-        RollupLogger.Instance.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
-        // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
-        // job continuity is established between the full recalc and then any downstream job that runs
-        // (as the postProcessor)
-        this.setCurrentJobId(this.postProcessor.runCalc());
-      }
-    }
-
-    protected Boolean parentRollupFieldHasBeenReset(Rollup__mdt meta, SObject parent) {
-      return this.previouslyResetParents.contains(this.getKey(meta.RollupFieldOnLookupObject__c, parent));
-    }
-
-    private Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-      return this.previouslyResetParents.contains(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
-    }
-
-    private void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-      this.previouslyResetParents.add(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
-      this.postProcessor?.recordIds.add(parent.Id);
-      this.postProcessor?.storeParentResetField(processor, parent);
-    }
-
-    private String getKey(String fieldKey, SObject parent) {
-      return fieldKey + parent.Id;
-    }
-
-    private void overrideRollupControl() {
-      for (Rollup__mdt meta : this.rollupInfo) {
-        if (meta.RollupControl__c != null) {
-          RollupControl__mdt specificControl = this.getSpecificControl(meta.RollupControl__c);
-          this.overrideParentRollupControlValues(specificControl);
-        }
-      }
-    }
   }
 
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -278,17 +186,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       RollupLogger.Instance.log('No matching rollups remaining, exiting early', LoggingLevel.WARN);
       query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
     } else {
-      for (RollupAsyncProcessor rollup : this.rollups) {
-        sObjectType = rollup.lookupObj;
-        lookupFieldForLookupObject = rollup.lookupFieldOnLookupObject.getDescribe().getName();
-        objIds.addAll(this.getCalcItemsByLookupField(rollup, this.lookupObjectToUniqueFieldNames.get(sObjectType)).keySet());
-      }
-      query = RollupQueryBuilder.Current.getQuery(
-        sObjectType,
-        new List<String>(this.lookupObjectToUniqueFieldNames.get(sObjectType)),
-        lookupFieldForLookupObject,
-        '='
-      );
+      RollupAsyncProcessor firstRollup = this.rollups.get(0);
+      sObjectType = firstRollup.lookupObj;
+      lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
+      Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
+      objIds.addAll(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
+      query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
       RollupLogger.Instance.log('starting batch with query:', query, LoggingLevel.DEBUG);
     }
     RollupLogger.Instance.save();
@@ -364,9 +267,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // swap off on which async process is running to achieve infinite scaling
     Boolean canEnqueue = Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
     RollupAsyncProcessor roll;
-    if (this.rollups.size() == 1 && this.rollups[0] instanceof FullRecalcProcessor) {
+    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
       roll = this.rollups[0];
-    } else if (this instanceof FullRecalcProcessor) {
+    } else if (this instanceof RollupFullRecalcProcessor) {
       roll = this;
     } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
@@ -388,7 +291,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return roll;
   }
 
-  private without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+  public without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+    protected QueueableProcessor(InvocationPoint rollupInvokePoint) {
+      super(rollupInvokePoint);
+    }
+
     private QueueableProcessor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       super(invokePoint, calcItems, oldCalcItems);
     }
@@ -421,10 +328,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       );
     }
 
-    private QueueableProcessor(InvocationPoint rollupInvokePoint) {
-      super(rollupInvokePoint);
-    }
-
     private QueueableProcessor(RollupAsyncProcessor roll) {
       super(roll);
     }
@@ -434,7 +337,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected virtual override String startAsyncWork() {
-      return System.enqueueJob(this);
+      return this.enqueue();
     }
 
     @SuppressWarnings('PMD.ApexSOQLInjection')
@@ -488,6 +391,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.startBatchProcessor();
   }
 
+  protected String enqueue() {
+    return System.enqueueJob(this);
+  }
+
   protected String startBatchProcessor() {
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
@@ -497,7 +404,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.lookupItems;
   }
 
-  protected RollupAsyncProcessor getDelegatedFullRecalcRollup(List<Rollup__mdt> rollupInfo, List<SObject> calcItems, FullRecalcProcessor fullRecalcProcessor) {
+  protected RollupAsyncProcessor getDelegatedFullRecalcRollup(
+    List<Rollup__mdt> rollupInfo,
+    List<SObject> calcItems,
+    RollupFullRecalcProcessor fullRecalcProcessor
+  ) {
     RollupAsyncProcessor processor = this.getAsyncRollup(rollupInfo, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     processor.isFullRecalc = true;
     processor.fullRecalcProcessor = fullRecalcProcessor;
@@ -511,7 +422,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
-  protected virtual void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+  protected virtual void retrieveAdditionalCalcItems(
+    Map<String, CalcItemBag> lookupToCalcItems,
+    RollupAsyncProcessor rollup,
+    Map<String, List<SObject>> localCachedFullRecalcs
+  ) {
     if (this.isValidAdditionalCalcItemRetrieval(rollup) == false) {
       return;
     }
@@ -519,11 +434,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // the rollup _becomes_ a full recalc
     rollup.isFullRecalc = true;
 
-    String key = rollup.calcItemType.getDescribe().getName() + rollup.lookupFieldOnCalcItem;
+    String key = rollup.calcItemType.getDescribe().getName() + String.valueOf(rollup.lookupFieldOnCalcItem);
     List<SObject> additionalCalcItems;
     Boolean shouldLimitCalcItemQuery = false;
-    if (this.cachedFullRecalcs.containsKey(key)) {
-      additionalCalcItems = this.cachedFullRecalcs.get(key);
+    Boolean hasPreviouslyCachedItems = localCachedFullRecalcs.containsKey(key);
+    if (hasPreviouslyCachedItems) {
+      additionalCalcItems = localCachedFullRecalcs.get(key);
       for (String lookupKey : lookupToCalcItems.keySet()) {
         CalcItemBag bag = lookupToCalcItems.get(lookupKey);
         bag.hasQueriedForAdditionalItems = true;
@@ -540,7 +456,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
 
-      if (objIds.isEmpty()) {
+      if (objIds.isEmpty() && hasPreviouslyCachedItems == false) {
         additionalCalcItems = new List<SObject>();
       } else {
         Set<String> lookupKeys = lookupToCalcItems.keySet();
@@ -573,7 +489,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         additionalCalcItems = Database.query(query);
       }
       if (shouldLimitCalcItemQuery == false) {
-        this.cachedFullRecalcs.put(key, additionalCalcItems);
+        localCachedFullRecalcs.put(key, additionalCalcItems);
       }
     }
 
@@ -581,7 +497,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);
       if (lookupToCalcItems.containsKey(lookupKey)) {
         CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-        bag.hasQueriedForAdditionalItems = shouldLimitCalcItemQuery == false;
+        bag.hasQueriedForAdditionalItems = bag.hasQueriedForAdditionalItems || shouldLimitCalcItemQuery == false;
         bag.add(additionalCalcItem);
       }
     }
@@ -647,6 +563,25 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // as well as the calc items driving that calculation.
     // you could have multiple rollups with different Calc Item Where Clauses all rolling up to the same field
     return String.valueOf(this.metadata);
+  }
+
+  protected void overrideParentRollupControlValues(RollupControl__mdt specificControl) {
+    // override section - most updates go from a rollup specific control -> this.rollupControl
+    if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
+      this.rollupControl.BatchChunkSize__c = specificControl.BatchChunkSize__c;
+    }
+    if (specificControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
+      this.rollupControl.MaxLookupRowsBeforeBatching__c = specificControl.MaxLookupRowsBeforeBatching__c;
+    }
+    if (specificControl.ShouldRunAs__c != this.rollupControl.ShouldRunAs__c) {
+      this.rollupControl.ShouldRunAs__c = specificControl.ShouldRunAs__c;
+    }
+    if (specificControl.MaxParentRowsUpdatedAtOnce__c == null) {
+      specificControl.MaxParentRowsUpdatedAtOnce__c = this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
+    }
+    if (specificControl.ShouldDuplicateRulesBeIgnored__c == true) {
+      this.rollupControl.ShouldDuplicateRulesBeIgnored__c = true;
+    }
   }
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
@@ -765,10 +700,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       combinedMeta.add(roll.metadata);
       String rollupField = roll.opFieldOnLookupObject.getDescribe().getName();
       String lookupfield = roll.lookupFieldOnLookupObject.getDescribe().getName();
+      Set<String> rollupFieldNames = new Set<String>{ rollupField, lookupfield };
       if (this.lookupObjectToUniqueFieldNames.containsKey(roll.lookupObj)) {
-        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj).addAll(new List<String>{ rollupField, lookupField });
+        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj).addAll(rollupFieldNames);
       } else {
-        this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, new Set<String>{ rollupField, lookupfield });
+        this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, rollupFieldNames);
       }
 
       List<String> whereFields = String.isBlank(roll.metadata.CalcItemWhereClause__c)
@@ -827,14 +763,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueQueryFieldNames) {
+  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (roll.calcItems == null) {
       return lookupFieldToCalcItems;
     }
     if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
       if (roll.traversal == null) {
-        roll.traversal = new RollupRelationshipFieldFinder(roll.rollupControl, roll.metadata, uniqueQueryFieldNames, roll.lookupObj, roll.oldCalcItems)
+        roll.traversal = new RollupRelationshipFieldFinder(
+            roll.rollupControl,
+            roll.metadata,
+            this.calcObjectToUniqueFieldNames.get(roll.calcItemType),
+            uniqueLookupObjectFields,
+            roll.lookupObj,
+            roll.oldCalcItems
+          )
           .getParents(roll.calcItems);
       } else if (roll.traversal?.getIsFinished() == false) {
         roll.traversal.recommence();
@@ -930,25 +873,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       (this.rollupControl.ShouldRunSingleRecordsSynchronously__c || roll.rollupControl.ShouldRunSingleRecordsSynchronously__c);
   }
 
-  private void overrideParentRollupControlValues(RollupControl__mdt specificControl) {
-    // override section - most updates go from a rollup specific control -> this.rollupControl
-    if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
-      this.rollupControl.BatchChunkSize__c = specificControl.BatchChunkSize__c;
-    }
-    if (specificControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
-      this.rollupControl.MaxLookupRowsBeforeBatching__c = specificControl.MaxLookupRowsBeforeBatching__c;
-    }
-    if (specificControl.ShouldRunAs__c != this.rollupControl.ShouldRunAs__c) {
-      this.rollupControl.ShouldRunAs__c = specificControl.ShouldRunAs__c;
-    }
-    if (specificControl.MaxParentRowsUpdatedAtOnce__c == null) {
-      specificControl.MaxParentRowsUpdatedAtOnce__c = this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
-    }
-    if (specificControl.ShouldDuplicateRulesBeIgnored__c == true) {
-      this.rollupControl.ShouldDuplicateRulesBeIgnored__c = true;
-    }
-  }
-
   private Boolean getShouldRunSyncDeferred(RollupAsyncProcessor roll) {
     if (roll.isNoOp || this.getCachedApexOperations().containsKey(roll.calcItemType) == false) {
       return false;
@@ -1029,9 +953,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupSObjectUpdater updater = new RollupSObjectUpdater(roll.opFieldOnLookupObject);
     if (roll.fullRecalcProcessor != null) {
       roll.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
-      roll.fullRecalcProcessor.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
+      roll.fullRecalcProcessor.retrieveAdditionalCalcItems(calcItemsByLookupField, roll, this.cachedFullRecalcs);
     } else {
-      this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
+      this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll, this.cachedFullRecalcs);
     }
 
     RollupCalculator calc;
@@ -1093,7 +1017,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (mutableItems?.isEmpty() == false) {
       roll.calcItems = mutableItems;
       this.deferredRollups.add(roll);
-    } else if (roll instanceof FullRecalcProcessor) {
+    } else if (roll instanceof RollupFullRecalcProcessor) {
       for (RollupAsyncProcessor otherRollup : this.rollups) {
         if (roll.isProcessed == false && otherRollup != roll) {
           RollupLogger.Instance.log('adding full recalc rollup as inner rollup:', otherRollup, LoggingLevel.DEBUG);

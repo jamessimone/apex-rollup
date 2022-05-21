@@ -1,4 +1,4 @@
-public without sharing virtual class RollupFullBatchRecalculator extends RollupAsyncProcessor.FullRecalcProcessor implements Database.Stateful {
+public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful {
   private final Map<String, CalcItemBag> statefulLookupToCalcItems;
 
   public RollupFullBatchRecalculator(
@@ -7,7 +7,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     List<Rollup__mdt> rollupInfo,
     SObjectType calcItemType,
     Set<String> recordIds,
-    FullRecalcProcessor postProcessor
+    RollupFullRecalcProcessor postProcessor
   ) {
     super(queryString, invokePoint, rollupInfo, calcItemType, recordIds, postProcessor);
     this.statefulLookupToCalcItems = new Map<String, CalcItemBag>();
@@ -50,22 +50,26 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupA
     return this.startBatchProcessor();
   }
 
-  protected override void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+  protected override void retrieveAdditionalCalcItems(
+    Map<String, CalcItemBag> lookupToCalcItems,
+    RollupAsyncProcessor rollup,
+    Map<String, List<SObject>> localCachedFullRecalcs
+  ) {
     RollupLogger.Instance.log('checking on cached calc items ...', LoggingLevel.FINE);
-    Map<String, CalcItemBag> local = new Map<String, CalcItemBag>();
+    Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       CalcItemBag bag = lookupToCalcItems.get(lookupKey);
       if (this.statefulLookupToCalcItems.containsKey(lookupKey)) {
         lookupToCalcItems.put(lookupKey, this.statefulLookupToCalcItems.get(lookupKey));
       } else {
-        local.put(lookupKey, bag);
+        lookupKeysThatNeedFilling.put(lookupKey, bag);
       }
     }
 
-    super.retrieveAdditionalCalcItems(local, rollup);
+    super.retrieveAdditionalCalcItems(lookupKeysThatNeedFilling, rollup, localCachedFullRecalcs);
 
-    for (String lookupKey : local.keySet()) {
-      CalcItemBag bag = local.get(lookupKey);
+    for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
+      CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);
       this.statefulLookupToCalcItems.put(lookupKey, bag);
       lookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);

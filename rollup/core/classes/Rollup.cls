@@ -54,6 +54,16 @@ global without sharing virtual class Rollup {
     set;
   }
 
+  private static final List<RollupFullRecalcProcessor> CACHED_FULL_RECALCS {
+    get {
+      if (CACHED_FULL_RECALCS == null) {
+        CACHED_FULL_RECALCS = new List<RollupFullRecalcProcessor>();
+      }
+      return CACHED_FULL_RECALCS;
+    }
+    set;
+  }
+
   @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS {
     get {
@@ -666,6 +676,7 @@ global without sharing virtual class Rollup {
     }
 
     Map<Integer, List<SObject>> hashCodeToCalcItems = new Map<Integer, List<SObject>>();
+    Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
     for (Rollup__mdt key : metaToInputWrapper.keySet()) {
       FlowInputWrapper wrapper = metaToInputWrapper.get(key);
       // here we clone the list because it can get winnowed in "processCustomMetadata"
@@ -673,7 +684,16 @@ global without sharing virtual class Rollup {
       wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
       wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
       Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(wrapper.flowInput.oldRecordsToRollup);
-      processCustomMetadata(localRollups, metas, wrapper.flowInput.recordsToRollup, oldFlowRecords, new Set<String>(), wrapper.rollupContext, fromInvocable);
+      processCustomMetadata(
+        localRollups,
+        metas,
+        wrapper.flowInput.recordsToRollup,
+        oldFlowRecords,
+        new Set<String>(),
+        wrapper.rollupContext,
+        fromInvocable,
+        typeToWrappedMeta
+      );
 
       if (metas.isEmpty() == false) {
         Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
@@ -1550,7 +1570,8 @@ global without sharing virtual class Rollup {
     }
 
     List<Rollup> localRollups = new List<Rollup>();
-    processCustomMetadata(localRollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX);
+    Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
+    processCustomMetadata(localRollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX, typeToWrappedMeta);
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     populateCachedApexOperations(calcItemSObjectType, apexContext);
@@ -1845,7 +1866,8 @@ global without sharing virtual class Rollup {
     Map<Id, SObject> oldCalcItems,
     Set<String> mergedParentIds,
     String rollupContext,
-    InvocationPoint invokePoint
+    InvocationPoint invokePoint,
+    Map<SObjectType, RollupMetadata> typeToWrappedMeta
   ) {
     List<FullRecalculationMetadata> fullRecalcMetas = new List<FullRecalculationMetadata>();
     Map<String, DeleteReparentOperation> deleteKeyToReparentOp = new Map<String, DeleteReparentOperation>();
@@ -1929,7 +1951,7 @@ global without sharing virtual class Rollup {
       rollups.add(deleteProcessor);
     }
     if (fullRecalcMetas.isEmpty() == false) {
-      rollups.addAll(getFullRecalcRollups(fullRecalcMetas, invokePoint));
+      rollups.addAll(getFullRecalcRollups(fullRecalcMetas, invokePoint, typeToWrappedMeta));
     }
   }
 
@@ -2031,8 +2053,11 @@ global without sharing virtual class Rollup {
     return '\nORDER BY ' + String.join(orderByFields, ',');
   }
 
-  private static List<Rollup> getFullRecalcRollups(List<FullRecalculationMetadata> fullRecalcMetas, InvocationPoint invokePoint) {
-    Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
+  private static List<Rollup> getFullRecalcRollups(
+    List<FullRecalculationMetadata> fullRecalcMetas,
+    InvocationPoint invokePoint,
+    Map<SObjectType, RollupMetadata> typeToWrappedMeta
+  ) {
     for (Integer index = 0; index < fullRecalcMetas.size(); index++) {
       FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
       RollupMetadata wrappedMeta;
@@ -2069,6 +2094,20 @@ global without sharing virtual class Rollup {
   ) {
     final Integer maxQueryLength = 100000;
     List<Rollup> fullRecalcRollups = new List<Rollup>();
+    for (RollupFullRecalcProcessor preCachedRollup : CACHED_FULL_RECALCS) {
+      if (typeToWrappedMeta.containsKey(preCachedRollup.getCalcItemType())) {
+        // if other query fields were added to the query string, we need to fix up the cached full recalcs(s') query strings
+        RollupMetadata wrappedMeta = typeToWrappedMeta.get(preCachedRollup.getCalcItemType());
+        String queryString = RollupQueryBuilder.Current.getQuery(
+          preCachedRollup.getCalcItemType(),
+          new List<String>(wrappedMeta.queryFields),
+          'Id',
+          '!=',
+          wrappedMeta.whereClause
+        );
+        preCachedRollup.queryString = queryString;
+      }
+    }
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
       if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
@@ -2076,7 +2115,14 @@ global without sharing virtual class Rollup {
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
       }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
-      Rollup fullRecalc = buildFullRecalcRollup(wrappedMeta.metadata, wrappedMeta.recordCount, queryString, wrappedMeta.recordIds, calcType, localInvokePoint);
+      RollupFullRecalcProcessor fullRecalc = buildFullRecalcRollup(
+        wrappedMeta.metadata,
+        wrappedMeta.recordCount,
+        queryString,
+        wrappedMeta.recordIds,
+        calcType,
+        localInvokePoint
+      );
       setControlToSyncForSingularParentRecalcs(fullRecalc.rollupControl, localInvokePoint);
       if (fullRecalc.isNoOp) {
         fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
@@ -2084,6 +2130,7 @@ global without sharing virtual class Rollup {
       fullRecalc.queryCount = wrappedMeta.recordCount;
       RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
       fullRecalcRollups.add(fullRecalc);
+      CACHED_FULL_RECALCS.add(fullRecalc);
     }
     return fullRecalcRollups;
   }
@@ -2103,7 +2150,7 @@ global without sharing virtual class Rollup {
     }
   }
 
-  private static Rollup buildFullRecalcRollup(
+  private static RollupFullRecalcProcessor buildFullRecalcRollup(
     List<Rollup__mdt> matchingMeta,
     Integer amountOfCalcItems,
     String queryString,
@@ -2114,7 +2161,7 @@ global without sharing virtual class Rollup {
     for (Rollup__mdt meta : matchingMeta) {
       meta.IsFullRecordSet__c = true;
     }
-    RollupAsyncProcessor.FullRecalcProcessor parentResetProcessor;
+    RollupFullRecalcProcessor parentResetProcessor;
     SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c).getSObjectType();
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', '!=');
     parentResetProcessor = new RollupParentResetProcessor(matchingMeta, parentType, parentQuery, recordIds, invokePoint);
@@ -2130,8 +2177,14 @@ global without sharing virtual class Rollup {
     if (shouldQueue) {
       return new RollupDeferredFullRecalcProcessor(matchingMeta, calcItemType, queryString, recordIds, invokePoint, parentResetProcessor);
     } else {
-      String queryWithOrderBy = (queryString + getFullRecalcQueryString(matchingMeta));
-      return new RollupFullBatchRecalculator(queryWithOrderBy, invokePoint, matchingMeta, calcItemType, recordIds, parentResetProcessor);
+      return new RollupFullBatchRecalculator(
+        (queryString + getFullRecalcQueryString(matchingMeta)),
+        invokePoint,
+        matchingMeta,
+        calcItemType,
+        recordIds,
+        parentResetProcessor
+      );
     }
   }
 
