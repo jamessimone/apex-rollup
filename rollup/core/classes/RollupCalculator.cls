@@ -1,7 +1,7 @@
 public without sharing abstract class RollupCalculator {
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
-  private Boolean isMultiCurrencyRollup = false;
+  private Boolean isMultiCurrencyRollup;
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
 
@@ -114,10 +114,12 @@ public without sharing abstract class RollupCalculator {
     this.lookupKeyField = lookupKeyField;
     this.defaultVal = defaultVal;
     this.setDefaultValues(lookupRecordKey, priorVal);
-    this.isMultiCurrencyRollup =
-      UserInfo.isMultiCurrencyOrganization() &&
-      (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
-      this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
+    if (this.isMultiCurrencyRollup == null) {
+      this.isMultiCurrencyRollup =
+        UserInfo.isMultiCurrencyOrganization() &&
+        (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
+        this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
+    }
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
     if (this.metadata.CalcItem__c != null) {
       this.calcItemSObjectType = this.getCalcItemType();
@@ -1176,7 +1178,7 @@ public without sharing abstract class RollupCalculator {
       for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
         this.isMultiCurrencyRollup =
-          this.isMultiCurrencyRollup || UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY;
+          this.isMultiCurrencyRollup || (UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY);
       }
     }
 

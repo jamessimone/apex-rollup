@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Updating documentation, fixed issue with hierarchical rollups not always querying all fields",
-            "versionNumber": "1.5.7.0",
+            "versionName": "Slight optimizations within RollupCalculator",
+            "versionNumber": "1.5.8.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
