@@ -106,7 +106,7 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   get rollupOperation() {
-    return this.metadata.RollupOperation__c;
+    return this.metadata.RollupOperation__c || '';
   }
   set rollupOperation(value) {
     this.metadata.RollupOperation__c = value;
