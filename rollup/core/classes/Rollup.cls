@@ -342,7 +342,7 @@ global without sharing virtual class Rollup {
   }
 
   protected virtual String getHashedContents() {
-    return this.toString();
+    return 'Not implemented';
   }
 
   protected virtual String getTypeName() {
@@ -1791,13 +1791,10 @@ global without sharing virtual class Rollup {
   private static void flatten(List<Rollup> stackedRollups) {
     Map<String, Rollup> rollupOperationToRollup = new Map<String, Rollup>();
     for (Rollup stackedRollup : stackedRollups) {
-      // If the hashed contents aren't the same, we can't collapse the two rollup operations
+      // If the hashed content doesn't match, we can't collapse the two rollup operations
       String rollupKey = stackedRollup.getHashedContents();
-
       if (rollupOperationToRollup.containsKey(rollupKey)) {
         Rollup matchingRollup = rollupOperationToRollup.get(rollupKey);
-        // TODO - decide whether or not to keep these logging statements
-        RollupLogger.Instance.log('deferred matching rollup found, pre-consolidation', matchingRollup, LoggingLevel.DEBUG);
         Map<Id, SObject> stackedMatchingItems = new Map<Id, SObject>(stackedRollup.calcItems);
         stackedMatchingItems.putAll(matchingRollup.calcItems);
         stackedRollup.calcItems = stackedMatchingItems.values();
@@ -1811,7 +1808,6 @@ global without sharing virtual class Rollup {
         }
       }
       rollupOperationToRollup.put(rollupKey, stackedRollup);
-      RollupLogger.Instance.log('combined rollup after any potential consolidation', stackedRollup, LoggingLevel.DEBUG);
     }
 
     stackedRollups.clear();
