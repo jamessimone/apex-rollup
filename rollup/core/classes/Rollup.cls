@@ -2392,8 +2392,8 @@ global without sharing virtual class Rollup {
   }
 
   public static Integer getCountFromDb(String countQuery, Set<String> objIds, Set<String> recordIds) {
-    if (countQuery.contains('ALL ROWS')) {
-      countQuery = countQuery.replace('ALL ROWS', '');
+    if (countQuery.contains(RollupQueryBuilder.ALL_ROWS)) {
+      countQuery = countQuery.replace(RollupQueryBuilder.ALL_ROWS, '');
     }
 
     try {
@@ -2738,10 +2738,13 @@ global without sharing virtual class Rollup {
       if (updatedChildTypes.contains(calcItemSObject) == false) {
         updatedChildTypes.add(calcItemSObject);
 
-        List<SObject> recordsToReparent = Database.query(
-          RollupQueryBuilder.Current.getQuery(calcItemSObject, new List<String>{ 'Id', meta.LookupFieldOnCalcItem__c }, meta.LookupFieldOnCalcItem__c, '=')
+        String queryString = RollupQueryBuilder.Current.getQuery(
+          calcItemSObject,
+          new List<String>{ 'Id', meta.LookupFieldOnCalcItem__c },
+          meta.LookupFieldOnCalcItem__c,
+          '='
         );
-
+        List<SObject> recordsToReparent = Database.query(queryString);
         for (SObject childToReparent : recordsToReparent) {
           childToReparent.put(meta.LookupFieldOnCalcItem__c, mergedIdToCurrentParentId.get((Id) childToReparent.get(meta.LookupFieldOnCalcItem__c)));
           recordsToUpdate.add(childToReparent);

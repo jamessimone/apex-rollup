@@ -1,6 +1,7 @@
 public without sharing class RollupQueryBuilder {
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
   public static final Integer SENTINEL_COUNT_VALUE = -1;
+  public static final String ALL_ROWS = 'ALL ROWS';
 
   private RollupQueryBuilder() {
   }
@@ -74,13 +75,21 @@ public without sharing class RollupQueryBuilder {
     }
     if (sObjectType == Task.SObjectType || sObjectType == Event.SObjectType) {
       // handle archived rows
-      baseQuery += '\nAND IsDeleted = false ALL ROWS';
+      baseQuery += '\nAND IsDeleted = false ' + ALL_ROWS;
     }
     return baseQuery;
   }
 
   public String getQuery(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
     return this.getQuery(sObjectType, uniqueQueryFieldNames, lookupFieldOnLookupObject, equality, null);
+  }
+
+  public String getAllRowSafeQuery(Schema.SObjectType sObjectType, String query) {
+    Boolean mightNeedReplacement = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
+    if (mightNeedReplacement && query.endsWith(ALL_ROWS) == false) {
+      query = query.replace(ALL_ROWS, '') + (' ' + ALL_ROWS);
+    }
+    return query;
   }
 
   private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {

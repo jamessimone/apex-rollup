@@ -483,7 +483,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           whereClause
         );
         if (shouldLimitCalcItemQuery) {
-          query += '\nLIMIT ' + remainingQueryRowsLeft;
+          query = RollupQueryBuilder.Current.getAllRowSafeQuery(rollup.calcItemType, query += '\nLIMIT ' + remainingQueryRowsLeft);
         }
         RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.FINE);
         additionalCalcItems = Database.query(query);

@@ -1,12 +1,12 @@
 @SuppressWarnings('PMD.UnusedLocalVariable')
 @IsTest
 private class RollupQueryBuilderTests {
+  private static final Set<String> objIds = new Set<String>();
   @IsTest
   static void shouldQueryAllTasks() {
     String queryString = RollupQueryBuilder.Current.getQuery(Task.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
 
     // validate the query
-    Set<String> objIds = new Set<String>();
     List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
@@ -33,7 +33,6 @@ private class RollupQueryBuilderTests {
       '='
     );
 
-    Set<String> objIds = new Set<String>();
     List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('Id'));
@@ -45,7 +44,6 @@ private class RollupQueryBuilderTests {
   static void shouldNotBlowUpIfPassedInFieldsAreNullOrBlank() {
     String queryString = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ '', null, ' ', 'Id' }, 'AccountId', '=');
 
-    Set<String> objIds = new Set<String>();
     List<SObject> records = Database.query(queryString);
 
     System.assertEquals(true, queryString.contains('Id'));
@@ -86,5 +84,18 @@ private class RollupQueryBuilderTests {
       'Amount > 0 OR CloseDate = YESTERDAY'
     );
     System.assert(queryString.contains('(Amount > 0 OR CloseDate = YESTERDAY)'), 'top-level OR clause should be wrapped');
+  }
+
+  @IsTest
+  static void correctlyPutsAllRowsAtEnd() {
+    String queryString =
+      RollupQueryBuilder.Current.getQuery(Event.SObjectType, new List<String>{ 'Subject', 'WhatId' }, Event.WhatId.getDescribe().getName(), '!=') + '\nLIMIT 1';
+    System.assertEquals(true, queryString.contains(RollupQueryBuilder.ALL_ROWS), 'Needs to have all rows in order to be valid');
+
+    queryString = RollupQueryBuilder.Current.getAllRowSafeQuery(Event.SObjectType, queryString);
+
+    System.assertEquals(true, queryString.endsWith(RollupQueryBuilder.ALL_ROWS));
+    // validate query can be run
+    Database.query(queryString);
   }
 }

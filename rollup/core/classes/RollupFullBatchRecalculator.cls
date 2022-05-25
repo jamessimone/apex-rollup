@@ -17,11 +17,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     this.isProcessed = true;
     // note - if the optional where clause was appended to the passed in query string,
     // this.recordIds is also used as a bind variable
-    String finalQueryString = this.queryString;
-    if (this.queryString.contains('ORDER BY') && this.queryString.contains('ALL ROWS')) {
-      finalQueryString = this.queryString.replace('ALL ROWS', '') + ' ALL ROWS';
-    }
-    return Database.getQueryLocator(finalQueryString);
+    return Database.getQueryLocator(RollupQueryBuilder.Current.getAllRowSafeQuery(this.calcItemType, this.queryString));
   }
 
   public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
