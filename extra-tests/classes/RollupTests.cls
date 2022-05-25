@@ -2519,8 +2519,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'All records share the same account for update');
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(4800, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match');
-    // TODO - exposed a concat distinct bug here
-    // System.assertEquals('again, anew, distinct', updatedAcc.Description, 'CONCAT_DISTINCT AFTER_UPDATE from flow should match');
+    System.assertEquals('again, anew, distinct', updatedAcc.Description, 'CONCAT_DISTINCT AFTER_UPDATE from flow should match');
   }
 
   @IsTest

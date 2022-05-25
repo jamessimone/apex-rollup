@@ -923,7 +923,7 @@ public without sharing abstract class RollupCalculator {
       if (this.eval?.matches(calcItem) == false && priorItem != null && this.eval?.matches(priorItem) == true) {
         this.handleDeleteConcat(calcItem);
       } else if (this.shouldConcat(newVal) || priorString != newVal) {
-        this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
+        this.stringVal = this.replaceWithDelimiter(this.stringVal, this.isConcatDistinct ? '' : priorString, newVal);
       }
     }
 
