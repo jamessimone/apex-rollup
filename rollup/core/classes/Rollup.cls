@@ -1610,7 +1610,6 @@ global without sharing virtual class Rollup {
   /** end global-facing section, begin public/private static helpers */
 
   public static void processStoredFlowRollups() {
-    RollupLogger.Instance.log('processing deferred flow rollups', LoggingLevel.DEBUG);
     List<Rollup> rollupsToProcess = new List<Rollup>(CACHED_ROLLUPS);
     CACHED_ROLLUPS.clear();
     batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
@@ -1791,72 +1790,32 @@ global without sharing virtual class Rollup {
 
   private static void flatten(List<Rollup> stackedRollups) {
     Map<String, Rollup> rollupOperationToRollup = new Map<String, Rollup>();
-    Integer counter = 0;
-    Map<String, List<String>> operationToProcessedRecords = new Map<String, List<String>>();
     for (Rollup stackedRollup : stackedRollups) {
-      // If the hashed contents aren't the same, we can't collapse
-      // the two rollup operations, and instead have to juggle the updated values for the parent in memory
+      // If the hashed contents aren't the same, we can't collapse the two rollup operations
       String rollupKey = stackedRollup.getHashedContents();
-      Boolean shouldAddSameRollupOperation = false;
 
       if (rollupOperationToRollup.containsKey(rollupKey)) {
         Rollup matchingRollup = rollupOperationToRollup.get(rollupKey);
-        for (Integer index = stackedRollup.calcItems.size() - 1; index >= 0; index--) {
-          SObject calcItem = stackedRollup.calcItems[index];
-          if (matchingRollup.calcItems.contains(calcItem) == false && operationToProcessedRecords.containsKey(rollupKey) == false) {
-            doBookkeepingOnCachedItems(matchingRollup, stackedRollup, operationToProcessedRecords, calcItem, rollupKey, index);
-          } else if (
-            matchingRollup.calcItems.contains(calcItem) == false &&
-            operationToProcessedRecords.containsKey(rollupKey) &&
-            operationToProcessedRecords.get(rollupKey).contains(calcItem.Id) == false
-          ) {
-            doBookkeepingOnCachedItems(matchingRollup, stackedRollup, operationToProcessedRecords, calcItem, rollupKey, index);
-          }
-        }
+        // TODO - decide whether or not to keep these logging statements
+        RollupLogger.Instance.log('deferred matching rollup found, pre-consolidation', matchingRollup, LoggingLevel.DEBUG);
+        Map<Id, SObject> stackedMatchingItems = new Map<Id, SObject>(stackedRollup.calcItems);
+        stackedMatchingItems.putAll(matchingRollup.calcItems);
+        stackedRollup.calcItems = stackedMatchingItems.values();
+        stackedRollup.oldCalcItems.putAll(matchingRollup.oldCalcItems);
 
-        if (stackedRollup.calcItems.isEmpty() == false) {
-          shouldAddSameRollupOperation = true;
+        for (Integer index = 0; index < matchingRollup.rollups.size(); index++) {
+          Rollup innerRollup = matchingRollup.rollups[index];
+          Rollup matchingInnerRollup = stackedRollup.rollups[index];
+          matchingInnerRollup.matchingCalcItemIds.addAll(innerRollup.matchingCalcItemIds);
+          matchingInnerRollup.matchingCalcItemIds.addAll(innerRollup.oldCalcItems.keySet());
         }
-      } else {
-        rollupOperationToRollup.put(rollupKey, stackedRollup);
       }
-      if (shouldAddSameRollupOperation) {
-        counter++;
-        rollupOperationToRollup.put(rollupKey + counter, stackedRollup);
-      }
+      rollupOperationToRollup.put(rollupKey, stackedRollup);
+      RollupLogger.Instance.log('combined rollup after any potential consolidation', stackedRollup, LoggingLevel.DEBUG);
     }
 
     stackedRollups.clear();
     stackedRollups.addAll(rollupOperationToRollup.values());
-  }
-
-  private static void doBookkeepingOnCachedItems(
-    Rollup matchingRollup,
-    Rollup stackedRollup,
-    Map<String, List<String>> operationToProcessedRecords,
-    SObject calcItem,
-    String rollupKey,
-    Integer index
-  ) {
-    List<String> processedRecords = operationToProcessedRecords.containsKey(rollupKey)
-      ? operationToProcessedRecords.get(rollupKey)
-      : new List<String>{ calcItem.Id };
-    operationToProcessedRecords.put(rollupKey, processedRecords);
-    Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(matchingRollup.calcItems);
-    idToCalcItem.put(calcItem.Id, calcItem);
-    matchingRollup.calcItems.clear();
-    matchingRollup.calcItems.addAll(idToCalcItem.values());
-    stackedRollup.calcItems.remove(index);
-
-    if (stackedRollup.oldCalcItems.isEmpty() == false && stackedRollup.oldCalcItems.containsKey(calcItem.Id) == false) {
-      matchingRollup.oldCalcItems.put(calcItem.Id, stackedRollup.oldCalcItems.get(calcItem.Id));
-    }
-    for (Rollup innerRollup : matchingRollup.rollups) {
-      if (innerRollup.matchingCalcItemIds.isEmpty() == false) {
-        innerRollup.matchingCalcItemIds.addAll(idToCalcItem.keySet());
-        innerRollup.matchingCalcItemIds.addAll(matchingRollup.oldCalcItems.keySet());
-      }
-    }
   }
 
   private static void processCustomMetadata(
