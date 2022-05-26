@@ -226,7 +226,7 @@ global without sharing virtual class Rollup {
     FROM_FULL_RECALC_LWC,
     FROM_SINGULAR_PARENT_RECALC_LWC,
     FROM_STATIC_LOGGER,
-    FROM_SCHEDULED_FLOW
+    FROM_FULL_RECALC_FLOW
   }
 
   protected Rollup() {
