@@ -14,12 +14,12 @@ As well, don't miss [the Wiki](../../wiki), which includes more advanced informa
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkPMAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkPgAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkPMAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkPgAAK">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -277,7 +277,7 @@ Used in conjunction with the `Perform rollup on records` or `Perform Rollup__mdt
 
 ### Full Recalc CMDT-driven Invocable
 
-Run full recalculation rollups directly from flow by passing in a comma-separated input variable with the API names of `Rollup__mdt` records. Functionality contributed by [@dschibster](https://github.com/dschibster)!
+Run full recalculation rollups directly from flow by passing in a comma-separated input variable with the API names of `Rollup__mdt` records. Optionally, you can also include a collection of records to filter the full recalculation operation down to. Functionality contributed by [@dschibster](https://github.com/dschibster)!
 
 ## Calculating Rollups After Install
 
