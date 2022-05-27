@@ -2376,15 +2376,13 @@ global without sharing virtual class Rollup {
 
   private static String getFlowRollupContext(FlowInput firstInput, SObject firstRecord, SObjectType sObjectType, List<SObject> oldFlowRecords) {
     String flowContext = firstInput.rollupContext.toUpperCase();
-    if (String.isBlank(flowContext) || flowContext == 'UPSERT' && oldFlowRecords.isEmpty()) {
-      flowContext = 'INSERT';
-    } else if (flowContext == 'UPSERT') {
-      flowContext = 'UPDATE';
+    if (flowContext == 'UPSERT') {
+      flowContext = oldFlowRecords.isEmpty() ? 'INSERT' : 'UPDATE';
     }
 
     TriggerOperation matchingOperation;
     switch on flowContext {
-      when 'INSERT' {
+      when 'INSERT', '', null {
         matchingOperation = TriggerOperation.AFTER_INSERT;
       }
       when 'UPDATE' {
@@ -2580,7 +2578,7 @@ global without sharing virtual class Rollup {
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
     switch on Op.valueOf(baseOperationName) {
-      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, MOST {
+      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST {
         isFullRecalcOp = true;
       }
     }
