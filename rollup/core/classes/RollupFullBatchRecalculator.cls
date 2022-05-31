@@ -51,7 +51,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupAsyncProcessor rollup,
     Map<String, List<SObject>> localCachedFullRecalcs
   ) {
-    RollupLogger.Instance.log('checking on cached calc items ...', LoggingLevel.FINE);
     Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       CalcItemBag bag = lookupToCalcItems.get(lookupKey);

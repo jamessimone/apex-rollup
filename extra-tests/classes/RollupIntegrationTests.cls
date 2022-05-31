@@ -822,7 +822,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(matchingTask.Subject + ', ' + acc.Name, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
+    System.assertEquals(matchingTask.Subject, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
   }
 
   @IsTest
@@ -893,7 +893,7 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :lead.Id];
-    System.assertEquals(matchingTask.Subject + ', ' + lead.LastName, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
+    System.assertEquals(matchingTask.Subject, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
   }
 
   @IsTest
@@ -1625,7 +1625,7 @@ private class RollupIntegrationTests {
     indy = [SELECT LastName, ChildrenCount FROM Individual];
     System.assertEquals(1, acc.AnnualRevenue, 'Annual revenue should have been averaged properly');
     System.assertEquals(1, indy.ChildrenCount, 'Children count should have been counted correctly');
-    System.assertEquals('Indy, Two', indy.LastName, 'LastName should have been concat properly');
+    System.assertEquals('Two', indy.LastName, 'LastName should have been concat properly');
   }
 
   @IsTest

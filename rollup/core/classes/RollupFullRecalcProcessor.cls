@@ -6,7 +6,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   protected final Set<String> recordIds;
   protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
 
-  private final Set<String> previouslyResetParents = new Set<String>();
   private final RollupFullRecalcProcessor postProcessor;
 
   private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS {
@@ -88,22 +87,10 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     }
   }
 
-  public Boolean parentRollupFieldHasBeenReset(Rollup__mdt meta, SObject parent) {
-    return this.previouslyResetParents.contains(this.getKey(meta.RollupFieldOnLookupObject__c, parent));
-  }
-
-  public Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-    return this.previouslyResetParents.contains(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
-  }
-
-  public void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    this.previouslyResetParents.add(this.getKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+  public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
+    super.storeParentResetField(processor, parent);
     this.postProcessor?.recordIds.add(parent.Id);
     this.postProcessor?.storeParentResetField(processor, parent);
-  }
-
-  private String getKey(String fieldKey, SObject parent) {
-    return fieldKey + parent.Id;
   }
 
   private void overrideRollupControl() {

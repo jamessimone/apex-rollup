@@ -1193,10 +1193,13 @@ public without sharing abstract class RollupCalculator {
         List<SObject> objIds = calcItems;
         // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
         List<SObject> additionalItems = Database.query(queryString);
-        if (this.op.name().contains('DELETE')) {
-          calcItems = additionalItems;
-        } else {
-          calcItems.addAll(additionalItems);
+        switch on this.op {
+          when DELETE_FIRST, DELETE_LAST {
+            calcItems = additionalItems;
+          }
+          when else {
+            calcItems.addAll(additionalItems);
+          }
         }
       }
 

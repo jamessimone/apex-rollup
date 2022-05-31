@@ -140,7 +140,7 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
         plugins.remove(index);
       }
     }
-    SELF.log('retrieved the following logging plugins:', plugins, LoggingLevel.FINE);
+    SELF.log('retrieved the following logging plugins:', plugins, LoggingLevel.FINEST);
     return combineLoggers(plugins);
   }
 
