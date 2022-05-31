@@ -1021,10 +1021,13 @@ private class RollupTests {
   static void shouldConcatOnDelete() {
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'beginning test string something';
-    update acc;
 
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa });
+    ContactPointAddress notDeleted = new ContactPointAddress(ParentId = acc.Id, Name = 'beginning');
+    ContactPointAddress alsoNotDeleted = new ContactPointAddress(ParentId = acc.Id, Name = 'something');
+    ContactPointAddress deletedCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
+    insert new List<ContactPointAddress>{ notDeleted, alsoNotDeleted, deletedCpa };
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ deletedCpa });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
@@ -1033,7 +1036,13 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('beginning something', updatedAcc.AccountNumber, 'CONCAT BEFORE_DELETE should replace the outgoing string value with empty string');
+    System.assertEquals(
+      notDeleted.Name +
+      ', ' +
+      alsoNotDeleted.Name,
+      updatedAcc.AccountNumber,
+      'CONCAT BEFORE_DELETE should replace the outgoing string value with empty string'
+    );
   }
 
   @IsTest
@@ -3684,7 +3693,6 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Hierarchy record should have been found!');
     Account updatedAccount = (Account) mock.Records[0];
     System.assertEquals(acc.Id, updatedAccount.Id, 'Top-level parent should have been updated: ' + JSON.serialize(updatedAccount));
-    // in alphabetical order ...
-    System.assertEquals('One' + ', ' + acc.Name, updatedAccount.Name);
+    System.assertEquals('One', updatedAccount.Name);
   }
 }
