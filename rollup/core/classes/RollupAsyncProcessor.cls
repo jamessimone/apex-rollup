@@ -370,7 +370,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
         localLookupItems = Database.query(queryString);
       }
-      this.initializeRollupFieldDefaults(localLookupItems, rollup);
       for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
         if (this.parentRollupFieldHasBeenReset(rollup, localLookupItems[index]) == true) {
           localLookupItems.remove(index);
@@ -651,6 +650,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
     localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
+    this.initializeRollupFieldDefaults(localLookupItems, roll);
     return localLookupItems;
   }
 
