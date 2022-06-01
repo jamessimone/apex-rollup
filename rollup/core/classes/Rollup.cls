@@ -350,7 +350,7 @@ global without sharing virtual class Rollup {
   }
 
   protected virtual String getHashedContents() {
-    return 'Not implemented';
+    return null;
   }
 
   protected virtual String getTypeName() {

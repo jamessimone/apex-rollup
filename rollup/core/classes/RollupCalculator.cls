@@ -870,7 +870,7 @@ public without sharing abstract class RollupCalculator {
       this.isConcatDistinct = isConcatDistinct(this.op);
     }
 
-    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+    public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
       this.stringVal = (String) this.returnVal;
     }
@@ -1057,8 +1057,16 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class PicklistRollupCalculator extends StringRollupCalculator {
-    private final RollupFieldInitializer.PicklistController picklistController;
     private final RollupFieldInitializer.PicklistController rollupFieldController;
+    private final RollupFieldInitializer.PicklistController picklistController {
+      get {
+        if (picklistController == null) {
+          picklistController = new RollupFieldInitializer.PicklistController(this.opFieldOnCalcItem.getDescribe());
+        }
+        return picklistController;
+      }
+      set;
+    }
     public PicklistRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1070,10 +1078,20 @@ public without sharing abstract class RollupCalculator {
       String customConcatDelimiter
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField, customConcatDelimiter);
-      this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
       this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
       if (this.rollupFieldController.isMultiSelectPicklist()) {
         this.concatDelimiter = ';';
+      }
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      super.setDefaultValues(lookupRecordKey, priorVal);
+      if (
+        this.op.name().contains('CONCAT') &&
+        this.picklistController.isPicklist() &&
+        this.stringVal == this.picklistController.getDefaultValue(this.opFieldOnCalcItem)
+      ) {
+        this.stringVal = '';
       }
     }
 

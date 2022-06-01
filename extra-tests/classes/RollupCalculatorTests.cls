@@ -1161,6 +1161,41 @@ private class RollupCalculatorTests {
     System.assertEquals(secondVal + ';' + thirdVal, returnVal, 'Concat distinct does not include first value');
   }
 
+  @IsTest
+  static void concatOnMSPDoesNotIncludeFirstValueWhenNotPartOfChildren() {
+    List<Schema.PicklistEntry> picklistVals = QuickText.Channel.getDescribe().getPicklistValues();
+    if (picklistVals.size() < 3) {
+      return;
+    }
+
+    String firstVal = picklistVals[0].getValue();
+    String secondVal = picklistVals[1].getValue();
+    String thirdVal = picklistVals[2].getValue();
+
+    RollupCalculator calc = RollupCalculator.Factory.getCalculator(
+      firstVal,
+      Rollup.Op.CONCAT,
+      QuickText.Channel,
+      QuickText.Channel,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Opportunity.SObjectType),
+      QuickText.Name
+    );
+
+    calc.performRollup(
+      new List<QuickText>{
+        new QuickText(Channel = secondVal),
+        new QuickText(Channel = secondVal + ';' + thirdVal),
+        new QuickText(Channel = thirdVal + ';' + secondVal)
+      },
+      new Map<Id, SObject>()
+    );
+
+    String returnVal = String.valueOf(calc.getReturnValue());
+    System.assertEquals(false, returnVal.contains(firstVal), returnVal + ' should not have included: ' + firstVal);
+    System.assertEquals(secondVal.repeat(';', 3) + ';' + thirdVal.repeat(';', 2), returnVal, 'Concat distinct does not include first value');
+  }
+
   // MIN / MAX
 
   @IsTest
