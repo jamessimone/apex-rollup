@@ -1,7 +1,7 @@
 public without sharing abstract class RollupCalculator {
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
-  private Boolean isMultiCurrencyRollup = false;
+  private Boolean isMultiCurrencyRollup;
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
 
@@ -114,10 +114,12 @@ public without sharing abstract class RollupCalculator {
     this.lookupKeyField = lookupKeyField;
     this.defaultVal = defaultVal;
     this.setDefaultValues(lookupRecordKey, priorVal);
-    this.isMultiCurrencyRollup =
-      UserInfo.isMultiCurrencyOrganization() &&
-      (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
-      this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
+    if (this.isMultiCurrencyRollup == null) {
+      this.isMultiCurrencyRollup =
+        UserInfo.isMultiCurrencyOrganization() &&
+        (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
+        this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
+    }
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
     if (this.metadata.CalcItem__c != null) {
       this.calcItemSObjectType = this.getCalcItemType();
@@ -868,7 +870,7 @@ public without sharing abstract class RollupCalculator {
       this.isConcatDistinct = isConcatDistinct(this.op);
     }
 
-    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+    public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
       this.stringVal = (String) this.returnVal;
     }
@@ -921,7 +923,7 @@ public without sharing abstract class RollupCalculator {
       if (this.eval?.matches(calcItem) == false && priorItem != null && this.eval?.matches(priorItem) == true) {
         this.handleDeleteConcat(calcItem);
       } else if (this.shouldConcat(newVal) || priorString != newVal) {
-        this.stringVal = this.replaceWithDelimiter(this.stringVal, priorString, newVal);
+        this.stringVal = this.replaceWithDelimiter(this.stringVal, this.isConcatDistinct ? '' : priorString, newVal);
       }
     }
 
@@ -1055,8 +1057,16 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class PicklistRollupCalculator extends StringRollupCalculator {
-    private final RollupFieldInitializer.PicklistController picklistController;
     private final RollupFieldInitializer.PicklistController rollupFieldController;
+    private final RollupFieldInitializer.PicklistController picklistController {
+      get {
+        if (picklistController == null) {
+          picklistController = new RollupFieldInitializer.PicklistController(this.opFieldOnCalcItem.getDescribe());
+        }
+        return picklistController;
+      }
+      set;
+    }
     public PicklistRollupCalculator(
       Object priorVal,
       Rollup.Op op,
@@ -1068,10 +1078,20 @@ public without sharing abstract class RollupCalculator {
       String customConcatDelimiter
     ) {
       super(priorVal, op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupRecordKey, lookupKeyField, customConcatDelimiter);
-      this.picklistController = new RollupFieldInitializer.PicklistController(opFieldOnCalcItem.getDescribe());
       this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
       if (this.rollupFieldController.isMultiSelectPicklist()) {
         this.concatDelimiter = ';';
+      }
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      super.setDefaultValues(lookupRecordKey, priorVal);
+      if (
+        this.op.name().contains('CONCAT') &&
+        this.picklistController.isPicklist() &&
+        this.stringVal == this.picklistController.getDefaultValue(this.opFieldOnCalcItem)
+      ) {
+        this.stringVal = '';
       }
     }
 
@@ -1176,7 +1196,7 @@ public without sharing abstract class RollupCalculator {
       for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
         this.isMultiCurrencyRollup =
-          this.isMultiCurrencyRollup || UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY;
+          this.isMultiCurrencyRollup || (UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY);
       }
     }
 
@@ -1191,10 +1211,13 @@ public without sharing abstract class RollupCalculator {
         List<SObject> objIds = calcItems;
         // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
         List<SObject> additionalItems = Database.query(queryString);
-        if (this.op.name().contains('DELETE')) {
-          calcItems = additionalItems;
-        } else {
-          calcItems.addAll(additionalItems);
+        switch on this.op {
+          when DELETE_FIRST, DELETE_LAST {
+            calcItems = additionalItems;
+          }
+          when else {
+            calcItems.addAll(additionalItems);
+          }
         }
       }
 

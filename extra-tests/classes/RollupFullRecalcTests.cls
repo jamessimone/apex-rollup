@@ -1802,4 +1802,36 @@ private class RollupFullRecalcTests {
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(opp.Amount, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void multipleIsFullRecordSetsProperlyClearParentFieldsOnce() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 50);
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'child two', PreferenceRank = 50);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ one, two };
+    insert cpas;
+    cpas.remove(1);
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
+    flowInputs[0].isFullRecordSet = true;
+    Rollup.FlowInput secondFullRecalc = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'COUNT')[0];
+    secondFullRecalc.isFullRecordSet = true;
+    secondFullRecalc.rollupFieldOnCalcItem = 'Name';
+    secondFullRecalc.rollupFieldOnOpObject = 'NumberOfEmployees';
+    flowInputs.add(secondFullRecalc);
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    for (Rollup.FlowInput flowInput : flowInputs) {
+      flowInput.recordsToRollup = new List<SObject>{ two };
+      flowInput.shouldRunSync = true;
+    }
+    // same operations, different set of inputs shouldn't add to existing count/sum; they should be reset
+    Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(one.PreferenceRank + two.PreferenceRank, acc.AnnualRevenue);
+    System.assertEquals(2, acc.NumberOfEmployees);
+  }
 }

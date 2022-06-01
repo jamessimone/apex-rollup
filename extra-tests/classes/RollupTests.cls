@@ -1021,10 +1021,13 @@ private class RollupTests {
   static void shouldConcatOnDelete() {
     Account acc = [SELECT Id, AccountNumber FROM Account];
     acc.AccountNumber = 'beginning test string something';
-    update acc;
 
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa });
+    ContactPointAddress notDeleted = new ContactPointAddress(ParentId = acc.Id, Name = 'beginning');
+    ContactPointAddress alsoNotDeleted = new ContactPointAddress(ParentId = acc.Id, Name = 'something');
+    ContactPointAddress deletedCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
+    insert new List<ContactPointAddress>{ notDeleted, alsoNotDeleted, deletedCpa };
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ deletedCpa });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
 
     Test.startTest();
@@ -1033,7 +1036,13 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals('beginning something', updatedAcc.AccountNumber, 'CONCAT BEFORE_DELETE should replace the outgoing string value with empty string');
+    System.assertEquals(
+      notDeleted.Name +
+      ', ' +
+      alsoNotDeleted.Name,
+      updatedAcc.AccountNumber,
+      'CONCAT BEFORE_DELETE should replace the outgoing string value with empty string'
+    );
   }
 
   @IsTest
@@ -2454,6 +2463,75 @@ private class RollupTests {
   }
 
   @IsTest
+  static void flattensMultipleDeferredRollupsProperly() {
+    List<ContactPointAddress> firstList = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'again'),
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'again')
+    };
+    List<ContactPointAddress> secondList = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct'),
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), Name = 'distinct')
+    };
+
+    RollupTestUtils.loadAccountIdMock(firstList);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(secondList);
+    Rollup.records = null;
+
+    List<Rollup.FlowInput> firstFlowInputs = RollupTestUtils.prepareFlowTest(firstList, 'INSERT', 'SUM');
+    Rollup.FlowInput firstInput = firstFlowInputs[0];
+    firstInput.deferProcessing = true;
+    List<Rollup.FlowInput> secondFlowInputs = RollupTestUtils.prepareFlowTest(secondList, 'INSERT', 'SUM');
+    Rollup.FlowInput secondInput = secondFlowInputs[0];
+    secondInput.deferProcessing = true;
+    Rollup.performRollup(firstFlowInputs);
+    Rollup.performRollup(secondFlowInputs);
+
+    firstInput.rollupFieldOnCalcItem = 'Name';
+    firstInput.rollupFieldOnOpObject = 'Description';
+    firstInput.rollupOperation = 'CONCAT_DISTINCT';
+    secondInput.rollupFieldOnCalcItem = firstInput.rollupFieldOnCalcItem;
+    secondInput.rollupFieldOnOpObject = firstInput.rollupFieldOnOpObject;
+    secondInput.rollupOperation = firstInput.rollupOperation;
+    Rollup.performRollup(firstFlowInputs);
+    Rollup.performRollup(secondFlowInputs);
+
+    // now that the inserts have been queued, let's do the updates
+    firstInput.oldRecordsToRollup = firstList;
+    firstInput.recordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(Id = firstList[0].Id, PreferenceRank = 1200, Name = 'again', ParentId = firstList[0].ParentId),
+      new ContactPointAddress(Id = firstList[1].Id, PreferenceRank = 1200, Name = 'anew', ParentId = firstList[0].ParentId)
+    };
+    firstInput.rollupContext = 'UPDATE';
+    Rollup.performRollup(firstFlowInputs);
+    firstInput.rollupOperation = 'SUM';
+    firstInput.rollupFieldOnCalcItem = 'PreferenceRank';
+    firstInput.rollupFieldOnOpObject = 'AnnualRevenue';
+    Rollup.performRollup(firstFlowInputs);
+
+    secondInput.oldRecordsToRollup = secondList;
+    secondInput.recordsToRollup = new List<ContactPointAddress>{
+      new ContactPointAddress(Id = secondList[0].Id, PreferenceRank = 1200, Name = 'distinct', ParentId = firstList[0].ParentId),
+      new ContactPointAddress(Id = secondList[1].Id, PreferenceRank = 1200, Name = 'anew', ParentId = firstList[0].ParentId)
+    };
+    secondInput.rollupContext = 'UPDATE';
+    Rollup.performRollup(secondFlowInputs);
+    secondInput.rollupOperation = 'SUM';
+    secondInput.rollupFieldOnCalcItem = 'PreferenceRank';
+    secondInput.rollupFieldOnOpObject = 'AnnualRevenue';
+    Rollup.performRollup(secondFlowInputs);
+
+    // simulate multiple DML situations
+    Test.startTest();
+    Rollup.processStoredFlowRollups();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'All records share the same account for update');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(4800, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE from flow should match');
+    System.assertEquals('again, anew, distinct', updatedAcc.Description, 'CONCAT_DISTINCT AFTER_UPDATE from flow should match');
+  }
+
+  @IsTest
   static void shouldThrowValidationErrorOnUpdateFromFlowIfNoOldCalcItems() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -3615,7 +3693,6 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Hierarchy record should have been found!');
     Account updatedAccount = (Account) mock.Records[0];
     System.assertEquals(acc.Id, updatedAccount.Id, 'Top-level parent should have been updated: ' + JSON.serialize(updatedAccount));
-    // in alphabetical order ...
-    System.assertEquals('One' + ', ' + acc.Name, updatedAccount.Name);
+    System.assertEquals('One', updatedAccount.Name);
   }
 }
