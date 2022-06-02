@@ -31,7 +31,7 @@ public without sharing abstract class RollupDateLiteral {
   private static final Datetime START_OF_TODAY {
     get {
       if (START_OF_TODAY == null) {
-        return Datetime.newInstanceGmt(System.today(), START_TIME);
+        return Datetime.newInstance(System.today(), START_TIME);
       }
       return START_OF_TODAY;
     }
@@ -514,8 +514,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class LastQuarterLiteral extends RangedLiteral {
     public LastQuarterLiteral() {
       this.ref = Datetime.newInstanceGmt(this.getLastQuarterStart(), START_TIME);
-      Integer endMonth = this.ref.addMonths(3).month();
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+      this.bound = this.ref.addMonths(3);
     }
 
     protected virtual Date getLastQuarterStart() {
