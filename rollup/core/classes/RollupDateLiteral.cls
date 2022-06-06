@@ -234,12 +234,14 @@ public without sharing abstract class RollupDateLiteral {
 
   public Boolean matches(Object val, String comparison) {
     Datetime castValue;
+    // "The exact start and stop of the range depends on the date literal and the locale of the user sending the query."
     if (val == null) {
       return false;
     } else if (val instanceof Date) {
-      castValue = Datetime.newInstanceGmt((Date) val, START_TIME);
+      castValue = Datetime.newInstance((Date) val, START_TIME);
     } else {
-      castValue = (Datetime) val;
+      // ensure we are in local time, and not UTC
+      castValue = Datetime.newInstance(((Datetime) val).getTime());
     }
 
     switch on comparison {
@@ -328,8 +330,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class LastWeekLiteral extends RangedLiteral {
     public LastWeekLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-7), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.bound = Datetime.newInstance(System.today().toStartOfWeek(), START_TIME);
+      this.ref = this.bound.addDays(-7);
     }
   }
 
@@ -339,8 +341,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class ThisWeekLiteral extends RangedLiteral {
     public ThisWeekLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.ref = Datetime.newInstance(System.today().toStartOfWeek(), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
@@ -350,8 +352,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class NextWeekLiteral extends RangedLiteral {
     public NextWeekLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.ref = Datetime.newInstance(System.today().toStartOfWeek().addDays(7), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
@@ -360,8 +362,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class LastMonthLiteral extends RangedLiteral {
     public LastMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
+      this.ref = Datetime.newInstance(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
+      this.bound = this.ref.addMonths(1);
     }
   }
 
@@ -370,8 +372,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class ThisMonthLiteral extends RangedLiteral {
     public ThisMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
+      this.ref = Datetime.newInstance(System.today().toStartOfMonth(), START_TIME);
+      this.bound = this.ref.addMonths(1);
     }
   }
 
@@ -380,8 +382,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class NextMonthLiteral extends RangedLiteral {
     public NextMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
+      this.ref = Datetime.newInstance(System.today().toStartOfMonth().addMonths(1), START_TIME);
+      this.bound = this.ref.addMonths(1);
     }
   }
 
@@ -391,8 +393,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class Last90DaysLiteral extends RangedLiteral {
     public Last90DaysLiteral() {
-      this.ref = START_OF_TODAY.addDays(-91);
-      this.bound = Datetime.newInstanceGmt(System.today(), END_TIME);
+      this.bound = Datetime.newInstance(System.today().addDays(1), START_TIME);
+      this.ref = this.bound.addDays(-90);
     }
   }
 
@@ -401,8 +403,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class Next90DaysLiteral extends RangedLiteral {
     public Next90DaysLiteral() {
-      this.ref = START_OF_TODAY;
-      this.bound = Datetime.newInstanceGmt(System.today().addDays(91), END_TIME);
+      this.ref = START_OF_TODAY.addDays(1);
+      this.bound = this.ref.addDays(90);
     }
   }
 
@@ -413,8 +415,8 @@ public without sharing abstract class RollupDateLiteral {
   private class LastNDaysLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = Datetime.newInstanceGmt(System.today(), END_TIME); // includes all of today
-      this.ref = Datetime.newInstanceGmt(START_OF_TODAY.addDays(-(dateRange + 1)).dateGmt(), END_TIME);
+      this.bound = START_OF_TODAY.addDays(1); // includes all of today
+      this.ref = START_OF_TODAY.addDays(-dateRange);
     }
   }
 
@@ -424,7 +426,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NDaysAgoLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(START_OF_TODAY.addDays(-dateRange).dateGmt(), START_TIME);
+      this.ref = START_OF_TODAY.addDays(-dateRange);
       this.bound = this.ref;
     }
   }
@@ -447,8 +449,8 @@ public without sharing abstract class RollupDateLiteral {
   private class LastNWeeksLiteral extends RangedLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1), END_TIME);
-      this.ref = Datetime.newInstanceGmt(this.bound.addDays(-1 * 7 * dateRange).date(), START_TIME);
+      this.bound = Datetime.newInstance(START_OF_TODAY.date().toStartOfWeek().addDays(-1), START_TIME);
+      this.ref = this.bound.addDays(-1 * 7 * dateRange);
     }
   }
 
@@ -513,7 +515,7 @@ public without sharing abstract class RollupDateLiteral {
    */
   private virtual class LastQuarterLiteral extends RangedLiteral {
     public LastQuarterLiteral() {
-      this.ref = Datetime.newInstanceGmt(this.getLastQuarterStart(), START_TIME);
+      this.ref = Datetime.newInstance(this.getLastQuarterStart(), START_TIME);
       this.bound = this.ref.addMonths(3);
     }
 
@@ -527,9 +529,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private virtual class ThisQuarterLiteral extends RangedLiteral {
     public ThisQuarterLiteral() {
-      this.ref = Datetime.newInstanceGmt(this.getThisQuarterStart(), START_TIME);
-      Integer endMonth = this.ref.addMonths(3).month();
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+      this.ref = Datetime.newInstance(this.getThisQuarterStart(), START_TIME);
+      this.bound = this.ref.addMonths(3);
     }
 
     protected virtual Date getThisQuarterStart() {
