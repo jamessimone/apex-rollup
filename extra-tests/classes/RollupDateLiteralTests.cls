@@ -6,7 +6,7 @@ private class RollupDateLiteralTests {
     ContactPointAddress cpaParent = new ContactPointAddress(Name = 'Parent');
     insert cpaParent;
     List<ContactPointConsent> cpcs = new List<ContactPointConsent>();
-    for (Integer index = 0; index <= 24; index++) {
+    for (Integer index = -6; index <= 24; index++) {
       Datetime startOfMonth = Datetime.newInstance(index <= 12 ? System.now().year() : System.now().year() + 1, index, 1);
       cpcs.add(new ContactPointConsent(Name = 'Month ' + index, CaptureDate = startOfMonth, ContactPointId = cpaParent.Id));
     }
@@ -97,7 +97,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForYesterday() {
     Date yesterdayDate = System.today().addDays(-1);
-    Datetime yesterdayDatetime = System.now().addDays(-1).date();
+    Datetime yesterdayDatetime = System.now().addDays(-1);
     RollupDateLiteral yesterday = RollupDateLiteral.get('YESTERDAY');
 
     System.assertEquals(true, yesterday.matches(yesterdayDate, '='), 'Date value should have matched: ' + yesterdayDate);
@@ -118,7 +118,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForToday() {
     Date thisDate = System.today();
-    Datetime thisDatetime = System.now().date();
+    Datetime thisDatetime = System.now();
     RollupDateLiteral thisDay = RollupDateLiteral.get('TODAY');
 
     System.assertEquals(true, thisDay.matches(thisDate, '='), 'Date value should have matched: ' + thisDate);
@@ -139,7 +139,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForTomorrow() {
     Date tomorrowDate = System.today().addDays(1);
-    Datetime tomorrowDatetime = System.now().addDays(1).date();
+    Datetime tomorrowDatetime = System.now().addDays(1);
     RollupDateLiteral tomorrow = RollupDateLiteral.get('TOMORROW');
 
     System.assertEquals(true, tomorrow.matches(tomorrowDate, '='), 'Date value should have matched: ' + tomorrowDate);
@@ -147,20 +147,20 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, tomorrow.matches(tomorrowDate, '>='));
     System.assertEquals(true, tomorrow.matches(tomorrowDatetime, '>='));
-    System.assertEquals(true, tomorrow.matches(System.today().addDays(2), '>'));
+    System.assertEquals(true, tomorrow.matches(tomorrowDate.addDays(2), '>'));
     System.assertNotEquals(true, tomorrow.matches(System.now().addDays(-2), '>'));
     System.assertNotEquals(true, tomorrow.matches(tomorrowDate, '>'));
 
     System.assertEquals(true, tomorrow.matches(System.now().addDays(-2), '<'));
     System.assertEquals(true, tomorrow.matches(tomorrowDate, '<='));
     System.assertEquals(true, tomorrow.matches(tomorrowDatetime, '<='));
-    System.assertNotEquals(true, tomorrow.matches(System.today().addDays(2), '<='));
+    System.assertNotEquals(true, tomorrow.matches(System.today().addDays(3), '<='));
   }
 
   @IsTest
   static void shouldWorkForLastWeek() {
     Date definitiveLastWeekDate = System.today().toStartOfWeek().addDays(-7);
-    Datetime lastWeekDatetime = Datetime.newInstanceGmt(definitiveLastWeekDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastWeekDatetime = Datetime.newInstance(definitiveLastWeekDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastWeek = RollupDateLiteral.get('LAST_WEEK');
 
     System.assertEquals(true, lastWeek.matches(definitiveLastWeekDate, '='), 'Date value should have matched: ' + definitiveLastWeekDate + ' | ' + lastWeek);
@@ -186,7 +186,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisWeek() {
     Date startOfWeekDate = System.today().toStartOfWeek();
-    Datetime thisWeekDatetime = Datetime.newInstanceGmt(startOfWeekDate, Time.newInstance(0, 0, 0, 0));
+    Datetime thisWeekDatetime = Datetime.newInstance(startOfWeekDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisWeek = RollupDateLiteral.get('THIS_WEEK');
 
     System.assertEquals(true, thisWeek.matches(startOfWeekDate, '='), 'Date value should have matched: ' + startOfWeekDate + ' | ' + thisWeek);
@@ -212,7 +212,7 @@ private class RollupDateLiteralTests {
       startOfNextWeekDate = startOfNextWeekDate.toStartOfWeek();
     }
     startOfNextWeekDate = startOfNextWeekDate.addDays(7);
-    Datetime startOfNextWeekDatetime = Datetime.newInstanceGmt(startOfNextWeekDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfNextWeekDatetime = Datetime.newInstance(startOfNextWeekDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextWeek = RollupDateLiteral.get('NEXT_WEEK');
 
     System.assertEquals(true, nextWeek.matches(startOfNextWeekDate, '='), 'Date value should have matched: ' + startOfNextWeekDate + ' | ' + nextWeek);
@@ -234,11 +234,18 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastMonth() {
     Date startOfLastMonthDate = System.today().toStartOfMonth().addMonths(-1);
-    Datetime startOfLastMonthDatetime = Datetime.newInstanceGmt(startOfLastMonthDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfLastMonthDatetime = Datetime.newInstance(startOfLastMonthDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastMonth = RollupDateLiteral.get('LAST_MONTH');
 
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate, '='), 'Date value should have matched: ' + startOfLastMonthDate + ' ' + lastMonth);
-    System.assertEquals(true, lastMonth.matches(startOfLastMonthDatetime, '='), 'Datetime value should have matched: ' + startOfLastMonthDatetime);
+    System.assertEquals(
+      true,
+      lastMonth.matches(startOfLastMonthDatetime, '='),
+      'Datetime value should have matched: ' +
+      startOfLastMonthDatetime +
+      ' ' +
+      lastMonth
+    );
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate.addDays(2), '='));
 
     System.assertEquals(true, lastMonth.matches(startOfLastMonthDate, '>='));
@@ -256,7 +263,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisMonth() {
     Date startOfThisMonthDate = System.today().toStartOfMonth();
-    Datetime startOfThisMonthDatetime = Datetime.newInstanceGmt(startOfThisMonthDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfThisMonthDatetime = Datetime.newInstance(startOfThisMonthDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisMonth = RollupDateLiteral.get('THIS_MONTH');
 
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDate, '='), 'Date value should have matched: ' + startOfThisMonthDate);
@@ -264,7 +271,7 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDate, '>='));
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDatetime, '>='));
-    System.assertEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(1), '>'));
+    System.assertEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(1).addDays(1), '>'));
     System.assertNotEquals(true, thisMonth.matches(System.now().addMonths(-1), '>'));
     System.assertNotEquals(true, thisMonth.matches(startOfThisMonthDate, '>'));
 
@@ -272,13 +279,13 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDate, '<='));
     System.assertEquals(true, thisMonth.matches(startOfThisMonthDatetime, '<='));
     System.assertNotEquals(true, thisMonth.matches(System.today().toStartOfMonth().addMonths(2), '<='));
-    System.assertNotEquals(true, thisMonth.matches(System.today().addMonths(1).toStartOfMonth(), '<='));
+    System.assertNotEquals(true, thisMonth.matches(System.today().addMonths(1).toStartOfMonth().addDays(1), '<='));
   }
 
   @IsTest
   static void shouldWorkForNextMonth() {
     Date startOfNextMonthDate = System.today().toStartOfMonth().addMonths(1);
-    Datetime startOfNextMonthDatetime = Datetime.newInstanceGmt(startOfNextMonthDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfNextMonthDatetime = Datetime.newInstance(startOfNextMonthDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextMonth = RollupDateLiteral.get('NEXT_MONTH');
 
     System.assertEquals(true, nextMonth.matches(startOfNextMonthDate, '='), 'Date value should have matched: ' + startOfNextMonthDate);
@@ -299,7 +306,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLast90Days() {
     Date lastNinetyDaysDate = System.today().addDays(-91);
-    Datetime lastNinetyDaysDatetime = Datetime.newInstanceGmt(lastNinetyDaysDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNinetyDaysDatetime = Datetime.newInstance(lastNinetyDaysDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNinetyDays = RollupDateLiteral.get('LAST_90_DAYS');
 
     System.assertEquals(true, lastNinetyDays.matches(lastNinetyDaysDate, '='), 'Date value should have matched: ' + lastNinetyDaysDate);
@@ -321,7 +328,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNext90Days() {
     Date nextNinetyDaysDate = System.today().addDays(91);
-    Datetime nextNinetyDaysDatetime = Datetime.newInstanceGmt(nextNinetyDaysDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextNinetyDaysDatetime = Datetime.newInstance(nextNinetyDaysDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextNinetyDays = RollupDateLiteral.get('NEXT_90_DAYS');
 
     System.assertEquals(true, nextNinetyDays.matches(nextNinetyDaysDate, '='), 'Date value should have matched: ' + nextNinetyDays + ', ' + nextNinetyDaysDate);
@@ -343,7 +350,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastNDays() {
     Date lastNDaysDate = System.today().addDays(-5);
-    Datetime lastNDaysDatetime = Datetime.newInstanceGmt(lastNDaysDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNDaysDatetime = Datetime.newInstance(lastNDaysDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNDays = RollupDateLiteral.get('LAST_N_DAYS:5');
 
     System.assertEquals(true, lastNDays.matches(lastNDaysDate, '='), 'Date value should have matched: ' + lastNDaysDate + ', ' + lastNDays);
@@ -366,7 +373,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNDaysAgo() {
     Date nDaysAgoDate = System.today().addDays(-5);
-    Datetime nDaysAgoDatetime = Datetime.newInstanceGmt(nDaysAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nDaysAgoDatetime = Datetime.newInstance(nDaysAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nDaysAgo = RollupDateLiteral.get('N_DAYS_AGO:5');
 
     System.assertEquals(true, nDaysAgo.matches(nDaysAgoDate, '='), 'Date value should have matched: ' + nDaysAgoDate + ', ' + nDaysAgo);
@@ -388,7 +395,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextNDays() {
     Date nextNDaysDate = System.today().addDays(5);
-    Datetime nextNDaysDatetime = Datetime.newInstanceGmt(nextNDaysDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextNDaysDatetime = Datetime.newInstance(nextNDaysDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNDays = RollupDateLiteral.get('NEXT_N_DAYS:5');
 
     System.assertEquals(true, lastNDays.matches(nextNDaysDate, '='), 'Date value should have matched: ' + nextNDaysDate + ', ' + lastNDays);
@@ -411,7 +418,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastNWeeks() {
     Date lastNWeeksDate = System.today().toStartOfWeek().addDays(-14);
-    Datetime lastNWeeksDatetime = Datetime.newInstanceGmt(lastNWeeksDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNWeeksDatetime = Datetime.newInstance(lastNWeeksDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNWeeks = RollupDateLiteral.get('LAST_N_WEEKS:2');
 
     System.assertEquals(true, lastNWeeks.matches(lastNWeeksDate, '='), 'Date value should have matched: ' + lastNWeeksDate);
@@ -432,7 +439,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNWeeksAgo() {
     Date nWeeksAgoDate = System.today().toStartOfWeek().addDays(-14);
-    Datetime nWeeksAgoDatetime = Datetime.newInstanceGmt(nWeeksAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nWeeksAgoDatetime = Datetime.newInstance(nWeeksAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nWeeksAgo = RollupDateLiteral.get('N_WEEKS_AGO:2');
 
     System.assertEquals(true, nWeeksAgo.matches(nWeeksAgoDate, '='), 'Date value should have matched: ' + nWeeksAgoDate);
@@ -453,7 +460,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextNWeeks() {
     Date nextNWeeksDate = System.today().toStartOfWeek().addDays(21);
-    Datetime nextNWeeksDatetime = Datetime.newInstanceGmt(nextNWeeksDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextNWeeksDatetime = Datetime.newInstance(nextNWeeksDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextNWeeks = RollupDateLiteral.get('NEXT_N_WEEKS:2');
 
     System.assertEquals(true, nextNWeeks.matches(nextNWeeksDate, '='), 'Date value should have matched: ' + nextNWeeksDate + ' | ' + nextNWeeks);
@@ -474,7 +481,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastNMonths() {
     Date lastNMonthsDate = System.today().toStartOfMonth().addMonths(-2);
-    Datetime lastNMonthsDatetime = Datetime.newInstanceGmt(lastNMonthsDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNMonthsDatetime = Datetime.newInstance(lastNMonthsDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNMonths = RollupDateLiteral.get('LAST_N_MONTHS:2');
 
     System.assertEquals(true, lastNMonths.matches(lastNMonthsDate, '='), 'Date value should have matched: ' + lastNMonthsDate + ' | ' + lastNMonths);
@@ -495,7 +502,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNMonthsAgo() {
     Date nMonthsAgoDate = System.today().toStartOfMonth().addMonths(-2);
-    Datetime nMonthsAgoDatetime = Datetime.newInstanceGmt(nMonthsAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nMonthsAgoDatetime = Datetime.newInstance(nMonthsAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nMonthsAgo = RollupDateLiteral.get('N_MONTHS_AGO:2');
 
     System.assertEquals(true, nMonthsAgo.matches(nMonthsAgoDate, '='), 'Date value should have matched: ' + nMonthsAgoDate + ' | ' + nMonthsAgo);
@@ -515,7 +522,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextNMonths() {
     Date nextNMonthsDate = System.today().toStartOfMonth().addMonths(2);
-    Datetime nextNMonthsDatetime = Datetime.newInstanceGmt(nextNMonthsDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextNMonthsDatetime = Datetime.newInstance(nextNMonthsDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextNMonths = RollupDateLiteral.get('NEXT_N_MONTHS:2');
 
     System.assertEquals(true, nextNMonths.matches(nextNMonthsDate, '='), 'Date value should have matched: ' + nextNMonthsDate + ' | ' + nextNMonths);
@@ -629,8 +636,10 @@ private class RollupDateLiteralTests {
 
     System.assertEquals(true, lastNQuarter.matches(lastNQuarterDate, '>='));
     System.assertEquals(true, lastNQuarter.matches(lastNQuarterDatetime, '>='));
-    Date oneOverPriorQuarterStart = [SELECT StartDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_QUARTER].StartDate.addDays(1);
     // ugly, but the only way to ensure the sentinel value is working ...
+    Datetime oneOverPriorQuarterStart = ((Datetime) [SELECT MIN(CaptureDate) startDate FROM ContactPointConsent WHERE CaptureDate = THIS_QUARTER][0]
+        .get('startDate'))
+      .addSeconds(1);
     System.assertEquals(true, lastNQuarter.matches(oneOverPriorQuarterStart, '>'), oneOverPriorQuarterStart + ' | ' + lastNQuarter);
     System.assertNotEquals(true, lastNQuarter.matches(oneOverPriorQuarterStart.addMonths(-1), '>'));
     System.assertNotEquals(true, lastNQuarter.matches(lastNQuarterDate, '>'));
@@ -655,7 +664,7 @@ private class RollupDateLiteralTests {
     Date startDate = (Date) nQuartersPeriod.get('startDate');
     Date endDate = (Date) nQuartersPeriod.get('endDate');
     Date nQuartersAgoDate = startDate.addMonths(1);
-    Datetime nQuartersAgoDatetime = Datetime.newInstanceGmt(nQuartersAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nQuartersAgoDatetime = Datetime.newInstance(nQuartersAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nQuartersAgo = RollupDateLiteral.get('N_QUARTERS_AGO:7');
 
     System.assertEquals(true, nQuartersAgo.matches(startDate, '='), startDate + ' | ' + nQuartersAgo);
@@ -695,7 +704,7 @@ private class RollupDateLiteralTests {
     Date startDate = (Date) nextNQuarterPeriod.get('startDate');
     Date endDate = (Date) nextNQuarterPeriod.get('endDate');
     Date nextNQuarterDate = startDate.addMonths(1);
-    Datetime nextNQuarterDatetime = Datetime.newInstanceGmt(nextNQuarterDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextNQuarterDatetime = Datetime.newInstance(nextNQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextNQuarter = RollupDateLiteral.get('NEXT_N_QUARTERS: 7');
 
     System.assertEquals(true, nextNQuarter.matches(startDate, '='), startDate + ' | ' + nextNQuarter);
@@ -723,7 +732,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisYear() {
     Date startOfThisYearDate = Date.newInstance(System.today().year(), 1, 1);
-    Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfThisYearDatetime = Datetime.newInstance(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisYear = RollupDateLiteral.get('THIS_YEAR');
 
     System.assertEquals(true, thisYear.matches(startOfThisYearDate, '='), 'Date value should have matched: ' + thisYear);
@@ -745,7 +754,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastYear() {
     Date startOfLastYearDate = Date.newInstance(System.today().year() - 1, 1, 1);
-    Datetime startOfLastYearDatetime = Datetime.newInstanceGmt(startOfLastYearDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfLastYearDatetime = Datetime.newInstance(startOfLastYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastYear = RollupDateLiteral.get('LAST_YEAR');
 
     System.assertEquals(true, lastYear.matches(startOfLastYearDate, '='), 'Date value should have matched: ' + startOfLastYearDate + ' ' + lastYear);
@@ -767,7 +776,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextYear() {
     Date startOfNextYearDate = Date.newInstance(System.today().year() + 1, 1, 1);
-    Datetime startOfNextYearDatetime = Datetime.newInstanceGmt(startOfNextYearDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfNextYearDatetime = Datetime.newInstance(startOfNextYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextYear = RollupDateLiteral.get('NEXT_YEAR');
 
     System.assertEquals(true, nextYear.matches(startOfNextYearDate, '='), 'Date value should have matched: ' + startOfNextYearDate);
@@ -790,7 +799,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForLastNYears() {
     Integer yearsInThePast = 3;
     Date lastNYearsDate = Date.newInstance(System.today().year() - (yearsInThePast - 1), 1, 1);
-    Datetime lastNYearsDatetime = Datetime.newInstanceGmt(lastNYearsDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNYearsDatetime = Datetime.newInstance(lastNYearsDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNYears = RollupDateLiteral.get('LAST_N_YEARS:' + yearsInThePast);
     Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
 
@@ -799,7 +808,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '='), 'Datetime value should have matched: ' + lastNYearsDatetime);
     System.assertNotEquals(
       true,
-      lastNYears.matches(Datetime.newInstanceGmt(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
+      lastNYears.matches(Datetime.newInstance(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
       'Should not equal anything past 00:00:00 on first date of last year'
     );
 
@@ -818,7 +827,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForNYearsAgo() {
     Integer yearsInThePast = 3;
     Date nYearsAgoDate = Date.newInstance(System.today().year() - (yearsInThePast), 1, 1);
-    Datetime nYearsAgoDatetime = Datetime.newInstanceGmt(nYearsAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nYearsAgoDatetime = Datetime.newInstance(nYearsAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nYearsAgo = RollupDateLiteral.get('N_YEARS_AGO:' + yearsInThePast);
     Date firstOfNextYear = nYearsAgoDate.addYears(1).addDays(1);
 
@@ -827,7 +836,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nYearsAgo.matches(nYearsAgoDatetime, '='), 'Datetime value should have matched: ' + nYearsAgoDatetime);
     System.assertNotEquals(
       true,
-      nYearsAgo.matches(Datetime.newInstanceGmt(firstOfNextYear, Time.newInstance(0, 0, 0, 0)), '='),
+      nYearsAgo.matches(Datetime.newInstance(firstOfNextYear, Time.newInstance(0, 0, 0, 0)), '='),
       'Should not equal anything past 00:00:00 on first date of the next year'
     );
 
@@ -846,7 +855,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForNextNYears() {
     Integer yearsInTheFuture = 3;
     Date nextNYearsDate = Date.newInstance(System.today().year() + yearsInTheFuture, 1, 1);
-    Datetime nextNYearsDatetime = Datetime.newInstanceGmt(nextNYearsDate, Time.newInstance(11, 59, 59, 59));
+    Datetime nextNYearsDatetime = Datetime.newInstance(nextNYearsDate, Time.newInstance(11, 59, 59, 59));
     RollupDateLiteral nextNYears = RollupDateLiteral.get('NEXT_N_YEARS:' + yearsInTheFuture);
     Date lastDayOfThisYear = Date.newInstance(System.today().year(), 12, 31);
 
@@ -855,7 +864,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '='), 'Datetime value should have matched: ' + nextNYearsDatetime);
     System.assertNotEquals(
       true,
-      nextNYears.matches(Datetime.newInstanceGmt(lastDayOfThisYear, Time.newInstance(11, 59, 59, 59)), '='),
+      nextNYears.matches(Datetime.newInstance(lastDayOfThisYear, Time.newInstance(11, 59, 59, 59)), '='),
       'Should not equal anything before 00:00:00 on first date of next year'
     );
 
@@ -874,7 +883,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForLastFiscalQuarter() {
     Period lastFiscalQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = LAST_FISCAL_QUARTER];
     Date lastFiscalQuarterDate = lastFiscalQuarterPeriod.StartDate.addMonths(1);
-    Datetime lastFiscalQuarterDatetime = Datetime.newInstanceGmt(lastFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastFiscalQuarterDatetime = Datetime.newInstance(lastFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastFiscalQuarter = RollupDateLiteral.get('LAST_FISCAL_QUARTER');
 
     System.assertEquals(true, lastFiscalQuarter.matches(lastFiscalQuarterPeriod.StartDate, '='));
@@ -907,7 +916,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForThisFiscalQuarter() {
     Period thisFiscalQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = THIS_FISCAL_QUARTER];
     Date thisFiscalQuarterDate = thisFiscalQuarterPeriod.StartDate.addMonths(1);
-    Datetime thisFiscalQuarterDatetime = Datetime.newInstanceGmt(thisFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    Datetime thisFiscalQuarterDatetime = Datetime.newInstance(thisFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisFiscalQuarter = RollupDateLiteral.get('THIS_FISCAL_QUARTER');
 
     System.assertEquals(true, thisFiscalQuarter.matches(thisFiscalQuarterPeriod.StartDate, '='));
@@ -940,7 +949,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForNextFiscalQuarter() {
     Period nextFiscalQuarterPeriod = [SELECT StartDate, EndDate FROM Period WHERE Type = 'Quarter' AND StartDate = NEXT_FISCAL_QUARTER];
     Date nextFiscalQuarterDate = nextFiscalQuarterPeriod.StartDate.addMonths(1);
-    Datetime nextFiscalQuarterDatetime = Datetime.newInstanceGmt(nextFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextFiscalQuarterDatetime = Datetime.newInstance(nextFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextFiscalQuarter = RollupDateLiteral.get('NEXT_FISCAL_QUARTER');
 
     System.assertEquals(true, nextFiscalQuarter.matches(nextFiscalQuarterPeriod.StartDate, '='), nextFiscalQuarterPeriod.StartDate + ' | ' + nextFiscalQuarter);
@@ -979,7 +988,7 @@ private class RollupDateLiteralTests {
     Date startDate = (Date) lastNFiscalQuarterPeriod.get('startDate');
     Date endDate = (Date) lastNFiscalQuarterPeriod.get('endDate');
     Date lastNFiscalQuarterDate = startDate.addMonths(1);
-    Datetime lastNFiscalQuarterDatetime = Datetime.newInstanceGmt(lastNFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNFiscalQuarterDatetime = Datetime.newInstance(lastNFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastFiscalNQuarter = RollupDateLiteral.get('LAST_N_FISCAL_QUARTERS: 7');
 
     System.assertEquals(true, lastFiscalNQuarter.matches(startDate, '='), startDate + ' | ' + lastFiscalNQuarter);
@@ -1027,7 +1036,7 @@ private class RollupDateLiteralTests {
     Date startDate = (Date) nFiscalQuartersAgoResult.get('startDate');
     Date endDate = (Date) nFiscalQuartersAgoResult.get('endDate');
     Date nFiscalQuartersAgoDate = startDate.addMonths(1);
-    Datetime nFiscalQuartersAgoDatetime = Datetime.newInstanceGmt(nFiscalQuartersAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nFiscalQuartersAgoDatetime = Datetime.newInstance(nFiscalQuartersAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nFiscalQuartersAgo = RollupDateLiteral.get('N_FISCAL_QUARTERS_AGO: 2');
 
     System.assertEquals(true, nFiscalQuartersAgo.matches(startDate, '='), startDate + ' | ' + nFiscalQuartersAgo);
@@ -1075,7 +1084,7 @@ private class RollupDateLiteralTests {
     Date startDate = (Date) nextNFiscalQuarters.get('startDate');
     Date endDate = (Date) nextNFiscalQuarters.get('endDate');
     Date nextNFiscalQuarterDate = startDate.addMonths(1);
-    Datetime nextNFiscalQuarterDatetime = Datetime.newInstanceGmt(nextNFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nextNFiscalQuarterDatetime = Datetime.newInstance(nextNFiscalQuarterDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextNFiscalQuarter = RollupDateLiteral.get('NEXT_N_FISCAL_QUARTERS: 7');
 
     System.assertEquals(true, nextNFiscalQuarter.matches(startDate, '='), startDate + ' | ' + nextNFiscalQuarter);
@@ -1118,7 +1127,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForLastFiscalYear() {
     // the fiscal years happen to align to the calendar years in our org, but these test a different code path
     Date startOfLastFiscalYearDate = Date.newInstance(System.today().year() - 1, 1, 1);
-    Datetime startOfLastFiscalYearDatetime = Datetime.newInstanceGmt(startOfLastFiscalYearDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfLastFiscalYearDatetime = Datetime.newInstance(startOfLastFiscalYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastFiscalYear = RollupDateLiteral.get('LAST_FISCAL_YEAR');
 
     System.assertEquals(
@@ -1151,7 +1160,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisFiscalYear() {
     Date startOfThisYearDate = Date.newInstance(System.today().year(), 1, 1);
-    Datetime startOfThisYearDatetime = Datetime.newInstanceGmt(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfThisYearDatetime = Datetime.newInstance(startOfThisYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral thisYear = RollupDateLiteral.get('THIS_FISCAL_YEAR');
 
     System.assertEquals(true, thisYear.matches(startOfThisYearDate, '='), 'Date value should have matched: ' + thisYear);
@@ -1173,7 +1182,7 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextFiscalYear() {
     Date startOfNextYearDate = Date.newInstance(System.today().year() + 1, 1, 1);
-    Datetime startOfNextYearDatetime = Datetime.newInstanceGmt(startOfNextYearDate, Time.newInstance(0, 0, 0, 0));
+    Datetime startOfNextYearDatetime = Datetime.newInstance(startOfNextYearDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nextYear = RollupDateLiteral.get('NEXT_FISCAL_YEAR');
 
     System.assertEquals(true, nextYear.matches(startOfNextYearDate, '='), 'Date value should have matched: ' + startOfNextYearDate);
@@ -1196,7 +1205,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForLastNFiscalYears() {
     Integer yearsInThePast = 3;
     Date lastNYearsDate = Date.newInstance(System.today().year() - (yearsInThePast - 1), 1, 1);
-    Datetime lastNYearsDatetime = Datetime.newInstanceGmt(lastNYearsDate, Time.newInstance(0, 0, 0, 0));
+    Datetime lastNYearsDatetime = Datetime.newInstance(lastNYearsDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral lastNYears = RollupDateLiteral.get('LAST_N_FISCAL_YEARS:' + yearsInThePast);
     Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
 
@@ -1205,7 +1214,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, lastNYears.matches(lastNYearsDatetime, '='), 'Datetime value should have matched: ' + lastNYearsDatetime);
     System.assertNotEquals(
       true,
-      lastNYears.matches(Datetime.newInstanceGmt(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
+      lastNYears.matches(Datetime.newInstance(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
       'Should not equal anything past 00:00:00 on first date of last year'
     );
 
@@ -1224,7 +1233,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForNFiscalYearsAgo() {
     Integer yearsInThePast = 3;
     Date nFiscalYearsAgoDate = Date.newInstance(System.today().year() - (yearsInThePast), 1, 1);
-    Datetime nFiscalYearsAgoDatetime = Datetime.newInstanceGmt(nFiscalYearsAgoDate, Time.newInstance(0, 0, 0, 0));
+    Datetime nFiscalYearsAgoDatetime = Datetime.newInstance(nFiscalYearsAgoDate, Time.newInstance(0, 0, 0, 0));
     RollupDateLiteral nFiscalYearsAgo = RollupDateLiteral.get('N_FISCAL_YEARS_AGO:' + yearsInThePast);
     Date firstOfLastYear = Date.newInstance(System.today().year() - 1, 1, 1);
 
@@ -1240,7 +1249,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nFiscalYearsAgo.matches(nFiscalYearsAgoDatetime, '='), 'Datetime value should have matched: ' + nFiscalYearsAgoDatetime);
     System.assertNotEquals(
       true,
-      nFiscalYearsAgo.matches(Datetime.newInstanceGmt(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
+      nFiscalYearsAgo.matches(Datetime.newInstance(firstOfLastYear, Time.newInstance(0, 0, 0, 1)), '='),
       'Should not equal anything past 00:00:00 on first date of last year'
     );
 
@@ -1259,7 +1268,7 @@ private class RollupDateLiteralTests {
   static void shouldWorkForNextNFiscalYears() {
     Integer yearsInTheFuture = 3;
     Date nextNYearsDate = Date.newInstance(System.today().year() + yearsInTheFuture, 1, 1);
-    Datetime nextNYearsDatetime = Datetime.newInstanceGmt(nextNYearsDate, Time.newInstance(11, 59, 59, 59));
+    Datetime nextNYearsDatetime = Datetime.newInstance(nextNYearsDate, Time.newInstance(11, 59, 59, 59));
     RollupDateLiteral nextNYears = RollupDateLiteral.get('NEXT_N_FISCAL_YEARS:' + yearsInTheFuture);
     Date lastDayOfThisYear = Date.newInstance(System.today().year(), 12, 31);
 
@@ -1268,7 +1277,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, nextNYears.matches(nextNYearsDatetime, '='), 'Datetime value should have matched: ' + nextNYearsDatetime);
     System.assertNotEquals(
       true,
-      nextNYears.matches(Datetime.newInstanceGmt(lastDayOfThisYear, Time.newInstance(11, 59, 59, 59)), '='),
+      nextNYears.matches(Datetime.newInstance(lastDayOfThisYear, Time.newInstance(11, 59, 59, 59)), '='),
       'Should not equal anything before 00:00:00 on first date of next year'
     );
 
@@ -1353,7 +1362,7 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForDayInYearFunction() {
-    Datetime startOfYear = Datetime.newInstanceGmt(System.today().year(), 1, 1);
+    Datetime startOfYear = Datetime.newInstance(System.today().year(), 1, 1);
     Datetime secondDayInYear = startOfYear.addDays(1);
     Datetime thirdDayInYear = startOfYear.addDays(2);
     RollupDateLiteral dayInYear = RollupDateLiteral.getFunction('DAY_IN_YEAR(CloseDate)', '2');
@@ -1385,7 +1394,7 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForFiscalMonthFunction() {
-    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 4, 1);
+    Datetime comparisonDate = Datetime.newInstance(2020, 4, 1);
     Datetime oneQuarterBefore = comparisonDate.addMonths(-1);
     Datetime oneQuarterAfter = comparisonDate.addMonths(4);
     RollupDateLiteral fiscalMonth = RollupDateLiteral.getFunction('FISCAL_MONTH(CreatedDate)', '4');
@@ -1492,7 +1501,7 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForWeekInMonthFunction() {
-    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 1, 1);
+    Datetime comparisonDate = Datetime.newInstance(2020, 1, 1);
     Datetime oneWeekBefore = comparisonDate.addDays(-7);
     Datetime oneWeekAfter = comparisonDate.addDays(7);
     RollupDateLiteral weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '1');
@@ -1506,7 +1515,7 @@ private class RollupDateLiteralTests {
     // deviation - last week of the last month exceeds the first week of this month
     System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '>'));
 
-    comparisonDate = Datetime.newInstanceGmt(2020, 1, 8);
+    comparisonDate = Datetime.newInstance(2020, 1, 8);
     oneWeekBefore = comparisonDate.addDays(-7);
     oneWeekAfter = comparisonDate.addDays(7);
     weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '2');
@@ -1519,7 +1528,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
     System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
 
-    comparisonDate = Datetime.newInstanceGmt(2020, 1, 15);
+    comparisonDate = Datetime.newInstance(2020, 1, 15);
     oneWeekBefore = comparisonDate.addDays(-7);
     oneWeekAfter = comparisonDate.addDays(7);
     weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '3');
@@ -1533,7 +1542,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
 
     // ensure february is handled correctly
-    comparisonDate = Datetime.newInstanceGmt(2020, 2, 28);
+    comparisonDate = Datetime.newInstance(2020, 2, 28);
     oneWeekBefore = comparisonDate.addDays(-7);
     oneWeekAfter = comparisonDate.addDays(7);
     weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '4');
@@ -1547,7 +1556,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
     System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
 
-    comparisonDate = Datetime.newInstanceGmt(2020, 12, 29);
+    comparisonDate = Datetime.newInstance(2020, 12, 29);
     oneWeekBefore = comparisonDate.addDays(-7);
     oneWeekAfter = comparisonDate.addDays(7);
     weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '5');
@@ -1564,7 +1573,7 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForWeekInYearFunction() {
-    Datetime comparisonDate = Datetime.newInstanceGmt(2020, 4, 1);
+    Datetime comparisonDate = Datetime.newInstance(2020, 4, 1);
     Datetime oneWeekBefore = comparisonDate.addDays(-7);
     Datetime oneWeekAfter = comparisonDate.addDays(7);
     RollupDateLiteral weekInYear = RollupDateLiteral.getFunction('WEEK_IN_YEAR(CreatedDate)', '14');
@@ -1574,7 +1583,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(false, weekInYear.matches(oneWeekAfter, '='));
     System.assertEquals(false, weekInYear.matches(comparisonDate, '!='));
 
-    comparisonDate = Datetime.newInstanceGmt(2020, 12, 22);
+    comparisonDate = Datetime.newInstance(2020, 12, 22);
     oneWeekBefore = comparisonDate.addDays(-7);
     oneWeekAfter = comparisonDate.addDays(7);
     weekInYear = RollupDateLiteral.getFunction('WEEK_IN_YEAR(CreatedDate)', '52');
