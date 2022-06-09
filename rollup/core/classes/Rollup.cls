@@ -457,15 +457,13 @@ global without sharing virtual class Rollup {
       RollupMetadata metaWrapper;
       if (childToMetaWrapper.containsKey(childType)) {
         metaWrapper = childToMetaWrapper.get(childType);
-        metaWrapper.queryFields.addAll(whereFields);
-        metaWrapper.metadata.add(matchingMeta);
       } else {
         metaWrapper = new RollupMetadata();
-        metaWrapper.queryFields.addAll(wherefields);
-        metaWrapper.metadata.add(matchingMeta);
         metaWrapper.whereClause = matchingMeta.CalcItemWhereClause__c;
         childToMetaWrapper.put(childType, metaWrapper);
       }
+      metaWrapper.queryFields.addAll(wherefields);
+      metaWrapper.metadata.add(matchingMeta);
 
       if (amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
         String countQuery = RollupQueryBuilder.Current.getQuery(

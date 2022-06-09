@@ -115,7 +115,7 @@ private class CustomMetadataDrivenTests {
     System.assert(true, 'Should make it here (validate update works with Trigger.oldMap)');
   }
 
-  @isTest
+  @IsTest
   public static void shouldRecalcRollupToGrandparentWhenChildIsReparented() {
     // relies on extra-tests\customMetadata\Rollup.AmountFromChildrenToGrandparent.md-meta.xml
     RollupGrandparent__c grandparentOne = new RollupGrandparent__c(AmountfromChildren__c = 0);
