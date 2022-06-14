@@ -87,8 +87,13 @@ public without sharing class RollupCalcItemReplacer {
   private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
     if (fieldName.contains('.')) {
       parentQueryFieldSet.add(fieldName);
-    } else if (calcItem.getPopulatedFieldsAsMap().containsKey(fieldName) == false) {
-      baseQueryFieldSet.add(fieldName);
+    } else {
+      // calcItem.getPopulatedFieldsAsMap can't be used here because it doesn't populate for fields with null values
+      try {
+        calcItem.get(fieldName);
+      } catch (SObjectException ex) {
+        baseQueryFieldSet.add(fieldName);
+      }
     }
   }
 

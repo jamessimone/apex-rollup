@@ -1303,6 +1303,38 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void resetsDatesForFirstProperly() {
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'one', ParentId = acc.Id, PreferenceRank = 3, ActiveFromDate = System.today()),
+      new ContactPointAddress(Name = 'two', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'ActiveFromDate',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'FIRST',
+        CalcItemWhereClause__c = 'ActiveFromDate != TODAY'
+      ),
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Description FROM Account];
+    System.assertEquals(null, updatedAcc.Description, 'Should have taken first based on PreferenceRank');
+  }
+
+  @IsTest
   static void shouldRetainFullRecalcValuesForMutuallyExclusiveRollupsToSameField() {
     Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
 

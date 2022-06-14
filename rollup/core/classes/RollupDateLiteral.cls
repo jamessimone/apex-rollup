@@ -237,7 +237,7 @@ public without sharing abstract class RollupDateLiteral {
     Datetime castValue;
     // "The exact start and stop of the range depends on the date literal and the locale of the user sending the query."
     if (val == null) {
-      return false;
+      return this.getEquals(comparison, false);
     } else if (val instanceof Date) {
       castValue = Datetime.newInstanceGmt((Date) val, START_TIME);
     } else {
@@ -247,7 +247,7 @@ public without sharing abstract class RollupDateLiteral {
 
     switch on comparison {
       when '=', '!=' {
-        return comparison == '=' ? this.isEqualTo(castValue) : this.isEqualTo(castValue) == false;
+        return this.getEquals(comparison, this.isEqualTo(castValue));
       }
       when '>=', '>' {
         return comparison == '>=' ? this.isGreaterThan(castValue) || this.isEqualTo(castValue) : this.isGreaterThan(castValue);
@@ -276,6 +276,10 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   protected virtual void setDynamicValue(String num) {
+  }
+
+  private Boolean getEquals(String comparison, Boolean val) {
+    return comparison == '=' ? val : !val;
   }
 
   private class FiscalInfo {
