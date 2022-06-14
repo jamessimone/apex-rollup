@@ -66,6 +66,12 @@ public without sharing virtual class RollupSObjectUpdater {
       }
     } else if (fieldType == DisplayType.DATE && value instanceof Datetime) {
       value = ((Datetime) value).dateGmt();
+    } else if ((value instanceof String) == false) {
+      switch on fieldType {
+        when STRING, TEXTAREA {
+          value = String.valueOf(value);
+        }
+      }
     }
     record.put(this.fieldToken, value);
   }
