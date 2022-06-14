@@ -68,4 +68,24 @@ private class RollupParentResetProcessorTests {
 
     System.assertEquals(null, ex, 'Should not fail when invocations are valid then invalid');
   }
+
+  @IsTest
+  static void correctlyQueriesEvenWhenResetFieldIsNotFilterable() {
+    RollupParentResetProcessor processor = new RollupParentResetProcessor(
+      new List<Rollup__mdt>{ new Rollup__mdt(RollupFieldOnLookupObject__c = 'Description', LookupObject__c = 'Account') },
+      Account.SObjectType,
+      'SELECT Id\nFROM Account WHERE Id != null',
+      new Set<String>(),
+      null
+    );
+
+    Exception ex;
+    try {
+      processor.runCalc();
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals(null, ex, 'Should not fail when field is not filterable');
+  }
 }

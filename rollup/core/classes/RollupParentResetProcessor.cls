@@ -97,23 +97,22 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
     isValidRun = false;
+    String additionalFilters = '';
+    String orClause = ' OR ';
     if (matchingMeta.isEmpty() == false) {
-      localQueryString += '\nAND (';
-    } else {
-      return localQueryString;
-    }
-
-    Map<String, SObjectField> fieldTokens = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c)
-      .getSObjectType()
-      .getDescribe()
-      .fields.getMap();
-    for (Rollup__mdt meta : matchingMeta) {
-      SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
-      if (token.getDescribe().isFilterable()) {
-        isValidRun = isValidRun || true;
-        localQueryString += meta.RollupFieldOnLookupObject__c + ' != null OR ';
+      Map<String, SObjectField> fieldTokens = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta[0].LookupObject__c)
+        .getSObjectType()
+        .getDescribe()
+        .fields.getMap();
+      for (Rollup__mdt meta : matchingMeta) {
+        SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
+        if (token.getDescribe().isFilterable()) {
+          isValidRun = isValidRun || true;
+          additionalFilters += meta.RollupFieldOnLookupObject__c + (' != null' + orClause);
+        }
       }
     }
-    return localQueryString.removeEnd(' OR ') + ')';
+
+    return isValidRun ? localQueryString + '\nAND (' + additionalFilters.removeEnd(orClause) + ')' : localQueryString;
   }
 }
