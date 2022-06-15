@@ -8,6 +8,7 @@ public without sharing virtual class RollupSObjectUpdater {
   private final List<IDispatcher> dispatchers;
   private final RollupPlugin plugin;
 
+  private Boolean forceSyncUpdate = false;
   private RollupControl__mdt rollupControl;
 
   public interface IDispatcher {
@@ -31,8 +32,12 @@ public without sharing virtual class RollupSObjectUpdater {
     this.rollupControl = rollupControl;
   }
 
+  public void forceSyncUpdate() {
+    this.forceSyncUpdate = true;
+  }
+
   public virtual void doUpdate(List<SObject> recordsToUpdate) {
-    if (Rollup.hasExceededCurrentRollupLimits(this.rollupControl)) {
+    if (this.forceSyncUpdate == false && Rollup.hasExceededCurrentRollupLimits(this.rollupControl)) {
       this.performAsyncUpdate(recordsToUpdate);
       return;
     }
@@ -141,6 +146,7 @@ public without sharing virtual class RollupSObjectUpdater {
     RollupPlugin__mdt updaterPlugin = new RollupPlugin().getInstance(UPDATER_NAME);
     Type updaterType = updaterPlugin != null ? Type.forName(updaterPlugin.DeveloperName) : DefaultUpdater.class;
     ((IUpdater) updaterType.newInstance()).performUpdate(recordsToUpdate, options);
+    this.forceSyncUpdate = false;
   }
 
   private class SObjectSorter extends RollupComparer {

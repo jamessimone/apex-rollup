@@ -11,6 +11,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private RollupRelationshipFieldFinder.Traversal traversal;
+  private Boolean isTimingOut = false;
 
   protected Boolean isProcessed = false;
   protected Boolean overridesRunCalc = false;
@@ -392,6 +393,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected String beginAsyncRollup() {
+    this.isTimingOut = false;
     RollupLogger.Instance.log('about to start for ' + this.getTypeName(), LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
     return this.startAsyncWork();
@@ -518,7 +520,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll.isProcessed = true;
       this.setupCalcItemData(roll);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
-      if (hasExceededCurrentRollupLimits(roll.rollupControl)) {
+      if (this.getIsTimingOut(roll.rollupControl, roll)) {
         RollupLogger.Instance.log('deferring current rollup, past limits', LoggingLevel.DEBUG);
         this.deferredRollups.add(roll);
         continue;
@@ -542,12 +544,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
       RollupLogger.Instance.log('starting rollup for:', roll, LoggingLevel.DEBUG);
-      List<SObject> updatedParentRecords = this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems);
-      for (SObject updatedRecord : updatedParentRecords) {
-        updatedLookupRecords.put(updatedRecord.Id, updatedRecord);
-      }
+      updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
+    if (this.isTimingOut) {
+      this.getDML().forceSyncUpdate();
+    }
     this.getDML().doUpdate(updatedLookupRecords.values());
     if (this.getCachedRollups().isEmpty() == false) {
       for (Rollup outerRollup : this.getCachedRollups()) {
@@ -606,6 +608,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
     return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
+  }
+
+  private Boolean getIsTimingOut(RollupControl__mdt control, RollupAsyncProcessor processor) {
+    if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
+      this.isTimingOut = true;
+    }
+    if (this.isTimingOut) {
+      processor.isProcessed = false;
+    }
+    return this.isTimingOut;
   }
 
   private void transformRollups(List<RollupAsyncProcessor> rollupsToProcess) {
@@ -683,6 +695,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         this.getAsyncRollup()?.beginAsyncRollup();
       } else if (this.deferredRollups.isEmpty() == false) {
+        this.rollups.clear();
+        this.rollups.addAll(this.deferredRollups);
+        this.deferredRollups.clear();
         this.setIsDeferralAllowed(false);
         this.attemptToStaticallyDeferRollup();
       }
@@ -868,7 +883,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        (isRunningAsnyc && hasExceededCurrentRollupLimits(rollup.rollupControl) == false) ||
+        (isRunningAsnyc && this.getIsTimingOut(rollup.rollupControl, rollup) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
@@ -967,7 +982,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private List<SObject> getUpdatedLookupItemsByRollup(RollupAsyncProcessor roll, Map<String, CalcItemBag> calcItemsByLookupField, List<SObject> lookupItems) {
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
-    Set<Id> unprocessedCalcItems = new Set<Id>();
+    Map<String, SObject> unprocessedCalcItems = new Map<String, SObject>();
     RollupSObjectUpdater updater = new RollupSObjectUpdater(roll.opFieldOnLookupObject);
     if (roll.fullRecalcProcessor != null) {
       roll.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
@@ -987,10 +1002,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = calcItemsByLookupField.get(key);
         List<SObject> localCalcItems = bag.getAll();
 
-        if (
-          hasExceededCurrentRollupLimits(this.rollupControl) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)
-        ) {
-          unprocessedCalcItems.addAll(new Map<Id, SObject>(localCalcItems).keySet());
+        if (this.getIsTimingOut(this.rollupControl, roll) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
+          // this loop only gets entered into for one rollup because there's another early return checking isTimingOut in the outer method
+          SObject replacementLookupRecord = lookupRecord.getSObjectType().newSObject();
+          for (String fieldName : lookupRecord.getPopulatedFieldsAsMap().keySet()) {
+            if (fieldName != roll.opFieldOnLookupObject.getDescribe().getName()) {
+              replacementLookupRecord.put(fieldName, lookupRecord.getPopulatedFieldsAsMap().get(fieldName));
+            }
+          }
+          recordsToUpdate.put(lookupRecord.Id, replacementLookupRecord);
+          unprocessedCalcItems.putAll(localCalcItems);
           lookupItems.remove(index);
           continue;
         }
@@ -1009,31 +1030,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll, updater);
-    this.deferCalculationsWhenApproachingLimits(roll, unprocessedCalcItems);
+    this.deferCalculationsWhenApproachingLimits(roll, unprocessedCalcItems.values());
 
     return recordsToUpdate.values();
   }
 
-  private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, Set<Id> unprocessedCalcItems) {
-    // remove the calc items that were successfully processed -
-    // they're the ones that aren't in the unprocessed Set
-    List<SObject> mutableItems;
+  private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, List<SObject> unprocessedCalcItems) {
     if (unprocessedCalcItems.isEmpty() == false) {
-      mutableItems = roll.calcItems?.clone();
-      if (mutableItems != null) {
-        for (Integer index = mutableItems.size() - 1; index >= 0; index--) {
-          SObject calcItem = mutableItems[index];
-          if (unprocessedCalcItems.contains(calcItem.Id) == false) {
-            mutableItems.remove(index);
-          }
-        }
-      }
-    }
-    // if all of the calc items have been processed, we're golden - no need to proceed
-    // otherwise, the newly trimmed-down Rollup will get picked up downstream for
-    // reprocessing!
-    if (mutableItems?.isEmpty() == false) {
-      roll.calcItems = mutableItems;
       this.deferredRollups.add(roll);
     } else if (roll instanceof RollupFullRecalcProcessor) {
       for (RollupAsyncProcessor otherRollup : this.rollups) {
