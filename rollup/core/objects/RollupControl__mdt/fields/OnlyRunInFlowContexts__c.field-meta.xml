@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>OnlyRunInFlowContexts__c</fullName>
+    <description>Provide a comma-separated list of flow contexts (INSERT, UPDATE, UPSERT, DELETE, REFRESH) that flow-powered rollups should run in (skips any rollups called where the flow context does not match an entry in this list)</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Provide a comma-separated list of flow contexts (INSERT, UPDATE, UPSERT, DELETE, REFRESH) that flow-powered rollups should run in (skips any rollups called where the flow context does not match an entry in this list)</inlineHelpText>
+    <label>Flow - Only Run In These Contexts</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

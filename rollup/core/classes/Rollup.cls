@@ -607,6 +607,9 @@ global without sharing virtual class Rollup {
     global String calcItemWhereClause;
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
     global String ultimateParentLookup;
+
+    // internal variables!
+    public Id rollupControlId;
   }
 
   global class FlowOutput {
@@ -664,6 +667,9 @@ global without sharing virtual class Rollup {
         String rollupContext = getFlowRollupContext(flowInput, flowInput.recordsToRollup[0], sObjectType, flowInput.oldRecordsToRollup);
 
         Rollup__mdt meta = transformFlowInputToRollupMetadata(flowInput, rollupContext, sObjectType);
+        if (shouldSkipRollupForFlow(meta, rollupContext)) {
+          continue;
+        }
         if (metaToInputWrapper.containsKey(meta)) {
           FlowInputWrapper wrapper = metaToInputWrapper.get(meta);
           if (wrapper.rollupMetadata.contains(meta)) {
@@ -1736,6 +1742,7 @@ global without sharing virtual class Rollup {
       LookupObject__c = flowInput.rollupSObjectName,
       OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
       OrderByFirstLast__c = flowInput.orderByFirstLast,
+      RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, specificControl),
       RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
       RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
       RollupOperation__c = rollupContext + flowInput.rollupOperation,
@@ -1743,6 +1750,14 @@ global without sharing virtual class Rollup {
       SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
       UltimateParentLookup__c = flowInput.ultimateParentLookup
     );
+  }
+
+  private static Boolean shouldSkipRollupForFlow(Rollup__mdt meta, String flowContext) {
+    Set<String> allowedContexts = new Set<String>();
+    for (String specificAllowedContext : meta.RollupControl__r.OnlyRunInFlowContexts__c.split(',')) {
+      allowedContexts.add(specificAllowedContext.trim());
+    }
+    return allowedContexts.isEmpty() ? false : allowedContexts.contains(flowContext) == false;
   }
 
   private static Rollup operateFromApex(
