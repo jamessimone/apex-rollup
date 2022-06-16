@@ -11,8 +11,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private RollupRelationshipFieldFinder.Traversal traversal;
-  private Boolean isTimingOut = false;
 
+  protected Boolean isTimingOut = false;
   protected Boolean isProcessed = false;
   protected Boolean overridesRunCalc = false;
   protected Boolean shouldSortToFront = false;
@@ -382,7 +382,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     public void execute(System.QueueableContext qc) {
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
-      this.fullRecalcProcessor?.finish();
+      if (this.isTimingOut == false) {
+        this.fullRecalcProcessor?.finish();
+      }
       this.logFinish();
     }
   }
