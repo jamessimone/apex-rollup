@@ -949,9 +949,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       Set<String> uniqueIds = new Set<String>();
       for (SObject calcItem : roll.calcItems) {
-        String lookupKey = (String) calcItem.get(roll.lookupFieldOnCalcItem);
-        if (String.isNotBlank(lookupKey)) {
-          uniqueIds.add(lookupKey);
+        if (calcItem.getSObjectType() == roll.calcItemType) {
+          String lookupKey = (String) calcItem.get(roll.lookupFieldOnCalcItem);
+          if (String.isNotBlank(lookupKey)) {
+            uniqueIds.add(lookupKey);
+          }
         }
       }
 
