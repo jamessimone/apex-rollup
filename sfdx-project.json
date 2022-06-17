@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Bugfixes for date literals associated with QUARTER/FISCAL_QUARTER",
+            "versionName": "Bugfixes for date literals associated with QUARTER/FISCAL_QUARTER, deferred rollup fixes, added the ability to opt Flow-driven rollups out of running in different flow contexts. Added the ability to write any type of field to text/text area parent fields.",
             "versionNumber": "1.5.9.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -71,11 +71,11 @@
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.11.0",
+            "versionNumber": "0.0.12.0",
             "default": false,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.5.7-0"
+                    "package": "apex-rollup@1.5.9-0"
                 }
             ]
         }
@@ -93,6 +93,7 @@
         "Apex Rollup - Extra Code Coverage@0.0.9-0": "04t6g000008Sk13AAC",
         "Apex Rollup - Extra Code Coverage@0.0.10-0": "04t6g000008Sk7gAAC",
         "Apex Rollup - Extra Code Coverage@0.0.11-0": "04t6g000008SkNaAAK",
+        "Apex Rollup - Extra Code Coverage@0.0.12-0": "04t6g000008SkVAAA0",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.5-0": "04t6g000008Si1BAAS",
         "Apex Rollup - Nebula Logger@0.0.6-0": "04t6g000008SiisAAC",
@@ -109,6 +110,7 @@
         "apex-rollup@1.5.5-0": "04t6g000008SkKqAAK",
         "apex-rollup@1.5.6-0": "04t6g000008SkMhAAK",
         "apex-rollup@1.5.7-0": "04t6g000008SkNkAAK",
-        "apex-rollup@1.5.8-0": "04t6g000008SkRSAA0"
+        "apex-rollup@1.5.8-0": "04t6g000008SkRSAA0",
+        "apex-rollup@1.5.9-0": "04t6g000008SkV5AAK"
     }
 }

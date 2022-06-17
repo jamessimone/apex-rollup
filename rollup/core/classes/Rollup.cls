@@ -692,6 +692,9 @@ global without sharing virtual class Rollup {
     for (Rollup__mdt key : metaToInputWrapper.keySet()) {
       FlowInputWrapper wrapper = metaToInputWrapper.get(key);
       // here we clone the list because it can get winnowed in "processCustomMetadata"
+      if (wrapper == null) {
+        continue;
+      }
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
       wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
       wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
@@ -1742,7 +1745,7 @@ global without sharing virtual class Rollup {
       LookupObject__c = flowInput.rollupSObjectName,
       OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
       OrderByFirstLast__c = flowInput.orderByFirstLast,
-      RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, specificControl),
+      RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
       RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
       RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
       RollupOperation__c = rollupContext + flowInput.rollupOperation,
@@ -1753,6 +1756,9 @@ global without sharing virtual class Rollup {
   }
 
   private static Boolean shouldSkipRollupForFlow(Rollup__mdt meta, String flowContext) {
+    if (String.isBlank(meta.RollupControl__r?.OnlyRunInFlowContexts__c)) {
+      return false;
+    }
     Set<String> allowedContexts = new Set<String>();
     for (String specificAllowedContext : meta.RollupControl__r.OnlyRunInFlowContexts__c.split(',')) {
       allowedContexts.add(specificAllowedContext.trim());
