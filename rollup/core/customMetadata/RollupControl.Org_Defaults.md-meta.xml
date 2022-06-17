@@ -35,6 +35,10 @@
         <value xsi:type="xsd:double">20.0</value>
     </values>
     <values>
+        <field>OnlyRunInFlowContexts__c</field>
+        <value xsi:nil="true" />
+    </values>
+    <values>
         <field>ReplaceCalcItemsAsyncWhenOverCount__c</field>
         <value xsi:type="xsd:double">1.0</value>
     </values>
@@ -47,12 +51,12 @@
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
-        <field>ShouldRunSingleRecordsSynchronously__c</field>
-        <value xsi:type="xsd:boolean">false</value>
-    </values>
-    <values>
         <field>ShouldRunAs__c</field>
         <value xsi:type="xsd:string">Queueable</value>
+    </values>
+    <values>
+        <field>ShouldRunSingleRecordsSynchronously__c</field>
+        <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
         <field>TriggerOrInvocableName__c</field>

@@ -64,6 +64,16 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(four, records[3]);
   }
 
+  @IsTest
+  static void stringifiesNonTextFieldsProperly() {
+    Blob blobValue = EncodingUtil.base64Decode('10101010');
+    Opportunity opp = new Opportunity();
+
+    new RollupSObjectUpdater(Opportunity.Description).updateField(opp, blobValue);
+
+    System.assertEquals(String.valueOf(blobValue), opp.Description);
+  }
+
   public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {
     public void dispatch(List<SObject> records) {
       dispatcherMockWasCalled = true;

@@ -21,7 +21,7 @@ public without sharing abstract class RollupDateLiteral {
   private static final Time END_TIME {
     get {
       if (END_TIME == null) {
-        END_TIME = Time.newInstance(11, 59, 59, 59);
+        END_TIME = Time.newInstance(23, 59, 59, 59);
       }
       return END_TIME;
     }
@@ -31,7 +31,7 @@ public without sharing abstract class RollupDateLiteral {
   private static final Datetime START_OF_TODAY {
     get {
       if (START_OF_TODAY == null) {
-        return Datetime.newInstanceGmt(System.today(), START_TIME);
+        return getRelativeDatetime(System.today(), START_TIME);
       }
       return START_OF_TODAY;
     }
@@ -49,6 +49,7 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   protected Datetime ref;
+  protected Datetime bound;
 
   private static final Map<String, Object> KEY_TO_DATE_LITERAL {
     get {
@@ -155,6 +156,10 @@ public without sharing abstract class RollupDateLiteral {
     return (RollupDateLiteral) literal;
   }
 
+  private static Datetime getRelativeDatetime(Date relativeDate, Time relativeTime) {
+    return Datetime.newInstance(relativeDate, relativeTime);
+  }
+
   @SuppressWarnings('PMD.ApexCrudViolation')
   private static FiscalInfo getFiscalInfo() {
     FiscalInfo fiscalInfo = new FiscalInfo();
@@ -233,18 +238,20 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   public Boolean matches(Object val, String comparison) {
-    Datetime castValue;
+    Object castValue;
+    // "The exact start and stop of the range depends on the date literal and the locale of the user sending the query."
     if (val == null) {
-      return false;
+      return this.getEquals(comparison, false);
     } else if (val instanceof Date) {
-      castValue = Datetime.newInstanceGmt((Date) val, START_TIME);
+      castValue = val;
     } else {
-      castValue = (Datetime) val;
+      // ensure we are in local time, and not UTC
+      castValue = Datetime.newInstance(((Datetime) val).getTime());
     }
 
     switch on comparison {
       when '=', '!=' {
-        return comparison == '=' ? this.isEqualTo(castValue) : this.isEqualTo(castValue) == false;
+        return this.getEquals(comparison, this.isEqualTo(castValue));
       }
       when '>=', '>' {
         return comparison == '>=' ? this.isGreaterThan(castValue) || this.isEqualTo(castValue) : this.isGreaterThan(castValue);
@@ -259,20 +266,39 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   public virtual override String toString() {
-    return this.ref?.format();
+    return 'ref: ' + this.ref + ' | bound: ' + this.bound;
   }
 
-  protected virtual Boolean isEqualTo(Datetime val) {
-    return this.ref == val;
+  protected virtual Boolean isEqualTo(Object val) {
+    if (val instanceof Date) {
+      Date dateVal = (Date) val;
+      return this.ref.dateGmt() <= dateVal && dateVal <= this.bound.dateGmt();
+    }
+    Datetime datetimeVal = (Datetime) val;
+    return this.ref <= datetimeVal && datetimeVal <= this.bound;
   }
-  protected virtual Boolean isLessThan(Datetime val) {
-    return this.ref > val;
+  protected virtual Boolean isGreaterThan(Object val) {
+    if (val instanceof Date) {
+      Date dateVal = (Date) val;
+      return dateVal > this.bound.dateGmt() && dateVal > this.ref.dateGmt();
+    }
+    Datetime datetimeVal = (Datetime) val;
+    return datetimeVal > this.bound && datetimeVal > this.ref;
   }
-  protected virtual Boolean isGreaterThan(Datetime val) {
-    return this.ref < val;
+  protected virtual Boolean isLessThan(Object val) {
+    if (val instanceof Date) {
+      Date dateVal = (Date) val;
+      return dateVal < this.bound.dateGmt() && dateVal < this.ref.dateGmt();
+    }
+    Datetime datetimeVal = (Datetime) val;
+    return datetimeVal < this.bound && datetimeVal < this.ref;
   }
 
   protected virtual void setDynamicValue(String num) {
+  }
+
+  private Boolean getEquals(String comparison, Boolean val) {
+    return comparison == '=' ? val : !val;
   }
 
   private class FiscalInfo {
@@ -285,40 +311,21 @@ public without sharing abstract class RollupDateLiteral {
   private class YesterdayLiteral extends RollupDateLiteral {
     public YesterdayLiteral() {
       this.ref = START_OF_TODAY.addDays(-1);
+      this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
     }
   }
 
   private class TodayLiteral extends RollupDateLiteral {
     public TodayLiteral() {
       this.ref = START_OF_TODAY;
+      this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
     }
   }
 
   private class TomorrowLiteral extends RollupDateLiteral {
     public TomorrowLiteral() {
       this.ref = START_OF_TODAY.addDays(1);
-    }
-  }
-
-  /**
-   * NEXT/LAST Section. Since these are range-based comparisons, we have to compare start/end bounds
-   */
-
-  private abstract class RangedLiteral extends RollupDateLiteral {
-    protected Datetime bound;
-
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.ref <= val && val <= this.bound;
-    }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return val > this.bound && val > this.ref;
-    }
-    protected override Boolean isLessThan(Datetime val) {
-      return val < this.bound && val < this.ref;
-    }
-
-    public override String toString() {
-      return 'ref: ' + this.ref + ' | bound: ' + this.bound;
+      this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
     }
   }
 
@@ -326,10 +333,10 @@ public without sharing abstract class RollupDateLiteral {
    * Starts 00:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class LastWeekLiteral extends RangedLiteral {
+  private class LastWeekLiteral extends RollupDateLiteral {
     public LastWeekLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-7), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.bound = getRelativeDatetime(System.today().toStartOfWeek().addDays(-1), END_TIME);
+      this.ref = getRelativeDatetime(this.bound.date().addDays(-6), START_TIME);
     }
   }
 
@@ -337,10 +344,10 @@ public without sharing abstract class RollupDateLiteral {
    * Starts 00:00:00 on the most recent first day of the week on or before the current day and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class ThisWeekLiteral extends RangedLiteral {
+  private class ThisWeekLiteral extends RollupDateLiteral {
     public ThisWeekLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfWeek(), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
@@ -348,40 +355,40 @@ public without sharing abstract class RollupDateLiteral {
    * Starts 00:00:00 on the most recent first day of the week after the current day and continues for seven full days.
    * Your locale determines the first day of the week.
    */
-  private class NextWeekLiteral extends RangedLiteral {
+  private class NextWeekLiteral extends RollupDateLiteral {
     public NextWeekLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(7), START_TIME);
+      this.bound = this.ref.addDays(7);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month before the current day and continues for all the days of that month.
    */
-  private class LastMonthLiteral extends RangedLiteral {
+  private class LastMonthLiteral extends RollupDateLiteral {
     public LastMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
+      this.bound = this.ref.addMonths(1);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month that the current day is in and continues for all the days of that month.
    */
-  private class ThisMonthLiteral extends RangedLiteral {
+  private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
+      this.bound = this.ref.addMonths(1);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.
    */
-  private class NextMonthLiteral extends RangedLiteral {
+  private class NextMonthLiteral extends RollupDateLiteral {
     public NextMonthLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).addDays(-1).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
+      this.bound = this.ref.addMonths(1);
     }
   }
 
@@ -389,20 +396,20 @@ public without sharing abstract class RollupDateLiteral {
    * Starts with the current day and continues for the past 90 days.
    * This includes the current day, not just previous days. So it includes 91 days in total.
    */
-  private class Last90DaysLiteral extends RangedLiteral {
+  private class Last90DaysLiteral extends RollupDateLiteral {
     public Last90DaysLiteral() {
-      this.ref = START_OF_TODAY.addDays(-91);
-      this.bound = Datetime.newInstanceGmt(System.today(), END_TIME);
+      this.bound = START_OF_TODAY.addDays(1);
+      this.ref = this.bound.addDays(-91);
     }
   }
 
   /**
    * Starts 00:00:00 of the next day and continues for the next 90 days.
    */
-  private class Next90DaysLiteral extends RangedLiteral {
+  private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
-      this.ref = START_OF_TODAY;
-      this.bound = Datetime.newInstanceGmt(System.today().addDays(91), END_TIME);
+      this.ref = START_OF_TODAY.addDays(1);
+      this.bound = this.ref.addDays(90);
     }
   }
 
@@ -410,22 +417,22 @@ public without sharing abstract class RollupDateLiteral {
    * For the number n provided, starts with the current day and continues for the past n days.
    * This includes the current day, not just previous days. For example, LAST_N_DAYS:1 includes yesterday and today.
    */
-  private class LastNDaysLiteral extends RangedLiteral {
+  private class LastNDaysLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = Datetime.newInstanceGmt(System.today(), END_TIME); // includes all of today
-      this.ref = Datetime.newInstanceGmt(START_OF_TODAY.addDays(-(dateRange + 1)).dateGmt(), END_TIME);
+      this.bound = START_OF_TODAY.addDays(1); // includes all of today
+      this.ref = START_OF_TODAY.addDays(-dateRange);
     }
   }
 
   /**
    * For the number n provided, creates a fixed bound set n days in the past
    */
-  private class NDaysAgoLiteral extends RangedLiteral {
+  private class NDaysAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(START_OF_TODAY.addDays(-dateRange).dateGmt(), START_TIME);
-      this.bound = this.ref;
+      this.ref = START_OF_TODAY.addDays(-dateRange);
+      this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
     }
   }
 
@@ -433,89 +440,87 @@ public without sharing abstract class RollupDateLiteral {
    * For the number n provided, starts 00:00:00 of the next day and continues for the next n days.
    * This does not include the current day. For example, NEXT_N_DAYS:1 is equivalent to TOMORROW.
    */
-  private class NextNDaysLiteral extends RangedLiteral {
+  private class NextNDaysLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = START_OF_TODAY.addDays(1); // excludes today
-      this.bound = START_OF_TODAY.addDays(dateRange);
+      this.bound = getRelativeDatetime(START_OF_TODAY.date().addDays(dateRange), END_TIME);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 of the last day of the previous week and continues for the past n weeks.
    */
-  private class LastNWeeksLiteral extends RangedLiteral {
+  private class LastNWeeksLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1), END_TIME);
-      this.ref = Datetime.newInstanceGmt(this.bound.addDays(-1 * 7 * dateRange).date(), START_TIME);
+      this.bound = getRelativeDatetime(START_OF_TODAY.date().toStartOfWeek().addDays(-1), END_TIME);
+      this.ref = getRelativeDatetime(this.bound.date().addDays(-1 * 7 * dateRange).addDays(1), START_TIME);
     }
   }
 
   /**
    * For the number n provided, creates a fixed week bound set n weeks ago in the past
    */
-  private class NWeeksAgoLiteral extends RangedLiteral {
+  private class NWeeksAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(-1 * 7 * Integer.valueOf(num)), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addDays(7).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(-7 * Integer.valueOf(num)), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.date().addDays(6), END_TIME);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 of the first day of the next week and continues for the next n weeks.
    */
-  private class NextNWeeksLiteral extends RangedLiteral {
+  private class NextNWeeksLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = this.ref.addDays(7 * dateRange);
+      this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(7), START_TIME);
+      this.bound = getRelativeDateTime(this.ref.date().addDays(7 * dateRange).addDays(-1), END_TIME);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 of the last day of the previous month and continues for the past n months.
    */
-  private class LastNMonthsLiteral extends RangedLiteral {
+  private class LastNMonthsLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       Date lastDayPreviousMonth = System.today().toStartOfMonth().addDays(-1);
-      this.bound = Datetime.newInstanceGmt(lastDayPreviousMonth, END_TIME);
-      this.ref = Datetime.newInstanceGmt(lastDayPreviousMonth.toStartOfMonth().addMonths(-dateRange), START_TIME);
+      this.bound = getRelativeDatetime(lastDayPreviousMonth, END_TIME);
+      this.ref = getRelativeDatetime(lastDayPreviousMonth.toStartOfMonth().addMonths(-(dateRange - 1)), START_TIME);
     }
   }
 
   /**
    * For the number n provided, creates a fixed month bound set n months ago in the past
    */
-  private class NMonthsAgoLiteral extends RangedLiteral {
+  private class NMonthsAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(System.today().toStartOfMonth().addMonths(-dateRange), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(1).date(), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(-dateRange), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.date().addMonths(1).addDays(-1), END_TIME);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 of the first day of the next month and continues for the next n months.
    */
-  private class NextNMonthsLiteral extends RangedLiteral {
+  private class NextNMonthsLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      Date startDayOfNextMonth = System.today().toStartOfMonth().addMonths(1);
-      this.ref = Datetime.newInstanceGmt(startDayOfNextMonth, START_TIME);
-      this.bound = Datetime.newInstanceGmt(startDayOfNextMonth.addMonths(dateRange).addDays(-1), END_TIME);
+      this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
+      this.bound = this.ref.addMonths(dateRange);
     }
   }
 
   /**
    * Starts 00:00:00 of the previous quarter and continues to the end of that quarter.
    */
-  private virtual class LastQuarterLiteral extends RangedLiteral {
+  private virtual class LastQuarterLiteral extends RollupDateLiteral {
     public LastQuarterLiteral() {
-      this.ref = Datetime.newInstanceGmt(this.getLastQuarterStart(), START_TIME);
-      Integer endMonth = this.ref.addMonths(3).month();
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+      this.ref = getRelativeDatetime(this.getLastQuarterStart(), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME);
     }
 
     protected virtual Date getLastQuarterStart() {
@@ -526,11 +531,10 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 of the current quarter and continues to the end of the current quarter.
    */
-  private virtual class ThisQuarterLiteral extends RangedLiteral {
+  private virtual class ThisQuarterLiteral extends RollupDateLiteral {
     public ThisQuarterLiteral() {
-      this.ref = Datetime.newInstanceGmt(this.getThisQuarterStart(), START_TIME);
-      Integer endMonth = this.ref.addMonths(3).month();
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+      this.ref = getRelativeDatetime(this.getThisQuarterStart(), START_TIME);
+      this.bound = this.ref.addMonths(3);
     }
 
     protected virtual Date getThisQuarterStart() {
@@ -541,11 +545,10 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 of the next quarter and continues to the end of that quarter.
    */
-  private virtual class NextQuarterLiteral extends RangedLiteral {
+  private virtual class NextQuarterLiteral extends RollupDateLiteral {
     public NextQuarterLiteral() {
-      this.ref = Datetime.newInstanceGmt(this.getNextQuarterDate(), START_TIME);
-      Integer endMonth = this.ref.addMonths(3).month();
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(2).addDays(Date.daysInMonth(this.ref.year(), endMonth)).date(), END_TIME);
+      this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).date().addDays(-1), END_TIME);
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -556,37 +559,38 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 of the previous quarter and continues to the end of the previous nth quarter.
    */
-  private virtual class LastNQuartersLiteral extends RangedLiteral {
+  private virtual class LastNQuartersLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
-      Integer quarterRange = Integer.valueOf(num) - 1;
-      this.bound = Datetime.newInstanceGmt(this.getLastQuarterStart(), START_TIME);
-      this.ref = this.bound.addMonths(quarterRange * -3);
+      Integer quarterRange = Integer.valueOf(num);
+      this.bound = getRelativeDatetime(this.getLastQuarterStart().addDays(-1), END_TIME);
+      // deviation - it's just like the description, in that this uses END_TIME instead of START_TIME.
+      this.ref = this.bound.addMonths(-3 * quarterRange);
     }
 
     protected virtual Date getLastQuarterStart() {
-      return getPriorQuarterStart();
+      return Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1);
     }
   }
 
   /**
    * For the number n provided, creates a fixed quarter bound set n quarters ago in the past
    */
-  private class NQuartersAgoLiteral extends RangedLiteral {
+  private class NQuartersAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(3).date(), END_TIME);
+      this.ref = getRelativeDatetime(Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).date().addDays(-1), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 of the next quarter and continues to the end of the nth quarter.
    */
-  private virtual class NextNQuartersLiteral extends RangedLiteral {
+  private virtual class NextNQuartersLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(this.getNextQuarterDate(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(quarterRange * 3).date(), END_TIME);
+      this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(quarterRange * 3).date().addDays(-1), END_TIME);
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -597,43 +601,43 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 on January 1 of the current year and continues through the end of December 31 of the current year.
    */
-  private class ThisYearLiteral extends RangedLiteral {
+  private class ThisYearLiteral extends RollupDateLiteral {
     public ThisYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(System.today().year(), 1, 1);
-      this.bound = Datetime.newInstance(Date.newInstance(System.today().year(), 12, 31), END_TIME);
+      this.ref = Datetime.newInstance(System.today().year(), 1, 1);
+      this.bound = getEndOfYear(System.today().year());
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the previous year and continues through the end of December 31 of that year.
    */
-  private class LastYearLiteral extends RangedLiteral {
+  private class LastYearLiteral extends RollupDateLiteral {
     public LastYearLiteral() {
       Integer lastYearNumber = System.today().year() - 1;
-      this.ref = Datetime.newInstanceGmt(lastYearNumber, 1, 1);
-      this.bound = Datetime.newInstanceGmt(Date.newInstance(lastYearNumber, 12, 31), END_TIME);
+      this.ref = Datetime.newInstance(lastYearNumber, 1, 1);
+      this.bound = getEndOfYear(lastYearNumber);
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of that year
    */
-  private class NextYearLiteral extends RangedLiteral {
+  private class NextYearLiteral extends RollupDateLiteral {
     public NextYearLiteral() {
       Integer nextYearNumber = System.today().year() + 1;
-      this.ref = Datetime.newInstanceGmt(nextYearNumber, 1, 1);
-      this.bound = Datetime.newInstanceGmt(Date.newInstance(nextYearNumber, 12, 31), END_TIME);
+      this.ref = Datetime.newInstance(nextYearNumber, 1, 1);
+      this.bound = getEndOfYear(nextYearNumber);
     }
   }
 
   /**
    * For the number n provided, starts 00:00:00 on January 1 of the previous year and continues through the end of December 31 of the previous nth year.
    */
-  private virtual class LastNYearsLiteral extends RangedLiteral {
+  private virtual class LastNYearsLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = Datetime.newInstanceGmt(this.getStartOfLastYear(), START_TIME);
-      this.ref = Datetime.newInstanceGmt(this.bound.addYears(-dateRange).date(), END_TIME);
+      this.ref = getRelativeDatetime(this.getStartOfLastYear().addYears(-(dateRange - 1)), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addYears(dateRange).date().addDays(-1), END_TIME);
     }
 
     protected virtual Date getStartOfLastYear() {
@@ -644,22 +648,22 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * For the number n provided, creates a fixed year bound set n years ago in the past
    */
-  private class NYearsAgoLiteral extends RangedLiteral {
+  private class NYearsAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(Date.newInstance(System.today().year(), 1, 1).addYears(-dateRange), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addYears(1).date(), END_TIME);
+      this.ref = getRelativeDatetime(Date.newInstance(System.today().year(), 1, 1).addYears(-dateRange), START_TIME);
+      this.bound = getEndOfYear(this.ref.year());
     }
   }
 
   /**
    * Starts 00:00:00 on January 1 of the following year and continues through the end of December 31 of the nth year.
    */
-  private virtual class NextNYearsLiteral extends RangedLiteral {
+  private virtual class NextNYearsLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(this.getStartOfNextYear(), START_TIME);
-      this.bound = Datetime.newInstanceGmt(Date.newInstance(this.ref.year() + dateRange, 12, 31), END_TIME);
+      this.ref = getRelativeDatetime(this.getStartOfNextYear(), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addYears(dateRange).date().addDays(-1), END_TIME);
     }
 
     protected virtual Date getStartOfNextYear() {
@@ -699,18 +703,18 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class LastNFiscalQuartersLiteral extends LastNQuartersLiteral {
     protected override Date getLastQuarterStart() {
-      return FISCAL_INFO.CurrentQuarterStartDate.addMonths(-3);
+      return FISCAL_INFO.CurrentQuarterStartDate;
     }
   }
 
   /**
    * For the number n provided, creates a fixed fiscal quarter bound set n fiscal quarters ago in the past
    */
-  private class NFiscalQuartersAgoLiteral extends RangedLiteral {
+  private class NFiscalQuartersAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.CurrentQuarterStartDate.addMonths(-3 * quarterRange), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addMonths(3).date(), END_TIME);
+      this.ref = getRelativeDatetime(FISCAL_INFO.CurrentQuarterStartDate.addMonths(-3 * quarterRange), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME);
     }
   }
 
@@ -726,30 +730,30 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 on the first day of the last fiscal year and continues through the end of the last day of that fiscal year.
    */
-  private class LastFiscalYearLiteral extends RangedLiteral {
+  private class LastFiscalYearLiteral extends RollupDateLiteral {
     public LastFiscalYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearStartDate.addYears(-1), START_TIME);
-      this.bound = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearStartDate.addDays(-1), END_TIME);
+      this.ref = getRelativeDatetime(FISCAL_INFO.FiscalYearStartDate.addYears(-1), START_TIME);
+      this.bound = getRelativeDatetime(FISCAL_INFO.FiscalYearStartDate.addDays(-1), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the current fiscal year and continues through the end of the last day of the fiscal year.
    */
-  private class ThisFiscalYearLiteral extends RangedLiteral {
+  private class ThisFiscalYearLiteral extends RollupDateLiteral {
     public ThisFiscalYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearStartDate, START_TIME);
-      this.bound = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearEndDate, END_TIME);
+      this.ref = getRelativeDatetime(FISCAL_INFO.FiscalYearStartDate, START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addYears(1).date().addDays(-1), END_TIME);
     }
   }
 
   /**
    * Starts 00:00:00 on the first day of the next fiscal year and continues through the end of the last day of that fiscal year.
    */
-  private class NextFiscalYearLiteral extends RangedLiteral {
+  private class NextFiscalYearLiteral extends RollupDateLiteral {
     public NextFiscalYearLiteral() {
-      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearStartDate.addYears(1), START_TIME);
-      this.bound = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearEndDate.addYears(1), END_TIME);
+      this.ref = getRelativeDatetime(FISCAL_INFO.FiscalYearStartDate.addYears(1), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addYears(1).date().addDays(-1), END_TIME);
     }
   }
 
@@ -765,11 +769,11 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * For the number n provided, creates a fixed fiscal year bound set n fiscal years ago in the past
    */
-  private class NFiscalYearsAgoLiteral extends RangedLiteral {
+  private class NFiscalYearsAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer yearRange = Integer.valueOf(num);
-      this.ref = Datetime.newInstanceGmt(FISCAL_INFO.FiscalYearStartDate.addYears(-yearRange), START_TIME);
-      this.bound = Datetime.newInstanceGmt(this.ref.addYears(1).date(), END_TIME);
+      this.ref = getRelativeDatetime(FISCAL_INFO.FiscalYearStartDate.addYears(-yearRange), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.addYears(1).date().addDays(-1), END_TIME);
     }
   }
 
@@ -788,6 +792,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private abstract class FunctionLiteral extends RollupDateLiteral {
     protected Integer bound;
+    protected Boolean wasDate = false;
 
     public override String toString() {
       return String.valueOf(this.bound);
@@ -799,14 +804,27 @@ public without sharing abstract class RollupDateLiteral {
 
     protected abstract Integer getComparisonNumber(Datetime val);
 
-    protected override Boolean isEqualTo(Datetime val) {
-      return this.bound == this.getComparisonNumber(val);
+    protected override Boolean isEqualTo(Object val) {
+      Datetime castVal = this.getTimezoneAdjustedDatetime(val);
+      return this.bound == this.getComparisonNumber(castVal);
     }
-    protected override Boolean isGreaterThan(Datetime val) {
-      return this.bound < this.getComparisonNumber(val);
+    protected override Boolean isGreaterThan(Object val) {
+      Datetime castVal = this.getTimezoneAdjustedDatetime(val);
+      return this.bound < this.getComparisonNumber(castVal);
     }
-    protected override Boolean isLessThan(Datetime val) {
-      return this.bound > this.getComparisonNumber(val);
+    protected override Boolean isLessThan(Object val) {
+      Datetime castVal = this.getTimezoneAdjustedDatetime(val);
+      return this.bound > this.getComparisonNumber(castVal);
+    }
+    private Datetime getTimezoneAdjustedDatetime(Object val) {
+      if (val instanceof Date) {
+        val = Datetime.newInstanceGmt((Date) val, END_TIME);
+        this.wasDate = true;
+      } else {
+        this.wasDate = false;
+        val = Datetime.newInstance(((Datetime) val).getTime());
+      }
+      return (Datetime) val;
     }
   }
 
@@ -850,10 +868,10 @@ public without sharing abstract class RollupDateLiteral {
 
   // there's always an exception to the rule!
   /** Returns a Date representing the day portion of a DateTime field. */
-  private class DayOnlyFunctionLiteral extends RangedLiteral {
+  private class DayOnlyFunctionLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String dateString) {
       this.ref = Datetime.newInstanceGmt(Date.valueOf(dateString), START_TIME);
-      this.bound = this.ref;
+      this.bound = this.ref.addDays(1);
     }
   }
 
@@ -871,6 +889,11 @@ public without sharing abstract class RollupDateLiteral {
   private static Integer getFiscalMonthsOffset(Integer monthsSinceFiscalStart) {
     if (Math.abs(monthsSinceFiscalStart) > 12) {
       monthsSinceFiscalStart = Math.mod(monthsSinceFiscalStart, 12);
+    }
+    if (monthsSinceFiscalStart == 0) {
+      monthsSinceFiscalStart = 12;
+    } else if (monthsSinceFiscalStart < 0) {
+      monthsSinceFiscalStart = monthsSinceFiscalStart + 12;
     }
     return monthsSinceFiscalStart;
   }
@@ -902,15 +925,26 @@ public without sharing abstract class RollupDateLiteral {
 
   private class FiscalYearFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
-      return val.monthGmt() >= FISCAL_INFO.FiscalYearStartDate.month() &&
-        val.yearGmt() > FISCAL_INFO.FiscalYearStartDate.year()
-        ? val.yearGmt() + 1
-        : val.yearGmt();
+      Integer fiscalYear = val.yearGmt();
+      if (val.dateGmt() > FISCAL_INFO.FiscalYearEndDate) {
+        fiscalYear++;
+      } else if (
+        val.monthGmt() >= FISCAL_INFO.FiscalYearStartDate.month() &&
+        // Fiscal year is a cursed concept, in that start/ending in January
+        // behaves completely differently than every other possible combo
+        FISCAL_INFO.FiscalYearStartDate.month() != 1
+      ) {
+        fiscalYear++;
+      }
+      return fiscalYear;
     }
   }
 
   private class HourInDayFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
+      if (this.wasDate) {
+        return this.bound;
+      }
       return val.hourGmt();
     }
   }
@@ -919,6 +953,10 @@ public without sharing abstract class RollupDateLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
       return getWeekNumber(val.dayGmt());
     }
+  }
+
+  private static Datetime getEndOfYear(Integer yearNumber) {
+    return getRelativeDatetime(Date.newInstance(yearNumber, 12, 31), END_TIME);
   }
 
   private static Integer getWeekNumber(Integer dayNumber) {
@@ -943,7 +981,7 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class WeekInYearFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
-      return Integer.valueOf(val.format('ww'));
+      return Integer.valueOf(val.format('w'));
     }
   }
 }

@@ -1113,7 +1113,119 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(2, acc.AnnualRevenue);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable'].Status);
+    System.assertEquals(0, [SELECT COUNT() FROM AsyncApexJob WHERE JobType != 'Queueable']);
+  }
+
+  @IsTest
+  static void doesNotClearParentFieldsWhenFullRecalcIsDeferred() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = acc.NumberOfEmployees = 5;
+    update acc;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixQueue', ParentId = acc.Id, PreferenceRank = 2)
+    };
+    insert cpas;
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 50,
+      MaxNumberOfQueries__c = 5, // has to be exactly the number that allows the first rollup but not the second
+      BatchChunkSize__c = 10,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      IsRollupLoggingEnabled__c = true,
+      MaxParentRowsUpdatedAtOnce__c = 10,
+      MaxRollupRetries__c = -1 // don't actually allow the deferral
+    );
+    // rollups are processed in reverse order
+    Rollup__mdt countRollup = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'COUNT_DISTINCT',
+      CalcItemWhereClause__c = 'PreferenceRank = 2'
+    );
+    Rollup__mdt sumRollup = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'PreferenceRank = 2'
+    );
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(new List<Rollup__mdt>{ sumRollup, countRollup }, Rollup.InvocationPoint.FROM_APEX.name());
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(cpas.get(5).PreferenceRank, acc.AnnualRevenue, 'SUM should have been calculated');
+    System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been reset due to being deferred');
+  }
+
+  @IsTest
+  static void updatesSyncWhenDeferredRollupIsInPlay() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = acc.NumberOfEmployees = 5;
+    update acc;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveQueue', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixQueue', ParentId = acc.Id, PreferenceRank = 2)
+    };
+    insert cpas;
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 50,
+      MaxNumberOfQueries__c = 8, // has to be exactly the number that allows the first rollup but not the second
+      BatchChunkSize__c = 10,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      IsRollupLoggingEnabled__c = true,
+      MaxParentRowsUpdatedAtOnce__c = 10,
+      MaxRollupRetries__c = -1 // don't actually allow the deferral
+    );
+    // rollups are processed in reverse order
+    Rollup__mdt countRollup = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'COUNT_DISTINCT',
+      CalcItemWhereClause__c = 'PreferenceRank = 2'
+    );
+    Rollup__mdt sumRollup = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      RollupFieldOnCalcItem__c = 'PreferenceRank',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'Account',
+      RollupOperation__c = 'SUM',
+      CalcItemWhereClause__c = 'PreferenceRank = 2'
+    );
+
+    // RollupSObjectUpdater respects being over rollup limits
+    // so we specifically do NOT wrap in start/stopTest because we need to prove the updates happen sync
+    Rollup.performBulkFullRecalc(new List<Rollup__mdt>{ sumRollup, countRollup }, Rollup.InvocationPoint.FROM_APEX.name());
+
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(cpas.get(5).PreferenceRank, acc.AnnualRevenue, 'SUM should have been calculated');
+    System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been reset due to being deferred');
   }
 
   @IsTest
@@ -1300,6 +1412,38 @@ private class RollupFullRecalcTests {
 
     Account updatedAcc = [SELECT Name FROM Account];
     System.assertEquals(cpas[1].Name, updatedAcc.Name, 'Should have taken first based on PreferenceRank');
+  }
+
+  @IsTest
+  static void resetsDatesForFirstProperly() {
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'one', ParentId = acc.Id, PreferenceRank = 3, ActiveFromDate = System.today()),
+      new ContactPointAddress(Name = 'two', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'ActiveFromDate',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        LookupObject__c = 'Account',
+        RollupOperation__c = 'FIRST',
+        CalcItemWhereClause__c = 'ActiveFromDate != TODAY'
+      ),
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
+    );
+
+    Test.startTest();
+    Rollup.performFullRecalculation(meta);
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Description FROM Account];
+    System.assertEquals(null, updatedAcc.Description, 'Should have taken first based on PreferenceRank');
   }
 
   @IsTest

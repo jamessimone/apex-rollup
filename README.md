@@ -14,12 +14,12 @@ As well, don't miss [the Wiki](../../wiki), which includes more advanced informa
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkRSAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkVFAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkRSAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SkVFAA0">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -185,6 +185,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Max Number Of Queries` - (defaults to 50) - Configure this number to decide how many queries Rollup is allowed to issue before restarting in another context. Consider the downstream query needs when your parent objects are updated when configuring this field. By safely requeueing Rollup in conjunction with this number, we ensure no query limit is ever hit.
 - `Max Parent Rows Updated At Once` (defaults to 5000) - The maximum number of parent rows that can be updated in a single transaction. Otherwise, Rollup splits the parent items evenly and updates them in separate transactions. If you don't fill out this field (on the Org Defaults or specific Control records), defaults to half of the DML row limit.
 - `Max Rollup Retries` - (defaults to 100) - Only configurable on the Org Default record. Use in conjunction with `Max Query Rows`. This determines the maximum possible rollup jobs (either batched or queued) that can be spawned from a single overall rollup operation due to the prior one(s) exceeding the configured query limit.
+- `Flow - Only Run In These Contexts` - Provide a comma-separated list of flow contexts (INSERT, UPDATE, UPSERT, DELETE, REFRESH) that flow-powered rollups should run in (skips any rollups called where the flow context does not match an entry in this list)
 - `Replace Calc Items Async When Over Count` - (defaults to 1) - in some instances, calc items passed into rollup need to be requeried - either to get additional fields (in the case of polymorphic queries), or if parent-level filters have been added to any rollup's `Calc Item Where Clause`. For these cases, we want to avoid adding unncessary queries to the sync portion of the run; we also want to avoid a slowdown in the sync processing time that Apex Rollup requires. You can change this number from the default of 1 to 0 if you want any necessary replacement to _always_ happen in the async scope.
 - Apex Rollup (optional) - lookup field to the `Rollup__mdt` metadata record.
 - `Should Abort Run` - if done at the `Org_Defaults` level, completely shuts down all rollup operations in the org. Otherwise, can be used on an individual rollup basis to turn on/off.

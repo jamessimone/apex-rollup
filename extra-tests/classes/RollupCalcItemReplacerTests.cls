@@ -1,8 +1,9 @@
 @IsTest
 private class RollupCalcItemReplacerTests {
+  static final Integer ACC_ANNUAL_REVENUE = 5;
   @TestSetup
   static void setup() {
-    insert new Account(Name = RollupCalcItemReplacerTests.class.getName());
+    insert new Account(Name = RollupCalcItemReplacerTests.class.getName(), AnnualRevenue = ACC_ANNUAL_REVENUE);
   }
 
   @IsTest
@@ -115,5 +116,17 @@ private class RollupCalcItemReplacerTests {
     List<Contact> replacedContacts = replacer.replace(new List<Contact>{ con }, new List<Rollup__mdt>{ meta });
 
     System.assertNotEquals(null, replacedContacts[0].Account.Name);
+  }
+
+  @IsTest
+  static void addsMissingBaseFieldsToCalcItems() {
+    Account acc = [SELECT Id FROM Account];
+
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
+    );
+    acc = (Account) replacer.replace(new List<Account>{ acc }, new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'AnnualRevenue != 0') })[0];
+
+    System.assertEquals(ACC_ANNUAL_REVENUE, acc.AnnualRevenue);
   }
 }

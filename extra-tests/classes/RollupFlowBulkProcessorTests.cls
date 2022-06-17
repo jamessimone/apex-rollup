@@ -104,6 +104,36 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @IsTest
+  static void shouldSkipRunWhenContextPartOfListedExclusions() {
+    Account acc = [SELECT Id FROM Account];
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, OnlyRunInFlowContexts__c = 'UPDATE, UPSERT, REFRESH');
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, AccountId = acc.Id) };
+    input.rollupContext = 'INSERT';
+    input.shouldRunSync = true;
+    input.deferProcessing = false;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue'
+      )
+    };
+
+    // since it should run sync, we don't wrap in start/stopTest
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(null, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void syncUpdatesWithReparentingRunProperly() {
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 5;
