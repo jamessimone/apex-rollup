@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Bugfixes for date literals associated with QUARTER/FISCAL_QUARTER, deferred rollup fixes, added the ability to opt Flow-driven rollups out of running in different flow contexts. Added the ability to write any type of field to text/text area parent fields.",
-            "versionNumber": "1.5.9.0",
+            "versionName": "Fixes an issue reported by solo-1234 where parent reset processors could fail during a full recalc when multiple parents were present in a single reset operation",
+            "versionNumber": "1.5.10.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

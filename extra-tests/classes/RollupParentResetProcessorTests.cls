@@ -88,4 +88,27 @@ private class RollupParentResetProcessorTests {
 
     System.assertEquals(null, ex, 'Should not fail when field is not filterable');
   }
+
+  @IsTest
+  static void doesNotBlowUpOnWhenMultipleMetadataPresentForDifferentParents() {
+    RollupParentResetProcessor processor = new RollupParentResetProcessor(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(RollupFieldOnLookupObject__c = 'Description', LookupObject__c = 'Account'),
+        new Rollup__mdt(RollupFieldOnLookupObject__c = 'FirstName', LookupObject__c = 'Contact')
+      },
+      Account.SObjectType,
+      'SELECT Id\nFROM Account WHERE Id != null',
+      new Set<String>(),
+      null
+    );
+
+    Exception ex;
+    try {
+      processor.runCalc();
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals(null, ex, 'Should not fail when different parent fields present');
+  }
 }
