@@ -1829,8 +1829,8 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees, Phone FROM Account];
-    System.assertEquals(0, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
-    System.assertEquals(0, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
+    System.assertEquals(null, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
+    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
     System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since calc item matches');
   }
 

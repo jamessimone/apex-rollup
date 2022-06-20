@@ -536,6 +536,9 @@ public without sharing abstract class RollupCalculator {
       if (this.returnVal == RollupFieldInitializer.Current.maximumLongValue || this.returnVal == RollupFieldInitializer.Current.minimumLongValue) {
         this.returnVal = 0.00;
       }
+      if (this.returnVal == 0) {
+        this.returnVal = this.metadata.FullRecalculationDefaultNumberValue__c != null ? this.metadata.FullRecalculationDefaultNumberValue__c : null;
+      }
       return this.returnVal;
     }
 
@@ -641,7 +644,7 @@ public without sharing abstract class RollupCalculator {
 
     public virtual override Object getReturnValue() {
       Object superReturnVal = super.getReturnValue();
-      if (superReturnVal instanceof Decimal && superReturnVal != 0) {
+      if (superReturnVal instanceof Decimal) {
         superReturnVal = Datetime.newInstance(((Decimal) superReturnVal).longValue());
       }
       return superReturnVal;
@@ -755,7 +758,7 @@ public without sharing abstract class RollupCalculator {
       this.setReturnValue();
       // we shouldn't encourage negative counts. it's totally possible as a rollup is implemented and updates happen before
       // inserts or deletes, but it doesn't really make sense in the context of tracking
-      Integer potentialReturnVal = ((Decimal) super.getReturnValue()).intValue();
+      Integer potentialReturnVal = ((Decimal) super.getReturnValue())?.intValue();
       return potentialReturnVal < 0 ? 0.00 : potentialReturnVal;
     }
 

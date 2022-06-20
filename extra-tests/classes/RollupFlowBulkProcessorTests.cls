@@ -167,7 +167,7 @@ private class RollupFlowBulkProcessorTests {
 
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     // reparenting should purely subtract from account ...
-    System.assertEquals(0, acc.AnnualRevenue);
+    System.assertEquals(null, acc.AnnualRevenue);
   }
 
   @IsTest

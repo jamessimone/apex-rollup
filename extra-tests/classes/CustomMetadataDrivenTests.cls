@@ -138,7 +138,7 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(grandparentTwo.Id, child.RollupParent__r.RollupGrandparent__c);
 
     grandparentOne = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentOne.Id];
-    System.assertEquals(0, grandparentOne.AmountfromChildren__c);
+    System.assertEquals(null, grandparentOne.AmountfromChildren__c);
 
     grandparentTwo = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentTwo.Id];
     System.assertEquals(child.NumberField__c, grandparentTwo.AmountfromChildren__c);

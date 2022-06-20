@@ -359,7 +359,7 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
-  static void shouldReturnZeroOnFullRecalcIfNoMatchingItemsCount() {
+  static void shouldReturnNullOnFullRecalcIfNoMatchingItemsCount() {
     RollupCalculator calc = getCalculator(
       0,
       Rollup.Op.COUNT,
@@ -374,11 +374,11 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
 
-    System.assertEquals(0, calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   @IsTest
-  static void shouldReturnZeroOnFullRecalcIfNoItemsPresentCount() {
+  static void shouldReturnNullOnFullRecalcIfNoItemsPresentCount() {
     RollupCalculator calc = getCalculator(
       0,
       Rollup.Op.COUNT,
@@ -391,7 +391,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<SObject>(), new Map<Id, SObject>());
 
-    System.assertEquals(0, calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   @IsTest
@@ -586,7 +586,7 @@ private class RollupCalculatorTests {
     ContactPointAddress cpa = new ContactPointAddress(IsPrimary = false, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
     calc.performRollup(new List<SObject>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(IsPrimary = true) });
 
-    System.assertEquals(0, calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   @IsTest
@@ -696,7 +696,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Opportunity>{ newerOpp }, oldOppMap);
 
-    System.assertEquals(0, calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   // CONCAT tests
