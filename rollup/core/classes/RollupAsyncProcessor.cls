@@ -217,7 +217,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.rollups.remove(index);
         this.deferredRollups.add(roll);
       } else {
-        this.initializeRollupFieldDefaults(lookupItems, roll);
+        this.flagFullRecalcRollups(roll);
       }
     }
 
@@ -546,7 +546,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
       RollupLogger.Instance.log('starting rollup for:', roll, LoggingLevel.DEBUG);
-      updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
+      List<SObject> updatedLookupItems = this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems);
+      for (SObject updatedLookupItem : updatedLookupItems) {
+        updatedLookupRecords.put(updatedLookupItem.Id, updatedLookupItem);
+        this.storeParentResetField(roll, updatedLookupItem);
+      }
     }
 
     if (this.isTimingOut) {
@@ -659,12 +663,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         lookupItemKeys.remove(lookupId);
         // this way, the updated values are persisted for each field, and the default values are initialized
         SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
-        this.resetLookupFieldsForNullOrFullRecalcs(updatedLookupObject, roll);
         localLookupItems.add(updatedLookupObject);
       }
     }
     localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
-    this.initializeRollupFieldDefaults(localLookupItems, roll);
+    this.flagFullRecalcRollups(roll);
     return localLookupItems;
   }
 
@@ -850,21 +853,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return lookupFieldToCalcItems;
   }
 
-  private void initializeRollupFieldDefaults(List<SObject> lookupItems, RollupAsyncProcessor rollup) {
+  private void flagFullRecalcRollups(RollupAsyncProcessor rollup) {
     if (this.isValidAdditionalCalcItemRetrieval(rollup) && rollup.isFullRecalc == false) {
       rollup.isFullRecalc = true;
-    }
-    // prior to returning, we need to ensure the default value for the rollup field is set
-    for (SObject lookupItem : lookupItems) {
-      this.resetLookupFieldsForNullOrFullRecalcs(lookupItem, rollup);
-    }
-  }
-
-  private void resetLookupFieldsForNullOrFullRecalcs(SObject lookupItem, RollupAsyncProcessor rollup) {
-    if (lookupItem.getSObjectType() == rollup.lookupObj) {
-      if (lookupItem.get(rollup.opFieldOnLookupObject) == null || this.isValidFullRecalcReset(rollup, lookupItem)) {
-        lookupItem.put(rollup.opFieldOnLookupObject, RollupFieldInitializer.Current.getDefaultValue(rollup.opFieldOnLookupObject));
-      }
     }
   }
 
@@ -1027,7 +1018,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // has already been setup to adjust the lookup item's rollup field
         if (localCalcItems.isEmpty() == false || (localCalcItems.isEmpty() && oldLookupItems.isEmpty())) {
           Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
-          calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
+          Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset(roll, lookupRecord) == false ? null : priorVal;
+          calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'lookup');
         }
       }
@@ -1105,19 +1097,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupOp = Rollup.Op.valueOf(roll.op.name().substringAfter('_'));
     }
     if (rollupCalc == null) {
-      rollupCalc = RollupCalculator.Factory.getCalculator(
-        priorVal,
-        rollupOp,
-        roll.opFieldOnCalcItem,
-        roll.opFieldOnLookupObject,
-        roll.metadata,
-        lookupRecordKey,
-        lookupKeyField
-      );
-    } else {
-      rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
+      rollupCalc = RollupCalculator.Factory.getCalculator(rollupOp, roll.opFieldOnCalcItem, roll.opFieldOnLookupObject, roll.metadata, lookupKeyField);
     }
     rollupCalc.setFullRecalc(roll.isFullRecalc);
+    rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
     rollupCalc.setEvaluator(roll.eval);
     rollupCalc.setCDCUpdate(this.isCDCUpdate);
     rollupCalc.setMultiCurrencyInfo(lookupRecord);
@@ -1183,12 +1166,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   ) {
     RollupLogger.Instance.log(logKey + ' record prior to rolling up:', lookupRecord, LoggingLevel.DEBUG);
     Object newVal = calc.getReturnValue();
-    if (priorVal != newVal || this.isFullRecalc || roll.isFullRecalc) {
+    if (priorVal != newVal) {
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
       RollupLogger.Instance.log('updating record ...', LoggingLevel.FINE);
       updater.updateField(lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
-      this.storeParentResetField(roll, lookupRecord);
     }
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }

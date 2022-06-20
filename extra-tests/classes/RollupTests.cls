@@ -1,11 +1,9 @@
 @IsTest
 private class RollupTests {
-  static Object testPriorVal;
   static Rollup.Op testOp;
   static SObjectField testOpFieldOnCalcItem;
   static SObjectField testOpFieldOnLookupObject;
   static Rollup__mdt testMetadata;
-  static String testLookupRecordKey;
   static SObjectField testLookupKeyField;
   static Rollup.Op rollupOp;
   static Boolean calcMockWasCalled = false;
@@ -24,29 +22,25 @@ private class RollupTests {
 
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
-      Object priorVal,
       Rollup.Op op,
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
       Rollup__mdt metadata,
-      String lookupRecordKey,
       SObjectField lookupKeyField
     ) {
-      testPriorVal = priorVal;
       testOp = op;
       testOpFieldOnCalcItem = opFieldOnCalcItem;
       testOpFieldOnLookupObject = opFieldOnLookupObject;
       testMetadata = metadata;
-      testLookupRecordKey = lookupRecordKey;
       testLookupKeyField = lookupKeyField;
       return new RollupCalcMock();
     }
   }
 
-  public class RollupCalcMock extends RollupCalculator {
+  private class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
-      super(0, rollupOp, null, null, null, new Rollup__mdt(), null, null);
+      super(rollupOp, null, Account.AnnualRevenue, null, new Rollup__mdt(), null);
       calcMockWasCalled = true;
     }
   }
@@ -294,7 +288,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated COUNT AFTER_UPDATE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE should decrement when field is removed');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE should decrement when field is removed');
   }
 
   @IsTest
@@ -344,7 +338,7 @@ private class RollupTests {
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated when empty COUNT AFTER_INSERT');
+    System.assertEquals(0, mock.Records.size(), 'Records should not have been populated COUNT AFTER_INSERT');
   }
 
   @IsTest
@@ -435,7 +429,8 @@ private class RollupTests {
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'MAX',
         CalcItem__c = 'ContactPointAddress',
-        FullRecalculationDefaultStringValue__c = 'Z'
+        FullRecalculationDefaultStringValue__c = 'Z',
+        IsFullRecordSet__c = true
       )
     };
 
@@ -816,7 +811,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_DELETE');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'MAX BEFORE_DELETE should take the maximum cpaortunity amount');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'MAX BEFORE_DELETE should take the maximum cpaortunity amount');
   }
 
   @IsTest
@@ -3086,7 +3081,7 @@ private class RollupTests {
     Datetime nowish = System.now();
 
     // it only matters that the amount below is LESS than the above value, and that "nowish" is assigned to the fullRecalculationDefaultNumberValue flow input value
-    List<Event> events = new List<Event>{ new Event(ActivityDateTime = nowish.addDays(-2), WhatId = con.Id) };
+    List<Event> events = new List<Event>{ new Event(WhatId = con.Id) };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(events);
     Rollup.records = null;
 
@@ -3100,6 +3095,7 @@ private class RollupTests {
     flowInput.rollupSObjectName = 'Contract';
     flowInput.rollupOperation = 'MAX';
     flowInput.fullRecalculationDefaultNumberValue = nowish.getTime();
+    flowInput.isFullRecordSet = true;
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(new List<Rollup.FlowInput>{ flowInput });
@@ -3122,6 +3118,7 @@ private class RollupTests {
     flowInputs[0].fullRecalculationDefaultStringValue = 'Z';
     flowInputs[0].rollupFieldOnOpObject = 'Name';
     flowInputs[0].rollupFieldOnCalcItem = 'Name';
+    flowInputs[0].isFullRecordSet = true;
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -3305,7 +3302,7 @@ private class RollupTests {
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(325, updatedAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
     Account updatedOldAcc = (Account) mock.Records[1];
-    System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+    System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
   @IsTest
@@ -3336,7 +3333,7 @@ private class RollupTests {
       'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one'
     );
     Account updatedOldAcc = (Account) mock.Records[1];
-    System.assertEquals(0, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+    System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }
 
   @IsTest
@@ -3373,7 +3370,7 @@ private class RollupTests {
 
     System.assertNotEquals(0, mock.Records.size());
     Account updatedAcc = (Account) new Map<Id, SObject>(mock.Records).get(acc.Id);
-    System.assertEquals(0, updatedAcc.AnnualRevenue, 'Count should have been decremented');
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'Count should have been decremented');
   }
 
   @IsTest
@@ -3480,7 +3477,7 @@ private class RollupTests {
       if (updatedAcc.Id == acc.Id) {
         System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE should only count updated entries reparented to it');
       } else if (updatedAcc.Id == oldAcc.Id) {
-        System.assertEquals(0, updatedAcc.AnnualRevenue, 'Old account should have had its annual revenue decremented');
+        System.assertEquals(null, updatedAcc.AnnualRevenue, 'Old account should have had its annual revenue decremented');
       }
     }
   }
@@ -3511,10 +3508,10 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
-    Account updatedAcc = (Account) mock.Records[1];
+    Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(acc.Id, updatedAcc.Id);
     System.assertEquals(50, updatedAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
-    Account updatedOldAcc = (Account) mock.Records[0];
+    Account updatedOldAcc = (Account) mock.Records[1];
     System.assertEquals(oldAcc.Id, updatedOldAcc.Id);
     System.assertEquals(null, updatedOldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
   }

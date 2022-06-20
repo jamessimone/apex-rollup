@@ -466,7 +466,7 @@ private class RollupFullRecalcTests {
     acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(1500, acc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
     reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id];
-    System.assertEquals(0, reparentedAccount.AnnualRevenue, 'Reparenting with REFRESH should run decrement logic on old parent');
+    System.assertEquals(null, reparentedAccount.AnnualRevenue, 'Reparenting with REFRESH should run decrement logic on old parent');
   }
 
   @IsTest
