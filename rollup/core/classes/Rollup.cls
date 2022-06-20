@@ -360,9 +360,9 @@ global without sharing virtual class Rollup {
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
     this.addToMap(props, 'Rollup Metadata', this.metadata);
     this.addToMap(props, 'Rollup Control', this.rollupControl);
-    this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? (Object) '10 items or more ...' : (Object) this.calcItems);
+    this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
     if (this.oldCalcItems?.isEmpty() == false) {
-      this.addToMap(props, 'Old Calc Items', this.oldCalcItems.size() > 10 ? (Object) '10 items or more ...' : (Object) this.oldCalcItems);
+      this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
     }
     this.addToMap(props, 'Query Count', this.queryCount);
     return props;

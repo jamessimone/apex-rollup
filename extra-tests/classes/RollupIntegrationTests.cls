@@ -1761,7 +1761,7 @@ private class RollupIntegrationTests {
     }
 
     System.assertNotEquals(null, ex);
-    System.assertEquals('Field: BillingAddress of type: ADDRESS specified invalid for rollup operation', ex.getMessage());
+    System.assertEquals('Calculation not defined for parent field: BillingAddress and op: MAX', ex.getMessage());
   }
 
   /** Invocable integration tests */

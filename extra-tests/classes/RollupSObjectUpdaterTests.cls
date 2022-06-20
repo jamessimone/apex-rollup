@@ -74,6 +74,29 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(String.valueOf(blobValue), opp.Description);
   }
 
+  @SuppressWarnings('PMD.EmptyWhileStmt')
+  @IsTest
+  static void doesNotUpdateRecordsWhichOnlyContainId() {
+    Account acc = new Account(Name = 'Should Not Be Updated');
+    insert acc;
+
+    acc = [SELECT Id, LastModifiedDate FROM Account];
+    Datetime nowish = System.now();
+    while (System.now() < nowish.addSeconds(1)) {
+      // let's waste some time together!
+      // we could later compare the hashCode() of
+      // the SObjects to ensure no update was made, but
+      // I've legitimately seen instances where the update
+      // happened so quick that a change in seconds wasn't registered
+      // and the hashCode for SObjects is made up of all the selected fields
+    }
+
+    new RollupSObjectUpdater().doUpdate(new List<SObject>{ new Account(Id = acc.Id) });
+
+    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
+    System.assertEquals(acc, updatedAccount, 'Last modified date should not have updated if only Id was passed');
+  }
+
   public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {
     public void dispatch(List<SObject> records) {
       dispatcherMockWasCalled = true;

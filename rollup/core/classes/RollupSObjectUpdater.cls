@@ -52,6 +52,7 @@ public without sharing virtual class RollupSObjectUpdater {
       if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
         dmlOptions.DuplicateRuleHeader.AllowSave = true;
       }
+      this.winnowRecords(recordsToUpdate);
       this.updateRecords(recordsToUpdate, dmlOptions);
       this.dispatch(recordsToUpdate);
     }
@@ -139,6 +140,15 @@ public without sharing virtual class RollupSObjectUpdater {
   private void performAsyncUpdate(List<SObject> recordsToUpdate) {
     if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs() && recordsToUpdate.isEmpty() == false) {
       System.enqueueJob(new RollupAsyncSaver(recordsToUpdate, this.rollupControl));
+    }
+  }
+
+  private void winnowRecords(List<SObject> records) {
+    for (Integer index = records.size() - 1; index >= 0; index--) {
+      SObject record = records.get(index);
+      if (record.getPopulatedFieldsAsMap().size() == 1 && record.get('Id') != null) {
+        records.remove(index);
+      }
     }
   }
 
