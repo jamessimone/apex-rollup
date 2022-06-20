@@ -105,11 +105,14 @@ public without sharing class RollupCalcItemReplacer {
       RollupLogger.Instance.log('replacing calc items with missing base fields using query string:', queryString, LoggingLevel.FINE);
       List<SObject> calcItemsWithReplacement = Database.query(queryString);
       Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(calcItems);
+      Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
       for (SObject calcItemWithReplacement : calcItemsWithReplacement) {
         if (idToCalcItem.containsKey(calcItemWithReplacement.Id)) {
           SObject calcItem = idToCalcItem.get(calcItemWithReplacement.Id);
           for (String baseField : baseFields) {
-            calcItem.put(baseField, calcItemWithReplacement.get(baseField));
+            if (fieldNameToDescribe.get(baseField)?.getDescribe().isCalculated() == false) {
+              calcItem.put(baseField, calcItemWithReplacement.get(baseField));
+            }
           }
         }
       }
