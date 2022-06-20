@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <description>Assigns the last phone number to the Account&apos;s BusinessPhone field</description>
@@ -85,7 +85,7 @@
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>54.0</apiVersion>
+    <apiVersion>55.0</apiVersion>
     <assignments>
         <name>Add_to_collections</name>
         <label>Add to collections</label>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Add_matching_description_to_Site</name>
@@ -501,7 +501,7 @@
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>54.0</apiVersion>
+    <apiVersion>55.0</apiVersion>
     <assignments>
         <name>Add_case_and_prior_case_to_collections</name>
         <label>Add case and prior case to collections</label>
