@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes an issue reported by solo-1234 where parent reset processors could fail during a full recalc when multiple parents were present in a single reset operation. Apex Rollup now omits parent records from being updated unless at least one rollup field has changed.",
-            "versionNumber": "1.5.10.0",
+            "versionName": "Fixed a few issues with the singular parent recalc button. Fixed an issue where full recalcs called from flow with UPSERT/UPDATE contexts wouldn't always run correctly",
+            "versionNumber": "1.5.11.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

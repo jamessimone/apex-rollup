@@ -444,7 +444,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isValidAdditionalCalcItemRetrieval(rollup) == false) {
       return;
     }
-    rollup.isFullRecalc = true;
 
     String key = rollup.calcItemType.getDescribe().getName() + String.valueOf(rollup.lookupFieldOnCalcItem);
     Boolean hasPreviouslyCachedItems = localCachedFullRecalcs.containsKey(key);
@@ -857,14 +856,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isValidAdditionalCalcItemRetrieval(rollup) && rollup.isFullRecalc == false) {
       rollup.isFullRecalc = true;
     }
-  }
-
-  private Boolean isValidFullRecalcReset(RollupAsyncProcessor rollup, SObject lookupItem) {
-    Boolean isValid = false;
-    if (rollup.isFullRecalc) {
-      isValid = this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false;
-    }
-    return isValid;
   }
 
   private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
