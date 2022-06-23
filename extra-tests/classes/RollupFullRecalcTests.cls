@@ -495,6 +495,51 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void clearsParentValuesWhenNoRefreshMatches() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    accs[0].AnnualRevenue = 1500;
+    update accs;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully clear');
+  }
+
+  @IsTest
+  static void clearsParentValuesWhenNoUpdateMatches() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    accs[0].AnnualRevenue = 1500;
+    update accs;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'UPSERT', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+    flowInputs[0].oldRecordsToRollup = new List<SObject>{ null };
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully clear');
+  }
+
+  @IsTest
   static void properlyPerformsFullRecalcsOnUpdateFromParent() {
     List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
 

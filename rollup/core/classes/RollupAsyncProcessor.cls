@@ -216,8 +216,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (lookupItems.getSObjectType() != roll.lookupObj) {
         this.rollups.remove(index);
         this.deferredRollups.add(roll);
-      } else {
-        this.flagFullRecalcRollups(roll);
       }
     }
 
@@ -376,6 +374,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           localLookupItems.remove(index);
         }
       }
+      this.fullRecalcProcessor?.processParentFieldsToReset(localLookupItems);
       return localLookupItems;
     }
 
@@ -415,6 +414,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
     // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute method"
+    this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
   }
 
@@ -660,13 +660,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     for (String lookupId : calcItemsByLookupField.keySet()) {
       if (updatedLookupRecords.containsKey(lookupId)) {
         lookupItemKeys.remove(lookupId);
-        // this way, the updated values are persisted for each field, and the default values are initialized
+        // this way, the updated values are persisted for each field
         SObject updatedLookupObject = updatedLookupRecords.get(lookupId);
         localLookupItems.add(updatedLookupObject);
       }
     }
     localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
-    this.flagFullRecalcRollups(roll);
     return localLookupItems;
   }
 
@@ -852,17 +851,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return lookupFieldToCalcItems;
   }
 
-  private void flagFullRecalcRollups(RollupAsyncProcessor rollup) {
-    if (this.isValidAdditionalCalcItemRetrieval(rollup) && rollup.isFullRecalc == false) {
-      rollup.isFullRecalc = true;
-    }
-  }
-
   private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
     Boolean isRunningAsnyc = this.getIsRunningAsync();
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = this.rollups[index];
-      rollup.isFullRecalc = rollup.isFullRecalc || this.isFullRecalc;
+      this.flagFullRecalcRollups(rollup);
 
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
@@ -882,6 +875,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       this.overrideParentRollupControlValues(rollup.rollupControl);
+    }
+  }
+
+  private void flagFullRecalcRollups(RollupAsyncProcessor rollup) {
+    if (this.isValidAdditionalCalcItemRetrieval(rollup) && rollup.isFullRecalc == false) {
+      rollup.isFullRecalc = true;
+    } else {
+      rollup.isFullRecalc = rollup.isFullRecalc || this.isFullRecalc;
     }
   }
 
