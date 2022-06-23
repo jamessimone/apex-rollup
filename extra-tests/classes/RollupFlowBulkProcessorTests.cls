@@ -324,4 +324,47 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
     System.assertEquals(2, acc.NumberOfEmployees, 'Account number of employees should have counted properly');
   }
+
+  @IsTest
+  static void handlesRollupsStartedFromParent() {
+    Rollup.onlyUseMockMetadata = true;
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    insert new List<SObject>{
+      new Opportunity(Amount = 5, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today(), Name = 'Amount 1'),
+      new Opportunity(Amount = 5, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today(), Name = 'Amount 2')
+    };
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = accs;
+    input.rollupContext = 'UPSERT';
+    input.oldRecordsToRollup = new List<SObject>{ null, null };
+    input.deferProcessing = false;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        IsRollupStartedFromParent__c = true,
+        CalcItemWhereClause__c = 'Amount > 0' // validate where clause only runs for children
+      )
+    };
+
+    Exception ex;
+    Test.startTest();
+    try {
+      RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    } catch (Exception e) {
+      ex = e;
+    }
+    Test.stopTest();
+
+    System.assertEquals(null, ex, 'Exception should not be thrown when calc item info can be inferred from CMDT');
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
+  }
 }
