@@ -577,7 +577,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             val = TRUE_VAL;
           } else if (val.equalsIgnoreCase(FALSE_VAL)) {
             val = FALSE_VAL;
-          } else if (val == 'null') {
+          } else if (val.equalsIgnoreCase('null')) {
             val = null;
           }
           this.values.add(val?.trim()?.replace('%', ''));
