@@ -78,14 +78,16 @@ global without sharing class RollupFlowBulkProcessor {
         String sObjectName = flowInput.recordsToRollup == null ? '' : flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
         List<Rollup.FlowInput> rollupFlowInputs = new List<Rollup.FlowInput>();
         for (Rollup__mdt meta : rollupMetadata) {
-          if (
-            flowInput.recordsToRollup == null ||
-            meta.CalcItem__c == sObjectName ||
-            String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent) && flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
-          ) {
+          if (meta.IsRollupStartedFromParent__c) {
+            flowInput.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent != null
+              ? flowInput.calcItemTypeWhenRollupStartedFromParent
+              : meta.CalcItem__c;
+          }
+          if (flowInput.recordsToRollup == null || meta.CalcItem__c == sObjectName || flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c) {
             Rollup.FlowInput input = new Rollup.FlowInput();
             // pertinent fields from CMDT (can be overridden by optional flow properties)
             input.calcItemChangedFields = flowInput.calcItemChangedFields != null ? flowInput.calcItemChangedFields : meta.ChangedFieldsOnCalcItem__c;
+            input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
             input.calcItemWhereClause = flowInput.calcItemWhereClause != null ? flowInput.calcItemWhereClause : meta.CalcItemWhereClause__c;
             input.concatDelimiter = flowInput.concatDelimiter != null ? flowInput.concatDelimiter : meta.ConcatDelimiter__c;
             input.fullRecalculationDefaultNumberValue = flowInput.fullRecalculationDefaultNumberValue != null
@@ -122,7 +124,6 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupSObjectName = meta.LookupObject__c;
             input.rollupControlId = meta.RollupControl__c;
             // everything else is supplied from the invocable
-            input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
             input.deferProcessing = flowInput.deferProcessing != null ? flowInput.deferProcessing : true;
             input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
             input.recordsToRollup = flowInput.recordsToRollup;

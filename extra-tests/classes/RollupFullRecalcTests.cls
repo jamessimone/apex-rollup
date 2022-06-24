@@ -491,7 +491,78 @@ private class RollupFullRecalcTests {
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully recalc');
+  }
+
+  @IsTest
+  static void clearsParentValuesWhenNoRefreshMatches() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    accs[0].AnnualRevenue = 1500;
+    update accs;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully clear');
+  }
+
+  @IsTest
+  static void clearsParentValuesWhenNoUpdateMatches() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    accs[0].AnnualRevenue = 1500;
+    update accs;
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'UPSERT', 'SUM');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+    flowInputs[0].oldRecordsToRollup = new List<SObject>{ null };
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully clear');
+  }
+
+  @IsTest
+  static void properlyPerformsFullRecalcsOnUpdateFromParent() {
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 500, ParentId = accs[0].Id, Name = 'One'),
+      new ContactPointAddress(PreferenceRank = 1000, ParentId = accs[0].Id, Name = 'Two')
+    };
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'UPDATE', 'COUNT');
+    flowInputs[0].isRollupStartedFromParent = true;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+    flowInputs[0].oldRecordsToRollup = accs;
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals('SUCCESS', flowOutputs[0].message);
+    System.assertEquals(true, flowOutputs[0].isSuccess);
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT UPDATE from flow started from parent should fully recalc');
   }
 
   @IsTest
@@ -1494,6 +1565,8 @@ private class RollupFullRecalcTests {
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
     update acc;
+    Account accDoesNotGetReset = new Account(Name = 'Should Not Get Reset Annual Revenue', AnnualRevenue = 4);
+    insert accDoesNotGetReset;
 
     insert new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Name = 'Should not match');
 
@@ -1520,10 +1593,12 @@ private class RollupFullRecalcTests {
     };
 
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
-    acc = [SELECT AccountNumber, AnnualRevenue FROM Account];
+    acc = [SELECT AccountNumber, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset');
     // seems like some standard fields default to null when you save an empty string to them, even if they have no default value 🙄
     System.assertEquals(null, acc.AccountNumber, 'AccountNumber should have been reset');
+    accDoesNotGetReset = [SELECT AnnualRevenue FROM Account WHERE Id = :accDoesNotGetReset.Id];
+    System.assertNotEquals(null, accDoesNotGetReset.AnnualRevenue);
   }
 
   @IsTest

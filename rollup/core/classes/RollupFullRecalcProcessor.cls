@@ -7,6 +7,9 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
 
   private final RollupFullRecalcProcessor postProcessor;
+  private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
+
+  private Boolean hasProcessedParentRecords = false;
 
   private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS {
     get {
@@ -56,14 +59,63 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return this;
   }
 
+  public void finish() {
+    if (this.postProcessor != null) {
+      RollupLogger.Instance.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
+      // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
+      // job continuity is established between the full recalc and then any downstream job that runs
+      // (as the postProcessor)
+      this.setCurrentJobId(this.postProcessor.runCalc());
+    }
+    if (this.hasProcessedParentRecords == false) {
+      List<SObject> parentRecords = new List<SObject>();
+      this.processParentFieldsToReset(parentRecords);
+      this.getDML().doUpdate(parentRecords);
+    }
+  }
+
+  public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
+    super.storeParentResetField(processor, parent);
+    this.postProcessor?.recordIds.add(parent.Id);
+    this.postProcessor?.storeParentResetField(processor, parent);
+  }
+
+  public void storeParentFieldsToClear(List<SObject> parentRecordsToClear) {
+    this.parentRecordsToClear.putAll(parentRecordsToClear);
+  }
+
+  public void processParentFieldsToReset(List<SObject> relatedParentRecords) {
+    if (this.hasProcessedParentRecords) {
+      return;
+    }
+    this.hasProcessedParentRecords = true;
+    Map<Id, SObject> relatedParentRecordsMap = new Map<Id, SObject>(relatedParentRecords);
+    for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
+      SObject relatedParentRecord = relatedParentRecordsMap.containsKey(parentRecordToReset.Id)
+        ? relatedParentRecordsMap.get(parentRecordToReset.Id)
+        : parentRecordToReset;
+
+      for (Rollup__mdt meta : this.rollupInfo) {
+        if (relatedParentRecord.getSobjectType().getDescribe().getName() == meta.LookupObject__c) {
+          relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
+        }
+      }
+
+      relatedParentRecordsMap.put(relatedParentRecord.Id, relatedParentRecord);
+    }
+    relatedParentRecords.clear();
+    relatedParentRecords.addAll(relatedParentRecordsMap.values());
+    this.parentRecordsToClear.clear();
+  }
+
   protected List<SObject> getCalcItemsByQuery() {
     if (QUERY_TO_CALC_ITEMS.containsKey(this.queryString)) {
       RollupLogger.Instance.log('returning pre-queried records from cache', LoggingLevel.FINE);
       return QUERY_TO_CALC_ITEMS.get(this.queryString);
     }
-    List<SObject> calcItems = Database.query(this.queryString);
-    QUERY_TO_CALC_ITEMS.put(this.queryString, calcItems);
-    return calcItems;
+    List<SObject> localCalcItems = Database.query(this.queryString);
+    QUERY_TO_CALC_ITEMS.put(this.queryString, localCalcItems);
+    return localCalcItems;
   }
 
   protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
@@ -75,22 +127,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   protected override String getHashedContents() {
     return String.valueOf(this.rollupInfo);
-  }
-
-  public void finish() {
-    if (this.postProcessor != null) {
-      RollupLogger.Instance.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
-      // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
-      // job continuity is established between the full recalc and then any downstream job that runs
-      // (as the postProcessor)
-      this.setCurrentJobId(this.postProcessor.runCalc());
-    }
-  }
-
-  public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    super.storeParentResetField(processor, parent);
-    this.postProcessor?.recordIds.add(parent.Id);
-    this.postProcessor?.storeParentResetField(processor, parent);
   }
 
   private void overrideRollupControl() {

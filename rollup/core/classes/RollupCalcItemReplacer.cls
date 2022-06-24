@@ -64,6 +64,9 @@ public without sharing class RollupCalcItemReplacer {
     Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
     for (Rollup__mdt meta : metadata) {
       Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
+      if (meta.IsRollupStartedFromParent__c && meta.LookupObject__c == calcType.getDescribe().getName()) {
+        return false;
+      }
       Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
       if (mightNeedReplacement && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
