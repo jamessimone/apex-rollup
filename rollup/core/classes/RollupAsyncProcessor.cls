@@ -225,8 +225,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void finish(Database.BatchableContext context) {
+    if (this.isTimingOut == false) {
+      this.fullRecalcProcessor?.finish();
+    }
     this.logFinish();
-    this.fullRecalcProcessor?.finish();
   }
 
   public virtual override String runCalc() {
@@ -381,10 +383,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     public void execute(System.QueueableContext qc) {
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
-      if (this.isTimingOut == false) {
-        this.fullRecalcProcessor?.finish();
-      }
-      this.logFinish();
+      this.finish(null);
     }
   }
 
@@ -413,7 +412,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
-    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute method"
+    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
   }

@@ -93,7 +93,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
       SObject relatedParentRecord = relatedParentRecordsMap.containsKey(parentRecordToReset.Id)
         ? relatedParentRecordsMap.get(parentRecordToReset.Id)
-        : parentRecordToReset;
+        : parentRecordToReset.getSObjectType().newSObject(parentRecordToReset.Id);
 
       for (Rollup__mdt meta : this.rollupInfo) {
         if (relatedParentRecord.getSobjectType().getDescribe().getName() == meta.LookupObject__c) {
