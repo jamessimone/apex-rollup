@@ -496,9 +496,12 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void clearsParentValuesWhenNoRefreshMatches() {
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    List<Account> accs = [SELECT Id, AnnualRevenue, Description FROM Account];
     accs[0].AnnualRevenue = 1500;
+    accs[0].Description = 'This is the value that should be persisted';
     update accs;
+    // simulate un-related, in-flight update
+    accs[0].Description = 'Something else';
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
@@ -512,8 +515,9 @@ private class RollupFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue, Description FROM Account];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully clear');
+    System.assertEquals('This is the value that should be persisted', updatedAcc.Description, 'Unrelated field should not be cleared');
   }
 
   @IsTest

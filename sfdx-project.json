@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixed a few issues with the singular parent recalc button. Fixed an issue where full recalcs called from flow with UPSERT/UPDATE contexts wouldn't always run correctly",
-            "versionNumber": "1.5.11.0",
+            "versionName": "Process improvements, fixed an issue where rollups started from parents could have old fields persisted.",
+            "versionNumber": "1.5.12.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -103,6 +103,7 @@
         "apex-rollup@1.5.8-0": "04t6g000008SkRSAA0",
         "apex-rollup@1.5.9-0": "04t6g000008SkVFAA0",
         "apex-rollup@1.5.10-0": "04t6g000008SkVeAAK",
-        "apex-rollup@1.5.11-0": "04t6g000008SkWhAAK"
+        "apex-rollup@1.5.11-0": "04t6g000008SkWhAAK",
+        "apex-rollup@1.5.12-0": "04t6g000008SkXfAAK"
     }
 }

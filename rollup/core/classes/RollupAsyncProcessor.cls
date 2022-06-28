@@ -184,12 +184,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   public virtual Database.QueryLocator start(Database.BatchableContext context) {
     /**
      * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
-     * NB: we have to call "getFieldNamesForRollups" in both the "start" and "execute" methods because
+     * NB: we have to call "populateObjectFields" in both the "start" and "execute" methods because
      * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
     this.winnowRollups(this.rollups);
-    this.getFieldNamesForRollups(this.rollups);
+    this.populateObjectFields(this.rollups);
     String lookupFieldForLookupObject;
     SObjectType sObjectType;
     String query;
@@ -225,8 +225,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void finish(Database.BatchableContext context) {
+    if (this.isTimingOut == false) {
+      this.fullRecalcProcessor?.finish();
+    }
     this.logFinish();
-    this.fullRecalcProcessor?.finish();
   }
 
   public virtual override String runCalc() {
@@ -381,10 +383,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     public void execute(System.QueueableContext qc) {
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
-      if (this.isTimingOut == false) {
-        this.fullRecalcProcessor?.finish();
-      }
-      this.logFinish();
+      this.finish(null);
     }
   }
 
@@ -413,7 +412,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
-    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute method"
+    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
   }
@@ -511,9 +510,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
-    this.transformRollups(rollups);
+    this.preProcessRollups(rollups);
     this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
-    this.getFieldNamesForRollups(rollups); // populates this.lookupObjectToUniqueFieldNames
+    this.populateObjectFields(rollups);
 
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
@@ -625,7 +624,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.isTimingOut;
   }
 
-  private void transformRollups(List<RollupAsyncProcessor> rollupsToProcess) {
+  private void preProcessRollups(List<RollupAsyncProcessor> rollupsToProcess) {
     for (Integer index = rollupsToProcess.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = rollupsToProcess[index];
       List<RollupAsyncProcessor> additionalRollups = rollup.transformFullRecalcRollups();
@@ -722,7 +721,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private void getFieldNamesForRollups(List<RollupAsyncProcessor> rollups) {
+  private void populateObjectFields(List<RollupAsyncProcessor> rollups) {
+    if (this.lookupObjectToUniqueFieldNames != null) {
+      return;
+    }
     this.lookupObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
     this.calcObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
     List<Rollup__mdt> combinedMeta = new List<Rollup__mdt>();
@@ -740,17 +742,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, rollupFieldNames);
       }
 
-      List<String> whereFields = String.isBlank(roll.metadata.CalcItemWhereClause__c)
-        ? new List<String>()
-        : RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields();
-      whereFields.addAll(new List<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() });
+      Set<String> whereFields = new Set<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() };
+      if (String.isNotBlank(roll.metadata.CalcItemWhereClause__c)) {
+        whereFields.addAll(RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields());
+      }
       for (RollupOrderBy__mdt orderBy : roll.metadata.RollupOrderBys__r) {
         whereFields.add(orderBy.FieldName__c);
       }
       if (this.calcObjectToUniqueFieldNames.containsKey(roll.calcItemType)) {
         this.calcObjectToUniqueFieldNames.get(roll.calcItemType).addAll(whereFields);
       } else {
-        this.calcObjectToUniqueFieldNames.put(roll.calcItemType, new Set<String>(whereFields));
+        this.calcObjectToUniqueFieldNames.put(roll.calcItemType, whereFields);
       }
       if (this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, roll.calcItems) == false) {
         Integer oldHashCode = roll.calcItems?.hashCode();
@@ -786,7 +788,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void winnowRollups(List<RollupAsyncProcessor> potentialRollups) {
-    this.transformRollups(potentialRollups);
+    this.preProcessRollups(potentialRollups);
     for (Integer index = potentialRollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor processor = potentialRollups[index];
       Map<String, SObjectField> fieldMap = processor.lookupObj?.getDescribe().fields.getMap();
