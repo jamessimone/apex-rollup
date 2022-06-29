@@ -669,40 +669,32 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void processDeferredRollups() {
-    if (this.deferredRollups.isEmpty() == false) {
-      Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
-      RollupLogger.Instance.log(
-        'Number of deferred rollups: ' +
-        this.deferredRollups.size() +
-        ', still allowed to re-queue?: ' +
-        isAllowedToContinue,
-        LoggingLevel.DEBUG
-      );
-      if (this.getIsDeferralAllowed() && isAllowedToContinue) {
-        this.stackDepth++;
-        RollupLogger.Instance.log(
-          'processing deferred rollups with stack depth: ' +
-          this.stackDepth +
-          ', rollup control:',
-          this.rollupControl,
-          LoggingLevel.DEBUG
-        );
-        this.setIsDeferralAllowed(this.rollupControl.MaxRollupRetries__c > stackDepth);
+    if (this.deferredRollups.isEmpty()) {
+      return;
+    }
+    Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
+    RollupLogger.Instance.log(
+      'Number of deferred rollups: ' +
+      this.deferredRollups.size() +
+      ', still allowed to re-queue?: ' +
+      isAllowedToContinue +
+      ' with stackDepth: ' +
+      this.stackDepth,
+      LoggingLevel.DEBUG
+    );
 
-        this.rollups.clear();
-        this.rollups.addAll(this.deferredRollups);
-        this.deferredRollups.clear();
+    Boolean isDeferralAllowed = this.getIsDeferralAllowed() && isAllowedToContinue;
+    this.stackDepth++;
+    this.setIsDeferralAllowed(this.rollupControl.MaxRollupRetries__c > stackDepth);
+    this.rollups.clear();
+    this.rollups.addAll(this.deferredRollups);
+    this.deferredRollups.clear();
 
-        RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
-
-        this.getAsyncRollup()?.beginAsyncRollup();
-      } else if (this.deferredRollups.isEmpty() == false) {
-        this.rollups.clear();
-        this.rollups.addAll(this.deferredRollups);
-        this.deferredRollups.clear();
-        this.setIsDeferralAllowed(false);
-        this.attemptToStaticallyDeferRollup();
-      }
+    if (isDeferralAllowed) {
+      RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
+      this.getAsyncRollup()?.beginAsyncRollup();
+    } else if (this.rollups.isEmpty() == false) {
+      this.attemptToStaticallyDeferRollup();
     }
   }
 
