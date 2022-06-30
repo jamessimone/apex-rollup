@@ -190,19 +190,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      */
     this.winnowRollups(this.rollups);
     this.populateObjectFields(this.rollups);
-    String lookupFieldForLookupObject;
-    SObjectType sObjectType;
     String query;
-    Set<String> objIds = new Set<String>();
     if (this.rollups.isEmpty()) {
       RollupLogger.Instance.log('No matching rollups remaining, exiting early', LoggingLevel.WARN);
       query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
     } else {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
-      sObjectType = firstRollup.lookupObj;
-      lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
+      SObjectType sObjectType = firstRollup.lookupObj;
+      String lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
       Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
-      objIds.addAll(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
+      Set<String> objIds = this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet();
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
       RollupLogger.Instance.log('starting batch with query:', query, LoggingLevel.DEBUG);
     }
