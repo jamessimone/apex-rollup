@@ -602,6 +602,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
     this.previouslyResetParents.add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+    this.fullRecalcProcessor?.storeParentResetField(processor, parent);
   }
 
   private String getParentResetKey(String fieldKey, SObject parent) {
