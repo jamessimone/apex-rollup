@@ -614,6 +614,7 @@ global without sharing virtual class Rollup {
     category='Rollups'
     label='Perform rollup on records'
     description='Returns a single FlowOutput record with "SUCCESS" as the message if async rollup operation is enqueued successfully, and the encountered error otherwise'
+    iconName='resource:rollup:icon'
   )
   global static List<FlowOutput> performRollup(List<FlowInput> flowInputs) {
     List<FlowOutput> flowOutputs = new List<FlowOutput>();
