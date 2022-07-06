@@ -3,7 +3,7 @@ global without sharing class RollupFlowBulkSaver {
     // only used for static invocable
   }
 
-  @InvocableMethod(category='Rollups' label='Process Deferred Rollups')
+  @InvocableMethod(category='Rollups' label='Process Deferred Rollups' iconName='resource:rollup:icon')
   global static void processDeferredRollups() {
     Rollup.processStoredFlowRollups();
   }

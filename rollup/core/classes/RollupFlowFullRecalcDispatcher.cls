@@ -8,7 +8,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
     global String rollupDeveloperNames;
   }
 
-  @InvocableMethod(category='Rollups' label='Full Recalc CMDT-driven Invocable')
+  @InvocableMethod(category='Rollups' label='Full Recalc CMDT-driven Invocable' iconName='resource:rollup:icon')
   public static void performFullRecalcRollups(List<FlowInput> inputs) {
     List<Rollup__mdt> localRollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
     Set<String> rollupDeveloperNames = new Set<String>();

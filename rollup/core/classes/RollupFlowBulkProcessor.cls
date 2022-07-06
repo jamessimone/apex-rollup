@@ -64,7 +64,7 @@ global without sharing class RollupFlowBulkProcessor {
     global String ultimateParentLookup;
   }
 
-  @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup')
+  @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup' iconName='resource:rollup:icon')
   global static List<Rollup.FlowOutput> addRollup(List<FlowInput> flowInputs) {
     List<Rollup.FlowOutput> outputs = new List<Rollup.FlowOutput>();
 
