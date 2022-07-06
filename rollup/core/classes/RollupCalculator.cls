@@ -287,24 +287,20 @@ public without sharing abstract class RollupCalculator {
     items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
     for (SObject item : temporaryItems) {
       Boolean currentItemMatches = this.eval?.matches(item) != false;
+      if (currentItemMatches == false) {
+        switch on this.op {
+          // not all downstream updates for old item matching when new item doesn't have been defined
+          // and this switch statement is how other operations opt-in
+          when UPDATE_COUNT, UPDATE_CONCAT_DISTINCT, UPDATE_CONCAT, UPDATE_SUM {
+            if (this.isChangedFieldCalc == false && oldCalcItems.containsKey(item.Id) && this.eval?.matches(oldCalcItems.get(item.Id)) != false) {
+              currentItemMatches = true;
+            }
+          }
+        }
+      }
       if (currentItemMatches) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
-      }
-      switch on this.op {
-        // not all downstream updates for old item matching when new item doesn't have been defined
-        // and this switch statement is how other operations opt-in
-        when UPDATE_COUNT, UPDATE_CONCAT_DISTINCT, UPDATE_CONCAT, UPDATE_SUM {
-          if (
-            this.isChangedFieldCalc == false &&
-            currentItemMatches == false &&
-            oldCalcItems.containsKey(item.Id) &&
-            this.eval?.matches(oldCalcItems.get(item.Id)) != false
-          ) {
-            this.transformForMultiCurrencyOrgs(item);
-            items.add(this.getTransformedCalcItem(item));
-          }
-        }
       }
     }
     List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
@@ -340,10 +336,6 @@ public without sharing abstract class RollupCalculator {
 
   protected Boolean isReparented(SObject calcItem, SObject oldCalcItem) {
     return calcItem?.get(this.lookupKeyField) != oldCalcItem?.get(this.lookupKeyField);
-  }
-
-  protected SObject getTransformedCalcItem(SObject calcItem) {
-    return RollupCurrencyInfo.getCalcItem(calcItem);
   }
 
   protected Object performBaseCalculation(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
@@ -390,6 +382,10 @@ public without sharing abstract class RollupCalculator {
       results = Database.query(query);
     }
     return results;
+  }
+
+  private SObject getTransformedCalcItem(SObject calcItem) {
+    return RollupCurrencyInfo.getCalcItem(calcItem);
   }
 
   private void transformForMultiCurrencyOrgs(SObject calcItem) {

@@ -53,4 +53,35 @@ private class RollupCurrencyInfoTests {
 
     System.assertNotEquals(null, fallbackInfo);
   }
+
+  @IsTest
+  static void convertsMultipleFieldsCorrectly() {
+    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+      return;
+    }
+    RollupCurrencyInfo mockUsdInfo = new RollupCurrencyInfo();
+    mockUsdInfo.ConversionRate = 1;
+    mockUsdInfo.DecimalPlaces = 2;
+    mockUsdInfo.IsoCode = 'USD';
+
+    RollupCurrencyInfo mockEurInfo = new RollupCurrencyInfo();
+    mockEurInfo.ConversionRate = .75;
+    mockEurInfo.DecimalPlaces = 2;
+    mockEurInfo.IsoCode = 'EUR';
+
+    RollupCurrencyInfo.mockCurrencyData = new Map<String, RollupCurrencyInfo>{ mockUsdInfo.IsoCode => mockUsdInfo, mockEurInfo.IsoCode => mockEurInfo };
+
+    Campaign camp = new Campaign(Id = RollupTestUtils.createId(Campaign.SObjectType), BudgetedCost = 5, ActualCost = 6);
+
+    RollupCurrencyInfo.setCurrencyIsoCode(camp, mockUsdInfo.IsoCode);
+    RollupCurrencyInfo.transformForMultiCurrencyOrgs(camp, Campaign.BudgetedCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
+
+    Campaign updatedCamp = (Campaign) RollupCurrencyInfo.getCalcItem(camp);
+    System.assertEquals(mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.BudgetedCost), updatedCamp.BudgetedCost);
+
+    // now for the second field update
+    RollupCurrencyInfo.transformForMultiCurrencyOrgs(camp, Campaign.ActualCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
+    updatedCamp = (Campaign) RollupCurrencyInfo.getCalcItem(camp);
+    System.assertEquals(mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.ActualCost), updatedCamp.ActualCost);
+  }
 }
