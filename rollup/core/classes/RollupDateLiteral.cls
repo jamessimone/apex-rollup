@@ -548,7 +548,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class NextQuarterLiteral extends RollupDateLiteral {
     public NextQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).dateGmt().addDays(-1), END_TIME);
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -563,8 +563,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.bound = getRelativeDatetime(this.getLastQuarterStart().addDays(-1), END_TIME);
-      // deviation - it's just like the description, in that this uses END_TIME instead of START_TIME.
-      this.ref = this.bound.addMonths(-3 * quarterRange);
+      this.ref = getRelativeDateTime(this.bound.addMonths(-3 * quarterRange).dateGmt(), START_TIME);
     }
 
     protected virtual Date getLastQuarterStart() {
@@ -714,7 +713,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(FISCAL_INFO.CurrentQuarterStartDate.addMonths(-3 * quarterRange), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).dateGmt().addDays(-1), END_TIME);
     }
   }
 
