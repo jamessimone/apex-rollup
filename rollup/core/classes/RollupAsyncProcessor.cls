@@ -190,19 +190,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      */
     this.winnowRollups(this.rollups);
     this.populateObjectFields(this.rollups);
-    String lookupFieldForLookupObject;
-    SObjectType sObjectType;
     String query;
-    Set<String> objIds = new Set<String>();
+    Set<String> objIds = new Set<String>(); // bind variable
     if (this.rollups.isEmpty()) {
       RollupLogger.Instance.log('No matching rollups remaining, exiting early', LoggingLevel.WARN);
       query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
     } else {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
-      sObjectType = firstRollup.lookupObj;
-      lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
+      SObjectType sObjectType = firstRollup.lookupObj;
+      String lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
       Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
-      objIds.addAll(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
+      objIds = this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet();
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
       RollupLogger.Instance.log('starting batch with query:', query, LoggingLevel.DEBUG);
     }
@@ -544,11 +542,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
       RollupLogger.Instance.log('starting rollup for:', roll, LoggingLevel.DEBUG);
-      List<SObject> updatedLookupItems = this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems);
-      for (SObject updatedLookupItem : updatedLookupItems) {
-        updatedLookupRecords.put(updatedLookupItem.Id, updatedLookupItem);
-        this.storeParentResetField(roll, updatedLookupItem);
-      }
+      updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
     if (this.isTimingOut) {
@@ -604,6 +598,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
     this.previouslyResetParents.add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+    this.fullRecalcProcessor?.storeParentResetField(processor, parent);
   }
 
   private String getParentResetKey(String fieldKey, SObject parent) {
@@ -616,6 +611,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Boolean getIsTimingOut(RollupControl__mdt control, RollupAsyncProcessor processor) {
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
+      RollupLogger.Instance.log('Starting to time out ...', LoggingLevel.WARN);
       this.isTimingOut = true;
     }
     if (this.isTimingOut) {
@@ -669,40 +665,32 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void processDeferredRollups() {
-    if (this.deferredRollups.isEmpty() == false) {
-      Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
-      RollupLogger.Instance.log(
-        'Number of deferred rollups: ' +
-        this.deferredRollups.size() +
-        ', still allowed to re-queue?: ' +
-        isAllowedToContinue,
-        LoggingLevel.DEBUG
-      );
-      if (this.getIsDeferralAllowed() && isAllowedToContinue) {
-        this.stackDepth++;
-        RollupLogger.Instance.log(
-          'processing deferred rollups with stack depth: ' +
-          this.stackDepth +
-          ', rollup control:',
-          this.rollupControl,
-          LoggingLevel.DEBUG
-        );
-        this.setIsDeferralAllowed(this.rollupControl.MaxRollupRetries__c > stackDepth);
+    if (this.deferredRollups.isEmpty()) {
+      return;
+    }
+    Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
+    RollupLogger.Instance.log(
+      'Number of deferred rollups: ' +
+      this.deferredRollups.size() +
+      ', still allowed to re-queue?: ' +
+      isAllowedToContinue +
+      ' with stackDepth: ' +
+      this.stackDepth,
+      LoggingLevel.DEBUG
+    );
 
-        this.rollups.clear();
-        this.rollups.addAll(this.deferredRollups);
-        this.deferredRollups.clear();
+    Boolean isDeferralAllowed = this.getIsDeferralAllowed() && isAllowedToContinue;
+    this.stackDepth++;
+    this.setIsDeferralAllowed(this.rollupControl.MaxRollupRetries__c > stackDepth);
+    this.rollups.clear();
+    this.rollups.addAll(this.deferredRollups);
+    this.deferredRollups.clear();
 
-        RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
-
-        this.getAsyncRollup()?.beginAsyncRollup();
-      } else if (this.deferredRollups.isEmpty() == false) {
-        this.rollups.clear();
-        this.rollups.addAll(this.deferredRollups);
-        this.deferredRollups.clear();
-        this.setIsDeferralAllowed(false);
-        this.attemptToStaticallyDeferRollup();
-      }
+    if (isDeferralAllowed) {
+      RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
+      this.getAsyncRollup()?.beginAsyncRollup();
+    } else if (this.rollups.isEmpty() == false) {
+      this.attemptToStaticallyDeferRollup();
     }
   }
 
@@ -1166,6 +1154,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       updater.updateField(lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
     }
+    this.storeParentResetField(roll, lookupRecord);
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }
 

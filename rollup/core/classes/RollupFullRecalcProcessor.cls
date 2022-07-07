@@ -10,6 +10,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
 
   private Boolean hasProcessedParentRecords = false;
+  private Boolean isRecursive = false;
 
   private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS {
     get {
@@ -75,9 +76,13 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    super.storeParentResetField(processor, parent);
-    this.postProcessor?.recordIds.add(parent.Id);
-    this.postProcessor?.storeParentResetField(processor, parent);
+    if (this.isRecursive == false) {
+      this.isRecursive = true;
+      super.storeParentResetField(processor, parent);
+      this.postProcessor?.recordIds.add(parent.Id);
+      this.postProcessor?.storeParentResetField(processor, parent);
+    }
+    this.isRecursive = false;
   }
 
   public void storeParentFieldsToClear(List<SObject> parentRecordsToClear) {

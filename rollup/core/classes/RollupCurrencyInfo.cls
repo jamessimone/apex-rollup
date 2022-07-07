@@ -4,6 +4,7 @@ public without sharing class RollupCurrencyInfo {
   @TestVisible
   private static Map<String, RollupCurrencyInfo> mockCurrencyData;
   private static final Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
+  private static final Set<String> HASHED_ITEM_VALUES = new Set<String>();
 
   @TestVisible
   private static Boolean IS_MULTICURRENCY {
@@ -57,15 +58,21 @@ public without sharing class RollupCurrencyInfo {
     }
   }
 
-  public static void transformForMultiCurrencyOrgs(SObject calcItem, Schema.SObjectField opFieldOnCalcItem, String parentIsoCode, List<RollupOrderBy__mdt> orderBys) {
+  public static void transformForMultiCurrencyOrgs(
+    SObject calcItem,
+    Schema.SObjectField opFieldOnCalcItem,
+    String parentIsoCode,
+    List<RollupOrderBy__mdt> orderBys
+  ) {
     if (calcItem.getSObjectType().getDescribe().fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)) {
       String calcItemIsoCode = (String) calcItem.get(CURRENCY_ISO_CODE_FIELD_NAME);
       SObject clonedCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id);
+      String hashKey = getHashKey(calcItem, opFieldOnCalcItem);
       if (
         String.isBlank(parentIsoCode) ||
         String.isBlank(calcItemIsoCode) ||
         calcItemIsoCode == parentIsoCode ||
-        clonedCalcItem?.getPopulatedFieldsAsMap().containsKey(opFieldOnCalcItem.getDescribe().getName()) == true ||
+        HASHED_ITEM_VALUES.contains(hashKey) ||
         CURRENCY_ISO_CODE_TO_CURRENCY.containsKey(calcItemIsoCode) == false ||
         CURRENCY_ISO_CODE_TO_CURRENCY.containsKey(parentIsoCode) == false ||
         calcItem.get(opFieldOnCalcItem) == 0
@@ -74,12 +81,13 @@ public without sharing class RollupCurrencyInfo {
       }
       // the worst possible scenario has occurred - the currencies differ and we haven't already populated the map
       clonedCalcItem = clonedCalcItem == null ? calcItem.clone(true, true, true, true) : clonedCalcItem;
-      convertToParentCurrency(calcItem, clonedCalcItem, opFieldOnCalcItem, calcItemIsoCode, parentIsoCode);
+      convertToParentCurrency(calcItem, clonedCalcItem, opFieldOnCalcItem, calcItemIsoCode, parentIsoCode, hashKey);
 
       for (RollupOrderBy__mdt orderBy : orderBys) {
-        SObjectField orderByFirstLastField = calcItem.getSObjectType().getDescribe().fields.getMap().get(orderBy.FieldName__c);
+        Schema.SObjectField orderByFirstLastField = calcItem.getSObjectType().getDescribe().fields.getMap().get(orderBy.FieldName__c);
         if (orderByFirstLastField != null && orderByFirstLastField != opFieldOnCalcItem) {
-          convertToParentCurrency(calcItem, clonedCalcItem, orderByFirstLastField, calcItemIsoCode, parentIsoCode);
+          String orderByHashKey = getHashKey(calcItem, orderByFirstLastField);
+          convertToParentCurrency(calcItem, clonedCalcItem, orderByFirstLastField, calcItemIsoCode, parentIsoCode, orderByHashKey);
         }
       }
 
@@ -92,7 +100,8 @@ public without sharing class RollupCurrencyInfo {
     SObject clonedCalcItem,
     SObjectField fieldOnCalcItem,
     String calcItemIsoCode,
-    String parentIsoCode
+    String parentIsoCode,
+    String hashKey
   ) {
     if (fieldOnCalcItem.getDescribe().getType() != DisplayType.CURRENCY) {
       return;
@@ -104,7 +113,12 @@ public without sharing class RollupCurrencyInfo {
       Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
       clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
       clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
+      HASHED_ITEM_VALUES.add(hashKey);
     }
+  }
+
+  private static String getHashKey(SObject calcItem, Schema.SObjectField opFieldOnCalcItem) {
+    return '' + calcItem.Id + opFieldOnCalcItem.getDescribe().getName();
   }
 
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {

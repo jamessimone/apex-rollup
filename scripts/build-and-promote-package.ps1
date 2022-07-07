@@ -1,14 +1,25 @@
 # This script is invoked by the Github Action on pull requests / merges to main
-# It relies on two pieces of information being set manually in your sfdx-project.json:
-# the versionDescription and versionNumber for the default package. Using those two pieces of information,
+# It relies on the versionNumber being set manually in your sfdx-project.json:
+# the versionDescription and versionNumber for the default package. Using that,
 # this script generates a new package version Id per unique Action run, and promotes that package on merges to main
-# it also updates the Ids referenced in the README, and bumps the package version number in the package.json file
+# it also updates the Ids referenced in the README, bumps the package version number in the package.json file, and
+# tags the release on merges to main
 $DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
 . .\scripts\generatePackage.ps1
 
 function Get-Current-Git-Branch() {
   Invoke-Expression 'git rev-parse --abbrev-ref HEAD'
+}
+
+function Push-Git-Tag() {
+  $tagMatches = (Invoke-Expression "git log -n 1" | Select-String -Pattern "V\d+.\d+.\d+")
+  if ($tagMatches.Matches.Length -eq 1) {
+    $tag = $tagMatches.Matches[0].Value.ToLower()
+    git tag $tag
+    git push origin $tag
+    Write-Host "Created $tag tag and pushed to git"
+  }
 }
 
 function Start-Package-Promotion {
@@ -33,6 +44,7 @@ function Start-Package-Promotion {
 $currentBranch = Get-Current-Git-Branch
 if ($currentBranch -eq "main") {
   Start-Package-Promotion
+  Push-Git-Tag
 } else {
   Generate -packageName "apex-rollup" -readmePath "./README.md"
 }

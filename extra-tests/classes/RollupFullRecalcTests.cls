@@ -2057,4 +2057,32 @@ private class RollupFullRecalcTests {
     System.assertEquals(one.PreferenceRank + two.PreferenceRank, acc.AnnualRevenue);
     System.assertEquals(2, acc.NumberOfEmployees);
   }
+
+  @IsTest
+  static void parentResetDoesNotRunWhenParentsAreNotUpdatedInFullRecalc() {
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id, Name FROM Account];
+
+    Opportunity opp = new Opportunity(Amount = 15, AccountId = acc.Id, CloseDate = System.today(), StageName = 'A', Name = 'Matching opp');
+    insert opp;
+    acc.AnnualRevenue = opp.Amount;
+    update acc;
+
+    Test.startTest();
+    Rollup.performFullRecalculation(
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM'
+      )
+    );
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(opp.Amount, acc.AnnualRevenue);
+  }
 }
