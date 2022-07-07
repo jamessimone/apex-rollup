@@ -97,11 +97,11 @@ public without sharing class RollupRelationshipFieldFinder {
         return new List<SObject>();
       }
       // not ideal, but because multiple parents can be tied to different descendants ...
-      Set<SObject> flattenedParents = new Set<SObject>();
+      Map<Id, SObject> flattenedParents = new Map<Id, SObject>();
       for (List<SObject> parentRecords : this.lookupIdToFinalRecords.values()) {
-        flattenedParents.addAll(parentRecords);
+        flattenedParents.putall(parentRecords);
       }
-      return new List<SObject>(flattenedParents);
+      return flattenedParents.values();
     }
 
     public void recommence() {
@@ -523,7 +523,7 @@ public without sharing class RollupRelationshipFieldFinder {
       return;
     }
 
-    String whereClause = 'Id != :records';
+    String whereClause = 'Id != :objIds';
     List<String> queryFields = new List<String>{ 'Id', this.metadata.UltimateParentLookup__c };
     if (records.isEmpty() == false) {
       objIds = new Set<Id>();
@@ -532,32 +532,14 @@ public without sharing class RollupRelationshipFieldFinder {
         this.trackTraversalIds(otherMatchingParent.Id, (Id) otherMatchingParent.get(this.metadata.UltimateParentLookup__c), null, objIds);
       }
     }
-    List<SObject> otherPotentialParents = this.performQuery(
-      this.ultimateParent,
-      queryFields,
-      this.metadata.UltimateParentLookup__c,
-      '=',
-      objIds,
-      whereClause,
-      records
+    List<SObject> otherPotentialParents = Database.query(
+      RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause)
     );
     if (otherPotentialParents.isEmpty()) {
       this.retrieveAdditionalCalcItems();
     } else {
       this.retrieveAdditionalHierarchyRecords(otherPotentialParents, objIds);
     }
-  }
-
-  private List<SObject> performQuery(
-    SObjectType sObjectType,
-    List<String> queryFields,
-    String lookupfield,
-    String equality,
-    Set<Id> objIds,
-    String whereClause,
-    List<SObject> records
-  ) {
-    return Database.query(RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, lookupfield, equality, whereClause));
   }
 
   @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
