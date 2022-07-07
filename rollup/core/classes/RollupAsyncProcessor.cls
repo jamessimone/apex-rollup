@@ -542,11 +542,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
       RollupLogger.Instance.log('starting rollup for:', roll, LoggingLevel.DEBUG);
-      List<SObject> updatedLookupItems = this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems);
-      for (SObject updatedLookupItem : updatedLookupItems) {
-        updatedLookupRecords.put(updatedLookupItem.Id, updatedLookupItem);
-        this.storeParentResetField(roll, updatedLookupItem);
-      }
+      updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
     if (this.isTimingOut) {
@@ -615,6 +611,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Boolean getIsTimingOut(RollupControl__mdt control, RollupAsyncProcessor processor) {
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
+      RollupLogger.Instance.log('Starting to time out ...', LoggingLevel.WARN);
       this.isTimingOut = true;
     }
     if (this.isTimingOut) {
@@ -1157,6 +1154,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       updater.updateField(lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
     }
+    this.storeParentResetField(roll, lookupRecord);
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }
 

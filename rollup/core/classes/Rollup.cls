@@ -2081,7 +2081,6 @@ global without sharing virtual class Rollup {
     Map<SObjectType, RollupMetadata> typeToWrappedMeta,
     InvocationPoint localInvokePoint
   ) {
-    final Integer maxQueryLength = 100000;
     List<RollupFullRecalcProcessor> fullRecalcRollups = new List<RollupFullRecalcProcessor>();
     for (RollupFullRecalcProcessor preCachedRollup : CACHED_FULL_RECALCS) {
       if (typeToWrappedMeta.containsKey(preCachedRollup.getCalcItemType())) {
@@ -2097,13 +2096,20 @@ global without sharing virtual class Rollup {
         preCachedRollup.queryString = queryString;
       }
     }
+    Integer maxQueryLength = 100000;
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
       if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
         wrappedMeta.whereClause = '';
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
       }
-      String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
+      String queryString = RollupQueryBuilder.Current.getQuery(
+        calcType,
+        new List<String>(wrappedMeta.queryFields),
+        'Id',
+        '!=',
+        wrappedMeta.metadata.size() > 1 ? '' : wrappedMeta.whereClause
+      );
       RollupFullRecalcProcessor fullRecalc = buildFullRecalcRollup(wrappedMeta, queryString, calcType, localInvokePoint);
       setControlToSyncForSingularParentRecalcs(fullRecalc.rollupControl, localInvokePoint);
       if (fullRecalc.isNoOp) {
