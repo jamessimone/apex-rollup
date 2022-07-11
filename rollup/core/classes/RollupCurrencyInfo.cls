@@ -44,6 +44,10 @@ public without sharing class RollupCurrencyInfo {
   public Integer DecimalPlaces { get; set; }
   public Boolean IsCorporate { get; set; }
 
+  public static Boolean isMultiCurrency() {
+    return IS_MULTICURRENCY;
+  }
+
   public static SObject getCalcItem(SObject calcItem) {
     return TRANSFORMED_MULTICURRENCY_CALC_ITEMS.containsKey(calcItem.Id) ? TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id) : calcItem;
   }

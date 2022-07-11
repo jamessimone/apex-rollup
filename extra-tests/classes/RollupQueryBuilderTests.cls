@@ -98,4 +98,13 @@ private class RollupQueryBuilderTests {
     // validate query can be run
     Database.query(queryString);
   }
+
+  @IsTest
+  static void multiCurrencyOrgsAlwaysAddIsoCode() {
+    RollupCurrencyInfo.IS_MULTICURRENCY = true;
+
+    String queryString = RollupQueryBuilder.Current.getQuery(Account.SObjectType, new List<String>(), 'Id', '=');
+
+    System.assertEquals(true, queryString.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
+  }
 }

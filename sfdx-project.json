@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Pipeline now automatically creates git tag, fixes issue with multi-currency rollups not always converting to parent currency",
-            "versionNumber": "1.5.13.0",
+            "versionName": "Always add CurrencyIsoCode field to queries in multi-currency orgs",
+            "versionNumber": "1.5.14.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

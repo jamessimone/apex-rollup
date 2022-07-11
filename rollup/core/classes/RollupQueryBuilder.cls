@@ -34,7 +34,7 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, sObjectType.getDescribe());
+    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, lowerCaseFieldNames);
 
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
 
@@ -143,14 +143,10 @@ public without sharing class RollupQueryBuilder {
     return hasPolymorphicField;
   }
 
-  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> uniqueQueryFieldNames, DescribeSObjectResult sObjectToken) {
-    if (
-      UserInfo.isMultiCurrencyOrganization() &&
-      uniqueQueryFieldNames.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME) == false &&
-      sObjectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
-    ) {
+  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> fieldNames, Set<String> uniqueLowercaseFields) {
+    if (RollupCurrencyInfo.isMultiCurrency() && uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false) {
       Boolean hasAggregateFunction = false;
-      for (String uniqueQueryFieldName : uniqueQueryFieldNames) {
+      for (String uniqueQueryFieldName : fieldNames) {
         // This is definitely not the most intuitive way to do this, but need to determine if the query
         // will be a regular query vs an aggregated query - all aggregate functions use '()', so checking
         // for '(' is a quick & lazy way to check without making larger changes to how RollupQueryBuilder works
@@ -161,7 +157,7 @@ public without sharing class RollupQueryBuilder {
         }
       }
       if (hasAggregateFunction == false) {
-        uniqueQueryFieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
+        fieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
       }
     }
   }
