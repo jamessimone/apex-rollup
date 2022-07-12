@@ -100,11 +100,24 @@ private class RollupQueryBuilderTests {
   }
 
   @IsTest
-  static void multiCurrencyOrgsAlwaysAddIsoCode() {
-    RollupCurrencyInfo.IS_MULTICURRENCY = true;
+  static void multiCurrencyOrgsAddIsoCodeWhenIsoCodeExists() {
+    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+      return;
+    }
 
     String queryString = RollupQueryBuilder.Current.getQuery(Account.SObjectType, new List<String>(), 'Id', '=');
 
     System.assertEquals(true, queryString.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
+  }
+
+  @IsTest
+  static void doesNotAddIsoCodeForMultiCurrencyWhenFieldDoesNotExist() {
+    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+      return;
+    }
+
+    String queryString = RollupQueryBuilder.Current.getQuery(ContactPointAddress.SObjectType, new List<String>(), 'Id', '=');
+
+    System.assertEquals(false, queryString.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
   }
 }

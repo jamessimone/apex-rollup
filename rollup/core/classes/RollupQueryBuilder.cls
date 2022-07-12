@@ -34,7 +34,7 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, lowerCaseFieldNames);
+    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, lowerCaseFieldNames, sObjectType.getDescribe());
 
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
 
@@ -144,8 +144,12 @@ public without sharing class RollupQueryBuilder {
     return hasPolymorphicField;
   }
 
-  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> fieldNames, Set<String> uniqueLowercaseFields) {
-    if (RollupCurrencyInfo.isMultiCurrency() && uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false) {
+  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> fieldNames, Set<String> uniqueLowercaseFields, Schema.DescribeSObjectResult objectToken) {
+    if (
+      RollupCurrencyInfo.isMultiCurrency() &&
+      uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false &&
+      objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
+    ) {
       Boolean hasAggregateFunction = false;
       for (String uniqueQueryFieldName : fieldNames) {
         // This is definitely not the most intuitive way to do this, but need to determine if the query
