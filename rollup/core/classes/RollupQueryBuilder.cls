@@ -34,7 +34,7 @@ public without sharing class RollupQueryBuilder {
       }
     }
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, sObjectType.getDescribe());
+    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, lowerCaseFieldNames, sObjectType.getDescribe());
 
     optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
 
@@ -62,6 +62,7 @@ public without sharing class RollupQueryBuilder {
       while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
         optionalWhereClause = optionalWhereClause.removeEnd(')');
       }
+      optionalWhereClause = optionalWhereClause.replace('()', '');
       optionalWhereClause = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType).getSafeQuery();
 
       if (optionalWhereClause.containsIgnoreCase(' or ') && optionalWhereClause.containsIgnoreCase(' and ') == false) {
@@ -143,14 +144,14 @@ public without sharing class RollupQueryBuilder {
     return hasPolymorphicField;
   }
 
-  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> uniqueQueryFieldNames, DescribeSObjectResult sObjectToken) {
+  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> fieldNames, Set<String> uniqueLowercaseFields, Schema.DescribeSObjectResult objectToken) {
     if (
-      UserInfo.isMultiCurrencyOrganization() &&
-      uniqueQueryFieldNames.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME) == false &&
-      sObjectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
+      RollupCurrencyInfo.isMultiCurrency() &&
+      uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false &&
+      objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
     ) {
       Boolean hasAggregateFunction = false;
-      for (String uniqueQueryFieldName : uniqueQueryFieldNames) {
+      for (String uniqueQueryFieldName : fieldNames) {
         // This is definitely not the most intuitive way to do this, but need to determine if the query
         // will be a regular query vs an aggregated query - all aggregate functions use '()', so checking
         // for '(' is a quick & lazy way to check without making larger changes to how RollupQueryBuilder works
@@ -161,7 +162,7 @@ public without sharing class RollupQueryBuilder {
         }
       }
       if (hasAggregateFunction == false) {
-        uniqueQueryFieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
+        fieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
       }
     }
   }

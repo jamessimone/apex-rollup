@@ -31,6 +31,7 @@ if [ $scratchOrgAllotment -gt 0 ]; then
   userNameHasBeenSet=1
   {
     sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
+    sfdx force:data:tree:import -f config/data/CurrencyTypes.json
     # Deploy
     sfdx force:source:push
     # Run tests
