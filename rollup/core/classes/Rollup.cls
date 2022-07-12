@@ -2047,9 +2047,6 @@ global without sharing virtual class Rollup {
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         wrappedMeta = new RollupMetadata();
         wrappedMeta.recordCount = 0;
-        if (fullRecalcMetas.size() == 1) {
-          wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
-        }
       } else {
         wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
         if (rollups.containsKey(fullRecalcMeta.calcItemType)) {
@@ -2103,13 +2100,7 @@ global without sharing virtual class Rollup {
         wrappedMeta.whereClause = '';
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
       }
-      String queryString = RollupQueryBuilder.Current.getQuery(
-        calcType,
-        new List<String>(wrappedMeta.queryFields),
-        'Id',
-        '!=',
-        wrappedMeta.metadata.size() > 1 ? '' : wrappedMeta.whereClause
-      );
+      String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       RollupFullRecalcProcessor fullRecalc = buildFullRecalcRollup(wrappedMeta, queryString, calcType, localInvokePoint);
       setControlToSyncForSingularParentRecalcs(fullRecalc.rollupControl, localInvokePoint);
       if (fullRecalc.isNoOp) {
@@ -2125,6 +2116,18 @@ global without sharing virtual class Rollup {
 
   private static void transformFullRecalcMetadataToRollupMetadata(List<FullRecalculationMetadata> fullRecalcMetas, RollupMetadata wrappedMeta, Integer index) {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
+    if (String.isNotBlank(fullRecalcMeta.wrapper.getQuery())) {
+      if (String.isBlank(wrappedMeta.whereClause)) {
+        wrappedMeta.whereClause = '(';
+      }
+      String wrappedWhere = '(' + fullRecalcMeta.wrapper.getQuery() + ')';
+      if (wrappedMeta.whereClause.contains(wrappedWhere) == false) {
+        wrappedMeta.whereClause += '(' + fullRecalcMeta.wrapper.getQuery() + ')' + ' OR ';
+      }
+    }
+    if (String.isNotBlank(wrappedMeta.whereClause) && index == fullRecalcMetas.size() - 1) {
+      wrappedMeta.whereClause = wrappedMeta.whereClause.removeEnd(' OR ') + ')';
+    }
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
     if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
@@ -2134,7 +2137,9 @@ global without sharing virtual class Rollup {
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
     if (wrappedMeta.whereClause.contains(':recordIds') == false && wrappedMeta.recordIds.isEmpty() == false) {
       String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
-      wrappedMeta.whereClause += additionalClause;
+      if (wrappedMeta.whereClause.contains(additionalClause) == false) {
+        wrappedMeta.whereClause += additionalClause;
+      }
     }
     wrappedMeta.parentRecordsToReset.addAll(fullRecalcMeta.wrapper.parentRecordsToReset);
   }

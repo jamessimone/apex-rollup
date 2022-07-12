@@ -62,6 +62,7 @@ public without sharing class RollupQueryBuilder {
       while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
         optionalWhereClause = optionalWhereClause.removeEnd(')');
       }
+      optionalWhereClause = optionalWhereClause.replace('()', '');
       optionalWhereClause = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType).getSafeQuery();
 
       if (optionalWhereClause.containsIgnoreCase(' or ') && optionalWhereClause.containsIgnoreCase(' and ') == false) {

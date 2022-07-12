@@ -48,24 +48,32 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildren() {
     Account acc = [SELECT Id FROM Account];
-    Account secondParent = new Account(Name = 'Second', AnnualRevenue = 10);
+    Account secondParent = new Account(Name = 'Second', AnnualRevenue = 5);
     insert secondParent;
     insert new List<ContactPointAddress>{
       // ensure another matching item exists outside of the passed in list
       new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
-      new ContactPointAddress(PreferenceRank = secondParent.AnnualRevenue.intValue(), ParentId = secondParent.Id, Name = 'Two')
+      // ensure that the PreferenceRank associated with the second parent specifically does NOT match
+      // the second parent's existing annual revenue; we want to validate that a constrained full recalc only
+      // updates the parents of the records that we've passed in
+      new ContactPointAddress(PreferenceRank = secondParent.AnnualRevenue.intValue() * 2, ParentId = secondParent.Id, Name = 'Two')
     };
 
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'First child') };
     insert cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    Rollup.FlowInput secondInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'COUNT')[0];
+    secondInput.rollupFieldOnCalcItem = 'Id';
+    secondInput.rollupFieldOnOpObject = 'NumberOfEmployees';
+    secondInput.rollupOperation = 'COUNT';
+    flowInputs.add(secondInput);
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    System.assertEquals(1, flowOutputs.size(), 'Flow outputs were not provided');
+    System.assertEquals(2, flowOutputs.size(), 'Incorrect flow outputs were provided');
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
