@@ -2122,7 +2122,7 @@ global without sharing virtual class Rollup {
       }
       String wrappedWhere = '(' + fullRecalcMeta.wrapper.getQuery() + ')';
       if (wrappedMeta.whereClause.contains(wrappedWhere) == false) {
-        wrappedMeta.whereClause += '(' + fullRecalcMeta.wrapper.getQuery() + ')' + ' OR ';
+        wrappedMeta.whereClause += wrappedWhere + ' OR ';
       }
     }
     if (String.isNotBlank(wrappedMeta.whereClause) && index == fullRecalcMetas.size() - 1) {
@@ -2135,12 +2135,6 @@ global without sharing virtual class Rollup {
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
-    if (wrappedMeta.whereClause.contains(':recordIds') == false && wrappedMeta.recordIds.isEmpty() == false) {
-      String additionalClause = (String.isNotBlank(wrappedMeta.whereClause) ? ' AND ' : '') + fullRecalcMeta.meta.LookupFieldOnCalcItem__c + ' = :recordIds';
-      if (wrappedMeta.whereClause.contains(additionalClause) == false) {
-        wrappedMeta.whereClause += additionalClause;
-      }
-    }
     wrappedMeta.parentRecordsToReset.addAll(fullRecalcMeta.wrapper.parentRecordsToReset);
   }
 
