@@ -2081,8 +2081,8 @@ global without sharing virtual class Rollup {
     List<RollupFullRecalcProcessor> fullRecalcRollups = new List<RollupFullRecalcProcessor>();
     for (RollupFullRecalcProcessor preCachedRollup : CACHED_FULL_RECALCS) {
       if (typeToWrappedMeta.containsKey(preCachedRollup.getCalcItemType())) {
-        // if other query fields were added to the query string, we need to fix up the cached full recalcs(s') query strings
         RollupMetadata wrappedMeta = typeToWrappedMeta.get(preCachedRollup.getCalcItemType());
+        // if other query fields were added to the query string, we need to fix up the cached full recalcs(s') query strings
         String queryString = RollupQueryBuilder.Current.getQuery(
           preCachedRollup.getCalcItemType(),
           new List<String>(wrappedMeta.queryFields),
@@ -2090,7 +2090,7 @@ global without sharing virtual class Rollup {
           '!=',
           wrappedMeta.whereClause
         );
-        preCachedRollup.queryString = queryString;
+        preCachedRollup.setQuery(queryString);
       }
     }
     Integer maxQueryLength = 100000;
@@ -2116,20 +2116,9 @@ global without sharing virtual class Rollup {
 
   private static void transformFullRecalcMetadataToRollupMetadata(List<FullRecalculationMetadata> fullRecalcMetas, RollupMetadata wrappedMeta, Integer index) {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
-    if (String.isNotBlank(fullRecalcMeta.wrapper.getQuery())) {
-      if (String.isBlank(wrappedMeta.whereClause)) {
-        wrappedMeta.whereClause = '(';
-      }
-      String wrappedWhere = '(' + fullRecalcMeta.wrapper.getQuery() + ')';
-      if (wrappedMeta.whereClause.contains(wrappedWhere) == false) {
-        wrappedMeta.whereClause += wrappedWhere + ' OR ';
-      }
-    }
-    if (String.isNotBlank(wrappedMeta.whereClause) && index == fullRecalcMetas.size() - 1) {
-      wrappedMeta.whereClause = wrappedMeta.whereClause.removeEnd(' OR ') + ')';
-    }
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
+    wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
     if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
       wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
     }
