@@ -1,7 +1,5 @@
 @SuppressWarnings('PMD.UnusedLocalVariable')
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
-  public String queryString;
-
   protected final List<Rollup__mdt> rollupInfo;
   protected final Set<String> recordIds;
   protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
@@ -9,6 +7,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
 
+  protected String queryString;
   private Boolean hasProcessedParentRecords = false;
   private Boolean isRecursive = false;
 
@@ -39,6 +38,10 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
     this.overrideRollupControl();
+  }
+
+  public void setQuery(String replacementQuery) {
+    this.queryString = replacementQuery;
   }
 
   public SObjectType getCalcItemType() {

@@ -67,6 +67,7 @@ private class RollupFullRecalcTests {
     secondInput.rollupFieldOnCalcItem = 'Id';
     secondInput.rollupFieldOnOpObject = 'NumberOfEmployees';
     secondInput.rollupOperation = 'COUNT';
+    secondInput.calcItemWhereClause = 'PreferenceRank > 0';
     flowInputs.add(secondInput);
 
     Test.startTest();

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Always add CurrencyIsoCode field to queries in multi-currency orgs",
-            "versionNumber": "1.5.14.0",
+            "versionName": "Fixed an issue with 1.5.14 where not all queries produced by REFRESH rollups were valid due to paranthetical nesting",
+            "versionNumber": "1.5.15.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -105,6 +105,8 @@
         "apex-rollup@1.5.10-0": "04t6g000008SkVeAAK",
         "apex-rollup@1.5.11-0": "04t6g000008SkWhAAK",
         "apex-rollup@1.5.12-0": "04t6g000008SkXfAAK",
-        "apex-rollup@1.5.13-0": "04t6g000008SkaAAAS"
+        "apex-rollup@1.5.13-0": "04t6g000008SkaAAAS",
+        "apex-rollup@1.5.14-0-do-not-use": "04t6g000008SkfkAAC",
+        "apex-rollup@1.5.15-0": "04t6g000008Skg4AAC"
     }
 }
