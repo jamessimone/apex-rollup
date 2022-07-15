@@ -1,6 +1,5 @@
 @IsTest
 private class RollupNebulaLoggerAdapterTest {
-  @SuppressWarnings('apex-assist')
   @IsTest
   static void shouldLogToNebula() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);

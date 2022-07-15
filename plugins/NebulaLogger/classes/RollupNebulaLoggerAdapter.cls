@@ -1,4 +1,3 @@
-@SuppressWarnings('apex-assist')
 public class RollupNebulaLoggerAdapter extends RollupLogger {
   public override void save() {
     Logger.saveLog();

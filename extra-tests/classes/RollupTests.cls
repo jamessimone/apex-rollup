@@ -8,7 +8,6 @@ private class RollupTests {
   static Rollup.Op rollupOp;
   static Boolean calcMockWasCalled = false;
 
-  @SuppressWarnings('apex-assist')
   @TestSetup
   static void setup() {
     // in the event that rollups are running in the org, we want to avoid triggering any operations while performing setup DML

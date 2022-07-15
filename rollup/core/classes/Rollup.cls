@@ -64,7 +64,6 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS {
     get {
       if (CACHED_ROLLUPS == null) {
@@ -134,7 +133,6 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  @SuppressWarnings('apex-assist')
   public enum Op {
     SUM,
     UPDATE_SUM,
@@ -2062,7 +2060,7 @@ global without sharing virtual class Rollup {
           '!=',
           wrappedMeta.whereClause
         );
-        Integer localCount = getCountFromDb(countQuery, new Set<String>(), fullRecalcMeta.wrapper.recordIds);
+        Integer localCount = getCountFromDb(countQuery, new Set<String>(), wrappedMeta.recordIds);
         wrappedMeta.recordCount = localCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? localCount : wrappedMeta.recordCount + localCount;
       }
       typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
@@ -2118,7 +2116,7 @@ global without sharing virtual class Rollup {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-    wrappedMeta.whereClause = fullRecalcMeta.wrapper.getQuery();
+    wrappedMeta.whereClause = wrappedMeta.recordIds.isEmpty() ? null : fullRecalcMeta.wrapper.getQuery();
     if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
       wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
     }
@@ -2401,14 +2399,16 @@ global without sharing virtual class Rollup {
       countQuery = countQuery.replace(RollupQueryBuilder.ALL_ROWS, '');
     }
 
+    Integer countAmount;
     try {
-      return Database.countQuery(countQuery);
+      countAmount = Database.countQuery(countQuery);
     } catch (Exception ex) {
       RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + countQuery, ex, LoggingLevel.WARN);
       // not all queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
-      return RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+      countAmount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
     }
+    return countAmount;
   }
 
   private static void fillWrapper(QueryWrapper wrapper, String fieldName, SObject calcItem, Map<Id, SObject> oldCalcItems) {
