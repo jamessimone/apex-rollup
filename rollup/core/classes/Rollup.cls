@@ -64,7 +64,6 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS {
     get {
       if (CACHED_ROLLUPS == null) {
@@ -134,7 +133,6 @@ global without sharing virtual class Rollup {
     set;
   }
 
-  @SuppressWarnings('apex-assist')
   public enum Op {
     SUM,
     UPDATE_SUM,

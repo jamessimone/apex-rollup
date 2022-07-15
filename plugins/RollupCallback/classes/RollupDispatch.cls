@@ -4,7 +4,6 @@ public class RollupDispatch implements RollupSObjectUpdater.IDispatcher {
   @TestVisible
   private static String platformEventOverride;
 
-  @SuppressWarnings('apex-assist')
   private static String PLATFORM_EVENT_BOOLEAN_STRING {
     get {
       if (PLATFORM_EVENT_BOOLEAN_STRING == null && platformEventOverride != null) {

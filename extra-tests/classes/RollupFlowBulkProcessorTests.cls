@@ -14,6 +14,12 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals('No records', outputs[0].message);
   }
 
+  private class CachedRollup extends Rollup {
+    public List<Rollup> getCurrentlyCachedRollups() {
+      return this.getCachedRollups();
+    }
+  }
+
   @IsTest
   static void shouldAddToRollupsIfCMDTPresent() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -38,7 +44,7 @@ private class RollupFlowBulkProcessorTests {
     for (Rollup.FlowOutput output : outputs) {
       System.assertEquals(true, outputs[0].isSuccess, 'Should not error when adding deferred flow rollup');
     }
-    System.assertNotEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'Deferred rollup should be kept in buffer');
+    System.assertNotEquals(true, new CachedRollup().getCurrentlyCachedRollups().isEmpty(), 'Deferred rollup should be kept in buffer');
   }
 
   @IsTest
@@ -70,7 +76,7 @@ private class RollupFlowBulkProcessorTests {
 
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(5, acc.AnnualRevenue);
-    System.assertEquals(0, Rollup.CACHED_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
+    System.assertEquals(0, new CachedRollup().getCurrentlyCachedRollups().size(), 'Flow rollup buffer should have been flushed!');
   }
 
   @IsTest
