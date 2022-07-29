@@ -397,6 +397,54 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void doesNotUpdateParentRecordsWithoutUpdatesWhenRecordsExcludedByEvaluator() {
+    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
+    Rollup.DML = mock;
+
+    Account acc = [SELECT Id FROM Account];
+    Account secondParent = new Account(Name = 'Second', AnnualRevenue = 15);
+    insert secondParent;
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two', PreferenceRank = secondParent.AnnualRevenue.intValue())
+    };
+    insert cpas;
+
+    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnLookupObject__c = 'Id',
+        CalcItemWhereClause__c = 'Name != \'One\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupOperation__c = 'COUNT',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnLookupObject__c = 'Id',
+        CalcItemWhereClause__c = 'ParentId != \'' + secondParent.Id + '\''
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
+    Test.stopTest();
+
+    Map<Id, SObject> updatedRecordMap = new Map<Id, SObject>(mock.Records);
+    System.assertEquals(1, updatedRecordMap.size());
+    System.assertEquals(true, updatedRecordMap.containsKey(acc.Id));
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(null, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyFlow() {
     Rollup.onlyUseMockMetadata = true;
     Account acc = [SELECT Id FROM Account];
