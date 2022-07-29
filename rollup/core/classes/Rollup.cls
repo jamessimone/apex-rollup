@@ -180,8 +180,22 @@ global without sharing virtual class Rollup {
     public final Set<String> queryFields = new Set<String>();
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
     public final List<SObject> parentRecordsToReset = new List<SObject>();
+    public final Set<String> possibleWhereClauses = new Set<String>();
     public String whereClause = '';
     public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+
+    public String concatenateWhereClauses() {
+      if (this.recordIds.isEmpty() && this.possibleWhereClauses.isEmpty()) {
+        return null;
+      }
+      String orDelimiter = ' OR ';
+      String concatenatedWhereClause = '(';
+      for (String possibleClause : this.possibleWhereClauses) {
+        concatenatedWhereClause += '(' + possibleClause + ')' + orDelimiter;
+      }
+
+      return concatenatedWhereClause.removeEnd(orDelimiter) + ')';
+    }
   }
 
   private class FullRecalculationMetadata {
@@ -1944,11 +1958,13 @@ global without sharing virtual class Rollup {
       metaWrapper = childToMetaWrapper.get(childType);
     } else {
       metaWrapper = new RollupMetadata();
-      metaWrapper.whereClause = matchingMeta.CalcItemWhereClause__c;
       childToMetaWrapper.put(childType, metaWrapper);
     }
     if (possibleParentId != null) {
       metaWrapper.recordIds.add(possibleParentId);
+    }
+    if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
+      metaWrapper.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
     }
     metaWrapper.queryFields.addAll(wherefields);
     metaWrapper.metadata.add(matchingMeta);
@@ -2094,6 +2110,7 @@ global without sharing virtual class Rollup {
     Integer maxQueryLength = 100000;
     for (SObjectType calcType : typeToWrappedMeta.keySet()) {
       RollupMetadata wrappedMeta = typeToWrappedMeta.get(calcType);
+      wrappedMeta.whereClause = wrappedMeta.concatenateWhereClauses();
       if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
         wrappedMeta.whereClause = '';
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
@@ -2116,7 +2133,9 @@ global without sharing virtual class Rollup {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-    wrappedMeta.whereClause = wrappedMeta.recordIds.isEmpty() ? null : fullRecalcMeta.wrapper.getQuery();
+    if (fullRecalcMeta.wrapper.hasQuery) {
+      wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
+    }
     if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
       wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
     }

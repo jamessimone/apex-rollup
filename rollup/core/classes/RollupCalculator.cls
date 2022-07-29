@@ -105,7 +105,7 @@ public without sharing abstract class RollupCalculator {
     this.defaultVal = defaultVal;
     if (this.isMultiCurrencyRollup == null) {
       this.isMultiCurrencyRollup =
-        UserInfo.isMultiCurrencyOrganization() &&
+        RollupCurrencyInfo.isMultiCurrency() &&
         (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
         this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
     }
@@ -385,7 +385,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private SObject getTransformedCalcItem(SObject calcItem) {
-    return RollupCurrencyInfo.getCalcItem(calcItem);
+    return this.isMultiCurrencyRollup ? RollupCurrencyInfo.getCalcItem(calcItem) : calcItem;
   }
 
   private void transformForMultiCurrencyOrgs(SObject calcItem) {
@@ -1134,6 +1134,9 @@ public without sharing abstract class RollupCalculator {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
         this.isMultiCurrencyRollup =
           this.isMultiCurrencyRollup || (UserInfo.isMultiCurrencyOrganization() && orderByFirstLastField?.getDescribe().getType() == DisplayType.CURRENCY);
+        if (this.isMultiCurrencyRollup) {
+          break;
+        }
       }
     }
 
@@ -1170,7 +1173,7 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private class MostRollupCalculator extends RollupCalculator {
+  private without sharing class MostRollupCalculator extends RollupCalculator {
     private final Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
     private Integer largestCountPointer;
     public MostRollupCalculator(

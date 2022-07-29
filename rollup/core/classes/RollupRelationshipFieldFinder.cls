@@ -70,7 +70,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
-  public class Traversal {
+  public without sharing class Traversal {
     private Boolean isFinished = false;
     private Boolean isAbortedEarly = false;
 
@@ -518,6 +518,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
+  @SuppressWarnings('PMD.ApexSOQLInjection')
   private void retrieveAdditionalHierarchyRecords(List<SObject> records, Set<Id> objIds) {
     if (this.metadata.RollupToUltimateParent__c == false) {
       return;
