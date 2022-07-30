@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Process improvements for multi-currency, potential fix for parent items with null values being updated unnecessarily",
-            "versionNumber": "1.5.17.0",
+            "versionName": "Fixes an issue in RollupEvaluator where large inner paranthetical where clauses were being split incorrectly",
+            "versionNumber": "1.5.18.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -109,6 +109,7 @@
         "apex-rollup@1.5.14-0-do-not-use": "04t6g000008SkfkAAC",
         "apex-rollup@1.5.15-0": "04t6g000008Skg4AAC",
         "apex-rollup@1.5.16-0": "04t6g000008SklPAAS",
-        "apex-rollup@1.5.17-0": "04t6g000008SkuIAAS"
+        "apex-rollup@1.5.17-0": "04t6g000008SkuIAAS",
+        "apex-rollup@1.5.18-0": "04t6g000008SkucAAC"
     }
 }

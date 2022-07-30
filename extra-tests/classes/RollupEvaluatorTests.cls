@@ -1098,4 +1098,14 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(opp));
   }
+
+  @IsTest
+  static void crazilyNestedConditionalsAreRecursedProperly() {
+    String whereClause = '((IsActive = TRUE) OR (IsActive = FALSE) OR (IsActive = FALSE AND FirstName LIKE \'Special%\') OR (FirstName = \'One Item\' AND IsActive = TRUE) OR (FirstName = \'One Item\'))';
+    User target = new User(IsActive = false, FirstName = 'One');
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
+
+    System.assertEquals(true, eval.matches(target));
+  }
 }
