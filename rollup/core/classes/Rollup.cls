@@ -191,6 +191,11 @@ global without sharing virtual class Rollup {
       String orDelimiter = ' OR ';
       String concatenatedWhereClause = '(';
       for (String possibleClause : this.possibleWhereClauses) {
+        if (String.isBlank(possibleClause)) {
+          // if even one of the where clauses is null, all calc items need to be retrieved
+          // and the filtering has to be done in-memory
+          return null;
+        }
         concatenatedWhereClause += '(' + possibleClause + ')' + orDelimiter;
       }
 
@@ -1963,9 +1968,7 @@ global without sharing virtual class Rollup {
     if (possibleParentId != null) {
       metaWrapper.recordIds.add(possibleParentId);
     }
-    if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
-      metaWrapper.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
-    }
+    metaWrapper.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
     metaWrapper.queryFields.addAll(wherefields);
     metaWrapper.metadata.add(matchingMeta);
 
@@ -2133,9 +2136,8 @@ global without sharing virtual class Rollup {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-    if (fullRecalcMeta.wrapper.hasQuery) {
-      wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
-    }
+    wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
+
     if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
       wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
     }

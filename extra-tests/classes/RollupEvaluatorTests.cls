@@ -1101,7 +1101,7 @@ private class RollupEvaluatorTests {
 
   @IsTest
   static void crazilyNestedConditionalsAreRecursedProperly() {
-    String whereClause = '((IsActive = TRUE) OR (IsActive = FALSE) OR (IsActive = FALSE AND FirstName LIKE \'Special%\') OR (FirstName = \'One Item\' AND IsActive = TRUE) OR (Item_Auto__c = \'One Item\'))';
+    String whereClause = '((IsActive = TRUE) OR (IsActive = FALSE) OR (IsActive = FALSE AND FirstName LIKE \'Special%\') OR (FirstName = \'One Item\' AND IsActive = TRUE) OR (FirstName = \'One Item\'))';
     User target = new User(IsActive = false, FirstName = 'One');
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
