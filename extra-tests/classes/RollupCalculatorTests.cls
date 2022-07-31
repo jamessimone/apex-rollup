@@ -632,6 +632,29 @@ private class RollupCalculatorTests {
     System.assertEquals(opp.CloseDate, calc.getReturnValue());
   }
 
+  @IsTest
+  static void updateMostWorks() {
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.UPDATE_MOST,
+      Opportunity.CloseDate,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), Id = RollupTestUtils.createId(Opportunity.SObjectType));
+    calc.performRollup(new List<SObject>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(opp.CloseDate, calc.getReturnValue());
+
+    opp.CloseDate = opp.CloseDate.addDays(-1);
+    calc.performRollup(new List<SObject>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(opp.CloseDate, calc.getReturnValue());
+  }
+
   // SUM tests
 
   @IsTest

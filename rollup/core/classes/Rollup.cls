@@ -134,37 +134,39 @@ global without sharing virtual class Rollup {
   }
 
   public enum Op {
-    SUM,
-    UPDATE_SUM,
-    DELETE_SUM,
-    COUNT_DISTINCT,
-    UPDATE_COUNT_DISTINCT,
-    DELETE_COUNT_DISTINCT,
-    COUNT,
-    UPDATE_COUNT,
-    DELETE_COUNT,
-    MAX,
-    UPDATE_MAX,
-    DELETE_MAX,
-    MIN,
-    UPDATE_MIN,
-    DELETE_MIN,
-    MOST,
-    CONCAT,
-    UPDATE_CONCAT,
-    DELETE_CONCAT,
-    CONCAT_DISTINCT,
-    UPDATE_CONCAT_DISTINCT,
-    DELETE_CONCAT_DISTINCT,
     AVERAGE,
-    UPDATE_AVERAGE,
+    CONCAT_DISTINCT,
+    CONCAT,
+    COUNT_DISTINCT,
+    COUNT,
     DELETE_AVERAGE,
-    FIRST,
-    UPDATE_FIRST,
+    DELETE_CONCAT_DISTINCT,
+    DELETE_CONCAT,
+    DELETE_COUNT_DISTINCT,
+    DELETE_COUNT,
     DELETE_FIRST,
+    DELETE_LAST,
+    DELETE_MAX,
+    DELETE_MIN,
+    DELETE_MOST,
+    DELETE_SUM,
+    FIRST,
     LAST,
+    MAX,
+    MIN,
+    MOST,
+    SUM,
+    UPDATE_AVERAGE,
+    UPDATE_CONCAT_DISTINCT,
+    UPDATE_CONCAT,
+    UPDATE_COUNT_DISTINCT,
+    UPDATE_COUNT,
+    UPDATE_FIRST,
     UPDATE_LAST,
-    DELETE_LAST
+    UPDATE_MAX,
+    UPDATE_MIN,
+    UPDATE_MOST,
+    UPDATE_SUM
   }
 
   public class FilterResults {
@@ -1894,7 +1896,7 @@ global without sharing virtual class Rollup {
       } else if (isRefresh) {
         // remove non-matches
         metas.remove(index);
-      } else if (meta.RollupOperation__c != Op.MOST.name()) {
+      } else {
         // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
         // we need to reset the CMDT to the correct base operation prior to appending the new context
         meta.RollupOperation__c =

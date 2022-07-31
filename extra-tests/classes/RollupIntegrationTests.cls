@@ -1910,6 +1910,28 @@ private class RollupIntegrationTests {
     System.assertEquals(250, updatedAcc.NumberOfEmployees, 'Number of employees should also have been decremented');
   }
 
+  @IsTest
+  static void excludesDeletedItemsForMost() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1, ParentId = acc.Id, Name = 'One'),
+      new ContactPointAddress(PreferenceRank = 1, ParentId = acc.Id, Name = 'Two'),
+      new ContactPointAddress(PreferenceRank = 2, ParentId = acc.Id, Name = 'Three')
+    };
+    insert cpas;
+    ContactPointAddress expectedMost = cpas.remove(2);
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'DELETE', 'MOST');
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(expectedMost.PreferenceRank, updatedAcc.AnnualRevenue);
+  }
+
   /** Schedulable tests */
   @IsTest
   static void shouldThrowExceptionForBadQuery() {

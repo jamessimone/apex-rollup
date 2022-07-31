@@ -456,6 +456,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           objIds.add(calcItem.Id);
         }
       }
+      // calling clear in a loop here might look interesting - and it would be a massive problem if not for the
+      // bag only responding to the very first clear() invocation. everything after that is a no-op (so, any rollup with more
+      // than one rollup operation going at a time)
       if (rollup.op.name().contains('DELETE')) {
         bag.clear();
       }

@@ -46,19 +46,19 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       switch on op {
+        when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
+          calc = new AverageRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+        }
         when COUNT_DISTINCT, UPDATE_COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
           calc = new CountDistinctRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when COUNT, UPDATE_COUNT, DELETE_COUNT {
           calc = new CountRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
-        when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
-          calc = new AverageRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
-        }
         when FIRST, UPDATE_FIRST, DELETE_FIRST, LAST, UPDATE_LAST, DELETE_LAST {
           calc = new FirstLastRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
-        when MOST {
+        when MOST, UPDATE_MOST {
           calc = new MostRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when else {
