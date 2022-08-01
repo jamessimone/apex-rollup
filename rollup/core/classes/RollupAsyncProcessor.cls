@@ -833,14 +833,26 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
 
         if (lookupFieldToCalcItems.containsKey(oldKey) == false) {
-          List<SObject> oldItems = roll.op == Rollup.Op.MOST ? new List<SObject>() : new List<SObject>{ potentialOldCalcItem };
+          List<SObject> oldItems = this.isEmptyReparentingSet(roll.op) ? new List<SObject>() : new List<SObject>{ potentialOldCalcItem };
           lookupFieldToCalcItems.put(oldKey, new CalcItemBag(oldItems));
-        } else if (roll.op != Rollup.Op.MOST) {
+        } else if (this.isEmptyReparentingSet(roll.op) == false) {
           lookupFieldToCalcItems.get(oldKey).add(potentialOldCalcItem);
         }
       }
     }
     return lookupFieldToCalcItems;
+  }
+
+  private Boolean isEmptyReparentingSet(Op operation) {
+    switch on operation {
+      // reparenting is handled already for these operations
+      when ALL, DELETE_ALL, DELETE_MOST, DELETE_NONE, DELETE_SOME, MOST, NONE, SOME, UPDATE_ALL, UPDATE_MOST, UPDATE_NONE, UPDATE_SOME {
+        return true;
+      }
+      when else {
+        return false;
+      }
+    }
   }
 
   private void ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
@@ -1030,6 +1042,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void populateReparentedItems(RollupAsyncProcessor roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
+    if (this.isEmptyReparentingSet(roll.op)) {
+      return;
+    }
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
       SObject calcItem = localCalcItems[index];
       if (roll.oldCalcItems?.containsKey(calcItem.Id) != true) {
