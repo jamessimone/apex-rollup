@@ -140,6 +140,7 @@ global without sharing virtual class Rollup {
     CONCAT,
     COUNT_DISTINCT,
     COUNT,
+    DELETE_ALL,
     DELETE_AVERAGE,
     DELETE_CONCAT_DISTINCT,
     DELETE_CONCAT,
@@ -151,12 +152,15 @@ global without sharing virtual class Rollup {
     DELETE_MIN,
     DELETE_MOST,
     DELETE_SUM,
+    DELETE_SOME,
     FIRST,
     LAST,
     MAX,
     MIN,
     MOST,
+    SOME,
     SUM,
+    UPDATE_ALL,
     UPDATE_AVERAGE,
     UPDATE_CONCAT_DISTINCT,
     UPDATE_CONCAT,
@@ -167,7 +171,8 @@ global without sharing virtual class Rollup {
     UPDATE_MAX,
     UPDATE_MIN,
     UPDATE_MOST,
-    UPDATE_SUM
+    UPDATE_SUM,
+    UPDATE_SOME
   }
 
   public class FilterResults {
@@ -2652,7 +2657,7 @@ global without sharing virtual class Rollup {
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
     switch on Op.valueOf(baseOperationName) {
-      when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST {
+      when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST, SOME {
         isFullRecalcOp = true;
       }
     }

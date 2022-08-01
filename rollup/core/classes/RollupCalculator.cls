@@ -46,7 +46,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       switch on op {
-        when ALL {
+        when ALL, DELETE_ALL, DELETE_SOME, SOME, UPDATE_ALL, UPDATE_SOME {
           calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
@@ -1229,13 +1229,16 @@ public without sharing abstract class RollupCalculator {
         when ALL {
           matches = calcItems.size() == filteredItems.size();
         }
+        when SOME {
+          matches = filteredItems.isEmpty() == false;
+        }
       }
 
       switch on this.opFieldOnLookupObject.getDescribe().getType() {
         when CURRENCY, DOUBLE, INTEGER {
           this.returnVal = matches ? 1 : 0;
         }
-        when String {
+        when STRING, TEXTAREA {
           this.returnVal = String.valueOf(matches);
         }
         when else {

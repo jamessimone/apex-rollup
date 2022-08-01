@@ -1559,6 +1559,48 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void allReportsPositivesCorrectlyAsBoolean() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      User.IsActive,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(User.SObjectType),
+      Opportunity.OwnerId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 1);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(true, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void allReportsPositivesCorrectlyAsString() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 1);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(String.valueOf(true), calc.getReturnValue());
+  }
+
+  @IsTest
   static void allReportsNegativesCorrectlyAsNumber() {
     RollupCalculator calc = getCalculator(
       0,
@@ -1572,6 +1614,92 @@ private class RollupCalculatorTests {
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
 
     Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 0);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void allReportsNegativesCorrectlyAsBoolean() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      User.IsActive,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(User.SObjectType),
+      Opportunity.OwnerId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 0);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(false, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void allReportsNegativesCorrectlyAsString() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 0);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(String.valueOf(false), calc.getReturnValue());
+  }
+
+  // SOME
+
+  @IsTest
+  static void someReportsPositivesCorrectlyAsNumber() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.SOME,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 0);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(1, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void someReportsNegativesCorrectlyAsNumber() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.SOME,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 0);
     Opportunity oppTwo = new Opportunity(Amount = 0);
 
     calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
