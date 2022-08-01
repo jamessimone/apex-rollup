@@ -46,6 +46,9 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       switch on op {
+        when ALL {
+          calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+        }
         when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
           calc = new AverageRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
@@ -1204,6 +1207,45 @@ public without sharing abstract class RollupCalculator {
           this.returnVal = value;
         }
       }
+    }
+  }
+
+  private without sharing class ConditionalCalculator extends RollupCalculator {
+    public ConditionalCalculator(
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      SObjectField lookupKeyField
+    ) {
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      // winnowItems modifies the list passed in by reference, so we clone it here
+      List<SObject> filteredItems = this.winnowItems(new List<SObject>(calcItems), oldCalcItems);
+      Boolean matches = false;
+      switch on this.op {
+        when ALL {
+          matches = calcItems.size() == filteredItems.size();
+        }
+      }
+
+      switch on this.opFieldOnLookupObject.getDescribe().getType() {
+        when CURRENCY, DOUBLE, INTEGER {
+          this.returnVal = matches ? 1 : 0;
+        }
+        when String {
+          this.returnVal = String.valueOf(matches);
+        }
+        when else {
+          this.returnVal = matches;
+        }
+      }
+    }
+
+    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
+      this.returnVal = null;
     }
   }
 }

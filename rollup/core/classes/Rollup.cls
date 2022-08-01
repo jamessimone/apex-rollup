@@ -134,6 +134,7 @@ global without sharing virtual class Rollup {
   }
 
   public enum Op {
+    ALL,
     AVERAGE,
     CONCAT_DISTINCT,
     CONCAT,
@@ -2651,7 +2652,7 @@ global without sharing virtual class Rollup {
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
     switch on Op.valueOf(baseOperationName) {
-      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST {
+      when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST {
         isFullRecalcOp = true;
       }
     }

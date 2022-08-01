@@ -1535,6 +1535,50 @@ private class RollupCalculatorTests {
     System.assert(true, 'Made it here!');
   }
 
+  // ALL
+
+  @IsTest
+  static void allReportsPositivesCorrectlyAsNumber() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 1);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(1, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void allReportsNegativesCorrectlyAsNumber() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 0);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
   @IsTest
   static void shouldInvokeNoOpMethodsWithoutFail() {
     RollupCalculator calc = new RollupCalcEmptyMock();
