@@ -522,7 +522,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.setupCalcItemData(roll);
       // for each iteration, ensure we're not operating beyond the bounds of our query limits
       if (this.getIsTimingOut(roll.rollupControl, roll)) {
-        RollupLogger.Instance.log('deferring current rollup, past limits', LoggingLevel.DEBUG);
         this.deferredRollups.add(roll);
         continue;
       }

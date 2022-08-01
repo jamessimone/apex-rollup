@@ -61,7 +61,7 @@ public without sharing abstract class RollupCalculator {
         when FIRST, UPDATE_FIRST, DELETE_FIRST, LAST, UPDATE_LAST, DELETE_LAST {
           calc = new FirstLastRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
-        when MOST, UPDATE_MOST {
+        when MOST, DELETE_MOST, UPDATE_MOST {
           calc = new MostRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when else {
@@ -1222,6 +1222,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.returnVal = null;
       // winnowItems modifies the list passed in by reference, so we clone it here
       List<SObject> filteredItems = this.winnowItems(new List<SObject>(calcItems), oldCalcItems);
       Boolean matches = false;
@@ -1230,7 +1231,7 @@ public without sharing abstract class RollupCalculator {
           matches = calcItems.size() == filteredItems.size();
         }
         when NONE, DELETE_NONE, DELETE_SOME, SOME, UPDATE_NONE, UPDATE_SOME {
-          matches = filteredItems.isEmpty() == this.op.name().contains('SOME') == false;
+          matches = filteredItems.isEmpty() == this.op.name().contains(Rollup.Op.SOME.name()) == false;
         }
       }
 
@@ -1245,10 +1246,6 @@ public without sharing abstract class RollupCalculator {
           this.returnVal = matches;
         }
       }
-    }
-
-    public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      this.returnVal = null;
     }
   }
 }

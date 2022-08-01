@@ -2129,7 +2129,6 @@ private class RollupTests {
 
   @IsTest
   static void mostReparentsCorrectly() {
-    // TODO - fixme
     Account acc = [SELECT Id FROM Account];
     Account secondParent = new Account(Name = 'Reparented');
     insert secondParent;
