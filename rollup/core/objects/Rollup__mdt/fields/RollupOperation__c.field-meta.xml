@@ -68,6 +68,11 @@
                 <label>MOST</label>
             </value>
             <value>
+                <fullName>NONE</fullName>
+                <default>false</default>
+                <label>NONE</label>
+            </value>
+            <value>
                 <fullName>SOME</fullName>
                 <default>false</default>
                 <label>SOME</label>

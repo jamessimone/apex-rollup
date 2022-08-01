@@ -151,6 +151,7 @@ global without sharing virtual class Rollup {
     DELETE_MAX,
     DELETE_MIN,
     DELETE_MOST,
+    DELETE_NONE,
     DELETE_SUM,
     DELETE_SOME,
     FIRST,
@@ -158,6 +159,7 @@ global without sharing virtual class Rollup {
     MAX,
     MIN,
     MOST,
+    NONE,
     SOME,
     SUM,
     UPDATE_ALL,
@@ -171,6 +173,7 @@ global without sharing virtual class Rollup {
     UPDATE_MAX,
     UPDATE_MIN,
     UPDATE_MOST,
+    UPDATE_NONE,
     UPDATE_SUM,
     UPDATE_SOME
   }
@@ -2657,7 +2660,7 @@ global without sharing virtual class Rollup {
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
     switch on Op.valueOf(baseOperationName) {
-      when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST, SOME {
+      when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST, NONE, SOME {
         isFullRecalcOp = true;
       }
     }

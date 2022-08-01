@@ -46,7 +46,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       switch on op {
-        when ALL, DELETE_ALL, DELETE_SOME, SOME, UPDATE_ALL, UPDATE_SOME {
+        when ALL, DELETE_ALL, DELETE_NONE, DELETE_SOME, NONE, SOME, UPDATE_ALL, UPDATE_NONE, UPDATE_SOME {
           calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
@@ -1226,11 +1226,11 @@ public without sharing abstract class RollupCalculator {
       List<SObject> filteredItems = this.winnowItems(new List<SObject>(calcItems), oldCalcItems);
       Boolean matches = false;
       switch on this.op {
-        when ALL {
+        when ALL, DELETE_ALL, UPDATE_ALL {
           matches = calcItems.size() == filteredItems.size();
         }
-        when SOME {
-          matches = filteredItems.isEmpty() == false;
+        when NONE, DELETE_NONE, DELETE_SOME, SOME, UPDATE_NONE, UPDATE_SOME {
+          matches = filteredItems.isEmpty() == this.op.name().contains('SOME') == false;
         }
       }
 
