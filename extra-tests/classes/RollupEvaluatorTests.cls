@@ -1107,5 +1107,16 @@ private class RollupEvaluatorTests {
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
 
     System.assertEquals(true, eval.matches(target));
+    System.assertEquals(true, eval.matches(new User(IsActive = true)));
+  }
+
+  @IsTest
+  static void moreCrazilyNestedConditionalsAreParsedCorrectly() {
+    String whereClause = '((StageName = \'Bequest\' AND AccountId = :recordIds) OR (IsClosed = false AND Amount > 0 AND Amount > 0 AND AccountId = :recordIds) OR (IsClosed = true AND Amount = 0 AND IsClosed = true AND Amount = 0 AND AccountId = :recordIds))';
+    Opportunity target = new Opportunity(StageName = 'Bequest', Amount = 1);
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
+
+    System.assertEquals(true, eval.matches(target));
   }
 }
