@@ -2056,11 +2056,11 @@ global without sharing virtual class Rollup {
   }
 
   private static String getFullRecalcQueryString(List<Rollup__mdt> metas) {
-    List<String> orderByFields = new List<String>();
+    Set<String> orderByFields = new Set<String>();
     for (Rollup__mdt meta : metas) {
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
     }
-    return '\nORDER BY ' + String.join(orderByFields, ',');
+    return '\nORDER BY ' + String.join(new List<String>(orderByFields), ',');
   }
 
   private static void fillFullRecalcRollups(
