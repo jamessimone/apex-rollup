@@ -352,12 +352,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             if (innerMatch.endsWith(')')) {
               Integer startingPoint = whereClause.indexOf(potentialNestedConditional);
               Integer endingPoint = whereClause.indexOf(innerMatch) + (innerMatch.length() - 1);
-              System.debug(startingPoint);
-              System.debug(endingPoint);
-              System.debug(whereClause.length());
-              System.debug(whereClause.substring(startingPoint, whereClause.length()));
-              potentialNestedConditional = whereClause.substring(startingPoint, endingPoint < startingPoint ? whereClause.length() : endingPoint);
-              potentialNestedConditional = potentialNestedConditional.removeStart('(').removeEnd(')');
+              potentialNestedConditional = whereClause.substring(startingPoint, endingPoint < startingPoint ? whereClause.length() : endingPoint)
+                .removeStart('(')
+                .removeEnd(')');
               break;
             } else {
               this.splitWheres.add(innerMatch);
