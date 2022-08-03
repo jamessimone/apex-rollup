@@ -304,6 +304,9 @@ public without sharing abstract class RollupCalculator {
       if (currentItemMatches) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
+        if (this.op == Rollup.Op.SOME || this.op == Rollup.Op.UPDATE_SOME) {
+          break;
+        }
       }
     }
     List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
