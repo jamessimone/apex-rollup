@@ -196,7 +196,7 @@ global without sharing virtual class Rollup {
     public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
 
     public String concatenateWhereClauses() {
-      if (this.recordIds.isEmpty() && this.possibleWhereClauses.isEmpty()) {
+      if (this.possibleWhereClauses.isEmpty()) {
         return null;
       }
       String orDelimiter = ' OR ';
@@ -2147,14 +2147,17 @@ global without sharing virtual class Rollup {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-    wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
-
-    if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
-      wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
+    if (wrappedMeta.recordIds.isEmpty() == false) {
+      wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
     }
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
-    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
     wrappedMeta.parentRecordsToReset.addAll(fullRecalcMeta.wrapper.parentRecordsToReset);
+
+    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(
+      fullRecalcMeta.wrapper.getQuery() +
+      (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c) ? ' AND ' + fullRecalcMeta.meta.CalcItemWhereClause__c : ''),
+      fullRecalcMeta.calcItemType
+    );
+    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
   }
 
   private static RollupFullRecalcProcessor buildFullRecalcRollup(
@@ -2365,7 +2368,6 @@ global without sharing virtual class Rollup {
     private String query;
     private final List<SObject> parentRecordsToReset = new List<SObject>();
     private final Set<String> recordIds = new Set<String>();
-    private final Set<String> stringifiedRecordIds = new Set<String>();
 
     private QueryWrapper() {
     }
@@ -2379,7 +2381,6 @@ global without sharing virtual class Rollup {
       if (String.isNotBlank(recordId)) {
         this.hasQuery = true;
         this.recordIds.add(recordId);
-        this.stringifiedRecordIds.add('\'' + recordId + '\'');
       }
     }
 
@@ -2388,14 +2389,8 @@ global without sharing virtual class Rollup {
     }
 
     public void setQuery(String query) {
-      if (String.isNotBlank(query)) {
-        this.hasQuery = true;
-        this.query = query;
-      }
-    }
-
-    public override String toString() {
-      return this.hasQuery ? this.query.replace('= :recordIds', 'IN (' + String.join(new List<String>(this.stringifiedRecordIds), ',') + ')') : '';
+      this.hasQuery = true;
+      this.query = query;
     }
   }
 

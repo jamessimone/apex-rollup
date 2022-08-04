@@ -11,6 +11,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> calcObjectToUniqueFieldNames;
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private RollupRelationshipFieldFinder.Traversal traversal;
+  private Boolean hasEnqueued = false;
 
   protected Boolean isTimingOut = false;
   protected Boolean isProcessed = false;
@@ -190,11 +191,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      */
     this.winnowRollups(this.rollups);
     this.populateObjectFields(this.rollups);
-    String query;
+    String query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
     Set<String> objIds = new Set<String>(); // bind variable
     if (this.rollups.isEmpty()) {
       RollupLogger.Instance.log('No matching rollups remaining, exiting early', LoggingLevel.WARN);
-      query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
     } else {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
       SObjectType sObjectType = firstRollup.lookupObj;
@@ -227,6 +227,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.fullRecalcProcessor?.finish();
     }
     this.logFinish();
+  }
+
+  public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
+    this.previouslyResetParents.add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+    this.fullRecalcProcessor?.storeParentResetField(processor, parent);
   }
 
   public virtual override String runCalc() {
@@ -275,9 +280,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected RollupAsyncProcessor getAsyncRollup() {
     // swap off on which async process is running to achieve infinite scaling
-    Boolean canEnqueue = Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
+    Boolean canEnqueue = this.getCanEnqueue();
     RollupAsyncProcessor roll;
-    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
+    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor && this.hasEnqueued == false) {
       roll = this.rollups[0];
     } else if (this instanceof RollupFullRecalcProcessor) {
       roll = this;
@@ -511,8 +516,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
-    this.preProcessRollups(rollups);
     this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
+    this.preProcessRollups(rollups);
     this.populateObjectFields(rollups);
 
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
@@ -598,9 +603,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.previouslyResetParents.contains(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
   }
 
-  public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    this.previouslyResetParents.add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
-    this.fullRecalcProcessor?.storeParentResetField(processor, parent);
+  private Boolean getCanEnqueue() {
+    return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
   }
 
   private String getParentResetKey(String fieldKey, SObject parent) {
@@ -1023,6 +1027,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll, updater);
     this.deferCalculationsWhenApproachingLimits(roll, unprocessedCalcItems.values());
+    this.handleFullRecalculators(roll);
 
     return recordsToUpdate.values();
   }
@@ -1030,14 +1035,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, List<SObject> unprocessedCalcItems) {
     if (unprocessedCalcItems.isEmpty() == false) {
       this.deferredRollups.add(roll);
-    } else if (roll instanceof RollupFullRecalcProcessor) {
-      for (RollupAsyncProcessor otherRollup : this.rollups) {
-        if (roll.isProcessed == false && otherRollup != roll) {
-          RollupLogger.Instance.log('adding full recalc rollup as inner rollup:', otherRollup, LoggingLevel.DEBUG);
-          roll.rollups.add(otherRollup);
-        }
-      }
-      roll.startAsyncWork();
     }
   }
 
@@ -1078,6 +1075,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       oldLookupItems.put(priorLookup, new List<SObject>{ oldCalcItem });
     } else {
       oldLookupItems.get(priorLookup).add(oldCalcItem);
+    }
+  }
+
+  private void handleFullRecalculators(RollupAsyncProcessor roll) {
+    if (roll instanceof RollupFullRecalcProcessor) {
+      if (this.getCanEnqueue() && this.hasEnqueued == false) {
+        this.hasEnqueued = true;
+        roll.startAsyncWork();
+      } else {
+        this.deferredRollups.add(roll);
+      }
     }
   }
 
