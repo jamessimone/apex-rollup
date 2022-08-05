@@ -1,15 +1,18 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Must_Be_Valid_Rollup</fullName>
     <active>true</active>
-    <description>Prevents saving a Rollup Order By record if the parent rollup&apos;s operation isn&apos;t set to FIRST/LAST/CONCAT/CONCAT_DISTINCT</description>
+    <description
+  >Prevents saving a Rollup Order By record if the parent rollup&apos;s operation isn&apos;t set to FIRST/LAST/CONCAT/CONCAT_DISTINCT/MOST or has a limit set</description>
     <errorConditionFormula>NOT(
   OR(
     ISPICKVAL(Rollup__r.RollupOperation__c,&apos;FIRST&apos;),
     ISPICKVAL(Rollup__r.RollupOperation__c, &apos;LAST&apos;),
     ISPICKVAL(Rollup__r.RollupOperation__c, &apos;CONCAT_DISTINCT&apos;),
-    ISPICKVAL(Rollup__r.RollupOperation__c, &apos;CONCAT&apos;)
+    ISPICKVAL(Rollup__r.RollupOperation__c, &apos;CONCAT&apos;),
+    ISPICKVAL(Rollup__r.RollupOperation__c, &apos;MOST&apos;),
+    NOT(ISBLANK(Rollup__r.LimitAmount__c))
   )
 )</errorConditionFormula>
-    <errorMessage>Parent rollup operation must be properly configured as FIRST/LAST/CONCAT/CONCAT_DISTINCT</errorMessage>
+    <errorMessage>Parent rollup operation must be properly configured as FIRST/LAST/CONCAT/CONCAT_DISTINCT/MOST or have a Limit Amount set</errorMessage>
 </ValidationRule>

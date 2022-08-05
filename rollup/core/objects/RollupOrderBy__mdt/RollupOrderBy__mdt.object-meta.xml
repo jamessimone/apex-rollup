@@ -1,6 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>For FIRST/LAST rollups, allows the user to stipulate sort ordering and fields to sort by when determining the winning record</description>
+    <description
+  >For FIRST/LAST/CONCAT/CONCAT_DISTINCT/MOST (and more, see the documentation) rollups, allows the user to stipulate sort ordering and fields to sort by when determining the winning record</description>
     <label>Rollup Order By</label>
     <pluralLabel>Rollup Order Bys</pluralLabel>
     <visibility>Public</visibility>
