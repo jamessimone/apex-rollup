@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Rollup__c</fullName>
-    <description>The parent rollup in question. Must be FIRST/LAST</description>
+    <description>The parent rollup in question.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>The parent rollup in question. Must be FIRST/LAST</inlineHelpText>
+    <inlineHelpText>The parent rollup in question.</inlineHelpText>
     <label>Rollup</label>
     <referenceTo>Rollup__mdt</referenceTo>
     <relationshipLabel>Rollup Order Bys</relationshipLabel>

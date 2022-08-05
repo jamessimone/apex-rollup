@@ -457,11 +457,11 @@ private class RollupFullRecalcTests {
     Rollup.DML = mock;
 
     Account acc = [SELECT Id FROM Account];
-    Account secondParent = new Account(Name = 'Second', AnnualRevenue = 15);
+    Account secondParent = new Account(Name = 'Second');
     insert secondParent;
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
-      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two', PreferenceRank = secondParent.AnnualRevenue.intValue())
+      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two')
     };
     insert cpas;
 
@@ -473,8 +473,7 @@ private class RollupFullRecalcTests {
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupFieldOnCalcItem__c = 'PreferenceRank',
-        LookupFieldOnLookupObject__c = 'Id',
-        CalcItemWhereClause__c = 'Name != \'One\''
+        LookupFieldOnLookupObject__c = 'Id'
       ),
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',
@@ -495,8 +494,8 @@ private class RollupFullRecalcTests {
     Map<Id, SObject> updatedRecordMap = new Map<Id, SObject>(mock.Records);
     System.assertEquals(1, updatedRecordMap.size());
     System.assertEquals(true, updatedRecordMap.containsKey(acc.Id));
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(null, acc.AnnualRevenue);
+    acc = (Account) mock.Records[0];
+    System.assertEquals(500, acc.AnnualRevenue);
   }
 
   @IsTest

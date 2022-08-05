@@ -134,37 +134,48 @@ global without sharing virtual class Rollup {
   }
 
   public enum Op {
-    SUM,
-    UPDATE_SUM,
-    DELETE_SUM,
-    COUNT_DISTINCT,
-    UPDATE_COUNT_DISTINCT,
-    DELETE_COUNT_DISTINCT,
-    COUNT,
-    UPDATE_COUNT,
-    DELETE_COUNT,
-    MAX,
-    UPDATE_MAX,
-    DELETE_MAX,
-    MIN,
-    UPDATE_MIN,
-    DELETE_MIN,
-    MOST,
-    CONCAT,
-    UPDATE_CONCAT,
-    DELETE_CONCAT,
-    CONCAT_DISTINCT,
-    UPDATE_CONCAT_DISTINCT,
-    DELETE_CONCAT_DISTINCT,
+    ALL,
     AVERAGE,
-    UPDATE_AVERAGE,
+    CONCAT_DISTINCT,
+    CONCAT,
+    COUNT_DISTINCT,
+    COUNT,
+    DELETE_ALL,
     DELETE_AVERAGE,
-    FIRST,
-    UPDATE_FIRST,
+    DELETE_CONCAT_DISTINCT,
+    DELETE_CONCAT,
+    DELETE_COUNT_DISTINCT,
+    DELETE_COUNT,
     DELETE_FIRST,
+    DELETE_LAST,
+    DELETE_MAX,
+    DELETE_MIN,
+    DELETE_MOST,
+    DELETE_NONE,
+    DELETE_SUM,
+    DELETE_SOME,
+    FIRST,
     LAST,
+    MAX,
+    MIN,
+    MOST,
+    NONE,
+    SOME,
+    SUM,
+    UPDATE_ALL,
+    UPDATE_AVERAGE,
+    UPDATE_CONCAT_DISTINCT,
+    UPDATE_CONCAT,
+    UPDATE_COUNT_DISTINCT,
+    UPDATE_COUNT,
+    UPDATE_FIRST,
     UPDATE_LAST,
-    DELETE_LAST
+    UPDATE_MAX,
+    UPDATE_MIN,
+    UPDATE_MOST,
+    UPDATE_NONE,
+    UPDATE_SUM,
+    UPDATE_SOME
   }
 
   public class FilterResults {
@@ -185,7 +196,7 @@ global without sharing virtual class Rollup {
     public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
 
     public String concatenateWhereClauses() {
-      if (this.recordIds.isEmpty() && this.possibleWhereClauses.isEmpty()) {
+      if (this.possibleWhereClauses.isEmpty()) {
         return null;
       }
       String orDelimiter = ' OR ';
@@ -1894,7 +1905,7 @@ global without sharing virtual class Rollup {
       } else if (isRefresh) {
         // remove non-matches
         metas.remove(index);
-      } else if (meta.RollupOperation__c != Op.MOST.name()) {
+      } else {
         // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
         // we need to reset the CMDT to the correct base operation prior to appending the new context
         meta.RollupOperation__c =
@@ -2045,11 +2056,11 @@ global without sharing virtual class Rollup {
   }
 
   private static String getFullRecalcQueryString(List<Rollup__mdt> metas) {
-    List<String> orderByFields = new List<String>();
+    Set<String> orderByFields = new Set<String>();
     for (Rollup__mdt meta : metas) {
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
     }
-    return '\nORDER BY ' + String.join(orderByFields, ',');
+    return '\nORDER BY ' + String.join(new List<String>(orderByFields), ',');
   }
 
   private static void fillFullRecalcRollups(
@@ -2136,14 +2147,17 @@ global without sharing virtual class Rollup {
     FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-    wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
-
-    if (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c)) {
-      wrappedMeta.queryFields.addAll(RollupEvaluator.getWhereEval(fullRecalcMeta.meta.CalcItemWhereClause__c, fullRecalcMeta.calcItemType).getQueryFields());
+    if (wrappedMeta.recordIds.isEmpty() == false) {
+      wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
     }
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(fullRecalcMeta.wrapper.toString(), fullRecalcMeta.calcItemType);
-    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
     wrappedMeta.parentRecordsToReset.addAll(fullRecalcMeta.wrapper.parentRecordsToReset);
+
+    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(
+      fullRecalcMeta.wrapper.getQuery() +
+      (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c) ? ' AND ' + fullRecalcMeta.meta.CalcItemWhereClause__c : ''),
+      fullRecalcMeta.calcItemType
+    );
+    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
   }
 
   private static RollupFullRecalcProcessor buildFullRecalcRollup(
@@ -2354,7 +2368,6 @@ global without sharing virtual class Rollup {
     private String query;
     private final List<SObject> parentRecordsToReset = new List<SObject>();
     private final Set<String> recordIds = new Set<String>();
-    private final Set<String> stringifiedRecordIds = new Set<String>();
 
     private QueryWrapper() {
     }
@@ -2368,7 +2381,6 @@ global without sharing virtual class Rollup {
       if (String.isNotBlank(recordId)) {
         this.hasQuery = true;
         this.recordIds.add(recordId);
-        this.stringifiedRecordIds.add('\'' + recordId + '\'');
       }
     }
 
@@ -2377,14 +2389,8 @@ global without sharing virtual class Rollup {
     }
 
     public void setQuery(String query) {
-      if (String.isNotBlank(query)) {
-        this.hasQuery = true;
-        this.query = query;
-      }
-    }
-
-    public override String toString() {
-      return this.hasQuery ? this.query.replace('= :recordIds', 'IN (' + String.join(new List<String>(this.stringifiedRecordIds), ',') + ')') : '';
+      this.hasQuery = true;
+      this.query = query;
     }
   }
 
@@ -2649,7 +2655,7 @@ global without sharing virtual class Rollup {
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
     switch on Op.valueOf(baseOperationName) {
-      when AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST {
+      when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST, NONE, SOME {
         isFullRecalcOp = true;
       }
     }

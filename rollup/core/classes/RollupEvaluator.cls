@@ -283,7 +283,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       try {
         for (String splitWhereClause : localSplitWheres) {
           List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
-          if (this.isOrConditional(splitWhereClause)) {
+          if (this.isOrConditional(this.whereClause, splitWhereClause)) {
             this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
           } else {
             this.conditionalGroupings.add(new AndConditionalGrouping(conditions));
@@ -340,7 +340,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         Integer openParansRange = potentialNestedConditional.indexOf('(');
         if (openParansRange == 0 && potentialNestedConditional.length() > 1) {
           // remove the parans now
-          potentialNestedConditional = potentialNestedConditional.substring(1, potentialNestedConditional.length());
+          potentialNestedConditional = potentialNestedConditional.substring(
+            1,
+            potentialNestedConditional.length() - (potentialNestedConditional.endsWith(')') ? 1 : 0)
+          );
           // iterate through the rest of the list, stopping at the end of the parantheses
           for (Integer innerIndex = index + 1; innerIndex < localSplitWheres.size(); innerIndex++) {
             String innerMatch = localSplitWheres[innerIndex].trim();
@@ -349,15 +352,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             if (innerMatch.endsWith(')')) {
               Integer startingPoint = whereClause.indexOf(potentialNestedConditional);
               Integer endingPoint = whereClause.indexOf(innerMatch) + (innerMatch.length() - 1);
-              try {
-                potentialNestedConditional = whereClause.substring(startingPoint, endingPoint);
-              } catch (System.StringException ex) {
-                // TODO - not an entirely ideal solution, as it implies an actual recursive parsing error
-                // but it seems that as long as this error is caught, the actual where clauses even for deeply nested conditionals
-                // end up being created correctly
-                RollupLogger.Instance.log('recursive nested conditional parse error, continuing ...', ex.getMessage(), LoggingLevel.WARN);
-              }
-              potentialNestedConditional = potentialNestedConditional.removeStart('(').removeEnd(')');
+              potentialNestedConditional = whereClause.substring(startingPoint, endingPoint < startingPoint ? whereClause.length() : endingPoint)
+                .removeStart('(')
+                .removeEnd(')');
               break;
             } else {
               this.splitWheres.add(innerMatch);
@@ -371,7 +368,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           List<String> innerWhereClauses = this.getSoqlWhereClauses(potentialNestedConditional, calcItemSObjectType);
           for (String innerWhere : innerWhereClauses) {
             this.splitWheres.add(innerWhere);
-            isAnInnerOrCondition = isAnInnerOrCondition || this.isOrConditional(innerWhere);
+            isAnInnerOrCondition = isAnInnerOrCondition || this.isOrConditional(this.whereClause, innerWhere);
             conditions.addAll(this.createConditionsFromString(innerWhere, calcItemSObjectType));
           }
 
@@ -392,15 +389,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    private Boolean isOrConditional(String conditionalStatement) {
+    private Boolean isOrConditional(String fullString, String conditionalStatement) {
       Boolean isOr = false;
-      Boolean isFirstConditional = this.originalWhereClause.indexOf(conditionalStatement) == 0;
+      Boolean isFirstConditional = fullString.indexOf(conditionalStatement) == 0;
       if (isFirstConditional == false) {
-        Integer whereWeAreInTheFullString = this.originalWhereClause.indexOf(conditionalStatement);
-        // 5 is enough to encapsulate " or " with spaces
-        Integer clauseStartingIndex = whereWeAreInTheFullString - 7;
+        Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement);
+        Integer clauseStartingIndex = whereWeAreInTheFullString - 7; // enough to encapsulate " or " with spaces
         if (clauseStartingIndex > 0) {
-          isOr = this.originalWhereClause.substring(clauseStartingIndex, whereWeAreInTheFullString).containsIgnoreCase(' or ');
+          isOr = fullString.substring(clauseStartingIndex, whereWeAreInTheFullString).containsIgnoreCase(' or ');
         }
       }
       return isOr;

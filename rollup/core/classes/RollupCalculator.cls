@@ -46,19 +46,22 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       switch on op {
+        when ALL, DELETE_ALL, DELETE_NONE, DELETE_SOME, NONE, SOME, UPDATE_ALL, UPDATE_NONE, UPDATE_SOME {
+          calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+        }
+        when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
+          calc = new AverageRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+        }
         when COUNT_DISTINCT, UPDATE_COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
           calc = new CountDistinctRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when COUNT, UPDATE_COUNT, DELETE_COUNT {
           calc = new CountRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
-        when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
-          calc = new AverageRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
-        }
         when FIRST, UPDATE_FIRST, DELETE_FIRST, LAST, UPDATE_LAST, DELETE_LAST {
           calc = new FirstLastRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
-        when MOST {
+        when MOST, DELETE_MOST, UPDATE_MOST {
           calc = new MostRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when else {
@@ -301,6 +304,9 @@ public without sharing abstract class RollupCalculator {
       if (currentItemMatches) {
         this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
+        if (this.op == Rollup.Op.SOME || this.op == Rollup.Op.UPDATE_SOME) {
+          break;
+        }
       }
     }
     List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
@@ -1202,6 +1208,45 @@ public without sharing abstract class RollupCalculator {
         if (this.largestCountPointer < localCount) {
           this.largestCountPointer = localCount;
           this.returnVal = value;
+        }
+      }
+    }
+  }
+
+  private without sharing class ConditionalCalculator extends RollupCalculator {
+    public ConditionalCalculator(
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      SObjectField lookupKeyField
+    ) {
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.returnVal = null;
+      // winnowItems modifies the list passed in by reference, so we clone it here
+      List<SObject> filteredItems = this.winnowItems(new List<SObject>(calcItems), oldCalcItems);
+      Boolean matches = false;
+      switch on this.op {
+        when ALL, DELETE_ALL, UPDATE_ALL {
+          matches = calcItems.size() == filteredItems.size();
+        }
+        when NONE, DELETE_NONE, DELETE_SOME, SOME, UPDATE_NONE, UPDATE_SOME {
+          matches = filteredItems.isEmpty() == this.op.name().contains(Rollup.Op.SOME.name()) == false;
+        }
+      }
+
+      switch on this.opFieldOnLookupObject.getDescribe().getType() {
+        when CURRENCY, DOUBLE, INTEGER {
+          this.returnVal = matches ? 1 : 0;
+        }
+        when STRING, TEXTAREA {
+          this.returnVal = String.valueOf(matches);
+        }
+        when else {
+          this.returnVal = matches;
         }
       }
     }

@@ -13,6 +13,11 @@
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>
+                <fullName>ALL</fullName>
+                <default>false</default>
+                <label>ALL</label>
+            </value>
+            <value>
                 <fullName>AVERAGE</fullName>
                 <default>false</default>
                 <label>AVERAGE</label>
@@ -61,6 +66,16 @@
                 <fullName>MOST</fullName>
                 <default>false</default>
                 <label>MOST</label>
+            </value>
+            <value>
+                <fullName>NONE</fullName>
+                <default>false</default>
+                <label>NONE</label>
+            </value>
+            <value>
+                <fullName>SOME</fullName>
+                <default>false</default>
+                <label>SOME</label>
             </value>
             <value>
                 <fullName>SUM</fullName>
