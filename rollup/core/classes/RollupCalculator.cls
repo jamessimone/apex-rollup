@@ -330,7 +330,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected SObjectType getCalcItemType() {
-    return RollupFieldInitializer.Current.getSObjectFromName(this.metadata.CalcItem__c).getSObjectType();
+    return RollupFieldInitializer.Current.getDescribeFromName(this.metadata.CalcItem__c).getSObjectType();
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {

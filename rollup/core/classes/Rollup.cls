@@ -1467,7 +1467,7 @@ global without sharing virtual class Rollup {
     }
     SObject firstRecord = cdcRecords[0];
     EventBus.ChangeEventHeader header = (EventBus.ChangeEventHeader) firstRecord.get('ChangeEventHeader');
-    SObjectType sObjectType = RollupFieldInitializer.Current.getSObjectFromName(header.getEntityName()).getSObjectType();
+    SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(header.getEntityName()).getSObjectType();
 
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(sObjectType);
     if (matchingMetadata.isEmpty()) {
@@ -1867,7 +1867,7 @@ global without sharing virtual class Rollup {
         nonMatchingGrandparent == false &&
         calcItems.isEmpty() == false
         ? calcItems[0].getSObjectType()
-        : RollupFieldInitializer.Current.getSObjectFromName(meta.CalcItem__c).getSObjectType();
+        : RollupFieldInitializer.Current.getDescribeFromName(meta.CalcItem__c).getSObjectType();
       Boolean isIntermediateRollupForGrandparent =
         nonMatchingGrandparent &&
         calcItems.isEmpty() == false &&
@@ -1964,7 +1964,7 @@ global without sharing virtual class Rollup {
   }
 
   private static void populateFullRecalcMetasByType(Map<SObjectType, RollupMetadata> childToMetaWrapper, Rollup__mdt matchingMeta, String possibleParentId) {
-    SObjectType childType = RollupFieldInitializer.Current.getSObjectFromName(matchingMeta.CalcItem__c).getSObjectType();
+    SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
     RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(matchingMeta.CalcItemWhereClause__c)
       ? null
       : RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType);
@@ -2170,7 +2170,7 @@ global without sharing virtual class Rollup {
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
     }
-    SObjectType parentType = RollupFieldInitializer.Current.getSObjectFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
+    SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', equality);
     RollupFullRecalcProcessor parentResetProcessor = new RollupParentResetProcessor(
@@ -2307,9 +2307,11 @@ global without sharing virtual class Rollup {
         throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
       } else if (String.isBlank(flowInput.grandparentRelationshipFieldPath)) {
         SObject firstRecord = flowInput.recordsToRollup[0];
-        SObject lookupItem = RollupFieldInitializer.Current.getSObjectFromName(
-          flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : flowInput.rollupSObjectName
-        );
+        SObject lookupItem = RollupFieldInitializer.Current.getDescribeFromName(
+            flowInput.isRollupStartedFromParent ? flowInput.calcItemTypeWhenRollupStartedFromParent : flowInput.rollupSObjectName
+          )
+          .getSObjectType()
+          .newSObject();
 
         // validate the fields exist on the rollup record
         (flowInput.isRollupStartedFromParent ? lookupItem : firstRecord).get(flowInput.rollupFieldOnCalcItem);
@@ -2578,8 +2580,8 @@ global without sharing virtual class Rollup {
       SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
       // NB - this SHOULD work even for SObjects part of managed packages
-      SObjectType lookupSObjectType = init.getSObjectFromName(rollupMetadata.LookupObject__c).getSObjectType();
-      Map<String, SObjectField> lookuopItemFields = lookupSObjectType.getDescribe().fields.getMap();
+      Schema.DescribeSObjectResult lookupDescribe = init.getDescribeFromName(rollupMetadata.LookupObject__c);
+      Map<String, SObjectField> lookuopItemFields = lookupDescribe.fields.getMap();
       SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
 
@@ -2601,7 +2603,7 @@ global without sharing virtual class Rollup {
         // for CMDT-driven rollups, the rollup record is always tied to a RollupControl__mdt record
         localControl = getSingleControlOrDefault(RollupControl__mdt.Id, rollupMetadata.RollupControl__c, specificControl);
       } else {
-        String controlKey = getRollupControlKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupSObjectType, rollupFieldOnOpObject);
+        String controlKey = getRollupControlKey(rollupInvokePoint, rollupFieldOnCalcItem, lookupDescribe.getSObjectType(), rollupFieldOnOpObject);
         localControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, specificControl);
       }
       setControlToSyncForSingularParentRecalcs(localControl, rollupInvokePoint);
@@ -2613,7 +2615,7 @@ global without sharing virtual class Rollup {
         calcLookupField,
         lookupFieldOnOpObject,
         rollupFieldOnOpObject,
-        lookupSObjectType,
+        lookupDescribe.getSObjectType(),
         sObjectType, // calc item SObjectType
         rollupOp,
         filterResults,
@@ -2762,7 +2764,7 @@ global without sharing virtual class Rollup {
         continue;
       }
 
-      SObjectType calcItemSObject = RollupFieldInitializer.Current.getSObjectFromName(meta.CalcItem__c).getSObjectType();
+      SObjectType calcItemSObject = RollupFieldInitializer.Current.getDescribeFromName(meta.CalcItem__c).getSObjectType();
 
       // SOQL in a for loop - with the caveat that it's once per child object of any given parent
       if (updatedChildTypes.contains(calcItemSObject) == false) {

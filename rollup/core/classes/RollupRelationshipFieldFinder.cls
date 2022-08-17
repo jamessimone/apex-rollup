@@ -594,10 +594,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
   @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
   private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
-    SObject junctionObject = RollupFieldInitializer.Current.getSObjectFromName(junctionObjectName);
     String oneToManyFieldName = this.oneToManyParts.get(junctionObjectName);
     this.oneToManyParts.remove(junctionObjectName);
-    Schema.SObjectType sObjectType = junctionObject.getSObjectType();
+    Schema.SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(junctionObjectName).getSObjectType();
     this.currentRelationshipName = this.getCurrentRelationshipName(sObjectType);
     String query = RollupQueryBuilder.Current.getQuery(
       sObjectType,
