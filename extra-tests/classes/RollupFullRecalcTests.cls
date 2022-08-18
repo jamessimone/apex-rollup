@@ -655,14 +655,14 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void clearsParentValuesWhenNoRefreshMatches() {
-    List<Account> accs = [SELECT Id, AnnualRevenue, Description FROM Account];
-    accs[0].AnnualRevenue = 1500;
-    accs[0].Description = 'This is the value that should be persisted';
-    update accs;
+    Account acc = (Account) RollupTestUtils.queryrecord('Account', new List<String>{ 'AnnualRevenue', 'Description' });
+    acc.AnnualRevenue = 1500;
+    acc.Description = 'This is the value that should be persisted';
+    update acc;
     // simulate un-related, in-flight update
-    accs[0].Description = 'Something else';
+    acc.Description = 'Something else';
 
-    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'REFRESH', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(new List<Account>{ acc }, 'REFRESH', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
     flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
 
@@ -681,11 +681,11 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void clearsParentValuesWhenNoUpdateMatches() {
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
-    accs[0].AnnualRevenue = 1500;
-    update accs;
+    Account acc = (Account) RollupTestUtils.queryrecord('Account', new List<String>{ 'AnnualRevenue' });
+    acc.AnnualRevenue = 1500;
+    update acc;
 
-    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(accs, 'UPSERT', 'SUM');
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(new List<Account>{ acc }, 'UPSERT', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
     flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
     flowInputs[0].oldRecordsToRollup = new List<SObject>{ null };
@@ -2243,5 +2243,34 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(opp.Amount, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void retainsMultiCurrencyFieldsOnParentRecords() {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
+      return;
+    }
+    String expectedIsoCode = 'EUR';
+    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>());
+    System.assertNotEquals(null, acc.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME), 'Test has started under the wrong conditions');
+    acc.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, expectedIsoCode);
+
+    RollupDeferredFullRecalcProcessor processor = new RollupDeferredFullRecalcProcessor(
+      new List<Rollup__mdt>{ new Rollup__mdt(RollupFieldOnLookupObject__c = 'Description', LookupObject__c = 'Account') },
+      Schema.Contact.SObjectType,
+      'SELECT Id, CurrencyIsoCode\nFROM Contact WHERE Id != null',
+      new Set<String>(),
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
+      null
+    );
+
+    List<Account> storedAccounts = new List<Account>{ acc };
+    processor.storeParentFieldsToClear(storedAccounts);
+    List<Account> newAccounts = new List<Account>{ new Account(Id = RollupTestUtils.createId(Account.SObjectType)), acc };
+    newAccounts[0].put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, 'USD');
+    processor.processParentFieldsToReset(newAccounts);
+
+    System.assertEquals(expectedIsoCode, acc.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME), 'Currency ISO code should not have been cleared');
+    System.assertNotEquals(null, newAccounts[0].get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
   }
 }

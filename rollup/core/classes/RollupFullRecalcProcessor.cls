@@ -21,7 +21,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     set;
   }
 
-  public RollupFullRecalcProcessor(
+  protected RollupFullRecalcProcessor(
     String queryString,
     InvocationPoint invokePoint,
     List<Rollup__mdt> rollupInfo,
@@ -101,7 +101,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
       SObject relatedParentRecord = relatedParentRecordsMap.containsKey(parentRecordToReset.Id)
         ? relatedParentRecordsMap.get(parentRecordToReset.Id)
-        : parentRecordToReset.getSObjectType().newSObject(parentRecordToReset.Id);
+        : RollupCurrencyInfo.createNewRecord(parentRecordToReset);
 
       for (Rollup__mdt meta : this.rollupInfo) {
         if (relatedParentRecord.getSobjectType().getDescribe().getName() == meta.LookupObject__c) {

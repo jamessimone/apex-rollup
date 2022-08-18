@@ -62,6 +62,14 @@ public without sharing class RollupCurrencyInfo {
     }
   }
 
+  public static SObject createNewRecord(SObject originalParent) {
+    SObject newParent = originalParent.getSObjectType().newSObject(originalParent.Id);
+    if (isMultiCurrency()) {
+      newParent.put(CURRENCY_ISO_CODE_FIELD_NAME, originalParent.get(CURRENCY_ISO_CODE_FIELD_NAME));
+    }
+    return newParent;
+  }
+
   public static void transformForMultiCurrencyOrgs(
     SObject calcItem,
     Schema.SObjectField opFieldOnCalcItem,

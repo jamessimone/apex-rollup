@@ -179,10 +179,7 @@ global without sharing virtual class Rollup {
   }
 
   public class FilterResults {
-    public FilterResults() {
-      this.matchingItemIds = new Set<Id>();
-    }
-    public Set<Id> matchingItemIds { get; private set; }
+    public final Set<Id> matchingItemIds = new Set<Id>();
     public Evaluator eval { get; set; }
   }
 

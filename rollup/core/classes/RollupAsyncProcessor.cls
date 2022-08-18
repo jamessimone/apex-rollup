@@ -361,7 +361,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         return new List<SObject>();
       }
       List<SObject> localLookupItems;
-      if (String.isNotBlank(rollup.metadata.GrandparentRelationshipFieldPath__c) || rollup.metadata.RollupToUltimateParent__c) {
+      if (rollup.traversal != null) {
         localLookupItems = rollup.traversal.getAllParents();
       } else {
         String queryString =
@@ -443,7 +443,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor rollup,
     Map<String, List<SObject>> localCachedFullRecalcs
   ) {
-    if (this.isValidAdditionalCalcItemRetrieval(rollup) == false) {
+    if (this.isValidAdditionalCalcItemRetrieval(rollup) == false || rollup.metadata?.RollupToUltimateParent__c == true) {
       return;
     }
 
