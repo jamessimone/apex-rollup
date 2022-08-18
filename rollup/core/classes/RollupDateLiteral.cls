@@ -409,7 +409,7 @@ public without sharing abstract class RollupDateLiteral {
   private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(1);
-      this.bound = this.ref.addDays(90);
+      this.bound = getRelativeDatetime(this.ref.addDays(90).date(), END_TIME);
     }
   }
 
