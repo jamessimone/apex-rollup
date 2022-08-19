@@ -612,7 +612,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
-    return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
+    switch on roll.invokePoint {
+      when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
+        return false;
+      }
+      when else {
+        return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
+      }
+    }
   }
 
   private Boolean getIsTimingOut(RollupControl__mdt control, RollupAsyncProcessor processor) {
@@ -819,8 +826,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       String key = (String) calcItem.get(roll.lookupFieldOnCalcItem);
       SObject potentialOldCalcItem = roll.oldCalcItems?.get(calcItem.Id);
-      if (String.isBlank(key) && potentialOldCalcItem != null) {
+      Boolean hasBlankKey = String.isBlank(key);
+      if (hasBlankKey && potentialOldCalcItem != null) {
         key = (String) potentialOldCalcItem.get(roll.lookupFieldOnCalcItem);
+      }
+      if (hasBlankKey && potentialOldCalcItem == null) {
+        continue;
       }
       if (lookupFieldToCalcItems.containsKey(key) == false) {
         lookupFieldToCalcItems.put(key, new CalcItemBag(new List<SObject>{ calcItem }));

@@ -94,6 +94,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   private void runSync() {
     List<SObject> parentItems = Database.query(this.queryString);
     this.execute(null, parentItems);
+    this.logFinish();
   }
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {

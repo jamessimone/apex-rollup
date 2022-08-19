@@ -402,11 +402,11 @@ private class RollupFullRecalcTests {
     Rollup.DML = mock;
 
     Account acc = [SELECT Id FROM Account];
-    Account secondParent = new Account(Name = 'Second', NumberOfEmployees = 1);
+    Account secondParent = new Account(Name = 'Two', Description = 'Two');
     insert secondParent;
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
-      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two')
+      new ContactPointAddress(ParentId = secondParent.Id, Name = secondParent.Name)
     };
     insert cpas;
 
@@ -437,7 +437,7 @@ private class RollupFullRecalcTests {
         LookupFieldOnCalcItem__c = 'ParentId',
         RollupOperation__c = 'CONCAT',
         RollupFieldOnLookupObject__c = 'Description',
-        RollupFieldOnCalcItem__c = 'Id',
+        RollupFieldOnCalcItem__c = 'Name',
         LookupFieldOnLookupObject__c = 'Id'
       )
     };
@@ -447,8 +447,9 @@ private class RollupFullRecalcTests {
     Test.stopTest();
 
     Map<Id, SObject> updatedRecordMap = new Map<Id, SObject>(mock.Records);
-    System.assertEquals(true, updatedRecordMap.containsKey(secondParent.Id));
-    System.assertEquals(cpas[1].Id, updatedRecordMap.get(secondParent.Id).get('Description'));
+    System.assertEquals(true, updatedRecordMap.containsKey(acc.Id));
+    System.assertNotEquals(true, updatedRecordMap.containsKey(secondParent.Id));
+    System.assertEquals(cpas[0].Name, updatedRecordMap.get(acc.Id).get('Description'));
   }
 
   @IsTest
