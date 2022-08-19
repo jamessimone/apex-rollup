@@ -185,7 +185,7 @@
         <label>Deprecated</label>
         <layoutColumns>
             <layoutItems>
-                <behavior>Edit</behavior>
+                <behavior>Readonly</behavior>
                 <field>OrderByFirstLast__c</field>
             </layoutItems>
         </layoutColumns>
