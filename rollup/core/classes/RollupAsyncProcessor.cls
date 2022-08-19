@@ -284,7 +284,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll;
     if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor && this.hasEnqueued == false) {
       roll = this.rollups[0];
-    } else if (this instanceof RollupFullRecalcProcessor) {
+    } else if (this instanceof RollupFullRecalcProcessor && this.hasEnqueued == false) {
       roll = this;
     } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
@@ -604,7 +604,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean getCanEnqueue() {
-    return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
+    return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs() && this.hasEnqueued == false;
   }
 
   private String getParentResetKey(String fieldKey, SObject parent) {
