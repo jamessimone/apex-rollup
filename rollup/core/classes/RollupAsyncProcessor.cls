@@ -1111,8 +1111,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   ) {
     Rollup.Op rollupOp = roll.op;
     if (roll.isFullRecalc && roll.op.name().contains('DELETE')) {
-      RollupLogger.Instance.log('Updating rollup operation from delete for full recalc...', LoggingLevel.FINE);
-      rollupOp = Rollup.Op.valueOf(roll.op.name().substringAfter('_'));
+      rollupOp = this.getOpMap().get(roll.op.name().substringAfter('_'));
     }
     if (rollupCalc == null) {
       rollupCalc = RollupCalculator.Factory.getCalculator(rollupOp, roll.opFieldOnCalcItem, roll.opFieldOnLookupObject, roll.metadata, lookupKeyField);
@@ -1133,11 +1132,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll,
     RollupSObjectUpdater updater
   ) {
-    if (oldLookupItems.isEmpty() || roll.op == Rollup.Op.MOST) {
+    if (oldLookupItems.isEmpty() || this.isEmptyReparentingSet(roll.op)) {
       return;
     }
     RollupCalculator calc;
-    Op deleteOp = Rollup.Op.valueOf('DELETE_' + getBaseOperationName(roll.op.name()));
+    Op deleteOp = this.getOpMap().get('DELETE_' + getBaseOperationName(roll.op.name()));
     RollupAsyncProcessor oldLookupsRollup = getProcessor(
       new FilterResults(),
       roll.opFieldOnCalcItem,

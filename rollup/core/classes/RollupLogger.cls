@@ -1,4 +1,4 @@
-public without sharing virtual class RollupLogger extends Rollup implements ILogger {
+public without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
   private static final String CURRENT_VERSION_NUMBER = 'v1.5.20';
@@ -7,20 +7,11 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
   private static Boolean disabledMessageHasBeenLogged = false;
 
   private final LoggingLevel currentLoggingLevel;
+  private final RollupControl__mdt rollupControl;
 
   protected RollupLogger() {
-    super(InvocationPoint.FROM_STATIC_LOGGER);
     this.currentLoggingLevel = this.getLogLevel();
-  }
-
-  private static final RollupLogger SELF {
-    get {
-      if (SELF == null) {
-        SELF = new RollupLogger();
-      }
-      return SELF;
-    }
-    set;
+    this.rollupControl = Rollup.getDefaultControl();
   }
 
   public static final ILogger Instance {
@@ -89,10 +80,6 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     return 'LoggingDebugLevel';
   }
 
-  protected override String getTypeName() {
-    return RollupLogger.class.getName();
-  }
-
   protected LoggingLevel getLogLevel() {
     LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
     RollupPluginParameter__mdt loggingLevelParamater = this.getLoggingLevelParameter();
@@ -136,36 +123,33 @@ public without sharing virtual class RollupLogger extends Rollup implements ILog
     List<RollupPlugin__mdt> plugins = PLUGIN.getInstances();
     for (Integer index = plugins.size() - 1; index >= 0; index--) {
       RollupPlugin__mdt plugin = plugins[index];
-      if ((plugin.RollupControl__c != null && plugin.RollupControl__c != SELF.rollupControl.Id) || plugin.DeveloperName?.contains('Logger') == false) {
+      if (plugin.DeveloperName?.contains('Logger') == false) {
         plugins.remove(index);
       }
     }
-    SELF.log('retrieved the following logging plugins:', plugins, LoggingLevel.FINEST);
     return combineLoggers(plugins);
   }
 
   private static ILogger combineLoggers(List<RollupPlugin__mdt> loggingPlugins) {
     ILogger rollLogger;
     if (loggingPlugins.isEmpty()) {
-      return SELF;
+      return new RollupLogger();
     }
     RollupPlugin__mdt firstLogger = loggingPlugins.remove(0);
-    if (firstLogger.DeveloperName == SELF.getTypeName()) {
-      rollLogger = SELF;
+    if (firstLogger.DeveloperName == RollupLogger.class.getName()) {
+      rollLogger = new RollupLogger();
     } else {
       try {
         rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
       } catch (Exception ex) {
-        SELF.log(
-          'cast to ILogger for:' +
+        rollLogger = new RollupLogger();
+        rollLogger.log(
+          'Falling back to default logger, cast to ILogger for:' +
           firstLogger.DeveloperName +
-          ' failed with message: ' +
-          ex.getMessage() +
-          ', falling back to default logger',
-          SELF,
+          ' failed',
+          ex,
           LoggingLevel.WARN
         );
-        rollLogger = SELF;
       }
     }
     return loggingPlugins.isEmpty() ? rollLogger : new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));

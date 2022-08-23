@@ -77,7 +77,7 @@ global without sharing virtual class Rollup {
   private static final RollupCalcItemReplacer CALC_ITEM_REPLACER {
     get {
       if (CALC_ITEM_REPLACER == null) {
-        CALC_ITEM_REPLACER = new RollupCalcItemReplacer(getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl));
+        CALC_ITEM_REPLACER = new RollupCalcItemReplacer(getDefaultControl());
       }
       return CALC_ITEM_REPLACER;
     }
@@ -120,7 +120,7 @@ global without sharing virtual class Rollup {
    * useful in limited contexts to get around the classic approach to dependency injection
    * (such as in this case, when constructor-based DI isn't possible).
    * It's more palatable in Apex than in many other languages, as a matter of fact -
-   * this is because the @TestVisible annotation enforces for us the override only being possible while testing
+   * this is because the @TestVisible annotation enforces that the override is only possible while testing
    */
   @TestVisible
   private static RollupSObjectUpdater DML {
@@ -129,6 +129,19 @@ global without sharing virtual class Rollup {
         DML = new RollupSObjectUpdater();
       }
       return DML;
+    }
+    set;
+  }
+
+  private static final Map<String, Op> OP_NAME_TO_OP {
+    get {
+      if (OP_NAME_TO_OP == null) {
+        OP_NAME_TO_OP = new Map<String, Op>();
+        for (Op op : Op.values()) {
+          OP_NAME_TO_OP.put(op.name(), op);
+        }
+      }
+      return OP_NAME_TO_OP;
     }
     set;
   }
@@ -259,7 +272,6 @@ global without sharing virtual class Rollup {
     FROM_SCHEDULED,
     FROM_FULL_RECALC_LWC,
     FROM_SINGULAR_PARENT_RECALC_LWC,
-    FROM_STATIC_LOGGER,
     FROM_FULL_RECALC_FLOW
   }
 
@@ -268,13 +280,11 @@ global without sharing virtual class Rollup {
 
   protected Rollup(InvocationPoint invokePoint) {
     this.invokePoint = invokePoint;
-    this.rollupControl = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
-    if (invokePoint != InvocationPoint.FROM_STATIC_LOGGER) {
-      this.calcItemReplacer = CALC_ITEM_REPLACER;
-      this.isConductor = true;
-      // a batch only becomes valid if other Rollups are added to it
-      this.isNoOp = true;
-    }
+    this.rollupControl = getDefaultControl();
+    this.calcItemReplacer = CALC_ITEM_REPLACER;
+    this.isConductor = true;
+    // a batch only becomes valid if other Rollups are added to it
+    this.isNoOp = true;
   }
 
   protected Rollup(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -345,6 +355,10 @@ global without sharing virtual class Rollup {
 
   protected Map<SObjectType, Set<TriggerOperation>> getCachedApexOperations() {
     return CACHED_APEX_OPERATIONS;
+  }
+
+  protected Map<String, Op> getOpMap() {
+    return OP_NAME_TO_OP;
   }
 
   protected Boolean getIsDeferralAllowed() {
@@ -1626,6 +1640,10 @@ global without sharing virtual class Rollup {
 
   /** end global-facing section, begin public/private static helpers */
 
+  public static RollupControl__mdt getDefaultControl() {
+    return getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
+  }
+
   public static void processStoredFlowRollups() {
     List<Rollup> rollupsToProcess = new List<Rollup>(CACHED_ROLLUPS);
     CACHED_ROLLUPS.clear();
@@ -2253,7 +2271,7 @@ global without sharing virtual class Rollup {
     return flattenedRollups;
   }
 
-  private static void flattenBatches(Rollup outerRollup, List<Rollup> rollups) {
+  private static void flattenBatches(Rollup rollupConductor, List<Rollup> rollups) {
     for (Rollup rollup : rollups) {
       if (rollup.rollups.isEmpty() == false) {
         for (Rollup innerRoll : rollup.rollups) {
@@ -2266,9 +2284,9 @@ global without sharing virtual class Rollup {
           innerRoll.isFullRecalc = rollup.isFullRecalc;
         }
         // recurse through lists until there aren't any more nested rollups
-        flattenBatches(outerRollup, rollup.rollups);
-      } else if (rollup instanceof RollupAsyncProcessor) {
-        loadRollups((RollupAsyncProcessor) rollup, outerRollup);
+        flattenBatches(rollupConductor, rollup.rollups);
+      } else {
+        addRollup(rollupConductor, rollup);
       }
     }
   }
@@ -2572,7 +2590,7 @@ global without sharing virtual class Rollup {
     RollupFieldInitializer init = RollupFieldInitializer.Current;
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
-      Op rollupOp = Op.valueOf(rollupMetadata.RollupOperation__c);
+      Op rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
       SObjectField rollupFieldOnCalcItem = init.getSObjectFieldByName(calcItemFields, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
@@ -2653,7 +2671,7 @@ global without sharing virtual class Rollup {
 
   private static Boolean isFullRecalcOp(String baseOperationName) {
     Boolean isFullRecalcOp = false;
-    switch on Op.valueOf(baseOperationName) {
+    switch on OP_NAME_TO_OP.get(baseOperationName) {
       when ALL, AVERAGE, CONCAT_DISTINCT, CONCAT, COUNT_DISTINCT, FIRST, LAST, MOST, NONE, SOME {
         isFullRecalcOp = true;
       }
@@ -2825,12 +2843,12 @@ global without sharing virtual class Rollup {
       rollupControl,
       rollupMetadata
     );
-    return loadRollups(processor, rollupConductor);
+    return addRollup(rollupConductor, processor);
   }
 
-  private static Rollup loadRollups(RollupAsyncProcessor processor, Rollup rollupConductor) {
-    if (rollupConductor != null && processor != null && processor.isNoOp == false) {
-      rollupConductor.rollups.add(processor);
+  private static Rollup addRollup(Rollup rollupConductor, Rollup processor) {
+    if (processor.isNoOp == false) {
+      rollupConductor.rollups.add((RollupAsyncProcessor) processor);
     }
     return rollupConductor;
   }
