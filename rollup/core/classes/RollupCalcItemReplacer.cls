@@ -49,6 +49,7 @@ public without sharing class RollupCalcItemReplacer {
       calcItems = this.potentiallyReplacePolymorphicWhereClauses(calcItems);
       this.replaceCalcItemsWithParentWhereClauses(calcItems);
     } else if (mightNeedReplacement == false) {
+      this.calcItemHashCodes.add(calcItems.hashCode());
       this.processedMetadata.addAll(metadata);
     }
     return calcItems;
@@ -60,18 +61,18 @@ public without sharing class RollupCalcItemReplacer {
       return localNeedsReplacement;
     }
     SObjectType calcType = calcItems[0].getSObjectType();
-    Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
-    Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
     for (Rollup__mdt meta : metadata) {
-      Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
       if (meta.IsRollupStartedFromParent__c && meta.LookupObject__c == calcType.getDescribe().getName()) {
         return false;
       }
+      Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
       Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
       if (mightNeedReplacement && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
         RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
         this.metaToEval.put(meta, whereEval);
+        Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
+        Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
         for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
           this.addQueryableFields(orderBy.FieldName__c, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
         }

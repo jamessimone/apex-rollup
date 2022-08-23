@@ -662,10 +662,15 @@ global without sharing virtual class Rollup {
     // let's head that off at the pass by bulkifying here
     Map<Rollup__mdt, FlowInputWrapper> metaToInputWrapper = new Map<Rollup__mdt, FlowInputWrapper>();
     for (FlowInput flowInput : flowInputs) {
+      FlowOutput flowOutput = new FlowOutput();
+      flowOutputs.add(flowOutput);
+      if (RollupSettings__c.getInstance().IsEnabled__c == false) {
+        continue;
+      }
+
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
       RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.DEBUG);
 
-      FlowOutput flowOutput = new FlowOutput();
       if (flowInput.recordsToRollup?.isEmpty() != false) {
         flowOutput.message = 'No records to rollup, returning early';
       } else {
@@ -694,8 +699,9 @@ global without sharing virtual class Rollup {
           metaToInputWrapper.put(meta, new FlowInputWrapper(flowInput, rollupContext, sObjectType, meta));
         }
       }
-
-      flowOutputs.add(flowOutput);
+    }
+    if (metaToInputWrapper.isEmpty()) {
+      return flowOutputs;
     }
 
     Map<SObjectType, List<Rollup>> localRollups = new Map<SObjectType, List<Rollup>>();
@@ -745,13 +751,8 @@ global without sharing virtual class Rollup {
         batch(getFlattenedProcessors(localRollups), fromInvocable);
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred during invocable action:', ex, LoggingLevel.ERROR);
-      for (FlowOutput flowOutput : flowOutputs) {
-        flowOutput.IsSuccess = false;
-        flowOutput.Message = ex.getMessage() + '\n' + ex.getStackTraceString();
-      }
+      logAndThrowFlowException(ex, 'an error occurred during invocable action');
     }
-    flatten(CACHED_ROLLUPS);
     RollupLogger.Instance.save();
 
     return flowOutputs;
@@ -1645,6 +1646,7 @@ global without sharing virtual class Rollup {
   }
 
   public static void processStoredFlowRollups() {
+    flatten(CACHED_ROLLUPS);
     List<Rollup> rollupsToProcess = new List<Rollup>(CACHED_ROLLUPS);
     CACHED_ROLLUPS.clear();
     batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
@@ -2342,7 +2344,7 @@ global without sharing virtual class Rollup {
   }
 
   private static void logAndThrowFlowException(Exception ex, String logString) {
-    RollupLogger.Instance.log(logString, ex, LoggingLevel.ERROR);
+    RollupLogger.Instance.log(logString + ':', ex, LoggingLevel.ERROR);
     RollupLogger.Instance.save();
     throw ex;
   }

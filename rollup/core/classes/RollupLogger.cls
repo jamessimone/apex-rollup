@@ -143,13 +143,7 @@ public without sharing virtual class RollupLogger implements ILogger {
         rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
       } catch (Exception ex) {
         rollLogger = new RollupLogger();
-        rollLogger.log(
-          'Falling back to default logger, cast to ILogger for:' +
-          firstLogger.DeveloperName +
-          ' failed',
-          ex,
-          LoggingLevel.WARN
-        );
+        rollLogger.log('Falling back to default logger, cast to ILogger for:' + firstLogger.DeveloperName + ' failed', ex, LoggingLevel.WARN);
       }
     }
     return loggingPlugins.isEmpty() ? rollLogger : new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
