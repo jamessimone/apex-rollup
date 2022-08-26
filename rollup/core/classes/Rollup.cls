@@ -313,7 +313,7 @@ global without sharing virtual class Rollup {
   }
 
   public virtual String runCalc() {
-    RollupLogger.Instance.log('no-op!', LoggingLevel.ERROR);
+    RollupLogger.Instance.log('no-op!', LoggingLevel.WARN);
     return 'Not implemented';
   }
 
@@ -2145,6 +2145,10 @@ global without sharing virtual class Rollup {
       if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
         wrappedMeta.whereClause = '';
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+      } else if (wrappedMeta.whereClause?.countMatches(':recordIds') > 1) {
+        String bindVariable = ' = :recordIds';
+        String commonParent = wrappedMeta.whereClause.substringBetween('AND ', bindVariable);
+        wrappedMeta.whereClause = commonParent + bindVariable + ' AND ' + wrappedMeta.whereClause.replaceAll('AND .+?' + bindVariable, '');
       }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       RollupFullRecalcProcessor fullRecalc = buildFullRecalcRollup(wrappedMeta, queryString, calcType, localInvokePoint);
@@ -2312,7 +2316,7 @@ global without sharing virtual class Rollup {
       }
     }
 
-    if (String.isNotBlank(errorMessage)) {
+    if (errorMessage != null) {
       Exception ex = new IllegalArgumentException(errorMessage);
       logAndThrowFlowException(ex, 'an error occurred while validating flow inputs');
     }

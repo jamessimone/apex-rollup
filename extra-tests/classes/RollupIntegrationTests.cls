@@ -1048,13 +1048,15 @@ private class RollupIntegrationTests {
     Account parentToMerge = new Account(Name = 'Second parent');
     insert parentToMerge;
 
-    List<ContactPointAddress> rollupChildren = new List<ContactPointAddress>{
+    List<SObject> rollupChildren = new List<SObject>{
       new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2)
+      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2),
+      new Opportunity(Name = 'opp', AccountId = parentToMerge.Id, Amount = 50, StageName = 'test', CloseDate = System.today())
     };
+    Decimal expectedAmount = ((Decimal) rollupChildren[2].get('Amount')) + 1; // another opp is inserted in test setup
 
-    // we don't even need the parent account's annual revenue to be set; rather
-    // we need to validate that post merge, the rollup is recalculated correctly
+    // we don't even need the parent account's rollup fields to be pre-set to anything
+    // we need to validate that post merge, each rollup has been recalculated correctly
     insert rollupChildren;
 
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
@@ -1077,7 +1079,17 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Description',
-        RollupOperation__c = 'CONCAT'
+        RollupOperation__c = 'CONCAT',
+        CalcItemWhereClause__c = 'PreferenceRank = 1 OR PreferenceRank = 2'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'SUM'
       ),
       // should be filtered out
       new Rollup__mdt(
@@ -1095,9 +1107,10 @@ private class RollupIntegrationTests {
     Database.merge(parent, parentToMerge.Id, true);
     Test.stopTest();
 
-    parent = [SELECT Id, Description, AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT Id, Description, AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id];
     System.assertEquals(2, parent.AnnualRevenue, 'Merge should have triggered rollup');
-    System.assertEquals(rollupChildren[0].Name + ', ' + rollupChildren[1].Name, parent.Description, 'Second rollup should also have run');
+    System.assertEquals(rollupChildren[0].get('Name') + ', ' + rollupChildren[1].get('Name'), parent.Description, 'Second rollup should also have run');
+    System.assertEquals(expectedAmount, parent.NumberOfEmployees, 'opp rollup shold have run');
   }
 
   @IsTest
