@@ -39,7 +39,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   public override String runCalc() {
     this.isProcessed = true;
     // reset isValidRun flag properly
-    getRefinedQueryString(this.queryString, this.rollupInfo);
+    getRefinedQueryString(this.queryString, this.rollupMetas);
     this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
     if (isValidRun == false) {
@@ -70,7 +70,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     RollupLogger.Instance.log('resetting parent fields for: ' + parentItems.size() + ' items', LoggingLevel.DEBUG);
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
     for (SObject parentItem : parentItems) {
-      for (Rollup__mdt rollupMeta : this.rollupInfo) {
+      for (Rollup__mdt rollupMeta : this.rollupMetas) {
         if (this.parentRollupFieldHasBeenReset(rollupMeta, parentItem) == false && parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)) {
           parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
         }

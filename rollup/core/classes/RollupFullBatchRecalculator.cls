@@ -4,12 +4,12 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
-    List<Rollup__mdt> rollupInfo,
+    List<Rollup__mdt> rollupMetas,
     SObjectType calcItemType,
     Set<String> recordIds,
     RollupFullRecalcProcessor postProcessor
   ) {
-    super(queryString, invokePoint, rollupInfo, calcItemType, recordIds, postProcessor);
+    super(queryString, invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
     this.statefulLookupToCalcItems = new Map<String, CalcItemBag>();
   }
 
@@ -29,7 +29,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.getDelegatedFullRecalcRollup(this.rollupInfo, calcItems, this)?.runCalc();
+    this.getInnerExecute(calcItems)?.runCalc();
     RollupLogger.Instance.save();
   }
 
@@ -39,6 +39,13 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     }
     RollupLogger.Instance.log(this.getTypeName() + ' finished', LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
+  }
+
+  protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
+    if (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
+      this.startAsyncWork();
+    }
+    return new List<RollupAsyncProcessor>();
   }
 
   protected virtual override String getTypeName() {
@@ -72,5 +79,9 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
       lookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);
     }
+  }
+
+  private RollupAsyncProcessor getInnerExecute(List<SObject> calcItems) {
+    return this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this);
   }
 }

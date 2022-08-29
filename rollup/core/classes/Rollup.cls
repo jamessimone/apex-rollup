@@ -2307,11 +2307,13 @@ global without sharing virtual class Rollup {
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
       errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
-      errorMessage = '';
       if (String.isNotBlank(flowInput.concatDelimiter)) {
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
+        if (errorMessage == null) {
+          errorMessage = '';
+        }
         errorMessage += (String.isNotBlank(errorMessage) ? ' ' : '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
       }
     }

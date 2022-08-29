@@ -1,6 +1,6 @@
 @SuppressWarnings('PMD.UnusedLocalVariable')
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
-  protected final List<Rollup__mdt> rollupInfo;
+  protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> recordIds;
   protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
 
@@ -24,7 +24,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   protected RollupFullRecalcProcessor(
     String queryString,
     InvocationPoint invokePoint,
-    List<Rollup__mdt> rollupInfo,
+    List<Rollup__mdt> rollupMetas,
     SObjectType calcItemType,
     Set<String> recordIds,
     RollupFullRecalcProcessor postProcessor
@@ -34,7 +34,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.isNoOp = true; // consumers should either opt out of this or have it be set properly downstream
     this.calcItemType = calcItemType;
     this.queryString = queryString;
-    this.rollupInfo = rollupInfo;
+    this.rollupMetas = rollupMetas;
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
     this.overrideRollupControl();
@@ -49,16 +49,16 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public override Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
-    for (Rollup__mdt rollupMeta : this.rollupInfo) {
+    for (Rollup__mdt rollupMeta : this.rollupMetas) {
       this.addLimitToMetadata(rollupMeta, limitAmount, calcItemRollupField);
     }
     return this;
   }
 
   public override Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
-    for (Integer index = 0; index < this.rollupInfo.size(); index++) {
-      Rollup__mdt rollupMeta = this.addOrderBys(this.rollupInfo[index], orderBys, calcItemRollupField);
-      this.rollupInfo.set(index, rollupMeta);
+    for (Integer index = 0; index < this.rollupMetas.size(); index++) {
+      Rollup__mdt rollupMeta = this.addOrderBys(this.rollupMetas[index], orderBys, calcItemRollupField);
+      this.rollupMetas.set(index, rollupMeta);
     }
     return this;
   }
@@ -103,7 +103,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         ? relatedParentRecordsMap.get(parentRecordToReset.Id)
         : RollupCurrencyInfo.createNewRecord(parentRecordToReset);
 
-      for (Rollup__mdt meta : this.rollupInfo) {
+      for (Rollup__mdt meta : this.rollupMetas) {
         if (relatedParentRecord.getSobjectType().getDescribe().getName() == meta.LookupObject__c) {
           relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
         }
@@ -128,17 +128,17 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     props = super.customizeToStringEntries(props);
-    this.addToMap(props, 'Rollup Metadata', this.rollupInfo);
+    this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
     return props;
   }
 
   protected override String getHashedContents() {
-    return String.valueOf(this.rollupInfo);
+    return String.valueOf(this.rollupMetas);
   }
 
   private void overrideRollupControl() {
-    for (Rollup__mdt meta : this.rollupInfo) {
+    for (Rollup__mdt meta : this.rollupMetas) {
       if (meta.RollupControl__c != null) {
         RollupControl__mdt specificControl = this.getSpecificControl(meta.RollupControl__c);
         this.overrideParentRollupControlValues(specificControl);

@@ -24,6 +24,6 @@ public without sharing class RollupDeferredFullRecalcProcessor extends RollupFul
 
   private RollupAsyncProcessor getProcessor() {
     this.isProcessed = true;
-    return this.getDelegatedFullRecalcRollup(this.rollupInfo, this.getCalcItemsByQuery(), this);
+    return this.getDelegatedFullRecalcRollup(this.rollupMetas, this.getCalcItemsByQuery(), this);
   }
 }
