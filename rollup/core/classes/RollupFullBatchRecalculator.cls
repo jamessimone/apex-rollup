@@ -56,11 +56,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     return this.startBatchProcessor();
   }
 
-  protected override void retrieveAdditionalCalcItems(
-    Map<String, CalcItemBag> lookupToCalcItems,
-    RollupAsyncProcessor rollup,
-    Map<String, List<SObject>> localCachedFullRecalcs
-  ) {
+  protected override void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       CalcItemBag bag = lookupToCalcItems.get(lookupKey);
@@ -71,7 +67,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
       }
     }
 
-    super.retrieveAdditionalCalcItems(lookupKeysThatNeedFilling, rollup, localCachedFullRecalcs);
+    super.retrieveAdditionalCalcItems(lookupKeysThatNeedFilling, rollup);
 
     for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
       CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);

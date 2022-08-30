@@ -64,6 +64,7 @@ global without sharing virtual class Rollup {
     set;
   }
 
+  @TestVisible
   private static final List<Rollup> CACHED_ROLLUPS {
     get {
       if (CACHED_ROLLUPS == null) {
@@ -1622,6 +1623,9 @@ global without sharing virtual class Rollup {
    * Credit for this method (with some tweaking) goes to: https://github.com/tsalb
    */
   global static Rollup__mdt appendOrderByMetadata(Rollup__mdt meta, List<RollupOrderBy__mdt> children) {
+    if (children?.isEmpty() != false) {
+      return meta;
+    }
     meta.OrderByFirstLast__c = null;
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
 
@@ -1831,9 +1835,7 @@ global without sharing virtual class Rollup {
     } else if (defaultRecalculationValue instanceof String) {
       meta.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
     }
-    if (orderByMetas?.isEmpty() == false) {
-      meta = appendOrderByMetadata(meta, orderByMetas);
-    }
+    meta = appendOrderByMetadata(meta, orderByMetas);
     return runFromApex(new List<Rollup__mdt>{ meta }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
   }
 
@@ -2674,7 +2676,7 @@ global without sharing virtual class Rollup {
     } else if (meta.RollupOrderBys__r.isEmpty()) {
       replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
     }
-    return replacementOrderBys != null ? Rollup.appendOrderByMetadata(meta, replacementOrderBys) : meta;
+    return appendOrderByMetadata(meta, replacementOrderBys);
   }
 
   private static Boolean isFullRecalcOp(String baseOperationName) {

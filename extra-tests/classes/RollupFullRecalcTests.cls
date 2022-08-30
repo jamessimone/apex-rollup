@@ -1919,7 +1919,7 @@ private class RollupFullRecalcTests {
     // we'll call that method twice directly
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
-      MaxNumberOfQueries__c = 4,
+      MaxNumberOfQueries__c = 6,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
@@ -1955,6 +1955,7 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(5, acc.AnnualRevenue, 'Should have included all calc items in both runs without double-counting or incorrectly summing');
+    System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'second execute call should have run fully');
   }
 
   @IsTest
