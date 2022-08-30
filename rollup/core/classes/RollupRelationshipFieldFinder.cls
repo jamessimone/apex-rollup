@@ -353,7 +353,7 @@ public without sharing class RollupRelationshipFieldFinder {
     fieldMap = baseSObjectType.getDescribe().fields.getMap();
     field = this.getField(fieldMap, nextFieldToLookup);
 
-    Set<String> fieldNames = new Set<String>();
+    Set<String> fieldNames = new Set<String>{ 'Id' };
     if (baseSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalParentFieldNames);
       if (this.metadata.RollupToUltimateParent__c == true) {
@@ -361,9 +361,6 @@ public without sharing class RollupRelationshipFieldFinder {
       }
     } else {
       fieldNames.add(field.getDescribe().getName());
-    }
-    if (fieldNames.contains('Id') == false) {
-      fieldNames.add('Id');
     }
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
@@ -504,6 +501,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private void populateHierarchicalLookupFields(Set<String> queryFieldNames, Schema.SObjectField hierarchyToken) {
     // we need to re-query the other fields at each hierarchy stage
+    if (RollupCurrencyInfo.isMultiCurrency()) {
+      queryFieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
+    }
     List<String> copiedFieldNamesPerRelationship = new List<String>(queryFieldNames);
     String relationshipName = hierarchyToken.getDescribe().getRelationshipName();
     String hierarchyName = hierarchyToken.getDescribe().getName();
