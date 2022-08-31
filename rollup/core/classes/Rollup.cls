@@ -1922,7 +1922,9 @@ global without sharing virtual class Rollup {
       if (queryWrapper != null) {
         metas.remove(index);
         fullRecalcMetas.add(new FullRecalculationMetadata(meta, queryWrapper, calcItemSObjectType));
-        prepareReparentDeletionOps(meta, calcItems, oldCalcItems, deleteKeyToReparentOp);
+        if (isRefresh) {
+          prepareReparentDeletionOps(meta, calcItems, oldCalcItems, deleteKeyToReparentOp);
+        }
       } else if (isRefresh) {
         // remove non-matches
         metas.remove(index);
@@ -2048,6 +2050,8 @@ global without sharing virtual class Rollup {
     if (deleteKeyToOps.containsKey(deleteKey)) {
       deleteKeyToOps.get(deleteKey).rollupMetas.add(clonedMeta);
     } else if (calcItems[0].getSObjectType().getDescribe().fields.getMap().containsKey(meta.LookupFieldOnCalcItem__c)) {
+      // TODO - check other spots where calc items are being iterated through on this code path (flow + apex)
+      // if there are other spots, it may be easier to prepopulate the calc items per deleteKey that have been reparented?
       for (SObject calcItem : calcItems) {
         if (oldCalcItems.containsKey(calcItem.Id)) {
           SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
