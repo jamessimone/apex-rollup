@@ -1587,7 +1587,9 @@ global without sharing virtual class Rollup {
         rollupContext = '';
       }
       when AFTER_DELETE {
-        shouldReturn = reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds, rollupConductor.rollupControl, shouldReturn);
+        shouldReturn = rollupConductor.rollupControl.IsMergeReparentingEnabled__c == false
+          ? true
+          : reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds, rollupConductor.rollupControl);
       }
       when else {
         shouldReturn = true;
@@ -2758,26 +2760,27 @@ global without sharing virtual class Rollup {
     List<SObject> calcItems,
     List<Rollup__mdt> rollupMetadata,
     Set<String> mergedParentIds,
-    RollupControl__mdt control,
-    Boolean shouldReturn
+    RollupControl__mdt control
   ) {
     String mergeFieldIndicator = 'MasterRecordId';
     // titled objIds because it's used as a bind variable in SOQL below
     Set<String> objIds = new Set<String>();
     Map<Id, Id> mergedIdToCurrentParentId = new Map<Id, Id>();
+    String lookupObjectName;
     for (SObject record : calcItems) {
-      Map<String, Object> populatedFields = record.getPopulatedFieldsAsMap();
-      if (populatedFields.containsKey(mergeFieldIndicator) && populatedFields.get(mergeFieldIndicator) != null) {
-        String mergedFieldValue = String.valueOf(populatedFields.get(mergeFieldIndicator));
+      if (record.get(mergeFieldIndicator) != null) {
+        Id mergedFieldValue = (Id) record.get(mergeFieldIndicator);
         objIds.add(record.Id);
-        mergedIdToCurrentParentId.put(record.Id, Id.valueOf(mergedFieldValue));
+        mergedIdToCurrentParentId.put(record.Id, mergedFieldValue);
         mergedParentIds.add(mergedFieldValue);
+      }
+      if (lookupObjectName == null) {
+        lookupObjectName = String.valueOf(record.getSObjectType());
       }
     }
 
-    if (objIds.isEmpty() || control.IsMergeReparentingEnabled__c == false) {
-      shouldReturn = true;
-      return shouldReturn;
+    if (objIds.isEmpty()) {
+      return true;
     }
 
     // only M/D relationships specifically set to reparent do so automatically
@@ -2785,7 +2788,7 @@ global without sharing virtual class Rollup {
     List<SObject> recordsToUpdate = new List<SObject>();
     Set<SObjectType> updatedChildTypes = new Set<SObjectType>();
     for (Rollup__mdt meta : rollupMetadata) {
-      if (meta.LookupObject__c != String.valueOf(calcItems.getSObjectType())) {
+      if (meta.LookupObject__c != lookupObjectName) {
         continue;
       }
 
@@ -2809,7 +2812,7 @@ global without sharing virtual class Rollup {
       }
     }
     performNonRecursiveUpdate(recordsToUpdate, control);
-    return shouldReturn;
+    return false;
   }
 
   private static void performNonRecursiveUpdate(List<SObject> recordsToUpdate, RollupControl__mdt control) {
