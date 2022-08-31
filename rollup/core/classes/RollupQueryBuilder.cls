@@ -3,46 +3,39 @@ public without sharing class RollupQueryBuilder {
   public static final Integer SENTINEL_COUNT_VALUE = -1;
   public static final String ALL_ROWS = 'ALL ROWS';
 
+  private static final Pattern AGGREGATE_QUERY_REGEX = Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');
+  private static final Map<String, String> OG_WHERE_CLAUSE_TO_SANITIZED_VERSION = new Map<String, String>();
+
   private RollupQueryBuilder() {
   }
 
   /**
    * @return String `queryString` - returns a query string with "objIds" expected as a bind variable
    */
-  public String getQuery(
-    SObjectType sObjectType,
-    List<String> uniqueQueryFieldNames,
-    String lookupFieldOnLookupObject,
-    String equality,
-    String optionalWhereClause
-  ) {
+  public String getQuery(SObjectType sObjectType, List<String> fieldNames, String lookupFieldOnLookupObject, String equality, String optionalWhereClause) {
     Set<String> lowerCaseFieldNames = new Set<String>();
-    for (Integer index = uniqueQueryFieldNames.size() - 1; index >= 0; index--) {
-      String uniqueFieldName = uniqueQueryFieldNames[index];
-      if (String.isBlank(uniqueFieldName)) {
-        uniqueQueryFieldNames.remove(index);
-        continue;
-      }
-
-      String lowerCaseField = uniqueFieldName.toLowerCase();
-      // it's possible for fields that differ only in casing to be passed in -
-      // but that throws an exception when passed to SOQL. Let's avoid that!
-      if (lowerCaseFieldNames.contains(lowerCaseField)) {
-        uniqueQueryFieldNames.remove(index);
-      } else {
-        lowerCaseFieldNames.add(lowerCaseField);
+    for (String fieldName : fieldNames) {
+      if (String.isNotBlank(fieldName)) {
+        lowerCaseFieldNames.add(fieldName.toLowerCase());
       }
     }
+    fieldNames.clear();
+    fieldNames.addAll(lowerCaseFieldNames);
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(uniqueQueryFieldNames, lowerCaseFieldNames, sObjectType.getDescribe());
+    this.addCurrencyIsoCodeForMultiCurrencyOrgs(fieldNames, lowerCaseFieldNames, sObjectType.getDescribe());
 
-    optionalWhereClause = this.adjustWhereClauseForPolymorphicFields(sObjectType, uniqueQueryFieldNames, optionalWhereClause);
+    String originalWhereClause = optionalWhereClause;
+    Boolean isBlank = String.isBlank(originalWhereClause);
+    Boolean hasBeenSanitized = isBlank || OG_WHERE_CLAUSE_TO_SANITIZED_VERSION.containsKey(originalWhereClause);
+    optionalWhereClause = hasBeenSanitized
+      ? OG_WHERE_CLAUSE_TO_SANITIZED_VERSION.get(originalWhereClause)
+      : this.adjustWhereClauseForPolymorphicFields(sObjectType, fieldNames, optionalWhereClause);
 
     // again noting the coupling for consumers of this method
     // "objIds" is required to be present in the scope where the query is run
     String baseQuery =
       'SELECT ' +
-      String.join(uniqueQueryFieldNames, ',') +
+      String.join(fieldNames, ',') +
       '\nFROM ' +
       sObjectType +
       '\nWHERE ' +
@@ -51,22 +44,8 @@ public without sharing class RollupQueryBuilder {
       equality +
       ' :objIds';
     if (String.isNotBlank(optionalWhereClause)) {
-      // sanitize what's left of the where clause
-      while (optionalWhereClause.trim().endsWith('AND') || optionalWhereClause.trim().endsWith('OR')) {
-        optionalWhereClause = optionalWhereClause.substringBeforeLast('AND').trim();
-        optionalWhereClause = optionalWhereClause.substringBeforeLast('OR').trim();
-      }
-      while (optionalWhereClause?.startsWith('(') == true && optionalWhereClause?.countMatches('(') > optionalWhereClause?.countMatches(')')) {
-        optionalWhereClause = optionalWhereClause.removeStart('(');
-      }
-      while (optionalWhereClause?.endsWith(')') == true && optionalWhereClause?.countMatches(')') > optionalWhereClause?.countMatches('(')) {
-        optionalWhereClause = optionalWhereClause.removeEnd(')');
-      }
-      optionalWhereClause = optionalWhereClause.replace('()', '');
-      optionalWhereClause = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType).getSafeQuery();
-
-      if (optionalWhereClause.containsIgnoreCase(' or ') && optionalWhereClause.containsIgnoreCase(' and ') == false) {
-        optionalWhereClause = '(' + optionalWhereClause + ')';
+      if (hasBeenSanitized == false) {
+        optionalWhereClause = this.getSanitizedWhereClause(originalWhereClause, optionalWhereClause, sObjectType);
       }
       if (optionalWhereClause.length() > 0 && (optionalWhereClause.startsWith('\nAND') || optionalWhereClause.startsWith('\nOR'))) {
         baseQuery += optionalWhereClause;
@@ -81,8 +60,8 @@ public without sharing class RollupQueryBuilder {
     return baseQuery;
   }
 
-  public String getQuery(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String lookupFieldOnLookupObject, String equality) {
-    return this.getQuery(sObjectType, uniqueQueryFieldNames, lookupFieldOnLookupObject, equality, null);
+  public String getQuery(SObjectType sObjectType, List<String> fieldNames, String lookupFieldOnLookupObject, String equality) {
+    return this.getQuery(sObjectType, fieldNames, lookupFieldOnLookupObject, equality, null);
   }
 
   public String getAllRowSafeQuery(Schema.SObjectType sObjectType, String query) {
@@ -93,11 +72,11 @@ public without sharing class RollupQueryBuilder {
     return query;
   }
 
-  private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> uniqueQueryFieldNames, String optionalWhereClause) {
+  private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> fieldNames, String optionalWhereClause) {
     // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
     Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe().fields.getMap();
-    if (this.hasPolymorphicOwnerClause(optionalWhereClause, fieldNameToField) == false || uniqueQueryFieldNames.contains('Count()')) {
+    if (this.hasPolymorphicOwnerClause(optionalWhereClause, fieldNameToField) == false || fieldNames.contains('Count()')) {
       return optionalWhereClause;
     }
     RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(optionalWhereClause, sObjectType);
@@ -113,14 +92,10 @@ public without sharing class RollupQueryBuilder {
         String relationshipName = optionalWhereClause.substring(optionalWhereClause.indexOf(indexer) + indexer.length()).substringBefore('\'');
         String typeOfField = String.join(fieldParts, '.');
 
-        uniqueQueryFieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + typeOfField + ' END');
+        fieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + typeOfField + ' END');
 
-        optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '')
-          .replace(whereClause, '')
-          .replace('()', '')
-          .replace('( OR )', '')
-          .replace('( AND )', '')
-          .trim();
+        // optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').replace(whereClause, '').replaceAll('(\\(\\) (AND|OR) )', '');
+        optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').replace(whereClause, '');
       }
     } catch (Exception ex) {
       RollupLogger.Instance.log('exception occurred while converting polymorphic where clause:', ex, LoggingLevel.WARN);
@@ -150,20 +125,36 @@ public without sharing class RollupQueryBuilder {
       uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false &&
       objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
     ) {
-      Boolean hasAggregateFunction = false;
-      for (String uniqueQueryFieldName : fieldNames) {
-        // This is definitely not the most intuitive way to do this, but need to determine if the query
-        // will be a regular query vs an aggregated query - all aggregate functions use '()', so checking
-        // for '(' is a quick & lazy way to check without making larger changes to how RollupQueryBuilder works
-        // (but it's very goofy & could definitely be improved)
-        if (uniqueQueryFieldName?.contains('(')) {
-          hasAggregateFunction = true;
-          break;
-        }
-      }
+      Boolean hasAggregateFunction = AGGREGATE_QUERY_REGEX.matcher(String.join(fieldNames, ',')).matches();
       if (hasAggregateFunction == false) {
         fieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
       }
     }
+  }
+
+  private String getSanitizedWhereClause(String key, String whereClause, Schema.SObjectType sObjectType) {
+    // sanitize what's left of the where clause
+    if (whereClause.containsOnly('() AND OR')) {
+      whereClause = '';
+    } else {
+      while (whereClause.trim().endsWith('AND') || whereClause.trim().endsWith('OR')) {
+        whereClause = whereClause.substringBeforeLast('AND').trim();
+        whereClause = whereClause.substringBeforeLast('OR').trim();
+      }
+      while (whereClause?.startsWith('(') == true && whereClause?.countMatches('(') > whereClause?.countMatches(')')) {
+        whereClause = whereClause.removeStart('(');
+      }
+      while (whereClause?.endsWith(')') == true && whereClause?.countMatches(')') > whereClause?.countMatches('(')) {
+        whereClause = whereClause.removeEnd(')');
+      }
+      whereClause = whereClause.replace('()', '');
+      whereClause = RollupEvaluator.getWhereEval(whereClause, sObjectType).getSafeQuery();
+
+      if (whereClause.containsIgnoreCase(' or ') && whereClause.containsIgnoreCase(' and ') == false) {
+        whereClause = '(' + whereClause + ')';
+      }
+    }
+    OG_WHERE_CLAUSE_TO_SANITIZED_VERSION.put(key, whereClause);
+    return whereClause;
   }
 }

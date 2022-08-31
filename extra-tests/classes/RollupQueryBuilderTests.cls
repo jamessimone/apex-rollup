@@ -59,7 +59,7 @@ private class RollupQueryBuilderTests {
       new List<String>{ 'Subject', 'WhatId' },
       Event.WhatId.getDescribe().getName(),
       '!=',
-      '((What.Type = \'Account\') AND What.Owner.Id = :recordIds)'
+      '(((What.Type = \'Account\') AND What.Owner.Id = :recordIds))'
     );
 
     System.assertEquals(true, queryString.contains('TYPEOF'), 'Polymorphic where clause should have been transformed: ' + queryString);
@@ -67,6 +67,25 @@ private class RollupQueryBuilderTests {
     System.assertEquals(false, queryString.contains('()'), 'Should clean up removed nested conditionals: ' + queryString);
     System.assertEquals(false, queryString.contains('AND  AND '), queryString);
     System.assertEquals(false, queryString.contains('What.Type'), 'What.Type should have been stripped out: ' + queryString);
+    Set<String> recordIds = new Set<String>();
+    Set<String> objIds = recordIds;
+    // confirm query works
+    List<SObject> records = Database.query(queryString);
+    System.assertEquals(Event.SObjectType, records.getSObjectType());
+  }
+
+  @IsTest
+  static void handlesNestedPolymorphicWhereClausesWithOr() {
+    // we expect that What.Type will end up being stripped out of this
+    // where clause; this is only true for polymorphic where clauses
+    String queryString = RollupQueryBuilder.Current.getQuery(
+      Event.SObjectType,
+      new List<String>{ 'Subject', 'WhatId' },
+      Event.WhatId.getDescribe().getName(),
+      '!=',
+      '(((What.Type = \'Account\') OR What.Owner.Id = :recordIds))'
+    );
+
     Set<String> recordIds = new Set<String>();
     Set<String> objIds = recordIds;
     // confirm query works

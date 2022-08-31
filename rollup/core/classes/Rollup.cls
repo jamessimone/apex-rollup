@@ -2762,6 +2762,15 @@ global without sharing virtual class Rollup {
     Set<String> mergedParentIds,
     RollupControl__mdt control
   ) {
+    Schema.SObjectType itemType = calcItems.getSObjectType();
+    if (
+      itemType != Schema.Account.SObjectType &&
+      itemType != Schema.Case.SObjectType &&
+      itemType != Schema.Contact.SObjectType &&
+      itemType != Schema.Lead.SObjectType
+    ) {
+      return true;
+    }
     String mergeFieldIndicator = 'MasterRecordId';
     // titled objIds because it's used as a bind variable in SOQL below
     Set<String> objIds = new Set<String>();
