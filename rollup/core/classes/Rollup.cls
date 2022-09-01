@@ -284,7 +284,7 @@ global without sharing virtual class Rollup {
     this.rollupControl = getDefaultControl();
     this.calcItemReplacer = CALC_ITEM_REPLACER;
     this.isConductor = true;
-    // a batch only becomes valid if other Rollups are added to it
+    // a conductor only becomes valid if other Rollups are added to it
     this.isNoOp = true;
   }
 
