@@ -1,4 +1,4 @@
-public without sharing class RollupDeferredFullRecalcProcessor extends RollupFullRecalcProcessor {
+public without sharing virtual class RollupDeferredFullRecalcProcessor extends RollupFullRecalcProcessor {
   public RollupDeferredFullRecalcProcessor(
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,

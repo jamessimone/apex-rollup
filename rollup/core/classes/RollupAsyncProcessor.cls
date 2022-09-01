@@ -40,6 +40,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
+  private final Map<String, List<SObject>> cachedQueryToAdditionalCalcItems {
+    get {
+      if (cachedQueryToAdditionalCalcItems == null) {
+        cachedQueryToAdditionalCalcItems = new Map<String, List<SObject>>();
+      }
+      return cachedQueryToAdditionalCalcItems;
+    }
+    set;
+  }
+
   private final List<RollupAsyncProcessor> deferredRollups {
     get {
       if (deferredRollups == null) {
@@ -387,7 +397,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected String beginAsyncRollup() {
     this.isTimingOut = false;
-    RollupLogger.Instance.log('about to start for ' + this.getTypeName(), LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('about to start for ' + this.getTypeName(), this, LoggingLevel.DEBUG);
     RollupLogger.Instance.save();
     return this.startAsyncWork();
   }
@@ -480,8 +490,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (shouldLimitCalcItemQuery) {
       query = RollupQueryBuilder.Current.getAllRowSafeQuery(rollup.calcItemType, query += '\nLIMIT ' + remainingQueryRowsLeft);
     }
-    RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
-    List<SObject> additionalCalcItems = Database.query(query);
+    List<SObject> additionalCalcItems;
+    // TODO - introducing cachedQueryToAdditionalCalcItems here led to two test failures in RollupFullRecalcTests
+    if (this.cachedQueryToAdditionalCalcItems.containsKey(query) && false) {
+      additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
+    } else {
+      RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
+      additionalCalcItems = Database.query(query);
+      this.cachedQueryToAdditionalCalcItems.put(query, additionalCalcItems);
+    }
 
     for (SObject additionalCalcItem : additionalCalcItems) {
       String lookupKey = (String) additionalCalcItem.get(rollup.lookupFieldOnCalcItem);

@@ -2275,4 +2275,87 @@ private class RollupFullRecalcTests {
     System.assertEquals(expectedIsoCode, acc.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME), 'Currency ISO code should not have been cleared');
     System.assertNotEquals(null, newAccounts[0].get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
   }
+
+  @IsTest
+  static void correctlyHandlesMultipleDeferredFullRecalcs() {
+    // TODO continue on this thread
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 50);
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'child two', PreferenceRank = 50);
+    insert new List<ContactPointAddress>{ one, two };
+
+    Set<String> recordIds = new Set<String>{ String.valueOf(one.Id), String.valueOf(two.Id) };
+
+    Test.startTest();
+    Rollup.batch(
+      new List<Rollup>{
+        new DeferredContactPointAddressRollup(
+          new List<Rollup__mdt>{
+            new Rollup__mdt(
+              CalcItem__c = 'ContactPointAddress',
+              RollupFieldOnCalcItem__c = 'Id',
+              LookupFieldOnCalcItem__c = 'ParentId',
+              LookupObject__c = 'Account',
+              LookupFieldOnLookupObject__c = 'Id',
+              RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+              RollupOperation__c = 'COUNT'
+            ),
+            new Rollup__mdt(
+              CalcItem__c = 'ContactPointAddress',
+              RollupFieldOnCalcItem__c = 'Id',
+              LookupFieldOnCalcItem__c = 'ParentId',
+              LookupObject__c = 'Account',
+              LookupFieldOnLookupObject__c = 'Id',
+              RollupFieldOnLookupObject__c = 'Name',
+              RollupOperation__c = 'MAX'
+            )
+          },
+          recordIds
+        ),
+        new DeferredContactPointAddressRollup(
+          new List<Rollup__mdt>{
+            new Rollup__mdt(
+              CalcItem__c = 'ContactPointAddress',
+              RollupFieldOnCalcItem__c = 'PreferenceRank',
+              LookupFieldOnCalcItem__c = 'ParentId',
+              LookupObject__c = 'Account',
+              LookupFieldOnLookupObject__c = 'Id',
+              RollupFieldOnLookupObject__c = 'AnnualRevenue',
+              RollupOperation__c = 'SUM'
+            ),
+            new Rollup__mdt(
+              CalcItem__c = 'ContactPointAddress',
+              RollupFieldOnCalcItem__c = 'Name',
+              LookupFieldOnCalcItem__c = 'ParentId',
+              LookupObject__c = 'Account',
+              LookupFieldOnLookupObject__c = 'Id',
+              RollupFieldOnLookupObject__c = 'Description',
+              RollupOperation__c = 'CONCAT'
+            )
+          },
+          recordIds
+        )
+      }
+    );
+    Test.stopTest();
+
+    acc = [SELECT NumberOfEmployees, AnnualRevenue FROM Account];
+    System.assertEquals(2, acc.NumberOfEmployees);
+    System.assertEquals(100, acc.AnnualRevenue);
+  }
+
+  private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {
+    public DeferredContactPointAddressRollup(List<Rollup__mdt> meta, Set<String> recordIds) {
+      super(
+        meta,
+        ContactPointAddress.SObjectType,
+        'SELECT Id, ParentId, PreferenceRank, Name FROM ContactPointAddress',
+        recordIds,
+        Rollup.InvocationPoint.FROM_APEX,
+        null
+      );
+      this.isNoOp = false;
+      this.queryCount = 1;
+    }
+  }
 }

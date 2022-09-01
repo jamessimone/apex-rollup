@@ -31,7 +31,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   ) {
     super(invokePoint);
     this.isFullRecalc = true;
-    this.isNoOp = true; // consumers should either opt out of this or have it be set properly downstream
     this.calcItemType = calcItemType;
     this.queryString = queryString;
     this.rollupMetas = rollupMetas;
