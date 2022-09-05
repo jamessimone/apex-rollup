@@ -24,6 +24,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static Boolean shouldRunAsBatch = false;
   @TestVisible
   private static Boolean shouldFlattenAsyncProcesses = false;
+  @TestVisible
+  private static Integer additionalCalcItemCount;
 
   private enum CollectionType {
     DICTIONARY,
@@ -464,22 +466,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return;
     }
 
-    Set<String> lookupKeys = lookupToCalcItems.keySet();
-    String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :lookupKeys';
     Map<Schema.SObjectType, Set<String>> localCalcToUniqueFieldNames = rollup.fullRecalcProcessor != null &&
       rollup.calcObjectToUniqueFieldNames != null
       ? rollup.calcObjectToUniqueFieldNames
       : this.calcObjectToUniqueFieldNames;
 
-    String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>{ 'Count()' }, 'Id', '!=', whereClause);
-
-    // a dark hack, possibly even evil - but there are tests that rely on only a single record being batched at a time
-    // and we can't both consume the one query allowed AND do the countQuery call here. This is because actually deferring rollups
-    // isn't allowed in tests - we can't rebatch or requeue
-    Integer outstandingItemCount = Test.isRunningTest() ? 0 : Database.countQuery(countQuery);
-    Integer remainingQueryRowsLeft = Limits.getLimitQueryRows() - (Limits.getQueryRows() + 1);
-    Boolean shouldLimitCalcItemQuery = outstandingItemCount >= remainingQueryRowsLeft;
-
+    List<SObject> additionalCalcItems;
+    String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :lookupKeys';
     String query = RollupQueryBuilder.Current.getQuery(
       rollup.calcItemType,
       new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
@@ -487,17 +480,45 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       '!=',
       whereClause
     );
-    if (shouldLimitCalcItemQuery) {
-      query = RollupQueryBuilder.Current.getAllRowSafeQuery(rollup.calcItemType, query += '\nLIMIT ' + remainingQueryRowsLeft);
-    }
-    List<SObject> additionalCalcItems;
-    // TODO - introducing cachedQueryToAdditionalCalcItems here led to two test failures in RollupFullRecalcTests
-    if (this.cachedQueryToAdditionalCalcItems.containsKey(query) && false) {
+
+    Boolean hasAlreadyBeenQueried = this.cachedQueryToAdditionalCalcItems.containsKey(query);
+    Boolean shouldLimitCalcItemQuery = false;
+
+    if (hasAlreadyBeenQueried) {
       additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
     } else {
-      RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
-      additionalCalcItems = Database.query(query);
-      this.cachedQueryToAdditionalCalcItems.put(query, additionalCalcItems);
+      Set<String> lookupKeys = lookupToCalcItems.keySet();
+      String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>{ 'Count()' }, 'Id', '!=', whereClause);
+      Integer outstandingItemCount;
+      if (additionalCalcItemCount != null) {
+        outstandingItemCount = additionalCalcItemCount;
+        additionalCalcItemCount = null;
+      } else {
+        outstandingItemCount = Database.countQuery(countQuery);
+      }
+      Integer remainingQueryRowsLeft = Limits.getLimitQueryRows() - (Limits.getQueryRows() + 1);
+      shouldLimitCalcItemQuery = outstandingItemCount >= remainingQueryRowsLeft;
+
+      if (shouldLimitCalcItemQuery) {
+        query = RollupQueryBuilder.Current.getAllRowSafeQuery(rollup.calcItemType, query += '\nLIMIT ' + remainingQueryRowsLeft);
+        hasAlreadyBeenQueried = this.cachedQueryToAdditionalCalcItems.containsKey(query);
+      }
+
+      if (hasAlreadyBeenQueried && shouldLimitCalcItemQuery) {
+        // unsafe to continue querying, as query was already limited in what it could retrieve
+        additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
+      } else if (outstandingItemCount > 0) {
+        RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
+        additionalCalcItems = Database.query(query);
+        if (hasAlreadyBeenQueried) {
+          this.cachedQueryToAdditionalCalcItems.get(query).addAll(additionalCalcItems);
+        } else {
+          this.cachedQueryToAdditionalCalcItems.put(query, additionalCalcItems);
+        }
+      } else {
+        additionalCalcItems = new List<SObject>();
+        this.cachedQueryToAdditionalCalcItems.put(query, additionalCalcItems);
+      }
     }
 
     for (SObject additionalCalcItem : additionalCalcItems) {

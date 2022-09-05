@@ -537,6 +537,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldBulkifyBatchFullRecalcsProperly() {
+    RollupAsyncProcessor.additionalCalcItemCount = 1;
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 2);
     Account acc = [SELECT Id FROM Account];
     // ensure another matching item exists outside of the passed in list
@@ -1369,7 +1370,7 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 50,
-      MaxNumberOfQueries__c = 5, // has to be exactly the number that allows the first rollup but not the second
+      MaxNumberOfQueries__c = 4, // set to explicitly be too low for rollup to proceed
       BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
@@ -1403,8 +1404,8 @@ private class RollupFullRecalcTests {
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
-    System.assertEquals(cpas.get(5).PreferenceRank, acc.AnnualRevenue, 'SUM should have been calculated');
     System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been reset due to being deferred');
+    System.assertEquals(5, acc.AnnualRevenue, 'AnnualRevenue should not have been reset due to being deferred');
   }
 
   @IsTest
@@ -1425,7 +1426,7 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 50,
-      MaxNumberOfQueries__c = 8, // has to be exactly the number that allows the first rollup but not the second
+      MaxNumberOfQueries__c = 7, // has to be exactly the number that allows the first rollup but not the second
       BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
@@ -1459,8 +1460,8 @@ private class RollupFullRecalcTests {
     Rollup.performBulkFullRecalc(new List<Rollup__mdt>{ sumRollup, countRollup }, Rollup.InvocationPoint.FROM_APEX.name());
 
     acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
-    System.assertEquals(cpas.get(5).PreferenceRank, acc.AnnualRevenue, 'SUM should have been calculated');
-    System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been reset due to being deferred');
+    System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been calculated properly due to being deferred');
+    System.assertEquals(5, acc.AnnualRevenue, 'AnnualRevenue should not have been calculated properly due to being deferred');
   }
 
   @IsTest
@@ -1917,6 +1918,7 @@ private class RollupFullRecalcTests {
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRuns() {
     // since we can't have more than one batch chunk run in the tests, but we need to test logic in the execute method
     // we'll call that method twice directly
+    RollupAsyncProcessor.additionalCalcItemCount = 1;
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
       MaxNumberOfQueries__c = 6,
