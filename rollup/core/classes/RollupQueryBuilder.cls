@@ -124,7 +124,7 @@ public without sharing class RollupQueryBuilder {
       uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false &&
       objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
     ) {
-      Boolean hasAggregateFunction = AGGREGATE_QUERY_REGEX.matcher(String.join(fieldNames, ',')).matches();
+      Boolean hasAggregateFunction = AGGREGATE_QUERY_REGEX.matcher(String.join(fieldNames, ',')).find();
       if (hasAggregateFunction == false) {
         fieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
       }

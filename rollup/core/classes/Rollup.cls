@@ -2277,8 +2277,8 @@ global without sharing virtual class Rollup {
 
   private static List<Rollup> getFlattenedProcessors(Map<Schema.SObjectType, List<Rollup>> typeToProcessors) {
     List<Rollup> flattenedRollups = new List<Rollup>();
-    for (Schema.SObjectType calcType : typeToProcessors.keySet()) {
-      flattenedRollups.addAll(typeToProcessors.get(calcType));
+    for (List<Rollup> rolls : typeToProcessors.values()) {
+      flattenedRollups.addAll(rolls);
     }
     return flattenedRollups;
   }

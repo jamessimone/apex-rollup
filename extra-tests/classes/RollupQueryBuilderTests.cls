@@ -120,7 +120,7 @@ private class RollupQueryBuilderTests {
 
   @IsTest
   static void multiCurrencyOrgsAddIsoCodeWhenIsoCodeExists() {
-    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
 
@@ -131,12 +131,21 @@ private class RollupQueryBuilderTests {
 
   @IsTest
   static void doesNotAddIsoCodeForMultiCurrencyWhenFieldDoesNotExist() {
-    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
 
     String queryString = RollupQueryBuilder.Current.getQuery(ContactPointAddress.SObjectType, new List<String>(), 'Id', '=');
 
     System.assertEquals(false, queryString.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
+  }
+
+  @IsTest
+  static void correctlyFormatsAggregateQuery() {
+    String countQuery = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ 'count()' }, 'Id', '=');
+
+    Integer amount = Database.countQuery(countQuery);
+
+    System.assertEquals(0, amount, 'Should make it here because query was formatted correctly');
   }
 }
