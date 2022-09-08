@@ -1737,7 +1737,7 @@ private class RollupTests {
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
     insert taskOne;
-    Rollup.defaultControl = null;
+    Rollup.shouldRefreshCachedControl = true;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = RollupTestUtils.createId(Task.SObjectType), WhoId = con.Id);
 

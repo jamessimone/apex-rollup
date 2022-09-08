@@ -1592,7 +1592,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 2,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 4,
+      MaxNumberOfQueries__c = 7,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
@@ -1813,7 +1813,7 @@ private class RollupIntegrationTests {
 
     List<Contact> cons = new List<Contact>{ new Contact(LastName = 'somethingElse', AccountId = acc.Id, Number__c = acc.AnnualRevenue, Phone = '617619111') };
     insert cons;
-    Rollup.defaultControl = null;
+    Rollup.shouldRefreshCachedControl = true;
 
     Contact oldContact = cons[0].clone(true, true);
     cons[0].lastName = 'soloAdmin'; // simulating an update which has not yet been reflected in the database

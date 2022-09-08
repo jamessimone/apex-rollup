@@ -1106,7 +1106,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void handleFullRecalculators(RollupAsyncProcessor roll) {
-    if (roll instanceof RollupFullRecalcProcessor && roll.isProcessed == false) {
+    if (roll instanceof RollupFullRecalcProcessor) {
       this.deferredRollups.add(roll);
     }
   }

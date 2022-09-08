@@ -21,6 +21,8 @@ global without sharing virtual class Rollup {
   private static Boolean onlyUseMockMetadata = false;
   @TestVisible
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
+  @TestVisible
+  private static Boolean shouldRefreshCachedControl = false;
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
@@ -78,7 +80,7 @@ global without sharing virtual class Rollup {
   private static final RollupCalcItemReplacer CALC_ITEM_REPLACER {
     get {
       if (CALC_ITEM_REPLACER == null) {
-        CALC_ITEM_REPLACER = new RollupCalcItemReplacer(getDefaultControl());
+        CALC_ITEM_REPLACER = new RollupCalcItemReplacer(CACHED_DEFAULT);
       }
       return CALC_ITEM_REPLACER;
     }
@@ -143,6 +145,17 @@ global without sharing virtual class Rollup {
         }
       }
       return OP_NAME_TO_OP;
+    }
+    set;
+  }
+
+  private static final RollupControl__mdt CACHED_DEFAULT {
+    get {
+      if (CACHED_DEFAULT == null || shouldRefreshCachedControl == true) {
+        CACHED_DEFAULT = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
+        defaultControl = null;
+      }
+      return CACHED_DEFAULT;
     }
     set;
   }
@@ -281,7 +294,7 @@ global without sharing virtual class Rollup {
 
   protected Rollup(InvocationPoint invokePoint) {
     this.invokePoint = invokePoint;
-    this.rollupControl = getDefaultControl();
+    this.rollupControl = CACHED_DEFAULT;
     this.calcItemReplacer = CALC_ITEM_REPLACER;
     this.isConductor = true;
     // a conductor only becomes valid if other Rollups are added to it
@@ -1648,7 +1661,7 @@ global without sharing virtual class Rollup {
   /** end global-facing section, begin public/private static helpers */
 
   public static RollupControl__mdt getDefaultControl() {
-    return getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
+    return CACHED_DEFAULT;
   }
 
   public static void processStoredFlowRollups() {
@@ -1730,20 +1743,57 @@ global without sharing virtual class Rollup {
     return matchingMetadata;
   }
 
+  private class LimitTester {
+    private final transient RollupControl__mdt control;
+    public LimitTester(RollupControl__mdt control) {
+      this.control = control;
+    }
+
+    private Boolean hasExceededQueryNumberLimit {
+      get {
+        return this.control?.MaxNumberOfQueries__c < Limits.getQueries();
+      }
+    }
+    private Boolean hasExceededQueryRowLimit {
+      get {
+        return this.control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows();
+      }
+    }
+    private Boolean hasExceededHeapSizeLimit {
+      get {
+        return (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
+      }
+    }
+    private Boolean hasExceededDMLRowLimit {
+      get {
+        return this.control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
+      }
+    }
+    private Boolean hasExceededCPUTimeLimit {
+      get {
+        Integer intervalTillTimeout = ((System.isBatch() || System.isQueueable()) && Test.isRunningTest() == false) ? 14000 : 3000;
+        return (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
+      }
+    }
+
+    public transient Boolean hasExceededLimits {
+      get {
+        return this.hasExceededQueryNumberLimit ||
+          this.hasExceededQueryRowLimit ||
+          this.hasExceededHeapSizeLimit ||
+          this.hasExceededDMLRowLimit ||
+          this.hasExceededCPUTimeLimit;
+      }
+    }
+  }
+
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
-    Boolean hasExceededQueryNumberLimit = control?.MaxNumberOfQueries__c < Limits.getQueries();
-    Boolean hasExceededQueryRowLimit = control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows();
-    Boolean hasExceededHeapSizeLimit = (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
-    Boolean hasExceededDMLRowLimit = control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
-    Integer intervalTillTimeout = ((System.isBatch() || System.isQueueable()) && Test.isRunningTest() == false) ? 14000 : 3000;
-    Boolean hasExceededCPUTimeLimit = (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
-    Boolean hasExceededLimits =
-      hasExceededQueryNumberLimit ||
-      hasExceededQueryRowLimit ||
-      hasExceededHeapSizeLimit ||
-      hasExceededDMLRowLimit ||
-      hasExceededCPUTimeLimit;
-    return hasExceededLimits && isDeferralAllowed;
+    LimitTester limitTester = new LimitTester(control);
+    Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
+    if (hasExceededLimits) {
+      RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
+    }
+    return hasExceededLimits;
   }
 
   public static String getBaseOperationName(String fullOpName) {
@@ -2895,7 +2945,7 @@ global without sharing virtual class Rollup {
       }
     }
 
-    return getSensibleControlDefault();
+    return CACHED_DEFAULT != null ? CACHED_DEFAULT : getSensibleControlDefault();
   }
 
   private static RollupControl__mdt getSensibleControlDefault() {
