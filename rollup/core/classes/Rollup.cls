@@ -1956,9 +1956,7 @@ global without sharing virtual class Rollup {
         for (String mergedParentId : mergedParentIds) {
           queryWrapper.addRecordId(mergedParentId);
         }
-        if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
-          queryWrapper.setQuery(meta.CalcItemWhereClause__c + ' AND ' + queryWrapper.getQuery());
-        }
+        queryWrapper.setQuery(meta.CalcItemWhereClause__c);
       } else if (isRefresh) {
         // the order of operations is important here - REFRESH *also* needs to check for
         // meta.IsRollupStartedFromParent__c, so that check can't come first
@@ -2201,10 +2199,6 @@ global without sharing virtual class Rollup {
       if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
         wrappedMeta.whereClause = '';
         wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
-      } else if (wrappedMeta.whereClause?.countMatches(':recordIds') > 1) {
-        String bindVariable = ' = :recordIds';
-        String commonParent = wrappedMeta.whereClause.substringBetween('AND ', bindVariable);
-        wrappedMeta.whereClause = commonParent + bindVariable + ' AND ' + wrappedMeta.whereClause.replaceAll('AND .+?' + bindVariable, '');
       }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       RollupFullRecalcProcessor fullRecalc = buildFullRecalcRollup(wrappedMeta, queryString, calcType, localInvokePoint);
@@ -2469,9 +2463,11 @@ global without sharing virtual class Rollup {
       return this.hasQuery ? this.query : '';
     }
 
-    public void setQuery(String query) {
-      this.hasQuery = true;
-      this.query = query;
+    public void setQuery(String appendedQuery) {
+      if (String.isNotBlank(appendedQuery)) {
+        this.hasQuery = true;
+        this.query = '(' + appendedQuery + ') AND ' + this.query;
+      }
     }
   }
 
@@ -2491,10 +2487,7 @@ global without sharing virtual class Rollup {
     for (SObject calcItem : calcItems) {
       fillWrapper(wrapper, meta.LookupFieldOnLookupObject__c, calcItem, oldCalcItems);
     }
-    if (String.isNotBlank(meta.CalcItemWhereClause__c)) {
-      String whereClause = '(' + meta.CalcItemWhereClause__c + ') AND ';
-      wrapper.setQuery(whereClause + wrapper.getQuery());
-    }
+    wrapper.setQuery(meta.CalcItemWhereClause__c);
     return wrapper;
   }
 

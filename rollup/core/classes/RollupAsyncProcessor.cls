@@ -400,7 +400,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected String beginAsyncRollup() {
     this.isTimingOut = false;
     RollupLogger.Instance.log('about to start for ' + this.getTypeName(), this, LoggingLevel.DEBUG);
-    RollupLogger.Instance.save();
     return this.startAsyncWork();
   }
 
@@ -714,12 +713,18 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.rollups.clear();
     this.rollups.addAll(this.deferredRollups);
     this.deferredRollups.clear();
+    Boolean shouldSaveRollupLogs = true;
 
     if (isDeferralAllowed) {
       RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
       this.attemptToStaticallyDeferRollup();
+    } else {
+      shouldSaveRollupLogs = false;
+    }
+    if (shouldSaveRollupLogs) {
+      RollupLogger.Instance.save();
     }
   }
 
@@ -728,7 +733,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // upstream, and we can try to process by piggybacking off of that procedure
     this.getCachedRollups().add(this);
     RollupLogger.Instance.log('attempting to statically defer rollup:', this, LoggingLevel.WARN);
-    RollupLogger.Instance.save();
   }
 
   private void setupCalcItemData(Rollup roll) {

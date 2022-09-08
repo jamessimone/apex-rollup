@@ -23,7 +23,10 @@
             "versionNumber": "0.0.12.0",
             "versionName": "Corrected assertion in one of the custom logger tests",
             "versionDescription": "Adds RollupLog__c and RollupLogEntry__c custom objects to allow storage of rollup debug logs",
-            "default": false
+            "default": false,
+            "unpackagedMetadata": {
+                "path": "plugins/CustomObjectRollupLogger/tests"
+            }
         },
         {
             "package": "Apex Rollup - Nebula Logger",
@@ -39,7 +42,10 @@
             "versionNumber": "0.0.7.0",
             "versionName": "Adding base Rollup string and version number",
             "versionDescription": "Provides an adapter that hooks rollup debug logging up to Nebula Logger",
-            "default": false
+            "default": false,
+            "unpackagedMetadata": {
+                "path": "plugins/NebulaLogger/tests"
+            }
         },
         {
             "package": "Apex Rollup - Rollup Callback",
@@ -52,7 +58,10 @@
             "versionNumber": "0.0.3.0",
             "versionName": "Standardizing plugin infrastructure",
             "versionDescription": "Use this plugin to dispatch updated rollup information using Platform Events or custom Apex",
-            "default": false
+            "default": false,
+            "unpackagedMetadata": {
+                "path": "plugins/RollupCallback/tests"
+            }
         },
         {
             "path": "extra-tests",

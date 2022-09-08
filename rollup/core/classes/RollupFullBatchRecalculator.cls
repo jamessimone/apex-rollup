@@ -33,14 +33,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupLogger.Instance.save();
   }
 
-  public override void finish(Database.BatchableContext bc) {
-    if (this.isTimingOut == false) {
-      this.fullRecalcProcessor?.finish();
-    }
-    RollupLogger.Instance.log(this.getTypeName() + ' finished', LoggingLevel.DEBUG);
-    RollupLogger.Instance.save();
-  }
-
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
     if (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
       this.startAsyncWork();
