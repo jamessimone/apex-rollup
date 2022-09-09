@@ -2277,7 +2277,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void correctlyHandlesMultipleDeferredFullRecalcs() {
-    // TODO continue on this thread
+    // TODO continue on this thread for deferred full recalcs that are themselves INSIDE rollup conductors
     Account acc = [SELECT Id FROM Account];
     ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 50);
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'child two', PreferenceRank = 50);

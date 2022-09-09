@@ -301,8 +301,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = new QueueableProcessor(this);
     } else if (canEnqueue) {
       roll = this;
-    } else {
-      this.attemptToStaticallyDeferRollup();
     }
 
     return roll;
@@ -651,7 +649,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void preProcessRollups(List<RollupAsyncProcessor> rollupsToProcess) {
     for (Integer index = rollupsToProcess.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = rollupsToProcess[index];
-      List<RollupAsyncProcessor> additionalRollups = rollup.transformFullRecalcRollups();
+      List<RollupAsyncProcessor> additionalRollups = new List<RollupAsyncProcessor>();
+      // this can be a conductor containing full recalc rollups
+      if (rollup.rollups.isEmpty() == false) {
+        this.preProcessRollups(rollup.rollups);
+        additionalRollups.addAll(rollup.rollups);
+      } else {
+        additionalRollups = rollup.transformFullRecalcRollups();
+      }
+
       if (additionalRollups.isEmpty() == false) {
         rollupsToProcess.remove(index);
         rollupsToProcess.addAll(additionalRollups);
@@ -713,26 +719,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.rollups.clear();
     this.rollups.addAll(this.deferredRollups);
     this.deferredRollups.clear();
-    Boolean shouldSaveRollupLogs = true;
 
     if (isDeferralAllowed) {
       RollupLogger.Instance.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
-      this.attemptToStaticallyDeferRollup();
-    } else {
-      shouldSaveRollupLogs = false;
+      RollupLogger.Instance.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
     }
-    if (shouldSaveRollupLogs) {
-      RollupLogger.Instance.save();
-    }
-  }
-
-  private void attemptToStaticallyDeferRollup() {
-    // if there's no possible avenue for starting an async rollup, it's possible that we've already called getAsyncRollup
-    // upstream, and we can try to process by piggybacking off of that procedure
-    this.getCachedRollups().add(this);
-    RollupLogger.Instance.log('attempting to statically defer rollup:', this, LoggingLevel.WARN);
+    RollupLogger.Instance.save();
   }
 
   private void setupCalcItemData(Rollup roll) {

@@ -19,7 +19,7 @@ private class RollupNebulaLoggerAdapterTest {
     // settings on Log__c and LogEntry__c
     List<Log__c> logs = [SELECT Id, Scenario__c, (SELECT Message__c, OriginLocation__c FROM LogEntries__r) FROM Log__c];
     System.assertEquals(1, logs.size(), 'Log should have been created');
-    System.assertEquals('Apex Rollup', logs[0].Scenario__c);
+    System.assertEquals('Apex Rollup', Logger.getScenario());
     System.assertEquals(1, logs[0].LogEntries__r.size(), 'Log entry should have been created');
     LogEntry__c logEntry = logs[0].LogEntries__r[0];
     System.assertEquals(true, logEntry.Message__c.contains(testString), 'Log message should contain test string');
