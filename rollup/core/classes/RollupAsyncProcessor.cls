@@ -585,7 +585,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected virtual override String getHashedContents() {
     // the only thing that necessarily makes a rollup unique is the sum total of the metadata behind it
     // as well as the calc items driving that calculation.
-    // you could have multiple rollups with different Calc Item Where Clauses all rolling up to the same field
+    // you could have multiple rollups with different Child Object Where Clauses all rolling up to the same field
     return String.valueOf(this.metadata);
   }
 
@@ -853,7 +853,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         lookupFieldToCalcItems.get(key).add(calcItem);
       }
 
-      // if the lookup key differs from what it was on the old calc item,
+      // if the lookup key differs from what it was on the old child object,
       // include that value as well so that we can fix reparented records' rollup values
       if (potentialOldCalcItem != null) {
         String oldKey = (String) potentialOldCalcItem.get(roll.lookupFieldOnCalcItem);
@@ -1088,7 +1088,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
 
-      // once the reparenting logic has been done, if the lookup field isn't set on the current calc item, remove it
+      // once the reparenting logic has been done, if the lookup field isn't set on the current child object, remove it
       if (String.isBlank((String) calcItem.get(roll.lookupFieldOnCalcItem))) {
         localCalcItems.remove(index);
       }

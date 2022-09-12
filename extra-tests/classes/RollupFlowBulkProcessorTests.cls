@@ -369,7 +369,7 @@ private class RollupFlowBulkProcessorTests {
     }
     Test.stopTest();
 
-    System.assertEquals(null, ex, 'Exception should not be thrown when calc item info can be inferred from CMDT');
+    System.assertEquals(null, ex, 'Exception should not be thrown when child object info can be inferred from CMDT');
     Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
   }

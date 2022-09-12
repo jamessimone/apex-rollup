@@ -2,11 +2,11 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>UltimateParentLookup__c</fullName>
     <description
-  >Use in conjunction with &quot;Roll Up To Ultimate Parent&quot; to specify the hierarchical/self-referential lookup field on the Lookup Object that hold the values for the ultimate parent.</description>
+  >Use in conjunction with &quot;Roll Up To Ultimate Parent&quot; to specify the hierarchical/self-referential lookup field on the Parent Object that hold the values for the ultimate parent.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText
-  >Use in conjunction with &quot;Roll Up To Ultimate Parent&quot; to specify the hierarchical/self-referential lookup field on the Lookup Object that hold the values for the ultimate parent.</inlineHelpText>
+  >Use in conjunction with &quot;Roll Up To Ultimate Parent&quot; to specify the hierarchical/self-referential lookup field on the Parent Object that hold the values for the ultimate parent.</inlineHelpText>
     <label>Ultimate Parent Lookup</label>
     <metadataRelationshipControllingField>Rollup__mdt.LookupObject__c</metadataRelationshipControllingField>
     <referenceTo>FieldDefinition</referenceTo>

@@ -5,7 +5,7 @@
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>Lookup to the SObject that will drive the rollup</inlineHelpText>
-    <label>Calc Item</label>
+    <label>Child Object</label>
     <referenceTo>EntityDefinition</referenceTo>
     <relationshipLabel>Rollups1</relationshipLabel>
     <relationshipName>Rollups1</relationshipName>

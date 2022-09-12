@@ -429,7 +429,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private String appendAdditionalWhereClauses(String query, String relationshipName, Map<String, SObjectField> fieldMap) {
-    // for calc item where clauses, try to append the conditions sensibly
+    // for child object where clauses, try to append the conditions sensibly
     List<String> whereClauses = this.relationshipNameToWhereClauses.containsKey(relationshipName)
       ? this.relationshipNameToWhereClauses.get(relationshipName)
       : new List<String>();

@@ -7,7 +7,7 @@
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText
   >Enter in WHERE clause entries here to exclude items from your rollup calculation. You do not need to start with WHERE, but otherwise should proceed with valid SOQL syntax.</inlineHelpText>
-    <label>Calc Item Where Clause</label>
+    <label>Child Object Where Clause</label>
     <length>32768</length>
     <type>LongTextArea</type>
     <visibleLines>3</visibleLines>

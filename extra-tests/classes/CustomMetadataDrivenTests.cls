@@ -79,7 +79,7 @@ private class CustomMetadataDrivenTests {
     childOne.DateField__c = childOne.DateField__c.addDays(-1);
     update childOne;
 
-    // begin recursive update, but with a Calc Item Where Clause field change
+    // begin recursive update, but with a Child Object Where Clause field change
     childOne.NumberField__c = 1;
     update childOne;
 

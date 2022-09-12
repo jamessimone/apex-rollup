@@ -128,7 +128,7 @@ export default class RollupForceRecalculation extends LightningElement {
       let jobId;
       if (this.isCMDTRecalc) {
         if (!this.selectedMetadata || this.selectedRows.length === 0) {
-          this._displayErrorToast('Select a valid option', 'Calc item(s) must be selected!');
+          this._displayErrorToast('Select a valid option', 'Child Object(s) must be selected!');
           return;
         }
 

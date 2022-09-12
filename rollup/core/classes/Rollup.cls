@@ -538,10 +538,10 @@ global without sharing virtual class Rollup {
   }
 
   global class FlowInput {
-    @InvocableVariable(label='Calc Item Calc Field' description='The API Name of the field on each of the records passed in to rollup.' required=true)
+    @InvocableVariable(label='Child Object Calc Field' description='The API Name of the field on each of the records passed in to rollup.' required=true)
     global String rollupFieldOnCalcItem;
     @InvocableVariable(
-      label='Calc Item Lookup Field'
+      label='Child Object Lookup Field'
       description='The API Name of the field on the record to rollup that matches a field on the object where the rollup will be stored'
       required=true
     )
@@ -571,30 +571,30 @@ global without sharing virtual class Rollup {
     // optional fields shared with RollupFlowBulkProcessor.FlowInput
     @InvocableVariable(label='Defer processing')
     global Boolean deferProcessing = false;
-    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    @InvocableVariable(label='Child Object Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
     // rest of optional fields
     @InvocableVariable(
-      label='Calc Item Changed Fields'
+      label='Child Object Changed Fields'
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
     @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
     global String concatDelimiter;
     @InvocableVariable(
-      label='Concat Delimiter Split Should Apply On Calc Item'
-      description='the text values on the Calc Item\'s field being rolled up can also be split if this field is enabled and set to {!$GlobalConstant.True}'
+      label='Concat Delimiter Split Should Apply On Child Object'
+      description='the text values on the Child Object\'s field being rolled up can also be split if this field is enabled and set to {!$GlobalConstant.True}'
     )
     global Boolean splitConcatDelimiterOnCalcItem;
 
     @InvocableVariable(
       label='Full Recalculation Default Number Value'
-      description='If provided, used in place of the existing value on the rollup field for the lookup object for number-based rollups'
+      description='If provided, used in place of the existing value on the rollup field for the parent object for number-based rollups'
     )
     global Decimal fullRecalculationDefaultNumberValue;
     @InvocableVariable(
       label='Full Recalculation Default String Value'
-      description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
+      description='If provided, used in place of the existing value on the rollup field for the parent object for String-based rollups'
     )
     global String fullRecalculationDefaultStringValue;
 
@@ -2688,7 +2688,7 @@ global without sharing virtual class Rollup {
         lookupFieldOnOpObject,
         rollupFieldOnOpObject,
         lookupDescribe.getSObjectType(),
-        sObjectType, // calc item SObjectType
+        sObjectType, // child object SObjectType
         rollupOp,
         filterResults,
         rollupConductor,
@@ -2983,7 +2983,7 @@ global without sharing virtual class Rollup {
     FilterResults results = new FilterResults();
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
 
-    // for custom evaluators / where clauses / calc item changed fields, etc ... mutating the initial "calcItems" passed in would
+    // for custom evaluators / where clauses / child object changed fields, etc ... mutating the initial "calcItems" passed in would
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {

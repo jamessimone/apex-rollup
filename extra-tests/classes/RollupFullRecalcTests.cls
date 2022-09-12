@@ -105,7 +105,7 @@ private class RollupFullRecalcTests {
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
-    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'Calc item where clause with parent filtering should work for REFRESH');
+    System.assertEquals(1500, updatedAcc.AnnualRevenue, 'Child object where clause with parent filtering should work for REFRESH');
   }
 
   @IsTest
@@ -136,7 +136,7 @@ private class RollupFullRecalcTests {
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(500, updatedAcc.AnnualRevenue, 'Calc item where clause with parent filtering should work for REFRESH');
+    System.assertEquals(500, updatedAcc.AnnualRevenue, 'Child object where clause with parent filtering should work for REFRESH');
     Account secondUpdatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :second.Id];
     System.assertEquals(null, secondUpdatedAcc.AnnualRevenue, 'Amount should have decremented on update!');
   }

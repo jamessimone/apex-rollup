@@ -13,11 +13,11 @@ global without sharing class RollupFlowBulkProcessor {
     // Shared between this and Rollup.FlowInput
     @InvocableVariable(label='Defer processing?')
     global Boolean deferProcessing;
-    @InvocableVariable(label='Calc Item Type When Rollup Started From Parent')
+    @InvocableVariable(label='Child Object Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
     // Optional properties that can override the CMDT values
     @InvocableVariable(
-      label='Calc Item Changed Fields'
+      label='Child Object Changed Fields'
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
@@ -26,12 +26,12 @@ global without sharing class RollupFlowBulkProcessor {
 
     @InvocableVariable(
       label='Full Recalculation Default Number Value'
-      description='If provided, used in place of the existing value on the rollup field for the lookup object for number-based rollups'
+      description='If provided, used in place of the existing value on the rollup field for the parent object for number-based rollups'
     )
     global Decimal fullRecalculationDefaultNumberValue;
     @InvocableVariable(
       label='Full Recalculation Default String Value'
-      description='If provided, used in place of the existing value on the rollup field for the lookup object for String-based rollups'
+      description='If provided, used in place of the existing value on the rollup field for the parent object for String-based rollups'
     )
     global String fullRecalculationDefaultStringValue;
 

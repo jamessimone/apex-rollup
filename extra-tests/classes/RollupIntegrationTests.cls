@@ -1092,7 +1092,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
-        // validate calc item where clause works
+        // validate child object where clause works
         CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
@@ -1150,7 +1150,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
-        // validate polymorphic calc item where clause works
+        // validate polymorphic child object where clause works
         CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
@@ -1865,9 +1865,9 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees, Phone FROM Account];
-    System.assertEquals(null, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
-    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
-    System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since calc item matches');
+    System.assertEquals(null, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that child object no longer matches');
+    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that child object no longer matches');
+    System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since child object matches');
   }
 
   @IsTest
@@ -1941,7 +1941,7 @@ private class RollupIntegrationTests {
     System.assertEquals(
       null,
       updatedAcc.AnnualRevenue,
-      'Calc item where clause with parent filtering should decrement on update when old item matches and new item does not'
+      'Child object where clause with parent filtering should decrement on update when old item matches and new item does not'
     );
     System.assertEquals(250, updatedAcc.NumberOfEmployees, 'Number of employees should also have been decremented');
   }
