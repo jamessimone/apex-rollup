@@ -70,7 +70,7 @@ public class RollupTestUtils {
   }
 
   public static SObject queryRecord(Id recordId, List<Schema.SObjectField> fieldNames) {
-    return queryRecord(recordId, null, fieldNames);
+    return queryRecord(recordId, recordId.getSObjectType(), fieldNames);
   }
 
   public static SObject queryRecord(Schema.SObjectType fromObject, List<Schema.SObjectField> fieldNames) {
