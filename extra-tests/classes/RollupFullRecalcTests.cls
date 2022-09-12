@@ -657,7 +657,10 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void clearsParentValuesWhenNoRefreshMatches() {
-    Account acc = (Account) RollupTestUtils.queryrecord('Account', new List<String>{ 'AnnualRevenue', 'Description' });
+    Account acc = (Account) RollupTestUtils.queryRecord(
+      Schema.Account.SObjectType,
+      new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.Description }
+    );
     acc.AnnualRevenue = 1500;
     acc.Description = 'This is the value that should be persisted';
     update acc;
@@ -683,7 +686,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void clearsParentValuesWhenNoUpdateMatches() {
-    Account acc = (Account) RollupTestUtils.queryrecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Schema.Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     acc.AnnualRevenue = 1500;
     update acc;
 
@@ -2252,7 +2255,7 @@ private class RollupFullRecalcTests {
       return;
     }
     String expectedIsoCode = 'EUR';
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>());
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>());
     System.assertNotEquals(null, acc.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME), 'Test has started under the wrong conditions');
     acc.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, expectedIsoCode);
 
@@ -2279,7 +2282,7 @@ private class RollupFullRecalcTests {
   static void correctlyHandlesMultipleDeferredFullRecalcs() {
     // TODO continue on this thread for deferred full recalcs that are themselves INSIDE rollup conductors
     Account acc = [SELECT Id FROM Account];
-    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 50);
+    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 25);
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'child two', PreferenceRank = 50);
     insert new List<ContactPointAddress>{ one, two };
 
@@ -2340,7 +2343,7 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT NumberOfEmployees, AnnualRevenue FROM Account];
     System.assertEquals(2, acc.NumberOfEmployees);
-    System.assertEquals(100, acc.AnnualRevenue);
+    System.assertEquals(one.PreferenceRank + two.PreferenceRank, acc.AnnualRevenue);
   }
 
   private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {

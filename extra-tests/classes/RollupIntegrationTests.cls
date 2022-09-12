@@ -26,7 +26,9 @@ private class RollupIntegrationTests {
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, prior.AnnualRevenue, 'Test has started under the wrong conditions!');
-    Rollup.records = new List<Opportunity>{ (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'Amount', 'AccountIdText__c' }) };
+    Rollup.records = new List<Opportunity>{
+      (Opportunity) RollupTestUtils.queryRecord(Opportunity.SObjectType, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.AccountIdText__c })
+    };
     Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -55,7 +57,10 @@ private class RollupIntegrationTests {
   static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
-    Opportunity opp = (Opportunity) RollupTestUtils.queryrecord('Opportunity', new List<String>{ 'AmountFormula__c', 'AccountId' });
+    Opportunity opp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.AmountFormula__c, Opportunity.AccountId }
+    );
     System.assertEquals(1, opp.AmountFormula__c, 'Test has started with wrong opp conditions!');
     Rollup.records = new List<Opportunity>{ opp };
     Rollup.shouldRun = true;
@@ -161,13 +166,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupMaxForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -196,7 +204,7 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'MaxAmountRollupSummary__c' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MaxAmountRollupSummary__c });
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(
       acc.MaxAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
@@ -207,13 +215,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupMinForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -243,7 +254,7 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'MinAmountRollupSummary__c' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MinAmountRollupSummary__c });
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(
       acc.MinAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
@@ -254,13 +265,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupSumForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -291,7 +305,7 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'SumAmountRollupSummary__c' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.SumAmountRollupSummary__c });
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(
       acc.SumAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
@@ -302,13 +316,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupAverageForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -347,7 +364,7 @@ private class RollupIntegrationTests {
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     Decimal expectedAverage = (convertedAmountSum / opportunities.size()) * currencyInfo.ConversionRate;
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(
       expectedAverage.setScale(currencyInfo.DecimalPlaces),
       acc.AnnualRevenue.setScale(currencyInfo.DecimalPlaces),
@@ -357,13 +374,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupFirstForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -414,13 +434,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupLastForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');

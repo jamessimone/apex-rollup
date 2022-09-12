@@ -144,8 +144,8 @@ private class RollupQueryBuilderTests {
   static void correctlyFormatsAggregateQuery() {
     String countQuery = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ 'count()' }, 'Id', '=');
 
-    Integer amount = Database.countQuery(countQuery);
+    Integer countAmount = Database.countQuery(countQuery);
 
-    System.assertEquals(0, amount, 'Should make it here because query was formatted correctly');
+    System.assertEquals(0, countAmount, 'Should make it here because query was formatted correctly');
   }
 }
