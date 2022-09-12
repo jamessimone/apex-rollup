@@ -421,4 +421,46 @@ private class RollupRelationshipFieldFinderTests {
     System.assertEquals(true, foundFirstParent);
     System.assertEquals(true, foundSecondParent);
   }
+
+  @IsTest
+  static void properlyRetrievesCurrencyIsoCodeForUltimateParents() {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
+      return;
+    }
+
+    Account hierarchyParent = [SELECT Id, ParentId FROM Account];
+    Account hierarchyGrandparent = new Account(Name = 'Hierarchy grandparent');
+    insert hierarchyGrandparent;
+    hierarchyParent.ParentId = hierarchyGrandparent.Id;
+    update hierarchyParent;
+    Contact hierarchyGrandchild = new Contact(LastName = 'Hierarchy grandchild', AccountId = hierarchyParent.Id);
+    insert hierarchyGrandchild;
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(
+        RollupToUltimateParent__c = true,
+        UltimateParentLookup__c = 'ParentId',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        GrandparentRelationshipFieldPath__c = 'Account.Parent.Name'
+      ),
+      uniqueFieldNames,
+      uniqueFieldNames,
+      Account.SObjectType,
+      new Map<Id, SObject>()
+    );
+
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Contact>{ hierarchyGrandchild });
+    System.assertEquals(true, traversal.getIsFinished());
+    SObject retrievedAcc = traversal.retrieveParents(hierarchyGrandchild.Id)[0];
+    System.assertEquals(hierarchyGrandparent.Id, retrievedAcc.Id, 'Should correctly retrieve hierarchy');
+    System.assertEquals(true, retrievedAcc.isSet(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
+    // just to be SUPER safe
+    hierarchyGrandparent = (Account) RollupTestUtils.queryRecord(hierarchyGrandparent.Id);
+    System.assertNotEquals(null, hierarchyGrandparent.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
+    System.assertEquals(
+      hierarchyGrandparent.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME),
+      retrievedAcc.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
+    );
+  }
 }

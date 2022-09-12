@@ -122,7 +122,9 @@ public without sharing class RollupRelationshipFieldFinder {
           if (parentToLookupRecords.containsKey(parentRecord.Id)) {
             parentToLookupRecords.get(parentRecord.Id).add(record);
           } else {
-            parentToLookupRecords.put(parentRecord.Id, new Rollup.CalcItemBag(new List<SObject>{ record }));
+            Rollup.CalcItemBag bag = new Rollup.CalcItemBag(new List<SObject>{ record });
+            bag.hasQueriedForAdditionalItems = true;
+            parentToLookupRecords.put(parentRecord.Id, bag);
           }
         }
       }
@@ -351,7 +353,7 @@ public without sharing class RollupRelationshipFieldFinder {
     fieldMap = baseSObjectType.getDescribe().fields.getMap();
     field = this.getField(fieldMap, nextFieldToLookup);
 
-    Set<String> fieldNames = new Set<String>();
+    Set<String> fieldNames = new Set<String>{ 'Id' };
     if (baseSObjectType == this.ultimateParent) {
       fieldNames.addAll(this.uniqueFinalParentFieldNames);
       if (this.metadata.RollupToUltimateParent__c == true) {
@@ -359,9 +361,6 @@ public without sharing class RollupRelationshipFieldFinder {
       }
     } else {
       fieldNames.add(field.getDescribe().getName());
-    }
-    if (fieldNames.contains('Id') == false) {
-      fieldNames.add('Id');
     }
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
@@ -430,7 +429,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private String appendAdditionalWhereClauses(String query, String relationshipName, Map<String, SObjectField> fieldMap) {
-    // for calc item where clauses, try to append the conditions sensibly
+    // for child object where clauses, try to append the conditions sensibly
     List<String> whereClauses = this.relationshipNameToWhereClauses.containsKey(relationshipName)
       ? this.relationshipNameToWhereClauses.get(relationshipName)
       : new List<String>();
@@ -502,6 +501,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private void populateHierarchicalLookupFields(Set<String> queryFieldNames, Schema.SObjectField hierarchyToken) {
     // we need to re-query the other fields at each hierarchy stage
+    if (RollupCurrencyInfo.isMultiCurrency()) {
+      queryFieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
+    }
     List<String> copiedFieldNamesPerRelationship = new List<String>(queryFieldNames);
     String relationshipName = hierarchyToken.getDescribe().getRelationshipName();
     String hierarchyName = hierarchyToken.getDescribe().getName();
@@ -594,10 +596,9 @@ public without sharing class RollupRelationshipFieldFinder {
 
   @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
   private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
-    SObject junctionObject = RollupFieldInitializer.Current.getSObjectFromName(junctionObjectName);
     String oneToManyFieldName = this.oneToManyParts.get(junctionObjectName);
     this.oneToManyParts.remove(junctionObjectName);
-    Schema.SObjectType sObjectType = junctionObject.getSObjectType();
+    Schema.SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(junctionObjectName).getSObjectType();
     this.currentRelationshipName = this.getCurrentRelationshipName(sObjectType);
     String query = RollupQueryBuilder.Current.getQuery(
       sObjectType,

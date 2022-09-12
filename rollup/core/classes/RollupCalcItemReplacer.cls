@@ -2,7 +2,7 @@
  * @return `List<SObject>` - Calc items
  * Depending on the `RollupControl__mdt.ReplaceCalcItemsAsyncWhenOverCount__c` field,
  * re-queries for passed-in calc items when they have either:
- * - a polymorphic calc item where clause field
+ * - a polymorphic child object where clause field
  * - parent-level fields
  */
 public without sharing class RollupCalcItemReplacer {
@@ -49,6 +49,7 @@ public without sharing class RollupCalcItemReplacer {
       calcItems = this.potentiallyReplacePolymorphicWhereClauses(calcItems);
       this.replaceCalcItemsWithParentWhereClauses(calcItems);
     } else if (mightNeedReplacement == false) {
+      this.calcItemHashCodes.add(calcItems.hashCode());
       this.processedMetadata.addAll(metadata);
     }
     return calcItems;
@@ -60,18 +61,18 @@ public without sharing class RollupCalcItemReplacer {
       return localNeedsReplacement;
     }
     SObjectType calcType = calcItems[0].getSObjectType();
-    Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
-    Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
     for (Rollup__mdt meta : metadata) {
-      Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
       if (meta.IsRollupStartedFromParent__c && meta.LookupObject__c == calcType.getDescribe().getName()) {
         return false;
       }
+      Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
       Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
       if (mightNeedReplacement && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
         RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
         this.metaToEval.put(meta, whereEval);
+        Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
+        Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
         for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
           this.addQueryableFields(orderBy.FieldName__c, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
         }
@@ -134,7 +135,7 @@ public without sharing class RollupCalcItemReplacer {
   private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
     final String typeField = '.Type';
     final String owner = 'Owner.';
-    // first we check to see if there is a calc item where clause, and that it contains any of the common polymorphic fields
+    // first we check to see if there is a child object where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
     Boolean hasOwnerClause = metadata.CalcItemWhereClause__c?.contains(owner) == true;
     Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
@@ -149,7 +150,7 @@ public without sharing class RollupCalcItemReplacer {
       return calcItems;
     }
 
-    // the calc item where clause contains at least one polymorphic field, but before re-querying we validate whether or not the fields are already provided
+    // the child object where clause contains at least one polymorphic field, but before re-querying we validate whether or not the fields are already provided
     Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
     List<String> optionalWhereClauses = new List<String>();
     Set<String> additionalQueryFields = new Set<String>();

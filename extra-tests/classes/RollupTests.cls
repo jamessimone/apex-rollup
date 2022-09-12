@@ -582,7 +582,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_INSERT should count when the field is present on the calc item based on CMDT');
+    System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_INSERT should count when the field is present on the child object based on CMDT');
     System.assertEquals(1, updatedAcc.NumberOfEmployees, 'COUNT_DISTINCT AFTER_INSERT should count regardless of not pointing to a field based on CMDT');
   }
 
@@ -606,7 +606,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated batch AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should count when the field is present on the calc item batched');
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should count when the field is present on the child object batched');
     System.assertEquals(
       1,
       updatedAcc.NumberOfEmployees,
@@ -637,7 +637,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated batch AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should count when the field is present on the calc item batched');
+    System.assertEquals(100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should count when the field is present on the child object batched');
     System.assertEquals(
       1,
       updatedAcc.NumberOfEmployees,
@@ -1737,7 +1737,7 @@ private class RollupTests {
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
     insert taskOne;
-    Rollup.defaultControl = null;
+    Rollup.shouldRefreshCachedControl = true;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = RollupTestUtils.createId(Task.SObjectType), WhoId = con.Id);
 
@@ -2363,7 +2363,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'CONCAT_DISTINCT AFTER_INSERT from flow did not update account');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(cpas[0].Name, updatedAcc.Name, 'CONCAT_DISTINCT should have split on calc item values!');
+    System.assertEquals(cpas[0].Name, updatedAcc.Name, 'CONCAT_DISTINCT should have split on child object values!');
   }
 
   @IsTest
@@ -2934,7 +2934,7 @@ private class RollupTests {
     Account acc = [SELECT Id FROM Account];
     Date today = System.today();
 
-    // the important part here is that this one SHOULDN'T be first if the passed in calc item is not winnowed properly
+    // the important part here is that this one SHOULDN'T be first if the passed in child object is not winnowed properly
     insert new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = today.addDays(1), ParentId = acc.Id, Name = 'match on where clause');
 
     ContactPointAddress cpa = new ContactPointAddress(
@@ -2955,7 +2955,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Updated account should have been loaded FIRST AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(5, updatedAcc.AnnualRevenue, 'Queried item should be found and used even if calc item where clause filters out current iterations');
+    System.assertEquals(5, updatedAcc.AnnualRevenue, 'Queried item should be found and used even if child object where clause filters out current iterations');
   }
 
   // integration test for "ChangedFieldsOnCalcItem__c" being properly constructed

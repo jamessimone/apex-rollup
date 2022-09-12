@@ -66,31 +66,32 @@ public class RollupTestUtils {
    * Returns a record using dynamic SOQL to prevent CurrencyIsoCode from being strongly typed anywhere in the tests
    */
   public static SObject queryRecord(Id recordId) {
-    return queryRecord(recordId, new List<String>());
+    return queryRecord(recordId, new List<Schema.SObjectField>());
   }
 
-  public static SObject queryRecord(Id recordId, List<String> fieldNames) {
-    return queryRecord(recordId, null, fieldNames);
+  public static SObject queryRecord(Id recordId, List<Schema.SObjectField> fieldNames) {
+    return queryRecord(recordId, recordId.getSObjectType(), fieldNames);
   }
 
-  public static SObject queryrecord(String fromObject, List<String> fieldNames) {
+  public static SObject queryRecord(Schema.SObjectType fromObject, List<Schema.SObjectField> fieldNames) {
     return queryRecord(null, fromObject, fieldNames);
   }
 
-  private static SObject queryRecord(Id recordId, String fromObject, List<String> fieldNames) {
-    SObjectType sObjectType = recordId != null ? recordId.getSObjectType() : ((SObject) Type.forName(fromObject).newInstance()).getSObjectType();
+  private static SObject queryRecord(Id recordId, Schema.SObjectType fromObject, List<Schema.SObjectField> fieldTokens) {
     String currencyIscoCodeFieldName = RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME;
-    if (fieldNames.contains('Id') == false) {
-      fieldNames.add('Id');
+    Set<String> fieldNames = new Set<String>();
+    for (Schema.SObjectField fieldToken : fieldTokens) {
+      fieldNames.add(fieldToken.getDescribe().getName());
     }
+
     if (fieldNames.contains('Name') == false) {
       fieldNames.add('Name');
     }
-    if (UserInfo.isMultiCurrencyOrganization() && sObjectType.getDescribe().fields.getMap().containsKey(currencyIscoCodeFieldName)) {
+    if (UserInfo.isMultiCurrencyOrganization() && fromObject.getDescribe().fields.getMap().containsKey(currencyIscoCodeFieldName)) {
       fieldNames.add(currencyIscoCodeFieldName);
     }
     String whereClause = recordId == null ? '' : '\nWHERE Id = :recordId';
-    String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + sObjectType + whereClause;
+    String recordQuery = 'SELECT ' + String.join(new List<String>(fieldNames), ', ') + '\nFROM ' + fromObject + whereClause;
     return Database.query(recordQuery);
   }
 }

@@ -11,3 +11,4 @@ tests/apex
 **/main/default/
 coverage/
 plugins/ExtraCodeCoverage
+.sf/

@@ -111,9 +111,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override Boolean matches(Object calcItem) {
-      Boolean matches = this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
-      addLog(this, matches, calcItem, LoggingLevel.FINER);
-      return matches;
+      return this.firstEval.matches(calcItem) && this.secondEval.matches(calcItem);
     }
 
     public override String toString() {
@@ -158,6 +156,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
     private final Set<String> splitWheres = new Set<String>();
+    private List<String> queryFields;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause.replaceAll('(\n|\r|\t)', '');
@@ -213,36 +212,35 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public List<String> getQueryFields() {
-      Set<String> fieldNames = new Set<String>();
-      for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
-        for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
-          Boolean hasRelationshipField = condition.fieldName.contains('.');
-          if (condition.fieldName.toLowerCase() == 'not') {
-            continue;
-          }
-          if (
-            hasRelationshipField &&
-            fieldNames.contains(condition.fieldName) == false &&
-            condition.fieldName.contains('__c.') == false &&
-            this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
-            this.isValidRelationshipField(condition.fieldName)
-          ) {
-            fieldNames.add(condition.fieldName);
-          } else if (RollupDateLiteral.isSoqlDateFunction(condition.fieldName)) {
-            fieldNames.add(getDateFunctionField(condition.fieldName));
-          } else if (hasRelationshipField == false) {
-            fieldNames.add(condition.fieldName);
+      if (this.queryFields == null) {
+        Set<String> fieldNames = new Set<String>();
+        for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
+          for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
+            Boolean hasRelationshipField = condition.fieldName.contains('.');
+            if (condition.fieldName.toLowerCase() == 'not') {
+              continue;
+            }
+            if (
+              hasRelationshipField &&
+              fieldNames.contains(condition.fieldName) == false &&
+              condition.fieldName.contains('__c.') == false &&
+              this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
+              this.isValidRelationshipField(condition.fieldName)
+            ) {
+              fieldNames.add(condition.fieldName);
+            } else if (RollupDateLiteral.isSoqlDateFunction(condition.fieldName)) {
+              fieldNames.add(getDateFunctionField(condition.fieldName));
+            } else if (hasRelationshipField == false) {
+              fieldNames.add(condition.fieldName);
+            }
           }
         }
+        this.queryFields = new List<String>(fieldNames);
       }
-      return new List<String>(fieldNames);
+      return this.queryFields;
     }
 
     public override Boolean matches(Object calcItem) {
-      return this.innerMatches(calcItem);
-    }
-
-    private Boolean innerMatches(Object calcItem) {
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
         for (Integer index = 0; index < this.conditionalGroupings.size(); index++) {

@@ -26,7 +26,9 @@ private class RollupIntegrationTests {
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, prior.AnnualRevenue, 'Test has started under the wrong conditions!');
-    Rollup.records = new List<Opportunity>{ (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'Amount', 'AccountIdText__c' }) };
+    Rollup.records = new List<Opportunity>{
+      (Opportunity) RollupTestUtils.queryRecord(Opportunity.SObjectType, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.AccountIdText__c })
+    };
     Rollup.shouldRun = true;
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -55,7 +57,10 @@ private class RollupIntegrationTests {
   static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
-    Opportunity opp = (Opportunity) RollupTestUtils.queryrecord('Opportunity', new List<String>{ 'AmountFormula__c', 'AccountId' });
+    Opportunity opp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.AmountFormula__c, Opportunity.AccountId }
+    );
     System.assertEquals(1, opp.AmountFormula__c, 'Test has started with wrong opp conditions!');
     Rollup.records = new List<Opportunity>{ opp };
     Rollup.shouldRun = true;
@@ -161,13 +166,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupMaxForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -196,7 +204,7 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'MaxAmountRollupSummary__c' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MaxAmountRollupSummary__c });
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(
       acc.MaxAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
@@ -207,13 +215,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupMinForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -243,7 +254,7 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'MinAmountRollupSummary__c' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MinAmountRollupSummary__c });
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(
       acc.MinAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
@@ -254,13 +265,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupSumForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -291,7 +305,7 @@ private class RollupIntegrationTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue', 'SumAmountRollupSummary__c' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.SumAmountRollupSummary__c });
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(
       acc.SumAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
@@ -302,13 +316,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupAverageForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -347,7 +364,7 @@ private class RollupIntegrationTests {
     RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     Decimal expectedAverage = (convertedAmountSum / opportunities.size()) * currencyInfo.ConversionRate;
 
-    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<String>{ 'AnnualRevenue' });
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(
       expectedAverage.setScale(currencyInfo.DecimalPlaces),
       acc.AnnualRevenue.setScale(currencyInfo.DecimalPlaces),
@@ -357,13 +374,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupFirstForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -414,13 +434,16 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldCorrectlyRollupLastForMultiCurrency() {
-    Account acc = (Account) RollupTestUtils.queryRecord('Account', new List<String>{ 'AnnualRevenue' });
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
     update acc;
 
-    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord('Opportunity', new List<String>{ 'StageName', 'CloseDate', 'Amount', 'AccountId' });
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
@@ -1048,13 +1071,15 @@ private class RollupIntegrationTests {
     Account parentToMerge = new Account(Name = 'Second parent');
     insert parentToMerge;
 
-    List<ContactPointAddress> rollupChildren = new List<ContactPointAddress>{
+    List<SObject> rollupChildren = new List<SObject>{
       new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2)
+      new ContactPointAddress(Name = 'Child two', ParentId = parentToMerge.Id, PreferenceRank = 2),
+      new Opportunity(Name = 'opp', AccountId = parentToMerge.Id, Amount = 50, StageName = 'test', CloseDate = System.today())
     };
+    Decimal expectedAmount = ((Decimal) rollupChildren[2].get('Amount')) + 1; // another opp is inserted in test setup
 
-    // we don't even need the parent account's annual revenue to be set; rather
-    // we need to validate that post merge, the rollup is recalculated correctly
+    // we don't even need the parent account's rollup fields to be pre-set to anything
+    // we need to validate that post merge, each rollup has been recalculated correctly
     insert rollupChildren;
 
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
@@ -1067,7 +1092,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
-        // validate calc item where clause works
+        // validate child object where clause works
         CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
@@ -1077,7 +1102,17 @@ private class RollupIntegrationTests {
         LookupFieldOnCalcItem__c = 'ParentId',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Description',
-        RollupOperation__c = 'CONCAT'
+        RollupOperation__c = 'CONCAT',
+        CalcItemWhereClause__c = 'PreferenceRank = 1 OR PreferenceRank = 2'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'SUM'
       ),
       // should be filtered out
       new Rollup__mdt(
@@ -1095,9 +1130,10 @@ private class RollupIntegrationTests {
     Database.merge(parent, parentToMerge.Id, true);
     Test.stopTest();
 
-    parent = [SELECT Id, Description, AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT Id, Description, AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id];
     System.assertEquals(2, parent.AnnualRevenue, 'Merge should have triggered rollup');
-    System.assertEquals(rollupChildren[0].Name + ', ' + rollupChildren[1].Name, parent.Description, 'Second rollup should also have run');
+    System.assertEquals(rollupChildren[0].get('Name') + ', ' + rollupChildren[1].get('Name'), parent.Description, 'Second rollup should also have run');
+    System.assertEquals(expectedAmount, parent.NumberOfEmployees, 'opp rollup shold have run');
   }
 
   @IsTest
@@ -1114,7 +1150,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
-        // validate polymorphic calc item where clause works
+        // validate polymorphic child object where clause works
         CalcItemWhereClause__c = 'Parent.Name = \'' + parent.Name + '\''
       ),
       new Rollup__mdt(
@@ -1579,7 +1615,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 2,
       MaxRollupRetries__c = 1,
-      MaxNumberOfQueries__c = 4,
+      MaxNumberOfQueries__c = 7,
       IsRollupLoggingEnabled__c = true,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
@@ -1800,7 +1836,7 @@ private class RollupIntegrationTests {
 
     List<Contact> cons = new List<Contact>{ new Contact(LastName = 'somethingElse', AccountId = acc.Id, Number__c = acc.AnnualRevenue, Phone = '617619111') };
     insert cons;
-    Rollup.defaultControl = null;
+    Rollup.shouldRefreshCachedControl = true;
 
     Contact oldContact = cons[0].clone(true, true);
     cons[0].lastName = 'soloAdmin'; // simulating an update which has not yet been reflected in the database
@@ -1829,9 +1865,9 @@ private class RollupIntegrationTests {
     Test.stopTest();
 
     Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees, Phone FROM Account];
-    System.assertEquals(null, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that calc item no longer matches');
-    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that calc item no longer matches');
-    System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since calc item matches');
+    System.assertEquals(null, updatedAccount.NumberOfEmployees, 'COUNT should be cleared now that child object no longer matches');
+    System.assertEquals(null, updatedAccount.AnnualRevenue, 'SUM should be cleared now that child object no longer matches');
+    System.assertEquals(cons[0].Phone, updatedAccount.Phone, 'MAX should not be cleared since child object matches');
   }
 
   @IsTest
@@ -1905,7 +1941,7 @@ private class RollupIntegrationTests {
     System.assertEquals(
       null,
       updatedAcc.AnnualRevenue,
-      'Calc item where clause with parent filtering should decrement on update when old item matches and new item does not'
+      'Child object where clause with parent filtering should decrement on update when old item matches and new item does not'
     );
     System.assertEquals(250, updatedAcc.NumberOfEmployees, 'Number of employees should also have been decremented');
   }

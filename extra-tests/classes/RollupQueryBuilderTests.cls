@@ -59,7 +59,7 @@ private class RollupQueryBuilderTests {
       new List<String>{ 'Subject', 'WhatId' },
       Event.WhatId.getDescribe().getName(),
       '!=',
-      '((What.Type = \'Account\') AND What.Owner.Id = :recordIds)'
+      '(((What.Type = \'Account\') AND What.Owner.Id = :recordIds))'
     );
 
     System.assertEquals(true, queryString.contains('TYPEOF'), 'Polymorphic where clause should have been transformed: ' + queryString);
@@ -67,6 +67,25 @@ private class RollupQueryBuilderTests {
     System.assertEquals(false, queryString.contains('()'), 'Should clean up removed nested conditionals: ' + queryString);
     System.assertEquals(false, queryString.contains('AND  AND '), queryString);
     System.assertEquals(false, queryString.contains('What.Type'), 'What.Type should have been stripped out: ' + queryString);
+    Set<String> recordIds = new Set<String>();
+    Set<String> objIds = recordIds;
+    // confirm query works
+    List<SObject> records = Database.query(queryString);
+    System.assertEquals(Event.SObjectType, records.getSObjectType());
+  }
+
+  @IsTest
+  static void handlesNestedPolymorphicWhereClausesWithOr() {
+    // we expect that What.Type will end up being stripped out of this
+    // where clause; this is only true for polymorphic where clauses
+    String queryString = RollupQueryBuilder.Current.getQuery(
+      Event.SObjectType,
+      new List<String>{ 'Subject', 'WhatId' },
+      Event.WhatId.getDescribe().getName(),
+      '!=',
+      '(((What.Type = \'Account\') OR What.Owner.Id = :recordIds))'
+    );
+
     Set<String> recordIds = new Set<String>();
     Set<String> objIds = recordIds;
     // confirm query works
@@ -101,7 +120,7 @@ private class RollupQueryBuilderTests {
 
   @IsTest
   static void multiCurrencyOrgsAddIsoCodeWhenIsoCodeExists() {
-    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
 
@@ -112,12 +131,21 @@ private class RollupQueryBuilderTests {
 
   @IsTest
   static void doesNotAddIsoCodeForMultiCurrencyWhenFieldDoesNotExist() {
-    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
 
     String queryString = RollupQueryBuilder.Current.getQuery(ContactPointAddress.SObjectType, new List<String>(), 'Id', '=');
 
     System.assertEquals(false, queryString.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME));
+  }
+
+  @IsTest
+  static void correctlyFormatsAggregateQuery() {
+    String countQuery = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ 'count()' }, 'Id', '=');
+
+    Integer countAmount = Database.countQuery(countQuery);
+
+    System.assertEquals(0, countAmount, 'Should make it here because query was formatted correctly');
   }
 }

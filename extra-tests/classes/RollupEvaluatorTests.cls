@@ -911,7 +911,7 @@ private class RollupEvaluatorTests {
     eval = RollupEvaluator.getEvaluator(new RollupEvaluator.AlwaysTrueEvaluator(), rollupMetadata, new Map<Id, SObject>(), Opportunity.SObjectType);
 
     System.assertEquals(false, eval.matches(opp), 'Should not return true when recursive and all other conditions true');
-    System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on calc item where clause');
+    System.assertEquals(false, eval.matches(nonMatchingOpp), 'Should not match to begin with based on child object where clause');
   }
 
   @IsTest

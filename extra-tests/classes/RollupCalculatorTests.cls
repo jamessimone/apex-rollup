@@ -1140,7 +1140,7 @@ private class RollupCalculatorTests {
       Task.WhatId
     );
 
-    // the important things here: the current date is greater than both the passed in date (the "current" value on the lookup object)
+    // the important things here: the current date is greater than both the passed in date (the "current" value on the parent object)
     // AND that the "current" value matches what's on the old item
     Task t = new Task(ActivityDate = today.addDays(1), Id = RollupTestUtils.createId(Task.SObjectType));
 
@@ -1224,7 +1224,7 @@ private class RollupCalculatorTests {
       Task.WhatId
     );
 
-    // the important things here: the current date is less than both the passed in date (the "current" value on the lookup object)
+    // the important things here: the current date is less than both the passed in date (the "current" value on the parent object)
     // AND that the "current" value matches what's on the old item
     Task t = new Task(ActivityDate = today.addDays(-1), Id = RollupTestUtils.createId(Task.SObjectType));
 

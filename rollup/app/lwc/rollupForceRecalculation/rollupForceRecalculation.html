@@ -2,7 +2,7 @@
   <div class="slds-box white">
     <div class="slds-m-bottom_small">After entering the below information, click the submit button to start up your Rollup.</div>
     <div class="slds-m-bottom_small">
-      Alternatively, you can select a single Calc Item based off of your CMDT rollup records and have the recalculation run for all CMDT associated with that
+      Alternatively, you can select a single Child Object based off of your CMDT rollup records and have the recalculation run for all CMDT associated with that
       SObject type:
     </div>
     <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
@@ -10,8 +10,8 @@
       <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
         <template if:true={isCMDTRecalc}>
           <lightning-combobox
-            label="Select Calc Item"
-            name="Select Calc Item"
+            label="Select Child Object"
+            name="Select Child Object"
             onchange={handleComboChange}
             options={rollupMetadataOptions}
             value={selectedMetadata}
@@ -34,7 +34,7 @@
           <lightning-input
             class="slds-col slds-form-element slds-form-element_horizontal"
             data-id="CalcItem__c"
-            label="Calc Item SObject API Name"
+            label="Child Object SObject API Name"
             name="CalcItem__c"
             oncommit={handleChange}
             required
@@ -44,7 +44,7 @@
           <lightning-input
             class="slds-col slds-form-element slds-form-element_horizontal"
             data-id="RollupFieldOnCalcItem__c"
-            label="Calc Item Calc Field"
+            label="Child Object Calc Field"
             name="RollupFieldOnCalcItem__c"
             oncommit={handleChange}
             required
@@ -54,7 +54,7 @@
           <lightning-input
             class="slds-col slds-form-element slds-form-element_horizontal"
             data-id="LookupFieldOnCalcItem__c"
-            label="Calc Item Lookup Field"
+            label="Child Object Lookup Field"
             name="LookupFieldOnCalcItem__c"
             oncommit={handleChange}
             required
@@ -154,7 +154,7 @@
             <lightning-input
               class="slds-col slds-form-element slds-form-element_horizontal slds-m-vertical_small"
               data-id="SplitConcatDelimiterOnCalcItem__c"
-              label="Split Concat Delimiter On Calc Item, Too? (Optional)"
+              label="Split Concat Delimiter On Child Object, Too? (Optional)"
               name="SplitConcatDelimiterOnCalcItem__c"
               oncommit={handleChange}
               type="checkbox"

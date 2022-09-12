@@ -56,7 +56,7 @@ private class RollupCurrencyInfoTests {
 
   @IsTest
   static void convertsMultipleFieldsCorrectly() {
-    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
     RollupCurrencyInfo mockUsdInfo = new RollupCurrencyInfo();

@@ -1,10 +1,12 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>OneToManyGrandparentFields__c</fullName>
-    <description>If intermediate objects in a grandparent rollup are technically children of the calc item, use this field to make a comma separated list of the hops from one-to-many junction records to your ultimate &quot;grandparent&quot;</description>
+    <description
+  >If intermediate objects in a grandparent rollup are technically children of the child object, use this field to make a comma separated list of the hops from one-to-many junction records to your ultimate &quot;grandparent&quot;</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>If intermediate objects in a grandparent rollup are technically children of the calc item, use this field to make a comma separated list of the hops from one-to-many junction records to your ultimate &quot;grandparent&quot;</inlineHelpText>
+    <inlineHelpText
+  >If intermediate objects in a grandparent rollup are technically children of the child object, use this field to make a comma separated list of the hops from one-to-many junction records to your ultimate &quot;grandparent&quot;</inlineHelpText>
     <label>One To Many Grandparent Fields</label>
     <length>255</length>
     <required>false</required>

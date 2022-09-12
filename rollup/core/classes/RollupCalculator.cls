@@ -330,7 +330,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected SObjectType getCalcItemType() {
-    return RollupFieldInitializer.Current.getSObjectFromName(this.metadata.CalcItem__c).getSObjectType();
+    return RollupFieldInitializer.Current.getDescribeFromName(this.metadata.CalcItem__c).getSObjectType();
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
@@ -468,7 +468,7 @@ public without sharing abstract class RollupCalculator {
         (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
 
       if (this.isIdCount) {
-        Integer result = Database.countQuery(query.replaceAll('(?<=(\\s|,))Id,', ''));
+        Integer result = Database.countQuery(query.replaceAll('(?<=(\\s|,))id,', ''));
         for (Integer index = 0; index < result; index++) {
           this.distinctValues.add(index);
         }

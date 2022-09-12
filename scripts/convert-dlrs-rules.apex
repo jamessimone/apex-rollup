@@ -58,8 +58,8 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     );
     unmigratableRule.put('Object for \"Prior records to rollup\" and \"Records to rollup\"', dlrsRule.dlrs__ChildObject__c);
 
-    unmigratableRule.put('Calc Item Calc Field', dlrsRule.dlrs__FieldToAggregate__c);
-    unmigratableRule.put('Calc Item Lookup Field', dlrsRule.dlrs__RelationshipField__c);
+    unmigratableRule.put('Child Object Calc Field', dlrsRule.dlrs__FieldToAggregate__c);
+    unmigratableRule.put('Child Object Lookup Field', dlrsRule.dlrs__RelationshipField__c);
     unmigratableRule.put('Rollup Object API Name', dlrsRule.dlrs__ParentObject__c);
     unmigratableRule.put('Rollup Object Calc Field', dlrsRule.dlrs__AggregateResultField__c);
     unmigratableRule.put('Rollup Object Lookup Field', 'Id');

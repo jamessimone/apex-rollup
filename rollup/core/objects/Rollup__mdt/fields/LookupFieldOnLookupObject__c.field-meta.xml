@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>LookupFieldOnLookupObject__c</fullName>
-    <description>The matching field on the lookup object</description>
+    <description>The matching field on the parent object</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>The matching field on the lookup object</inlineHelpText>
-    <label>Lookup Field On Lookup Object</label>
+    <inlineHelpText>The matching field on the parent object</inlineHelpText>
+    <label>Lookup Field On Parent Object</label>
     <metadataRelationshipControllingField>Rollup__mdt.LookupObject__c</metadataRelationshipControllingField>
     <referenceTo>FieldDefinition</referenceTo>
     <relationshipLabel>Rollups1</relationshipLabel>

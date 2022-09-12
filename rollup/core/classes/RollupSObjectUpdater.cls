@@ -65,11 +65,9 @@ public without sharing virtual class RollupSObjectUpdater {
   private void updateValue(SObject record, Object value) {
     Schema.DisplayType fieldType = this.fieldToken.getDescribe().getType();
 
-    if (value instanceof Decimal) {
+    if (value instanceof Decimal && fieldType == DisplayType.INTEGER) {
       Decimal decimalValue = (Decimal) value;
-      if (fieldType == DisplayType.INTEGER) {
-        value = decimalValue.intValue();
-      }
+      value = decimalValue.intValue();
     } else if (fieldType == DisplayType.DATE && value instanceof Datetime) {
       value = ((Datetime) value).dateGmt();
     } else if ((value instanceof String) == false) {

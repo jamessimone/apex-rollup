@@ -5,7 +5,7 @@
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>The object where the rollup will be written to</inlineHelpText>
-    <label>Lookup Object</label>
+    <label>Parent Object</label>
     <referenceTo>EntityDefinition</referenceTo>
     <relationshipLabel>Rollups</relationshipLabel>
     <relationshipName>Rollups</relationshipName>

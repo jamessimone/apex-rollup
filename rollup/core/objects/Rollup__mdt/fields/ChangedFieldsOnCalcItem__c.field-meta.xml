@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ChangedFieldsOnCalcItem__c</fullName>
-    <description>Provide a comma-separated list of field API Names to consider prior to using records in the rollup</description>
+    <description
+  >Provide a comma-separated list of field API Names to consider prior to using records in the rollup. If using Child Object Where Clause, do not use this.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>Provide a comma-separated list of field API Names to consider prior to using records in the rollup</inlineHelpText>
-    <label>Changed Fields On Calc Item</label>
+    <inlineHelpText
+  >Provide a comma-separated list of field API Names to consider prior to using records in the rollup. If using Child Object Where Clause, do not use this.</inlineHelpText>
+    <label>Changed Fields On Child Object</label>
     <length>1000</length>
     <type>LongTextArea</type>
     <visibleLines>2</visibleLines>

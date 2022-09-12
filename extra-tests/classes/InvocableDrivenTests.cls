@@ -14,7 +14,7 @@ private class InvocableDrivenTests {
 
     // Description and Subject both are referenced in the Flow
     Case matchesFlow = new Case(Description = 'Name Match', AccountId = acc.Id, Subject = 'Refresh Test');
-    Case nonMatch = new Case(Description = 'Non match', AccountId = acc.Id, Subject = 'Calc Item Where Clause test');
+    Case nonMatch = new Case(Description = 'Non match', AccountId = acc.Id, Subject = 'Child Object Where Clause test');
 
     Test.startTest();
     insert new List<Case>{ matchesFlow, nonMatch };
@@ -121,7 +121,7 @@ private class InvocableDrivenTests {
     Test.stopTest();
 
     acc = [SELECT Phone FROM Account WHERE Id = :acc.Id];
-    System.assertEquals(null, acc.Phone, 'Phone should not have been updated since calc item where clause does not match');
+    System.assertEquals(null, acc.Phone, 'Phone should not have been updated since child object where clause does not match');
     matchingAccount = [SELECT Phone FROM Account WHERE Id = :matchingAccount.Id];
     System.assertEquals(childThree.Phone, matchingAccount.Phone, 'Phone should have been ordered by LastName!');
   }

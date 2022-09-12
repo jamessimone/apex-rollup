@@ -409,7 +409,7 @@ public without sharing abstract class RollupDateLiteral {
   private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(1);
-      this.bound = this.ref.addDays(90);
+      this.bound = getRelativeDatetime(this.ref.addDays(90).date(), END_TIME);
     }
   }
 
@@ -510,7 +510,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = this.ref.addMonths(dateRange);
+      this.bound = getRelativeDatetime(this.ref.addMonths(dateRange).date(), END_TIME);
     }
   }
 

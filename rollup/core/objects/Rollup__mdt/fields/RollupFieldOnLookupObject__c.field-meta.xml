@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>RollupFieldOnLookupObject__c</fullName>
-    <description>The field on the lookup object that the rollup value will be written to</description>
+    <description>The field on the parent object that the rollup value will be written to</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>The field on the lookup object that the rollup value will be written to</inlineHelpText>
-    <label>Rollup Field On Lookup Object</label>
+    <inlineHelpText>The field on the parent object that the rollup value will be written to</inlineHelpText>
+    <label>Rollup Field On Parent Object</label>
     <metadataRelationshipControllingField>Rollup__mdt.LookupObject__c</metadataRelationshipControllingField>
     <referenceTo>FieldDefinition</referenceTo>
     <relationshipLabel>Rollups</relationshipLabel>
