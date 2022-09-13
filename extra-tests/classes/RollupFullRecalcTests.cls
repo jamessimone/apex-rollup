@@ -1916,8 +1916,8 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRuns() {
-    // since we can't have more than one batch chunk run in the tests, but we need to test logic in the execute method
-    // we'll call that method twice directly
+    // additionalCalcItemCount shortcuts a Database.countQuery() call in RollupAsyncProcessor
+    // which reduces the MaxNumberOfQueries__c needed below
     RollupAsyncProcessor.additionalCalcItemCount = 1;
     Rollup.defaultControl = new RollupControl__mdt(
       BatchChunkSize__c = 1,
@@ -1952,6 +1952,8 @@ private class RollupFullRecalcTests {
       null
     );
     fullRecalc.addOrderBys(new List<RollupOrderBy__mdt>(), ContactPointAddress.PreferenceRank);
+    // since we can't have more than one batch chunk run in the tests, but we need to test logic in the execute method
+    // we'll call that method twice directly
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[1] });
 
