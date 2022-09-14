@@ -649,13 +649,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void preProcessRollups(List<RollupAsyncProcessor> rollupsToProcess) {
     for (Integer index = rollupsToProcess.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = rollupsToProcess[index];
-      List<RollupAsyncProcessor> additionalRollups = new List<RollupAsyncProcessor>();
+      List<RollupAsyncProcessor> additionalRollups = rollup.transformFullRecalcRollups();
       // this can be a conductor containing full recalc rollups
       if (rollup.rollups.isEmpty() == false) {
         this.preProcessRollups(rollup.rollups);
         additionalRollups.addAll(rollup.rollups);
-      } else {
-        additionalRollups = rollup.transformFullRecalcRollups();
       }
 
       if (additionalRollups.isEmpty() == false) {
