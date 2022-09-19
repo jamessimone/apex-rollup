@@ -136,6 +136,18 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return String.valueOf(this.rollupMetas);
   }
 
+  protected override Boolean getCanRollupWithoutCustomSetting() {
+    Boolean canRollupWithoutCustomSetting = false;
+    for (Rollup__mdt rollupMeta : this.rollupMetas) {
+      canRollupWithoutCustomSetting = rollupMeta.ShouldRunWithoutCustomSettingEnabled__c == true;
+      // all included rollups need to have the override enabled; if even one does NOT, we can stop
+      if (canRollupWithoutCustomSetting == false) {
+        break;
+      }
+    }
+    return canRollupWithoutCustomSetting;
+  }
+
   private void overrideRollupControl() {
     for (Rollup__mdt meta : this.rollupMetas) {
       if (meta.RollupControl__c != null) {
