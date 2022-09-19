@@ -1201,6 +1201,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean getIsRunningAsync() {
-    return System.isBatch() || System.isQueueable() || System.isScheduled() || shouldFlattenAsyncProcesses == true;
+    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
   }
 }

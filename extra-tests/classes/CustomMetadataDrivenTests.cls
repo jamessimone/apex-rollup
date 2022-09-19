@@ -143,4 +143,31 @@ private class CustomMetadataDrivenTests {
     grandparentTwo = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentTwo.Id];
     System.assertEquals(child.NumberField__c, grandparentTwo.AmountfromChildren__c);
   }
+
+  @IsTest
+  static void rollupsSucceedDuringFutureMethods() {
+    // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+
+    Test.startTest();
+    insertRollupChildrenAsync(parent.Id, 'a', 3);
+    Test.stopTest();
+
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    System.assertEquals('a', parent.TextField__c);
+    System.assertEquals(3, parent.NumberField__c);
+  }
+
+  @Future
+  static void insertRollupChildrenAsync(Id parentId, String firstTextField, Integer firstNumberField) {
+    // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
+    RollupChild__c childOne = new RollupChild__c(
+      Name = 'Child one',
+      TextField__c = firstTextField,
+      RollupParent__c = parentId,
+      NumberField__c = firstNumberField
+    );
+    RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parentId, NumberField__c = 2);
+    insert new List<RollupChild__c>{ childOne, childTwo };
+  }
 }
