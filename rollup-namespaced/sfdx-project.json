@@ -1,0 +1,20 @@
+{
+    "packageDirectories": [
+        {
+            "default": true,
+            "package": "apex-rollup-namespaced",
+            "path": "rollup",
+            "versionName": "Added namespaced version of package, and override to always run rollups from Rollup__mdt",
+            "versionNumber": "1.0.0.0",
+            "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
+            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
+        }
+    ],
+    "namespace": "aproll",
+    "sfdcLoginUrl": "https://login.salesforce.com",
+    "sourceApiVersion": "55.0",
+    "packageAliases": {
+        "apex-rollup-namespaced": "0Ho6g000000PBMeCAO",
+        "apex-rollup-namespaced@1.0.0-0": "04t6g000008b0QNAAY"
+    }
+}

@@ -16,7 +16,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     public void execute(QueueableContext qc) {
       this.processor.countOfItems = this.processor.getNumberOfItems();
       if (this.processor.countOfItems > maxQueryRows) {
-        this.processor.startAsyncWork();
+        Database.executeBatch(this.processor, this.batchChunkSize);
       } else {
         this.processor.runSync();
       }

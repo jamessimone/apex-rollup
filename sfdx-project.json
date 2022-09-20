@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Swapped from Type.forName to Schema.describeSObjects where appropriate to save on speed, fixed issue where not all hierarchy rollups got CurrencyIsoCode correctly in multi-currency orgs, many optimizations.",
-            "versionNumber": "1.5.20.0",
+            "versionName": "Added namespaced version of package, and override to always run rollups from Rollup__mdt",
+            "versionNumber": "1.5.21.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

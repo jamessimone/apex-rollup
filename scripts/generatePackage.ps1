@@ -74,6 +74,14 @@ function Update-Logger-Class {
   git add $loggerClassPath
 }
 
+function Update-SFDX-Project-JSON {
+  Write-Host "Re-writing sfdx-project.json  ..."
+  ConvertTo-Json -InputObject $sfdxProjectJson -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
+  # sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
+  # to run on it
+  npx prettier --write $sfdxProjectJsonPath --tab-width 4 --ignore-path ..\.forceignore
+}
+
 function Get-Next-Package-Version() {
   param ($currentPackage, $packageName)
   $currentPackageVersion = $currentPackage.versionNumber
@@ -87,11 +95,7 @@ function Get-Next-Package-Version() {
     $currentPackageVersion = $currentPackageVersion.Substring(0, $patchVersionIndex + 1) + $currentVersionNumber.ToString() + ".0"
     $currentPackage.versionNumber = $currentPackageVersion
 
-    Write-Host "Re-writing sfdx-project.json with updated package version number ..."
-    ConvertTo-Json -InputObject $sfdxProjectJson -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
-    # sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
-    # to run on it
-    npx prettier --write $sfdxProjectJsonPath --tab-width 4 --ignore-path ..\.forceignore
+    Update-SFDX-Project-JSON
   }
   if ("apex-rollup" -eq $packageName) {
     $versionNumberToWrite = $currentPackageVersion.Remove($currentPackageVersion.LastIndexOf(".0"))
@@ -107,6 +111,13 @@ function Get-Next-Package-Version() {
   }
 }
 
+function Get-Package-Directory() {
+  param (
+    [string]$packageName
+  )
+  return ($sfdxProjectJson.packageDirectories | Select-Object | Where-Object -Property package -eq $packageName)
+}
+
 # used in package.json scripts & build-and-promote-package.ps1
 function Generate() {
   param (
@@ -120,25 +131,56 @@ function Generate() {
     Invoke-Extra-Code-Coverage-Prep
   }
 
-  $currentPackage = ($sfdxProjectJson.packageDirectories | Select-Object | Where-Object -Property package -eq $packageName)
+  $currentPackage = Get-Package-Directory $packageName
   Get-Next-Package-Version $currentPackage $packageName
   $currentPackageVersion = $currentPackage.versionNumber
-  $currentPackageName = $currentPackage.versionName
 
   Write-Host "Creating package version: $currentPackageVersion ..." -ForegroundColor White
 
-  $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion -a $currentPackageName --json | ConvertFrom-Json
+  $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion --json | ConvertFrom-Json
   $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
   if ($null -eq $currentPackageVersionId) {
     throw $createPackageResult
   } else {
     npx sfdx bummer:package:aliases:sort
-    git add $sfdxProjectJsonPath
+    git add $sfdxProjectJsonPath -f
   }
 
   Write-Host "Successfully created package Id: $currentPackageVersionId" -ForegroundColor Green
 
   Update-Package-Install-Links $readmePath $currentPackageVersionId
 
-  Write-Host "Finished successfully!" -ForegroundColor Green
+  if ("apex-rollup" -eq $packageName) {
+    Generate-Namespaced-Package
+  }
+
+  Write-Host "Finished creating $packageName package version!" -ForegroundColor Green
+}
+
+function Generate-Namespaced-Package {
+  $namespacedPackageName = "apex-rollup-namespaced"
+  $namespacedProjectJsonPath = "rollup-namespaced/sfdx-project.json"
+  $originalProjectJsonBackupPath = "./sfdx-project-original.json"
+  $versionName = (Get-Package-Directory "apex-rollup").versionName
+
+  Copy-Item $sfdxProjectJsonPath $originalProjectJsonBackupPath
+  Copy-Item $namespacedProjectJsonPath $sfdxProjectJsonPath -Force
+
+  # we always want to stay in lock-step with the current versionName between the non-namespace and namespaced versions of the package
+  [SuppressMessage("Microsoft.Performance", "CA1801:ReviewUnusedParameters")]
+  $sfdxProjectJson = Get-SFDX-Project-JSON
+  $namespacedPackageDirectory = Get-Package-Directory $namespacedPackageName
+  $namespacedPackageDirectory.versionName = $versionName
+
+  Update-SFDX-Project-JSON
+
+  Write-Host "Generating namespaced version of package..." -ForegroundColor White
+  # now that the version name's been copied over, we're good to generate
+  Generate $namespacedPackageName "rollup-namespaced/README.md"
+
+  Copy-Item $sfdxProjectJsonPath $namespacedProjectJsonPath -Force
+  Copy-Item $originalProjectJsonBackupPath $sfdxProjectJsonPath -Force
+  Remove-Item $originalProjectJsonBackupPath
+
+  git add $namespacedProjectJsonPath -f
 }
