@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldSkipResettingParentFields__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>If checked, Rollup won't reset parent record fields on full recalc/update</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>If checked, Rollup won't reset parent record fields on full recalc/update</inlineHelpText>
+    <label>Should Skip Resetting Parent Fields</label>
+    <type>Checkbox</type>
+</CustomField>

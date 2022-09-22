@@ -453,6 +453,58 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void preventsParentRecordResetsWhenControlIsFlagged() {
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, ShouldSkipResettingParentFields__c = true);
+
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 75;
+    acc.NumberOfEmployees = 15;
+    update acc;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One') };
+    insert cpas;
+
+    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnLookupObject__c = 'Id',
+        CalcItemWhereClause__c = 'Name != \'One\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupOperation__c = 'COUNT',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnLookupObject__c = 'Id',
+        CalcItemWhereClause__c = 'Name != \'One\''
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupOperation__c = 'CONCAT',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnLookupObject__c = 'Id'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
+    Test.stopTest();
+
+    Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(acc, updatedAccount);
+  }
+
+  @IsTest
   static void doesNotUpdateParentRecordsWithoutUpdatesWhenRecordsExcludedByEvaluator() {
     RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
     Rollup.DML = mock;

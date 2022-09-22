@@ -92,7 +92,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public void processParentFieldsToReset(List<SObject> relatedParentRecords) {
-    if (this.hasProcessedParentRecords) {
+    if (this.hasProcessedParentRecords || this.rollupControl.ShouldSkipResettingParentFields__c == true) {
       return;
     }
     this.hasProcessedParentRecords = true;
@@ -103,7 +103,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         : RollupCurrencyInfo.createNewRecord(parentRecordToReset);
 
       for (Rollup__mdt meta : this.rollupMetas) {
-        if (relatedParentRecord.getSobjectType().getDescribe().getName() == meta.LookupObject__c) {
+        if (relatedParentRecord.getSObjectType().getDescribe().getName() == meta.LookupObject__c) {
           relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
         }
       }

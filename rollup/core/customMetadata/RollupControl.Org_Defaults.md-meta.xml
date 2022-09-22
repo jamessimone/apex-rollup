@@ -59,6 +59,10 @@
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
+        <field>ShouldSkipResettingParentFields__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
         <field>TriggerOrInvocableName__c</field>
         <value xsi:nil="true" />
     </values>

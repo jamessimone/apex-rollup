@@ -1058,7 +1058,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
           Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset(roll, lookupRecord) == false ? null : priorVal;
           calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
-          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'lookup');
+          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'lookup', localCalcItems);
         }
       }
     }
@@ -1117,7 +1117,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void handleFullRecalculators(RollupAsyncProcessor roll) {
-    if (roll instanceof RollupFullRecalcProcessor) {
+    if (roll instanceof RollupFullRecalcProcessor && roll.isProcessed == false) {
       this.deferredRollups.add(roll);
     }
   }
@@ -1189,7 +1189,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         oldLookupsRollup.calcItems = reparentedCalcItems;
         RollupLogger.Instance.log('reparenting operation:', oldLookupsRollup, LoggingLevel.DEBUG);
         calc = this.getCalculator(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
-        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'reparented');
+        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'reparented', reparentedCalcItems);
       }
     }
   }
@@ -1201,10 +1201,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll,
     Map<String, SObject> recordsToUpdate,
     RollupSObjectUpdater updater,
-    String logKey
+    String logKey,
+    List<SObject> localCalcItems
   ) {
     RollupLogger.Instance.log(logKey + ' record prior to rolling up:', lookupRecord, LoggingLevel.DEBUG);
     Object newVal = calc.getReturnValue();
+    if (this.rollupControl.ShouldSkipResettingParentFields__c == true && ((localCalcItems.isEmpty() == false && newVal == null) || localCalcItems.isEmpty())) {
+      newVal = priorVal;
+    }
     if (priorVal != newVal) {
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
       RollupLogger.Instance.log('updating record ...', LoggingLevel.FINE);
