@@ -122,7 +122,8 @@ function Get-Package-Directory() {
 function Generate() {
   param (
     [string]$packageName,
-    [string]$readmePath
+    [string]$readmePath,
+    [bool]$shouldCreateNamespacedPackage
   )
 
   Write-Host "Starting for $packageName" -ForegroundColor Yellow
@@ -150,33 +151,33 @@ function Generate() {
 
   Update-Package-Install-Links $readmePath $currentPackageVersionId
 
-  if ("apex-rollup" -eq $packageName) {
-    Generate-Namespaced-Package
+  if ($shouldCreateNamespacedPackage -eq $true -and "apex-rollup" -eq $packageName) {
+    New-Namespaced-Package
   }
 
   Write-Host "Finished creating $packageName package version!" -ForegroundColor Green
 }
 
-function Generate-Namespaced-Package {
+function New-Namespaced-Package {
+  Write-Host "Generating namespaced version of package..." -ForegroundColor White
+
   $namespacedPackageName = "apex-rollup-namespaced"
   $namespacedProjectJsonPath = "rollup-namespaced/sfdx-project.json"
   $originalProjectJsonBackupPath = "./sfdx-project-original.json"
   $versionName = (Get-Package-Directory "apex-rollup").versionName
 
-  Copy-Item $sfdxProjectJsonPath $originalProjectJsonBackupPath
+  Copy-Item $sfdxProjectJsonPath $originalProjectJsonBackupPath -Force
   Copy-Item $namespacedProjectJsonPath $sfdxProjectJsonPath -Force
 
   # we always want to stay in lock-step with the current versionName between the non-namespace and namespaced versions of the package
-  [SuppressMessage("Microsoft.Performance", "CA1801:ReviewUnusedParameters")]
   $sfdxProjectJson = Get-SFDX-Project-JSON
   $namespacedPackageDirectory = Get-Package-Directory $namespacedPackageName
   $namespacedPackageDirectory.versionName = $versionName
 
   Update-SFDX-Project-JSON
 
-  Write-Host "Generating namespaced version of package..." -ForegroundColor White
   # now that the version name's been copied over, we're good to generate
-  Generate $namespacedPackageName "rollup-namespaced/README.md"
+  Generate $namespacedPackageName "rollup-namespaced/README.md" $false
 
   Copy-Item $sfdxProjectJsonPath $namespacedProjectJsonPath -Force
   Copy-Item $originalProjectJsonBackupPath $sfdxProjectJsonPath -Force

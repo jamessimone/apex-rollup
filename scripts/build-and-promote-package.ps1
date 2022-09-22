@@ -46,5 +46,5 @@ if ($currentBranch -eq "main") {
   Start-Package-Promotion
   Push-Git-Tag
 } else {
-  Generate -packageName "apex-rollup" -readmePath "./README.md"
+  Generate -packageName "apex-rollup" -readmePath "./README.md" -shouldCreateNamespacedPackage $true
 }
