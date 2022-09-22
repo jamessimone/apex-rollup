@@ -183,5 +183,6 @@ function New-Namespaced-Package {
   Copy-Item $originalProjectJsonBackupPath $sfdxProjectJsonPath -Force
   Remove-Item $originalProjectJsonBackupPath
 
+  git add $sfdxProjectJsonPath -f
   git add $namespacedProjectJsonPath -f
 }
