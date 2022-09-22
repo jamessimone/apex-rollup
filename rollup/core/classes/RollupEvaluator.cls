@@ -156,6 +156,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
     private final Set<String> validRelationshipNames;
     private final Set<String> splitWheres = new Set<String>();
+    private final Set<String> previouslyParsedClauses = new Set<String>();
+
     private List<String> queryFields;
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
@@ -360,6 +362,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
           // we'll remove these blanks in a second
           localSplitWheres[originalMatchIndex] = '';
+
+          if (this.previouslyParsedClauses.contains(potentialNestedConditional)) {
+            continue;
+          }
+          this.previouslyParsedClauses.add(potentialNestedConditional);
 
           List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
           Boolean isAnInnerOrCondition = false;

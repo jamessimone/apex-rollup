@@ -148,4 +148,16 @@ private class RollupQueryBuilderTests {
 
     System.assertEquals(0, countAmount, 'Should make it here because query was formatted correctly');
   }
+
+  @IsTest
+  static void doesNotBlowUpOnDeeplyNestedConditionals() {
+    String bigWhere = '(((Type = \'Event\' AND Status != \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Letter-Note\' AND Status != \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Meeting\' AND Status != \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Email\' AND Status != \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Call\' AND Status != \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Text\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Voicemail\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Letter-Note\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Event\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Meeting\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Email\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds) OR ((Type = \'Call\' AND Status = \'Completed\' AND IsArchived = true) AND WhoId = :recordIds))';
+
+    String queryString = RollupQueryBuilder.Current.getQuery(Task.SObjectType, new List<String>{ 'Id' }, 'Id', '=', bigWhere);
+
+    Set<Id> recordIds = new Set<Id>();
+    List<Task> tasks = Database.query(queryString);
+
+    System.assertEquals(true, tasks.isEmpty(), 'Should have made it here and query should have been run');
+  }
 }
