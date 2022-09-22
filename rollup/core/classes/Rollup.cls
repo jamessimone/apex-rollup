@@ -1650,9 +1650,15 @@ global without sharing virtual class Rollup {
     gen.writeBooleanField('done', true);
     gen.writeObjectField('records', children);
     gen.writeEndObject();
-    // using Rollup__mdt.SObjectType.getDescribe().getChildRelationships() and doing that whole dance
-    // makes me ... sad ... so we'll just live with this little sin for now
-    String childrenJson = '"RollupOrderBys__r" : ' + gen.getAsString();
+
+    String orderByRelationshipName;
+    List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe().getChildRelationships();
+    for (Schema.ChildRelationship relationship : potentiallyMatchingRelationships) {
+      if (relationship.getChildSObject() == RollupOrderBy__mdt.SObjectType) {
+        orderByRelationshipName = relationship.getRelationshipName();
+      }
+    }
+    String childrenJson = '"' + orderByRelationshipName + '" : ' + gen.getAsString();
     serializedMeta = serializedMeta += ',' + childrenJson + '}';
 
     return (Rollup__mdt) JSON.deserialize(serializedMeta, Rollup__mdt.class);
