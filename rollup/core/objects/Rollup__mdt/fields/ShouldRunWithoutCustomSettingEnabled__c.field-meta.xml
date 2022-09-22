@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldRunWithoutCustomSettingEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>If true, configured rollup runs even if Custom Setting is not enabled</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>If true, configured rollup runs even if Custom Setting is not enabled</inlineHelpText>
+    <label>Runs Without Custom Setting Flag?</label>
+    <type>Checkbox</type>
+</CustomField>

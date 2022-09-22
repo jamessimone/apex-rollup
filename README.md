@@ -14,12 +14,12 @@ As well, don't miss [the Wiki](../../wiki), which includes more advanced informa
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008b0ObAAI">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008b0RpAAI">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008b0ObAAI">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008b0RpAAI">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -27,7 +27,7 @@ As well, don't miss [the Wiki](../../wiki), which includes more advanced informa
 <br/>
 <br/>
 
-Don't miss the [links to install the Rollup plugins!](#rollup-plugins)
+Don't miss the [links to install the Rollup plugins!](#rollup-plugins). For a namespaced version of Apex Rollup, [check the installation links here](./rollup-namespaced/README.md).
 
 _Before proceeding further_, Apex Rollup ships with a custom hierarchy setting, `Rollup Settings`, which you will have to create an Org Wide Default entry for by going to:
 
@@ -126,6 +126,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Grandparent Relationship Field Path` (optional) - if [you are rolling up to a grandparent (or greater) parent object](#grandparent-or-greater-rollups), use this field to establish the full relationship name of the field, eg from Opportunity Line Items directly to an Account's Annual Revenue: `Opportunity.Account.AnnualRevenue` would be used here. The field name (after the last period) should match up with what is being used in `Rollup Field On Parent Object`. For caveats and more information on how to setup rollups looking to use this functionality, please refer to the linked section.
 - `One To Many Grandparent Fields` (optional, comma-separated text field) - used with Grandparent rollups when intermediate objects are actually junction (children) objects. When using this field, provide a comma-separated list that contains the junction object name and the field name that provides the lookup to the next record in your "grandparent" rollup. For example, if your starting object is an Account, and Contact is the junction object, your grandparent relationship field path could be `Contacts.Individual.Name` and your `One To Many Grandparent Fields` value would be `Contact.AccountId`. Two things to note: `Contacts` in the grandparent field path refers to the relationship name to the object named prior to the period in the One To Many Grandparent Fields, and the field API name is used after the period. You can perform multiple junction object "hops" by separating your values with commas: `Contact.AccountId, SomeOtherObject__c.SomeOtherField__c`
 - `Rollup To Ultimate Parent` (optional) - Check this box if you are rolling up to an Account, for example, and use the `Parent Account ID` field on accounts, _and_ want the rolled up value to only be used on the top-level account. Can be used with any hierarchy lookup or lookup back to the same object. Must be used in conjunction with `Ultimate Parent Lookup` (below), and _can_ be used in conjunction with `Grandparent Relationship Field Path` (if the hierarchical field you are rolling up to is not on the immediate parent object).
+- `(Should) Run Without Custom Setting Flag?` - (optional) - If every configured Rollup has this flag set to true, it's not necessary to use the `RollupSetting__c.IsEnabled__c` flag on the included Custom Setting (useful for managed package implementations)
 - `Split Concat Delimiter On Child Object?` (optional) - By default, CONCAT and CONCAT_DISTINCT operations will only apply the concat delimiter to the parent-level rollup field. Enable this field to also split the rollup item's values before concatenating to the parent.
 - `Ultimate Parent Lookup` (optional) - specify the API Name of the field on the `Parent Object` using the dropdown that contains the hierarchy relationship. On Account, for example, this would be `Parent Account ID`. Must be filled out if `Rollup To Ultimate Parent` is checked.
 - `Description` (optional) - note-taking field in the event you'd like to provide additional info to other admins/users about your configured rollup
@@ -193,6 +194,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 - `Should Duplicate Rules Be Ignored` (defaults to false) - By default, duplicate rules are enforced on rollup updates. Set this to true to bypass duplicate rules for rollups.
 - `Should Run As` - a picklist dictating the preferred method for running rollup operations. Possible values are `Queueable`, `Batchable`, or `Synchronous Rollup`.
 - `Should Run Single Records Synchronously` - Apex Rollup typically uses the `Should Run As` picklist to determine the default execution context for rollups (which tends to be async). This checkbox deviates from that methodology by forcing single record updates to run sync (whenever possible), which helps with handling updates from datatables or other features using Lightning Data Service (LDS).
+- `Should Skip Resetting Parent Fields` (defaults to false) - for full recalculations and REFRESH-based child item updates, Apex Rollup by default assumes that for a parent record with no matching children, the parent-level field should be reset. If this checkbox is set to true, those parent records without results will simply be ignored, and will not be updated.
 - `Trigger Or Invocable Name` - If you are using custom Apex, a schedulable, or rolling up by way of the Invocable action and can't use the Apex Rollup lookup field. Use the pattern `trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup` - for example: 'trigger_opportunity_stagename_to_account_name_rollup' (use lowercase on the field names). If there is a matching Rollup Limit record, those rules will be used. The first part of the string comes from how a rollup has been invoked - either by `trigger`, `invocable`, or `schedule`. A scheduled flow still uses `invocable`!
 
 </details>

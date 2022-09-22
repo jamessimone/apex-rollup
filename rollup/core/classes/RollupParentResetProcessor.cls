@@ -42,7 +42,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     getRefinedQueryString(this.queryString, this.rollupMetas);
     this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
-    if (isValidRun == false) {
+    if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true) {
       return processId;
     }
     if (this.countOfItems == null) {

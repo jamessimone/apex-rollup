@@ -59,7 +59,7 @@ private class RollupTests {
   }
 
   @IsTest
-  static void shouldNotRunWhenDisabled() {
+  static void shouldNotRunWhenCustomSettingDisabled() {
     RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
     existingSetting.IsEnabled__c = false;
     update existingSetting;
@@ -72,6 +72,36 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(true, mock.Records.isEmpty(), 'Records should not have been set or updated, custom setting was disabled');
+  }
+
+  @IsTest
+  static void ignoresCustomSettingWhenSpecificallyFlagged() {
+    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
+    existingSetting.IsEnabled__c = false;
+    update existingSetting;
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'ContactPointAddress',
+        ShouldRunWithoutCustomSettingEnabled__c = true
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertNotEquals(true, mock.Records.isEmpty(), 'Account should have been updated');
+    Account acc = (Account) mock.Records[0];
+    System.assertEquals(50, acc.AnnualRevenue);
   }
 
   @IsTest
