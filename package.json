@@ -40,6 +40,7 @@
   ],
   "scripts": {
     "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
+    "create:package:namespaced": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; New-Namespaced-Package }\"",
     "create:package:nebula:adapter": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Nebula Logger\"' -ReadmePath \"./plugins/NebulaLogger/README.md\" }\"",
     "create:package:logger": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Custom Logger\"' -ReadmePath \"./plugins/CustomObjectRollupLogger/README.md\" }\"",
     "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
