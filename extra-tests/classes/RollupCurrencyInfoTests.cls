@@ -84,4 +84,30 @@ private class RollupCurrencyInfoTests {
     updatedCamp = (Campaign) RollupCurrencyInfo.getCalcItem(camp);
     System.assertEquals(mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.ActualCost), updatedCamp.ActualCost);
   }
+
+  @IsTest
+  static void convertsFormulaCurrencyFields() {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
+      return;
+    }
+    RollupCurrencyInfo mockUsdInfo = new RollupCurrencyInfo();
+    mockUsdInfo.ConversionRate = 1;
+    mockUsdInfo.DecimalPlaces = 2;
+    mockUsdInfo.IsoCode = 'USD';
+    RollupCurrencyInfo mockEurInfo = new RollupCurrencyInfo();
+    mockEurInfo.ConversionRate = .75;
+    mockEurInfo.DecimalPlaces = 2;
+    mockEurInfo.IsoCode = 'EUR';
+    RollupCurrencyInfo.mockCurrencyData = new Map<String, RollupCurrencyInfo>{ mockUsdInfo.IsoCode => mockUsdInfo, mockEurInfo.IsoCode => mockEurInfo };
+
+    Opportunity opp = new Opportunity(Amount = 50, StageName = 'formula', CloseDate = System.today(), Name = 'Hi');
+    insert opp;
+    Schema.SObjectfield currencyFormulaToken = Opportunity.AmountFormula__c;
+    opp = (Opportunity) RollupTestUtils.queryRecord(opp.Id, new List<Schema.SObjectField>{ currencyFormulaToken });
+
+    RollupCurrencyInfo.transformForMultiCurrencyOrgs(opp, currencyFormulaToken, 'EUR', new List<RollupOrderBy__mdt>());
+
+    Opportunity updatedOpp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp);
+    System.assertEquals(mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / opp.AmountFormula__c), updatedOpp.AmountFormula__c);
+  }
 }

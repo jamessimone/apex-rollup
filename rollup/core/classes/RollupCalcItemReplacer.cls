@@ -12,12 +12,17 @@ public without sharing class RollupCalcItemReplacer {
   private final Map<SObjectType, Set<String>> parentQueryFields;
   private final Map<SObjectType, Set<String>> baseQueryFields;
   private final Set<Integer> calcItemHashCodes = new Set<Integer>();
+
   public RollupCalcItemReplacer(RollupControl__mdt control) {
     this.control = control;
     this.processedMetadata = new Set<Rollup__mdt>();
     this.metaToEval = new Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator>();
     this.parentQueryFields = new Map<SObjectType, Set<String>>();
     this.baseQueryFields = new Map<SObjectType, Set<String>>();
+  }
+
+  public static SObject replaceReadOnlyField(SObject target, String fieldName, Object value) {
+    return serializeReplace(target, fieldName, value);
   }
 
   public Boolean hasProcessedMetadata(List<Rollup__mdt> metas, List<SObject> calcItems) {
@@ -293,7 +298,8 @@ public without sharing class RollupCalcItemReplacer {
             } catch (SObjectException ex) {
               // avoids "System.SObjectException: Relationship { relationship name } is not editable"
               if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {
-                calcItems.set(index, this.serializeReplace(calcItem, calcItemWithUpdatedParentField, fieldToken.getRelationshipName()));
+                String relationshipName = fieldToken.getRelationshipName();
+                calcItems.set(index, serializeReplace(calcItem, relationshipName, calcItemWIthUpdatedParentField.getSObject(relationshipName)));
               }
             }
           } else if (isAcceptableField) {
@@ -313,9 +319,9 @@ public without sharing class RollupCalcItemReplacer {
     }
   }
 
-  private SObject serializeReplace(SObject calcItem, SObject calcItemWithUpdatedParent, String relationshipName) {
+  private static SObject serializeReplace(SObject calcItem, String fieldName, Object value) {
     Map<String, Object> deserialized = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(calcItem));
-    deserialized.put(relationshipName, calcItemWithUpdatedParent.getSObject(relationshipName));
+    deserialized.put(fieldName, value);
     return (SObject) JSON.deserialize(JSON.serialize(deserialized), SObject.class);
   }
 }

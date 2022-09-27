@@ -152,7 +152,7 @@ function Generate() {
   Update-Package-Install-Links $readmePath $currentPackageVersionId
 
   if ($shouldCreateNamespacedPackage -eq $true -and "apex-rollup" -eq $packageName) {
-    New-Namespaced-Package
+    # New-Namespaced-Package # skipping namespaced package version creation for now
   }
 
   Write-Host "Finished creating $packageName package version!" -ForegroundColor Green

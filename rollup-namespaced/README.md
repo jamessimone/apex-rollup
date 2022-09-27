@@ -1,5 +1,7 @@
 # Namespaced Version Of Apex Rollup
 
+⚠ This package is currently in beta only. I plan to add the fully operational namespaced package in a release or two. ⚠
+
 This package contains the exact same source code as the unlocked Apex Rollup package; it's just created with a namespace. For more info, see the base `README`.
 
 ## Deployment & Setup

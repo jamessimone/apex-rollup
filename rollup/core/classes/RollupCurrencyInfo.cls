@@ -93,13 +93,13 @@ public without sharing class RollupCurrencyInfo {
       }
       // the worst possible scenario has occurred - the currencies differ and we haven't already populated the map
       clonedCalcItem = clonedCalcItem == null ? calcItem.clone(true, true, true, true) : clonedCalcItem;
-      convertToParentCurrency(calcItem, clonedCalcItem, opFieldOnCalcItem, calcItemIsoCode, parentIsoCode, hashKey);
+      clonedCalcItem = convertToParentCurrency(calcItem, clonedCalcItem, opFieldOnCalcItem, calcItemIsoCode, parentIsoCode, hashKey);
 
       for (RollupOrderBy__mdt orderBy : orderBys) {
         Schema.SObjectField orderByFirstLastField = calcItem.getSObjectType().getDescribe().fields.getMap().get(orderBy.FieldName__c);
         if (orderByFirstLastField != null && orderByFirstLastField != opFieldOnCalcItem) {
           String orderByHashKey = getHashKey(calcItem, orderByFirstLastField);
-          convertToParentCurrency(calcItem, clonedCalcItem, orderByFirstLastField, calcItemIsoCode, parentIsoCode, orderByHashKey);
+          clonedCalcItem = convertToParentCurrency(calcItem, clonedCalcItem, orderByFirstLastField, calcItemIsoCode, parentIsoCode, orderByHashKey);
         }
       }
 
@@ -107,7 +107,7 @@ public without sharing class RollupCurrencyInfo {
     }
   }
 
-  private static void convertToParentCurrency(
+  private static SObject convertToParentCurrency(
     SObject calcItem,
     SObject clonedCalcItem,
     SObjectField fieldOnCalcItem,
@@ -116,7 +116,7 @@ public without sharing class RollupCurrencyInfo {
     String hashKey
   ) {
     if (fieldOnCalcItem.getDescribe().getType() != DisplayType.CURRENCY) {
-      return;
+      return clonedCalcItem;
     }
 
     Decimal calcItemDenominator = (Decimal) calcItem.get(fieldOnCalcItem);
@@ -124,9 +124,14 @@ public without sharing class RollupCurrencyInfo {
       Decimal calcItemAmountInOrgCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).ConversionRate / calcItemDenominator;
       Decimal calcItemAmountInParentCurrency = CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
       clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
-      clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
+      if (fieldOnCalcItem.getDescribe().isCalculated() == false) {
+        clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
+      } else {
+        clonedCalcItem = RollupCalcItemReplacer.replaceReadOnlyField(clonedCalcItem, fieldOnCalcItem.getDescribe().getName(), calcItemAmountInParentCurrency);
+      }
       HASHED_ITEM_VALUES.add(hashKey);
     }
+    return clonedCalcItem;
   }
 
   private static String getHashKey(SObject calcItem, Schema.SObjectField opFieldOnCalcItem) {
