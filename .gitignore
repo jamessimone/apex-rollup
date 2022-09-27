@@ -12,3 +12,4 @@ tests/apex
 coverage/
 plugins/ExtraCodeCoverage
 .sf/
+rollup-namespaced/source

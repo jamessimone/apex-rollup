@@ -3,15 +3,14 @@
         {
             "default": true,
             "package": "apex-rollup-namespaced",
-            "path": "rollup",
+            "path": "rollup-namespaced/source",
             "versionName": "Added namespaced version of package, and override to always run rollups from Rollup__mdt",
             "versionNumber": "1.0.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
-            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest"
-        },
-        {
-            "path": "extra-tests",
-            "default": false
+            "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
+            "unpackagedMetadata": {
+                "path": "rollup-namespaced/source/extra-tests"
+            }
         }
     ],
     "namespace": "please",

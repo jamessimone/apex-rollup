@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Added namespaced version of package, and override to always run rollups from Rollup__mdt",
-            "versionNumber": "1.5.21.0",
+            "versionName": "Fixes multi-currency issue when the child item rollup field is a currency formula",
+            "versionNumber": "1.5.22.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -104,6 +104,7 @@
         "apex-rollup@1.5.18-0": "04t6g000008SkucAAC",
         "apex-rollup@1.5.19-0": "04t6g000008SkwxAAC",
         "apex-rollup@1.5.20-0": "04t6g000008b0ObAAI",
-        "apex-rollup@1.5.21-0": "04t6g000008b0RpAAI"
+        "apex-rollup@1.5.21-0": "04t6g000008b0RpAAI",
+        "apex-rollup@1.5.22-0": "04t6g000008b0XjAAI"
     }
 }

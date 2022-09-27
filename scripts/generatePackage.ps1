@@ -152,7 +152,7 @@ function Generate() {
   Update-Package-Install-Links $readmePath $currentPackageVersionId
 
   if ($shouldCreateNamespacedPackage -eq $true -and "apex-rollup" -eq $packageName) {
-    New-Namespaced-Package
+    # New-Namespaced-Package # skipping namespaced package version creation for now
   }
 
   Write-Host "Finished creating $packageName package version!" -ForegroundColor Green
@@ -168,11 +168,16 @@ function New-Namespaced-Package {
 
   Copy-Item $sfdxProjectJsonPath $originalProjectJsonBackupPath -Force
   Copy-Item $namespacedProjectJsonPath $sfdxProjectJsonPath -Force
+  mkdir -Path rollup-namespaced/source -Force
+  Copy-Item -Path ./extra-tests -Destination rollup-namespaced/source -Recurse -Force
+  Copy-Item -Path ./rollup -Destination rollup-namespaced/source -Recurse -Force
+  Remove-Item -Path ./rollup-namespaced/source/extra-tests/testSuites -Recurse -Force
 
   # we always want to stay in lock-step with the current versionName between the non-namespace and namespaced versions of the package
   $sfdxProjectJson = Get-SFDX-Project-JSON
   $namespacedPackageDirectory = Get-Package-Directory $namespacedPackageName
   $namespacedPackageDirectory.versionName = $versionName
+  $sfdxProjectJson.packageDirectories[0].versionName = $versionName
 
   Update-SFDX-Project-JSON
 
@@ -185,4 +190,5 @@ function New-Namespaced-Package {
 
   git add $sfdxProjectJsonPath -f
   git add $namespacedProjectJsonPath -f
+  Remove-Item -Path rollup-namespaced/source -Recurse -Force
 }
