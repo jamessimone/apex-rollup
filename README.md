@@ -41,6 +41,17 @@ While you can still enable/disable individual rollups from running with the use 
 - ease of installation/upgrade. Previously some users had issues when installing/upgrading due to pre-existing automation in their orgs interfering with the Apex Rollup tests
 - granularity of control. Want to disable rollups from running for a specific user or profile? Easy as pie!
 
+If you are writing your own Apex unit tests to validate that Apex Rollup is writing the values you expect for your rollups, please ensure you add the following snippet to your `@TestSetup` method:
+
+```java
+@TestSetup
+static void setup() {
+  upsert new RollupSettings__c(IsEnabled__c = true);
+}
+```
+
+On the subject of unit testing rollups (which I highly recommend), since Apex Rollup runs asynchronously by default, you should also wrap the action(s) in your tests that you expect to call Apex Rollup in `Test.startTest();` and `Test.stopTest();`.
+
 ## Features
 
 You have several different options when it comes to making use of Apex Rollup:
