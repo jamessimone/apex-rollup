@@ -146,6 +146,16 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>RollupControl__mdt.OnlyRunInFlowContexts__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupControl__mdt.ReplaceCalcItemsAsyncWhenOverCount__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>RollupControl__mdt.ShouldAbortRun__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -157,6 +167,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>RollupControl__mdt.ShouldRunSingleRecordsSynchronously__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>RollupControl__mdt.ShouldSkipResettingParentFields__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -191,6 +206,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Rollup__mdt.Description__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Rollup__mdt.FullRecalculationDefaultNumberValue__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -221,12 +241,22 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Rollup__mdt.OneToManyGrandparentFields__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Rollup__mdt.OrderByFirstLast__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Rollup__mdt.RollupToUltimateParent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.ShouldRunWithoutCustomSettingEnabled__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

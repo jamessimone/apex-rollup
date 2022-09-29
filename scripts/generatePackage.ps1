@@ -152,7 +152,7 @@ function Generate() {
   Update-Package-Install-Links $readmePath $currentPackageVersionId
 
   if ($shouldCreateNamespacedPackage -eq $true -and "apex-rollup" -eq $packageName) {
-    # New-Namespaced-Package # skipping namespaced package version creation for now
+    # New-Namespaced-Package
   }
 
   Write-Host "Finished creating $packageName package version!" -ForegroundColor Green
@@ -182,7 +182,12 @@ function New-Namespaced-Package {
   Update-SFDX-Project-JSON
 
   # now that the version name's been copied over, we're good to generate
-  Generate $namespacedPackageName "rollup-namespaced/README.md" $false
+  try {
+    Generate $namespacedPackageName "rollup-namespaced/README.md" $false
+  } catch {
+    Write-Host "An error occurred during package generation:" -ForegroundColor Red
+    Write-Host $_ -ForegroundColor Red
+  }
 
   Copy-Item $sfdxProjectJsonPath $namespacedProjectJsonPath -Force
   Copy-Item $originalProjectJsonBackupPath $sfdxProjectJsonPath -Force

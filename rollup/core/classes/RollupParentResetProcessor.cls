@@ -13,9 +13,9 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       this.batchChunkSize = batchChunkSize;
     }
 
-    public void execute(QueueableContext qc) {
-      this.processor.countOfItems = this.processor.getNumberOfItems();
-      if (this.processor.countOfItems > maxQueryRows) {
+    public void execute(System.QueueableContext qc) {
+      System.attachFinalizer(new RollupFinalizer());
+      if (this.processor.getNumberOfItems() > maxQueryRows) {
         Database.executeBatch(this.processor, this.batchChunkSize);
       } else {
         this.processor.runSync();
@@ -45,10 +45,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true) {
       return processId;
     }
-    if (this.countOfItems == null) {
-      this.countOfItems = this.getNumberOfItems();
-    }
-    Boolean isOverLimit = this.countOfItems > maxQueryRows;
+    Boolean isOverLimit = this.getNumberOfItems() > maxQueryRows;
     if (isOverLimit && System.isBatch() == false) {
       // avoids: System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method
       processId = super.startAsyncWork();
@@ -88,7 +85,10 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   }
 
   private Integer getNumberOfItems() {
-    return Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
+    if (this.countOfItems == null) {
+      this.countOfItems = Database.countQuery(this.queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n'));
+    }
+    return this.countOfItems;
   }
 
   private void runSync() {

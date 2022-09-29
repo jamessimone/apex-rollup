@@ -181,7 +181,8 @@ public without sharing virtual class RollupSObjectUpdater {
       this.control = control;
     }
 
-    public void execute(QueueableContext context) {
+    public void execute(System.QueueableContext qc) {
+      System.attachFinalizer(new RollupFinalizer());
       RollupSObjectUpdater updater = new RollupSObjectUpdater();
       updater.addRollupControl(this.control);
       new RollupSObjectUpdater().doUpdate(this.records);

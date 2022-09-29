@@ -217,7 +217,7 @@ global without sharing virtual class Rollup {
     public final List<SObject> parentRecordsToReset = new List<SObject>();
     public final Set<String> possibleWhereClauses = new Set<String>();
     public String whereClause = '';
-    public Integer recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+    public Integer recordCount = 0;
 
     public String concatenateWhereClauses() {
       if (this.possibleWhereClauses.isEmpty()) {
@@ -2060,24 +2060,15 @@ global without sharing virtual class Rollup {
     metaWrapper.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
     metaWrapper.queryFields.addAll(wherefields);
     metaWrapper.metadata.add(matchingMeta);
+    appendQueryCount(metaWrapper, matchingMeta, matchingMeta.CalcItemWhereClause__c, childType);
+  }
 
-    Integer amountOfCalcItems = 0;
-    if (amountOfCalcItems != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-      String countQuery = RollupQueryBuilder.Current.getQuery(
-        childType,
-        new List<String>{ 'Count()' },
-        matchingMeta.LookupFieldOnLookupObject__c,
-        '!=',
-        matchingMeta.CalcItemWhereClause__c
-      );
+  private static void appendQueryCount(RollupMetadata metaWrapper, Rollup__mdt meta, String whereClause, Schema.SObjectType childType) {
+    if (metaWrapper.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
+      String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, meta.LookupFieldOnLookupObject__c, '!=', whereClause);
       Set<String> emptyCollection = new Set<String>();
       Integer currentCount = getCountFromDb(countQuery, emptyCollection, emptyCollection);
-      if (currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-        amountOfCalcItems = currentCount;
-      } else {
-        metaWrapper.recordCount = currentCount;
-        amountOfCalcItems += currentCount;
-      }
+      metaWrapper.recordCount = currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
   }
 
@@ -2147,30 +2138,18 @@ global without sharing virtual class Rollup {
     Map<SObjectType, RollupMetadata> typeToWrappedMeta,
     Map<SObjectType, List<Rollup>> rollups
   ) {
-    for (Integer index = 0; index < fullRecalcMetas.size(); index++) {
-      FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
+    for (FullRecalculationMetadata fullRecalcMeta : fullRecalcMetas) {
       RollupMetadata wrappedMeta;
       if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
         wrappedMeta = new RollupMetadata();
-        wrappedMeta.recordCount = 0;
       } else {
         wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
         if (rollups.containsKey(fullRecalcMeta.calcItemType)) {
           rollups.get(fullRecalcMeta.calcItemType).clear();
         }
       }
-      transformFullRecalcMetadataToRollupMetadata(fullRecalcMetas, wrappedMeta, index);
-      if (wrappedMeta.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-        String countQuery = RollupQueryBuilder.Current.getQuery(
-          fullRecalcMeta.calcItemType,
-          new List<String>{ 'Count()' },
-          fullRecalcMeta.meta.LookupFieldOnLookupObject__c,
-          '!=',
-          wrappedMeta.whereClause
-        );
-        Integer localCount = getCountFromDb(countQuery, new Set<String>(), wrappedMeta.recordIds);
-        wrappedMeta.recordCount = localCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? localCount : wrappedMeta.recordCount + localCount;
-      }
+      transformFullRecalcMetadataToRollupMetadata(fullRecalcMeta, wrappedMeta);
+      appendQueryCount(wrappedMeta, fullRecalcMeta.meta, wrappedMeta.whereClause, fullRecalcMeta.calcItemType);
       typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
     }
 
@@ -2221,8 +2200,7 @@ global without sharing virtual class Rollup {
     return fullRecalcRollups;
   }
 
-  private static void transformFullRecalcMetadataToRollupMetadata(List<FullRecalculationMetadata> fullRecalcMetas, RollupMetadata wrappedMeta, Integer index) {
-    FullRecalculationMetadata fullRecalcMeta = fullRecalcMetas[index];
+  private static void transformFullRecalcMetadataToRollupMetadata(FullRecalculationMetadata fullRecalcMeta, RollupMetadata wrappedMeta) {
     wrappedMeta.metadata.add(fullRecalcMeta.meta);
     wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
     if (wrappedMeta.recordIds.isEmpty() == false) {
