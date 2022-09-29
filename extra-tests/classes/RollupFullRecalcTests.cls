@@ -1959,7 +1959,7 @@ private class RollupFullRecalcTests {
     List<Account> accounts = [SELECT AnnualRevenue, Name FROM Account];
     for (Account updatedAcc : accounts) {
       // for this set of tests, since we can't add more than one queueable job to the stack in a test context
-      // and because each full reset is processor separately, we can only validate that the first Rollup__mdt record
+      // and because each full reset is processed separately, we can only validate that the first Rollup__mdt record
       // had the parents associated with it reset. It's possible that this will be revisited in the future to consolidate full
       // resets into singular jobs
       System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
