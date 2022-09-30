@@ -312,14 +312,16 @@ describe('Rollup force recalc tests', () => {
 
   it('only sets up rollup order by children once', async () => {
     getRollupMetadataByCalcItem.mockClear();
-    mockMetadata.Contact[0].RollupOrderBys__r.push({
-      Rollup__c: 'someId',
-      Id: 'someOtherId',
-      FieldName__c: 'CreatedDate',
-      NullSortOrder__c: 'NULLS FIRST',
-      Ranking__c: 0,
-      SortOrder__c: 'Ascending'
-    });
+    mockMetadata.Contact[0].RollupOrderBys__r = [
+      {
+        Rollup__c: 'someId',
+        Id: 'someOtherId',
+        FieldName__c: 'CreatedDate',
+        NullSortOrder__c: 'NULLS FIRST',
+        Ranking__c: 0,
+        SortOrder__c: 'Ascending'
+      }
+    ];
     getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
