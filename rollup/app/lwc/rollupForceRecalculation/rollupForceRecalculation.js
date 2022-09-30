@@ -193,7 +193,7 @@ export default class RollupForceRecalculation extends LightningElement {
           children = possibleOrderByComponent.orderBys;
         }
       }
-      if (children) {
+      if (children && !children.totalSize) {
         metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children };
       }
     }

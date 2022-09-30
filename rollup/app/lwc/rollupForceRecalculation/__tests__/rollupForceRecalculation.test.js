@@ -55,7 +55,7 @@ function setElementValue(element, value, isCombobox = false) {
 
 describe('Rollup force recalc tests', () => {
   beforeEach(() => {
-    getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
+    getRollupMetadataByCalcItem.mockResolvedValue({ ...mockMetadata });
   });
   afterEach(() => {
     while (document.body.firstChild) {
@@ -70,9 +70,8 @@ describe('Rollup force recalc tests', () => {
     });
     document.body.appendChild(fullRecalc);
 
-    return flushPromises().then(() => {
-      expect(document.title).toEqual('Recalculate Rollup');
-    });
+    await flushPromises('rendering lifecycle');
+    expect(document.title).toEqual('Recalculate Rollup');
   });
 
   it('sends form data to apex', async () => {
@@ -116,25 +115,24 @@ describe('Rollup force recalc tests', () => {
     const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
     submitButton.click();
 
-    return flushPromises().then(() => {
-      expect(performSerializedFullRecalculation.mock.calls[0][0].metadata).toMatch(
-        JSON.stringify({
-          RollupFieldOnCalcItem__c: 'FirstName',
-          LookupFieldOnCalcItem__c: 'AccountId',
-          LookupFieldOnLookupObject__c: 'Id',
-          RollupFieldOnLookupObject__c: 'Name',
-          LookupObject__c: 'Account',
-          CalcItem__c: 'Contact',
-          RollupOperation__c: 'CONCAT',
-          CalcItemWhereClause__c: '',
-          ConcatDelimiter__c: '',
-          SplitConcatDelimiterOnCalcItem__c: false,
-          LimitAmount__c: 0,
-          GrandparentRelationshipFieldPath__c: 'Something__r.SomethingElse__r.Name',
-          OneToManyGrandparentFields__c: 'Something__c.SomethingElse__c, SomethingElse__c.Name'
-        })
-      );
-    });
+    await flushPromises('apex controller call');
+    expect(performSerializedFullRecalculation.mock.calls[0][0].metadata).toMatch(
+      JSON.stringify({
+        RollupFieldOnCalcItem__c: 'FirstName',
+        LookupFieldOnCalcItem__c: 'AccountId',
+        LookupFieldOnLookupObject__c: 'Id',
+        RollupFieldOnLookupObject__c: 'Name',
+        LookupObject__c: 'Account',
+        CalcItem__c: 'Contact',
+        RollupOperation__c: 'CONCAT',
+        CalcItemWhereClause__c: '',
+        ConcatDelimiter__c: '',
+        SplitConcatDelimiterOnCalcItem__c: false,
+        LimitAmount__c: 0,
+        GrandparentRelationshipFieldPath__c: 'Something__r.SomethingElse__r.Name',
+        OneToManyGrandparentFields__c: 'Something__c.SomethingElse__c, SomethingElse__c.Name'
+      })
+    );
   });
 
   it('sends CMDT data to apex', async () => {
@@ -149,37 +147,31 @@ describe('Rollup force recalc tests', () => {
 
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
-    // flush to re-render, post-click
-    return (
-      flushPromises()
-        .then(() => {
-          const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
-          combobox.dispatchEvent(
-            new CustomEvent('change', {
-              detail: {
-                value: 'Contact'
-              }
-            })
-          );
-        })
-        .then(() => {
-          // flush to get the datatable to render post selection
-          const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
-          datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
+    await flushPromises('flush to re-render, post-click');
 
-          const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
-          submitButton.click();
-        })
-        // flush again to handle the click action ....
-        .then(() => {
-          const expectedList = mockMetadata['Contact'];
-          delete expectedList[0]['CalcItem__r.QualifiedApiName'];
-          expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
-            serializedMetadata: JSON.stringify(expectedList),
-            invokePointName: 'FROM_FULL_RECALC_LWC'
-          });
-        })
+    const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+    combobox.dispatchEvent(
+      new CustomEvent('change', {
+        detail: {
+          value: 'Contact'
+        }
+      })
     );
+
+    await flushPromises('flush to get the datatable to render post selection');
+    // flush to get the datatable to render post selection
+    const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
+    datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
+    const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+    submitButton.click();
+    await flushPromises('apex controller call');
+
+    const expectedList = mockMetadata['Contact'];
+    delete expectedList[0]['CalcItem__r.QualifiedApiName'];
+    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+      serializedMetadata: JSON.stringify(expectedList),
+      invokePointName: 'FROM_FULL_RECALC_LWC'
+    });
   });
 
   it('renders CMDT datatable with selected metadata', async () => {
@@ -190,36 +182,28 @@ describe('Rollup force recalc tests', () => {
 
     // validate that toggle gets checked
     const toggle = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="cmdt-toggle"]');
-    toggle.dispatchEvent(new CustomEvent('change')); // _like_ a click ...
+    toggle.dispatchEvent(new CustomEvent('change')); // it's awkward that this is the "click" for a toggle
 
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
     getObjectInfo.emit(mockGetObjectInfo);
 
-    // flush to re-render
-    return flushPromises().then(() => {
-      const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
-      combobox.dispatchEvent(
-        new CustomEvent('change', {
-          detail: {
-            value: 'Contact'
-          }
-        })
-      );
+    await flushPromises('getObjectInfo re-render');
+    const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+    combobox.dispatchEvent(
+      new CustomEvent('change', {
+        detail: {
+          value: 'Contact'
+        }
+      })
+    );
+    await flushPromises('change handler');
 
-      return (
-        flushPromises()
-          .then(() => {
-            const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
-            submitButton.click();
-          })
-          // then flush again ....
-          .then(() => {
-            const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
-            expect(tableRows.length).toBe(mockMetadata.Contact.length);
-          })
-      );
-    });
+    const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+    submitButton.click();
+    await flushPromises('click handler');
+    const tableRows = fullRecalc.shadowRoot.querySelector('lightning-datatable').data;
+    expect(tableRows.length).toBe(mockMetadata.Contact.length);
   });
 
   it('sets error when CMDT is not returned', async () => {
@@ -229,19 +213,18 @@ describe('Rollup force recalc tests', () => {
     document.body.appendChild(fullRecalc);
 
     const toggle = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="cmdt-toggle"]');
-    toggle.dispatchEvent(new CustomEvent('change')); // _like_ a click ...
+    toggle.dispatchEvent(new CustomEvent('change'));
 
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
     getObjectInfo.emitError();
 
-    return flushPromises().then(() => {
-      const errorDiv = fullRecalc.shadowRoot.querySelector('div[data-id="rollupError"]');
-      expect(errorDiv).toBeTruthy();
-    });
+    await flushPromises('re-render for CMDT toggle');
+    const errorDiv = fullRecalc.shadowRoot.querySelector('div[data-id="rollupError"]');
+    expect(errorDiv).toBeTruthy();
   });
 
-  it('succeeds even when exception is thrown', async () => {
+  it('succeeds even when controller returns rejected promise', async () => {
     performSerializedFullRecalculation.mockRejectedValue('error!');
     const fullRecalc = createElement('c-rollup-force-recalculation', {
       is: RollupForceRecalculation
@@ -252,7 +235,7 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     let hasError = false;
-    return flushPromises()
+    await flushPromises('controller call')
       .catch(() => {
         hasError = true;
       })
@@ -273,7 +256,7 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     let hasError = false;
-    return flushPromises()
+    await flushPromises('controller call')
       .catch(() => {
         hasError = true;
       })
@@ -296,7 +279,7 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     let hasError = false;
-    return flushPromises()
+    await flushPromises('controller call')
       .catch(() => {
         hasError = true;
       })
@@ -318,12 +301,64 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
 
     let hasError = false;
-    return flushPromises()
+    await flushPromises()
       .catch(() => {
         hasError = true;
       })
       .finally(() => {
         expect(hasError).toBeFalsy();
       });
+  });
+
+  it('only sets up rollup order by children once', async () => {
+    getRollupMetadataByCalcItem.mockClear();
+    mockMetadata.Contact[0].RollupOrderBys__r.push({
+      Rollup__c: 'someId',
+      Id: 'someOtherId',
+      FieldName__c: 'CreatedDate',
+      NullSortOrder__c: 'NULLS FIRST',
+      Ranking__c: 0,
+      SortOrder__c: 'Ascending'
+    });
+    getRollupMetadataByCalcItem.mockResolvedValue(mockMetadata);
+    const fullRecalc = createElement('c-rollup-force-recalculation', {
+      is: RollupForceRecalculation
+    });
+    document.body.appendChild(fullRecalc);
+
+    const toggle = fullRecalc.shadowRoot.querySelector('lightning-input[data-id="cmdt-toggle"]');
+    toggle.dispatchEvent(new CustomEvent('change'));
+    await flushPromises('flush to re-render, post-click');
+    const combobox = fullRecalc.shadowRoot.querySelector('lightning-combobox');
+    combobox.dispatchEvent(
+      new CustomEvent('change', {
+        detail: {
+          value: 'Contact'
+        }
+      })
+    );
+    await flushPromises('flush to get the datatable to render post selection');
+    // flush to get the datatable to render post selection
+    const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
+    datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
+    const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
+    submitButton.click();
+    await flushPromises('apex controller call');
+
+    const expectedList = mockMetadata['Contact'];
+    delete expectedList[0]['CalcItem__r.QualifiedApiName'];
+    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+      serializedMetadata: JSON.stringify(expectedList),
+      invokePointName: 'FROM_FULL_RECALC_LWC'
+    });
+
+    // once more!
+    submitButton.click();
+    await flushPromises('apex controller call');
+
+    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+      serializedMetadata: JSON.stringify(expectedList),
+      invokePointName: 'FROM_FULL_RECALC_LWC'
+    });
   });
 });
