@@ -129,4 +129,19 @@ private class RollupCalcItemReplacerTests {
 
     System.assertEquals(ACC_ANNUAL_REVENUE, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void skipsNonUpdateableFields() {
+    Account acc = [SELECT Id, CreatedDate FROM Account];
+
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
+    );
+    Account updatedAccount = (Account) replacer.replace(
+      new List<Account>{ new Account(Id = acc.Id) },
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'CreatedDate != null') }
+    )[0];
+
+    System.assertEquals(acc.CreatedDate, updatedAccount.CreatedDate);
+  }
 }

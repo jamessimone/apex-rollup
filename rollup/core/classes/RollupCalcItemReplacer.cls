@@ -50,7 +50,7 @@ public without sharing class RollupCalcItemReplacer {
     } else if (mightNeedReplacement && calcItems?.isEmpty() == false) {
       this.calcItemHashCodes.add(calcItems.hashCode());
       this.processedMetadata.addAll(metadata);
-      this.potentiallyReplaceMissingBaseFields(calcItems);
+      calcItems = this.potentiallyReplaceMissingBaseFields(calcItems);
       calcItems = this.potentiallyReplacePolymorphicWhereClauses(calcItems);
       this.replaceCalcItemsWithParentWhereClauses(calcItems);
     } else if (mightNeedReplacement == false) {
@@ -103,6 +103,7 @@ public without sharing class RollupCalcItemReplacer {
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
   private List<SObject> potentiallyReplaceMissingBaseFields(List<SObject> calcItems) {
+    Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(calcItems);
     if (this.baseQueryFields.containsKey(calcItems[0].getSObjectType())) {
       SObject firstItem = calcItems[0];
       Set<String> baseFields = this.baseQueryFields.get(firstItem.getSObjectType());
@@ -111,22 +112,27 @@ public without sharing class RollupCalcItemReplacer {
       }
       String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
       List<SObject> objIds = calcItems; // for bind variable
-      RollupLogger.Instance.log('replacing calc items with missing base fields using query string:', queryString, LoggingLevel.FINE);
+      RollupLogger.Instance.log('replacing calc items with missing base fields using query string:', queryString, LoggingLevel.DEBUG);
       List<SObject> calcItemsWithReplacement = Database.query(queryString);
-      Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(calcItems);
       Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
       for (SObject calcItemWithReplacement : calcItemsWithReplacement) {
         if (idToCalcItem.containsKey(calcItemWithReplacement.Id)) {
           SObject calcItem = idToCalcItem.get(calcItemWithReplacement.Id);
           for (String baseField : baseFields) {
-            if (fieldNameToDescribe.get(baseField)?.getDescribe().isCalculated() == false) {
-              calcItem.put(baseField, calcItemWithReplacement.get(baseField));
+            Schema.SObjectfield baseFieldToken = fieldNameToDescribe.get(baseField);
+            if (baseFieldToken?.getDescribe().isCalculated() == false) {
+              if (baseFieldToken?.getDescribe().isUpdateable()) {
+                calcItem.put(baseField, calcItemWithReplacement.get(baseField));
+              } else {
+                calcItem = serializeReplace(calcItem, baseField, calcItemWithReplacement.get(baseField));
+                idToCalcItem.put(calcItem.Id, calcItem);
+              }
             }
           }
         }
       }
     }
-    return calcItems;
+    return idToCalcItem.values();
   }
 
   private List<SObject> potentiallyReplacePolymorphicWhereClauses(List<SObject> calcItems) {

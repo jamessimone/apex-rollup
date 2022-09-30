@@ -1,10 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+>
     <label>RollupIntegrationChildRollupText</label>
     <protected>false</protected>
     <values>
         <field>CalcItemWhereClause__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
     <values>
         <field>CalcItem__c</field>
@@ -12,23 +16,23 @@
     </values>
     <values>
         <field>ChangedFieldsOnCalcItem__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
     <values>
         <field>ConcatDelimiter__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
     <values>
         <field>FullRecalculationDefaultNumberValue__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
     <values>
         <field>FullRecalculationDefaultStringValue__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
     <values>
         <field>GrandparentRelationshipFieldPath__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
     <values>
         <field>IsFullRecordSet__c</field>
@@ -49,10 +53,6 @@
     <values>
         <field>LookupObject__c</field>
         <value xsi:type="xsd:string">RollupParent__c</value>
-    </values>
-    <values>
-        <field>OrderByFirstLast__c</field>
-        <value xsi:type="xsd:string">TextField__c</value>
     </values>
     <values>
         <field>RollupControl__c</field>
@@ -76,6 +76,6 @@
     </values>
     <values>
         <field>UltimateParentLookup__c</field>
-        <value xsi:nil="true"/>
+        <value xsi:nil="true" />
     </values>
 </CustomMetadata>
