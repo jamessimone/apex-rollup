@@ -238,17 +238,6 @@ global without sharing virtual class Rollup {
     }
   }
 
-  private class FullRecalculationMetadata {
-    private final Rollup__mdt meta;
-    private final QueryWrapper wrapper;
-    private final SObjectType calcItemType;
-    public FullRecalculationMetadata(Rollup__mdt meta, QueryWrapper wrapper, SObjectType calcItemType) {
-      this.meta = meta;
-      this.wrapper = wrapper;
-      this.calcItemType = calcItemType;
-    }
-  }
-
   public class CalcItemBag {
     private final Map<Id, SObject> idToCalcItem = new Map<Id, SObject>();
     private Boolean hasBeenCleared = false;
@@ -506,7 +495,13 @@ global without sharing virtual class Rollup {
         }
       }
 
-      populateFullRecalcMetasByType(childToMetaWrapper, matchingMeta, possibleParentId);
+      SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
+      RollupMetadata wrappedMeta = getWrappedMeta(childType, childToMetaWrapper, matchingMeta, matchingMeta.CalcItemWhereClause__c);
+      if (possibleParentId != null) {
+        wrappedMeta.recordIds.add(possibleParentId);
+      }
+      wrappedMeta.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
+      appendQueryCount(wrappedMeta, matchingMeta, matchingMeta.CalcItemWhereClause__c, childType);
     }
 
     List<Rollup> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
@@ -1934,7 +1929,6 @@ global without sharing virtual class Rollup {
     InvocationPoint invokePoint,
     Map<SObjectType, RollupMetadata> typeToWrappedMeta
   ) {
-    List<FullRecalculationMetadata> fullRecalcMetas = new List<FullRecalculationMetadata>();
     Map<String, DeleteReparentOperation> deleteKeyToReparentOp = new Map<String, DeleteReparentOperation>();
     for (Integer index = metas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = metas[index];
@@ -1976,7 +1970,21 @@ global without sharing virtual class Rollup {
 
       if (queryWrapper != null) {
         metas.remove(index);
-        fullRecalcMetas.add(new FullRecalculationMetadata(meta, queryWrapper, calcItemSObjectType));
+        RollupMetadata wrappedMeta = getWrappedMeta(
+          calcItemSObjectType,
+          typeToWrappedMeta,
+          meta,
+          queryWrapper.getQuery() + (String.isNotBlank(meta.CalcItemWhereClause__c) ? ' AND ' + meta.CalcItemWhereClause__c : '')
+        );
+        if (rollups.containsKey(calcItemSObjectType)) {
+          rollups.get(calcItemSObjectType).clear();
+        }
+        wrappedMeta.recordIds.addAll(queryWrapper.recordIds);
+        if (wrappedMeta.recordIds.isEmpty() == false) {
+          wrappedMeta.possibleWhereClauses.add(queryWrapper.getQuery());
+        }
+        wrappedMeta.parentRecordsToReset.addAll(queryWrapper.parentRecordsToReset);
+        appendQueryCount(wrappedMeta, meta, wrappedMeta.whereClause, calcItemSObjectType);
         if (isRefresh) {
           prepareReparentDeletionOps(meta, calcItems, oldCalcItems, deleteKeyToReparentOp);
         }
@@ -2008,7 +2016,10 @@ global without sharing virtual class Rollup {
       );
       populateRollupByType(rollups, deleteSObjectType, deleteProcessor);
     }
-    fillFullRecalcRollups(fullRecalcMetas, invokePoint, typeToWrappedMeta, rollups);
+    List<RollupFullRecalcProcessor> fullRecalcs = transformWrappedMetadataToFullRecalcRollups(typeToWrappedMeta, invokePoint);
+    for (RollupFullRecalcProcessor fullRecalc : fullRecalcs) {
+      populateRollupByType(rollups, fullRecalc.getCalcItemType(), fullRecalc);
+    }
   }
 
   private static QueryWrapper getFullRecalcQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -2039,37 +2050,6 @@ global without sharing virtual class Rollup {
     }
 
     return wrapper;
-  }
-
-  private static void populateFullRecalcMetasByType(Map<SObjectType, RollupMetadata> childToMetaWrapper, Rollup__mdt matchingMeta, String possibleParentId) {
-    SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
-    RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(matchingMeta.CalcItemWhereClause__c)
-      ? null
-      : RollupEvaluator.getWhereEval(matchingMeta.CalcItemWhereClause__c, childType);
-    Set<String> whereFields = getQueryFieldsFromMetadata(matchingMeta, eval);
-    RollupMetadata metaWrapper;
-    if (childToMetaWrapper.containsKey(childType)) {
-      metaWrapper = childToMetaWrapper.get(childType);
-    } else {
-      metaWrapper = new RollupMetadata();
-      childToMetaWrapper.put(childType, metaWrapper);
-    }
-    if (possibleParentId != null) {
-      metaWrapper.recordIds.add(possibleParentId);
-    }
-    metaWrapper.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
-    metaWrapper.queryFields.addAll(wherefields);
-    metaWrapper.metadata.add(matchingMeta);
-    appendQueryCount(metaWrapper, matchingMeta, matchingMeta.CalcItemWhereClause__c, childType);
-  }
-
-  private static void appendQueryCount(RollupMetadata metaWrapper, Rollup__mdt meta, String whereClause, Schema.SObjectType childType) {
-    if (metaWrapper.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-      String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, meta.LookupFieldOnLookupObject__c, '!=', whereClause);
-      Set<String> emptyCollection = new Set<String>();
-      Integer currentCount = getCountFromDb(countQuery, emptyCollection, emptyCollection);
-      metaWrapper.recordCount = currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
-    }
   }
 
   private class DeleteReparentOperation {
@@ -2132,31 +2112,23 @@ global without sharing virtual class Rollup {
     return '\nORDER BY ' + String.join(new List<String>(orderByFields), ',');
   }
 
-  private static void fillFullRecalcRollups(
-    List<FullRecalculationMetadata> fullRecalcMetas,
-    InvocationPoint invokePoint,
-    Map<SObjectType, RollupMetadata> typeToWrappedMeta,
-    Map<SObjectType, List<Rollup>> rollups
+  private static RollupMetadata getWrappedMeta(
+    Schema.SObjectType childType,
+    Map<Schema.SObjectType, RollupMetadata> typeToWrappedMeta,
+    Rollup__mdt innerMeta,
+    String whereClause
   ) {
-    for (FullRecalculationMetadata fullRecalcMeta : fullRecalcMetas) {
-      RollupMetadata wrappedMeta;
-      if (typeToWrappedMeta.containsKey(fullRecalcMeta.calcItemType) == false) {
-        wrappedMeta = new RollupMetadata();
-      } else {
-        wrappedMeta = typeToWrappedMeta.get(fullRecalcMeta.calcItemType);
-        if (rollups.containsKey(fullRecalcMeta.calcItemType)) {
-          rollups.get(fullRecalcMeta.calcItemType).clear();
-        }
-      }
-      transformFullRecalcMetadataToRollupMetadata(fullRecalcMeta, wrappedMeta);
-      appendQueryCount(wrappedMeta, fullRecalcMeta.meta, wrappedMeta.whereClause, fullRecalcMeta.calcItemType);
-      typeToWrappedMeta.put(fullRecalcMeta.calcItemType, wrappedMeta);
+    RollupMetadata wrappedMeta;
+    if (typeToWrappedMeta.containsKey(childType) == false) {
+      wrappedMeta = new RollupMetadata();
+      typeToWrappedMeta.put(childType, wrappedMeta);
+    } else {
+      wrappedMeta = typeToWrappedMeta.get(childType);
     }
-
-    List<RollupFullRecalcProcessor> fullRecalcs = transformWrappedMetadataToFullRecalcRollups(typeToWrappedMeta, invokePoint);
-    for (RollupFullRecalcProcessor fullRecalc : fullRecalcs) {
-      populateRollupByType(rollups, fullRecalc.getCalcItemType(), fullRecalc);
-    }
+    wrappedMeta.metadata.add(innerMeta);
+    RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(whereClause) ? null : RollupEvaluator.getWhereEval(whereClause, childType);
+    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(innerMeta, eval));
+    return wrappedMeta;
   }
 
   private static List<RollupFullRecalcProcessor> transformWrappedMetadataToFullRecalcRollups(
@@ -2200,20 +2172,13 @@ global without sharing virtual class Rollup {
     return fullRecalcRollups;
   }
 
-  private static void transformFullRecalcMetadataToRollupMetadata(FullRecalculationMetadata fullRecalcMeta, RollupMetadata wrappedMeta) {
-    wrappedMeta.metadata.add(fullRecalcMeta.meta);
-    wrappedMeta.recordIds.addAll(fullRecalcMeta.wrapper.recordIds);
-    if (wrappedMeta.recordIds.isEmpty() == false) {
-      wrappedMeta.possibleWhereClauses.add(fullRecalcMeta.wrapper.getQuery());
+  private static void appendQueryCount(RollupMetadata metaWrapper, Rollup__mdt meta, String whereClause, Schema.SObjectType childType) {
+    if (metaWrapper.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
+      String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, meta.LookupFieldOnLookupObject__c, '!=', whereClause);
+      Set<String> emptyCollection = new Set<String>();
+      Integer currentCount = getCountFromDb(countQuery, emptyCollection, emptyCollection);
+      metaWrapper.recordCount = currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
-    wrappedMeta.parentRecordsToReset.addAll(fullRecalcMeta.wrapper.parentRecordsToReset);
-
-    RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(
-      fullRecalcMeta.wrapper.getQuery() +
-      (String.isNotBlank(fullRecalcMeta.meta.CalcItemWhereClause__c) ? ' AND ' + fullRecalcMeta.meta.CalcItemWhereClause__c : ''),
-      fullRecalcMeta.calcItemType
-    );
-    wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(fullRecalcMeta.meta, whereEval));
   }
 
   private static RollupFullRecalcProcessor buildFullRecalcRollup(

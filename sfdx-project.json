@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes full recalc issue reported by solo-1234 where sometimes RollupParentResetProcessor was returned instead of an actual full recalc rollup",
-            "versionNumber": "1.5.23.0",
+            "versionName": "Further optimizations for full recalc rollup code paths by removing an intermediate inner class",
+            "versionNumber": "1.5.24.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
