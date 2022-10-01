@@ -4,10 +4,11 @@ public without sharing virtual class RollupLogger implements ILogger {
   private static final String CURRENT_VERSION_NUMBER = 'v1.5.24';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
-  private static Boolean disabledMessageHasBeenLogged = false;
+
+  protected RollupControl__mdt rollupControl;
 
   private final LoggingLevel currentLoggingLevel;
-  private final RollupControl__mdt rollupControl;
+  private Boolean disabledMessageHasBeenLogged = false;
 
   protected RollupLogger() {
     this.currentLoggingLevel = this.getLogLevel();
@@ -28,6 +29,7 @@ public without sharing virtual class RollupLogger implements ILogger {
     void log(String logString, LoggingLevel logLevel);
     void log(String logString, Object logObject, LoggingLevel logLevel);
     void save();
+    ILogger updateRollupControl(RollupControl__mdt control);
   }
 
   public virtual void log(String logString, LoggingLevel logLevel) {
@@ -37,14 +39,20 @@ public without sharing virtual class RollupLogger implements ILogger {
   public void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
-    } else if (this.rollupControl?.IsRollupLoggingEnabled__c == false && disabledMessageHasBeenLogged == false) {
-      disabledMessageHasBeenLogged = true;
+    } else if (this.rollupControl?.IsRollupLoggingEnabled__c == false && this.disabledMessageHasBeenLogged == false) {
+      this.disabledMessageHasBeenLogged = true;
       this.innerLog('logging isn\'t enabled, no further output', null, LoggingLevel.DEBUG);
     }
   }
 
   public virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
+  }
+
+  public ILogger updateRollupControl(RollupControl__mdt control) {
+    this.rollupControl = control;
+    this.log('updating control record', control, LoggingLevel.INFO);
+    return this;
   }
 
   protected String getBaseLoggingMessage() {
@@ -61,11 +69,7 @@ public without sharing virtual class RollupLogger implements ILogger {
     // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
     // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
     List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
-    while (
-      innerStacktraces.isEmpty() == false &&
-      (innerStacktraces.get(0).contains('Class.RollupLogger.log') || innerStacktraces.get(0).contains('Class.RollupLogger.CombinedLogger.log')) ||
-      innerStacktraces.get(0).contains('Class.RollupLogger.innerLog')
-    ) {
+    while (innerStacktraces.isEmpty() == false && innerStacktraces.get(0).contains(RollupLogger.class.getName())) {
       innerStacktraces.remove(0);
     }
     messages.add(String.join(innerStacktraces, '\n'));
@@ -133,17 +137,18 @@ public without sharing virtual class RollupLogger implements ILogger {
   private static ILogger combineLoggers(List<RollupPlugin__mdt> loggingPlugins) {
     ILogger rollLogger;
     if (loggingPlugins.isEmpty()) {
-      return new RollupLogger();
-    }
-    RollupPlugin__mdt firstLogger = loggingPlugins.remove(0);
-    if (firstLogger.DeveloperName == RollupLogger.class.getName()) {
       rollLogger = new RollupLogger();
     } else {
-      try {
-        rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
-      } catch (Exception ex) {
+      RollupPlugin__mdt firstLogger = loggingPlugins.remove(0);
+      if (firstLogger.DeveloperName == RollupLogger.class.getName()) {
         rollLogger = new RollupLogger();
-        rollLogger.log('Falling back to default logger, cast to ILogger for:' + firstLogger.DeveloperName + ' failed', ex, LoggingLevel.WARN);
+      } else {
+        try {
+          rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
+        } catch (Exception ex) {
+          rollLogger = new RollupLogger();
+          rollLogger.log('Falling back to default logger, cast to ILogger for:' + firstLogger.DeveloperName + ' failed', ex, LoggingLevel.WARN);
+        }
       }
     }
     return loggingPlugins.isEmpty() ? rollLogger : new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
@@ -171,6 +176,12 @@ public without sharing virtual class RollupLogger implements ILogger {
     public void save() {
       this.first.save();
       this.second.save();
+    }
+
+    public CombinedLogger updateRollupControl(RollupControl__mdt control) {
+      this.first.updateRollupControl(control);
+      this.second.updateRollupControl(control);
+      return this;
     }
   }
 }

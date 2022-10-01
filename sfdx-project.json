@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Further optimizations for full recalc rollup code paths by removing an intermediate inner class. Fixed two issues reported by solo-1234 with full recalcs and Rollup Order Bys",
-            "versionNumber": "1.5.24.0",
+            "versionName": "RollupLogger now updates when all configured rollups use a different control record than the Org Default",
+            "versionNumber": "1.5.25.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

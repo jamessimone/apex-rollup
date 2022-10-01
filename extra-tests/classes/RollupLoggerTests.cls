@@ -48,6 +48,17 @@ public class RollupLoggerTests {
     System.assert(true, 'Should make it here');
   }
 
+  @IsTest
+  static void updatesToNewRollupControl() {
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ControlUpdatingLogger.class.getName()) };
+    RollupControl__mdt withLoggingEnabled = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = false);
+
+    RollupLogger.Instance.updateRollupControl(withLoggingEnabled).log('hello world', LoggingLevel.WARN);
+
+    System.assertEquals(true, wasSaved);
+  }
+
   private static void setup() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
@@ -65,6 +76,17 @@ public class RollupLoggerTests {
     }
     public void save() {
       wasSaved = true;
+    }
+    public ExampleLogger updateRollupControl(RollupControl__mdt control) {
+      return this;
+    }
+  }
+
+  public class ControlUpdatingLogger extends RollupLogger {
+    public override void log(String logMessage, System.LoggingLevel logLevel) {
+      if (this.rollupControl.IsRollupLoggingEnabled__c) {
+        wasSaved = true;
+      }
     }
   }
 }
