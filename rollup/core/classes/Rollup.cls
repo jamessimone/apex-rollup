@@ -1627,6 +1627,17 @@ global without sharing virtual class Rollup {
     return rollupConductor;
   }
 
+  private class ChildrenSObject {
+    public final List<SObject> records;
+    public final Boolean done = true;
+    public final Integer totalSize;
+
+    public ChildrenSObject(List<SObject> records) {
+      this.records = records;
+      this.totalSize = records.size();
+    }
+  }
+
   /**
    * @return `Rollup__mdt` the metadata with the `List<RollupOrderBy__mdt>` RollupOrderBys__r relationship set
    * <br>
@@ -1639,13 +1650,6 @@ global without sharing virtual class Rollup {
     meta.OrderByFirstLast__c = null;
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
 
-    JSONGenerator gen = JSON.createGenerator(false);
-    gen.writeStartObject();
-    gen.writeNumberField('totalSize', children.size());
-    gen.writeBooleanField('done', true);
-    gen.writeObjectField('records', children);
-    gen.writeEndObject();
-
     String orderByRelationshipName;
     List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe().getChildRelationships();
     for (Schema.ChildRelationship relationship : potentiallyMatchingRelationships) {
@@ -1653,7 +1657,7 @@ global without sharing virtual class Rollup {
         orderByRelationshipName = relationship.getRelationshipName();
       }
     }
-    String childrenJson = '"' + orderByRelationshipName + '" : ' + gen.getAsString();
+    String childrenJson = '"' + orderByRelationshipName + '" : ' + JSON.serialize(new ChildrenSObject(children));
     serializedMeta = serializedMeta += ',' + childrenJson + '}';
 
     return (Rollup__mdt) JSON.deserialize(serializedMeta, Rollup__mdt.class);
