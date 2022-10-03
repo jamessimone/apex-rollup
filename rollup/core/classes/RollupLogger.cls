@@ -5,14 +5,10 @@ public without sharing virtual class RollupLogger implements ILogger {
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
-  protected RollupControl__mdt rollupControl;
-
-  private final LoggingLevel currentLoggingLevel;
-  private Boolean disabledMessageHasBeenLogged = false;
+  private final System.LoggingLevel currentLoggingLevel;
 
   protected RollupLogger() {
     this.currentLoggingLevel = this.getLogLevel();
-    this.rollupControl = Rollup.getDefaultControl();
   }
 
   public static final ILogger Instance {
@@ -37,11 +33,8 @@ public without sharing virtual class RollupLogger implements ILogger {
   }
 
   public void log(String logString, Object logObject, LoggingLevel logLevel) {
-    if (this.rollupControl?.IsRollupLoggingEnabled__c == true && logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
+    if (logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
-    } else if (this.rollupControl?.IsRollupLoggingEnabled__c == false && this.disabledMessageHasBeenLogged == false) {
-      this.disabledMessageHasBeenLogged = true;
-      this.innerLog('logging isn\'t enabled, no further output', null, LoggingLevel.DEBUG);
     }
   }
 
@@ -50,8 +43,6 @@ public without sharing virtual class RollupLogger implements ILogger {
   }
 
   public ILogger updateRollupControl(RollupControl__mdt control) {
-    this.rollupControl = control;
-    this.log('updating control record', control, LoggingLevel.INFO);
     return this;
   }
 
@@ -135,52 +126,76 @@ public without sharing virtual class RollupLogger implements ILogger {
   }
 
   private static ILogger combineLoggers(List<RollupPlugin__mdt> loggingPlugins) {
-    ILogger rollLogger;
-    if (loggingPlugins.isEmpty()) {
-      rollLogger = new RollupLogger();
-    } else {
-      RollupPlugin__mdt firstLogger = loggingPlugins.remove(0);
-      if (firstLogger.DeveloperName == RollupLogger.class.getName()) {
+    List<ILogger> loggers = loggingPlugins.isEmpty() ? new List<ILogger>{ new RollupLogger() } : new List<ILogger>();
+    Boolean hasUsedBaseLogger = false;
+    List<String> potentialErrorMessages = new List<String>();
+
+    for (RollupPlugin__mdt loggerPlugin : loggingPlugins) {
+      ILogger rollLogger;
+      if (loggerPlugin.DeveloperName == RollupLogger.class.getName() && hasUsedBaseLogger == false) {
         rollLogger = new RollupLogger();
+        hasUsedBaseLogger = true;
       } else {
         try {
-          rollLogger = (ILogger) Type.forName(firstLogger.DeveloperName).newInstance();
+          rollLogger = (ILogger) Type.forName(loggerPlugin.DeveloperName).newInstance();
         } catch (Exception ex) {
-          rollLogger = new RollupLogger();
-          rollLogger.log('Falling back to default logger, cast to ILogger for:' + firstLogger.DeveloperName + ' failed', ex, LoggingLevel.WARN);
+          potentialErrorMessages.add('Cast to ILogger failed for:' + loggerPlugin.DeveloperName);
+          if (hasUsedBaseLogger == false) {
+            rollLogger = new RollupLogger();
+            hasUsedBaseLogger = true;
+          }
         }
       }
+      if (rollLogger != null) {
+        loggers.add(rollLogger);
+      }
     }
-    return loggingPlugins.isEmpty() ? rollLogger : new CombinedLogger(rollLogger, combineLoggers(loggingPlugins));
+
+    ILogger combinedLogger = new CombinedLogger(loggers, Rollup.getDefaultControl());
+    for (String potentialError : potentialErrorMessages) {
+      combinedLogger.log(potentialError, LoggingLevel.WARN);
+    }
+
+    return combinedLogger;
   }
 
   private class CombinedLogger implements ILogger {
-    private final ILogger first;
-    private final ILogger second;
+    private final List<ILogger> loggers;
 
-    public CombinedLogger(ILogger first, ILogger second) {
-      this.first = first;
-      this.second = second;
+    private RollupControl__mdt control;
+    private Boolean hasDisabledMessageBeenLogged = false;
+
+    public CombinedLogger(List<ILogger> loggers, RollupControl__mdt control) {
+      this.loggers = loggers;
+      this.control = control;
     }
 
     public void log(String logString, LoggingLevel logLevel) {
-      this.first.log(logString, logLevel);
-      this.second.log(logString, logLevel);
+      this.log(logString, null, logLevel);
     }
 
     public void log(String logString, Object logObject, LoggingLevel logLevel) {
-      this.first.log(logString, logObject, logLevel);
-      this.second.log(logString, logObject, logLevel);
+      if (this.control.IsRollupLoggingEnabled__c == false && this.hasDisabledMessageBeenLogged == false) {
+        this.hasDisabledMessageBeenLogged = true;
+        this.control.IsRollupLoggingEnabled__c = true;
+        this.log('logging isn\'t enabled, no further output', LoggingLevel.WARN);
+        this.control.IsRollupLoggingEnabled__c = false;
+      } else if (this.control.IsRollupLoggingEnabled__c) {
+        for (ILogger logger : this.loggers) {
+          logger.log(logString, logObject, logLevel);
+        }
+      }
     }
 
     public void save() {
-      this.first.save();
-      this.second.save();
+      for (ILogger logger : this.loggers) {
+        logger.save();
+      }
     }
 
     public CombinedLogger updateRollupControl(RollupControl__mdt control) {
-      this.first.updateRollupControl(control);
-      this.second.updateRollupControl(control);
+      this.control = control;
+      this.log('updating control record', control, LoggingLevel.INFO);
       return this;
     }
   }
