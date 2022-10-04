@@ -1848,15 +1848,17 @@ private class RollupIntegrationTests {
     flowInput.calcItemWhereClause = 'LastName != \'soloAdmin\' AND Account.Name = \'' + acc.Name + '\'';
     flowInput.oldRecordsToRollup = new List<Contact>{ oldContact };
     Rollup.FlowInput secondInput = (Rollup.FlowInput) JSON.deserialize(JSON.serialize(flowInput), Rollup.FlowInput.class);
+    secondInput.recordsToRollup = flowInput.recordsToRollup; // lost in deserialization
     secondInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
     secondInput.rollupOperation = 'COUNT';
     secondInput.calcItemWhereClause = 'LastName != \'soloAdmin\'';
     secondInput.rollupFieldOnOpObject = 'NumberOfEmployees';
     // also validate that a matching clause does NOT get reset
     Rollup.FlowInput matchingInput = (Rollup.FlowInput) JSON.deserialize(JSON.serialize(flowInput), Rollup.FlowInput.class);
+    matchingInput.recordsToRollup = flowInput.recordsToRollup; // lost in deserialization
+    matchingInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
     matchingInput.rollupOperation = 'MAX';
     matchingInput.rollupFieldOnCalcItem = 'Phone';
-    matchingInput.oldRecordsToRollup = flowInput.oldRecordsToRollup; // lost in deserialization
     matchingInput.calcItemWhereClause = 'LastName = \'soloAdmin\' AND Account.Name = \'' + acc.Name + '\'';
     matchingInput.rollupFieldOnOpObject = 'Phone';
 
