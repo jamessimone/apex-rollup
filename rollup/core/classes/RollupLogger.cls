@@ -25,7 +25,6 @@ public without sharing virtual class RollupLogger implements ILogger {
     void log(String logString, LoggingLevel logLevel);
     void log(String logString, Object logObject, LoggingLevel logLevel);
     void save();
-    ILogger updateRollupControl(RollupControl__mdt control);
   }
 
   public void log(String logString, LoggingLevel logLevel) {
@@ -40,10 +39,6 @@ public without sharing virtual class RollupLogger implements ILogger {
 
   public virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
-  }
-
-  public ILogger updateRollupControl(RollupControl__mdt control) {
-    return this;
   }
 
   protected String getBaseLoggingMessage() {
@@ -191,12 +186,6 @@ public without sharing virtual class RollupLogger implements ILogger {
       for (ILogger logger : this.loggers) {
         logger.save();
       }
-    }
-
-    public CombinedLogger updateRollupControl(RollupControl__mdt control) {
-      this.control = control;
-      this.log('updating control record', control, LoggingLevel.INFO);
-      return this;
     }
   }
 }
