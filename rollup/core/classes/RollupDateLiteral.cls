@@ -534,15 +534,11 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class ThisQuarterLiteral extends RollupDateLiteral {
     public ThisQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getThisQuarterStart(), START_TIME);
-      this.bound = this.getBound();
+      this.bound = this.ref.addMonths(3).addMinutes(END_TIME.minute()).addSeconds(END_TIME.second());
     }
 
     protected virtual Date getThisQuarterStart() {
       return Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1);
-    }
-
-    protected virtual Datetime getBound() {
-      return this.ref.addMonths(3).addMinutes(END_TIME.minute()).addSeconds(END_TIME.second());
     }
   }
 
@@ -689,11 +685,6 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisFiscalQuarterLiteral extends ThisQuarterLiteral {
     protected override Date getThisQuarterStart() {
       return FISCAL_INFO.CurrentQuarterStartDate;
-    }
-
-    protected override Datetime getBound() {
-      // some insane YoY differences between THIS_QUARTER and THIS_FISCAL_QUARTER ...
-      return super.getBound().addSeconds(-1);
     }
   }
 
