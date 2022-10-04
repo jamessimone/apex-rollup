@@ -131,7 +131,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
             rollupFlowInputs.add(input);
 
-            output.message = 'Rollup queued for context: ' + meta.RollupOperation__c + ' with metadata values: ' + JSON.serialize(input);
+            output.message = 'Rollup queued for context: ' + meta.RollupOperation__c;
           }
         }
 

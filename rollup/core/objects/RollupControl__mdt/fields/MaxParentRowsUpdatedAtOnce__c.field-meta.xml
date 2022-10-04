@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>MaxParentRowsUpdatedAtOnce__c</fullName>
+    <defaultValue>5000</defaultValue>
     <description>The maximum number of parent rows that can be updated in a single transaction. Otherwise, Rollup splits the parent items evenly and updates them in separate transactions.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
