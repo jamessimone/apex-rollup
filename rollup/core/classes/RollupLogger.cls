@@ -28,11 +28,11 @@ public without sharing virtual class RollupLogger implements ILogger {
     ILogger updateRollupControl(RollupControl__mdt control);
   }
 
-  public virtual void log(String logString, LoggingLevel logLevel) {
+  public void log(String logString, LoggingLevel logLevel) {
     this.log(logString, null, logLevel);
   }
 
-  public void log(String logString, Object logObject, LoggingLevel logLevel) {
+  public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
     if (logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
     }

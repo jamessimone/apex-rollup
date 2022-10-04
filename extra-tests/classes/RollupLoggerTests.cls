@@ -83,10 +83,8 @@ public class RollupLoggerTests {
   }
 
   public class ControlUpdatingLogger extends RollupLogger {
-    public override void log(String logMessage, System.LoggingLevel logLevel) {
-      if (this.rollupControl.IsRollupLoggingEnabled__c) {
-        wasSaved = true;
-      }
+    public override void log(String logMessage, Object logObject, System.LoggingLevel logLevel) {
+      wasSaved = true;
     }
   }
 }
