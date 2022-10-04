@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "RollupLogger now updates when all configured rollups use a different control record than the Org Default",
+            "versionName": "Logging infrastructure improvements, decrease in heap size for Invocable usage with large record collection sizes",
             "versionNumber": "1.5.25.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
