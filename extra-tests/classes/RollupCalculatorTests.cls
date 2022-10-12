@@ -722,6 +722,27 @@ private class RollupCalculatorTests {
     System.assertEquals(null, calc.getReturnValue());
   }
 
+  @IsTest
+  static void sumForFullRecalcIgnoresDiffForUpdates() {
+    Opportunity opp = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), Amount = 5);
+
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.UPDATE_SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '',
+      Opportunity.AccountId
+    );
+    calc.setFullRecalc(true);
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Amount = 2) };
+
+    calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
+
+    System.assertEquals(opp.Amount, calc.getReturnValue());
+  }
+
   // CONCAT tests
 
   @IsTest

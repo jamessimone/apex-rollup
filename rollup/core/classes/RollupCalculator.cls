@@ -528,6 +528,8 @@ public without sharing abstract class RollupCalculator {
         return newVal;
       } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false) {
         return oldVal * Decimal.valueOf(-1).setScale(oldVal.scale());
+      } else if (this.isFullRecalc) {
+        return newVal;
       }
 
       // could be negative, could be positive ... could be 0!

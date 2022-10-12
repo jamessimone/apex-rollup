@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Logging infrastructure improvements, decrease in heap size for Invocable usage with large record collection sizes",
-            "versionNumber": "1.5.25.0",
+            "versionName": "Is Full Record Set bugfix for SUM",
+            "versionNumber": "1.5.26.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -64,10 +64,6 @@
             }
         },
         {
-            "path": "extra-tests",
-            "default": false
-        },
-        {
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
@@ -78,6 +74,10 @@
                     "package": "apex-rollup@1.5.19-0"
                 }
             ]
+        },
+        {
+            "path": "extra-tests",
+            "default": false
         }
     ],
     "namespace": "",
@@ -108,6 +108,7 @@
         "apex-rollup@1.5.22-0": "04t6g000008b0XjAAI",
         "apex-rollup@1.5.23-0": "04t6g000008b0YSAAY",
         "apex-rollup@1.5.24-0": "04t6g000008b0Z6AAI",
-        "apex-rollup@1.5.25-0": "04t6g000008b0a9AAA"
+        "apex-rollup@1.5.25-0": "04t6g000008b0a9AAA",
+        "apex-rollup@1.5.26-0": "04t6g000008b0ceAAA"
     }
 }
