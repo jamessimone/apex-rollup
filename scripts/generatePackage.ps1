@@ -138,7 +138,12 @@ function Generate() {
 
   Write-Host "Creating package version: $currentPackageVersion ..." -ForegroundColor White
 
+  $stopWatch = [system.diagnostics.stopwatch]::startNew()
   $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion --json | ConvertFrom-Json
+  $stopWatch.Stop()
+
+  Write-Host "Packaging took: $($stopWatch.Elapsed.TotalMilliseconds) ms" -ForegroundColor White
+
   $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
   if ($null -eq $currentPackageVersionId) {
     throw $createPackageResult
