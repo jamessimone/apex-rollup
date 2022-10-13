@@ -252,14 +252,14 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Application__c',
+        CalcItem__c = Application__c.SObjectType.getDescribe().getName(),
         LookupObject__c = 'Account',
         RollupToUltimateParent__c = true,
-        LookupFieldOnCalcItem__c = 'ParentApplication__c',
+        LookupFieldOnCalcItem__c = ParentApplication__c.SObjectType.getDescribe().getName(),
         UltimateParentLookup__c = 'ParentId',
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupFieldOnCalcItem__c = 'Engagement_Score__c',
+        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
         LookupFieldOnLookupObject__c = 'Id',
         GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.AnnualRevenue'
       )
@@ -294,12 +294,12 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Application__c',
+        CalcItem__c = Application__c.SObjectType.getDescribe().getName(),
         LookupObject__c = 'Individual',
-        LookupFieldOnCalcItem__c = 'ParentApplication__c',
+        LookupFieldOnCalcItem__c = ParentApplication__c.SObjectType.getDescribe().getName(),
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
-        RollupFieldOnCalcItem__c = 'Engagement_Score__c',
+        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
         LookupFieldOnLookupObject__c = 'Id',
         GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.Contacts.Individual.ConsumerCreditScore',
         OneToManyGrandparentFields__c = 'Contact.AccountId'
@@ -1571,15 +1571,23 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metas = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'RollupChild__c',
-        RollupFieldOnCalcItem__c = 'NumberField__c',
-        LookupFieldOnCalcItem__c = 'RollupParent__c',
-        LookupObject__c = 'RollupGrandparent__c',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'AmountFromChildren__c',
+        CalcItem__c = RollupChild__c.SObjectType.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = RollupChild__c.NumberField__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = RollupChild__c.RollupParent__c.getDescribe().getName(),
+        LookupObject__c = RollupGrandparent__c.SObjectType.getDescribe().getName(),
+        LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.getDescribe().getName(),
+        RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.getDescribe().getName(),
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = ' ||| RollupParent__r.RollupGrandparent__r.Id = \'' + grandparent.Id + '\'',
-        GrandparentRelationshipFieldPath__c = 'RollupParent__r.RollupGrandparent__r.AmountFromChildren__c'
+        CalcItemWhereClause__c = ' ||| ' +
+          RollupTestUtils.getRelationshipPath(
+            new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.Id }
+          ) +
+          ' = \'' +
+          grandparent.Id +
+          '\'',
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.AmountFromChildren__c }
+        )
       )
     };
 

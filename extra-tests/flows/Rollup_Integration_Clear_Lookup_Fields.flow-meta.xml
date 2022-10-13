@@ -9,23 +9,23 @@
         <actionType>apex</actionType>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>Contact</typeValue>
+            <typeValue>ContactPointAddress</typeValue>
         </dataTypeMappings>
         <dataTypeMappings>
             <typeName>T__recordsToRollup</typeName>
-            <typeValue>Contact</typeValue>
+            <typeValue>ContactPointAddress</typeValue>
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <inputParameters>
             <name>rollupFieldOnCalcItem</name>
             <value>
-                <stringValue>Number__c</stringValue>
+                <stringValue>PreferenceRank</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>lookupFieldOnCalcItem</name>
             <value>
-                <stringValue>AccountId</stringValue>
+                <stringValue>ParentId</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -37,13 +37,13 @@
         <inputParameters>
             <name>oldRecordsToRollup</name>
             <value>
-                <elementReference>OldContacts</elementReference>
+                <elementReference>OldRecords</elementReference>
             </value>
         </inputParameters>
         <inputParameters>
             <name>recordsToRollup</name>
             <value>
-                <elementReference>Contacts</elementReference>
+                <elementReference>Records</elementReference>
             </value>
         </inputParameters>
         <inputParameters>
@@ -55,7 +55,7 @@
         <inputParameters>
             <name>rollupFieldOnOpObject</name>
             <value>
-                <stringValue>NumberofLocations__c</stringValue>
+                <stringValue>AnnualRevenue</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -85,14 +85,14 @@
         <locationX>176</locationX>
         <locationY>335</locationY>
         <assignmentItems>
-            <assignToReference>Contacts</assignToReference>
+            <assignToReference>Records</assignToReference>
             <operator>Add</operator>
             <value>
                 <elementReference>$Record</elementReference>
             </value>
         </assignmentItems>
         <assignmentItems>
-            <assignToReference>OldContacts</assignToReference>
+            <assignToReference>OldRecords</assignToReference>
             <operator>Add</operator>
             <value>
                 <elementReference>$Record__Prior</elementReference>
@@ -129,25 +129,25 @@
         <connector>
             <targetReference>Add_Records_To_Collections</targetReference>
         </connector>
-        <object>Contact</object>
+        <object>ContactPointAddress</object>
         <recordTriggerType>CreateAndUpdate</recordTriggerType>
         <triggerType>RecordAfterSave</triggerType>
     </start>
     <status>Active</status>
     <variables>
-        <name>Contacts</name>
+        <name>Records</name>
         <dataType>SObject</dataType>
         <isCollection>true</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
-        <objectType>Contact</objectType>
+        <objectType>ContactPointAddress</objectType>
     </variables>
     <variables>
-        <name>OldContacts</name>
+        <name>OldRecords</name>
         <dataType>SObject</dataType>
         <isCollection>true</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
-        <objectType>Contact</objectType>
+        <objectType>ContactPointAddress</objectType>
     </variables>
 </Flow>

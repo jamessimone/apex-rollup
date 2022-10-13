@@ -61,6 +61,9 @@ private class InvocableDrivenTests {
 
   @IsTest
   static void shouldRollupMultipleDMLStatementsWithinSingleTransaction() {
+    if (InvocableDrivenTests.class.getName().contains('.')) {
+      return;
+    }
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
     Account acc = [SELECT Id FROM Account];
     Account reparentAccount = new Account(Name = 'Reparent');
@@ -159,16 +162,16 @@ private class InvocableDrivenTests {
     Integer initialNumber = 3;
     Account acc = [SELECT Id FROM Account];
 
-    Contact con = new Contact(AccountId = acc.Id, LastName = 'Sum clear', Number__c = 1);
-    Contact two = new Contact(AccountId = acc.Id, LastName = 'retained sum', Number__c = initialNumber);
-    insert new List<Contact>{ con, two };
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Sum clear', PreferenceRank = 1);
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'retained sum', PreferenceRank = initialNumber);
+    insert new List<ContactPointAddress>{ cpa, two };
 
     Test.startTest();
-    con.AccountId = null;
-    update con;
+    cpa.ParentId = null;
+    update cpa;
     Test.stopTest();
 
-    acc = [SELECT NumberofLocations__c FROM Account];
-    System.assertEquals(initialNumber, acc.NumberofLocations__c?.intValue(), 'Amount should have properly decremented');
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(initialNumber, acc.AnnualRevenue?.intValue(), 'Amount should have properly decremented');
   }
 }

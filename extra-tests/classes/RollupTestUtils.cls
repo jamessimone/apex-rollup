@@ -62,6 +62,18 @@ public class RollupTestUtils {
     return mock;
   }
 
+  public static String getRelationshipPath(List<Schema.SObjectField> fieldTokens) {
+    String grandparentPath = '';
+    for (Integer index = 0; index < fieldTokens.size(); index++) {
+      Schema.SObjectField fieldToken = fieldTokens.get(index);
+      grandparentPath +=
+        (fieldToken.getDescribe().isCustom() && index != fieldTokens.size() - 1
+          ? String.valueOf(fieldToken).replace('__c', '__r')
+          : String.valueOf(fieldToken)) + '.';
+    }
+    return grandparentPath.removeEnd('.');
+  }
+
   /**
    * Returns a record using dynamic SOQL to prevent CurrencyIsoCode from being strongly typed anywhere in the tests
    */

@@ -87,11 +87,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>Account.NumberofLocations__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>Account.SumAmountRollupSummary__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -133,11 +128,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Case.DateField__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Contact.Number__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

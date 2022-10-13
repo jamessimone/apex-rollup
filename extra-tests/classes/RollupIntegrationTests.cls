@@ -35,8 +35,8 @@ private class RollupIntegrationTests {
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'AccountIdText__c',
-        LookupFieldOnLookupObject__c = 'AccountIdText__c',
+        LookupFieldOnCalcItem__c = Opportunity.AccountIdText__c.getDescribe().getName(),
+        LookupFieldOnLookupObject__c = Opportunity.AccountIdText__c.getDescribe().getName(),
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
         CalcItem__c = 'Opportunity'
@@ -67,7 +67,7 @@ private class RollupIntegrationTests {
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'AmountFormula__c',
+        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.getDescribe().getName(),
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
@@ -146,15 +146,19 @@ private class RollupIntegrationTests {
     Rollup.records = applications;
 
     Rollup.FlowInput input = new Rollup.FlowInput();
-    input.lookupFieldOnCalcItem = 'ParentApplication__c';
+    input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
     input.lookupFieldOnOpObject = 'Id';
     input.recordsToRollup = applications;
     input.rollupContext = 'INSERT';
-    input.rollupFieldOnCalcItem = 'Engagement_Score__c';
-    input.rollupFieldOnOpObject = 'Engagement_Rollup__c';
+    input.rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
+    input.rollupFieldOnOpObject = ParentApplication__c.Engagement_Rollup__c.getDescribe().getName();
     input.rollupOperation = 'AVERAGE';
-    input.rollupSObjectName = 'ParentApplication__c';
-    input.calcItemWhereClause = 'Something_With_Underscores__c != \'' + applications[0].Something_With_Underscores__c + '\'';
+    input.rollupSObjectName = ParentApplication__c.SObjectType.getDescribe().getName();
+    input.calcItemWhereClause =
+      Application__c.Something_With_Underscores__c.getDescribe().getName() +
+      ' != \'' +
+      applications[0].Something_With_Underscores__c +
+      '\'';
 
     Test.startTest();
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
@@ -507,16 +511,16 @@ private class RollupIntegrationTests {
     insert apps;
 
     Rollup.FlowInput input = new Rollup.FlowInput();
-    input.lookupFieldOnCalcItem = 'ParentApplication__c';
+    input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
     input.lookupFieldOnOpObject = 'Id';
     input.recordsToRollup = new List<ParentApplication__c>{ parentApp };
     input.rollupContext = 'INSERT';
-    input.rollupFieldOnCalcItem = 'Engagement_Score__c';
-    input.rollupFieldOnOpObject = 'Engagement_Rollup__c';
+    input.rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
+    input.rollupFieldOnOpObject = ParentApplication__c.Engagement_Rollup__c.getDescribe().getName();
     input.rollupOperation = 'SUM';
-    input.rollupSObjectName = 'ParentApplication__c';
+    input.rollupSObjectName = ParentApplication__c.SObjectType.getDescribe().getName();
     input.isRollupStartedFromParent = true;
-    input.calcItemTypeWhenRollupStartedFromParent = 'Application__c';
+    input.calcItemTypeWhenRollupStartedFromParent = Application__c.SObjectType.getDescribe().getName();
 
     Test.startTest();
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
@@ -554,7 +558,11 @@ private class RollupIntegrationTests {
     Set<String> childAndParentFieldsToSelect = new Set<String>{ 'Id', 'Name' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000),
-      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'),
+      new Rollup__mdt(
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        )
+      ),
       childAndParentFieldsToSelect,
       childAndParentFieldsToSelect,
       Account.SObjectType,
@@ -594,14 +602,16 @@ private class RollupIntegrationTests {
     Rollup.records = appLogs;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'ApplicationLog__c',
-        RollupFieldOnCalcItem__c = 'Object__c',
-        LookupFieldOnCalcItem__c = 'Application__c',
+        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = ApplicationLog__c.Object__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'CONCAT',
-        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        )
       )
     };
     Rollup.shouldRun = true;
@@ -682,14 +692,16 @@ private class RollupIntegrationTests {
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'ApplicationLog__c',
+        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe().getName(),
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'Application__c',
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'CONCAT_DISTINCT',
-        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name'
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        )
       )
     };
     Rollup.shouldRun = true;
@@ -731,15 +743,18 @@ private class RollupIntegrationTests {
     Rollup.shouldRun = true;
     Rollup.FlowInput input = new Rollup.FlowInput();
     input.recordsToRollup = parentApps;
-    input.calcItemTypeWhenRollupStartedFromParent = 'ApplicationLog__c';
-    input.rollupFieldOnCalcItem = 'Name';
-    input.lookupFieldOnCalcItem = 'Application__c';
+    input.calcItemTypeWhenRollupStartedFromParent = ApplicationLog__c.SObjectType.getDescribe().getName();
+    input.rollupFieldOnCalcItem = ApplicationLog__c.Name.getDescribe().getName();
+    input.lookupFieldOnCalcItem = ApplicationLog__c.Application__c.getDescribe().getName();
     input.rollupSObjectName = 'Account';
     input.lookupFieldOnOpObject = 'Id';
     input.rollupFieldOnOpObject = 'Name';
     input.rollupOperation = 'CONCAT_DISTINCT';
     input.rollupContext = 'UPDATE';
-    input.grandparentRelationshipFieldPath = 'Application__r.ParentApplication__r.Account__r.Name';
+    String relName = RollupTestUtils.getRelationshipPath(
+      new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+    );
+    input.grandparentRelationshipFieldPath = relName;
     input.oldRecordsToRollup = new List<ParentApplication__c>{
       new ParentApplication__c(Id = grandParent.Id, Account__c = secondGreatGrandparent.Id),
       new ParentApplication__c(Id = secondGrandparent.Id, Account__c = greatGrandparent.Id)
@@ -779,17 +794,24 @@ private class RollupIntegrationTests {
     Rollup.records = appLogs;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'ApplicationLog__c',
-        RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = 'Application__c',
+        CalcItem__c = ApplicationLog__c.getSObjectType().getDescribe().getName(),
+        RollupFieldOnCalcItem__c = ApplicationLog__c.Name.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
         RollupOperation__c = 'CONCAT_DISTINCT',
-        GrandparentRelationshipFieldPath__c = 'Application__r.ParentApplication__r.Account__r.Name',
-        CalcItemWhereClause__c = 'Application__r.Name != \'' +
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        ),
+        CalcItemWhereClause__c = RollupTestUtils.getRelationshipPath(new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.Name }) +
+          ' != \'' +
           secondParent.Name +
-          '\' AND Application__r.ParentApplication__r.Name != \'' +
+          '\' AND ' +
+          RollupTestUtils.getRelationshipPath(
+            new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Name }
+          ) +
+          ' != \'' +
           grandParent.Name +
           '\' AND Name != \'' +
           nonMatchChild.Name +
@@ -1012,7 +1034,7 @@ private class RollupIntegrationTests {
       null,
       new Rollup__mdt(
         RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
-        RollupFieldOnCalcItem__c = 'AmountFormula__c',
+        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.getDescribe().getName(),
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
       new Map<Id, SObject>(),
@@ -1027,7 +1049,7 @@ private class RollupIntegrationTests {
       null,
       new Rollup__mdt(
         RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
-        RollupFieldOnCalcItem__c = 'AmountFormula__c',
+        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.getDescribe().getName(),
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
       new Map<Id, SObject>(),
@@ -1050,7 +1072,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldFilterOnFormulaText() {
-    String whereClause = 'NameFormula__c = \'GermanyFormula\'';
+    String whereClause = String.valueOf(Account.NameFormula__c) + ' = \'GermanyFormula\'';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Account.SObjectType);
 
@@ -1834,12 +1856,12 @@ private class RollupIntegrationTests {
     acc.NumberOfEmployees = 1;
     update acc;
 
-    List<Contact> cons = new List<Contact>{ new Contact(LastName = 'somethingElse', AccountId = acc.Id, Number__c = acc.AnnualRevenue, Phone = '617619111') };
+    List<Contact> cons = new List<Contact>{ new Contact(LastName = 'somethingElse', AccountId = acc.Id, Phone = '617619111') };
     insert cons;
     Rollup.shouldRefreshCachedControl = true;
 
     Contact oldContact = cons[0].clone(true, true);
-    cons[0].lastName = 'soloAdmin'; // simulating an update which has not yet been reflected in the database
+    cons[0].LastName = 'soloAdmin'; // simulating an update which has not yet been reflected in the database
 
     Rollup.FlowInput flowInput = RollupTestUtils.prepareFlowTest(cons, 'UPSERT', 'SUM')[0];
     flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
