@@ -629,7 +629,7 @@ private class RollupIntegrationTests {
     Contact con = new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id);
     insert con;
 
-    RollupAsyncProcessor.shouldFlattenAsyncProcesses = true;
+    Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Account',
@@ -679,7 +679,7 @@ private class RollupIntegrationTests {
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
     insert new List<ApplicationLog__c>{ child, secondChild };
 
-    RollupAsyncProcessor.shouldFlattenAsyncProcesses = true;
+    Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ApplicationLog__c',

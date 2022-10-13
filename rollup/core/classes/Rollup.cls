@@ -23,6 +23,8 @@ global without sharing virtual class Rollup {
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
   @TestVisible
   private static Boolean shouldRefreshCachedControl = false;
+  @TestVisible
+  private static Boolean shouldFlattenAsyncProcesses = false;
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
@@ -394,6 +396,10 @@ global without sharing virtual class Rollup {
 
   protected virtual String getHashedContents() {
     return null;
+  }
+
+  protected Boolean getIsRunningAsync() {
+    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
   }
 
   protected virtual String getTypeName() {

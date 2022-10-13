@@ -23,8 +23,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
   @TestVisible
-  private static Boolean shouldFlattenAsyncProcesses = false;
-  @TestVisible
   private static Integer additionalCalcItemCount;
 
   private enum CollectionType {
@@ -1217,9 +1215,5 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     this.storeParentResetField(roll, lookupRecord);
     RollupLogger.Instance.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
-  }
-
-  private Boolean getIsRunningAsync() {
-    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
   }
 }
