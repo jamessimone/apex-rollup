@@ -69,17 +69,14 @@ private class InvocableDrivenTests {
     Account reparentAccount = new Account(Name = 'Reparent');
     insert reparentAccount;
 
-    Date today = System.today();
-
-    Case one = new Case(Amount__c = 1, AccountId = acc.Id, Description = 'distinct', Subject = 'One', DateField__c = today.addDays(-2));
-    Case two = new Case(Amount__c = 2, AccountId = acc.Id, Description = 'again', Subject = 'Two', DateField__c = today);
-    Case three = new Case(Amount__c = 0, AccountId = reparentAccount.Id, Description = 'something else', Subject = 'Three');
-    Case four = new Case(Amount__c = 0, AccountId = reparentAccount.Id, Description = one.Description, Subject = 'Four');
+    Case one = new Case(AccountId = acc.Id, Description = 'distinct', Subject = 'One');
+    Case two = new Case(AccountId = acc.Id, Description = 'again', Subject = 'Two');
+    Case three = new Case(AccountId = reparentAccount.Id, Description = 'something else', Subject = 'Excluded');
+    Case four = new Case(AccountId = reparentAccount.Id, Description = one.Description, Subject = 'Excluded');
 
     Test.startTest();
     insert new List<Case>{ one, two, three, four };
 
-    one.Amount__c = 2;
     one.AccountId = reparentAccount.Id;
     update one;
 
@@ -91,19 +88,15 @@ private class InvocableDrivenTests {
     update one;
     Test.stopTest();
 
-    acc = [SELECT Id, Description, AnnualRevenue, Name, NumberOfEmployees, DateField__c FROM Account WHERE Id = :acc.Id];
-    reparentAccount = [SELECT Id, Description, AnnualRevenue, Name, NumberOfEmployees, DateField__c FROM Account WHERE Id = :reparentAccount.Id];
+    acc = [SELECT Id, Description, AnnualRevenue, Name, NumberOfEmployees FROM Account WHERE Id = :acc.Id];
+    reparentAccount = [SELECT Id, Description, AnnualRevenue, Name, NumberOfEmployees FROM Account WHERE Id = :reparentAccount.Id];
 
-    System.assertEquals(today, acc.DateField__c, 'LAST should have been updated to new last');
-    System.assertEquals(2, acc.AnnualRevenue, 'First account sum field should be decremented on reparent');
     System.assertEquals(two.Description, acc.Description, 'CONCAT_DISTINCT should remove extra text on reparent');
     System.assertEquals(1, acc.NumberOfEmployees);
     System.assertEquals(two.Subject, acc.Name);
 
-    System.assertEquals(today.addDays(-2), reparentAccount.DateField__c);
     System.assertEquals(3, reparentAccount.NumberOfEmployees, 'Second account should properly reflect reparented record for number of employees');
     System.assertEquals(one.Description + ', ' + three.Description, reparentAccount.Description, 'Second account should have only reparented case description');
-    System.assertEquals(2, reparentAccount.AnnualRevenue, 'Second account sum field should include updated amount');
     System.assertEquals(one.Subject, reparentAccount.Name, 'Second account name field should reflect last subject');
   }
 
@@ -162,13 +155,13 @@ private class InvocableDrivenTests {
     Integer initialNumber = 3;
     Account acc = [SELECT Id FROM Account];
 
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Sum clear', PreferenceRank = 1);
-    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'retained sum', PreferenceRank = initialNumber);
-    insert new List<ContactPointAddress>{ cpa, two };
+    ContactPointEmail one = new ContactPointEmail(ParentId = acc.Id, PreferenceRank = 1, EmailAddress = 'test@one.com');
+    ContactPointEmail two = new ContactPointEmail(ParentId = acc.Id, PreferenceRank = initialNumber, EmailAddress = 'test@two.com');
+    insert new List<ContactPointEmail>{ one, two };
 
     Test.startTest();
-    cpa.ParentId = null;
-    update cpa;
+    one.ParentId = null;
+    update one;
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];

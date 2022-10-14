@@ -12,12 +12,12 @@ public class RollupTestUtils {
 
     Rollup.FlowInput flowInput = new Rollup.FlowInput();
     flowInput.recordsToRollup = records;
-    flowInput.lookupFieldOnCalcItem = 'ParentId';
-    flowInput.lookupFieldOnOpObject = 'Id';
+    flowInput.lookupFieldOnCalcItem = ContactPointAddress.ParentId.getDescribe().getName();
+    flowInput.lookupFieldOnOpObject = Account.Id.getDescribe().getName();
     flowInput.rollupContext = rollupContext;
-    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
-    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
-    flowInput.rollupSObjectName = 'Account';
+    flowInput.rollupFieldOnCalcItem = ContactPointAddress.PreferenceRank.getDescribe().getName();
+    flowInput.rollupFieldOnOpObject = Account.AnnualRevenue.getDescribe().getName();
+    flowInput.rollupSObjectName = Account.SObjectType.getDescribe().getName();
     flowInput.rollupOperation = rollupOperation;
     flowInput.splitConcatDelimiterOnCalcItem = false;
 

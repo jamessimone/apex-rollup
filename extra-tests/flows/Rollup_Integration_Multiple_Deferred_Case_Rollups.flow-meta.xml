@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Add_matching_description_to_Site</name>
         <label>Add matching description to Site</label>
         <locationX>176</locationX>
-        <locationY>1031</locationY>
+        <locationY>815</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -85,7 +85,7 @@
         <name>Commit_deferred_rollups</name>
         <label>Commit deferred rollups</label>
         <locationX>176</locationX>
-        <locationY>1151</locationY>
+        <locationY>935</locationY>
         <actionName>RollupFlowBulkSaver</actionName>
         <actionType>apex</actionType>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
@@ -94,7 +94,7 @@
         <name>Count_Cases</name>
         <label>Count Cases</label>
         <locationX>176</locationX>
-        <locationY>911</locationY>
+        <locationY>695</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -175,11 +175,11 @@
         <name>Rollup_Case_Description_To_Account_Description</name>
         <label>Concat Case Description To Account Description</label>
         <locationX>176</locationX>
-        <locationY>431</locationY>
+        <locationY>455</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
-            <targetReference>Rollup_Custom_Amount_to_Annual_Revenue</targetReference>
+            <targetReference>Rollup_Last_Name</targetReference>
         </connector>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
@@ -253,182 +253,14 @@
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
-        <name>Rollup_Custom_Amount_to_Annual_Revenue</name>
-        <label>Rollup Custom Amount to Annual Revenue</label>
+        <name>Rollup_Last_Name</name>
+        <label>Rollup Last Name</label>
         <locationX>176</locationX>
-        <locationY>551</locationY>
-        <actionName>Rollup</actionName>
-        <actionType>apex</actionType>
-        <connector>
-            <targetReference>Rollup_Last_Name</targetReference>
-        </connector>
-        <dataTypeMappings>
-            <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>Case</typeValue>
-        </dataTypeMappings>
-        <dataTypeMappings>
-            <typeName>T__recordsToRollup</typeName>
-            <typeValue>Case</typeValue>
-        </dataTypeMappings>
-        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
-        <inputParameters>
-            <name>rollupFieldOnCalcItem</name>
-            <value>
-                <stringValue>Amount__c</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>lookupFieldOnCalcItem</name>
-            <value>
-                <stringValue>AccountId</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>deferProcessing</name>
-            <value>
-                <booleanValue>true</booleanValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>oldRecordsToRollup</name>
-            <value>
-                <elementReference>PriorCases</elementReference>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>recordsToRollup</name>
-            <value>
-                <elementReference>Cases</elementReference>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupSObjectName</name>
-            <value>
-                <stringValue>Account</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupFieldOnOpObject</name>
-            <value>
-                <stringValue>AnnualRevenue</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>lookupFieldOnOpObject</name>
-            <value>
-                <stringValue>Id</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupOperation</name>
-            <value>
-                <stringValue>SUM</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupContext</name>
-            <value>
-                <stringValue>UPSERT</stringValue>
-            </value>
-        </inputParameters>
-        <storeOutputAutomatically>true</storeOutputAutomatically>
-    </actionCalls>
-    <actionCalls>
-        <name>Rollup_Last_Date</name>
-        <label>Rollup Last Date</label>
-        <locationX>176</locationX>
-        <locationY>791</locationY>
+        <locationY>575</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
             <targetReference>Count_Cases</targetReference>
-        </connector>
-        <dataTypeMappings>
-            <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>Case</typeValue>
-        </dataTypeMappings>
-        <dataTypeMappings>
-            <typeName>T__recordsToRollup</typeName>
-            <typeValue>Case</typeValue>
-        </dataTypeMappings>
-        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
-        <inputParameters>
-            <name>rollupFieldOnCalcItem</name>
-            <value>
-                <stringValue>DateField__c</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>lookupFieldOnCalcItem</name>
-            <value>
-                <stringValue>AccountId</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>deferProcessing</name>
-            <value>
-                <booleanValue>true</booleanValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>oldRecordsToRollup</name>
-            <value>
-                <elementReference>PriorCases</elementReference>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>recordsToRollup</name>
-            <value>
-                <elementReference>Cases</elementReference>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupSObjectName</name>
-            <value>
-                <stringValue>Account</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupFieldOnOpObject</name>
-            <value>
-                <stringValue>DateField__c</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>lookupFieldOnOpObject</name>
-            <value>
-                <stringValue>Id</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupOperation</name>
-            <value>
-                <stringValue>LAST</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>rollupContext</name>
-            <value>
-                <stringValue>UPSERT</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
-            <name>calcItemWhereClause</name>
-            <value>
-                <stringValue>Amount__c != 0</stringValue>
-            </value>
-        </inputParameters>
-        <storeOutputAutomatically>true</storeOutputAutomatically>
-    </actionCalls>
-    <actionCalls>
-        <name>Rollup_Last_Name</name>
-        <label>Rollup Last Name</label>
-        <locationX>176</locationX>
-        <locationY>671</locationY>
-        <actionName>Rollup</actionName>
-        <actionType>apex</actionType>
-        <connector>
-            <targetReference>Rollup_Last_Date</targetReference>
         </connector>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
@@ -506,7 +338,7 @@
         <name>Add_case_and_prior_case_to_collections</name>
         <label>Add case and prior case to collections</label>
         <locationX>176</locationX>
-        <locationY>311</locationY>
+        <locationY>335</locationY>
         <assignmentItems>
             <assignToReference>Cases</assignToReference>
             <operator>Add</operator>
@@ -526,6 +358,7 @@
         </connector>
     </assignments>
     <description>Record Triggered flow for Cases to be included in Rollup extra-tests deploy</description>
+    <environments>Default</environments>
     <interviewLabel>Rollup Integration - Multiple Deferred Case Rollups {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Rollup Integration - Multiple Deferred Case Rollups</label>
     <processMetadataValues>

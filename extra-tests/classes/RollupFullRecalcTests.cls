@@ -47,6 +47,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildren() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     Account secondParent = new Account(Name = 'Second', AnnualRevenue = 5);
     insert secondParent;
@@ -61,6 +62,7 @@ private class RollupFullRecalcTests {
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'First child') };
     insert cpas;
+    Rollup.shouldRefreshCachedControl = true;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     Rollup.FlowInput secondInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'COUNT')[0];
@@ -455,7 +457,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void preventsParentRecordResetsWhenControlIsFlagged() {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, ShouldSkipResettingParentFields__c = true);
-
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 75;
     acc.NumberOfEmployees = 15;

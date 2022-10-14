@@ -9,11 +9,11 @@
         <actionType>apex</actionType>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>ContactPointAddress</typeValue>
+            <typeValue>ContactPointEmail</typeValue>
         </dataTypeMappings>
         <dataTypeMappings>
             <typeName>T__recordsToRollup</typeName>
-            <typeValue>ContactPointAddress</typeValue>
+            <typeValue>ContactPointEmail</typeValue>
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <inputParameters>
@@ -129,7 +129,7 @@
         <connector>
             <targetReference>Add_Records_To_Collections</targetReference>
         </connector>
-        <object>ContactPointAddress</object>
+        <object>ContactPointEmail</object>
         <recordTriggerType>CreateAndUpdate</recordTriggerType>
         <triggerType>RecordAfterSave</triggerType>
     </start>
@@ -140,7 +140,7 @@
         <isCollection>true</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
-        <objectType>ContactPointAddress</objectType>
+        <objectType>ContactPointEmail</objectType>
     </variables>
     <variables>
         <name>OldRecords</name>
@@ -148,6 +148,6 @@
         <isCollection>true</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
-        <objectType>ContactPointAddress</objectType>
+        <objectType>ContactPointEmail</objectType>
     </variables>
 </Flow>
