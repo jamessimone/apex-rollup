@@ -67,7 +67,7 @@
             "path": "plugins\\ExtraCodeCoverage",
             "package": "Apex Rollup - Extra Code Coverage",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.13.0",
+            "versionNumber": "0.0.14.0",
             "default": false,
             "dependencies": [
                 {
@@ -90,6 +90,7 @@
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.12-0": "04t6g000008SkVZAA0",
         "Apex Rollup - Extra Code Coverage@0.0.13-0": "04t6g000008SkvLAAS",
+        "Apex Rollup - Extra Code Coverage@0.0.14-0": "04t6g000008b0i4AAA",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.6-0": "04t6g000008SiisAAC",
         "Apex Rollup - Nebula Logger@0.0.7-0": "04t6g000008b0O7AAI",
@@ -109,6 +110,7 @@
         "apex-rollup@1.5.23-0": "04t6g000008b0YSAAY",
         "apex-rollup@1.5.24-0": "04t6g000008b0Z6AAI",
         "apex-rollup@1.5.25-0": "04t6g000008b0a9AAA",
-        "apex-rollup@1.5.26-0": "04t6g000008b0ceAAA"
+        "apex-rollup@1.5.26-0": "04t6g000008b0ceAAA",
+        "apex-rollup@1.5.27-0": "04t6g000008b0hzAAA"
     }
 }

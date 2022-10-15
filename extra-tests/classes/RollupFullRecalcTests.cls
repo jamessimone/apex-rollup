@@ -237,7 +237,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyApex() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
     insert childAccount;
@@ -279,7 +279,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void supportsOneToManyFullRecalcInMiddleOfChain() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account];
     Individual indy = new Individual(LastName = 'Indy');
     insert indy;
@@ -559,7 +559,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyFlow() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
     insert childAccount;
@@ -1565,6 +1565,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void grandparentRollupsCanUseSingularParentRecalcButton() {
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     RollupGrandparent__c grandparent = new RollupGrandparent__c();
     insert grandparent;
 

@@ -1,5 +1,7 @@
 @IsTest
 public class RollupTestUtils {
+  public static final Boolean IS_NAMESPACED_PACKAGE_ORG = RollupTestUtils.class.getName().contains('.');
+
   // from https://salesforce.stackexchange.com/questions/21137/creating-unit-tests-without-interacting-with-the-database-creating-fake-ids
   private static Integer startingNumber = 1;
   public static String createId(Schema.SObjectType sObjectType) {

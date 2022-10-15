@@ -61,7 +61,7 @@ private class InvocableDrivenTests {
 
   @IsTest
   static void shouldRollupMultipleDMLStatementsWithinSingleTransaction() {
-    if (InvocableDrivenTests.class.getName().contains('.')) {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml

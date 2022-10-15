@@ -22,8 +22,6 @@ private class RollupIntegrationTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
-  private static final Boolean IS_NAMESPACED_ORG = RollupIntegrationTests.class.getName().contains('.');
-
   @IsTest
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
@@ -94,7 +92,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldSupportCustomObjectsReferencedViaCustomMetadata() {
-    if (IS_NAMESPACED_ORG) {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
     Application__c app = new Application__c(Name = 'RollupIntegrationTests App');
@@ -121,7 +119,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldProperlyAverageWithSpecialFieldNamesAndFilteredItems() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
     insert parentApp;
 
@@ -503,7 +501,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Custom Object Parent App');
     insert parentApp;
 
@@ -598,7 +596,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldNotBlowUpIfGrandparentsDontExist() {
-    if (IS_NAMESPACED_ORG) {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
     Application__c app = new Application__c(Name = 'No grandparent app');
@@ -682,7 +680,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromApex() {
-    if (IS_NAMESPACED_ORG) {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
@@ -735,10 +733,10 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromFlow() {
-    if (IS_NAMESPACED_ORG) {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account greatGrandparent = new Account(Name = 'Great-grandparent Flow');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent Flow');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
@@ -789,10 +787,10 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
-    if (IS_NAMESPACED_ORG) {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
     insert greatGrandparent;
 
