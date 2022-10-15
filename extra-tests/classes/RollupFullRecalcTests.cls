@@ -263,7 +263,9 @@ private class RollupFullRecalcTests {
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
         LookupFieldOnLookupObject__c = 'Id',
-        GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.AnnualRevenue'
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.AnnualRevenue }
+        )
       )
     };
 
@@ -303,7 +305,10 @@ private class RollupFullRecalcTests {
         RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
         RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
         LookupFieldOnLookupObject__c = 'Id',
-        GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.Contacts.Individual.ConsumerCreditScore',
+        GrandparentRelationshipFieldPath__c = String.valueOf(Application__c.ParentApplication__c).replace('__r', '__c') +
+          '.' +
+          String.valueOf(ParentApplication__c.Account__c).replace('__c', '__r') +
+          '.Contacts.Individual.ConsumerCreditScore',
         OneToManyGrandparentFields__c = 'Contact.AccountId'
       )
     };
@@ -572,9 +577,11 @@ private class RollupFullRecalcTests {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(apps, 'REFRESH', 'SUM');
     flowInputs[0].ultimateParentLookup = 'ParentId';
     flowInputs[0].rollupToUltimateParent = true;
-    flowInputs[0].lookupFieldOnCalcItem = 'ParentApplication__c';
-    flowInputs[0].rollupFieldOnCalcItem = 'Engagement_Score__c';
-    flowInputs[0].grandparentRelationshipFieldPath = 'ParentApplication__r.Account__r.AnnualRevenue';
+    flowInputs[0].lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
+    flowInputs[0].rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
+    flowInputs[0].grandparentRelationshipFieldPath = RollupTestUtils.getRelationshipPath(
+      new List<Schema.SObjectField>{ Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.AnnualRevenue }
+    );
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);

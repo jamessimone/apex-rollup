@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "TODO",
+            "versionName": "First finalized namespaced package version of Apex Rollup using the please__ namespace added",
             "versionNumber": "1.5.27.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -71,7 +71,7 @@
             "default": false,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.5.19-0"
+                    "package": "apex-rollup@1.5.27-0"
                 }
             ]
         },

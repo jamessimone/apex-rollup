@@ -22,6 +22,8 @@ private class RollupIntegrationTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
+  private static final Boolean IS_NAMESPACED_ORG = RollupIntegrationTests.class.getName().contains('.');
+
   @IsTest
   static void shouldWorkUsingCustomFieldWithCmdt() {
     Account prior = [SELECT Id, AnnualRevenue FROM Account];
@@ -36,7 +38,7 @@ private class RollupIntegrationTests {
         RollupFieldOnCalcItem__c = 'Amount',
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = Opportunity.AccountIdText__c.getDescribe().getName(),
-        LookupFieldOnLookupObject__c = Opportunity.AccountIdText__c.getDescribe().getName(),
+        LookupFieldOnLookupObject__c = Account.AccountIdText__c.getDescribe().getName(),
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
         CalcItem__c = 'Opportunity'
@@ -92,6 +94,9 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldSupportCustomObjectsReferencedViaCustomMetadata() {
+    if (IS_NAMESPACED_ORG) {
+      return;
+    }
     Application__c app = new Application__c(Name = 'RollupIntegrationTests App');
     insert app;
 
@@ -498,6 +503,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
+    Rollup.onlyUseMockMetadata = true;
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Custom Object Parent App');
     insert parentApp;
 
@@ -555,7 +561,8 @@ private class RollupIntegrationTests {
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, nonMatchingChild };
     insert appLogs;
 
-    Set<String> childAndParentFieldsToSelect = new Set<String>{ 'Id', 'Name' };
+    Set<String> childrenFieldsToSelect = new Set<String>{ String.valueOf(ApplicationLog__c.Id), String.valueOf(ApplicationLog__c.Name) };
+    Set<String> parentFieldsToSelect = new Set<String>{ 'Id', 'Name' };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000),
       new Rollup__mdt(
@@ -563,8 +570,8 @@ private class RollupIntegrationTests {
           new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
         )
       ),
-      childAndParentFieldsToSelect,
-      childAndParentFieldsToSelect,
+      childrenFieldsToSelect,
+      parentFieldsToSelect,
       Account.SObjectType,
       new Map<Id, SObject>()
     );
@@ -591,6 +598,9 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldNotBlowUpIfGrandparentsDontExist() {
+    if (IS_NAMESPACED_ORG) {
+      return;
+    }
     Application__c app = new Application__c(Name = 'No grandparent app');
     insert app;
 
@@ -672,6 +682,9 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromApex() {
+    if (IS_NAMESPACED_ORG) {
+      return;
+    }
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
@@ -722,6 +735,9 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUpdatedFromFlow() {
+    if (IS_NAMESPACED_ORG) {
+      return;
+    }
     Rollup.onlyUseMockMetadata = true;
     Account greatGrandparent = new Account(Name = 'Great-grandparent Flow');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent Flow');
@@ -773,6 +789,9 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void shouldAllowIntermediateCustomObjectCalcItemWhereClauseFiltering() {
+    if (IS_NAMESPACED_ORG) {
+      return;
+    }
     Rollup.onlyUseMockMetadata = true;
     Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
     insert greatGrandparent;

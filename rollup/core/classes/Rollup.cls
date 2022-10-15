@@ -2611,7 +2611,6 @@ global without sharing virtual class Rollup {
       SObjectField rollupFieldOnCalcItem = init.getSObjectFieldByName(calcItemFields, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
-      // NB - this SHOULD work even for SObjects part of managed packages
       Schema.DescribeSObjectResult lookupDescribe = init.getDescribeFromName(rollupMetadata.LookupObject__c);
       Map<String, SObjectField> lookuopItemFields = lookupDescribe.fields.getMap();
       SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
