@@ -23,6 +23,8 @@ global without sharing virtual class Rollup {
   private static final String CONTROL_ORG_DEFAULTS = 'Org_Defaults';
   @TestVisible
   private static Boolean shouldRefreshCachedControl = false;
+  @TestVisible
+  private static Boolean shouldFlattenAsyncProcesses = false;
 
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
@@ -394,6 +396,10 @@ global without sharing virtual class Rollup {
 
   protected virtual String getHashedContents() {
     return null;
+  }
+
+  protected Boolean getIsRunningAsync() {
+    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
   }
 
   protected virtual String getTypeName() {
@@ -2605,7 +2611,6 @@ global without sharing virtual class Rollup {
       SObjectField rollupFieldOnCalcItem = init.getSObjectFieldByName(calcItemFields, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
-      // NB - this SHOULD work even for SObjects part of managed packages
       Schema.DescribeSObjectResult lookupDescribe = init.getDescribeFromName(rollupMetadata.LookupObject__c);
       Map<String, SObjectField> lookuopItemFields = lookupDescribe.fields.getMap();
       SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.LookupFieldOnLookupObject__c);

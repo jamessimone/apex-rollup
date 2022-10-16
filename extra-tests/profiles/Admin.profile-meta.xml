@@ -67,11 +67,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>Account.DateField__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>Account.MaxAmountRollupSummary__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -83,11 +78,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Account.NameFormula__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Account.NumberofLocations__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -128,16 +118,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>ApplicationLog__c.Object__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Case.DateField__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Contact.Number__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

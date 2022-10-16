@@ -138,7 +138,12 @@ function Generate() {
 
   Write-Host "Creating package version: $currentPackageVersion ..." -ForegroundColor White
 
+  $stopWatch = [system.diagnostics.stopwatch]::startNew()
   $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion --json | ConvertFrom-Json
+  $stopWatch.Stop()
+
+  Write-Host "Packaging took: $($stopWatch.Elapsed.TotalMilliseconds) ms" -ForegroundColor White
+
   $currentPackageVersionId = $createPackageResult.result.SubscriberPackageVersionId
   if ($null -eq $currentPackageVersionId) {
     throw $createPackageResult
@@ -168,9 +173,10 @@ function New-Namespaced-Package {
 
   Copy-Item $sfdxProjectJsonPath $originalProjectJsonBackupPath -Force
   Copy-Item $namespacedProjectJsonPath $sfdxProjectJsonPath -Force
-  mkdir -Path rollup-namespaced/source -Force
-  Copy-Item -Path ./extra-tests -Destination rollup-namespaced/source -Recurse -Force
-  Copy-Item -Path ./rollup -Destination rollup-namespaced/source -Recurse -Force
+  Copy-Item -Path ./extra-tests -Destination rollup-namespaced/source/extra-tests -Recurse -Force
+  Copy-Item -Path ./rollup -Destination rollup-namespaced/source/rollup -Recurse -Force
+  # the class names in a test suite need to have the namespace be appended, which is a waste here
+  # since we aren't using the test suite for anything except local development & testing
   Remove-Item -Path ./rollup-namespaced/source/extra-tests/testSuites -Recurse -Force
 
   # we always want to stay in lock-step with the current versionName between the non-namespace and namespaced versions of the package

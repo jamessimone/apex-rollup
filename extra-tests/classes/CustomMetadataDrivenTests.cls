@@ -8,6 +8,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldRollupFromChildToParentOnInsert() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
@@ -26,6 +29,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldRollupFromChildToParentOnUpdate() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
@@ -47,6 +53,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldRollupTextFromChildToParentOnDelete() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
@@ -68,6 +77,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void regressionUpdatingEvalCriteriaShouldNotExcludeItemOnMultipleUpdatePath() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     // DateField__c rollup relies on NumberField > 0
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
@@ -91,6 +103,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void shouldWorkForParentLevelWhereClausesFromTrigger() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // relies on extra-tests\customMetadata\Rollup.ParentWhereClauseFromTrigger.md-meta.xml
     Rollup.defaultControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
@@ -117,6 +132,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   public static void shouldRecalcRollupToGrandparentWhenChildIsReparented() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // relies on extra-tests\customMetadata\Rollup.AmountFromChildrenToGrandparent.md-meta.xml
     RollupGrandparent__c grandparentOne = new RollupGrandparent__c(AmountfromChildren__c = 0);
     RollupGrandparent__c grandparentTwo = new RollupGrandparent__c(AmountfromChildren__c = 0);
@@ -146,6 +164,9 @@ private class CustomMetadataDrivenTests {
 
   @IsTest
   static void rollupsSucceedDuringFutureMethods() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
 

@@ -1,5 +1,7 @@
 @IsTest
 public class RollupTestUtils {
+  public static final Boolean IS_NAMESPACED_PACKAGE_ORG = RollupTestUtils.class.getName().contains('.');
+
   // from https://salesforce.stackexchange.com/questions/21137/creating-unit-tests-without-interacting-with-the-database-creating-fake-ids
   private static Integer startingNumber = 1;
   public static String createId(Schema.SObjectType sObjectType) {
@@ -12,12 +14,12 @@ public class RollupTestUtils {
 
     Rollup.FlowInput flowInput = new Rollup.FlowInput();
     flowInput.recordsToRollup = records;
-    flowInput.lookupFieldOnCalcItem = 'ParentId';
-    flowInput.lookupFieldOnOpObject = 'Id';
+    flowInput.lookupFieldOnCalcItem = ContactPointAddress.ParentId.getDescribe().getName();
+    flowInput.lookupFieldOnOpObject = Account.Id.getDescribe().getName();
     flowInput.rollupContext = rollupContext;
-    flowInput.rollupFieldOnCalcItem = 'PreferenceRank';
-    flowInput.rollupFieldOnOpObject = 'AnnualRevenue';
-    flowInput.rollupSObjectName = 'Account';
+    flowInput.rollupFieldOnCalcItem = ContactPointAddress.PreferenceRank.getDescribe().getName();
+    flowInput.rollupFieldOnOpObject = Account.AnnualRevenue.getDescribe().getName();
+    flowInput.rollupSObjectName = Account.SObjectType.getDescribe().getName();
     flowInput.rollupOperation = rollupOperation;
     flowInput.splitConcatDelimiterOnCalcItem = false;
 
@@ -60,6 +62,18 @@ public class RollupTestUtils {
     Rollup.DML = mock;
 
     return mock;
+  }
+
+  public static String getRelationshipPath(List<Schema.SObjectField> fieldTokens) {
+    String grandparentPath = '';
+    for (Integer index = 0; index < fieldTokens.size(); index++) {
+      Schema.SObjectField fieldToken = fieldTokens.get(index);
+      grandparentPath +=
+        (fieldToken.getDescribe().isCustom() && index != fieldTokens.size() - 1
+          ? String.valueOf(fieldToken).replace('__c', '__r')
+          : String.valueOf(fieldToken)) + '.';
+    }
+    return grandparentPath.removeEnd('.');
   }
 
   /**

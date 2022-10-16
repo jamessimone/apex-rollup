@@ -47,6 +47,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildren() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
     Account acc = [SELECT Id FROM Account];
     Account secondParent = new Account(Name = 'Second', AnnualRevenue = 5);
     insert secondParent;
@@ -61,6 +62,7 @@ private class RollupFullRecalcTests {
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'First child') };
     insert cpas;
+    Rollup.shouldRefreshCachedControl = true;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     Rollup.FlowInput secondInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'COUNT')[0];
@@ -235,7 +237,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyApex() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
     insert childAccount;
@@ -252,16 +254,18 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Application__c',
+        CalcItem__c = Application__c.SObjectType.getDescribe().getName(),
         LookupObject__c = 'Account',
         RollupToUltimateParent__c = true,
-        LookupFieldOnCalcItem__c = 'ParentApplication__c',
+        LookupFieldOnCalcItem__c = ParentApplication__c.SObjectType.getDescribe().getName(),
         UltimateParentLookup__c = 'ParentId',
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupFieldOnCalcItem__c = 'Engagement_Score__c',
+        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
         LookupFieldOnLookupObject__c = 'Id',
-        GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.AnnualRevenue'
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.AnnualRevenue }
+        )
       )
     };
 
@@ -275,7 +279,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void supportsOneToManyFullRecalcInMiddleOfChain() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account];
     Individual indy = new Individual(LastName = 'Indy');
     insert indy;
@@ -294,14 +298,17 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'Application__c',
+        CalcItem__c = Application__c.SObjectType.getDescribe().getName(),
         LookupObject__c = 'Individual',
-        LookupFieldOnCalcItem__c = 'ParentApplication__c',
+        LookupFieldOnCalcItem__c = ParentApplication__c.SObjectType.getDescribe().getName(),
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
-        RollupFieldOnCalcItem__c = 'Engagement_Score__c',
+        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
         LookupFieldOnLookupObject__c = 'Id',
-        GrandparentRelationshipFieldPath__c = 'ParentApplication__r.Account__r.Contacts.Individual.ConsumerCreditScore',
+        GrandparentRelationshipFieldPath__c = String.valueOf(Application__c.ParentApplication__c).replace('__r', '__c') +
+          '.' +
+          String.valueOf(ParentApplication__c.Account__c).replace('__c', '__r') +
+          '.Contacts.Individual.ConsumerCreditScore',
         OneToManyGrandparentFields__c = 'Contact.AccountId'
       )
     };
@@ -455,7 +462,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void preventsParentRecordResetsWhenControlIsFlagged() {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, ShouldSkipResettingParentFields__c = true);
-
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 75;
     acc.NumberOfEmployees = 15;
@@ -553,7 +559,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyFlow() {
-    Rollup.onlyUseMockMetadata = true;
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
     insert childAccount;
@@ -571,9 +577,11 @@ private class RollupFullRecalcTests {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(apps, 'REFRESH', 'SUM');
     flowInputs[0].ultimateParentLookup = 'ParentId';
     flowInputs[0].rollupToUltimateParent = true;
-    flowInputs[0].lookupFieldOnCalcItem = 'ParentApplication__c';
-    flowInputs[0].rollupFieldOnCalcItem = 'Engagement_Score__c';
-    flowInputs[0].grandparentRelationshipFieldPath = 'ParentApplication__r.Account__r.AnnualRevenue';
+    flowInputs[0].lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
+    flowInputs[0].rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
+    flowInputs[0].grandparentRelationshipFieldPath = RollupTestUtils.getRelationshipPath(
+      new List<Schema.SObjectField>{ Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.AnnualRevenue }
+    );
 
     Test.startTest();
     List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
@@ -1557,6 +1565,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void grandparentRollupsCanUseSingularParentRecalcButton() {
+    Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     RollupGrandparent__c grandparent = new RollupGrandparent__c();
     insert grandparent;
 
@@ -1571,15 +1580,23 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metas = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = 'RollupChild__c',
-        RollupFieldOnCalcItem__c = 'NumberField__c',
-        LookupFieldOnCalcItem__c = 'RollupParent__c',
-        LookupObject__c = 'RollupGrandparent__c',
-        LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'AmountFromChildren__c',
+        CalcItem__c = RollupChild__c.SObjectType.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = RollupChild__c.NumberField__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = RollupChild__c.RollupParent__c.getDescribe().getName(),
+        LookupObject__c = RollupGrandparent__c.SObjectType.getDescribe().getName(),
+        LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.getDescribe().getName(),
+        RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.getDescribe().getName(),
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = ' ||| RollupParent__r.RollupGrandparent__r.Id = \'' + grandparent.Id + '\'',
-        GrandparentRelationshipFieldPath__c = 'RollupParent__r.RollupGrandparent__r.AmountFromChildren__c'
+        CalcItemWhereClause__c = ' ||| ' +
+          RollupTestUtils.getRelationshipPath(
+            new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.Id }
+          ) +
+          ' = \'' +
+          grandparent.Id +
+          '\'',
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.AmountFromChildren__c }
+        )
       )
     };
 
