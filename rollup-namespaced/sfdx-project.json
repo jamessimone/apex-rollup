@@ -3,14 +3,17 @@
         {
             "default": true,
             "package": "apex-rollup-namespaced",
-            "path": "rollup-namespaced/source",
-            "versionName": "First finalized namespaced package version of Apex Rollup using the please__ namespace added",
+            "path": "rollup-namespaced/source/rollup",
+            "versionName": "First finalized namespaced package version of Apex Rollup using the please__ namespace",
             "versionNumber": "1.0.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
                 "path": "rollup-namespaced/source/extra-tests"
             }
+        },
+        {
+            "path": "rollup-namespaced/source/extra-tests"
         }
     ],
     "namespace": "please",
@@ -18,6 +21,6 @@
     "sourceApiVersion": "55.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
-        "apex-rollup-namespaced@1.0.0-0": "04t6g000008b0huAAA"
+        "apex-rollup-namespaced@1.0.0-0": "04t6g000008b0iOAAQ"
     }
 }
