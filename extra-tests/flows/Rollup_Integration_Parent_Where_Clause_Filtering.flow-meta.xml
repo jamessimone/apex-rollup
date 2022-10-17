@@ -85,7 +85,7 @@
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>55.0</apiVersion>
+    <apiVersion>56.0</apiVersion>
     <assignments>
         <name>Add_to_collections</name>
         <label>Add to collections</label>

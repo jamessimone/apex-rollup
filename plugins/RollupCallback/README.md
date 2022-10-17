@@ -43,7 +43,7 @@ export default class RollupChangeNotifier extends LightningElement {
 <!-- in rollupChangeNotifier.js-meta.xml -->
 <?xml version="1.0" encoding="UTF-8"?>
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>55.0</apiVersion>
+    <apiVersion>56.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Rollup Change Notifier</masterLabel>
     <targets>
