@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "First finalized namespaced package version of Apex Rollup using the please__ namespace",
-            "versionNumber": "1.5.27.0",
+            "versionName": "Winter 23 API version upgrade",
+            "versionNumber": "1.5.28.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -83,7 +83,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "55.0",
+    "sourceApiVersion": "56.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
@@ -101,6 +101,7 @@
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.5.25-0": "04t6g000008b0a9AAA",
         "apex-rollup@1.5.26-0": "04t6g000008b0ceAAA",
-        "apex-rollup@1.5.27-0": "04t6g000008b0iTAAQ"
+        "apex-rollup@1.5.27-0": "04t6g000008b0iTAAQ",
+        "apex-rollup@1.5.28-0": "04t6g000008b0inAAA"
     }
 }
