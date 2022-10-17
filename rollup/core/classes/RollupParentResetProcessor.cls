@@ -69,7 +69,8 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     for (SObject parentItem : parentItems) {
       for (Rollup__mdt rollupMeta : this.rollupMetas) {
         if (this.parentRollupFieldHasBeenReset(rollupMeta, parentItem) == false && parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)) {
-          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, null);
+          Object resetVal = getDefaultValue(rollupMeta);
+          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, resetVal);
         }
       }
     }
@@ -107,11 +108,27 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
         SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
         if (token?.getDescribe().isFilterable() == true) {
           isValidRun = isValidRun || true;
-          additionalFilters += meta.RollupFieldOnLookupObject__c + (' != null' + orClause);
+          Object searchObject = getDefaultValue(meta);
+          String searchValue = String.valueOf(searchObject);
+          if (searchObject instanceof String) {
+            searchValue = '\'' + searchValue + '\'';
+          }
+
+          additionalFilters += meta.RollupFieldOnLookupObject__c + (' != ' + searchValue + orClause);
         }
       }
     }
 
     return isValidRun ? localQueryString + '\nAND (' + additionalFilters.removeEnd(orClause) + ')' : localQueryString;
+  }
+
+  private static Object getDefaultValue(Rollup__mdt meta) {
+    Object resetVal = null;
+    if (meta.FullRecalculationDefaultNumberValue__c != null) {
+      resetVal = meta.FullRecalculationDefaultNumberValue__c;
+    } else if (meta.FullRecalculationDefaultStringValue__c != null) {
+      resetVal = meta.FullRecalculationDefaultStringValue__c;
+    }
+    return resetVal;
   }
 }

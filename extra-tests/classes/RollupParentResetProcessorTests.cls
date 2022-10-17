@@ -111,4 +111,25 @@ private class RollupParentResetProcessorTests {
 
     System.assertEquals(null, ex, 'Should not fail when different parent fields present');
   }
+
+  @IsTest
+  static void usesOverrideValueWhenApplicable() {
+    insert new List<SObject>{ new Account(Name = 'Account With Null'), new Contact(LastName = 'Contact With Null') };
+    RollupParentResetProcessor processor = new RollupParentResetProcessor(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(RollupFieldOnLookupObject__c = 'AnnualRevenue', LookupObject__c = 'Account', FullRecalculationDefaultNumberValue__c = 0),
+        new Rollup__mdt(RollupFieldOnLookupObject__c = 'AccountNumber', LookupObject__c = 'Account', FullRecalculationDefaultStringValue__c = 'a')
+      },
+      Account.SObjectType,
+      'SELECT Id\nFROM Account WHERE Id != null',
+      new Set<String>(),
+      null
+    );
+
+    processor.runCalc();
+
+    Account resetAccount = [SELECT AnnualRevenue, AccountNumber FROM Account];
+    System.assertEquals(0, resetAccount.AnnualRevenue);
+    System.assertEquals('a', resetAccount.AccountNumber);
+  }
 }
