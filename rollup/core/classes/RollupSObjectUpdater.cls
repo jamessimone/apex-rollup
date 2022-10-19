@@ -142,9 +142,16 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void winnowRecords(List<SObject> records) {
+    List<String> baseFields = new List<String>{ 'Id' };
+    if (RollupCurrencyInfo.isMultiCurrency()) {
+      baseFields.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
+    }
     for (Integer index = records.size() - 1; index >= 0; index--) {
       SObject record = records.get(index);
-      if (record.getPopulatedFieldsAsMap().size() == 1 && record.get('Id') != null) {
+      Map<String, Object> populatedFields = record.getPopulatedFieldsAsMap();
+      if (populatedFields.size() == 1 && record.get('Id') != null) {
+        records.remove(index);
+      } else if (RollupCurrencyInfo.isMultiCurrency() && populatedFields.size() == 2 && populatedFields.keySet().containsAll(baseFields)) {
         records.remove(index);
       }
     }

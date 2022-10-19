@@ -74,15 +74,42 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(String.valueOf(blobValue), opp.Description);
   }
 
-  @SuppressWarnings('PMD.EmptyWhileStmt')
   @IsTest
   static void doesNotUpdateRecordsWhichOnlyContainId() {
     Account acc = new Account(Name = 'Should Not Be Updated');
     insert acc;
-
     acc = [SELECT Id, LastModifiedDate FROM Account];
+    waitSeconds(1);
+
+    new RollupSObjectUpdater().doUpdate(new List<SObject>{ new Account(Id = acc.Id) });
+
+    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
+    System.assertEquals(acc, updatedAccount, 'Last modified date should not have updated if only Id was passed');
+  }
+
+  @IsTest
+  static void multiCurrencyOnlyUpdateAbortsEarly() {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
+      return;
+    }
+
+    Account acc = new Account(Name = 'Should Not Be Updated');
+    insert acc;
+    acc = [SELECT Id, LastModifiedDate FROM Account];
+    waitSeconds(1);
+    Account toUpdate = new Account(Id = acc.Id);
+    toUpdate.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, 'USD');
+
+    new RollupSObjectUpdater().doUpdate(new List<SObject>{ toUpdate });
+
+    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
+    System.assertEquals(acc, updatedAccount);
+  }
+
+  @SuppressWarnings('PMD.EmptyWhileStmt')
+  private static void waitSeconds(Integer secondAmount) {
     Datetime nowish = System.now();
-    while (System.now() < nowish.addSeconds(1)) {
+    while (System.now() < nowish.addSeconds(secondAmount)) {
       // let's waste some time together!
       // we could later compare the hashCode() of
       // the SObjects to ensure no update was made, but
@@ -90,11 +117,6 @@ public class RollupSObjectUpdaterTests {
       // happened so quick that a change in seconds wasn't registered
       // and the hashCode for SObjects is made up of all the selected fields
     }
-
-    new RollupSObjectUpdater().doUpdate(new List<SObject>{ new Account(Id = acc.Id) });
-
-    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
-    System.assertEquals(acc, updatedAccount, 'Last modified date should not have updated if only Id was passed');
   }
 
   public class DispatcherMock implements RollupSObjectUpdater.IDispatcher {
