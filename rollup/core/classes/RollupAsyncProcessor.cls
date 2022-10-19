@@ -637,7 +637,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
     switch on roll.invokePoint {
       when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
-        return false;
+        // if we aren't batching, safe to assume a full recalc has already pulled the rest of the records back
+        return System.isBatch();
       }
       when else {
         return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;

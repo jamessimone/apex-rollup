@@ -1768,7 +1768,7 @@ global without sharing virtual class Rollup {
     }
     private Boolean hasExceededQueryRowLimit {
       get {
-        return this.control?.MaxLookupRowsBeforeBatching__c < Limits.getQueryRows();
+        return this.control?.MaxQueryRows__c < Limits.getQueryRows();
       }
     }
     private Boolean hasExceededHeapSizeLimit {
@@ -2913,8 +2913,9 @@ global without sharing virtual class Rollup {
           BatchChunkSize__c = 2000,
           IsMergeReparentingEnabled__c = true,
           IsRollupLoggingEnabled__c = false,
-          MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
+          MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
           MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
+          MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
           MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
           MaxRollupRetries__c = 10,
           ReplaceCalcItemsAsyncWhenOverCount__c = 1,
