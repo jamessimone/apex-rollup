@@ -1,186 +1,188 @@
 <template>
   <div class="slds-box white">
-    <div class="slds-m-bottom_small">After entering the below information, click the submit button to start up your Rollup.</div>
-    <div class="slds-m-bottom_small">
-      Alternatively, you can select a single Child Object based off of your CMDT rollup records and have the recalculation run for all CMDT associated with that
-      SObject type:
-    </div>
-    <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
-    <lightning-layout vertical-align="center">
-      <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
-        <template if:true={isCMDTRecalc}>
-          <lightning-combobox
-            label="Select Child Object"
-            name="Select Child Object"
-            onchange={handleComboChange}
-            options={rollupMetadataOptions}
-            value={selectedMetadata}
-          ></lightning-combobox>
-          <template if:true={selectedMetadataCMDTRecords}>
-            <lightning-datatable
-              class="slds-m-top_large"
-              columns={cmdtColumns}
-              data-id="datatable"
-              data={selectedMetadataCMDTRecords}
-              key-field="DeveloperName"
-              max-row-selection={maxRowSelection}
-              onrowselection={handleRowSelect}
-              show-row-number-column
-            >
-            </lightning-datatable>
-          </template>
-        </template>
-        <template if:false={isCMDTRecalc}>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="CalcItem__c"
-            label="Child Object SObject API Name"
-            name="CalcItem__c"
-            oncommit={handleChange}
-            required
-            type="text"
-          >
-          </lightning-input>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="RollupFieldOnCalcItem__c"
-            label="Child Object Calc Field"
-            name="RollupFieldOnCalcItem__c"
-            oncommit={handleChange}
-            required
-            type="text"
-          >
-          </lightning-input>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="LookupFieldOnCalcItem__c"
-            label="Child Object Lookup Field"
-            name="LookupFieldOnCalcItem__c"
-            oncommit={handleChange}
-            required
-            type="text"
-          >
-          </lightning-input>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="LookupObject__c"
-            label="Rollup Object API Name"
-            name="LookupObject__c"
-            oncommit={handleChange}
-            required
-            type="text"
-          >
-          </lightning-input>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="RollupFieldOnLookupObject__c"
-            label="Rollup Object Calc Field"
-            name="RollupFieldOnLookupObject__c"
-            oncommit={handleChange}
-            required
-            type="text"
-          >
-          </lightning-input>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="LookupFieldOnLookupObject__c"
-            label="Rollup Object Lookup Field"
-            name="LookupFieldOnLookupObject__c"
-            oncommit={handleChange}
-            required
-            type="text"
-          >
-          </lightning-input>
-          <div>
-            <lightning-combobox
-              class="slds-col slds-form-element slds-form-element_horizontal"
-              data-id="RollupOperation__c"
-              label="Rollup Operation Name"
-              name="RollupOperation__c"
-              onchange={handleChange}
-              options={rollupOperationValues}
-              required
-              value={rollupOperation}
-            ></lightning-combobox>
-            <template if:true={isOrderByRollup}>
-              <div>
-                <c-rollup-order-by data-id="RollupOrderBys__r"></c-rollup-order-by>
-              </div>
-            </template>
-          </div>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="LimitAmount__c"
-            label="Limit Amount (Optional) - you can add Order By info optionally after entering this, as well"
-            min="1"
-            name="LimitAmount__c"
-            oncommit={handleChange}
-            type="number"
-          >
-          </lightning-input>
-          <lightning-input
-            class="slds-col slds-form-element slds-form-element_horizontal"
-            data-id="ConcatDelimiter__c"
-            label="Concat Delimiter (Optional)"
-            name="ConcatDelimiter__c"
-            oncommit={handleChange}
-            type="text"
-          >
-          </lightning-input>
-          <div class="slds-grid">
-            <lightning-input
-              class="slds-col slds-form-element slds-form-element_horizontal"
-              data-id="GrandparentRelationshipFieldPath__c"
-              label="Grandparent Relationship Field Path (optional)"
-              name="GrandparentRelationshipFieldPath__c"
-              oncommit={handleChange}
-              type="text"
-            >
-            </lightning-input>
-            <lightning-input
-              class="slds-col slds-form-element slds-form-element_horizontal"
-              data-id="OneToManyGrandparentFields__c"
-              label="One To Many Grandparent Fields (optional)"
-              name="OneToManyGrandparentFields__c"
-              oncommit={handleChange}
-              type="text"
-            >
-            </lightning-input>
-            <lightning-helptext
-              content="Use ObjectApiName.FieldName (or ObjectApiName__c.CustomField__c for custom objects and fields). Can be a comma-separated list for multiple junction object hops"
-            ></lightning-helptext>
-          </div>
-          <div class="slds-grid">
-            <lightning-input
-              class="slds-col slds-form-element slds-form-element_horizontal slds-m-vertical_small"
-              data-id="SplitConcatDelimiterOnCalcItem__c"
-              label="Split Concat Delimiter On Child Object, Too? (Optional)"
-              name="SplitConcatDelimiterOnCalcItem__c"
-              oncommit={handleChange}
-              type="checkbox"
-            >
-            </lightning-input>
-            <lightning-helptext content="Only include the split option for CONCAT_DISTINCT rollups"></lightning-helptext>
-          </div>
-          <div class="slds-grid">
-            <lightning-textarea
-              class="slds-col slds-form-element slds-form-element_horizontal"
-              label="SOQL Where Clause To Exclude Calc Items (Optional)"
-              name="CalcItemWhereClause__c"
-              onchange={handleChange}
-            ></lightning-textarea>
-            <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
-          </div>
-        </template>
-        <lightning-button class="slds-col slds-m-top_small" label="Start rollup!" onclick={handleSubmit} variant="brand"></lightning-button>
+    <section class="slds-is-relative">
+      <div class="slds-m-bottom_small">After entering the below information, click the submit button to start up your Rollup.</div>
+      <div class="slds-m-bottom_small">
+        Alternatively, you can select a single Child Object based off of your CMDT rollup records and have the recalculation run for all CMDT associated with
+        that SObject type:
       </div>
-    </lightning-layout>
-    <template if:true={isRollingUp}>
-      <div>Rollup processing ...</div>
-      <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
-    </template>
+      <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
+      <lightning-layout vertical-align="center">
+        <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
+          <template if:true={isCMDTRecalc}>
+            <lightning-combobox
+              label="Select Child Object"
+              name="Select Child Object"
+              onchange={handleComboChange}
+              options={rollupMetadataOptions}
+              value={selectedMetadata}
+            ></lightning-combobox>
+            <template if:true={selectedMetadataCMDTRecords}>
+              <lightning-datatable
+                class="slds-m-top_large"
+                columns={cmdtColumns}
+                data-id="datatable"
+                data={selectedMetadataCMDTRecords}
+                key-field="DeveloperName"
+                max-row-selection={maxRowSelection}
+                onrowselection={handleRowSelect}
+                show-row-number-column
+              >
+              </lightning-datatable>
+            </template>
+          </template>
+          <template if:false={isCMDTRecalc}>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="CalcItem__c"
+              label="Child Object SObject API Name"
+              name="CalcItem__c"
+              oncommit={handleChange}
+              required
+              type="text"
+            >
+            </lightning-input>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="RollupFieldOnCalcItem__c"
+              label="Child Object Calc Field"
+              name="RollupFieldOnCalcItem__c"
+              oncommit={handleChange}
+              required
+              type="text"
+            >
+            </lightning-input>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="LookupFieldOnCalcItem__c"
+              label="Child Object Lookup Field"
+              name="LookupFieldOnCalcItem__c"
+              oncommit={handleChange}
+              required
+              type="text"
+            >
+            </lightning-input>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="LookupObject__c"
+              label="Rollup Object API Name"
+              name="LookupObject__c"
+              oncommit={handleChange}
+              required
+              type="text"
+            >
+            </lightning-input>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="RollupFieldOnLookupObject__c"
+              label="Rollup Object Calc Field"
+              name="RollupFieldOnLookupObject__c"
+              oncommit={handleChange}
+              required
+              type="text"
+            >
+            </lightning-input>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="LookupFieldOnLookupObject__c"
+              label="Rollup Object Lookup Field"
+              name="LookupFieldOnLookupObject__c"
+              oncommit={handleChange}
+              required
+              type="text"
+            >
+            </lightning-input>
+            <div>
+              <lightning-combobox
+                class="slds-col slds-form-element slds-form-element_horizontal"
+                data-id="RollupOperation__c"
+                label="Rollup Operation Name"
+                name="RollupOperation__c"
+                onchange={handleChange}
+                options={rollupOperationValues}
+                required
+                value={rollupOperation}
+              ></lightning-combobox>
+              <template if:true={isOrderByRollup}>
+                <div>
+                  <c-rollup-order-by data-id="RollupOrderBys__r"></c-rollup-order-by>
+                </div>
+              </template>
+            </div>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="LimitAmount__c"
+              label="Limit Amount (Optional) - you can add Order By info optionally after entering this, as well"
+              min="1"
+              name="LimitAmount__c"
+              oncommit={handleChange}
+              type="number"
+            >
+            </lightning-input>
+            <lightning-input
+              class="slds-col slds-form-element slds-form-element_horizontal"
+              data-id="ConcatDelimiter__c"
+              label="Concat Delimiter (Optional)"
+              name="ConcatDelimiter__c"
+              oncommit={handleChange}
+              type="text"
+            >
+            </lightning-input>
+            <div class="slds-grid">
+              <lightning-input
+                class="slds-col slds-form-element slds-form-element_horizontal"
+                data-id="GrandparentRelationshipFieldPath__c"
+                label="Grandparent Relationship Field Path (optional)"
+                name="GrandparentRelationshipFieldPath__c"
+                oncommit={handleChange}
+                type="text"
+              >
+              </lightning-input>
+              <lightning-input
+                class="slds-col slds-form-element slds-form-element_horizontal"
+                data-id="OneToManyGrandparentFields__c"
+                label="One To Many Grandparent Fields (optional)"
+                name="OneToManyGrandparentFields__c"
+                oncommit={handleChange}
+                type="text"
+              >
+              </lightning-input>
+              <lightning-helptext
+                content="Use ObjectApiName.FieldName (or ObjectApiName__c.CustomField__c for custom objects and fields). Can be a comma-separated list for multiple junction object hops"
+              ></lightning-helptext>
+            </div>
+            <div class="slds-grid">
+              <lightning-input
+                class="slds-col slds-form-element slds-form-element_horizontal slds-m-vertical_small"
+                data-id="SplitConcatDelimiterOnCalcItem__c"
+                label="Split Concat Delimiter On Child Object, Too? (Optional)"
+                name="SplitConcatDelimiterOnCalcItem__c"
+                oncommit={handleChange}
+                type="checkbox"
+              >
+              </lightning-input>
+              <lightning-helptext content="Only include the split option for CONCAT_DISTINCT rollups"></lightning-helptext>
+            </div>
+            <div class="slds-grid">
+              <lightning-textarea
+                class="slds-col slds-form-element slds-form-element_horizontal"
+                label="SOQL Where Clause To Exclude Calc Items (Optional)"
+                name="CalcItemWhereClause__c"
+                onchange={handleChange}
+              ></lightning-textarea>
+              <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
+            </div>
+          </template>
+          <lightning-button class="slds-col slds-m-top_small" label="Start rollup!" onclick={handleSubmit} variant="brand"></lightning-button>
+        </div>
+      </lightning-layout>
+      <template if:true={isRollingUp}>
+        <div>Rollup processing ...</div>
+        <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
+      </template>
+    </section>
     <template if:true={rollupStatus}>
-      <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus}</b></div>
+      <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus} for job: {jobIdToDisplay}</b></div>
     </template>
     <template if:true={error}>
       <div class="slds-m-top_small" data-id="rollupError">There was an error performing your rollup: {error}</div>

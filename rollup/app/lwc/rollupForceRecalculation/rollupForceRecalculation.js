@@ -22,7 +22,7 @@ export default class RollupForceRecalculation extends LightningElement {
     CalcItemWhereClause__c: '',
     ConcatDelimiter__c: '',
     SplitConcatDelimiterOnCalcItem__c: false,
-    LimitAmount__c: 0
+    LimitAmount__c: null
   };
 
   @api isCMDTRecalc = false;
@@ -39,6 +39,7 @@ export default class RollupForceRecalculation extends LightningElement {
   isRollingUp = false;
   isOrderByRollup = false;
   rollupStatus;
+  jobIdToDisplay;
   error = '';
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted', NO_PROCESS_ID];
@@ -90,7 +91,7 @@ export default class RollupForceRecalculation extends LightningElement {
     this.isOrderByRollup =
       this.rollupOperation.indexOf('FIRST') !== -1 ||
       this.rollupOperation.indexOf('LAST') !== -1 ||
-      this.metadata.LimitAmount__c !== 0 ||
+      this.metadata.LimitAmount__c ||
       this.rollupOperation.indexOf('MOST') !== -1;
   }
 
@@ -156,6 +157,7 @@ export default class RollupForceRecalculation extends LightningElement {
     }
     this.isRollingUp = true;
 
+    this.jobIdToDisplay = jobId;
     this.rollupStatus = await getBatchRollupStatus({ jobId });
 
     // some arbitrary wait time - for a huge batch job, it could take ages to resolve
