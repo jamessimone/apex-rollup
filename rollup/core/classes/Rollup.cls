@@ -241,13 +241,17 @@ global without sharing virtual class Rollup {
   }
 
   public class CalcItemBag {
-    private final Map<Id, SObject> idToCalcItem = new Map<Id, SObject>();
+    private final Map<String, SObject> idToCalcItem = new Map<String, SObject>();
     private Boolean hasBeenCleared = false;
     public Boolean hasQueriedForAdditionalItems = false;
     public CalcItemBag(List<SObject> calcItems) {
       for (SObject calcItem : calcItems) {
         this.add(calcItem);
       }
+    }
+
+    public Set<String> getAllIds() {
+      return this.idToCalcItem.keySet();
     }
 
     public List<SObject> getAll() {
@@ -1755,52 +1759,8 @@ global without sharing virtual class Rollup {
     return matchingMetadata;
   }
 
-  private class LimitTester {
-    private final transient RollupControl__mdt control;
-    public LimitTester(RollupControl__mdt control) {
-      this.control = control;
-    }
-
-    private Boolean hasExceededQueryNumberLimit {
-      get {
-        return this.control?.MaxNumberOfQueries__c < Limits.getQueries();
-      }
-    }
-    private Boolean hasExceededQueryRowLimit {
-      get {
-        return this.control?.MaxQueryRows__c < Limits.getQueryRows();
-      }
-    }
-    private Boolean hasExceededHeapSizeLimit {
-      get {
-        return (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
-      }
-    }
-    private Boolean hasExceededDMLRowLimit {
-      get {
-        return this.control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
-      }
-    }
-    private Boolean hasExceededCPUTimeLimit {
-      get {
-        Integer intervalTillTimeout = ((System.isBatch() || System.isQueueable()) && Test.isRunningTest() == false) ? 14000 : 3000;
-        return (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
-      }
-    }
-
-    public transient Boolean hasExceededLimits {
-      get {
-        return this.hasExceededQueryNumberLimit ||
-          this.hasExceededQueryRowLimit ||
-          this.hasExceededHeapSizeLimit ||
-          this.hasExceededDMLRowLimit ||
-          this.hasExceededCPUTimeLimit;
-      }
-    }
-  }
-
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
-    LimitTester limitTester = new LimitTester(control);
+    RollupLimits.Tester limitTester = new RollupLimits.Tester(control);
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);

@@ -1,5 +1,5 @@
 public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful {
-  private final Map<String, CalcItemBag> statefulLookupToCalcItems;
+  private final Map<String, CalcItemBag> statefulLookupToCalcItems = new Map<String, CalcItemBag>();
 
   public RollupFullBatchRecalculator(
     String queryString,
@@ -10,7 +10,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupFullRecalcProcessor postProcessor
   ) {
     super(queryString, invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
-    this.statefulLookupToCalcItems = new Map<String, CalcItemBag>();
   }
 
   public override Database.QueryLocator start(Database.BatchableContext bc) {
@@ -29,7 +28,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.getInnerExecute(calcItems)?.runCalc();
+    this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this)?.runCalc();
     RollupLogger.Instance.save();
   }
 
@@ -48,11 +47,19 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     return this.startBatchProcessor();
   }
 
+  protected override Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
+    if (this.statefulLookupToCalcItems.isEmpty() == false) {
+      return this.statefulLookupToCalcItems;
+    }
+    return super.getCalcItemsByLookupField(roll, uniqueLookupObjectFields);
+  }
+
   protected override void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-      if (this.statefulLookupToCalcItems.containsKey(lookupKey)) {
+      CalcItemBag potentiallyStatefulBag = this.statefulLookupToCalcItems.get(lookupKey);
+      if (potentiallyStatefulBag != null && potentiallyStatefulBag.hasQueriedForAdditionalItems) {
         lookupToCalcItems.put(lookupKey, this.statefulLookupToCalcItems.get(lookupKey));
       } else {
         lookupKeysThatNeedFilling.put(lookupKey, bag);
@@ -67,9 +74,5 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
       lookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);
     }
-  }
-
-  private RollupAsyncProcessor getInnerExecute(List<SObject> calcItems) {
-    return this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this);
   }
 }
