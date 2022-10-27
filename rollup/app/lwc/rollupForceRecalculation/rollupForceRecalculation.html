@@ -6,7 +6,9 @@
         Alternatively, you can select a single Child Object based off of your CMDT rollup records and have the recalculation run for all CMDT associated with
         that SObject type:
       </div>
-      <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
+      <template if:true={canDisplayCmdtToggle}>
+        <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
+      </template>
       <lightning-layout vertical-align="center">
         <div class="slds-grid slds-grid_vertical slds-gutters_small slds-grid_align-center" role="list">
           <template if:true={isCMDTRecalc}>

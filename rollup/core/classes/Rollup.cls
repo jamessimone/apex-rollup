@@ -437,6 +437,11 @@ global without sharing virtual class Rollup {
    */
 
   @AuraEnabled(cacheable=true)
+  global static String getNamespaceSafeRollupOperationField() {
+    return Rollup__mdt.SObjectType.getDescribe().getName() + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
+  }
+
+  @AuraEnabled(cacheable=true)
   global static Map<String, List<Rollup__mdt>> getRollupMetadataByCalcItem() {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = new Map<String, List<Rollup__mdt>>();
     List<Rollup__mdt> localMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);

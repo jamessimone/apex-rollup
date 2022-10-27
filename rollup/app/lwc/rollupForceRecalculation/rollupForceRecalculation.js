@@ -1,4 +1,5 @@
 import { api, LightningElement, wire } from 'lwc';
+import getNamespaceSafeRollupOperationField from '@salesforce/apex/Rollup.getNamespaceSafeRollupOperationField';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
@@ -7,25 +8,11 @@ import { getObjectInfo, getPicklistValues } from 'lightning/uiObjectInfoApi';
 
 import { getRollupMetadata } from 'c/rollupUtils';
 
-const NO_PROCESS_ID = 'No process Id';
 const MAX_ROW_SELECTION = 200;
 
 export default class RollupForceRecalculation extends LightningElement {
-  metadata = {
-    RollupFieldOnCalcItem__c: '',
-    LookupFieldOnCalcItem__c: '',
-    LookupFieldOnLookupObject__c: '',
-    RollupFieldOnLookupObject__c: '',
-    LookupObject__c: '',
-    CalcItem__c: '',
-    RollupOperation__c: '',
-    CalcItemWhereClause__c: '',
-    ConcatDelimiter__c: '',
-    SplitConcatDelimiterOnCalcItem__c: false,
-    LimitAmount__c: null
-  };
-
-  @api isCMDTRecalc = false;
+  @api
+  isCMDTRecalc = false;
 
   selectedRows = [];
   rollupMetadataOptions = [];
@@ -41,26 +28,70 @@ export default class RollupForceRecalculation extends LightningElement {
   rollupStatus;
   jobIdToDisplay;
   error = '';
+  canDisplayCmdtToggle = false;
 
-  _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted', NO_PROCESS_ID];
+  _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _localMetadata = {};
+  _rollupOperationFieldName = 'RollupOperation__c';
   _cmdtFieldNames = [
     'MasterLabel',
     'DeveloperName',
-    'RollupOperation__c',
+    this._rollupOperationFieldName,
     'RollupFieldOnCalcItem__c',
     'LookupFieldOnCalcItem__c',
     'LookupFieldOnLookupObject__c',
     'RollupFieldOnLookupObject__c',
     'LookupObject__c'
   ];
+  _namespaceSafeRollupOperationField = '';
+  _metadata = {
+    RollupFieldOnCalcItem__c: '',
+    LookupFieldOnCalcItem__c: '',
+    LookupFieldOnLookupObject__c: '',
+    RollupFieldOnLookupObject__c: '',
+    LookupObject__c: '',
+    CalcItem__c: '',
+    RollupOperation__c: '',
+    CalcItemWhereClause__c: '',
+    ConcatDelimiter__c: '',
+    SplitConcatDelimiterOnCalcItem__c: false,
+    LimitAmount__c: null
+  };
+
+  get namespaceName() {
+    const splitForUnderscores = this._namespaceSafeObjectName.split('__');
+    return splitForUnderscores.length > 2 ? splitForUnderscores[0] + '__' : '';
+  }
+
+  get rollupOperation() {
+    return this._metadata[this._getNamespacedFieldName(this._rollupOperationFieldName)] || '';
+  }
+  set rollupOperation(value) {
+    this._setNamespaceSafeMetadata(this._rollupOperationFieldName, value);
+  }
+
+  // Technically each of these only requires a getter
+  // but in order to be used as reactive wire props, a setter is also needed
+  get _namespaceSafeRollupOperation() {
+    return this._namespaceSafeRollupOperationField;
+  }
+  set _namespaceSafeRollupOperation(value) {
+    this._namespaceSafeRollupOperationField = value;
+  }
+
+  get _namespaceSafeObjectName() {
+    return this._namespaceSafeRollupOperationField.split('.')[0];
+  }
+  set _namespaceSafeObjectName(value) {
+    this._namespaceSafeRollupOperationField = value;
+  }
 
   async connectedCallback() {
     document.title = 'Recalculate Rollup';
-    await this._fetchAvailableCMDT();
+    await Promise.all([this._fetchAvailableCMDT(), this._getNamespaceRollupInfo()]);
   }
 
-  @wire(getObjectInfo, { objectApiName: 'Rollup__mdt' })
+  @wire(getObjectInfo, { objectApiName: '$_namespaceSafeObjectName' })
   getCMDTObjectInfo({ error, data }) {
     if (data) {
       this._cmdtFieldNames.forEach(fieldName => {
@@ -71,7 +102,7 @@ export default class RollupForceRecalculation extends LightningElement {
     }
   }
 
-  @wire(getPicklistValues, { recordTypeId: '012000000000000AAA', fieldApiName: 'Rollup__mdt.RollupOperation__c' })
+  @wire(getPicklistValues, { recordTypeId: '012000000000000AAA', fieldApiName: '$_namespaceSafeRollupOperationField' })
   getRollupOperationValues({ error, data }) {
     if (data) {
       this.rollupOperationValues = data.values;
@@ -87,15 +118,17 @@ export default class RollupForceRecalculation extends LightningElement {
 
   handleChange(event) {
     const value = event.detail ? event.detail.value : event.target.value;
-    this.metadata[event.target.name] = event.target.name === 'LimitAmount__c' ? Number(value) : value;
+    const limitAmountWithoutNamespace = 'LimitAmount__c';
+    this._setNamespaceSafeMetadata(event.target.name, event.target.name === limitAmountWithoutNamespace ? Number(value) : value);
     this.isOrderByRollup =
       this.rollupOperation.indexOf('FIRST') !== -1 ||
       this.rollupOperation.indexOf('LAST') !== -1 ||
-      this.metadata.LimitAmount__c ||
+      this._getNamespaceSafeFieldValue(limitAmountWithoutNamespace) ||
       this.rollupOperation.indexOf('MOST') !== -1;
   }
 
   handleToggle() {
+    this.jobIdToDisplay = null;
     this.rollupStatus = null;
     this.rollupOperation = null;
     this.isCMDTRecalc = !this.isCMDTRecalc;
@@ -106,19 +139,23 @@ export default class RollupForceRecalculation extends LightningElement {
     this.selectedRows = event.detail.selectedRows;
   }
 
-  get rollupOperation() {
-    return this.metadata.RollupOperation__c || '';
-  }
-  set rollupOperation(value) {
-    this.metadata.RollupOperation__c = value;
-  }
-
   async _fetchAvailableCMDT() {
     this._localMetadata = await getRollupMetadata();
 
     Object.keys(this._localMetadata).forEach(localMeta => {
+      if (!this.canDisplayCmdtToggle) {
+        this.canDisplayCmdtToggle = true;
+      }
       this.rollupMetadataOptions.push({ label: localMeta, value: localMeta });
     });
+  }
+
+  async _getNamespaceRollupInfo() {
+    this._namespaceSafeRollupOperation = await getNamespaceSafeRollupOperationField();
+    if (this.namespaceName) {
+      this._metadata = Object.assign({}, ...Object.keys(this._metadata).map(key => ({ [this.namespaceName + key]: this._metadata[key] })));
+      this._cmdtFieldNames = this._cmdtFieldNames.map(fieldName => this._getNamespacedFieldName(fieldName));
+    }
   }
 
   async handleSubmit(event) {
@@ -137,9 +174,9 @@ export default class RollupForceRecalculation extends LightningElement {
         this._getMetadataWithChildrenRecords(localMetas);
         jobId = await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_FULL_RECALC_LWC' });
       } else {
-        this._getMetadataWithChildrenRecords([this.metadata]);
+        this._getMetadataWithChildrenRecords([this._metadata]);
         jobId = await performSerializedFullRecalculation({
-          metadata: JSON.stringify(this.metadata)
+          metadata: JSON.stringify(this._metadata)
         });
       }
       await this._getBatchJobStatus(jobId);
@@ -151,8 +188,8 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   async _getBatchJobStatus(jobId) {
-    if (!jobId || this._resolvedBatchStatuses.includes(jobId)) {
-      this.rollupStatus = jobId;
+    if (!jobId) {
+      this.rollupStatus = 'Job failed to enqueue, check logs for more info';
       return Promise.resolve();
     }
     this.isRollingUp = true;
@@ -163,7 +200,7 @@ export default class RollupForceRecalculation extends LightningElement {
     // some arbitrary wait time - for a huge batch job, it could take ages to resolve
     const statusPromise = new Promise(resolve => {
       let timeoutId;
-      if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false) {
+      if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false && this._validateAsyncJob(jobId)) {
         timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), 3000);
       } else {
         this.isRollingUp = false;
@@ -185,10 +222,11 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   _getMetadataWithChildrenRecords(metadatas) {
-    for (const metadata of metadatas) {
+    const rollupOrderByFieldName = this._getNamespacedFieldName(`RollupOrderBys__r`);
+    for (const _metadata of metadatas) {
       let children;
       if (this.isCMDTRecalc) {
-        children = metadata.RollupOrderBys__r != null ? metadata.RollupOrderBys__r : children;
+        children = _metadata[rollupOrderByFieldName] != null ? _metadata[rollupOrderByFieldName] : children;
       } else {
         const possibleOrderByComponent = this.template.querySelector('c-rollup-order-by');
         if (possibleOrderByComponent) {
@@ -196,8 +234,29 @@ export default class RollupForceRecalculation extends LightningElement {
         }
       }
       if (children && !children.totalSize) {
-        metadata.RollupOrderBys__r = { totalSize: children?.length, done: true, records: children };
+        _metadata[rollupOrderByFieldName] = { totalSize: children?.length, done: true, records: children };
       }
     }
+  }
+
+  _validateAsyncJob(val) {
+    const isValidAsyncJob = val?.slice(0, 3) === '707';
+    if (!isValidAsyncJob) {
+      this.jobIdToDisplay = 'no job Id';
+      this.rollupStatus = val;
+    }
+    return isValidAsyncJob;
+  }
+
+  _getNamespaceSafeFieldValue(fieldName) {
+    return this._metadata[this._getNamespacedFieldName(fieldName)];
+  }
+
+  _setNamespaceSafeMetadata(fieldName, value) {
+    this._metadata[this._getNamespacedFieldName(fieldName)] = value;
+  }
+
+  _getNamespacedFieldName(fieldName) {
+    return this.namespaceName + fieldName;
   }
 }
