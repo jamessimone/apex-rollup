@@ -265,6 +265,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     if (logMessage != null) {
       RollupLogger.Instance.log(logMessage, LoggingLevel.DEBUG);
+      rollupProcessId = logMessage;
     }
     RollupLogger.Instance.save();
     return rollupProcessId;
@@ -497,7 +498,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else {
         outstandingItemCount = Database.countQuery(countQuery);
       }
-      remainingQueryRowsLeft = new RollupLimits.Tester(rollup.rollupControl).getRemainingQueryRows();
+      remainingQueryRowsLeft = new RollupLimits.Tester(rollup.rollupControl, this.getIsRunningAsync()).getRemainingQueryRows();
       shouldLimitCalcItemQuery = outstandingItemCount >= remainingQueryRowsLeft;
 
       if (shouldLimitCalcItemQuery) {

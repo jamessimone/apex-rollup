@@ -2,10 +2,15 @@ public without sharing class RollupLimits {
   @TestVisible
   private static Integer stubbedQueryRows;
 
+  private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 3000;
+  private static final Integer ASYNC_TIMEOUT_INTERVAL_MS = 13000;
+
   public class Tester {
     private final transient RollupControl__mdt control;
-    public Tester(RollupControl__mdt control) {
+    private final Boolean isRunningAsync;
+    public Tester(RollupControl__mdt control, Boolean isRunningAsync) {
       this.control = control;
+      this.isRunningAsync = isRunningAsync;
     }
 
     public Boolean hasExceededQueryNumberLimit {
@@ -30,7 +35,7 @@ public without sharing class RollupLimits {
     }
     public Boolean hasExceededCPUTimeLimit {
       get {
-        Integer intervalTillTimeout = ((System.isBatch() || System.isQueueable()) && Test.isRunningTest() == false) ? 14000 : 3000;
+        Integer intervalTillTimeout = this.isRunningAsync ? ASYNC_TIMEOUT_INTERVAL_MS : SYNC_TIMEOUT_INTERVAL_MS;
         return (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
       }
     }

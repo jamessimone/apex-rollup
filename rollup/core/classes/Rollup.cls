@@ -403,7 +403,7 @@ global without sharing virtual class Rollup {
   }
 
   protected Boolean getIsRunningAsync() {
-    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
+    return isContextAsync();
   }
 
   protected virtual String getTypeName() {
@@ -1760,7 +1760,7 @@ global without sharing virtual class Rollup {
   }
 
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
-    RollupLimits.Tester limitTester = new RollupLimits.Tester(control);
+    RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
@@ -1799,6 +1799,10 @@ global without sharing virtual class Rollup {
       SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
       UltimateParentLookup__c = flowInput.ultimateParentLookup
     );
+  }
+
+  private static Boolean isContextAsync() {
+    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
   }
 
   private static Boolean shouldSkipRollupForFlow(Rollup__mdt meta, String flowContext) {
