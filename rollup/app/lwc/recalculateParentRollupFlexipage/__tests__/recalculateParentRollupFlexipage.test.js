@@ -177,4 +177,31 @@ describe('recalc parent rollup from flexipage tests', () => {
       invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
     });
   });
+
+  it('detects namespace properly', async () => {
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
+      is: RecalculateParentRollupFlexipage
+    });
+
+    const FAKE_RECORD_ID = '00100000000001';
+    const matchingMetadata = metadata[Object.keys(metadata)[0]];
+    delete matchingMetadata[0].CalcItem__r;
+    matchingMetadata[0].please__LookupObject__c = matchingMetadata[0].LookupObject__c;
+    delete matchingMetadata[0].LookupObject__c;
+    parentRecalcEl.objectApiName = matchingMetadata[0].please__LookupObject__c;
+    parentRecalcEl.recordId = FAKE_RECORD_ID;
+
+    document.body.appendChild(parentRecalcEl);
+    await flushPromises().then(() => {
+      parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
+    });
+    await flushPromises();
+
+    matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
+    expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
+    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+      serializedMetadata: JSON.stringify(matchingMetadata),
+      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+    });
+  });
 });

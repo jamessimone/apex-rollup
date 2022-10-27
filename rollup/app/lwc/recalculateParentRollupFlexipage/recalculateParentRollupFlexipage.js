@@ -47,7 +47,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
         // there can be many different matches across metadata which share the same parent object
         // build up a list of matching metas and append to their CalcItemWhereClause__c the
         // parent recordId
-        if (rollupMetadata.LookupObject__c === this.objectApiName) {
+        if (rollupMetadata.LookupObject__c === this.objectApiName || rollupMetadata.please__LookupObject__c === this.objectApiName) {
           this._addMatchingMetadata(rollupMetadata);
         }
       });
