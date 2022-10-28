@@ -1,7 +1,7 @@
 import { api, LightningElement, wire } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
-import getNamespaceSafeRollupOperationField from '@salesforce/apex/Rollup.getNamespaceSafeRollupOperationField';
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 
 // the @salesforce/schema info for CMDT records doesn't work too well ...
 let ORDER_BY_SCHEMA = {
@@ -40,11 +40,10 @@ export default class RollupOrderBy extends LightningElement {
   }
 
   async _getNamespaceRollupInfo() {
-    const objectToFieldName = await getNamespaceSafeRollupOperationField();
-    const namespacePartitions = objectToFieldName.split('__');
-    if (namespacePartitions.length > 3) {
-      this._namespaceName = namespacePartitions[0] + '__';
-      this._objectApiName = this._namespaceName + this._objectApiName;
+    const namespaceInfo = await getNamespaceInfo();
+    if (namespaceInfo.namespace) {
+      this._namespaceName = namespaceInfo.namespace;
+      this._objectApiName = namespaceInfo.safeObjectName;
       ORDER_BY_SCHEMA = Object.assign({}, ...Object.keys(ORDER_BY_SCHEMA).map(key => ({ [this._namespaceName + key]: ORDER_BY_SCHEMA[key] })));
     }
   }

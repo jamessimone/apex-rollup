@@ -436,9 +436,18 @@ global without sharing virtual class Rollup {
    * - LWC-based full recalculation calls
    */
 
+  public class NamespaceInfo {
+    @AuraEnabled
+    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
+    @AuraEnabled
+    public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
+    @AuraEnabled
+    public final String namespace = Rollup.class.getName().substringBefore('Rollup');
+  }
+
   @AuraEnabled(cacheable=true)
-  global static String getNamespaceSafeRollupOperationField() {
-    return Rollup__mdt.SObjectType.getDescribe().getName() + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
+  public static NamespaceInfo getNamespaceInfo() {
+    return new NamespaceInfo();
   }
 
   @AuraEnabled(cacheable=true)

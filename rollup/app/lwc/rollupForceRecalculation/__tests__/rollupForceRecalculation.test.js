@@ -1,12 +1,12 @@
 import { createElement } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
-import getNamespaceSafeRollupOperationField from '@salesforce/apex/Rollup.getNamespaceSafeRollupOperationField';
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
-import { mockMetadata } from '../../__mockData__';
+import { mockMetadata, mockNamespaceInfo } from '../../__mockData__';
 import RollupForceRecalculation from 'c/rollupForceRecalculation';
 
 const mockGetObjectInfo = require('./data/rollupCMDTWireAdapter.json');
@@ -25,7 +25,7 @@ async function mountComponent() {
 }
 
 jest.mock(
-  '@salesforce/apex/Rollup.getNamespaceSafeRollupOperationField',
+  '@salesforce/apex/Rollup.getNamespaceInfo',
   () => {
     return {
       default: jest.fn()
@@ -136,7 +136,7 @@ async function submitsFormDataWithNamespace(namespace = '') {
 describe('Rollup force recalc tests', () => {
   beforeEach(() => {
     getRollupMetadataByCalcItem.mockResolvedValue({ ...mockMetadata });
-    getNamespaceSafeRollupOperationField.mockResolvedValue('Rollup__mdt.RollupOperation__c');
+    getNamespaceInfo.mockResolvedValue({ ...mockNamespaceInfo });
   });
   afterEach(() => {
     while (document.body.firstChild) {
@@ -157,8 +157,12 @@ describe('Rollup force recalc tests', () => {
 
   it('sends namespaced form data to apex', async () => {
     const namespace = 'please__';
-    getNamespaceSafeRollupOperationField.mockReset();
-    getNamespaceSafeRollupOperationField.mockResolvedValue(`${namespace}Rollup__mdt.${namespace}RollupOperation__c`);
+    getNamespaceInfo.mockReset();
+    getNamespaceInfo.mockResolvedValue({
+      namespace,
+      safeRollupOperationField: `${namespace + mockNamespaceInfo.safeRollupOperationField}`,
+      safeObjectName: `${namespace + mockNamespaceInfo.safeObjectName}`
+    });
     await submitsFormDataWithNamespace(namespace);
   });
 
@@ -235,7 +239,7 @@ describe('Rollup force recalc tests', () => {
 
     expect(fullRecalc.isCMDTRecalc).toBeTruthy();
 
-    getObjectInfo.emitError();
+    getObjectInfo.emitError({ body: { message: 'oh no' } });
 
     await flushPromises('re-render for CMDT toggle');
     const errorDiv = fullRecalc.shadowRoot.querySelector('div[data-id="rollupError"]');

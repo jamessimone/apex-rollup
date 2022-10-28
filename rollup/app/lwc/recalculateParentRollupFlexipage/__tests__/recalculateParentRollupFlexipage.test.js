@@ -1,9 +1,20 @@
 import { createElement } from 'lwc';
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
 import RecalculateParentRollupFlexipage from 'c/recalculateParentRollupFlexipage';
-import { mockMetadata } from '../../__mockData__';
+import { mockMetadata, mockNamespaceInfo } from '../../__mockData__';
+
+jest.mock(
+  '@salesforce/apex/Rollup.getNamespaceInfo',
+  () => {
+    return {
+      default: jest.fn()
+    };
+  },
+  { virtual: true }
+);
 
 jest.mock(
   '@salesforce/apex/Rollup.getRollupMetadataByCalcItem',
@@ -39,6 +50,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     metadata = JSON.parse(JSON.stringify(mockMetadata));
     getRollupMetadataByCalcItem.mockResolvedValue(metadata);
     performSerializedBulkFullRecalc.mockReset();
+    getNamespaceInfo.mockResolvedValue({ ...mockNamespaceInfo });
   });
   afterEach(() => {
     while (document.body.firstChild) {
@@ -179,25 +191,34 @@ describe('recalc parent rollup from flexipage tests', () => {
   });
 
   it('detects namespace properly', async () => {
+    const namespace = 'please__';
+    getNamespaceInfo.mockReset();
+    getNamespaceInfo.mockResolvedValue({
+      namespace,
+      safeRollupOperationField: `${namespace + mockNamespaceInfo.safeRollupOperationField}`,
+      safeObjectName: `${namespace + mockNamespaceInfo.safeObjectName}`
+    });
+    getRollupMetadataByCalcItem.mockClear();
+    const namespaceMeta = { ...mockMetadata };
+    namespaceMeta.Contact[0] = Object.assign({}, ...Object.keys(namespaceMeta.Contact[0]).map(key => ({ [namespace + key]: namespaceMeta.Contact[0][key] })));
+    getRollupMetadataByCalcItem.mockResolvedValue(namespaceMeta);
+
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
 
     const FAKE_RECORD_ID = '00100000000001';
-    const matchingMetadata = metadata[Object.keys(metadata)[0]];
-    delete matchingMetadata[0].CalcItem__r;
-    matchingMetadata[0].please__LookupObject__c = matchingMetadata[0].LookupObject__c;
-    delete matchingMetadata[0].LookupObject__c;
+    const matchingMetadata = namespaceMeta[Object.keys(metadata)[0]];
+    delete matchingMetadata[0].please__CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].please__LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
 
     document.body.appendChild(parentRecalcEl);
-    await flushPromises().then(() => {
-      parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
-    });
-    await flushPromises();
+    await flushPromises('mount on page');
+    parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
+    await flushPromises('wait for click event to call controller');
 
-    matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
+    matchingMetadata[0].please__CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(matchingMetadata),

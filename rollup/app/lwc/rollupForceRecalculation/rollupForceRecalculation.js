@@ -1,5 +1,5 @@
 import { api, LightningElement, wire } from 'lwc';
-import getNamespaceSafeRollupOperationField from '@salesforce/apex/Rollup.getNamespaceSafeRollupOperationField';
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
@@ -43,7 +43,6 @@ export default class RollupForceRecalculation extends LightningElement {
     'RollupFieldOnLookupObject__c',
     'LookupObject__c'
   ];
-  _namespaceSafeRollupOperationField = '';
   _metadata = {
     RollupFieldOnCalcItem__c: '',
     LookupFieldOnCalcItem__c: '',
@@ -58,10 +57,9 @@ export default class RollupForceRecalculation extends LightningElement {
     LimitAmount__c: null
   };
 
-  get namespaceName() {
-    const splitForUnderscores = this._namespaceSafeObjectName.split('__');
-    return splitForUnderscores.length > 2 ? splitForUnderscores[0] + '__' : '';
-  }
+  namespace = '';
+  safeObjectName = 'Rollup__mdt';
+  safeRollupOperationField = `${this.safeObjectName}.RollupOperation__c`;
 
   get rollupOperation() {
     return this._metadata[this._getNamespacedFieldName(this._rollupOperationFieldName)] || '';
@@ -70,44 +68,28 @@ export default class RollupForceRecalculation extends LightningElement {
     this._setNamespaceSafeMetadata(this._rollupOperationFieldName, value);
   }
 
-  // Technically each of these only requires a getter
-  // but in order to be used as reactive wire props, a setter is also needed
-  get _namespaceSafeRollupOperation() {
-    return this._namespaceSafeRollupOperationField;
-  }
-  set _namespaceSafeRollupOperation(value) {
-    this._namespaceSafeRollupOperationField = value;
-  }
-
-  get _namespaceSafeObjectName() {
-    return this._namespaceSafeRollupOperationField.split('.')[0];
-  }
-  set _namespaceSafeObjectName(value) {
-    this._namespaceSafeRollupOperationField = value;
-  }
-
   async connectedCallback() {
     document.title = 'Recalculate Rollup';
-    await Promise.all([this._fetchAvailableCMDT(), this._getNamespaceRollupInfo()]);
+    await Promise.all([this._getNamespaceRollupInfo(), this._fetchAvailableCMDT()]);
   }
 
-  @wire(getObjectInfo, { objectApiName: '$_namespaceSafeObjectName' })
+  @wire(getObjectInfo, { objectApiName: '$safeObjectName' })
   getCMDTObjectInfo({ error, data }) {
     if (data) {
       this._cmdtFieldNames.forEach(fieldName => {
         this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
       });
     } else if (error) {
-      this.error = error;
+      this.error = this._formatWireErrors(error);
     }
   }
 
-  @wire(getPicklistValues, { recordTypeId: '012000000000000AAA', fieldApiName: '$_namespaceSafeRollupOperationField' })
+  @wire(getPicklistValues, { recordTypeId: '012000000000000AAA', fieldApiName: '$safeRollupOperationField' })
   getRollupOperationValues({ error, data }) {
     if (data) {
       this.rollupOperationValues = data.values;
     } else if (error) {
-      this.error = error;
+      this.error = this._formatWireErrors(error);
     }
   }
 
@@ -151,9 +133,10 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   async _getNamespaceRollupInfo() {
-    this._namespaceSafeRollupOperation = await getNamespaceSafeRollupOperationField();
-    if (this.namespaceName) {
-      this._metadata = Object.assign({}, ...Object.keys(this._metadata).map(key => ({ [this.namespaceName + key]: this._metadata[key] })));
+    const namespaceInfo = await getNamespaceInfo();
+    Object.keys(namespaceInfo).forEach(key => (this[key] = namespaceInfo[key]));
+    if (this.namespace) {
+      this._metadata = Object.assign({}, ...Object.keys(this._metadata).map(key => ({ [this.namespace + key]: this._metadata[key] })));
       this._cmdtFieldNames = this._cmdtFieldNames.map(fieldName => this._getNamespacedFieldName(fieldName));
     }
   }
@@ -197,11 +180,12 @@ export default class RollupForceRecalculation extends LightningElement {
     this.jobIdToDisplay = jobId;
     this.rollupStatus = await getBatchRollupStatus({ jobId });
 
-    // some arbitrary wait time - for a huge batch job, it could take ages to resolve
     const statusPromise = new Promise(resolve => {
       let timeoutId;
       if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false && this._validateAsyncJob(jobId)) {
-        timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), 3000);
+        // some arbitrary wait time - for a huge batch job, it could take ages to resolve
+        const waitTimeMs = 3000;
+        timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), waitTimeMs);
       } else {
         this.isRollingUp = false;
         clearTimeout(timeoutId);
@@ -257,6 +241,8 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   _getNamespacedFieldName(fieldName) {
-    return this.namespaceName + fieldName;
+    return this.namespace + fieldName;
   }
+
+  _formatWireErrors = error => error.body.message;
 }

@@ -3719,4 +3719,14 @@ private class RollupTests {
     System.assertEquals(acc.Id, updatedAccount.Id, 'Top-level parent should have been updated: ' + JSON.serialize(updatedAccount));
     System.assertEquals('One', updatedAccount.Name);
   }
+
+  @IsTest
+  static void encapsulatesNamespaceInfoProperly() {
+    Rollup.NamespaceInfo namespaceInfo = Rollup.getNamespaceInfo();
+
+    String rollupObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
+    System.assertEquals(rollupObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName(), nameSpaceInfo.safeRollupOperationField);
+    System.assertEquals(rollupObjectName, nameSpaceInfo.safeObjectName);
+    System.assertEquals(RollupTests.class.getName().substringBefore('RollupTests'), nameSpaceInfo.namespace);
+  }
 }
