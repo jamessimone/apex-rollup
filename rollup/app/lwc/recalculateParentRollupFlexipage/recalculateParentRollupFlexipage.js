@@ -1,5 +1,6 @@
 import { api, LightningElement } from 'lwc';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 
 import { getRollupMetadata } from 'c/rollupUtils';
 
@@ -13,9 +14,11 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
   isValid = false;
 
   _matchingMetas = [];
+  _namespaceInfo = {};
 
   async connectedCallback() {
     try {
+      this._namespaceInfo = await getNamespaceInfo();
       const metadata = await getRollupMetadata();
       this._fillValidMetadata(metadata);
     } catch (err) {
@@ -47,7 +50,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
         // there can be many different matches across metadata which share the same parent object
         // build up a list of matching metas and append to their CalcItemWhereClause__c the
         // parent recordId
-        if (rollupMetadata.LookupObject__c === this.objectApiName) {
+        if (rollupMetadata[this._getNamespaceSafeFieldName('LookupObject__c')] === this.objectApiName) {
           this._addMatchingMetadata(rollupMetadata);
         }
       });
@@ -57,16 +60,21 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
   }
 
   _addMatchingMetadata(metadata) {
-    const parentLookup = metadata.GrandparentRelationshipFieldPath__c
-      ? metadata.GrandparentRelationshipFieldPath__c.substring(0, metadata.GrandparentRelationshipFieldPath__c.lastIndexOf('.')) + '.Id'
-      : metadata.LookupFieldOnCalcItem__c;
+    const grandparentRelationshipFieldPath = this._getNamespaceSafeFieldName('GrandparentRelationshipFieldPath__c');
+    const lookupFieldOnCalcItem = this._getNamespaceSafeFieldName('LookupFieldOnCalcItem__c');
+    const parentLookup = metadata[grandparentRelationshipFieldPath]
+      ? metadata[grandparentRelationshipFieldPath].substring(0, metadata[grandparentRelationshipFieldPath].lastIndexOf('.')) + '.Id'
+      : metadata[lookupFieldOnCalcItem];
     const equalsParent = parentLookup + " = '" + this.recordId + "'";
 
-    if (metadata.CalcItemWhereClause__c && metadata.CalcItemWhereClause__c.length > 0) {
-      metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c + DELIMITER + equalsParent;
+    const calcItemWhereClause = this._getNamespaceSafeFieldName('CalcItemWhereClause__c');
+    if (metadata[calcItemWhereClause] && metadata[calcItemWhereClause].length > 0) {
+      metadata[calcItemWhereClause] = metadata[calcItemWhereClause] + DELIMITER + equalsParent;
     } else {
-      metadata.CalcItemWhereClause__c = DELIMITER + equalsParent;
+      metadata[calcItemWhereClause] = DELIMITER + equalsParent;
     }
     this._matchingMetas.push(metadata);
   }
+
+  _getNamespaceSafeFieldName = fieldName => `${this._namespaceInfo.namespace + fieldName}`;
 }

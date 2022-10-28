@@ -7,6 +7,7 @@ function Get-SFDX-Project-JSON {
 $sfdxProjectJsonPath = "./sfdx-project.json"
 $sfdxProjectJson = Get-SFDX-Project-JSON
 $loggerClassPath = "./rollup/core/classes/RollupLogger.cls"
+$shouldGitAddLoggerClass = $true;
 
 function Invoke-Extra-Code-Coverage-Prep() {
   $extraCodeCoveragePath = "./plugins/ExtraCodeCoverage"
@@ -71,7 +72,9 @@ function Update-Logger-Class {
   $replacementRegEx = '$1' + $versionNumber + '$3'
   $loggerClassContents -replace $targetRegEx, $replacementRegEx | Set-Content -Path $loggerClassPath -NoNewline
   npx prettier --write $loggerClassPath
-  git add $loggerClassPath
+  if ($shouldGitAddLoggerClass -eq $true) {
+    git add $loggerClassPath
+  }
 }
 
 function Update-SFDX-Project-JSON {
@@ -166,10 +169,14 @@ function Generate() {
 function New-Namespaced-Package {
   Write-Host "Generating namespaced version of package..." -ForegroundColor White
 
+  $originalLoggerClassPath = $loggerClassPath
   $namespacedPackageName = "apex-rollup-namespaced"
   $namespacedProjectJsonPath = "rollup-namespaced/sfdx-project.json"
   $originalProjectJsonBackupPath = "./sfdx-project-original.json"
   $versionName = (Get-Package-Directory "apex-rollup").versionName
+  $shouldGitAddLoggerClass = $false
+  $loggerClassPath = "rollup-namespaced/source/rollup/core/classes/RollupLogger.cls"
+  Write-Host "Logger class path for namespaced package will be added to git: $shouldGitAddLoggerClass"
 
   Copy-Item $sfdxProjectJsonPath $originalProjectJsonBackupPath -Force
   Copy-Item $namespacedProjectJsonPath $sfdxProjectJsonPath -Force
@@ -202,4 +209,6 @@ function New-Namespaced-Package {
   git add $sfdxProjectJsonPath -f
   git add $namespacedProjectJsonPath -f
   Remove-Item -Path rollup-namespaced/source -Recurse -Force
+  $shouldGitAddLoggerClass = $true
+  $loggerClassPath = $originalLoggerClassPath
 }

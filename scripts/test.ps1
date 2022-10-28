@@ -5,6 +5,8 @@ $testInvocation = 'npx sfdx force:apex:test:run -s ApexRollupTestSuite -r human 
 $currentUserAlias = 'apex-rollup-scratch-org'
 function Start-Tests() {
   Write-Debug "Deploying metadata ..."
+  # Pipeline recently started failing due to duplicate items ...
+  Remove-Item -Path ./rollup/app/profiles/Admin.profile-meta.xml -Force
   npx sfdx force:source:deploy -p rollup
   npx sfdx force:source:deploy -p extra-tests
 

@@ -1,7 +1,20 @@
 import { createElement } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import RollupOrderBy from 'c/rollupOrderBy';
+
+import { mockNamespaceInfo } from '../../__mockData__';
+
+jest.mock(
+  '@salesforce/apex/Rollup.getNamespaceInfo',
+  () => {
+    return {
+      default: jest.fn()
+    };
+  },
+  { virtual: true }
+);
 
 const mockOrderByInfo = {
   fields: {
@@ -49,6 +62,9 @@ async function mountOrderByElement() {
 }
 
 describe('Rollup force recalc tests', () => {
+  beforeEach(() => {
+    getNamespaceInfo.mockResolvedValue({ ...mockNamespaceInfo });
+  });
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);

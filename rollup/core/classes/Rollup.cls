@@ -241,13 +241,17 @@ global without sharing virtual class Rollup {
   }
 
   public class CalcItemBag {
-    private final Map<Id, SObject> idToCalcItem = new Map<Id, SObject>();
+    private final Map<String, SObject> idToCalcItem = new Map<String, SObject>();
     private Boolean hasBeenCleared = false;
     public Boolean hasQueriedForAdditionalItems = false;
     public CalcItemBag(List<SObject> calcItems) {
       for (SObject calcItem : calcItems) {
         this.add(calcItem);
       }
+    }
+
+    public Set<String> getAllIds() {
+      return this.idToCalcItem.keySet();
     }
 
     public List<SObject> getAll() {
@@ -399,7 +403,7 @@ global without sharing virtual class Rollup {
   }
 
   protected Boolean getIsRunningAsync() {
-    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
+    return isContextAsync();
   }
 
   protected virtual String getTypeName() {
@@ -431,6 +435,20 @@ global without sharing virtual class Rollup {
    * - Schedulable
    * - LWC-based full recalculation calls
    */
+
+  public class NamespaceInfo {
+    @AuraEnabled
+    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
+    @AuraEnabled
+    public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
+    @AuraEnabled
+    public final String namespace = Rollup.class.getName().substringBefore('Rollup');
+  }
+
+  @AuraEnabled(cacheable=true)
+  public static NamespaceInfo getNamespaceInfo() {
+    return new NamespaceInfo();
+  }
 
   @AuraEnabled(cacheable=true)
   global static Map<String, List<Rollup__mdt>> getRollupMetadataByCalcItem() {
@@ -1755,52 +1773,8 @@ global without sharing virtual class Rollup {
     return matchingMetadata;
   }
 
-  private class LimitTester {
-    private final transient RollupControl__mdt control;
-    public LimitTester(RollupControl__mdt control) {
-      this.control = control;
-    }
-
-    private Boolean hasExceededQueryNumberLimit {
-      get {
-        return this.control?.MaxNumberOfQueries__c < Limits.getQueries();
-      }
-    }
-    private Boolean hasExceededQueryRowLimit {
-      get {
-        return this.control?.MaxQueryRows__c < Limits.getQueryRows();
-      }
-    }
-    private Boolean hasExceededHeapSizeLimit {
-      get {
-        return (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
-      }
-    }
-    private Boolean hasExceededDMLRowLimit {
-      get {
-        return this.control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
-      }
-    }
-    private Boolean hasExceededCPUTimeLimit {
-      get {
-        Integer intervalTillTimeout = ((System.isBatch() || System.isQueueable()) && Test.isRunningTest() == false) ? 14000 : 3000;
-        return (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
-      }
-    }
-
-    public transient Boolean hasExceededLimits {
-      get {
-        return this.hasExceededQueryNumberLimit ||
-          this.hasExceededQueryRowLimit ||
-          this.hasExceededHeapSizeLimit ||
-          this.hasExceededDMLRowLimit ||
-          this.hasExceededCPUTimeLimit;
-      }
-    }
-  }
-
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
-    LimitTester limitTester = new LimitTester(control);
+    RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
@@ -1839,6 +1813,10 @@ global without sharing virtual class Rollup {
       SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
       UltimateParentLookup__c = flowInput.ultimateParentLookup
     );
+  }
+
+  private static Boolean isContextAsync() {
+    return System.isBatch() || System.isQueueable() || System.isScheduled() || System.isFuture() || shouldFlattenAsyncProcesses == true;
   }
 
   private static Boolean shouldSkipRollupForFlow(Rollup__mdt meta, String flowContext) {
@@ -2913,7 +2891,7 @@ global without sharing virtual class Rollup {
           BatchChunkSize__c = 2000,
           IsMergeReparentingEnabled__c = true,
           IsRollupLoggingEnabled__c = false,
-          MaxLookupRowsBeforeBatching__c = Limits.getLimitDmlRows() / 3,
+          MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
           MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
           MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
           MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,

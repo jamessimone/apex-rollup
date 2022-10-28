@@ -11,7 +11,6 @@ private class InvocableDrivenTests {
   static void shouldWorkWithRefreshContext() {
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
     Account acc = [SELECT Id FROM Account];
-
     // Description and Subject both are referenced in the Flow
     Case matchesFlow = new Case(Description = 'Name Match', AccountId = acc.Id, Subject = 'Refresh Test');
     Case nonMatch = new Case(Description = 'Non match', AccountId = acc.Id, Subject = 'Child Object Where Clause test');
@@ -47,7 +46,6 @@ private class InvocableDrivenTests {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 1000);
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
     Account acc = [SELECT Id FROM Account];
-
     // Description and Subject both are referenced in the Flow
     Case matchesFlow = new Case(Description = 'Name Match', AccountId = acc.Id, Subject = 'Refresh Test');
 

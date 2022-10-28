@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes a bug with batch full recalcs that use a small Batch Chunk Size ",
-            "versionNumber": "1.0.2.0",
+            "versionName": "Fixes an issue where full batch recalculations could fail to pick up all calc items when the calc item amount for any given parent exceeded the Max Query Row limit",
+            "versionNumber": "1.0.3.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -23,6 +23,7 @@
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
         "apex-rollup-namespaced@1.0.0-0": "04t6g000008b0iOAAQ",
         "apex-rollup-namespaced@1.0.1-0": "04t6g000008b0isAAA",
-        "apex-rollup-namespaced@1.0.2-0": "04t6g000008b0nKAAQ"
+        "apex-rollup-namespaced@1.0.2-0": "04t6g000008b0nKAAQ",
+        "apex-rollup-namespaced@1.0.3-0": "04t6g000007zLnoAAE"
     }
 }

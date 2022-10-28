@@ -1,8 +1,10 @@
 import { api, LightningElement, wire } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
+import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
+
 // the @salesforce/schema info for CMDT records doesn't work too well ...
-const ORDER_BY_SCHEMA = {
+let ORDER_BY_SCHEMA = {
   FieldName__c: {},
   Ranking__c: {},
   SortOrder__c: {},
@@ -20,6 +22,8 @@ export default class RollupOrderBy extends LightningElement {
 
   _orderByInfo;
   _currentRecord = this.getDefaultOrderByObject;
+  _namespaceName = '';
+  _objectApiName = 'RollupOrderBy__mdt';
 
   sortOrderOptions = [
     { label: 'Ascending', value: 'Ascending' },
@@ -31,7 +35,20 @@ export default class RollupOrderBy extends LightningElement {
     { label: 'Nulls Last', value: 'NULLS LAST' }
   ];
 
-  @wire(getObjectInfo, { objectApiName: 'RollupOrderBy__mdt' })
+  async connectedCallback() {
+    await this._getNamespaceRollupInfo();
+  }
+
+  async _getNamespaceRollupInfo() {
+    const namespaceInfo = await getNamespaceInfo();
+    if (namespaceInfo.namespace) {
+      this._namespaceName = namespaceInfo.namespace;
+      this._objectApiName = namespaceInfo.safeObjectName;
+      ORDER_BY_SCHEMA = Object.assign({}, ...Object.keys(ORDER_BY_SCHEMA).map(key => ({ [this._namespaceName + key]: ORDER_BY_SCHEMA[key] })));
+    }
+  }
+
+  @wire(getObjectInfo, { objectApiName: '$_objectApiName' })
   getRollupOrderBySchemaData({ data }) {
     if (data) {
       this.dataHasLoaded = true;
@@ -83,19 +100,19 @@ export default class RollupOrderBy extends LightningElement {
   }
 
   get ranking() {
-    return ORDER_BY_SCHEMA.Ranking__c;
+    return ORDER_BY_SCHEMA[this._namespaceName + 'Ranking__c'];
   }
 
   get fieldName() {
-    return ORDER_BY_SCHEMA.FieldName__c;
+    return ORDER_BY_SCHEMA[this._namespaceName + 'FieldName__c'];
   }
 
   get sortOrder() {
-    return ORDER_BY_SCHEMA.SortOrder__c;
+    return ORDER_BY_SCHEMA[this._namespaceName + 'SortOrder__c'];
   }
 
   get nullSortOrder() {
-    return ORDER_BY_SCHEMA.NullSortOrder__c;
+    return ORDER_BY_SCHEMA[this._namespaceName + 'NullSortOrder__c'];
   }
 
   get currentOrderBySize() {

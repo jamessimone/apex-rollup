@@ -2080,6 +2080,56 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void limitsFullBatchRecalcCachedItemsProperly() {
+    Rollup.defaultControl = new RollupControl__mdt(
+      BatchChunkSize__c = 1,
+      MaxNumberOfQueries__c = 100,
+      IsRollupLoggingEnabled__c = true,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      MaxQueryRows__c = 2, // forced to pick up only one row at a time
+      MaxRollupRetries__c = 1
+    );
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'One'),
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 2, Name = 'Two'),
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 3, Name = 'Three')
+    };
+    insert cpas;
+
+    RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
+      'SELECT Id, PreferenceRank FROM ContactPointAddress',
+      Rollup.InvocationPoint.FROM_APEX,
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          RollupOperation__c = 'SUM'
+        )
+      },
+      ContactPointAddress.SObjectType,
+      new Set<String>(),
+      null
+    );
+    RollupLimits.stubbedQueryRows = 1;
+
+    Test.startTest();
+    // first batch executes with cpas[0] and picks up cpas[1] in retrieveAdditionalCalcItems
+    // it should then get deferred and re-execute to pick up cpas[2]
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue, 'Should have included all calc items in both runs without double-counting or incorrectly summing');
+    System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
+  }
+
+  @IsTest
   static void shouldFullRecalcWithInWhereClauses() {
     RollupParentResetProcessor.maxQueryRows = 0;
     RollupAsyncProcessor.shouldRunAsBatch = true;

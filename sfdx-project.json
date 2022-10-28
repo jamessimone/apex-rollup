@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes a bug with batch full recalcs that use a small Batch Chunk Size ",
-            "versionNumber": "1.5.29.0",
+            "versionName": "Fixes an issue where full batch recalculations could fail to pick up all calc items when the calc item amount for any given parent exceeded the Max Query Row limit",
+            "versionNumber": "1.5.30.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -99,9 +99,9 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.8.0-NEXT-ignore-origin-method": "04t5Y0000015lslQAA",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.5.26-0": "04t6g000008b0ceAAA",
         "apex-rollup@1.5.27-0": "04t6g000008b0iTAAQ",
         "apex-rollup@1.5.28-0": "04t6g000008b0inAAA",
-        "apex-rollup@1.5.29-0": "04t6g000008b0nFAAQ"
+        "apex-rollup@1.5.29-0": "04t6g000008b0nFAAQ",
+        "apex-rollup@1.5.30-0": "04t6g000007zLnjAAE"
     }
 }

@@ -19,4 +19,10 @@ const mockRollupMetadata = {
   ]
 };
 
+export const mockNamespaceInfo = {
+  namespace: '',
+  safeRollupOperationField: 'Rollup__mdt.RollupOperation__c',
+  safeObjectName: 'Rollup__mdt'
+};
+
 export const mockMetadata = mockRollupMetadata;
