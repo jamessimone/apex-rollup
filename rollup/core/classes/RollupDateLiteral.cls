@@ -682,9 +682,10 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 on the first day of the current fiscal quarter and continues through the end of the last day of the fiscal quarter.
    */
-  private class ThisFiscalQuarterLiteral extends ThisQuarterLiteral {
-    protected override Date getThisQuarterStart() {
-      return FISCAL_INFO.CurrentQuarterStartDate;
+  private class ThisFiscalQuarterLiteral extends RollupDateLiteral {
+    public ThisFiscalQuarterLiteral() {
+      this.ref = getRelativeDatetime(FISCAL_INFO.CurrentQuarterStartDate, START_TIME);
+      this.bound = getRelativeDatetime(FISCAL_INFO.CurrentQuarterEndDate, END_TIME);
     }
   }
 
