@@ -428,6 +428,25 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldReturnDefaultValueOnFullRecalcIfNoMatchingItemsCountDistinct() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.COUNT_DISTINCT,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = 15),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = '0016g00003VDGbF001');
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount != ' + opp.Amount, Opportunity.SObjectType));
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(15, calc.getReturnValue());
+  }
+
+  @IsTest
   static void resetsDefaultValuesBetweenCountDistinctRuns() {
     RollupCalculator calc = getCalculator(
       0,

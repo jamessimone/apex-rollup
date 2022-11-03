@@ -480,7 +480,7 @@ public without sharing abstract class RollupCalculator {
           this.distinctValues.add(res.get(calcItemOpField));
         }
       }
-      return this.distinctValues.size();
+      return this.distinctValues.isEmpty() && this.defaultVal != null ? this.defaultVal : this.distinctValues.size();
     }
   }
 
