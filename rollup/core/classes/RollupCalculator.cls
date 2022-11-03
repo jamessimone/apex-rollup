@@ -5,7 +5,7 @@ public without sharing abstract class RollupCalculator {
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
 
-  private final Object defaultVal;
+  protected final Object defaultVal;
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
   protected final SObjectField lookupKeyField;
@@ -1171,13 +1171,17 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      Integer retrievalIndex = 0;
-      switch on this.op {
-        when LAST, UPDATE_LAST, DELETE_LAST {
-          retrievalIndex = calcItems.size() - 1;
+      if (calcItems.isEmpty()) {
+        this.returnVal = this.defaultVal;
+      } else {
+        Integer retrievalIndex = 0;
+        switch on this.op {
+          when LAST, UPDATE_LAST, DELETE_LAST {
+            retrievalIndex = calcItems.size() - 1;
+          }
         }
+        this.returnVal = calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
       }
-      this.returnVal = calcItems.isEmpty() ? null : calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
     }
   }
 
