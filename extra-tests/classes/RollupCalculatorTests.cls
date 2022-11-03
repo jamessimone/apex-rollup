@@ -287,7 +287,7 @@ private class RollupCalculatorTests {
   // AVERAGE tests
 
   @IsTest
-  static void shouldReturnDefaultWhenNoCalcItemsAverage() {
+  static void shouldReturnNulltWhenNoCalcItemsAverage() {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
     RollupCalculator calc = getCalculator(
       0,
@@ -302,6 +302,24 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
 
     System.assertEquals(null, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void shouldReturnFullRecalcDefaultWhenNoCalcItemsAverage() {
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = 5), 'CloseDate');
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.Average,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      metadata,
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
+
+    System.assertEquals(metadata.FullRecalculationDefaultNumberValue__c, calc.getReturnValue());
   }
 
   @IsTest
@@ -327,7 +345,7 @@ private class RollupCalculatorTests {
       new Map<Id, SObject>()
     );
 
-    System.assertEquals(1, (Decimal) calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
+    System.assertEquals(1, calc.getReturnValue(), 'Nulls should be treated as zeros for average!');
   }
 
   @IsTest
@@ -641,6 +659,44 @@ private class RollupCalculatorTests {
   }
 
   // MOST tests
+
+  @IsTest
+  static void mostReturnsNullIfNoMatchingItems() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.MOST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = '0016g00003VDGbF001');
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount != ' + opp.Amount, Opportunity.SObjectType));
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(null, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void mostReturnsDefaultValWhenSuppliedIfNoMatchingItems() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.MOST,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = 5),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, AccountId = '0016g00003VDGbF001');
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount != ' + opp.Amount, Opportunity.SObjectType));
+
+    calc.performRollup(new List<Opportunity>{ opp }, new Map<Id, SObject>());
+
+    System.assertEquals(5, calc.getReturnValue());
+  }
 
   @IsTest
   static void mostCalculatesSequentialValuesCorrectly() {
@@ -1608,6 +1664,27 @@ private class RollupCalculatorTests {
   }
 
   // ALL
+
+  @IsTest
+  static void allUsesFullRecalcDefaultValueWhenNotMatching() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.ALL,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(FullRecalculationDefaultNumberValue__c = 5),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 1', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 1);
+    Opportunity oppTwo = new Opportunity(Amount = 1);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(5, calc.getReturnValue());
+  }
 
   @IsTest
   static void allReportsPositivesCorrectlyAsNumber() {
