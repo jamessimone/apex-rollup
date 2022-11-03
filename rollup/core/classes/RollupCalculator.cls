@@ -5,7 +5,7 @@ public without sharing abstract class RollupCalculator {
   private Boolean isRecursiveRecalc = false;
   private Boolean isFullRecalc = false;
 
-  private final Object defaultVal;
+  protected final Object defaultVal;
   protected final SObjectField opFieldOnCalcItem;
   protected final SObjectField opFieldOnLookupObject;
   protected final SObjectField lookupKeyField;
@@ -337,7 +337,7 @@ public without sharing abstract class RollupCalculator {
     String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
     List<SObject> aggregate = this.tryQuery(sObjectType, new Set<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias }, objIds);
-    return aggregate.isEmpty() == false ? aggregate[0].get(alias) : null;
+    return aggregate.isEmpty() == false ? aggregate[0].get(alias) : this.defaultVal;
   }
 
   protected Boolean isReparented(SObject calcItem, SObject oldCalcItem) {
@@ -354,7 +354,7 @@ public without sharing abstract class RollupCalculator {
       List<SObject> allOtherItems = this.tryQuery(sObjectType, queryFields, objIds);
       if (allOtherItems.isEmpty()) {
         // break out of recursion if there's nothing to calculate
-        this.returnVal = null;
+        this.returnVal = this.defaultVal;
       } else {
         Rollup.Op baseOp = Rollup.Op.valueOf(Rollup.getBaseOperationName(op.name()));
         RollupCalculator calc = Factory.getCalculator(baseOp, this.opFieldOnCalcItem, this.opFieldOnLookupObject, this.metadata, this.lookupKeyField);
@@ -458,9 +458,8 @@ public without sharing abstract class RollupCalculator {
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       Boolean isGroupable = isArchivable == false && this.opFieldOnCalcItem.getDescribe().isGroupable();
       List<String> queryFields = new List<String>{ String.valueOf(this.opFieldOnCalcItem) };
-      String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
       if (isGroupable) {
-        queryFields.add(this.isIdCount ? 'COUNT()' : 'COUNT(Id)');
+        queryFields.add('COUNT(' + (this.isIdCount ? '' : 'Id') + ')');
       }
 
       String query =
@@ -474,13 +473,14 @@ public without sharing abstract class RollupCalculator {
         }
       } else {
         List<SObject> results = Database.query(query);
+        String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
         for (SObject res : results) {
           // have to use the String representation of the this.opFieldOnCalcItem to avoid:
           // System.SObjectException: SObject.FieldName does not belong to SObject type AggregateResult
           this.distinctValues.add(res.get(calcItemOpField));
         }
       }
-      return this.distinctValues.size();
+      return this.distinctValues.isEmpty() && this.defaultVal != null ? this.defaultVal : this.distinctValues.size();
     }
   }
 
@@ -630,6 +630,8 @@ public without sharing abstract class RollupCalculator {
       // but otherwise, it's more accurate to be nulling out the parent fields if there isn't a max, for example
       if (aggregate == 0 && op.name().contains('COUNT') == false) {
         aggregate = null;
+      } else if (aggregate == null) {
+        aggregate = this.defaultVal;
       }
       return aggregate;
     }
@@ -1106,7 +1108,7 @@ public without sharing abstract class RollupCalculator {
         newSum += potentialDecimal == null ? 0.00 : (Decimal) potentialDecimal;
       }
 
-      Decimal average = null;
+      Decimal average = (Decimal) this.defaultVal;
       // We can't do the division if the denominator is 0
       if (denominator != 0) {
         Decimal numerator = oldSum + newSum;
@@ -1124,19 +1126,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(
-        op,
-        opFieldOnCalcItem,
-        opFieldOnLookupObject,
-        // first/last could possibly use either default value
-        // we also have to cast to Object to avoid the compilation error:
-        // "Incompatible types in ternary operator: String, Decimal"
-        (metadata.FullRecalculationDefaultNumberValue__c != null
-          ? (Object) metadata.FullRecalculationDefaultNumberValue__c
-          : (Object) metadata.FullRecalculationDefaultStringValue__c),
-        metadata,
-        lookupKeyField
-      );
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
       Map<String, SObjectField> fieldMap = this.calcItemSObjectType.getDescribe().fields.getMap();
       for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
@@ -1171,13 +1161,17 @@ public without sharing abstract class RollupCalculator {
 
       calcItems = this.winnowItems(calcItems, oldCalcItems);
 
-      Integer retrievalIndex = 0;
-      switch on this.op {
-        when LAST, UPDATE_LAST, DELETE_LAST {
-          retrievalIndex = calcItems.size() - 1;
+      if (calcItems.isEmpty()) {
+        this.returnVal = this.defaultVal;
+      } else {
+        Integer retrievalIndex = 0;
+        switch on this.op {
+          when LAST, UPDATE_LAST, DELETE_LAST {
+            retrievalIndex = calcItems.size() - 1;
+          }
         }
+        this.returnVal = calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
       }
-      this.returnVal = calcItems.isEmpty() ? null : calcItems[retrievalIndex].get(this.opFieldOnCalcItem);
     }
   }
 
@@ -1191,13 +1185,13 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       this.occurrenceToCount.clear();
       this.largestCountPointer = -1;
-      this.returnVal = null;
+      this.returnVal = this.defaultVal;
       List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
 
       for (SObject calcItem : localCalcItems) {
@@ -1223,7 +1217,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -1240,6 +1234,11 @@ public without sharing abstract class RollupCalculator {
         }
       }
 
+      if (this.defaultVal != null && matches == false) {
+        this.returnVal = this.defaultVal;
+        return;
+      }
+
       switch on this.opFieldOnLookupObject.getDescribe().getType() {
         when CURRENCY, DOUBLE, INTEGER {
           this.returnVal = matches ? 1 : 0;
@@ -1252,5 +1251,14 @@ public without sharing abstract class RollupCalculator {
         }
       }
     }
+  }
+
+  private static Object getDefaultRecalculationValue(Rollup__mdt meta) {
+    // some operations could possibly use either default value
+    // we also have to cast to Object to avoid the compilation error:
+    // "Incompatible types in ternary operator: String, Decimal"
+    return (meta.FullRecalculationDefaultNumberValue__c != null
+      ? (Object) meta.FullRecalculationDefaultNumberValue__c
+      : (Object) meta.FullRecalculationDefaultStringValue__c);
   }
 }

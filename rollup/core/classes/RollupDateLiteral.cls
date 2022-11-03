@@ -358,7 +358,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextWeekLiteral extends RollupDateLiteral {
     public NextWeekLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = this.ref.addDays(7);
+      this.bound = getRelativeDatetime(this.ref.addDays(7).date(), END_TIME);
     }
   }
 
@@ -378,7 +378,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
-      this.bound = this.ref.addMonths(1);
+      this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
     }
   }
 
@@ -389,6 +389,9 @@ public without sharing abstract class RollupDateLiteral {
     public NextMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
       this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
+      if (this.bound.dayGmt() != 1 && this.bound.day() == 1) {
+        this.bound = this.bound.addDays(-1);
+      }
     }
   }
 
@@ -510,7 +513,10 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(dateRange).date(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(dateRange).date().toStartOfMonth(), END_TIME);
+      if (this.bound.dayGmt() != 1 && this.bound.day() == 1) {
+        this.bound = this.bound.addDays(-1);
+      }
     }
   }
 
@@ -682,9 +688,10 @@ public without sharing abstract class RollupDateLiteral {
   /**
    * Starts 00:00:00 on the first day of the current fiscal quarter and continues through the end of the last day of the fiscal quarter.
    */
-  private class ThisFiscalQuarterLiteral extends ThisQuarterLiteral {
-    protected override Date getThisQuarterStart() {
-      return FISCAL_INFO.CurrentQuarterStartDate;
+  private class ThisFiscalQuarterLiteral extends RollupDateLiteral {
+    public ThisFiscalQuarterLiteral() {
+      this.ref = getRelativeDatetime(FISCAL_INFO.CurrentQuarterStartDate, START_TIME);
+      this.bound = getRelativeDatetime(FISCAL_INFO.CurrentQuarterEndDate, END_TIME);
     }
   }
 
