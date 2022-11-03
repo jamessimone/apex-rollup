@@ -337,7 +337,7 @@ public without sharing abstract class RollupCalculator {
     String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
     List<SObject> aggregate = this.tryQuery(sObjectType, new Set<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias }, objIds);
-    return aggregate.isEmpty() == false ? aggregate[0].get(alias) : null;
+    return aggregate.isEmpty() == false ? aggregate[0].get(alias) : this.defaultVal;
   }
 
   protected Boolean isReparented(SObject calcItem, SObject oldCalcItem) {
@@ -458,7 +458,6 @@ public without sharing abstract class RollupCalculator {
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       Boolean isGroupable = isArchivable == false && this.opFieldOnCalcItem.getDescribe().isGroupable();
       List<String> queryFields = new List<String>{ String.valueOf(this.opFieldOnCalcItem) };
-      String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
       if (isGroupable) {
         queryFields.add(this.isIdCount ? 'COUNT()' : 'COUNT(Id)');
       }
@@ -474,6 +473,7 @@ public without sharing abstract class RollupCalculator {
         }
       } else {
         List<SObject> results = Database.query(query);
+        String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
         for (SObject res : results) {
           // have to use the String representation of the this.opFieldOnCalcItem to avoid:
           // System.SObjectException: SObject.FieldName does not belong to SObject type AggregateResult
@@ -630,6 +630,8 @@ public without sharing abstract class RollupCalculator {
       // but otherwise, it's more accurate to be nulling out the parent fields if there isn't a max, for example
       if (aggregate == 0 && op.name().contains('COUNT') == false) {
         aggregate = null;
+      } else if (aggregate == null) {
+        aggregate = this.defaultVal;
       }
       return aggregate;
     }
@@ -1197,6 +1199,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
     }
+    // TODO default full recalc value support
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       this.occurrenceToCount.clear();
@@ -1229,6 +1232,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
     }
+    // TODO default full recalc value support
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       this.returnVal = null;

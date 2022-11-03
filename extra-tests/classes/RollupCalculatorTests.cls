@@ -1162,6 +1162,24 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void respectsDefaultFullRecalcValueMinMaxInsteadOfNull() {
+    Rollup__mdt metadata = new Rollup__mdt(FullRecalculationDefaultNumberValue__c = 5, CalcItem__c = 'Task');
+    RollupCalculator calc = getCalculator(
+      2,
+      Rollup.Op.MIN,
+      Task.CallDurationInSeconds,
+      Opportunity.Amount,
+      metadata,
+      RollupTestUtils.createId(Opportunity.SObjectType),
+      Task.WhatId
+    );
+
+    calc.performRollup(new List<Task>(), new Map<Id, SObject>());
+
+    System.assertEquals(metadata.FullRecalculationDefaultNumberValue__c, calc.getReturnValue(), 'Should correctly find minimum');
+  }
+
+  @IsTest
   static void shouldDefaultToCurrentValueOnMinIfNoOtherMatchingItemsDate() {
     Rollup__mdt metadata = new Rollup__mdt();
     Date today = System.today();
