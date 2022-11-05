@@ -248,9 +248,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isNoOp) {
       logMessage = 'no-op, exiting early to avoid burning async job';
     } else if (this.rollupControl.ShouldAbortRun__c) {
-      logMessage = RollupControl__mdt.ShouldAbortRun__c.getDescribe().getName() + ' set to true, exiting early';
+      logMessage = String.valueOf(RollupControl__mdt.SObjectType) + '.' + String.valueOf(RollupControl__mdt.ShouldAbortRun__c) + ' set to true, exiting early';
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
-      logMessage = RollupSettings__c.IsEnabled__c.getDescribe().getName() + ' is false, exiting early';
+      logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
     } else if (syncRollups.isEmpty() == false) {
       RollupLogger.Instance.log('about to process sync rollups', LoggingLevel.DEBUG);
       this.process(syncRollups);

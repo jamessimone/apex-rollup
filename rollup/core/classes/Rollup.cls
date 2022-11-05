@@ -442,7 +442,7 @@ global without sharing virtual class Rollup {
     @AuraEnabled
     public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
     @AuraEnabled
-    public final String namespace = Rollup.class.getName().substringBefore('Rollup');
+    public final String namespace = Rollup.class.getName().substringBefore('.Rollup') + '__';
   }
 
   @AuraEnabled(cacheable=true)
