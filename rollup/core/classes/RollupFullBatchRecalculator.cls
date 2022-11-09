@@ -58,10 +58,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
       CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-      CalcItemBag potentiallyStatefulBag = this.statefulLookupToCalcItems.get(lookupKey);
-      if (potentiallyStatefulBag != null && potentiallyStatefulBag.hasQueriedForAdditionalItems) {
-        lookupToCalcItems.put(lookupKey, this.statefulLookupToCalcItems.get(lookupKey));
-      } else {
+      if (bag.hasQueriedForAdditionalItems == false) {
         lookupKeysThatNeedFilling.put(lookupKey, bag);
       }
     }
@@ -71,7 +68,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
       CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);
       this.statefulLookupToCalcItems.put(lookupKey, bag);
-      lookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);
     }
   }

@@ -30,6 +30,28 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     ITERABLE
   }
 
+  private class ParentObjectBagCache {
+    private final Map<String, CalcItemBag> parentToCalcItems;
+
+    public ParentObjectBagCache(Map<String, CalcItemBag> parentToCalcItems) {
+      this.parentToCalcItems = parentToCalcItems;
+    }
+
+    public Map<String, CalcItemBag> getCalcItemBags() {
+      return this.parentToCalcItems;
+    }
+  }
+
+  private final Map<String, ParentObjectBagCache> parentTypeToBagCache {
+    get {
+      if (parentTypeToBagCache == null) {
+        parentTypeToBagCache = new Map<String, ParentObjectBagCache>();
+      }
+      return parentTypeToBagCache;
+    }
+    set;
+  }
+
   private final Set<String> previouslyResetParents {
     get {
       if (previouslyResetParents == null) {
@@ -485,8 +507,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Boolean shouldLimitCalcItemQuery = false;
     Integer remainingQueryRowsLeft = 0;
     Integer outstandingItemCount = 0;
+    List<SObject> additionalCalcItems = new List<SObject>();
 
-    List<SObject> additionalCalcItems;
+    /**
+     * Below follows one of the most complicated pieces of logic in the entire codebase
+     * with respect to limits, we need to retrieve any missing children for all parents
+     * and defer our calculation(s) till such a time as all other adjacent children have been fetched
+     */
+
     if (hasAlreadyBeenQueried) {
       additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
     } else {
@@ -503,23 +531,22 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       if (shouldLimitCalcItemQuery) {
         query = RollupQueryBuilder.Current.getAllRowSafeQuery(rollup.calcItemType, query += '\nLIMIT ' + remainingQueryRowsLeft);
-        hasAlreadyBeenQueried = false;
+        hasAlreadyBeenQueried = this.cachedQueryToAdditionalCalcItems.containsKey(query);
       }
 
-      if (hasAlreadyBeenQueried && shouldLimitCalcItemQuery && outstandingItemCount != remainingQueryRowsLeft) {
+      if (shouldLimitCalcItemQuery) {
+        // fetch as much as we can this iteration, then defer
         this.isTimingOut = true;
-        return;
-      } else if (outstandingItemCount > 0) {
+      }
+      if (outstandingItemCount > 0) {
         RollupLogger.Instance.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
         additionalCalcItems = Database.query(query);
+
         if (hasAlreadyBeenQueried) {
           this.cachedQueryToAdditionalCalcItems.get(query).addAll(additionalCalcItems);
-        } else if (shouldLimitCalcItemQuery == false || remainingQueryRowsLeft >= outstandingItemCount) {
+        } else {
           this.cachedQueryToAdditionalCalcItems.put(query, additionalCalcItems);
         }
-      } else {
-        additionalCalcItems = new List<SObject>();
-        this.cachedQueryToAdditionalCalcItems.put(query, additionalCalcItems);
       }
     }
 
@@ -578,8 +605,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // where stacked async contexts (like a deferred rollup AND a batch job can both be running at once) are much harder to manage
     // due to the platform attempting to auto-collapse them for you, which in this specific bit was leading to the
     // RollupFullBatchRecalculator.statefulLookupToCalcItems map having lookup keys cleared from it too soon
-    // on the upside, figuring this out massively reduces the amount of time it takes for batch full recalcs to run,
-    // so this should be a "next version" priority
 
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
@@ -596,8 +621,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
+    String cacheKey = roll.getHashedContents();
+    String transactionType = 'INSERT';
+    if (roll.op?.name().contains('UPDATE') == true) {
+      transactionType = 'UPDATE';
+    } else if (roll.op?.name().contains('DELETE') == true) {
+      transactionType = 'DELETE';
+    }
+    cacheKey += transactionType;
+
     if (roll.calcItems == null) {
       return lookupFieldToCalcItems;
+    } else if (this.parentTypeToBagCache.containsKey(cacheKey) && transactionType != 'DELETE') {
+      return this.parentTypeToBagCache.get(cacheKey).getCalcItemBags();
     }
     if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
       if (roll.traversal == null) {
@@ -650,6 +686,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
     }
+    this.parentTypeToBagCache.put(cacheKey, new ParentObjectBagCache(lookupFieldToCalcItems));
     return lookupFieldToCalcItems;
   }
 
@@ -805,7 +842,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupLogger.Instance.save();
   }
 
-  private void setupCalcItemData(Rollup roll) {
+  private void setupCalcItemData(RollupAsyncProcessor roll) {
     if (roll.calcItems == null || roll.calcItems.isEmpty()) {
       roll.calcItems = this.calcItems;
       roll.oldCalcItems = this.oldCalcItems;
