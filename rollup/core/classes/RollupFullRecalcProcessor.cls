@@ -39,6 +39,10 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.overrideRollupControl();
   }
 
+  public virtual Boolean isBatch() {
+    return false;
+  }
+
   public void setQuery(String replacementQuery) {
     this.queryString = replacementQuery;
   }
