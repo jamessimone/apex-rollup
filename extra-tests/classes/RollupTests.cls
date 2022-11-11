@@ -3727,6 +3727,6 @@ private class RollupTests {
     String rollupObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
     System.assertEquals(rollupObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName(), nameSpaceInfo.safeRollupOperationField);
     System.assertEquals(rollupObjectName, nameSpaceInfo.safeObjectName);
-    System.assertEquals(RollupTests.class.getName().substringBefore('RollupTests'), nameSpaceInfo.namespace);
+    System.assertEquals(Rollup.class.getName() == 'Rollup' ? '' : Rollup.class.getName().substringBefore('.Rollup') + '__', nameSpaceInfo.namespace);
   }
 }

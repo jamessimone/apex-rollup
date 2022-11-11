@@ -53,7 +53,7 @@ public without sharing class RollupLimits {
     public Integer getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows != null ? stubbedQueryRows : Limits.getQueryRows();
       if (this.control?.MaxQueryRows__c == null) {
-        return queryRowsUsed;
+        return Limits.getLimitQueryRows() - queryRowsUsed;
       }
       Integer remainingQueryRows = this.control.MaxQueryRows__c?.intValue() - queryRowsUsed;
       return remainingQueryRows > 0 ? remainingQueryRows : 0;

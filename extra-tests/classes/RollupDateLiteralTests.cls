@@ -1,7 +1,7 @@
 @SuppressWarnings('PMD.NcssTypeCount, PMD.ApexUnitTestClassShouldHaveAsserts')
 @IsTest
 private class RollupDateLiteralTests {
-  private static final Integer HOUR_IN_DAY = 6;
+  private static final Integer HOUR_IN_DAY = 8;
   @TestSetup
   static void setup() {
     Datetime localStart = Datetime.newInstance(Date.newInstance(System.today().year() - 2, 1, 1), Time.newInstance(0, 0, 0, 0));

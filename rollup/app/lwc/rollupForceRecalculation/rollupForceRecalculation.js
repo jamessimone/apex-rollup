@@ -32,17 +32,7 @@ export default class RollupForceRecalculation extends LightningElement {
 
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _localMetadata = {};
-  _rollupOperationFieldName = 'RollupOperation__c';
-  _cmdtFieldNames = [
-    'MasterLabel',
-    'DeveloperName',
-    this._rollupOperationFieldName,
-    'RollupFieldOnCalcItem__c',
-    'LookupFieldOnCalcItem__c',
-    'LookupFieldOnLookupObject__c',
-    'RollupFieldOnLookupObject__c',
-    'LookupObject__c'
-  ];
+
   _metadata = {
     RollupFieldOnCalcItem__c: '',
     LookupFieldOnCalcItem__c: '',
@@ -58,14 +48,23 @@ export default class RollupForceRecalculation extends LightningElement {
   };
 
   namespace = '';
-  safeObjectName = 'Rollup__mdt';
-  safeRollupOperationField = `${this.safeObjectName}.RollupOperation__c`;
+  safeObjectName = '';
+  safeRollupOperationField = '';
+  _cmdtFieldNames = [
+    'MasterLabel',
+    'DeveloperName',
+    'RollupFieldOnCalcItem__c',
+    'LookupFieldOnCalcItem__c',
+    'LookupFieldOnLookupObject__c',
+    'RollupFieldOnLookupObject__c',
+    'LookupObject__c'
+  ];
 
   get rollupOperation() {
-    return this._metadata[this._getNamespacedFieldName(this._rollupOperationFieldName)] || '';
+    return this._metadata[this._getNamespacedFieldName(this.safeRollupOperationField)] || '';
   }
   set rollupOperation(value) {
-    this._setNamespaceSafeMetadata(this._rollupOperationFieldName, value);
+    this._setNamespaceSafeMetadata(this.safeRollupOperationField, value);
   }
 
   async connectedCallback() {
@@ -77,7 +76,9 @@ export default class RollupForceRecalculation extends LightningElement {
   getCMDTObjectInfo({ error, data }) {
     if (data) {
       this._cmdtFieldNames.forEach(fieldName => {
-        this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
+        if (data.fields[fieldName]) {
+          this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
+        }
       });
     } else if (error) {
       this.error = this._formatWireErrors(error);
@@ -134,10 +135,13 @@ export default class RollupForceRecalculation extends LightningElement {
 
   async _getNamespaceRollupInfo() {
     const namespaceInfo = await getNamespaceInfo();
+    if (!this._cmdtFieldNames.find(fieldName => this.safeRollupOperationField === fieldName)) {
+      this._cmdtFieldNames.push(this.safeRollupOperationField);
+    }
     Object.keys(namespaceInfo).forEach(key => (this[key] = namespaceInfo[key]));
     if (this.namespace) {
       this._metadata = Object.assign({}, ...Object.keys(this._metadata).map(key => ({ [this.namespace + key]: this._metadata[key] })));
-      this._cmdtFieldNames = this._cmdtFieldNames.map(fieldName => this._getNamespacedFieldName(fieldName));
+      this._cmdtFieldNames = this._cmdtFieldNames.map(fieldName => (fieldName.endsWith('__c') ? this._getNamespacedFieldName(fieldName) : fieldName));
     }
   }
 

@@ -6,20 +6,22 @@
 
 ## Getting Started
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
+Create simple, fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. Aggregate from any one object to another in an almost limitless amount of ways. Apex Rollup can not only mimic the standard Salesforce Master-Detail ROLLUP functionality (SUM, AVG, MIN, MAX) for Lookup relationships, Apex Rollup goes farther. Apex Rollup can count your related data, it can summarize your data by picking out the First or Last record based on conditions that you define. It can concatenate text together for you, and it can flag parent records if all, none, or some of that parent's children meet criteria. In addition, lookup relationships aren't a requirement for data aggregation: from being able to congregate the Contacts of an Account on an Opportunity to being able to being able to relate that one random Product SKU to any matching text on another record. Best of all? This functionality doesn't have to come from Apex! Apex Rollup works in Apex, Custom Metadata, Flows, and LWC.
 
-Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
+Want to see examples of the magic? You can dive in depth on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/). Looking to replace DLRS with Apex Rollup? We've even got that covered. [We have a whole migration section, just for you](#migrating-from-dlrs)!
+
+Read below for more on how you can use Apex Rollup in your day-to-day. Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
 
 As well, don't miss [the Wiki](../../wiki), which includes more advanced information available on many topics.
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLpGAAU">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLuvAAE">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLpGAAU">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLuvAAE">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>

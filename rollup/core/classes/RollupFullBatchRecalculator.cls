@@ -32,6 +32,10 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupLogger.Instance.save();
   }
 
+  public override Boolean isBatch() {
+    return true;
+  }
+
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
     if (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
       this.startAsyncWork();
@@ -47,21 +51,14 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     return this.startBatchProcessor();
   }
 
-  protected override Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
-    if (this.statefulLookupToCalcItems.isEmpty() == false) {
-      return this.statefulLookupToCalcItems;
-    }
-    return super.getCalcItemsByLookupField(roll, uniqueLookupObjectFields);
-  }
-
   protected override void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
     for (String lookupKey : lookupToCalcItems.keySet()) {
-      CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-      CalcItemBag potentiallyStatefulBag = this.statefulLookupToCalcItems.get(lookupKey);
-      if (potentiallyStatefulBag != null && potentiallyStatefulBag.hasQueriedForAdditionalItems) {
+      if (this.statefulLookupToCalcItems.containsKey(lookupKey)) {
         lookupToCalcItems.put(lookupKey, this.statefulLookupToCalcItems.get(lookupKey));
-      } else {
+      }
+      CalcItemBag bag = lookupToCalcItems.get(lookupKey);
+      if (bag.hasQueriedForAdditionalItems == false) {
         lookupKeysThatNeedFilling.put(lookupKey, bag);
       }
     }
@@ -71,7 +68,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
       CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);
       this.statefulLookupToCalcItems.put(lookupKey, bag);
-      lookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);
     }
   }
