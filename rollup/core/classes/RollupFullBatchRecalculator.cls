@@ -67,7 +67,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
     for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
       CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);
-      // TODO - could also track whether or not bag.hasQueriedForAdditionalItems here and keep track of parents that weren't fully retrieved
       this.statefulLookupToCalcItems.put(lookupKey, bag);
       this.recordIds.add(lookupKey);
     }

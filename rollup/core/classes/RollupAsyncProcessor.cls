@@ -30,28 +30,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     ITERABLE
   }
 
-  private class ParentObjectBagCache {
-    private final Map<String, CalcItemBag> parentToCalcItems;
-
-    public ParentObjectBagCache(Map<String, CalcItemBag> parentToCalcItems) {
-      this.parentToCalcItems = parentToCalcItems;
-    }
-
-    public Map<String, CalcItemBag> getCalcItemBags() {
-      return this.parentToCalcItems;
-    }
-  }
-
-  private final Map<String, ParentObjectBagCache> parentTypeToBagCache {
-    get {
-      if (parentTypeToBagCache == null) {
-        parentTypeToBagCache = new Map<String, ParentObjectBagCache>();
-      }
-      return parentTypeToBagCache;
-    }
-    set;
-  }
-
   private final Set<String> previouslyResetParents {
     get {
       if (previouslyResetParents == null) {
@@ -726,19 +704,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
-    String cacheKey = roll.getHashedContents();
-    String transactionType = 'INSERT';
-    if (roll.op?.name().contains('UPDATE') == true) {
-      transactionType = 'UPDATE';
-    } else if (roll.op?.name().contains('DELETE') == true) {
-      transactionType = 'DELETE';
-    }
-    cacheKey += transactionType;
-
     if (roll.calcItems == null) {
       return lookupFieldToCalcItems;
-    } else if (this.parentTypeToBagCache.containsKey(cacheKey) && transactionType != 'DELETE') {
-      return this.parentTypeToBagCache.get(cacheKey).getCalcItemBags();
     }
     if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
       if (roll.traversal == null) {
@@ -791,7 +758,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
     }
-    this.parentTypeToBagCache.put(cacheKey, new ParentObjectBagCache(lookupFieldToCalcItems));
     return lookupFieldToCalcItems;
   }
 
@@ -842,7 +808,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupLogger.Instance.save();
   }
 
-  private void setupCalcItemData(RollupAsyncProcessor roll) {
+  private void setupCalcItemData(Rollup roll) {
     if (roll.calcItems == null || roll.calcItems.isEmpty()) {
       roll.calcItems = this.calcItems;
       roll.oldCalcItems = this.oldCalcItems;
@@ -1061,12 +1027,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private List<SObject> getUpdatedLookupItemsByRollup(RollupAsyncProcessor roll, Map<String, CalcItemBag> calcItemsByLookupField, List<SObject> lookupItems) {
+    if (this.fullRecalcProcessor != null) {
+      this.fullRecalcProcessor.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
+    } else {
+      this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
+    }
+
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Map<String, SObject> unprocessedCalcItems = new Map<String, SObject>();
     RollupSObjectUpdater updater = new RollupSObjectUpdater(roll.opFieldOnLookupObject);
-    this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
-
     RollupCalculator calc;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
