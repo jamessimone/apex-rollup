@@ -6,9 +6,11 @@
 
 ## Getting Started
 
-Create fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. As seen on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/) - if you are looking to replace DLRS with Apex Rollup, [we have a whole migration section for you](#migrating-from-dlrs)!
+Create simple, fast, scalable custom rollups driven by Custom Metadata in your Salesforce org with Apex Rollup. Aggregate from any one object to another in almost a limitless amount of ways. Apex Rollup can not only mimic the standard Salesforce Master-Detail ROLLUP functionality (SUM, AVG, MIN, MAX) for Lookup relationships, Apex Rollups goes farther. Apex Rollup can count the related data, it can summarize the data by picking out the First, Last, or Concatenating.  In addition, no matter how loosely your data is connected, Apex Rollup can make the correlation, from being able to congregate the Contacts of an Account on an Opportunity to being able to relate that one random Product SKU to also totally being a meaningful id of a parent Account. Apex 
 
-Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
+Want to see examples of the magic? You can dive in depth on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/). Looking to replace DLRS with Apex Rollup? We've even got that covered. [We have a whole migration section for you to make it easy.](#migrating-from-dlrs)!
+
+Read below for more on how you can use Apex Rollup in your day-to-day. Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
 
 As well, don't miss [the Wiki](../../wiki), which includes more advanced information available on many topics.
 
