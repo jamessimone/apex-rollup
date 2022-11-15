@@ -341,7 +341,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected Boolean isReparented(SObject calcItem, SObject oldCalcItem) {
-    return calcItem?.get(this.lookupKeyField) != oldCalcItem?.get(this.lookupKeyField);
+    return oldCalcItem != null && calcItem?.get(this.lookupKeyField) != oldCalcItem.get(this.lookupKeyField);
   }
 
   protected Object performBaseCalculation(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
@@ -517,7 +517,7 @@ public without sharing abstract class RollupCalculator {
       SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
 
       Decimal newVal = this.getNumericValue(calcItem);
-      Decimal oldVal = oldCalcItem != null ? this.getNumericValue(oldCalcItem) : newVal;
+      Decimal oldVal = oldCalcItem != null ? this.getNumericValue(oldCalcItem) : 0;
 
       Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
       Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) == true;
@@ -773,7 +773,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override Decimal getNumericChangedValue(SObject calcItem, Map<Id, SObject> oldCalcItems) {
-      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
+      SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
 
       // for a reparenting, the item counts towards the new record on an update
       if (this.isReparented(calcItem, oldCalcItem)) {
@@ -781,16 +781,16 @@ public without sharing abstract class RollupCalculator {
       }
 
       Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
-      Boolean matchesPrior = this.eval?.matches(oldCalcItem) == true;
+      Boolean matchesPrior = oldCalcItem != null && this.eval?.matches(oldCalcItem) == true;
 
       // for updates, we have to decrement the count if the value has been cleared out
       Decimal retVal = 0.00;
       Object current = calcItem.get(this.opFieldOnCalcItem);
-      Object prior = oldCalcItem.get(this.opFieldOnCalcItem);
+      Object prior = oldCalcItem?.get(this.opFieldOnCalcItem);
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
       if (current == null && prior != null || matchesPrior && matchesCurrent == false) {
         retVal = -1.00;
-      } else if (current != defaultVal && prior == defaultVal || matchesPrior == false && matchesCurrent) {
+      } else if (current != defaultVal && prior == defaultVal || matchesPrior == false && matchesCurrent || current != null && prior == null) {
         retVal = 1.00;
       } else if (current == false && prior == true) {
         retVal = -1.00;
