@@ -339,6 +339,46 @@ private class RollupTests {
   }
 
   @IsTest
+  static void countFullRecordSetProperlyFetchesAllMatchingChildren() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 2;
+    update acc;
+
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 50, Name = 'one', ParentId = acc.Id),
+      new ContactPointAddress(PreferenceRank = 50, Name = 'two', ParentId = acc.Id)
+    };
+
+    ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ cpa });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.shouldRun = true;
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = cpa.ParentId, Id = cpa.Id, PreferenceRank = 1) };
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        CalcItemWhereClause__c = 'PreferenceRank = 50',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        LookupObject__c = 'Account',
+        IsFullRecordSet__c = true,
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Account should have been updated');
+    acc = (Account) mock.Records[0];
+    System.assertEquals(3, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldDecrementCountFromTriggerBeforeDeleteIfValueIsRemoved() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 9;
