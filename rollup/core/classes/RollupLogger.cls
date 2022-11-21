@@ -183,8 +183,10 @@ public without sharing virtual class RollupLogger implements ILogger {
     }
 
     public void save() {
-      for (ILogger logger : this.loggers) {
-        logger.save();
+      if (this.control.IsRollupLoggingEnabled__c != false) {
+        for (ILogger logger : this.loggers) {
+          logger.save();
+        }
       }
     }
   }

@@ -48,6 +48,16 @@ public class RollupLoggerTests {
     System.assert(true, 'Should make it here');
   }
 
+  @IsTest
+  static void skipsSaveWhenDisabled() {
+    setup();
+    Rollup.defaultControl.IsRollupLoggingEnabled__c = false;
+
+    RollupLogger.Instance.save();
+
+    System.assertEquals(false, wasSaved);
+  }
+
   private static void setup() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
