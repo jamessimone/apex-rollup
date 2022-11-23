@@ -1029,6 +1029,14 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void gracefullyHandlesFieldNotExistingForDateLiteral() {
+    String whereClause = 'SomeFieldThatDoesNotExist = THIS_YEAR';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    System.assertEquals(false, eval.matches(new Opportunity()));
+  }
+
+  @IsTest
   static void shouldProperlyEvaluateDateLiteral() {
     String whereClause = 'CloseDate = THIS_YEAR';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);

@@ -1,7 +1,7 @@
 public without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.5.33';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.5.34';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -183,8 +183,10 @@ public without sharing virtual class RollupLogger implements ILogger {
     }
 
     public void save() {
-      for (ILogger logger : this.loggers) {
-        logger.save();
+      if (this.control.IsRollupLoggingEnabled__c != false) {
+        for (ILogger logger : this.loggers) {
+          logger.save();
+        }
       }
     }
   }

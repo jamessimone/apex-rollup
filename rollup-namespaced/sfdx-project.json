@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes edge case with COUNT-based rollups pointed out by Melissa Rainboldt",
-            "versionNumber": "1.0.6.0",
+            "versionName": "Fixed bug in RollupEvaluator where not having permissions to access a field while using date literals could cause a null pointer exception",
+            "versionNumber": "1.0.7.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -27,6 +27,7 @@
         "apex-rollup-namespaced@1.0.3-0": "04t6g000007zLnoAAE",
         "apex-rollup-namespaced@1.0.4-0": "04t6g000007zLpLAAU",
         "apex-rollup-namespaced@1.0.5-0": "04t6g000007zLqEAAU",
-        "apex-rollup-namespaced@1.0.6-0": "04t6g000007zLvyAAE"
+        "apex-rollup-namespaced@1.0.6-0": "04t6g000007zLvyAAE",
+        "apex-rollup-namespaced@1.0.7-0": "04t6g000007zLxLAAU"
     }
 }
