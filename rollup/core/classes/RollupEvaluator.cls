@@ -687,16 +687,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
       if (item == null) {
-        return '';
+        return null;
       }
       // handle compound fields separately
       Boolean hasField = sObjectType.getDescribe().fields.getMap().containsKey(fieldPath);
       if (fieldPath.contains('.') && hasField == false) {
         return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
-      } else if (hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath) || hasField && item.get(fieldPath) == null) {
+      } else if ((hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath)) || (hasField && item.get(fieldPath) == null)) {
         return item.get(fieldPath);
       }
-      return '';
+      return null;
     }
 
     private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
