@@ -30,7 +30,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     ITERABLE
   }
 
-  private final Set<String> previouslyResetParents {
+  protected final Set<String> previouslyResetParents {
     get {
       if (previouslyResetParents == null) {
         previouslyResetParents = new Set<String>();
@@ -229,7 +229,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    this.previouslyResetParents.add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+    this.addToPreviouslyResetParents(processor, parent);
     this.fullRecalcProcessor?.storeParentResetField(processor, parent);
   }
 
@@ -381,12 +381,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
         localLookupItems = Database.query(queryString);
       }
-      for (Integer index = localLookupItems.size() - 1; index >= 0; index--) {
-        if (this.parentRollupFieldHasBeenReset(rollup, localLookupItems[index]) == true) {
-          localLookupItems.remove(index);
+      List<SObject> recordsToReset = new List<SObject>();
+      for (SObject lookupItem : localLookupItems) {
+        if (this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false) {
+          recordsToReset.add(lookupItem);
         }
       }
-      this.fullRecalcProcessor?.processParentFieldsToReset(localLookupItems);
+      this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
       return localLookupItems;
     }
 
@@ -625,15 +626,28 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected Boolean parentRollupFieldHasBeenReset(Rollup__mdt meta, SObject parent) {
-    return this.previouslyResetParents.contains(this.getParentResetKey(meta.RollupFieldOnLookupObject__c, parent));
+    return this.hasParentRollupFieldBeenReset(meta.RollupFieldOnLookupObject__c, parent);
   }
 
   protected Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-    return this.previouslyResetParents.contains(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
+    return this.hasParentRollupFieldBeenReset(String.valueOf(processor.opFieldOnLookupObject), parent);
+  }
+
+  protected void addToPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
+    this.previouslyResetParents.add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
   }
 
   protected virtual Boolean getCanRollupWithoutCustomSetting() {
     return this.metadata?.ShouldRunWithoutCustomSettingEnabled__c == true;
+  }
+
+  private Boolean hasParentRollupFieldBeenReset(String rollupFieldName, SObject parent) {
+    String resetKey = this.getParentResetKey(rollupFieldName, parent);
+    Boolean hasParentRollupFieldBeenReset = this.previouslyResetParents.contains(resetKey);
+    if (this.fullRecalcProcessor != null) {
+      hasParentRollupFieldBeenReset = this.fullRecalcProcessor.previouslyResetParents.contains(resetKey);
+    }
+    return hasParentRollupFieldBeenReset;
   }
 
   private Boolean getCanEnqueue() {
@@ -974,6 +988,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // (or fail - that's always an option)
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
 
+    // TODO - for singular recalc of rollups where IsFullRecordSet__c == true
+    // we also need to consider how to transform a processor into a batched full recalc processor
+    // when the count of non-included children is greater than RollupControl__mdt.MaxQueryRows__c!
     Integer totalCountOfRecords = 0;
     for (RollupAsyncProcessor roll : processors) {
       if (roll.queryCount != null) {
