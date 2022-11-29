@@ -33,7 +33,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected final Set<String> previouslyResetParents {
     get {
       if (previouslyResetParents == null) {
-        previouslyResetParents = new Set<String>();
+        previouslyResetParents = this.fullRecalcProcessor != null ? this.fullRecalcProcessor.previouslyResetParents : new Set<String>();
       }
       return previouslyResetParents;
     }
@@ -448,7 +448,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
-  protected virtual void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
+  protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     if (this.isValidAdditionalCalcItemRetrieval(rollup) == false || rollup.metadata?.RollupToUltimateParent__c == true) {
       return;
     }
@@ -644,7 +644,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean hasParentRollupFieldBeenReset(String rollupFieldName, SObject parent) {
     String resetKey = this.getParentResetKey(rollupFieldName, parent);
     Boolean hasParentRollupFieldBeenReset = this.previouslyResetParents.contains(resetKey);
-    if (this.fullRecalcProcessor != null) {
+    if (this.fullRecalcProcessor != null && hasParentRollupFieldBeenReset == false) {
       hasParentRollupFieldBeenReset = this.fullRecalcProcessor.previouslyResetParents.contains(resetKey);
     }
     return hasParentRollupFieldBeenReset;
@@ -662,7 +662,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     switch on roll.invokePoint {
       when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
         // if we aren't batching, safe to assume a full recalc has already pulled the rest of the records back
-        return System.isBatch();
+        return this.fullRecalcProcessor?.isBatch() != true;
       }
       when else {
         return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
@@ -1044,11 +1044,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private List<SObject> getUpdatedLookupItemsByRollup(RollupAsyncProcessor roll, Map<String, CalcItemBag> calcItemsByLookupField, List<SObject> lookupItems) {
-    if (this.fullRecalcProcessor != null) {
-      this.fullRecalcProcessor.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
-    } else {
-      this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
-    }
+    this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
 
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();

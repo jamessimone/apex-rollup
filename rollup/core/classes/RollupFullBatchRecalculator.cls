@@ -1,6 +1,4 @@
 public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful {
-  private final Map<String, CalcItemBag> statefulLookupToCalcItems = new Map<String, CalcItemBag>();
-
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
@@ -49,26 +47,5 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
   protected virtual override String startAsyncWork() {
     return this.startBatchProcessor();
-  }
-
-  protected override void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
-    Map<String, CalcItemBag> lookupKeysThatNeedFilling = new Map<String, CalcItemBag>();
-    for (String lookupKey : lookupToCalcItems.keySet()) {
-      if (this.statefulLookupToCalcItems.containsKey(lookupKey)) {
-        lookupToCalcItems.put(lookupKey, this.statefulLookupToCalcItems.get(lookupKey));
-      }
-      CalcItemBag bag = lookupToCalcItems.get(lookupKey);
-      if (bag.hasQueriedForAdditionalItems == false) {
-        lookupKeysThatNeedFilling.put(lookupKey, bag);
-      }
-    }
-
-    super.retrieveAdditionalCalcItems(lookupKeysThatNeedFilling, rollup);
-
-    for (String lookupKey : lookupKeysThatNeedFilling.keySet()) {
-      CalcItemBag bag = lookupKeysThatNeedFilling.get(lookupKey);
-      this.statefulLookupToCalcItems.put(lookupKey, bag);
-      this.recordIds.add(lookupKey);
-    }
   }
 }
