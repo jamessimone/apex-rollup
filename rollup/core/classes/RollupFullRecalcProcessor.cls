@@ -43,6 +43,10 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return false;
   }
 
+  public void addMetadata(Rollup__mdt meta) {
+    this.rollupMetas.add(meta);
+  }
+
   public void setQuery(String replacementQuery) {
     this.queryString = replacementQuery;
   }
