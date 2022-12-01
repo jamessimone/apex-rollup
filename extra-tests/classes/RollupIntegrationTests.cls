@@ -634,6 +634,60 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void fullRecalculationStartsProperlyOnUpdateWhenOverQueryLimit() {
+    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true, MaxQueryRows__c = 2, MaxRollupRetries__c = 1);
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id FROM Account];
+    Opportunity priorOpp = [SELECT Amount, StageName FROM Opportunity];
+    Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Prospecting', Amount = 5, Name = 'One');
+    Opportunity secondOpp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Something', Amount = 5, Name = 'Two');
+    insert new List<Opportunity>{ opp, secondOpp };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        RollupOperation__c = 'SUM',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnLookupObject__c = 'Id',
+        IsFullRecordSet__c = true
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        RollupOperation__c = 'CONCAT',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupFieldOnCalcItem__c = 'StageName',
+        LookupFieldOnLookupObject__c = 'Id',
+        IsFullRecordSet__c = true
+      )
+    };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.records = new List<Opportunity>{ opp };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, AccountId = acc.Id) };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Account updatedAccount = [SELECT Id, AnnualRevenue, Description FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(priorOpp.Amount + opp.Amount + secondOpp.Amount, updatedAccount.AnnualRevenue, 'SUM should have fully rolled up');
+    System.assertEquals(
+      opp.StageName +
+      ', ' +
+      secondOpp.StageName +
+      ', ' +
+      priorOpp.StageName,
+      updatedAccount.Description,
+      'CONCAT should have fully rolled up'
+    );
+  }
+
+  @IsTest
   static void performsRollupWhenIntermediateOneToManyChildrenUpdated() {
     Rollup.onlyUseMockMetadata = true;
     Account acc = [SELECT Id, AnnualRevenue FROM Account];

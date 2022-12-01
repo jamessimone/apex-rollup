@@ -7,7 +7,7 @@ public without sharing class RollupLimits {
 
   public class Tester {
     private final transient RollupControl__mdt control;
-    private final Boolean isRunningAsync;
+    private final transient Boolean isRunningAsync;
     public Tester(RollupControl__mdt control, Boolean isRunningAsync) {
       this.control = control;
       this.isRunningAsync = isRunningAsync;
@@ -25,7 +25,7 @@ public without sharing class RollupLimits {
     }
     public Boolean hasExceededHeapSizeLimit {
       get {
-        return (Limits.getLimitHeapSize() / 2) < Limits.getHeapSize();
+        return (Limits.getLimitHeapSize() - 2000) < Limits.getHeapSize();
       }
     }
     public Boolean hasExceededDMLRowLimit {

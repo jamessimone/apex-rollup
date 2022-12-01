@@ -18,12 +18,12 @@ For more info, see the base `README`.
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLxLAAU">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zM2gAAE">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLxLAAU">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zM2gAAE">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>

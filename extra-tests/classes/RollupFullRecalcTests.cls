@@ -1985,15 +1985,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRuns() {
-    // additionalCalcItemCount shortcuts a Database.countQuery() call in RollupAsyncProcessor
-    // which reduces the MaxNumberOfQueries__c needed below
-    RollupAsyncProcessor.additionalCalcItemCount = 1;
-    Rollup.defaultControl = new RollupControl__mdt(
-      BatchChunkSize__c = 1,
-      MaxNumberOfQueries__c = 6,
-      IsRollupLoggingEnabled__c = true,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
-    );
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2033,15 +2025,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRunsCount() {
-    // additionalCalcItemCount shortcuts a Database.countQuery() call in RollupAsyncProcessor
-    // which reduces the MaxNumberOfQueries__c needed below
-    RollupAsyncProcessor.additionalCalcItemCount = 1;
-    Rollup.defaultControl = new RollupControl__mdt(
-      BatchChunkSize__c = 1,
-      MaxNumberOfQueries__c = 6,
-      IsRollupLoggingEnabled__c = true,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
-    );
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2081,14 +2065,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void limitsFullBatchRecalcCachedItemsProperly() {
-    Rollup.defaultControl = new RollupControl__mdt(
-      BatchChunkSize__c = 1,
-      MaxNumberOfQueries__c = 100,
-      IsRollupLoggingEnabled__c = true,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      MaxQueryRows__c = 2, // forced to pick up only one row at a time
-      MaxRollupRetries__c = 1
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2100,7 +2077,7 @@ private class RollupFullRecalcTests {
 
     RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
       'SELECT Id, PreferenceRank FROM ContactPointAddress',
-      Rollup.InvocationPoint.FROM_APEX,
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
       new List<Rollup__mdt>{
         new Rollup__mdt(
           CalcItem__c = 'ContactPointAddress',
@@ -2116,16 +2093,15 @@ private class RollupFullRecalcTests {
       new Set<String>(),
       null
     );
-    RollupLimits.stubbedQueryRows = 1;
 
     Test.startTest();
-    // first batch executes with cpas[0] and picks up cpas[1] in retrieveAdditionalCalcItems
-    // it should then get deferred and re-execute to pick up cpas[2]
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[1] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[2] });
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(6, acc.AnnualRevenue, 'Should have included all calc items in both runs without double-counting or incorrectly summing');
+    System.assertEquals(6, acc.AnnualRevenue, 'Should have included all calc items without double-counting or incorrectly summing');
     System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
   }
 

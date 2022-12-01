@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsDevEdOrTrialOrg__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>If checked, Rollup will prevent Queueables from chaining more than 4 times to respect these orgs' limits</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>If checked, Rollup will prevent Queueables from chaining more than 4 times to respect these orgs' limits</inlineHelpText>
+    <label>Is Dev Ed Or Trial Org</label>
+    <type>Checkbox</type>
+</CustomField>

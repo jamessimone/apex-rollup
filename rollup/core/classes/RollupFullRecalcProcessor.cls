@@ -9,7 +9,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   protected String queryString;
   private Boolean hasProcessedParentRecords = false;
-  private Boolean isRecursive = false;
 
   private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS {
     get {
@@ -37,10 +36,15 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
     this.overrideRollupControl();
+    this.previouslyResetParents = new Set<String>();
   }
 
   public virtual Boolean isBatch() {
     return false;
+  }
+
+  public void addMetadata(Rollup__mdt meta) {
+    this.rollupMetas.add(meta);
   }
 
   public void setQuery(String replacementQuery) {
@@ -82,13 +86,9 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    if (this.isRecursive == false) {
-      this.isRecursive = true;
-      super.storeParentResetField(processor, parent);
-      this.postProcessor?.recordIds.add(parent.Id);
-      this.postProcessor?.storeParentResetField(processor, parent);
-    }
-    this.isRecursive = false;
+    this.addToPreviouslyResetParents(processor, parent);
+    this.postProcessor?.recordIds.add(parent.Id);
+    this.postProcessor?.addToPreviouslyResetParents(processor, parent);
   }
 
   public void storeParentFieldsToClear(List<SObject> parentRecordsToClear) {

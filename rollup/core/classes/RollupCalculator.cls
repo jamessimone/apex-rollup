@@ -522,14 +522,14 @@ public without sharing abstract class RollupCalculator {
       Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
       Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) == true;
 
-      if (this.isReparented(calcItem, oldCalcItem)) {
+      if (this.isFullRecalc) {
+        return newVal;
+      } else if (this.isReparented(calcItem, oldCalcItem)) {
         return newVal;
       } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false) {
         return newVal;
       } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false) {
         return oldVal * Decimal.valueOf(-1).setScale(oldVal.scale());
-      } else if (this.isFullRecalc) {
-        return newVal;
       }
 
       // could be negative, could be positive ... could be 0!
@@ -788,7 +788,9 @@ public without sharing abstract class RollupCalculator {
       Object current = calcItem.get(this.opFieldOnCalcItem);
       Object prior = oldCalcItem?.get(this.opFieldOnCalcItem);
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
-      if (current == null && prior != null || matchesPrior && matchesCurrent == false) {
+      if (this.isFullRecalc) {
+        retVal = 1.00;
+      } else if (current == null && prior != null || matchesPrior && matchesCurrent == false) {
         retVal = -1.00;
       } else if (current != defaultVal && prior == defaultVal || matchesPrior == false && matchesCurrent || current != null && prior == null) {
         retVal = 1.00;

@@ -16,12 +16,12 @@ As well, don't miss [the Wiki](../../wiki), which includes more advanced informa
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLxGAAU">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zM2bAAE">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zLxGAAU">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zM2bAAE">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -195,6 +195,7 @@ Rollup Control CMDT (`RollupControl__mdt`) is used to establish limits on Rollup
 These are the fields on the `Rollup Control` custom metadata type:
 
 - `Batch Chunk Size` - (defaults to 2000) - The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default for batch jobs.
+- `Is Dev Ed Or Trial Org` - (defaults to false) - Salesforce limits how many times Queueable jobs can be enchained in these orgs specifically. Update this value to true if you are working in a Developer Edition or Trial Org with large data volume, as testing in these orgs can otherwise hit the maximum stack depth allowed for Queueables.
 - `Is Merge Reparenting Enabled` - (defaults to true) - By default, if there is an `after delete` trigger context for Account / Case / Contact / Lead where Rollup is being used and one or more of those records is merged, Rollup goes and updates any children records from the old lookup to the new lookup automatically prior to recalculating rollup values. If you have pre-existing merge handling covered in your org by some other means, you should disable this checkbox and ensure that Rollup is only called _after_ your pre-existing merge handling has run.
 - `Is Rollup Logging Enabled` - (defaults to false) - Check this box in order to debug your rollups. Debug information is included in a few mission-critical pieces of Rollup to provide you with more information about where exactly an error might be occurring, should you encounter one. For more information, see the [Rollup Plugins](#rollup-plugins) section
 - `Max Lookup Rows Before Batching` - if you are rolling up to an object that interacts in many different ways within the system, Apex Rollup moves from using a Queueable based system (read: fast and light) to a Batched Apex approach (read: solid, sometimes slow). You can override the default for switching to Batch Apex by lowering the number of rows. Without an `Org_Default` record, this defaults to `3333`
