@@ -22,6 +22,10 @@
                 <behavior>Edit</behavior>
                 <field>IsRollupLoggingEnabled__c</field>
             </layoutItems>
+          <layoutItems>
+                <behavior>Edit</behavior>
+                <field>IsDevEdOrTrialOrg__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
