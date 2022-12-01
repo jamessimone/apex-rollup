@@ -405,6 +405,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
+      this.setCurrentJobId(qc?.getJobId());
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
 
@@ -443,21 +444,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.lookupItems;
   }
 
-  protected RollupAsyncProcessor getDelegatedFullRecalcRollup(
+  protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollup(
     List<Rollup__mdt> rollupMetas,
     List<SObject> calcItems,
     RollupFullRecalcProcessor fullRecalcProcessor
   ) {
     RollupAsyncProcessor processor = this.getAsyncRollup(rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
-    processor.isFullRecalc = true;
-    processor.fullRecalcProcessor = fullRecalcProcessor;
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = fullRecalcProcessor;
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = calcItems;
     }
     this.fullRecalcProcessor = fullRecalcProcessor;
-    return processor;
+    return processor.rollups;
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')

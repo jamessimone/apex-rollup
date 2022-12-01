@@ -18,6 +18,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
+    this.isProcessed = true;
     RollupLogger.Instance.log('starting full batch recalc run:', this, LoggingLevel.DEBUG);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
@@ -26,7 +27,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this)?.runCalc();
+    this.process(this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this));
     RollupLogger.Instance.save();
   }
 
@@ -35,7 +36,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
-    if (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
+    if (this.isProcessed == false && this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
       this.startAsyncWork();
     }
     return new List<RollupAsyncProcessor>();

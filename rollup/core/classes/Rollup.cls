@@ -378,6 +378,10 @@ global without sharing virtual class Rollup {
     isDeferralAllowed = value;
   }
 
+  protected String getCurrentJobId() {
+    return currentJobId;
+  }
+
   protected void setCurrentJobId(String jobId) {
     currentJobId = jobId;
   }
@@ -2861,17 +2865,18 @@ global without sharing virtual class Rollup {
     // there are multiple spots where testOverrideData can be supplied, which is why it's necessary to pass the argument to this method
     if (testOverrideData != null) {
       return testOverrideData;
-    } else if (whereField == RollupControl__mdt.Id || whereField == RollupControl__mdt.DeveloperName) {
+    } else if (whereValue != null && (whereField == RollupControl__mdt.Id || whereField == RollupControl__mdt.DeveloperName)) {
       String whereKey = (String) whereValue;
       RollupControl__mdt potentialControl = RollupControl__mdt.getInstance(whereKey);
       if (potentialControl != null) {
         return potentialControl.clone(true, true);
       }
-    }
-    List<RollupControl__mdt> rollupControls = getMetadataFromCache(RollupControl__mdt.SObjectType);
-    for (RollupControl__mdt rollupControl : rollupControls) {
-      if (rollupControl.get(whereField) == whereValue) {
-        return rollupControl;
+    } else if (whereValue != null) {
+      List<RollupControl__mdt> rollupControls = getMetadataFromCache(RollupControl__mdt.SObjectType);
+      for (RollupControl__mdt rollupControl : rollupControls) {
+        if (rollupControl.get(whereField) == whereValue) {
+          return rollupControl;
+        }
       }
     }
 
