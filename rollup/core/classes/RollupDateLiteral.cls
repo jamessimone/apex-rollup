@@ -368,7 +368,7 @@ public without sharing abstract class RollupDateLiteral {
   private class LastMonthLiteral extends RollupDateLiteral {
     public LastMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = this.ref.addMonths(1);
+      this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
     }
   }
 
@@ -379,6 +379,9 @@ public without sharing abstract class RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
       this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
+      if (this.bound.dayGmt() != 1 && this.bound.day() == 1) {
+        this.bound = this.bound.addDays(-1);
+      }
     }
   }
 
