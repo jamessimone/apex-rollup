@@ -11,14 +11,12 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public override Database.QueryLocator start(Database.BatchableContext bc) {
-    this.isProcessed = true;
     // note - if the optional where clause was appended to the passed in query string,
     // this.recordIds is also used as a bind variable
     return Database.getQueryLocator(RollupQueryBuilder.Current.getAllRowSafeQuery(this.calcItemType, this.queryString));
   }
 
   public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    this.isProcessed = true;
     RollupLogger.Instance.log('starting full batch recalc run:', this, LoggingLevel.DEBUG);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
@@ -27,7 +25,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.process(this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this));
+    this.process(this.getDelegatedFullRecalcRollups(calcItems));
     RollupLogger.Instance.save();
   }
 

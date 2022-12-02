@@ -444,21 +444,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.lookupItems;
   }
 
-  protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollup(
-    List<Rollup__mdt> rollupMetas,
-    List<SObject> calcItems,
-    RollupFullRecalcProcessor fullRecalcProcessor
-  ) {
-    RollupAsyncProcessor processor = this.getAsyncRollup(rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
-    for (RollupAsyncProcessor innerRoll : processor.rollups) {
-      innerRoll.fullRecalcProcessor = fullRecalcProcessor;
-      innerRoll.isFullRecalc = true;
-      innerRoll.calcItems = calcItems;
-    }
-    this.fullRecalcProcessor = fullRecalcProcessor;
-    return processor.rollups;
-  }
-
   @SuppressWarnings('PMD.UnusedLocalVariable')
   protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     if (this.isValidAdditionalCalcItemRetrieval(rollup) == false || rollup.metadata?.RollupToUltimateParent__c == true) {
@@ -584,6 +569,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
+    this.isProcessed = true;
     this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
     this.preProcessRollups(rollups);
     this.populateObjectFields(rollups);
