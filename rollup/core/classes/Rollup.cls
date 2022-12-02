@@ -378,10 +378,6 @@ global without sharing virtual class Rollup {
     isDeferralAllowed = value;
   }
 
-  protected String getCurrentJobId() {
-    return currentJobId;
-  }
-
   protected void setCurrentJobId(String jobId) {
     currentJobId = jobId;
   }
