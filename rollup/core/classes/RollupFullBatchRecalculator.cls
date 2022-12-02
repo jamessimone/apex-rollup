@@ -11,7 +11,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public override Database.QueryLocator start(Database.BatchableContext bc) {
-    this.isProcessed = true;
     // note - if the optional where clause was appended to the passed in query string,
     // this.recordIds is also used as a bind variable
     return Database.getQueryLocator(RollupQueryBuilder.Current.getAllRowSafeQuery(this.calcItemType, this.queryString));
@@ -26,7 +25,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * being batched, even if the inner class is just extending the functionality of its
      * parent class
      */
-    this.getDelegatedFullRecalcRollup(this.rollupMetas, calcItems, this)?.runCalc();
+    this.process(this.getDelegatedFullRecalcRollups(calcItems));
     RollupLogger.Instance.save();
   }
 
@@ -35,7 +34,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
-    if (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
+    if (this.isProcessed == false && this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous) {
       this.startAsyncWork();
     }
     return new List<RollupAsyncProcessor>();

@@ -405,6 +405,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
+      this.setCurrentJobId(qc?.getJobId());
       System.attachFinalizer(new RollupFinalizer());
       this.process(this.rollups);
 
@@ -441,23 +442,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
-  }
-
-  protected RollupAsyncProcessor getDelegatedFullRecalcRollup(
-    List<Rollup__mdt> rollupMetas,
-    List<SObject> calcItems,
-    RollupFullRecalcProcessor fullRecalcProcessor
-  ) {
-    RollupAsyncProcessor processor = this.getAsyncRollup(rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
-    processor.isFullRecalc = true;
-    processor.fullRecalcProcessor = fullRecalcProcessor;
-    for (RollupAsyncProcessor innerRoll : processor.rollups) {
-      innerRoll.fullRecalcProcessor = fullRecalcProcessor;
-      innerRoll.isFullRecalc = true;
-      innerRoll.calcItems = calcItems;
-    }
-    this.fullRecalcProcessor = fullRecalcProcessor;
-    return processor;
   }
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
@@ -585,6 +569,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected void process(List<RollupAsyncProcessor> rollups) {
+    this.isProcessed = true;
     this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
     this.preProcessRollups(rollups);
     this.populateObjectFields(rollups);

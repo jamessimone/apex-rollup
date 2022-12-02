@@ -10,20 +10,11 @@ public without sharing virtual class RollupDeferredFullRecalcProcessor extends R
     super(queryString, invokePoint, matchingMeta, calcItemType, recordIds, postProcessor);
   }
 
-  public override String runCalc() {
-    return this.getProcessor()?.runCalc();
-  }
-
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
-    return this.getProcessor().rollups;
+    return this.getDelegatedFullRecalcRollups(this.getCalcItems());
   }
 
   protected override String getTypeName() {
     return RollupDeferredFullRecalcProcessor.class.getName();
-  }
-
-  private RollupAsyncProcessor getProcessor() {
-    this.isProcessed = true;
-    return this.getDelegatedFullRecalcRollup(this.rollupMetas, this.getCalcItemsByQuery(), this);
   }
 }

@@ -119,7 +119,18 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.parentRecordsToClear.clear();
   }
 
-  protected List<SObject> getCalcItemsByQuery() {
+  protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollups(List<SObject> calcItems) {
+    RollupAsyncProcessor processor = this.getAsyncRollup(this.rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
+    for (RollupAsyncProcessor innerRoll : processor.rollups) {
+      innerRoll.fullRecalcProcessor = this;
+      innerRoll.isFullRecalc = true;
+      innerRoll.calcItems = calcItems;
+    }
+    this.fullRecalcProcessor = this;
+    return processor.rollups;
+  }
+
+  protected List<SObject> getCalcItems() {
     if (QUERY_TO_CALC_ITEMS.containsKey(this.queryString)) {
       RollupLogger.Instance.log('returning pre-queried records from cache', LoggingLevel.FINE);
       return QUERY_TO_CALC_ITEMS.get(this.queryString);

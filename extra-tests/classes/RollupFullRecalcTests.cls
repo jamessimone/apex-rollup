@@ -1985,7 +1985,11 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRuns() {
-    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
+    Rollup.defaultControl = new RollupControl__mdt(
+      IsRollupLoggingEnabled__c = true,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      BatchChunkSize__c = 100
+    );
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -1995,7 +1999,7 @@ private class RollupFullRecalcTests {
     insert cpas;
 
     RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
-      'SELECT Id, PreferenceRank FROM ContactPointAddress',
+      'SELECT Id, PreferenceRank, ParentId FROM ContactPointAddress',
       Rollup.InvocationPoint.FROM_APEX,
       new List<Rollup__mdt>{
         new Rollup__mdt(
@@ -2025,7 +2029,11 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRunsCount() {
-    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
+    Rollup.defaultControl = new RollupControl__mdt(
+      IsRollupLoggingEnabled__c = true,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      BatchChunkSize__c = 100
+    );
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2035,7 +2043,7 @@ private class RollupFullRecalcTests {
     insert cpas;
 
     RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
-      'SELECT Id, PreferenceRank FROM ContactPointAddress',
+      'SELECT Id, PreferenceRank, ParentId FROM ContactPointAddress',
       Rollup.InvocationPoint.FROM_APEX,
       new List<Rollup__mdt>{
         new Rollup__mdt(
@@ -2065,7 +2073,11 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void limitsFullBatchRecalcCachedItemsProperly() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      IsRollupLoggingEnabled__c = true,
+      BatchChunkSize__c = 100
+    );
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -2076,7 +2088,7 @@ private class RollupFullRecalcTests {
     insert cpas;
 
     RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
-      'SELECT Id, PreferenceRank FROM ContactPointAddress',
+      'SELECT Id, PreferenceRank, ParentId FROM ContactPointAddress',
       Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
       new List<Rollup__mdt>{
         new Rollup__mdt(

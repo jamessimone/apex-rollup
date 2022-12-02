@@ -3,13 +3,10 @@ private class RollupNebulaLoggerAdapterTest {
   @IsTest
   static void shouldLogToNebula() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
-    LoggerSettings__c settings = new LoggerSettings__c(IsEnabled__c = true);
-    upsert settings;
-
     String testString = 'Test String';
-    RollupLogger.Instance.log(testString, new Account(), LoggingLevel.DEBUG);
 
     Test.startTest();
+    RollupLogger.Instance.log(testString, new Account(), LoggingLevel.INFO);
     RollupLogger.Instance.save();
     Test.stopTest();
 
