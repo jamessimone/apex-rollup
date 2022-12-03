@@ -1,15 +1,16 @@
 $ErrorActionPreference = 'Stop'
 $pendingStatus = "PENDING"
 $batchScriptPath = "scripts/start-and-return-batch-status.apex"
-$initialReplacementString = "INSERT_UTC_TIME_IN_SECONDS_HERE"
-$scriptReplacementString = "String SCRIPT_VAR_1 = '$initialReplacementString';"
+$desiredIntegrationSumAmount = 3362031000
+
+. .\scripts\string-utils.ps1
 
 function Get-SFDX-Batch-Status() {
   param($scriptPath, $sleepSeconds)
   $sfdxResponse = (npx sfdx force:apex:execute -f $scriptPath --json) | Join-String
   $responseObject = ConvertFrom-Json -InputObject $sfdxResponse -Depth 2
   if ($responseObject.result.success -eq $false) {
-    throw "An error occurred! $responseObject"
+    throw "An error occurred! $responseObject.result"
   }
   Write-Host $responseObject
   $responseLog = $responseObject.result.logs
@@ -30,29 +31,18 @@ function Get-SFDX-Batch-Status() {
   return $responseStatus
 }
 
-function Set-Proper-Datetime() {
-  param(
-    $replacementString
-  )
+function Set-Proper-Script-Variables() {
   $firstLine = Get-Content -Path $batchScriptPath -TotalCount 1
-  $localReplacementString = $replacementString
-  if($firstLine -eq $replacementString) {
+  $localReplacementString = "INSERT_UTC_TIME_IN_SECONDS_HERE"
+  $desiredAnnualRevenueValue = "0"
+  if($firstLine -eq "String SCRIPT_VAR_1 = '$localReplacementString';") {
     $utcMillis = (Get-Date -UFormat %s)
     Write-Host "Writing current time into script: $utcMillis"
-    $localReplacementString = "String SCRIPT_VAR_1 = '$utcMillis';"
+    $localReplacementString = $utcMillis
+    $desiredAnnualRevenueValue = $desiredIntegrationSumAmount
   }
-  Write-First-Line-Content $batchScriptPath $localReplacementString
-}
-
-function Write-First-Line-Content() {
-  param(
-    $scriptPath,
-    $replacementString
-  )
-  $firstLine = Get-Content -Path $scriptPath -TotalCount 1
-  (Get-Content -Path $scriptPath) |
-    ForEach-Object {$_ -Replace $firstLine, $replacementString} |
-      Set-Content -Path $scriptPath
+  Find-And-Replace-Content -path $batchScriptPath -searchString "SCRIPT_VAR_1" -replacement $localReplacementString
+  Find-And-Replace-Content -path $batchScriptPath -searchString "SCRIPT_VAR_2" -replacement $desiredAnnualRevenueValue
 }
 
 function Start-Opportunity-Creation() {
@@ -63,7 +53,7 @@ function Start-Opportunity-Creation() {
 Start-Opportunity-Creation
 
 Write-Host "Beginning integration testing for script $batchScriptPath ..."
-Set-Proper-Datetime $scriptReplacementString
+Set-Proper-Script-Variables
 Get-SFDX-Batch-Status $batchScriptPath 30
 # reset file
-Set-Proper-Datetime $scriptReplacementString
+Set-Proper-Script-Variables

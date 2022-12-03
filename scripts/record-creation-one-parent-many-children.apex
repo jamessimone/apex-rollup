@@ -1,11 +1,11 @@
 String accountName = 'sForce';
 Integer currentOppCount = [SELECT COUNT() FROM Opportunity WHERE Account.Name = :accountName];
-Integer recordCreationCount = 10000;
+Integer recordCreationCount = 8000;
 Integer startingIndex = currentOppCount == 0 ? currentOppCount : currentOppCount + 1;
 Integer offset = startingIndex + recordCreationCount;
 
 String responseStatus = 'PENDING';
-if (currentOppCount < 80000) {
+if (currentOppCount < recordCreationCount * 10) {
   List<Account> matchingAccounts = [SELECT Id FROM Account WHERE Name = :accountName];
   if (matchingAccounts.isEmpty()) {
     matchingAccounts.add(new Account(Name = accountName));
