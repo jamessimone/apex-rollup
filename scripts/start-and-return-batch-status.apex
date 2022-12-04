@@ -37,7 +37,7 @@ if (potentiallyMatchingJobs.isEmpty()) {
   Account updatedAccount = [SELECT AnnualRevenue FROM Account WHERE Name = 'sForce'];
   System.debug('Updated account value: ' + JSON.serialize(updatedAccount));
   if (updatedAccount.AnnualRevenue != Long.valueOf(SCRIPT_VAR_2)) {
-    throw new MathException('Should have been properly summed by Apex Rollup!');
+    throw new MathException('Should have been properly summed by Apex Rollup! Got ' + updatedAccount.AnnualRevenue + ' instead');
   } else {
     returnMessage = 'COMPLETED';
   }
