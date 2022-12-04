@@ -96,6 +96,10 @@ jobs:
       - name: 'Delete unparseable test coverage'
         run: rm ./tests/apex/test-result-707*-codecoverage.json -f
 
+      - name: 'Run Integration Test'
+        shell: pwsh
+        run: '. ./scripts/integration-test-large-data-volume.ps1'
+
       # Upload Apex code coverage data
       - name: 'Upload Apex code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v2.0.2
