@@ -16,7 +16,7 @@ function Get-Expected-Annual-Revenue() {
   if ($iterationCount -lt $desiredIterations) {
     $currentOffset = $desiredRecordCountPerIteration * $iterationCount
     $startingOffset = $currentOffset
-    for ($currentOffset; $currentOffset -lT ($startingOffset + $desiredRecordCountPerIteration); $currentOffset++) {
+    for ($currentOffset; $currentOffset -lt ($startingOffset + $desiredRecordCountPerIteration); $currentOffset++) {
       $sumAmount += $currentOffset
     }
     $iterationCount++
