@@ -446,7 +446,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   @SuppressWarnings('PMD.UnusedLocalVariable')
   protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
-    if (this.isValidAdditionalCalcItemRetrieval(rollup) == false || rollup.metadata?.RollupToUltimateParent__c == true) {
+    if (
+      this.isValidAdditionalCalcItemRetrieval(rollup) == false ||
+      rollup.metadata?.RollupToUltimateParent__c == true ||
+      rollup.lookupFieldOnCalcItem == null
+    ) {
       return;
     }
 

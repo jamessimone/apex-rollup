@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Integration test added for LDV",
+            "versionName": "Adding support for dated conversion rates multi-currency orgs",
             "versionNumber": "1.5.37.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
