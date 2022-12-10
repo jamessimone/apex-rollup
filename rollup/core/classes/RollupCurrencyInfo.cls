@@ -9,6 +9,14 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Date maxDatedCurrencyLookup = System.today().addYears(1);
   private static Boolean hasLoadedDatedCurrencyInfo = false;
 
+  // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
+  private static final Map<String, List<String>> DATED_MULTICURRENCY_SUPPORTED_OBJECTS = new Map<String, List<String>>{
+    'Opportunity' => new List<String>{ 'CloseDate' },
+    'OpportunityLineItem' => new List<String>{ 'ServiceDate' },
+    'OpportunityLineItemSchedule' => new List<String>{ 'ScheduleDate' },
+    'OpportunitySplit' => new List<String>{ 'OpportunityId', 'CloseDate' } // yikes
+  };
+
   @TestVisible
   private static Boolean IS_MULTICURRENCY {
     get {
@@ -52,14 +60,6 @@ public without sharing virtual class RollupCurrencyInfo {
     }
     set;
   }
-
-  // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
-  private static final Map<String, List<String>> DATED_MULTICURRENCY_SUPPORTED_OBJECTS = new Map<String, List<String>>{
-    'Opportunity' => new List<String>{ 'CloseDate' },
-    'OpportunityLineItem' => new List<String>{ 'ServiceDate' },
-    'OpportunityLineItemSchedule' => new List<String>{ 'ScheduleDate' },
-    'OpportunitySplit' => new List<String>{ 'OpportunityId', 'CloseDate' } // yikes
-  };
 
   public String IsoCode { get; set; }
   public Decimal ConversionRate { get; set; }
