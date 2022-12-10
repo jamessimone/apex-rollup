@@ -133,12 +133,7 @@ public without sharing virtual class RollupCurrencyInfo {
     String parentIsoCode,
     List<RollupOrderBy__mdt> orderBys
   ) {
-    if (
-      IS_DATED_MULTICURRENCY == false ||
-      IS_DATED_MULTICURRENCY && DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(calcItem.getSObjectType().getDescribe().getName()) == false
-    ) {
-      actuallyTransformCurrency(calcItem, opFieldOnCalcItem, parentIsoCode, orderBys);
-    }
+    actuallyTransformCurrency(calcItem, opFieldOnCalcItem, parentIsoCode, orderBys);
   }
 
   private static void actuallyTransformCurrency(
@@ -194,8 +189,9 @@ public without sharing virtual class RollupCurrencyInfo {
     if (calcItemDenominator != null) {
       Decimal calcItemAmountInOrgCurrency =
         CURRENCY_ISO_CODE_TO_CURRENCY.get(calcItemIsoCode).getInfo(calcItem, calcItemIsoCode).ConversionRate / calcItemDenominator;
-      Decimal calcItemAmountInParentCurrency =
-        CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).getInfo(calcItem, parentIsoCode).ConversionRate / calcItemAmountInOrgCurrency;
+      Double calcItemAmountInParentCurrency = (CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).getInfo(calcItem, parentIsoCode).ConversionRate /
+        calcItemAmountInOrgCurrency)
+        .doubleValue();
       clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
       if (fieldOnCalcItem.getDescribe().isCalculated() == false) {
         clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
@@ -219,7 +215,7 @@ public without sharing virtual class RollupCurrencyInfo {
     } else {
       if (IS_DATED_MULTICURRENCY) {
         // TODO no DecimalPlaces on DatedConversionRate. Also need to handle date range filter based on MIN & MAX of passed in calc item dates
-        // as well, may need to ALSO query CurrencyType to cover objects where dated conversion rates aren't supported
+        // also should probably flip IS_DATED_MULTICURRENCY if there are no results here ...
         String query = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate from DatedConversionRate';
         currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(Database.query(query)), List<RollupCurrencyInfo>.class));
       }
@@ -242,22 +238,22 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private class DatedCurrencyFinder extends RollupCurrencyInfo {
     private final List<RollupCurrencyInfo> currencyInfos = new List<RollupCurrencyInfo>();
-    private final Map<String, RollupCurrencyInfo> isoCodeToBaseInfo = new Map<String, RollupCurrencyInfo>();
     private final Map<Id, RollupCurrencyInfo> cachedItemToInfo = new Map<Id, RollupCurrencyInfo>();
+    private RollupCurrencyInfo baseInfo;
 
     public DatedCurrencyFinder(RollupCurrencyInfo info) {
       this.addInfo(info);
     }
 
     public override String toString() {
-      return JSON.serialize(this.currencyInfos);
+      return JSON.serialize(this.currencyInfos) + '\nBase info: ' + this.baseInfo;
     }
 
     protected override void addInfo(RollupCurrencyInfo info) {
       if (info.StartDate != null) {
         this.currencyInfos.add(info);
       } else {
-        this.isoCodeToBaseInfo.put(info.IsoCode, info);
+        this.baseInfo = info;
       }
     }
 
@@ -266,21 +262,20 @@ public without sharing virtual class RollupCurrencyInfo {
         return cachedItemToInfo.get(calcItem.Id);
       }
       List<String> itemToDateFieldMapping = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().getDescribe().getName());
-      if (itemToDateFieldMapping == null) {
-        return this.isoCodeToBaseInfo.get(isoCode);
-      }
+      if (itemToDateFieldMapping?.isEmpty() == false && this.currencyInfos.isEmpty() == false) {
+        Date currencyDate = itemToDateFieldMapping.size() == 1
+          ? (Date) calcItem.get(itemToDateFieldMapping[0])
+          : (Date) calcItem.getSObject(itemToDateFieldMapping[0]).get(itemToDateFieldMapping[1]);
 
-      Date currencyDate = itemToDateFieldMapping.size() == 1
-        ? (Date) calcItem.get(itemToDateFieldMapping[0])
-        : (Date) calcItem.getSObject(itemToDateFieldMapping[0]).get(itemToDateFieldMapping[1]);
-
-      for (RollupCurrencyInfo info : this.currencyInfos) {
-        if (info.IsoCode == isoCode && info.NextStartDate > currencyDate && currencyDate >= info.StartDate) {
-          cachedItemToInfo.put(calcItem.Id, info);
-          return info;
+        for (RollupCurrencyInfo info : this.currencyInfos) {
+          if (info.IsoCode == isoCode && info.NextStartDate > currencyDate && currencyDate >= info.StartDate) {
+            cachedItemToInfo.put(calcItem.Id, info);
+            return info;
+          }
         }
       }
-      return this;
+      cachedItemToInfo.put(calcItem.Id, this.baseInfo);
+      return this.baseInfo;
     }
   }
 }
