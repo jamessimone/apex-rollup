@@ -288,6 +288,7 @@ public without sharing abstract class RollupCalculator {
   protected List<SObject> winnowItems(List<SObject> items, Map<Id, SObject> oldCalcItems) {
     List<SObject> temporaryItems = new List<SObject>(items);
     items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
+    this.transformForMultiCurrencyOrgs(temporaryItems);
     for (SObject item : temporaryItems) {
       Boolean currentItemMatches = this.eval?.matches(item) != false;
       if (currentItemMatches == false) {
@@ -302,7 +303,6 @@ public without sharing abstract class RollupCalculator {
         }
       }
       if (currentItemMatches) {
-        this.transformForMultiCurrencyOrgs(item);
         items.add(this.getTransformedCalcItem(item));
         if (this.op == Rollup.Op.SOME || this.op == Rollup.Op.UPDATE_SOME) {
           break;
@@ -394,9 +394,9 @@ public without sharing abstract class RollupCalculator {
     return this.isMultiCurrencyRollup ? RollupCurrencyInfo.getCalcItem(calcItem) : calcItem;
   }
 
-  private void transformForMultiCurrencyOrgs(SObject calcItem) {
+  private void transformForMultiCurrencyOrgs(List<SObject> calcItems) {
     if (this.isMultiCurrencyRollup) {
-      RollupCurrencyInfo.transformForMultiCurrencyOrgs(calcItem, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.RollupOrderBys__r);
+      RollupCurrencyInfo.transform(calcItems, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.RollupOrderBys__r);
     }
   }
 

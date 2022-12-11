@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
+. .\scripts\string-utils.ps1
+
 function Get-SFDX-Project-JSON {
   Get-Content -Path ./sfdx-project.json | ConvertFrom-Json
 }
@@ -56,21 +58,14 @@ function Get-Package-JSON {
   Get-Content -Path ./package.json | ConvertFrom-Json
 }
 
-function Get-Logger-Class {
-  Get-Content -Raw -Path $loggerClassPath
-}
-
 function Update-Logger-Class {
   param (
       $versionNumber
   )
   $versionNumber = "v" + $versionNumber
-  $loggerClassContents = Get-Logger-Class
   Write-Host "Bumping RollupLogger.cls version number to: $versionNumber" -ForegroundColor Yellow
 
-  $targetRegEx = "(.+CURRENT_VERSION_NUMBER = ')(.+)(';)"
-  $replacementRegEx = '$1' + $versionNumber + '$3'
-  $loggerClassContents -replace $targetRegEx, $replacementRegEx | Set-Content -Path $loggerClassPath -NoNewline
+  Find-And-Replace-Content -path $loggerClassPath -searchString "CURRENT_VERSION_NUMBER" -replacement $versionNumber
   npx prettier --write $loggerClassPath
   if ($shouldGitAddLoggerClass -eq $true) {
     git add $loggerClassPath

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Cutting even more time off of full recalculations",
-            "versionNumber": "1.5.36.0",
+            "versionName": "Adding support for dated conversion rates multi-currency orgs",
+            "versionNumber": "1.5.37.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,6 +102,7 @@
         "apex-rollup@1.5.33-0": "04t6g000007zLvtAAE",
         "apex-rollup@1.5.34-0": "04t6g000007zLxGAAU",
         "apex-rollup@1.5.35-0": "04t6g000007zM2bAAE",
-        "apex-rollup@1.5.36-0": "04t6g000007zM78AAE"
+        "apex-rollup@1.5.36-0": "04t6g000007zM78AAE",
+        "apex-rollup@1.5.37-0": "04t6g000007zMCdAAM"
     }
 }

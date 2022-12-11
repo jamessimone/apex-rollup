@@ -16,12 +16,12 @@ As well, don't miss [the Wiki](../../wiki), which includes more advanced informa
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zM78AAE">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zMCdAAM">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zM78AAE">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000007zMCdAAM">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -1001,7 +1001,7 @@ Note that you're still selecting `Opportunity` as the `Child Object` within your
 
 ### Multi-Currency Orgs
 
-As of [v1.2.43](https://github.com/jamessimone/apex-rollup/releases/tag/v1.2.43), multi-currency orgs are now supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. Apex Rollup automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency. Please note that if you use Advanced Currency Management in combination with the `DatedConversionRate` object, this package does not currently support mapping the dated conversion rates. Please [submit an issue](../../issues) in the event that you need support for dated conversion rates!
+Multi-currency rollups for Currency fields are supported for the operations: MIN, MAX, SUM, AVERAGE, FIRST and LAST. Apex Rollup automatically converts currency values on child records to the parent record's currency when calculating the rollup value, similar to how Salesforce's roll-up summary fields handle multi-currency. Please note that if you use Advanced Currency Management in combination with the `DatedConversionRate` object, and you're trying to roll up Opportunity Splits, it's important to include a Calc Item Where Clause with _at least_ the following: `Opportunity.CloseDate != null`. This ensures that the CloseDate field is available when determining which dated conversion rate applies to each Split.
 
 </details>
 
