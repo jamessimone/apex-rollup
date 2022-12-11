@@ -74,13 +74,16 @@ function Start-Opportunity-Creation() {
   Get-SFDX-Batch-Status $path 1
 }
 
-$desiredIntegrationSumAmount = Get-Expected-Annual-Revenue 0 $desiredIntegrationSumAmount
-Write-Output "Expected sum amount ends up as: $desiredIntegrationSumAmount"
+function Start-Integration-Tests() {
+  $desiredIntegrationSumAmount = Get-Expected-Annual-Revenue 0 $desiredIntegrationSumAmount
+  Write-Output "Expected sum amount ends up as: $desiredIntegrationSumAmount"
 
-Start-Opportunity-Creation
+  Start-Opportunity-Creation
 
-Write-Host "Beginning integration testing for script $batchScriptPath ..."
-Set-Proper-Script-Variables
-Get-SFDX-Batch-Status $batchScriptPath 30
-# reset batch file
-Set-Proper-Script-Variables
+  Write-Host "Beginning integration testing for script $batchScriptPath ..."
+  Set-Proper-Script-Variables
+  Get-SFDX-Batch-Status $batchScriptPath 30
+  # reset batch file
+  Set-Proper-Script-Variables
+}
+

@@ -3,6 +3,9 @@ $ErrorActionPreference = 'Stop'
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows
 $testInvocation = 'npx sfdx force:apex:test:run -s ApexRollupTestSuite -r human -w 20 -c -d ./tests/apex'
 $currentUserAlias = 'apex-rollup-scratch-org'
+
+. .\scripts\integration-test-large-data-volume.ps1
+
 function Start-Tests() {
   Write-Debug "Deploying metadata ..."
   npx sfdx force:source:deploy -p rollup
@@ -15,6 +18,10 @@ function Start-Tests() {
   $testFailure = $false
   if ($specificTestRunJson.summary.outcome -eq "Failed") {
     $testFailure = $true
+  }
+
+  if ($false -eq $testFailure) {
+    Start-Integration-Tests
   }
 
   try {
