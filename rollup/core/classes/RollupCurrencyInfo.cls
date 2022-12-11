@@ -10,6 +10,8 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Boolean hasLoadedDatedCurrencyInfo = false;
 
   // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
+  // TODO technically there's a hierarchy for OpportunityLineItem that goes Opportunity.CloseDate > ServiceDate > (ProductDate || ScheduleDate)
+  // it may make more sense to have a switch on the SObjectType and handle accordingly
   private static final Map<String, List<String>> DATED_MULTICURRENCY_SUPPORTED_OBJECTS = new Map<String, List<String>>{
     'Opportunity' => new List<String>{ 'CloseDate' },
     'OpportunityLineItem' => new List<String>{ 'ServiceDate' },
