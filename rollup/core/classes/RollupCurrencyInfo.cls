@@ -32,7 +32,7 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Boolean IS_DATED_MULTICURRENCY {
     get {
       if (IS_DATED_MULTICURRENCY == null) {
-        IS_DATED_MULTICURRENCY = Type.forName('DatedConversionRate') != null;
+        IS_DATED_MULTICURRENCY = IS_MULTICURRENCY;
       }
       return IS_DATED_MULTICURRENCY;
     }
@@ -207,7 +207,7 @@ public without sharing virtual class RollupCurrencyInfo {
     if (mockCurrencyData != null) {
       currencyInfos.addAll(mockCurrencyData);
     } else {
-      if (IS_DATED_MULTICURRENCY) {
+      if (IS_MULTICURRENCY) {
         String query = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate from DatedConversionRate WHERE StartDate >= :minDatedCurrencyLookup AND NextStartDate <= :maxDatedCurrencyLookup';
         List<RollupCurrencyInfo> datedCurrencyInfos = (List<RollupCurrencyInfo>) JSON.deserialize(
           JSON.serialize(Database.query(query)),
@@ -215,9 +215,7 @@ public without sharing virtual class RollupCurrencyInfo {
         );
         IS_DATED_MULTICURRENCY = datedCurrencyInfos.isEmpty() == false;
         currencyInfos.addAll(datedCurrencyInfos);
-      }
-      if (IS_MULTICURRENCY) {
-        String query = 'SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE';
+        query = 'SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE';
         currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(Database.query(query)), List<RollupCurrencyInfo>.class));
       }
     }
