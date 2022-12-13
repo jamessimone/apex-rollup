@@ -463,7 +463,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // calling clear in a loop here might look interesting - and it would be a massive problem if not for the
       // bag only responding to the very first clear() invocation. everything after that is a no-op (so, any rollup with more
       // than one rollup operation going at a time)
-      if (rollup.op.name().contains('DELETE')) {
+      if (rollup.triggerContext == System.TriggerOperation.BEFORE_DELETE) {
         bag.clear();
       }
     }
@@ -942,7 +942,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean isEmptyReparentingSet(Op operation) {
     switch on operation {
       // reparenting is handled already for these operations
-      when ALL, DELETE_ALL, DELETE_MOST, DELETE_NONE, DELETE_SOME, MOST, NONE, SOME, UPDATE_ALL, UPDATE_MOST, UPDATE_NONE, UPDATE_SOME {
+      when ALL, MOST, NONE, SOME {
         return true;
       }
       when else {

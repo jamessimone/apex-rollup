@@ -46,7 +46,7 @@ public without sharing abstract class RollupCalculator {
     ) {
       RollupCalculator calc;
       switch on op {
-        when ALL, DELETE_ALL, DELETE_NONE, DELETE_SOME, NONE, SOME, UPDATE_ALL, UPDATE_NONE, UPDATE_SOME {
+        when ALL, NONE, SOME {
           calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when AVERAGE, UPDATE_AVERAGE, DELETE_AVERAGE {
@@ -61,7 +61,7 @@ public without sharing abstract class RollupCalculator {
         when FIRST, UPDATE_FIRST, DELETE_FIRST, LAST, UPDATE_LAST, DELETE_LAST {
           calc = new FirstLastRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
-        when MOST, DELETE_MOST, UPDATE_MOST {
+        when MOST {
           calc = new MostRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when else {
@@ -304,7 +304,7 @@ public without sharing abstract class RollupCalculator {
       }
       if (currentItemMatches) {
         items.add(this.getTransformedCalcItem(item));
-        if (this.op == Rollup.Op.SOME || this.op == Rollup.Op.UPDATE_SOME) {
+        if (this.op == Rollup.Op.SOME) {
           break;
         }
       }
@@ -1228,10 +1228,10 @@ public without sharing abstract class RollupCalculator {
       List<SObject> filteredItems = this.winnowItems(new List<SObject>(calcItems), oldCalcItems);
       Boolean matches = false;
       switch on this.op {
-        when ALL, DELETE_ALL, UPDATE_ALL {
+        when ALL {
           matches = calcItems.size() == filteredItems.size();
         }
-        when NONE, DELETE_NONE, DELETE_SOME, SOME, UPDATE_NONE, UPDATE_SOME {
+        when NONE, SOME {
           matches = filteredItems.isEmpty() == this.op.name().contains(Rollup.Op.SOME.name()) == false;
         }
       }
