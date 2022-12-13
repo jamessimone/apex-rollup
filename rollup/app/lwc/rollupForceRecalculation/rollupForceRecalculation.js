@@ -123,7 +123,9 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   async _fetchAvailableCMDT() {
+    this.isLoadingCustomMetadata = true;
     this._localMetadata = await getRollupMetadata();
+    this.isLoadingCustomMetadata = false;
 
     Object.keys(this._localMetadata).forEach(localMeta => {
       if (!this.canDisplayCmdtToggle) {
@@ -156,11 +158,12 @@ export default class RollupForceRecalculation extends LightningElement {
           this._displayErrorToast('Select a valid option', 'Child Object(s) must be selected!');
           return;
         }
-
+        this.isRollingUp = true;
         const localMetas = [...this.selectedRows];
         this._getMetadataWithChildrenRecords(localMetas);
         jobId = await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(localMetas), invokePointName: 'FROM_FULL_RECALC_LWC' });
       } else {
+        this.isRollingUp = true;
         this._getMetadataWithChildrenRecords([this._metadata]);
         jobId = await performSerializedFullRecalculation({
           metadata: JSON.stringify(this._metadata)
@@ -179,7 +182,6 @@ export default class RollupForceRecalculation extends LightningElement {
       this.rollupStatus = 'Job failed to enqueue, check logs for more info';
       return Promise.resolve();
     }
-    this.isRollingUp = true;
 
     this.jobIdToDisplay = jobId;
     this.rollupStatus = await getBatchRollupStatus({ jobId });
