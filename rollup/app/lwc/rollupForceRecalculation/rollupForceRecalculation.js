@@ -6,7 +6,7 @@ import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performS
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo, getPicklistValues } from 'lightning/uiObjectInfoApi';
 
-import { getRollupMetadata } from 'c/rollupUtils';
+import { getRollupMetadata, transformToSerializableChildren } from 'c/rollupUtils';
 
 const MAX_ROW_SELECTION = 200;
 
@@ -223,9 +223,7 @@ export default class RollupForceRecalculation extends LightningElement {
           children = possibleOrderByComponent.orderBys;
         }
       }
-      if (children && !children.totalSize) {
-        _metadata[rollupOrderByFieldName] = { totalSize: children?.length, done: true, records: children };
-      }
+      transformToSerializableChildren(_metadata, rollupOrderByFieldName, children);
     }
   }
 

@@ -154,6 +154,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     // once recalc has finished ...
     // we need to validate that what was sent includes our custom rollup invocation point
     matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
+    matchingMetadata[0].RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(matchingMetadata),
@@ -183,6 +184,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     await flushPromises();
 
     matchingMetadata[0].CalcItemWhereClause__c = " ||| RollupParent__r.RollupGrandparent__r.Id = '" + FAKE_RECORD_ID + "'";
+    matchingMetadata[0].RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(matchingMetadata),
@@ -219,6 +221,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     await flushPromises('wait for click event to call controller');
 
     matchingMetadata[0].please__CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
+    matchingMetadata[0].please__RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(matchingMetadata),

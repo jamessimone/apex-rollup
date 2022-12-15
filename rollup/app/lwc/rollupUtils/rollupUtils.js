@@ -32,4 +32,10 @@ const getRollupMetadata = async () => {
   return cleanedMetaByCalcItem;
 };
 
-export { getRollupMetadata };
+const transformToSerializableChildren = (record, key, children) => {
+  if (children && !children.totalSize) {
+    record[key] = { totalSize: children?.length ?? 0, done: true, records: children ?? [] };
+  }
+};
+
+export { getRollupMetadata, transformToSerializableChildren };
