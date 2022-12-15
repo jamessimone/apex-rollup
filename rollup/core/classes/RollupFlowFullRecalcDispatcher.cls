@@ -9,7 +9,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
   }
 
   @InvocableMethod(category='Rollups' label='Full Recalc CMDT-driven Invocable')
-  public static void performFullRecalcRollups(List<FlowInput> inputs) {
+  public static List<Rollup.FlowOutput> performFullRecalcRollups(List<FlowInput> inputs) {
     List<Rollup__mdt> localRollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
     Set<String> rollupDeveloperNames = new Set<String>();
     for (FlowInput input : inputs) {
@@ -27,8 +27,14 @@ global without sharing class RollupFlowFullRecalcDispatcher {
         selectedRollupMetadata.add(rollup);
       }
     }
+    List<Rollup.FlowOutput> flowOutputs = new List<Rollup.FlowOutput>();
+    Rollup.FlowOutput flowOutput = new Rollup.FlowOutput();
+    flowOutput.message = 'No matching metadata, did not start bulk full recalc';
+    flowOutputs.add(flowOutput);
     if (selectedRollupMetadata.isEmpty() == false) {
-      Rollup.performBulkFullRecalc(selectedRollupMetadata, Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name());
+      String enqueuedJobId = Rollup.performBulkFullRecalc(selectedRollupMetadata, Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name());
+      flowOutput.message = 'Job enqueued with Id: ' + enqueuedJobId;
     }
+    return flowOutputs;
   }
 }

@@ -653,7 +653,7 @@ global without sharing virtual class Rollup {
   global class FlowOutput {
     @InvocableVariable(label='Is Success' description='Was rollup enqueued successfully?')
     global Boolean isSuccess;
-    @InvocableVariable(label='Status Message' description='"SUCCESS" when isSuccess is true, otherwise the encountered error message')
+    @InvocableVariable(label='Status Message' description='"SUCCESS" (or more info) when isSuccess is true, otherwise the encountered error message')
     global String message;
     global FlowOutput() {
       this.isSuccess = true;
