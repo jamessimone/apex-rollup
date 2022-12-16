@@ -663,6 +663,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.metadata?.ShouldRunWithoutCustomSettingEnabled__c == true;
   }
 
+  private void clearPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
+    String key = this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent);
+    this.previouslyResetParents.remove(key);
+    this.fullRecalcProcessor?.previouslyResetParents.remove(key);
+  }
+
   private Boolean hasParentRollupFieldBeenReset(String rollupFieldName, SObject parent) {
     String resetKey = this.getParentResetKey(rollupFieldName, parent);
     Boolean hasParentRollupFieldBeenReset = this.previouslyResetParents.contains(resetKey);
@@ -1118,7 +1124,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         if (priorKey != null && key != priorKey) {
           // once we've fully processed a parent (in separate batches)
           // it's safe to clear the stateful map
-          this.fullRecalcProcessor?.previouslyResetParents.remove(priorKey);
+          this.clearPreviouslyResetParents(roll, lookupRecord);
           priorKey = key;
         } else if (priorKey == null) {
           priorKey = key;
