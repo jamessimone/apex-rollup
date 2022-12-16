@@ -7,10 +7,7 @@
 $DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
 . .\scripts\generatePackage.ps1
-
-function Get-Current-Git-Branch() {
-  Invoke-Expression 'git rev-parse --abbrev-ref HEAD'
-}
+. .\scripts\string-utils.ps1
 
 function Push-Git-Tag() {
   $tagMatches = (Invoke-Expression "git log -n 1" | Select-String -Pattern "V\d+.\d+.\d+")

@@ -1,5 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
+function Get-Current-Git-Branch() {
+  Invoke-Expression 'git rev-parse --abbrev-ref HEAD'
+}
+
 function Find-And-Replace-Content() {
   param(
     $path,
