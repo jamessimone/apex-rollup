@@ -88,7 +88,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
     this.addToPreviouslyResetParents(processor, parent);
     this.postProcessor?.recordIds.add(parent.Id);
-    this.postProcessor?.addToPreviouslyResetParents(processor, parent);
   }
 
   public void storeParentFieldsToClear(List<SObject> parentRecordsToClear) {
