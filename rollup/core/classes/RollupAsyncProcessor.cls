@@ -463,7 +463,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // calling clear in a loop here might look interesting - and it would be a massive problem if not for the
       // bag only responding to the very first clear() invocation. everything after that is a no-op (so, any rollup with more
       // than one rollup operation going at a time)
-      if (rollup.op.name().contains('DELETE')) {
+      if (rollup.triggerContext == System.TriggerOperation.BEFORE_DELETE) {
         bag.clear();
       }
     }
@@ -661,6 +661,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual Boolean getCanRollupWithoutCustomSetting() {
     return this.metadata?.ShouldRunWithoutCustomSettingEnabled__c == true;
+  }
+
+  private void clearPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
+    String key = this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent);
+    this.previouslyResetParents.remove(key);
+    this.fullRecalcProcessor?.previouslyResetParents.remove(key);
   }
 
   private Boolean hasParentRollupFieldBeenReset(String rollupFieldName, SObject parent) {
@@ -942,7 +948,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean isEmptyReparentingSet(Op operation) {
     switch on operation {
       // reparenting is handled already for these operations
-      when ALL, DELETE_ALL, DELETE_MOST, DELETE_NONE, DELETE_SOME, MOST, NONE, SOME, UPDATE_ALL, UPDATE_MOST, UPDATE_NONE, UPDATE_SOME {
+      when ALL, MOST, NONE, SOME {
         return true;
       }
       when else {
@@ -1079,6 +1085,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, SObject> unprocessedCalcItems = new Map<String, SObject>();
     RollupSObjectUpdater updater = new RollupSObjectUpdater(roll.opFieldOnLookupObject);
     RollupCalculator calc;
+    String priorKey;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
@@ -1113,6 +1120,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset(roll, lookupRecord) == false ? null : priorVal;
           calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, 'lookup', localCalcItems);
+        }
+        if (priorKey != null && key != priorKey) {
+          // once we've fully processed a parent (in separate batches)
+          // it's safe to clear the stateful map
+          this.clearPreviouslyResetParents(roll, lookupRecord);
+          priorKey = key;
+        } else if (priorKey == null) {
+          priorKey = key;
         }
       }
     }

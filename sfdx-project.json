@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Adding support for dated conversion rates multi-currency orgs",
-            "versionNumber": "1.5.37.0",
+            "versionName": "Fixed a bug on the parent recalc button when used in conjunction with RollupOrderBy__mdt records. Added FlowOutput to Full Recalc CMDT-driven Invocable invocable",
+            "versionNumber": "1.5.38.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -103,6 +103,7 @@
         "apex-rollup@1.5.34-0": "04t6g000007zLxGAAU",
         "apex-rollup@1.5.35-0": "04t6g000007zM2bAAE",
         "apex-rollup@1.5.36-0": "04t6g000007zM78AAE",
-        "apex-rollup@1.5.37-0": "04t6g000007zMCdAAM"
+        "apex-rollup@1.5.37-0": "04t6g000007zMCdAAM",
+        "apex-rollup@1.5.38-0": "04t6g000008fjOcAAI"
     }
 }

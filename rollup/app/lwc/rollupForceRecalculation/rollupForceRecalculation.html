@@ -6,6 +6,12 @@
         Alternatively, you can select a single Child Object based off of your CMDT rollup records and have the recalculation run for all CMDT associated with
         that SObject type:
       </div>
+      <template if:true={isLoadingCustomMetadata}>
+        <div class="slds-is-relative slds-is-fixed-left">
+          Checking if there's custom metadata ...
+          <lightning-spinner alternative-text="Please wait while CMDT is retrieved" title="Checking if there's custom metadata ...."></lightning-spinner>
+        </div>
+      </template>
       <template if:true={canDisplayCmdtToggle}>
         <lightning-input class="slds-m-bottom_small" data-id="cmdt-toggle" label="Run off of CMDT?" onchange={handleToggle} type="toggle"></lightning-input>
       </template>

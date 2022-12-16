@@ -45,6 +45,7 @@ global without sharing virtual class Rollup {
   protected Boolean isCDCUpdate = false;
   protected Integer queryCount;
   protected RollupCalcItemReplacer calcItemReplacer;
+  protected TriggerOperation triggerContext;
 
   // Lazy-load section. Lots of additional lines, but with the benefit that we keep the heap size down for instances of Rollup
   // that never reference these variables
@@ -169,7 +170,6 @@ global without sharing virtual class Rollup {
     CONCAT,
     COUNT_DISTINCT,
     COUNT,
-    DELETE_ALL,
     DELETE_AVERAGE,
     DELETE_CONCAT_DISTINCT,
     DELETE_CONCAT,
@@ -179,10 +179,7 @@ global without sharing virtual class Rollup {
     DELETE_LAST,
     DELETE_MAX,
     DELETE_MIN,
-    DELETE_MOST,
-    DELETE_NONE,
     DELETE_SUM,
-    DELETE_SOME,
     FIRST,
     LAST,
     MAX,
@@ -191,7 +188,6 @@ global without sharing virtual class Rollup {
     NONE,
     SOME,
     SUM,
-    UPDATE_ALL,
     UPDATE_AVERAGE,
     UPDATE_CONCAT_DISTINCT,
     UPDATE_CONCAT,
@@ -201,10 +197,7 @@ global without sharing virtual class Rollup {
     UPDATE_LAST,
     UPDATE_MAX,
     UPDATE_MIN,
-    UPDATE_MOST,
-    UPDATE_NONE,
-    UPDATE_SUM,
-    UPDATE_SOME
+    UPDATE_SUM
   }
 
   public class FilterResults {
@@ -660,7 +653,7 @@ global without sharing virtual class Rollup {
   global class FlowOutput {
     @InvocableVariable(label='Is Success' description='Was rollup enqueued successfully?')
     global Boolean isSuccess;
-    @InvocableVariable(label='Status Message' description='"SUCCESS" when isSuccess is true, otherwise the encountered error message')
+    @InvocableVariable(label='Status Message' description='"SUCCESS" (or more info) when isSuccess is true, otherwise the encountered error message')
     global String message;
     global FlowOutput() {
       this.isSuccess = true;
@@ -1982,11 +1975,12 @@ global without sharing virtual class Rollup {
       } else {
         // if the same items get run through different rollup operations in the same transaction (rare, but not impossible ...)
         // we need to reset the CMDT to the correct base operation prior to appending the new context
-        meta.RollupOperation__c =
-          rollupContext +
-          (meta.RollupOperation__c.contains('UPDATE_') || meta.RollupOperation__c.contains('DELETE_')
-            ? meta.RollupOperation__c.substringAfter('_')
-            : meta.RollupOperation__c);
+        meta.RollupOperation__c = (meta.RollupOperation__c.contains('UPDATE_') || meta.RollupOperation__c.contains('DELETE_')
+          ? meta.RollupOperation__c.substringAfter('_')
+          : meta.RollupOperation__c);
+        if (OP_NAME_TO_OP.containsKey(rollupContext + meta.RollupOperation__c)) {
+          meta.RollupOperation__c = rollupContext + meta.RollupOperation__c;
+        }
       }
     }
 
@@ -2481,6 +2475,7 @@ global without sharing virtual class Rollup {
         matchingOperation = TriggerOperation.BEFORE_DELETE;
       }
     }
+    apexContext = matchingOperation;
     populateCachedApexOperations(sObjectType, matchingOperation);
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
@@ -2847,6 +2842,7 @@ global without sharing virtual class Rollup {
       rollupControl,
       rollupMetadata
     );
+    processor.triggerContext = apexContext;
     return addRollup(rollupConductor, processor);
   }
 

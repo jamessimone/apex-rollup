@@ -2,7 +2,7 @@ import { api, LightningElement } from 'lwc';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 
-import { getRollupMetadata } from 'c/rollupUtils';
+import { getRollupMetadata, transformToSerializableChildren } from 'c/rollupUtils';
 
 const DELIMITER = ' ||| ';
 
@@ -73,6 +73,10 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     } else {
       metadata[calcItemWhereClause] = DELIMITER + equalsParent;
     }
+    const orderByFieldName = this._getNamespaceSafeFieldName('RollupOrderBys__r');
+    const children = metadata[orderByFieldName];
+    transformToSerializableChildren(metadata, orderByFieldName, children);
+
     this._matchingMetas.push(metadata);
   }
 
