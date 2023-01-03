@@ -1888,9 +1888,11 @@ global without sharing virtual class Rollup {
 
         for (Integer index = 0; index < matchingRollup.rollups.size(); index++) {
           Rollup innerRollup = matchingRollup.rollups[index];
-          Rollup matchingInnerRollup = stackedRollup.rollups[index];
-          matchingInnerRollup.matchingCalcItemIds.addAll(innerRollup.matchingCalcItemIds);
-          matchingInnerRollup.matchingCalcItemIds.addAll(innerRollup.oldCalcItems.keySet());
+          if (stackedRollup.rollups.size() > index) {
+            Rollup matchingInnerRollup = stackedRollup.rollups[index];
+            matchingInnerRollup.matchingCalcItemIds.addAll(innerRollup.matchingCalcItemIds);
+            matchingInnerRollup.matchingCalcItemIds.addAll(innerRollup.oldCalcItems.keySet());
+          }
         }
       }
       rollupOperationToRollup.put(rollupKey, stackedRollup);
