@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Making Rollup.flatten() safer",
-            "versionNumber": "1.0.12.0",
+            "versionName": "Logging updates to respect specific Rollup Controls when they differ from the Org Default",
+            "versionNumber": "1.0.13.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -33,6 +33,7 @@
         "apex-rollup-namespaced@1.0.9-0": "04t6g000007zM7DAAU",
         "apex-rollup-namespaced@1.0.10-0": "04t6g000007zMCiAAM",
         "apex-rollup-namespaced@1.0.11-0": "04t6g000008fjOhAAI",
-        "apex-rollup-namespaced@1.0.12-0": "04t6g000008fjSKAAY"
+        "apex-rollup-namespaced@1.0.12-0": "04t6g000008fjSKAAY",
+        "apex-rollup-namespaced@1.0.13-0": "04t6g000008fjSZAAY"
     }
 }
