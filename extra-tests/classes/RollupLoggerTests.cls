@@ -1,11 +1,10 @@
 @IsTest
-public class RollupLoggerTests {
+private class RollupLoggerTests {
   static Boolean wasSaved = false;
   static Object localLogObject;
   static String locallogString;
   static LoggingLevel localLogLevel;
 
-  // Type.forName requires public visibility
   @IsTest
   static void shouldLogUsingCustomLoggerWhenSupplied() {
     setup();
@@ -19,7 +18,6 @@ public class RollupLoggerTests {
   @IsTest
   static void shouldLogCustomObjectWhenSupplied() {
     setup();
-
     Account acc = new Account();
 
     RollupLogger.Instance.log('hello', acc, LoggingLevel.FINE);
@@ -58,11 +56,28 @@ public class RollupLoggerTests {
     System.assertEquals(false, wasSaved);
   }
 
+  @IsTest
+  static void updatesRollupControlForLoggers() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = false);
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ControlUpdatingLogger.class.getName()) };
+
+    RollupLogger.Instance.log('Should not be logged', LoggingLevel.DEBUG);
+    System.assertEquals('logging isn\'t enabled, no further output', localLogString);
+
+    RollupLogger.Instance.updateRollupControl(new RollupControl__mdt(IsRollupLoggingEnabled__c = true));
+    String expectedLogMessage = 'hi';
+    RollupLogger.Instance.log(expectedLogMessage, LoggingLevel.INFO);
+
+    System.assertEquals(expectedLogMessage, localLogString);
+    System.assertEquals(LoggingLevel.INFO, localLogLevel);
+  }
+
   private static void setup() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
   }
 
+  // Type.forName requires public visibility
   public class ExampleLogger implements RollupLogger.ILogger {
     public void log(String logString, LoggingLevel logLevel) {
       locallogString = logString;
@@ -75,6 +90,16 @@ public class RollupLoggerTests {
     }
     public void save() {
       wasSaved = true;
+    }
+    public ExampleLogger updateRollupControl(RollupControl__mdt control) {
+      return this;
+    }
+  }
+
+  public class ControlUpdatingLogger extends RollupLogger {
+    public override void log(String logString, Object logObject, System.LoggingLevel logLevel) {
+      locallogString = logString;
+      localLogLevel = logLevel;
     }
   }
 }

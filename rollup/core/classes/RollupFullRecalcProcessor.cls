@@ -72,7 +72,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   public void finish() {
     if (this.postProcessor != null) {
-      RollupLogger.Instance.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
+      this.logger.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
       // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
       // job continuity is established between the full recalc and then any downstream job that runs
       // (as the postProcessor)
@@ -131,7 +131,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   protected List<SObject> getCalcItems() {
     if (QUERY_TO_CALC_ITEMS.containsKey(this.queryString)) {
-      RollupLogger.Instance.log('returning pre-queried records from cache', LoggingLevel.FINE);
+      this.logger.log('returning pre-queried records from cache', LoggingLevel.FINE);
       return QUERY_TO_CALC_ITEMS.get(this.queryString);
     }
     List<SObject> localCalcItems = Database.query(this.queryString);

@@ -1,7 +1,7 @@
 public without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.5.39';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.5.40';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -11,7 +11,11 @@ public without sharing virtual class RollupLogger implements ILogger {
     this.currentLoggingLevel = this.getLogLevel();
   }
 
-  public static final ILogger Instance {
+  public static void setLogger(ILogger logger) {
+    Instance = logger;
+  }
+
+  public static ILogger Instance {
     get {
       if (Instance == null) {
         Instance = getRollupLogger();
@@ -25,6 +29,7 @@ public without sharing virtual class RollupLogger implements ILogger {
     void log(String logString, LoggingLevel logLevel);
     void log(String logString, Object logObject, LoggingLevel logLevel);
     void save();
+    ILogger updateRollupControl(RollupControl__mdt control);
   }
 
   public void log(String logString, LoggingLevel logLevel) {
@@ -39,6 +44,10 @@ public without sharing virtual class RollupLogger implements ILogger {
 
   public virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
+  }
+
+  public ILogger updateRollupControl(RollupControl__mdt control) {
+    return this;
   }
 
   protected String getBaseLoggingMessage() {
@@ -188,6 +197,12 @@ public without sharing virtual class RollupLogger implements ILogger {
           logger.save();
         }
       }
+    }
+
+    public CombinedLogger updateRollupControl(RollupControl__mdt control) {
+      this.control = control;
+      this.log('updating control record', control, LoggingLevel.INFO);
+      return this;
     }
   }
 }

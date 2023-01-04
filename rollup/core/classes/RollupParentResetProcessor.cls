@@ -64,7 +64,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     if (parentItems.isEmpty()) {
       return;
     }
-    RollupLogger.Instance.log('resetting parent fields for: ' + parentItems.size() + ' items', LoggingLevel.DEBUG);
+    this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', LoggingLevel.DEBUG);
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
     for (SObject parentItem : parentItems) {
       for (Rollup__mdt rollupMeta : this.rollupMetas) {

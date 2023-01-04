@@ -617,7 +617,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
     records = Database.query(query);
 
-    Map<String, SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
+    Map<String, SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
     for (SObject record : records) {
       this.trackTraversalIds((Id) record.get(oneToManyFieldName), record.Id, field, new Set<Id>());
@@ -627,7 +627,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private String getChildRelationshipFromType(Schema.SObjectType sObjectType, String relationshipName) {
-    for (Schema.ChildRelationship child : sObjectType.getDescribe().getChildRelationships()) {
+    for (Schema.ChildRelationship child : sObjectType.getDescribe(SObjectDescribeOptions.FULL).getChildRelationships()) {
       if (child.getRelationshipName() == relationshipName) {
         return child.getChildSObject().getDescribe().getName();
       }

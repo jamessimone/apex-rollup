@@ -66,7 +66,7 @@ public virtual class RollupFieldInitializer {
   }
 
   public Schema.DescribeSObjectResult getDescribeFromName(String sObjectName) {
-    return Schema.describeSObjects(new List<String>{ sObjectName })[0];
+    return Schema.describeSObjects(new List<String>{ sObjectName }, SObjectDescribeOptions.DEFERRED)[0];
   }
 
   public class PicklistController extends RollupFieldInitializer {

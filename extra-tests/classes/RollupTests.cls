@@ -3764,7 +3764,7 @@ private class RollupTests {
   static void encapsulatesNamespaceInfoProperly() {
     Rollup.NamespaceInfo namespaceInfo = Rollup.getNamespaceInfo();
 
-    String rollupObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
+    String rollupObjectName = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
     System.assertEquals(rollupObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName(), nameSpaceInfo.safeRollupOperationField);
     System.assertEquals(rollupObjectName, nameSpaceInfo.safeObjectName);
     System.assertEquals(Rollup.class.getName() == 'Rollup' ? '' : Rollup.class.getName().substringBefore('.Rollup') + '__', nameSpaceInfo.namespace);

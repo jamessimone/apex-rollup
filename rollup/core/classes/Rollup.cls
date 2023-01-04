@@ -47,6 +47,8 @@ global without sharing virtual class Rollup {
   protected RollupCalcItemReplacer calcItemReplacer;
   protected TriggerOperation triggerContext;
 
+  private Boolean hasResetLogger = false;
+
   // Lazy-load section. Lots of additional lines, but with the benefit that we keep the heap size down for instances of Rollup
   // that never reference these variables
   private static final Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS {
@@ -119,6 +121,19 @@ global without sharing virtual class Rollup {
       return rollups;
     }
     set;
+  }
+
+  protected final RollupLogger.ILogger logger {
+    get {
+      if (this.logger == null) {
+        this.logger = RollupLogger.Instance;
+      } else if (this.getIsRunningAsync() && this.hasResetLogger == false) {
+        this.hasResetLogger = true;
+        RollupLogger.setLogger(this.logger);
+      }
+      return logger;
+    }
+    private set;
   }
 
   /**
@@ -315,7 +330,7 @@ global without sharing virtual class Rollup {
   }
 
   public virtual String runCalc() {
-    RollupLogger.Instance.log('no-op!', LoggingLevel.WARN);
+    this.logger.log('no-op!', LoggingLevel.WARN);
     return 'Not implemented';
   }
 
@@ -431,7 +446,7 @@ global without sharing virtual class Rollup {
 
   public class NamespaceInfo {
     @AuraEnabled
-    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
+    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
     @AuraEnabled
     public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
     @AuraEnabled
@@ -477,6 +492,7 @@ global without sharing virtual class Rollup {
       }
     }
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
+    updateLoggingControl(matchingMetadata);
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
 
     String potentialWhereClause = '';
@@ -728,6 +744,8 @@ global without sharing virtual class Rollup {
     }
     if (metaToInputWrapper.isEmpty()) {
       return flowOutputs;
+    } else {
+      updateLoggingControl(new List<Rollup__mdt>(metaToInputWrapper.keySet()));
     }
 
     Map<SObjectType, List<Rollup>> localRollups = new Map<SObjectType, List<Rollup>>();
@@ -1668,7 +1686,7 @@ global without sharing virtual class Rollup {
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
 
     String orderByRelationshipName;
-    List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe().getChildRelationships();
+    List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.FULL).getChildRelationships();
     for (Schema.ChildRelationship relationship : potentiallyMatchingRelationships) {
       if (relationship.getChildSObject() == RollupOrderBy__mdt.SObjectType) {
         orderByRelationshipName = relationship.getRelationshipName();
@@ -2504,7 +2522,7 @@ global without sharing virtual class Rollup {
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
-    String sObjectName = sObjectType.getDescribe().getName();
+    String sObjectName = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
@@ -2534,7 +2552,7 @@ global without sharing virtual class Rollup {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
     validRelationshipNames.remove(validRelationshipNames.size() - 1);
-    for (SObjectField fieldToken : sObjectType.getDescribe().fields.getMap().values()) {
+    for (SObjectField fieldToken : sObjectType.getDescribe(SObjectDescribeOptions.FULL).fields.getMap().values()) {
       if (fieldToken.getDescribe().getRelationshipName() == null) {
         continue;
       } else if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
@@ -2578,8 +2596,9 @@ global without sharing virtual class Rollup {
      * We have rollup operations to perform. That's great!
      * Let's get ready to rollup!
      */
-    Map<String, SObjectField> calcItemFields = sObjectType.getDescribe().fields.getMap();
+    Map<String, SObjectField> calcItemFields = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     RollupFieldInitializer init = RollupFieldInitializer.Current;
+    updateLoggingControl(rollupOperations);
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
@@ -2613,6 +2632,9 @@ global without sharing virtual class Rollup {
         localControl = getSingleControlOrDefault(RollupControl__mdt.TriggerOrInvocableName__c, controlKey, specificControl);
       }
       setControlToSyncForSingularParentRecalcs(localControl, rollupInvokePoint);
+      if (rollupConductor.rollupControl != null && rollupConductor.rollupControl != localControl) {
+        rollupConductor.rollupControl.IsRollupLoggingEnabled__c = localControl.IsRollupLoggingEnabled__c;
+      }
 
       FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType, rollupConductor.calcItemReplacer);
 
@@ -2936,5 +2958,20 @@ global without sharing virtual class Rollup {
       }
     }
     return results;
+  }
+
+  private static void updateLoggingControl(List<Rollup__mdt> metadatas) {
+    Id controlId;
+    for (Rollup__mdt meta : metadatas) {
+      if (controlId == null || meta.RollupControl__c != null && meta.RollupControl__c != CACHED_DEFAULT.Id) {
+        controlId = meta.RollupControl__c;
+      } else if (meta.RollupControl__c == CACHED_DEFAULT.Id) {
+        controlId = null;
+        break;
+      }
+    }
+    if (controlId != null) {
+      RollupLogger.Instance.updateRollupControl(getSingleControlOrDefault(RollupControl__mdt.Id, controlId, defaultControl));
+    }
   }
 }
