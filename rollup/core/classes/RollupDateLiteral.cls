@@ -368,7 +368,7 @@ public without sharing abstract class RollupDateLiteral {
   private class LastMonthLiteral extends RollupDateLiteral {
     public LastMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).date().toStartOfMonth(), END_TIME));
     }
   }
 
@@ -378,10 +378,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
-      if (this.bound.dayGmt() != 1 && this.bound.day() == 1) {
-        this.bound = this.bound.addDays(-1);
-      }
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).date().toStartOfMonth(), END_TIME));
     }
   }
 
@@ -391,10 +388,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextMonthLiteral extends RollupDateLiteral {
     public NextMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(1).date(), END_TIME);
-      if (this.bound.dayGmt() != 1 && this.bound.day() == 1) {
-        this.bound = this.bound.addDays(-1);
-      }
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).date().toStartOfMonth(), END_TIME));
     }
   }
 
@@ -516,10 +510,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(dateRange).date().toStartOfMonth(), END_TIME);
-      if (this.bound.dayGmt() != 1 && this.bound.day() == 1) {
-        this.bound = this.bound.addDays(-1);
-      }
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(dateRange).date().toStartOfMonth(), END_TIME));
     }
   }
 
@@ -529,7 +520,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class LastQuarterLiteral extends RollupDateLiteral {
     public LastQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getLastQuarterStart(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
     }
 
     protected virtual Date getLastQuarterStart() {
@@ -543,7 +534,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class ThisQuarterLiteral extends RollupDateLiteral {
     public ThisQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getThisQuarterStart(), START_TIME);
-      this.bound = this.ref.addMonths(3).addMinutes(END_TIME.minute()).addSeconds(END_TIME.second());
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
     }
 
     protected virtual Date getThisQuarterStart() {
@@ -557,7 +548,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class NextQuarterLiteral extends RollupDateLiteral {
     public NextQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(3).dateGmt().addDays(-1), END_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -571,8 +562,8 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class LastNQuartersLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
-      this.bound = getRelativeDatetime(this.getLastQuarterStart().addDays(-1), END_TIME);
-      this.ref = getRelativeDateTime(this.bound.addMonths(-3 * quarterRange).dateGmt(), START_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.getLastQuarterStart(), END_TIME));
+      this.ref = offsetToFirstDay(getRelativeDateTime(this.bound.addMonths(-3 * quarterRange).dateGmt(), START_TIME));
     }
 
     protected virtual Date getLastQuarterStart() {
@@ -587,7 +578,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(3).date().addDays(-1), END_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
     }
   }
 
@@ -598,7 +589,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(quarterRange * 3).date().addDays(-1), END_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(quarterRange * 3).date(), END_TIME));
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -966,6 +957,13 @@ public without sharing abstract class RollupDateLiteral {
 
   private static Datetime getEndOfYear(Integer yearNumber) {
     return getRelativeDatetime(Date.newInstance(yearNumber, 12, 31), END_TIME);
+  }
+
+  private static Datetime offsetToFirstDay(Datetime ref) {
+    if (ref.dayGmt() != 1 && ref.day() == 1) {
+      ref = ref.addDays(-1);
+    }
+    return ref;
   }
 
   private static Integer getWeekNumber(Integer dayNumber) {
