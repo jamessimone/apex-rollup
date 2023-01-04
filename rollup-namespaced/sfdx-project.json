@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixed a bug on the parent recalc button when used in conjunction with RollupOrderBy__mdt records. Added FlowOutput to Full Recalc CMDT-driven Invocable invocable",
-            "versionNumber": "1.0.11.0",
+            "versionName": "Making Rollup.flatten() safer",
+            "versionNumber": "1.0.12.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -32,6 +32,7 @@
         "apex-rollup-namespaced@1.0.8-0": "04t6g000007zM2gAAE",
         "apex-rollup-namespaced@1.0.9-0": "04t6g000007zM7DAAU",
         "apex-rollup-namespaced@1.0.10-0": "04t6g000007zMCiAAM",
-        "apex-rollup-namespaced@1.0.11-0": "04t6g000008fjOhAAI"
+        "apex-rollup-namespaced@1.0.11-0": "04t6g000008fjOhAAI",
+        "apex-rollup-namespaced@1.0.12-0": "04t6g000008fjSKAAY"
     }
 }

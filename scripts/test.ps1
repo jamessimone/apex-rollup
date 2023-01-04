@@ -4,6 +4,7 @@ $ErrorActionPreference = 'Stop'
 $testInvocation = 'npx sfdx force:apex:test:run -s ApexRollupTestSuite -r human -w 20 -c -d ./tests/apex'
 $currentUserAlias = 'apex-rollup-scratch-org'
 
+. .\scripts\string-utils.ps1
 . .\scripts\integration-test-large-data-volume.ps1
 
 function Start-Tests() {
@@ -20,7 +21,7 @@ function Start-Tests() {
     $testFailure = $true
   }
 
-  if ($false -eq $testFailure) {
+  if ($false -eq $testFailure && Get-Current-Git-Branch -ne "main") {
     Start-Integration-Tests
   }
 
