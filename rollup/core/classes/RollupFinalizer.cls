@@ -24,7 +24,7 @@ public without sharing class RollupFinalizer implements Finalizer {
 
   private void logUnhandledException(FinalizerContext fc) {
     if (wasCalled == false) {
-      // a finalizer can be re-queued up to five times, but we view this as a one-time "get out of jail free logger"
+      // a finalizer can be re-queued up to five times, but we view this as a one-time "get out of jail free" logger
       wasCalled = true;
       RollupLogger.Instance.log('finalizer logging failure from:', fc?.getException(), LoggingLevel.ERROR);
       RollupLogger.Instance.save();

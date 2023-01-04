@@ -17,7 +17,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    RollupLogger.Instance.log('starting full batch recalc run:', this, LoggingLevel.DEBUG);
+    this.logger.log('starting full batch recalc run:', this, LoggingLevel.DEBUG);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
      * them to the overall Rollup framework while breaking us out of the query limits
@@ -26,7 +26,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * parent class
      */
     this.process(this.getDelegatedFullRecalcRollups(calcItems));
-    RollupLogger.Instance.save();
+    this.logger.save();
   }
 
   public override Boolean isBatch() {
