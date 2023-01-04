@@ -22,7 +22,7 @@ public without sharing class RollupQueryBuilder {
     fieldNames.clear();
     fieldNames.addAll(lowerCaseFieldNames);
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(fieldNames, lowerCaseFieldNames, sObjectType.getDescribe());
+    this.addCurrencyIsoCodeForMultiCurrencyOrgs(fieldNames, lowerCaseFieldNames, sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED));
 
     String originalWhereClause = optionalWhereClause;
     Boolean isBlank = String.isBlank(originalWhereClause);
@@ -75,7 +75,7 @@ public without sharing class RollupQueryBuilder {
   private String adjustWhereClauseForPolymorphicFields(SObjectType sObjectType, List<String> fieldNames, String optionalWhereClause) {
     // you can't filter on *.Owner for polymorphic fields - or even select them, for that matter. Instead we have to massage the query to use
     // TYPEOF instead
-    Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe().fields.getMap();
+    Map<String, SObjectField> fieldNameToField = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     if (this.hasPolymorphicOwnerClause(optionalWhereClause, fieldNameToField) == false || fieldNames.contains('Count()')) {
       return optionalWhereClause;
     }

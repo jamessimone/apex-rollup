@@ -254,10 +254,10 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = Application__c.SObjectType.getDescribe().getName(),
+        CalcItem__c = Application__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
         LookupObject__c = 'Account',
         RollupToUltimateParent__c = true,
-        LookupFieldOnCalcItem__c = ParentApplication__c.SObjectType.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = Application__c.ParentApplication__c.getDescribe().getName(),
         UltimateParentLookup__c = 'ParentId',
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
@@ -298,9 +298,9 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = Application__c.SObjectType.getDescribe().getName(),
+        CalcItem__c = Application__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
         LookupObject__c = 'Individual',
-        LookupFieldOnCalcItem__c = ParentApplication__c.SObjectType.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = Application__c.ParentApplication__c.getDescribe().getName(),
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
         RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
@@ -1580,10 +1580,10 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metas = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = RollupChild__c.SObjectType.getDescribe().getName(),
+        CalcItem__c = RollupChild__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
         RollupFieldOnCalcItem__c = RollupChild__c.NumberField__c.getDescribe().getName(),
         LookupFieldOnCalcItem__c = RollupChild__c.RollupParent__c.getDescribe().getName(),
-        LookupObject__c = RollupGrandparent__c.SObjectType.getDescribe().getName(),
+        LookupObject__c = RollupGrandparent__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
         LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.getDescribe().getName(),
         RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.getDescribe().getName(),
         RollupOperation__c = 'SUM',

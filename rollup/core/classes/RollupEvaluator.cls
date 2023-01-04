@@ -261,7 +261,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private Set<String> getValidRelationshipNames(SObjectType sObjectType) {
       Set<String> localRelationshipNames = new Set<String>();
-      List<SObjectField> fields = sObjectType.getDescribe().fields.getMap().values();
+      List<SObjectField> fields = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().values();
       for (SObjectField field : fields) {
         String relationshipName = field.getDescribe().getRelationshipName();
         // filter out polymorphic relationship fields that can't be queried
@@ -690,7 +690,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         return null;
       }
       // handle compound fields separately
-      Boolean hasField = sObjectType.getDescribe().fields.getMap().containsKey(fieldPath);
+      Boolean hasField = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().containsKey(fieldPath);
       if (fieldPath.contains('.') && hasField == false) {
         return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
       } else if ((hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath)) || (hasField && item.get(fieldPath) == null)) {
@@ -707,7 +707,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String originalName = relationshipName;
       relationshipName = getRelationshipNameFromField(relationshipName);
 
-      SObjectField fieldToken = sObjectType.getDescribe().fields.getMap().get(relationshipName);
+      SObjectField fieldToken = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().get(relationshipName);
       if (fieldToken == null) {
         // it could be a rollup started from the parent using a parent-level where clause
         try {

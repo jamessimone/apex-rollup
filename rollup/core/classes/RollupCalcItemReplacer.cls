@@ -151,7 +151,7 @@ public without sharing class RollupCalcItemReplacer {
     Boolean hasOwnerClause = metadata.CalcItemWhereClause__c?.contains(owner) == true;
     Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
     SObjectType sObjectType = firstItem.getSObjectType();
-    Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe().fields.getMap();
+    Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
     if (hasPolyMorphicFields == false) {

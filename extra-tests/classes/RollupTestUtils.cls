@@ -6,7 +6,7 @@ public class RollupTestUtils {
   private static Integer startingNumber = 1;
   public static String createId(Schema.SObjectType sObjectType) {
     String result = String.valueOf(startingNumber++);
-    return sObjectType.getDescribe().getKeyPrefix() + '0'.repeat(12 - result.length()) + result;
+    return sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getKeyPrefix() + '0'.repeat(12 - result.length()) + result;
   }
 
   public static List<Rollup.FlowInput> prepareFlowTest(List<SObject> records, String rollupContext, String rollupOperation) {
@@ -19,7 +19,7 @@ public class RollupTestUtils {
     flowInput.rollupContext = rollupContext;
     flowInput.rollupFieldOnCalcItem = ContactPointAddress.PreferenceRank.getDescribe().getName();
     flowInput.rollupFieldOnOpObject = Account.AnnualRevenue.getDescribe().getName();
-    flowInput.rollupSObjectName = Account.SObjectType.getDescribe().getName();
+    flowInput.rollupSObjectName = Account.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
     flowInput.rollupOperation = rollupOperation;
     flowInput.splitConcatDelimiterOnCalcItem = false;
 

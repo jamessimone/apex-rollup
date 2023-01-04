@@ -446,7 +446,7 @@ global without sharing virtual class Rollup {
 
   public class NamespaceInfo {
     @AuraEnabled
-    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe().getName();
+    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
     @AuraEnabled
     public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
     @AuraEnabled
@@ -1686,7 +1686,7 @@ global without sharing virtual class Rollup {
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
 
     String orderByRelationshipName;
-    List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe().getChildRelationships();
+    List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.FULL).getChildRelationships();
     for (Schema.ChildRelationship relationship : potentiallyMatchingRelationships) {
       if (relationship.getChildSObject() == RollupOrderBy__mdt.SObjectType) {
         orderByRelationshipName = relationship.getRelationshipName();
@@ -2522,7 +2522,7 @@ global without sharing virtual class Rollup {
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
-    String sObjectName = sObjectType.getDescribe().getName();
+    String sObjectName = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
@@ -2552,7 +2552,7 @@ global without sharing virtual class Rollup {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
     validRelationshipNames.remove(validRelationshipNames.size() - 1);
-    for (SObjectField fieldToken : sObjectType.getDescribe().fields.getMap().values()) {
+    for (SObjectField fieldToken : sObjectType.getDescribe(SObjectDescribeOptions.FULL).fields.getMap().values()) {
       if (fieldToken.getDescribe().getRelationshipName() == null) {
         continue;
       } else if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
@@ -2596,7 +2596,7 @@ global without sharing virtual class Rollup {
      * We have rollup operations to perform. That's great!
      * Let's get ready to rollup!
      */
-    Map<String, SObjectField> calcItemFields = sObjectType.getDescribe().fields.getMap();
+    Map<String, SObjectField> calcItemFields = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     RollupFieldInitializer init = RollupFieldInitializer.Current;
     updateLoggingControl(rollupOperations);
 
