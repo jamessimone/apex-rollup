@@ -1,5 +1,6 @@
 public without sharing virtual class RollupSObjectUpdater {
-  private static final String UPDATER_NAME = 'RollupCustomUpdater';
+  @TestVisible
+  private static String UPDATER_NAME = 'RollupCustomUpdater';
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
   private static final SObjectSorter SORTER = new SObjectSorter();
@@ -125,7 +126,7 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void splitUpdates(List<SObject> recordsToUpdate) {
-    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < recordsToUpdate.size()) {
+    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < recordsToUpdate.size() && this.forceSyncUpdate == false) {
       Integer maxIndexToRemove = recordsToUpdate.size() / 2;
       List<SObject> asyncUpdateList = new List<SObject>();
       while (recordsToUpdate.size() > maxIndexToRemove) {

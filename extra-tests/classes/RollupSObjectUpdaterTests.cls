@@ -1,6 +1,7 @@
 @IsTest
 public class RollupSObjectUpdaterTests {
   private static Boolean dispatcherMockWasCalled = false;
+  private static List<SObject> mockUpdatedRecords;
 
   @IsTest
   static void shouldAllowDatetimeToBeSavedAsDate() {
@@ -104,6 +105,25 @@ public class RollupSObjectUpdaterTests {
 
     Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
     System.assertEquals(acc, updatedAccount);
+  }
+
+  @IsTest
+  static void doesNotSplitUpdatesWhenForcedSyncUpdateEnabled() {
+    RollupSObjectUpdater.UPDATER_NAME = MockUpdater.class.getName();
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = RollupSObjectUpdater.UPDATER_NAME) };
+    RollupSObjectUpdater updater = new RollupSObjectUpdater();
+    updater.forceSyncUpdate();
+    updater.addRollupControl(new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 1));
+
+    updater.doUpdate(new List<SObject>{ new Account(), new Contact() });
+
+    System.assertEquals(2, mockUpdatedRecords.size());
+  }
+
+  public class MockUpdater implements RollupSObjectUpdater.IUpdater {
+    public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
+      mockUpdatedRecords = recordsToUpdate;
+    }
   }
 
   @SuppressWarnings('PMD.EmptyWhileStmt')

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Prevents executeBatch call for deferred rollups when full batch recalculation is already in progress",
-            "versionNumber": "1.5.41.0",
+            "versionName": "Properly prevent second queueable from firing when an update should be synchronous",
+            "versionNumber": "1.5.42.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

@@ -1,19 +1,22 @@
 public without sharing class RollupPlugin {
   @TestVisible
-  private static List<RollupPlugin__mdt> pluginMocks;
+  private static List<RollupPlugin__mdt> pluginMocks = new List<RollupPlugin__mdt>();
   @TestVisible
   private static RollupPluginParameter__mdt parameterMock;
 
   public RollupPlugin__mdt getInstance(String developerNameOrId) {
-    return pluginMocks != null && pluginMocks.isEmpty() == false ? pluginMocks.remove(0) : RollupPlugin__mdt.getInstance(developerNameOrId);
+    for (RollupPlugin__mdt plugin : pluginMocks) {
+      if (plugin.DeveloperName == developerNameOrId) {
+        return plugin;
+      }
+    }
+    return RollupPlugin__mdt.getInstance(developerNameOrId);
   }
 
   public List<RollupPlugin__mdt> getInstances() {
     List<RollupPlugin__mdt> plugins = new List<RollupPlugin__mdt>();
     plugins.addAll(RollupPlugin__mdt.getAll().values());
-    if (pluginMocks != null) {
-      plugins.addAll(pluginMocks);
-    }
+    plugins.addAll(pluginMocks);
     return plugins;
   }
 
