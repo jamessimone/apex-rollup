@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Logging updates to respect specific Rollup Controls when they differ from the Org Default",
-            "versionNumber": "1.5.40.0",
+            "versionName": "Prevents executeBatch call for deferred rollups when full batch recalculation is already in progress",
+            "versionNumber": "1.5.41.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.5.37-0": "04t6g000007zMCdAAM",
         "apex-rollup@1.5.38-0": "04t6g000008fjOcAAI",
         "apex-rollup@1.5.39-0": "04t6g000008fjSFAAY",
-        "apex-rollup@1.5.40-0": "04t6g000008fjSUAAY"
+        "apex-rollup@1.5.40-0": "04t6g000008fjSUAAY",
+        "apex-rollup@1.5.41-0": "04t6g000008fjSyAAI"
     }
 }
