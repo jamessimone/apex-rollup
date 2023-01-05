@@ -305,7 +305,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll;
     if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
       roll = this.rollups[0];
-    } else if (this instanceof RollupFullRecalcProcessor) {
+    } else if (this instanceof RollupFullRecalcProcessor && ((RollupFullRecalcProcessor) this).isBatch() == false) {
       roll = this;
     } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
