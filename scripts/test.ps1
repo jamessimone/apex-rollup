@@ -12,7 +12,8 @@ function Start-Tests() {
   npx sfdx force:source:deploy -p rollup
   npx sfdx force:source:deploy -p extra-tests
 
-  Write-Debug "Starting test run ..."
+  $currentBranch = Get-Current-Git-Branch
+  Write-Debug "Starting test run on branch $currentBranch ..."
   Invoke-Expression $testInvocation
   $testRunId = Get-Content tests/apex/test-run-id.txt
   $specificTestRunJson = Get-Content "tests/apex/test-result-$testRunId.json" | ConvertFrom-Json
@@ -21,7 +22,7 @@ function Start-Tests() {
     $testFailure = $true
   }
 
-  if ($false -eq $testFailure && Get-Current-Git-Branch -ne "main") {
+  if ($false -eq $testFailure -And $currentBranch.Contains("main") -eq $false) {
     Start-Integration-Tests
   }
 
