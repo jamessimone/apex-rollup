@@ -2579,9 +2579,13 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     InvocationPoint rollupInvokePoint
   ) {
-    calcItems = CALC_ITEM_REPLACER.replace(calcItems, rollupOperations);
-    if (oldCalcItems?.isEmpty() == false) {
-      oldCalcItems = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(oldCalcItems.values(), rollupOperations));
+    switch on rollupInvokePoint {
+      when FROM_APEX, FROM_INVOCABLE {
+        calcItems = CALC_ITEM_REPLACER.replace(calcItems, rollupOperations);
+        if (oldCalcItems?.isEmpty() == false) {
+          oldCalcItems = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(oldCalcItems.values(), rollupOperations));
+        }
+      }
     }
     RollupAsyncProcessor rollupConductor = RollupAsyncProcessor.getConductor(rollupInvokePoint, calcItems, oldCalcItems);
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
@@ -2606,15 +2610,9 @@ global without sharing virtual class Rollup {
       SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
       Schema.DescribeSObjectResult lookupDescribe = init.getDescribeFromName(rollupMetadata.LookupObject__c);
-      Map<String, SObjectField> lookuopItemFields = lookupDescribe.fields.getMap();
-      SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
-      SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookuopItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
-
-      // reset the CMDT field-level definitions using the SObjectField tokens
-      rollupMetadata.RollupFieldOnCalcItem__c = rollupFieldOnCalcItem.getDescribe().getName();
-      rollupMetadata.LookupFieldOnCalcItem__c = calcLookupField.getDescribe().getName();
-      rollupMetadata.LookupFieldOnLookupObject__c = lookupFieldOnOpObject.getDescribe().getName();
-      rollupMetadata.RollupFieldOnLookupObject__c = rollupFieldOnOpObject.getDescribe().getName();
+      Map<String, SObjectField> lookupItemFields = lookupDescribe.fields.getMap();
+      SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
+      SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
 
       if (rollupMetadata.IsFullRecordSet__c != true && isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
         rollupMetadata.IsFullRecordSet__c = true;
@@ -2946,12 +2944,12 @@ global without sharing virtual class Rollup {
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
-      // if the where clause would exclude something, but we're in an update
-      // and the old value wouldn't have been excluded, pass it on through
-      // to be handled further downstream
       if (results.eval.matches(item) || calcItemReplacer.hasProcessedMetadata(new List<Rollup__mdt>{ metadata }, calcItems) == false) {
         results.matchingItemIds.add(item.Id);
-      } else if (oldCalcItems != null && oldCalcItems.containsKey(item.Id) && results.eval.matches(oldCalcItems.get(item.Id))) {
+      } else if (oldCalcItems?.containsKey(item.Id) == true && results.eval.matches(oldCalcItems.get(item.Id))) {
+        // if the where clause would exclude something, but we're in an update
+        // and the old value wouldn't have been excluded, pass it on through
+        // to be handled further downstream
         results.matchingItemIds.add(item.Id);
       } else if (metadata?.IsFullRecordSet__c == true) {
         results.matchingItemIds.add(item.Id);

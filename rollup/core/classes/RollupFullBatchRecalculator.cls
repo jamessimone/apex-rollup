@@ -26,7 +26,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      * parent class
      */
     this.process(this.getDelegatedFullRecalcRollups(calcItems));
-    this.logger.save();
   }
 
   public override Boolean isBatch() {
