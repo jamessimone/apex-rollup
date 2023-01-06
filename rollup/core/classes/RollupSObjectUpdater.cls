@@ -148,7 +148,9 @@ public without sharing virtual class RollupSObjectUpdater {
       if (populatedFields.size() == 1 && populatedFields.contains('Id')) {
         records.remove(index);
       } else if (
-        RollupCurrencyInfo.isMultiCurrency() && new Set<String>{ 'Id', RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME }.containsAll(populatedFields)
+        RollupCurrencyInfo.isMultiCurrency() &&
+        populatedFields.isEmpty() == false &&
+        new Set<String>{ 'Id', RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME }.containsAll(populatedFields)
       ) {
         records.remove(index);
       }
