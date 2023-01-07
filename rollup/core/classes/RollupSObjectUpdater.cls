@@ -1,5 +1,6 @@
 public without sharing virtual class RollupSObjectUpdater {
-  private static final String UPDATER_NAME = 'RollupCustomUpdater';
+  @TestVisible
+  private static String UPDATER_NAME = 'RollupCustomUpdater';
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
   private static final SObjectSorter SORTER = new SObjectSorter();
@@ -125,7 +126,7 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void splitUpdates(List<SObject> recordsToUpdate) {
-    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < recordsToUpdate.size()) {
+    if (this.rollupControl.MaxParentRowsUpdatedAtOnce__c < recordsToUpdate.size() && this.forceSyncUpdate == false) {
       Integer maxIndexToRemove = recordsToUpdate.size() / 2;
       List<SObject> asyncUpdateList = new List<SObject>();
       while (recordsToUpdate.size() > maxIndexToRemove) {
@@ -142,16 +143,15 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void winnowRecords(List<SObject> records) {
-    List<String> baseFields = new List<String>{ 'Id' };
-    if (RollupCurrencyInfo.isMultiCurrency()) {
-      baseFields.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
-    }
     for (Integer index = records.size() - 1; index >= 0; index--) {
-      SObject record = records.get(index);
-      Map<String, Object> populatedFields = record.getPopulatedFieldsAsMap();
-      if (populatedFields.size() == 1 && record.get('Id') != null) {
+      Set<String> populatedFields = records.get(index).getPopulatedFieldsAsMap().keySet();
+      if (populatedFields.size() == 1 && populatedFields.contains('Id')) {
         records.remove(index);
-      } else if (RollupCurrencyInfo.isMultiCurrency() && populatedFields.size() == 2 && populatedFields.keySet().containsAll(baseFields)) {
+      } else if (
+        RollupCurrencyInfo.isMultiCurrency() &&
+        populatedFields.isEmpty() == false &&
+        new Set<String>{ 'Id', RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME }.containsAll(populatedFields)
+      ) {
         records.remove(index);
       }
     }
