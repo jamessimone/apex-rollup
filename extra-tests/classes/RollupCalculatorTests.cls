@@ -1895,6 +1895,27 @@ private class RollupCalculatorTests {
     System.assert(true, 'Should make it here');
   }
 
+  @IsTest
+  static void convertsDatesProperly() {
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.MIN,
+      Opportunity.Description,
+      Opportunity.CloseDate,
+      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType)),
+      RollupTestUtils.createId(Opportunity.SObjectType),
+      Opportunity.Id
+    );
+
+    Opportunity oppOne = new Opportunity(Description = '2020-01-01');
+    Opportunity oppTwo = new Opportunity(Description = '2020-01-02');
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    Assert.isInstanceOfType(calc.getReturnValue(), Date.class, 'Should have been properly converted');
+    System.assertEquals(Date.valueOf(oppOne.Description), calc.getReturnValue());
+  }
+
   private class RollupCalcEmptyMock extends RollupCalculator {
     public RollupCalcEmptyMock() {
       super(Rollup.Op.LAST, null, null, null, new Rollup__mdt(), null);

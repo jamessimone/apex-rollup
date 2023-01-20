@@ -69,12 +69,25 @@ public without sharing virtual class RollupSObjectUpdater {
     if (value instanceof Decimal && fieldType == DisplayType.INTEGER) {
       Decimal decimalValue = (Decimal) value;
       value = decimalValue.intValue();
-    } else if (fieldType == DisplayType.DATE && value instanceof Datetime) {
-      value = ((Datetime) value).dateGmt();
-    } else if ((value instanceof String) == false) {
+    } else {
+      Boolean valueIsString = value instanceof String;
       switch on fieldType {
         when STRING, TEXTAREA {
-          value = String.valueOf(value);
+          if (valueIsString == false) {
+            value = String.valueOf(value);
+          }
+        }
+        when DATETIME {
+          if (valueIsString) {
+            value = Datetime.parse((String) value);
+          }
+        }
+        when Date {
+          if (value instanceof Datetime) {
+            value = ((Datetime) value).dateGmt();
+          } else if (valueisString) {
+            value = Date.parse((String) value);
+          }
         }
       }
     }

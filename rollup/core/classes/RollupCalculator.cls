@@ -666,14 +666,24 @@ public without sharing abstract class RollupCalculator {
       super.setDefaultValues(lookupRecordKey, priorVal);
     }
 
-    protected virtual override Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
-      if (potentiallyUnitializedDecimal == null) {
+    protected virtual override Decimal getDecimalOrDefault(Object potentiallyUninitialized) {
+      if (potentiallyUninitialized == null) {
         return RollupFieldInitializer.Current.defaultDateTime.getTime();
       }
-      // one of the worst things about SOQL is that Datetimes retrieved have the millisecond values truncated
-      Datetime datetimeWithMs = potentiallyUnitializedDecimal instanceof Decimal
-        ? Datetime.newInstance(((Decimal) potentiallyUnitializedDecimal).longValue())
-        : ((Datetime) potentiallyUnitializedDecimal);
+      Datetime datetimeWithMs;
+      if (potentiallyUninitialized instanceof String) {
+        String potentialDatetimeValue = (String) potentiallyUninitialized;
+        try {
+          datetimeWithMs = Datetime.valueOf((String) potentialDatetimeValue);
+        } catch (Exception ex) {
+          datetimeWithMs = Datetime.newInstance(Date.valueOf(potentialDatetimeValue), Time.newInstance(0, 0, 0, 0));
+        }
+      } else if (potentiallyUninitialized instanceof Decimal) {
+        datetimeWithMs = Datetime.newInstance(((Decimal) potentiallyUninitialized).longValue());
+      } else {
+        datetimeWithMs = (Datetime) potentiallyUninitialized;
+      }
+
       return RollupFieldInitializer.Current.getApexCompliantDatetime(datetimeWithMs).getTime();
     }
 
