@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Properly prevent second queueable from firing when an update should be synchronous",
-            "versionNumber": "1.5.42.0",
+            "versionName": "Allows the rolling up of text fields to date/datetime fields",
+            "versionNumber": "1.5.43.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

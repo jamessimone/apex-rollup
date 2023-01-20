@@ -23,6 +23,28 @@ public class RollupSObjectUpdaterTests {
   }
 
   @IsTest
+  static void convertsStringsToDatetimes() {
+    Datetime nowish = System.now();
+    String nowishString = nowish.format();
+
+    Event ev = new Event();
+    new RollupSObjectUpdater(Event.ActivityDatetime).updateField(ev, nowishString);
+
+    System.assertEquals(nowish.addSeconds(-nowish.second()), ev.ActivityDatetime);
+  }
+
+  @IsTest
+  static void convertsStringsToDates() {
+    Date today = System.today();
+    String todayString = today.format();
+
+    Task t = new Task();
+    new RollupSObjectUpdater(Task.ActivityDate).updateField(t, todayString);
+
+    System.assertEquals(today, t.ActivityDate);
+  }
+
+  @IsTest
   static void shouldRethrowForUnhandledConversion() {
     SObjectException ex;
 
