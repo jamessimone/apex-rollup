@@ -97,6 +97,7 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(String.valueOf(blobValue), opp.Description);
   }
 
+  @SuppressWarnings('PMD.UnusedLocalVariable')
   @IsTest
   static void onlyUpdatesRecordsWithRollupChanges() {
     Account acc = new Account(Name = 'Should Not Be Updated');
