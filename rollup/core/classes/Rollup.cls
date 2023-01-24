@@ -493,7 +493,7 @@ global without sharing virtual class Rollup {
     }
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     updateLoggingControl(matchingMetadata);
-    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.INFO);
 
     String potentialWhereClause = '';
     String delimiter = ' ||| ';
@@ -711,7 +711,7 @@ global without sharing virtual class Rollup {
       }
 
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
-      RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.INFO);
 
       if (flowInput.recordsToRollup?.isEmpty() != false) {
         flowOutput.message = 'No records to rollup, returning early';
@@ -786,7 +786,7 @@ global without sharing virtual class Rollup {
             roll.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
           }
         }
-        RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.INFO);
       }
     }
 
@@ -2167,7 +2167,7 @@ global without sharing virtual class Rollup {
         fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
       }
       fullRecalc.queryCount = wrappedMeta.recordCount;
-      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.INFO);
       fullRecalcRollups.add(fullRecalc);
       CACHED_FULL_RECALCS.add(fullRecalc);
     }

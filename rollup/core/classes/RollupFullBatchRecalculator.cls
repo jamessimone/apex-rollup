@@ -1,4 +1,4 @@
-public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful {
+public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful, Database.RaisesPlatformEvents {
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
@@ -17,7 +17,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    this.logger.log('starting full batch recalc run:', this, LoggingLevel.DEBUG);
+    this.logger.log('starting full batch recalc run:', this, LoggingLevel.INFO);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
      * them to the overall Rollup framework while breaking us out of the query limits

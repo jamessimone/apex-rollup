@@ -87,6 +87,10 @@
                 <behavior>Edit</behavior>
                 <field>ReplaceCalcItemsAsyncWhenOverCount__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>ShouldSkipResettingParentFields__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
