@@ -1,4 +1,4 @@
-global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, System.Comparable {
+global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, Database.RaisesPlatformEvents, System.Comparable {
   private final Evaluator eval;
   private final Op op;
   private final SObjectField lookupFieldOnCalcItem;
@@ -220,7 +220,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
       objIds = this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet();
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
-      this.logger.log('starting batch with query:', query, LoggingLevel.DEBUG);
+      this.logger.log('starting batch with query:', query, LoggingLevel.INFO);
     }
     this.logger.save();
     return Database.getQueryLocator(query);
@@ -237,7 +237,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     this.lookupItems = lookupItems;
     this.process(this.rollups);
-    this.logger.save();
   }
 
   public virtual void finish(Database.BatchableContext context) {
@@ -264,6 +263,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     String rollupProcessId = this.getNoProcessId();
     String logMessage;
+    System.LoggingLevel logLevel = System.LoggingLevel.INFO;
     if (this.isNoOp) {
       logMessage = 'no-op, exiting early to avoid burning async job';
     } else if (this.rollupControl.ShouldAbortRun__c) {
@@ -271,9 +271,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
     } else if (syncRollups.isEmpty() == false) {
-      this.logger.log('about to process sync rollups', LoggingLevel.DEBUG);
+      this.logger.log('about to process sync rollups', logLevel);
       this.process(syncRollups);
-      this.logger.log('finished running sync rollups', LoggingLevel.DEBUG);
+      this.logger.log('finished running sync rollups', logLevel);
     } else {
       Integer totalCountOfRecords = this.getLookupRecordsCount(this.rollups);
       shouldRunAsBatch =
@@ -283,7 +283,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
     }
     if (logMessage != null) {
-      this.logger.log(logMessage, LoggingLevel.DEBUG);
+      this.logger.log(logMessage, logLevel);
       rollupProcessId = logMessage;
     }
     this.logger.save();
@@ -423,13 +423,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected void logFinish() {
-    this.logger.log(this.getTypeName() + ' finished successfully', LoggingLevel.DEBUG);
+    this.logger.log(this.getTypeName() + ' finished successfully', LoggingLevel.INFO);
     this.logger.save();
   }
 
   protected String beginAsyncRollup() {
     this.isTimingOut = false;
-    this.logger.log('about to start for ' + this.getTypeName(), this, LoggingLevel.DEBUG);
+    this.logger.log('about to start for ' + this.getTypeName(), this, LoggingLevel.INFO);
     return this.startAsyncWork();
   }
 
@@ -537,7 +537,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
         } else {
-          this.logger.log('Populating unexpected full recalc for ' + outstandingItemCount + ' items', LoggingLevel.DEBUG);
+          this.logger.log('Populating unexpected full recalc for ' + outstandingItemCount + ' items', LoggingLevel.INFO);
           RollupFullRecalcProcessor fullBatchProcessor = new RollupFullBatchRecalculator(
             RollupQueryBuilder.Current.getQuery(
               rollup.calcItemType,
@@ -614,7 +614,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
-      this.logger.log('starting rollup for:', roll, LoggingLevel.DEBUG);
+      this.logger.log('starting rollup for:', roll, LoggingLevel.INFO);
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
@@ -624,6 +624,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.getDML().doUpdate(updatedLookupRecords.values());
     this.populateOtherDeferredRollups();
     this.processDeferredRollups();
+    this.logger.save();
   }
 
   protected virtual List<RollupAsyncProcessor> transformFullRecalcRollups() {
@@ -844,7 +845,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       isAllowedToContinue +
       ' with stackDepth: ' +
       this.stackDepth,
-      LoggingLevel.DEBUG
+      LoggingLevel.INFO
     );
 
     Boolean isDeferralAllowed = this.getIsDeferralAllowed() && isAllowedToContinue;
@@ -856,12 +857,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isTimingOut = false;
 
     if (isDeferralAllowed) {
-      this.logger.log('deferred rollups remaining:', this.rollups, LoggingLevel.DEBUG);
+      this.logger.log('deferred rollups remaining:', this.rollups, LoggingLevel.INFO);
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
       this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
     }
-    this.logger.save();
   }
 
   private void setupCalcItemData(Rollup roll) {

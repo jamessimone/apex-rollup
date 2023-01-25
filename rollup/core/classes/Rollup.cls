@@ -493,12 +493,9 @@ global without sharing virtual class Rollup {
     }
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     updateLoggingControl(matchingMetadata);
-    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.INFO);
 
-    String potentialWhereClause = '';
     String delimiter = ' ||| ';
-    String lookupFieldName;
-    Integer delimiterIndex = -1;
     String possibleParentId;
 
     Map<SObjectType, RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
@@ -510,22 +507,29 @@ global without sharing virtual class Rollup {
       validationRuleWrapper.fullRecalculationDefaultNumberValue = matchingMeta.FullRecalculationDefaultNumberValue__c;
       enforceValidationRules(validationRuleWrapper);
 
-      if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
-        delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
-        potentialWhereClause = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length());
-        possibleParentId = potentialWhereClause.substringAfter(' = ').remove('\'');
-        lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
-      } else if (String.isNotBlank(potentialWhereClause)) {
-        potentialWhereClause = potentialWhereClause.replace(lookupFieldName, matchingMeta.LookupFieldOnCalcItem__c);
-        lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
-      }
-      if (delimiterIndex != -1) {
-        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
-        if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
-          matchingMeta.CalcItemWhereClause__c += ' AND ' + potentialWhereClause;
-        } else {
-          matchingMeta.CalcItemWhereClause__c = potentialWhereClause;
+      if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && possibleParentId == null) {
+        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter);
+        if (delimiterIndex != null && delimiterIndex > -1) {
+          possibleParentId = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length())
+            .substringAfter(' = ')
+            .remove('\'');
         }
+      }
+      if (possibleParentId != null) {
+        String lookupFieldName = String.isNotBlank(matchingMeta.GrandparentRelationshipFieldPath__c)
+          ? matchingMeta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.' + matchingMeta.LookupFieldOnLookupObject__c
+          : matchingMeta.LookupFieldOnCalcItem__c;
+        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
+        if (matchingMeta.CalcItemWhereClause__c == null) {
+          matchingMeta.CalcItemWhereClause__c = '';
+        }
+        matchingMeta.CalcItemWhereClause__c +=
+          (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? ' AND ' : '') +
+          lookupFieldName +
+          ' = ' +
+          '\'' +
+          possibleParentId +
+          '\'';
       }
 
       SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
@@ -711,7 +715,7 @@ global without sharing virtual class Rollup {
       }
 
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
-      RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.INFO);
 
       if (flowInput.recordsToRollup?.isEmpty() != false) {
         flowOutput.message = 'No records to rollup, returning early';
@@ -786,7 +790,7 @@ global without sharing virtual class Rollup {
             roll.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
           }
         }
-        RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.DEBUG);
+        RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.INFO);
       }
     }
 
@@ -2167,7 +2171,7 @@ global without sharing virtual class Rollup {
         fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
       }
       fullRecalc.queryCount = wrappedMeta.recordCount;
-      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.INFO);
       fullRecalcRollups.add(fullRecalc);
       CACHED_FULL_RECALCS.add(fullRecalc);
     }
@@ -2189,10 +2193,13 @@ global without sharing virtual class Rollup {
     SObjectType calcItemType,
     InvocationPoint invokePoint
   ) {
+    Id rollupControlId;
     for (Rollup__mdt meta : wrappedMeta.metadata) {
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
+      rollupControlId = meta.RollupControl__c;
     }
+    RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
     SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', equality);
@@ -2208,7 +2215,10 @@ global without sharing virtual class Rollup {
       wrappedMeta.recordCount < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp) {
       return parentResetProcessor;
-    } else if (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC && invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) {
+    } else if (
+      (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC && invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) ||
+      control.ShouldSkipResettingParentFields__c
+    ) {
       parentResetProcessor = null;
     }
 
@@ -2961,7 +2971,7 @@ global without sharing virtual class Rollup {
   private static void updateLoggingControl(List<Rollup__mdt> metadatas) {
     Id controlId;
     for (Rollup__mdt meta : metadatas) {
-      if (controlId == null || meta.RollupControl__c != null && meta.RollupControl__c != CACHED_DEFAULT.Id) {
+      if (controlId == null && meta.RollupControl__c != null && meta.RollupControl__c != CACHED_DEFAULT.Id) {
         controlId = meta.RollupControl__c;
       } else if (meta.RollupControl__c == CACHED_DEFAULT.Id) {
         controlId = null;

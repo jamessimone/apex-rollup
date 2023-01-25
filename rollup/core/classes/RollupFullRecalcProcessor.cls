@@ -72,7 +72,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   public void finish() {
     if (this.postProcessor != null) {
-      this.logger.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.DEBUG);
+      this.logger.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.INFO);
       // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
       // job continuity is established between the full recalc and then any downstream job that runs
       // (as the postProcessor)

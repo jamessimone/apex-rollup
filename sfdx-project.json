@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Allows the rolling up of text fields to date/datetime fields",
-            "versionNumber": "1.5.43.0",
+            "versionName": "Logging granularity updates",
+            "versionNumber": "1.5.44.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -109,6 +109,7 @@
         "apex-rollup@1.5.40-0": "04t6g000008fjSUAAY",
         "apex-rollup@1.5.41-0": "04t6g000008fjSyAAI",
         "apex-rollup@1.5.42-0": "04t6g000008fjThAAI",
-        "apex-rollup@1.5.43-0": "04t6g000008fjW7AAI"
+        "apex-rollup@1.5.43-0": "04t6g000008fjW7AAI",
+        "apex-rollup@1.5.44-0": "04t6g000008fjXeAAI"
     }
 }
