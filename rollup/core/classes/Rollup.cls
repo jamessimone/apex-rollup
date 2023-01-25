@@ -2193,10 +2193,13 @@ global without sharing virtual class Rollup {
     SObjectType calcItemType,
     InvocationPoint invokePoint
   ) {
+    Id rollupControlId;
     for (Rollup__mdt meta : wrappedMeta.metadata) {
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
+      rollupControlId = meta.RollupControl__c;
     }
+    RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
     SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', equality);
@@ -2212,7 +2215,10 @@ global without sharing virtual class Rollup {
       wrappedMeta.recordCount < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp) {
       return parentResetProcessor;
-    } else if (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC && invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) {
+    } else if (
+      (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC && invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) ||
+      control.ShouldSkipResettingParentFields__c
+    ) {
       parentResetProcessor = null;
     }
 
@@ -2965,7 +2971,7 @@ global without sharing virtual class Rollup {
   private static void updateLoggingControl(List<Rollup__mdt> metadatas) {
     Id controlId;
     for (Rollup__mdt meta : metadatas) {
-      if (controlId == null || meta.RollupControl__c != null && meta.RollupControl__c != CACHED_DEFAULT.Id) {
+      if (controlId == null && meta.RollupControl__c != null && meta.RollupControl__c != CACHED_DEFAULT.Id) {
         controlId = meta.RollupControl__c;
       } else if (meta.RollupControl__c == CACHED_DEFAULT.Id) {
         controlId = null;
