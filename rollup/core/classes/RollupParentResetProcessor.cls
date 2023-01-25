@@ -83,7 +83,9 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   }
 
   protected override String startAsyncWork() {
-    return System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
+    return this.rollupControl.ShouldSkipResettingParentFields__c
+      ? this.getNoProcessId()
+      : System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
   }
 
   private Integer getNumberOfItems() {

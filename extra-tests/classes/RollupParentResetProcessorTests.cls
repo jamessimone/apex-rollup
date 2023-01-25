@@ -132,4 +132,26 @@ private class RollupParentResetProcessorTests {
     System.assertEquals(0, resetAccount.AnnualRevenue);
     System.assertEquals('a', resetAccount.AccountNumber);
   }
+
+  @IsTest
+  static void skipsTransformWhenDisabled() {
+    upsert new RollupSettings__c(IsEnabled__c = true);
+    Rollup.defaultControl = Rollup.getDefaultControl();
+    Rollup.defaultControl.ShouldSkipResettingParentFields__c = true;
+    Rollup.defaultControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
+
+    RollupParentResetProcessor processor = new RollupParentResetProcessor(
+      new List<Rollup__mdt>{ new Rollup__mdt(RollupFieldOnLookupObject__c = 'AnnualRevenue', LookupObject__c = 'Account') },
+      Account.SObjectType,
+      'SELECT Id\nFROM Account WHERE Id != null',
+      new Set<String>(),
+      null
+    );
+
+    Test.startTest();
+    Rollup.batch(new List<Rollup>{ processor });
+    Test.stopTest();
+
+    System.assertEquals(0, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupParentResetProcessor.class.getName()]);
+  }
 }

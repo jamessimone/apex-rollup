@@ -495,10 +495,7 @@ global without sharing virtual class Rollup {
     updateLoggingControl(matchingMetadata);
     RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.INFO);
 
-    String potentialWhereClause = '';
     String delimiter = ' ||| ';
-    String lookupFieldName;
-    Integer delimiterIndex = -1;
     String possibleParentId;
 
     Map<SObjectType, RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
@@ -510,22 +507,29 @@ global without sharing virtual class Rollup {
       validationRuleWrapper.fullRecalculationDefaultNumberValue = matchingMeta.FullRecalculationDefaultNumberValue__c;
       enforceValidationRules(validationRuleWrapper);
 
-      if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && String.isBlank(potentialWhereClause)) {
-        delimiterIndex = matchingMeta.CalcItemWhereClause__c.indexOf(delimiter);
-        potentialWhereClause = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length());
-        possibleParentId = potentialWhereClause.substringAfter(' = ').remove('\'');
-        lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
-      } else if (String.isNotBlank(potentialWhereClause)) {
-        potentialWhereClause = potentialWhereClause.replace(lookupFieldName, matchingMeta.LookupFieldOnCalcItem__c);
-        lookupFieldName = matchingMeta.LookupFieldOnCalcItem__c;
-      }
-      if (delimiterIndex != -1) {
-        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
-        if (String.isNotBlank(matchingMeta.CalcItemWhereClause__c)) {
-          matchingMeta.CalcItemWhereClause__c += ' AND ' + potentialWhereClause;
-        } else {
-          matchingMeta.CalcItemWhereClause__c = potentialWhereClause;
+      if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && possibleParentId == null) {
+        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter);
+        if (delimiterIndex != null && delimiterIndex > -1) {
+          possibleParentId = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length())
+            .substringAfter(' = ')
+            .remove('\'');
         }
+      }
+      if (possibleParentId != null) {
+        String lookupFieldName = String.isNotBlank(matchingMeta.GrandparentRelationshipFieldPath__c)
+          ? matchingMeta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.' + matchingMeta.LookupFieldOnLookupObject__c
+          : matchingMeta.LookupFieldOnCalcItem__c;
+        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
+        if (matchingMeta.CalcItemWhereClause__c == null) {
+          matchingMeta.CalcItemWhereClause__c = '';
+        }
+        matchingMeta.CalcItemWhereClause__c +=
+          (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? ' AND ' : '') +
+          lookupFieldName +
+          ' = ' +
+          '\'' +
+          possibleParentId +
+          '\'';
       }
 
       SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
