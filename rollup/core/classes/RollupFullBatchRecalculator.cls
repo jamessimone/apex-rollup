@@ -1,4 +1,6 @@
 public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful, Database.RaisesPlatformEvents {
+  protected final Set<String> statefulPreviouslyResetParents = new Set<String>();
+
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
@@ -17,7 +19,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    this.logger.log('starting full batch chunk:', this, LoggingLevel.INFO);
+    this.logger.log('starting full batch chunk for: ' + this.rollupMetas.size() + ' rollups', LoggingLevel.INFO);
     /**
      * this batch class is a glorified "for loop" for the calc items, dispatching
      * them to the overall Rollup framework while breaking us out of the query limits
@@ -27,6 +29,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
      */
     this.process(this.getDelegatedFullRecalcRollups(calcItems));
     this.logger.log('batch chunk end', LoggingLevel.INFO);
+    this.logger.save();
   }
 
   public override Boolean isBatch() {
@@ -46,5 +49,9 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
   protected virtual override String startAsyncWork() {
     return this.startBatchProcessor();
+  }
+
+  protected override Set<String> getPreviouslyResetParents() {
+    return this.statefulPreviouslyResetParents;
   }
 }
