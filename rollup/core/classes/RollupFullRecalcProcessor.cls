@@ -36,7 +36,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
     this.overrideRollupControl();
-    this.previouslyResetParents = new Set<String>();
   }
 
   public virtual Boolean isBatch() {
