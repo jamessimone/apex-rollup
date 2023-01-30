@@ -1,4 +1,5 @@
 import { api, LightningElement } from 'lwc';
+import { RefreshEvent } from 'lightning/refresh';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 
@@ -33,9 +34,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
       try {
         await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(this._matchingMetas), invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
         // record detail pages / components still based on Aura need a little kickstart to properly show the updated values
-        if (!!window['$A']) {
-          eval("$A.get('e.force:refreshView').fire();");
-        }
+        this.dispatchEvent(new RefreshEvent());
       } catch (err) {
         console.error(err);
       }

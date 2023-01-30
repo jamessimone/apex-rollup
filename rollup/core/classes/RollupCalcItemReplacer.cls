@@ -21,8 +21,13 @@ public without sharing class RollupCalcItemReplacer {
     this.baseQueryFields = new Map<SObjectType, Set<String>>();
   }
 
-  public static SObject replaceReadOnlyField(SObject target, String fieldName, Object value) {
-    return serializeReplace(target, fieldName, value);
+  public static SObject replaceField(SObject target, Schema.SObjectField fieldToken, Object value) {
+    if (fieldToken?.getDescribe().isCalculated() == false && fieldToken?.getDescribe().isUpdateable() == true) {
+      target.put(fieldToken, value);
+    } else {
+      target = serializeReplace(target, fieldToken.getDescribe().getName(), value);
+    }
+    return target;
   }
 
   public Boolean hasProcessedMetadata(List<Rollup__mdt> metas, List<SObject> calcItems) {
@@ -120,14 +125,7 @@ public without sharing class RollupCalcItemReplacer {
           SObject calcItem = idToCalcItem.get(calcItemWithReplacement.Id);
           for (String baseField : baseFields) {
             Schema.SObjectfield baseFieldToken = fieldNameToDescribe.get(baseField);
-            if (baseFieldToken?.getDescribe().isCalculated() == false) {
-              if (baseFieldToken?.getDescribe().isUpdateable()) {
-                calcItem.put(baseField, calcItemWithReplacement.get(baseField));
-              } else {
-                calcItem = serializeReplace(calcItem, baseField, calcItemWithReplacement.get(baseField));
-                idToCalcItem.put(calcItem.Id, calcItem);
-              }
-            }
+            idToCalcItem.put(calcItem.Id, replaceField(calcItem, baseFieldToken, calcItemWithReplacement.get(baseField)));
           }
         }
       }

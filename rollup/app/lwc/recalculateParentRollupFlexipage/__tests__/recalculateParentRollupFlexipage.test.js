@@ -1,10 +1,19 @@
 import { createElement } from 'lwc';
+import { RefreshEvent } from 'lightning/refresh';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
 import RecalculateParentRollupFlexipage from 'c/recalculateParentRollupFlexipage';
 import { mockMetadata, mockNamespaceInfo } from '../../__mockData__';
+
+jest.mock(
+  'lightning/refresh',
+  () => ({
+    RefreshEvent: jest.fn()
+  }),
+  { virtual: true }
+);
 
 jest.mock(
   '@salesforce/apex/Rollup.getNamespaceInfo',
@@ -42,7 +51,6 @@ function flushPromises() {
 
 // instead of passing the mock down through several promise layers
 // we'll keep it in the outer scope
-const mockFunction = jest.fn();
 let metadata;
 
 describe('recalc parent rollup from flexipage tests', () => {
@@ -121,16 +129,6 @@ describe('recalc parent rollup from flexipage tests', () => {
   });
 
   it('should send CMDT to apex with parent record id when clicked', async () => {
-    // set up pseudo-Aura on global window
-    Object.defineProperty(global.window, '$A', {
-      value: {
-        get() {
-          return {
-            fire: mockFunction
-          };
-        }
-      }
-    });
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
@@ -160,9 +158,7 @@ describe('recalc parent rollup from flexipage tests', () => {
       serializedMetadata: JSON.stringify(matchingMetadata),
       invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
     });
-
-    // validate that aura refresh was called
-    expect(mockFunction).toHaveBeenCalled();
+    expect(RefreshEvent).toHaveBeenCalled();
   });
 
   it('should properly massage delimited parent Id string for grandparent rollups', async () => {

@@ -189,11 +189,7 @@ public without sharing virtual class RollupCurrencyInfo {
         calcItemAmountInOrgCurrency)
         .doubleValue();
       clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
-      if (fieldOnCalcItem.getDescribe().isCalculated() == false) {
-        clonedCalcItem.put(fieldOnCalcItem, calcItemAmountInParentCurrency);
-      } else {
-        clonedCalcItem = RollupCalcItemReplacer.replaceReadOnlyField(clonedCalcItem, fieldOnCalcItem.getDescribe().getName(), calcItemAmountInParentCurrency);
-      }
+      clonedCalcItem = RollupCalcItemReplacer.replaceField(clonedCalcItem, fieldOnCalcItem, calcItemAmountInParentCurrency);
       HASHED_ITEM_VALUES.add(hashKey);
     }
     return clonedCalcItem;
