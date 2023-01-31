@@ -236,7 +236,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     this.lookupItems = lookupItems;
-    this.process(this.rollups);
+    this.performWork();
   }
 
   public virtual void finish(Database.BatchableContext context) {
@@ -304,6 +304,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected String getNoProcessId() {
     return 'No process Id';
+  }
+
+  protected virtual void performWork() {
+    this.process(this.rollups);
   }
 
   protected RollupAsyncProcessor getAsyncRollup() {
@@ -377,45 +381,18 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return QueueableProcessor.class.getName();
     }
 
-    protected virtual override String startAsyncWork() {
-      return this.enqueue();
+    protected virtual override Boolean isBatch() {
+      return false;
     }
 
-    @SuppressWarnings('PMD.ApexSOQLInjection')
-    protected override List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
-      if (objIds.isEmpty()) {
-        return new List<SObject>();
-      }
-      List<SObject> localLookupItems;
-      if (rollup.traversal != null) {
-        localLookupItems = rollup.traversal.getAllParents();
-      } else {
-        String queryString =
-          RollupQueryBuilder.Current.getQuery(
-            rollup.lookupObj,
-            new List<String>(uniqueQueryFieldNames),
-            String.valueOf(rollup.lookupFieldOnLookupObject),
-            '='
-          ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
-        // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
-        localLookupItems = Database.query(queryString);
-      }
-      List<SObject> recordsToReset = new List<SObject>();
-      for (SObject lookupItem : localLookupItems) {
-        if (this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false) {
-          recordsToReset.add(lookupItem);
-        }
-      }
-      this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
-      this.lookupItems = localLookupItems;
-      return localLookupItems;
+    protected virtual override String startAsyncWork() {
+      return this.enqueue();
     }
 
     public void execute(System.QueueableContext qc) {
       this.setCurrentJobId(qc?.getJobId());
       System.attachFinalizer(new RollupFinalizer());
-      this.process(this.rollups);
-
+      this.performWork();
       if (this.fullRecalcProcessor?.isBatch() != true) {
         this.finish(null);
       }
@@ -445,7 +422,31 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
-  protected virtual List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
+  @SuppressWarnings('PMD.ApexSOQLInjection')
+  protected List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
+    if (objIds.isEmpty()) {
+      this.lookupItems = new List<SObject>();
+    }
+    if (this.lookupItems != null) {
+      return this.lookupItems;
+    }
+    List<SObject> localLookupItems;
+    if (rollup.traversal != null) {
+      localLookupItems = rollup.traversal.getAllParents();
+    } else {
+      String queryString =
+        RollupQueryBuilder.Current.getQuery(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=') +
+        (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
+      // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
+      localLookupItems = Database.query(queryString);
+    }
+    List<SObject> recordsToReset = new List<SObject>();
+    for (SObject lookupItem : localLookupItems) {
+      if (this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false) {
+        recordsToReset.add(lookupItem);
+      }
+    }
+    this.lookupItems = localLookupItems;
     // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
@@ -635,6 +636,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return String.valueOf(this.metadata);
   }
 
+  protected virtual Boolean isBatch() {
+    return true;
+  }
+
   protected void overrideParentRollupControlValues(RollupControl__mdt specificControl) {
     // override section - most updates go from a rollup specific control -> this.rollupControl
     if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
@@ -684,7 +689,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.getPreviouslyResetParents().contains(resetKey);
   }
 
-  private Boolean getCanEnqueue() {
+  protected Boolean getCanEnqueue() {
     return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
   }
 

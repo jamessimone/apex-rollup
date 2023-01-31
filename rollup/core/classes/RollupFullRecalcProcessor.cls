@@ -38,10 +38,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.overrideRollupControl();
   }
 
-  public virtual Boolean isBatch() {
-    return false;
-  }
-
   public void addMetadata(Rollup__mdt meta) {
     this.rollupMetas.add(meta);
   }
