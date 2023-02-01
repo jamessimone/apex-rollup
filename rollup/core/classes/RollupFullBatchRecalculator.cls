@@ -9,33 +9,21 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     Set<String> recordIds,
     RollupFullRecalcProcessor postProcessor
   ) {
-    super(queryString, invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
+    super(RollupQueryBuilder.Current.getAllRowSafeQuery(calcItemType, queryString), invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
   }
 
-  public override Database.QueryLocator start(Database.BatchableContext bc) {
-    // note - if the optional where clause was appended to the passed in query string,
-    // this.recordIds is also used as a bind variable
-    return Database.getQueryLocator(RollupQueryBuilder.Current.getAllRowSafeQuery(this.calcItemType, this.queryString));
+  protected override void performWork() {
+    this.process(this.getDelegatedFullRecalcRollups(this.calcItems));
   }
 
-  public virtual override void execute(Database.BatchableContext bc, List<SObject> calcItems) {
-    this.logger.log(
-      'starting full batch chunk for: ' +
-      this.rollupMetas.size() +
-      ' rollups with state',
-      this.statefulPreviouslyResetParents,
-      LoggingLevel.INFO
-    );
-    /**
-     * this batch class is a glorified "for loop" for the calc items, dispatching
-     * them to the overall Rollup framework while breaking us out of the query limits
-     * it has to be it's own class - Database.Batchable does not support inner classes
-     * being batched, even if the inner class is just extending the functionality of its
-     * parent class
-     */
-    this.process(this.getDelegatedFullRecalcRollups(calcItems));
-    this.logger.log('batch chunk end', LoggingLevel.INFO);
-    this.logger.save();
+  protected override String preStart(Set<String> objIds) {
+    return this.queryString;
+  }
+
+  protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    props = super.customizeToStringEntries(props);
+    this.addToMap(props, 'Stateful Previously Reset Parents', this.statefulPreviouslyResetParents);
+    return props;
   }
 
   protected override Boolean isBatch() {

@@ -1,24 +1,12 @@
 @SuppressWarnings('PMD.UnusedLocalVariable')
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
-  protected final Set<String> recordIds;
-  protected final Set<String> objIds = new Set<String>(); // necessary; there's a bind variable in the query string
-
+  protected final Set<String> objIds = new Set<String>();
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
 
   protected String queryString;
   private Boolean hasProcessedParentRecords = false;
-
-  private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS {
-    get {
-      if (QUERY_TO_CALC_ITEMS == null) {
-        QUERY_TO_CALC_ITEMS = new Map<String, List<SObject>>();
-      }
-      return QUERY_TO_CALC_ITEMS;
-    }
-    set;
-  }
 
   protected RollupFullRecalcProcessor(
     String queryString,
@@ -124,17 +112,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return processor.rollups;
   }
 
-  protected List<SObject> getCalcItems() {
-    if (QUERY_TO_CALC_ITEMS.containsKey(this.queryString)) {
-      this.logger.log('returning pre-queried records from cache', LoggingLevel.FINE);
-      return QUERY_TO_CALC_ITEMS.get(this.queryString);
-    }
-    List<SObject> localCalcItems = Database.query(this.queryString);
-    QUERY_TO_CALC_ITEMS.put(this.queryString, localCalcItems);
-    return localCalcItems;
-  }
-
-  protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+  protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     props = super.customizeToStringEntries(props);
     this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);

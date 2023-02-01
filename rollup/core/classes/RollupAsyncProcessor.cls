@@ -20,6 +20,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected Boolean shouldSortToFront = false;
   protected RollupFullRecalcProcessor fullRecalcProcessor;
   protected final SObjectType calcItemType;
+  protected final Set<String> recordIds;
 
   @TestVisible
   private static Boolean shouldRunAsBatch = false;
@@ -207,43 +208,43 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
-    this.winnowRollups(this.rollups);
-    this.populateObjectFields(this.rollups);
-    String query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
     Set<String> objIds = new Set<String>(); // bind variable
-    if (this.rollups.isEmpty()) {
-      this.logger.log('No matching rollups remaining, exiting early', LoggingLevel.WARN);
-    } else {
-      RollupAsyncProcessor firstRollup = this.rollups.get(0);
-      SObjectType sObjectType = firstRollup.lookupObj;
-      String lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
-      Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
-      objIds = this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet();
-      query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
-      this.logger.log('starting batch with query:', query, LoggingLevel.INFO);
-    }
+    String query = this.preStart(objIds);
+    this.logger.log('starting batch with query: ' + query, context, LoggingLevel.INFO);
     this.logger.save();
     return Database.getQueryLocator(query);
   }
 
-  public virtual void execute(Database.BatchableContext context, List<SObject> lookupItems) {
-    for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
-      RollupAsyncProcessor roll = this.rollups[index];
-      if (lookupItems.getSObjectType() != roll.lookupObj) {
-        this.rollups.remove(index);
-        this.deferredRollups.add(roll);
+  public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
+    this.logger.log('starting batch chunk', this, LoggingLevel.INFO);
+
+    if (this.getTypeName() == RollupAsyncProcessor.class.getName()) {
+      this.lookupItems = scope;
+      for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
+        RollupAsyncProcessor roll = this.rollups[index];
+        if (scope.getSObjectType() != roll.lookupObj) {
+          this.rollups.remove(index);
+          this.deferredRollups.add(roll);
+        }
       }
+    } else {
+      this.calcItems = scope;
     }
 
-    this.lookupItems = lookupItems;
     this.performWork();
+    this.logger.log('batch chunk end', LoggingLevel.INFO);
+    this.logger.save();
   }
 
   public virtual void finish(Database.BatchableContext context) {
     if (this.isTimingOut == false) {
       this.fullRecalcProcessor?.finish();
     }
-    this.logFinish();
+    if (context == null) {
+      context = new AdditionalContext(this.getNoProcessId());
+    }
+    this.logger.log(this.getTypeName() + ' finished successfully', context, LoggingLevel.INFO);
+    this.logger.save();
   }
 
   public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
@@ -290,6 +291,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return rollupProcessId;
   }
 
+  protected virtual String preStart(Set<String> objIds) {
+    this.winnowRollups(this.rollups);
+    this.populateObjectFields(this.rollups);
+    String query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
+    if (this.rollups.isEmpty() == false) {
+      RollupAsyncProcessor firstRollup = this.rollups.get(0);
+      SObjectType sObjectType = firstRollup.lookupObj;
+      String lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
+      Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
+      objIds.addAll(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
+      query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
+    }
+    return query;
+  }
+
   protected virtual override String getTypeName() {
     return RollupAsyncProcessor.class.getName();
   }
@@ -316,7 +332,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll;
     if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
       roll = this.rollups[0];
-    } else if (this instanceof RollupFullRecalcProcessor && ((RollupFullRecalcProcessor) this).isBatch() == false) {
+    } else if (this instanceof RollupFullRecalcProcessor && this.isBatch() == false) {
       roll = this;
     } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
@@ -386,22 +402,38 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected virtual override String startAsyncWork() {
-      return this.enqueue();
+      return System.enqueueJob(this);
     }
 
     public void execute(System.QueueableContext qc) {
-      this.setCurrentJobId(qc?.getJobId());
+      AdditionalContext context = new AdditionalContext(qc);
+      this.setCurrentJobId(context.getJobId());
       System.attachFinalizer(new RollupFinalizer());
       this.performWork();
       if (this.fullRecalcProcessor?.isBatch() != true) {
-        this.finish(null);
+        this.finish(context);
       }
     }
   }
 
-  protected void logFinish() {
-    this.logger.log(this.getTypeName() + ' finished successfully', LoggingLevel.INFO);
-    this.logger.save();
+  private class AdditionalContext implements Database.BatchableContext {
+    private final String jobId;
+
+    public AdditionalContext(String noProcessId) {
+      this.jobId = noProcessId;
+    }
+
+    public AdditionalContext(System.QueueableContext qc) {
+      this.jobId = qc?.getJobId();
+    }
+
+    public String getJobId() {
+      return this.jobId;
+    }
+
+    public Id getChildJobId() {
+      return null;
+    }
   }
 
   protected String beginAsyncRollup() {
@@ -412,10 +444,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual String startAsyncWork() {
     return this.startBatchProcessor();
-  }
-
-  protected String enqueue() {
-    return System.enqueueJob(this);
   }
 
   protected String startBatchProcessor() {
