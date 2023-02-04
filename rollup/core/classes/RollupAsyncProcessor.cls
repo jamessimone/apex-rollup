@@ -26,6 +26,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static Boolean shouldRunAsBatch = false;
   @TestVisible
   private static Integer additionalCalcItemCount;
+  private static Boolean hasAlreadyAsyncEnqueued = false;
 
   private enum CollectionType {
     DICTIONARY,
@@ -343,7 +344,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else {
         roll = this;
       }
-    } else if (canEnqueue && System.isQueueable() == false && (this instanceof QueueableProcessor) == false) {
+    } else if (canEnqueue && (this instanceof QueueableProcessor) == false && (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false)) {
       roll = new QueueableProcessor(this);
     } else if (canEnqueue) {
       roll = this.rollupControl.IsDevEdOrTrialOrg__c && this.stackDepth >= 4 ? new RollupAsyncProcessor(this) : this;
@@ -402,6 +403,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected virtual override String startAsyncWork() {
+      if (System.isQueueable()) {
+        hasAlreadyAsyncEnqueued = true;
+      }
       return System.enqueueJob(this);
     }
 
@@ -634,6 +638,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (roll.traversal?.getIsFinished() == false) {
+        roll.isProcessed = false;
         this.deferredRollups.add(roll);
         continue;
       } else if (roll.traversal != null && grandparentRollups.containsKey(roll.lookupObj) == false) {

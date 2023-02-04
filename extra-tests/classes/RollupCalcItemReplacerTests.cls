@@ -20,7 +20,7 @@ private class RollupCalcItemReplacerTests {
     );
     List<SObject> replacedContacts = replacer.replace(
       new List<Contact>{ con },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\'') }
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\'', CalcItem__c = 'Contact') }
     );
 
     System.assertEquals(true, replacedContacts[0].getPopulatedFieldsAsMap().containsKey('Account'));
@@ -42,7 +42,9 @@ private class RollupCalcItemReplacerTests {
     );
     List<SObject> replacedContacts = replacer.replace(
       new List<Contact>{ con },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\' AND Account.Owner.Id != null') }
+      new List<Rollup__mdt>{
+        new Rollup__mdt(CalcItemWhereClause__c = 'Account.Name = \'' + acc.Name + '\' AND Account.Owner.Id != null', CalcItem__c = 'Contact')
+      }
     );
 
     System.assertEquals(true, replacedContacts[0].getPopulatedFieldsAsMap().containsKey('Account'));
@@ -65,7 +67,7 @@ private class RollupCalcItemReplacerTests {
     );
     List<SObject> replacedOppContactRoles = replacer.replace(
       new List<OpportunityContactRole>{ oppConRole },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1') }
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1', CalcItem__c = 'OpportunityContactRole') }
     );
     oppConRole = (OpportunityContactRole) replacedOppContactRoles[0];
 
@@ -88,13 +90,13 @@ private class RollupCalcItemReplacerTests {
     );
     replacer.replace(
       new List<OpportunityContactRole>{ oppConRole },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1') }
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Opportunity.Amount = 1', CalcItem__c = 'OpportunityContactRole') }
     );
 
     // now call replace on another object without the field used above
     List<Account> accounts = replacer.replace(
       new List<Account>{ acc },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Parent.Name = \'someName\'') }
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Parent.Name = \'someName\'', CalcItem__c = 'Account') }
     );
 
     System.assertNotEquals(null, accounts[0].Parent.Name, 'Should be able to access parent field after re-querying for it');
@@ -112,7 +114,10 @@ private class RollupCalcItemReplacerTests {
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
     );
-    Rollup__mdt meta = Rollup.appendOrderByMetadata(new Rollup__mdt(), new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Account.Name') });
+    Rollup__mdt meta = Rollup.appendOrderByMetadata(
+      new Rollup__mdt(CalcItem__c = 'Contact'),
+      new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Account.Name') }
+    );
     List<Contact> replacedContacts = replacer.replace(new List<Contact>{ con }, new List<Rollup__mdt>{ meta });
 
     System.assertNotEquals(null, replacedContacts[0].Account.Name);
@@ -125,7 +130,10 @@ private class RollupCalcItemReplacerTests {
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
     );
-    acc = (Account) replacer.replace(new List<Account>{ acc }, new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'AnnualRevenue != 0') })[0];
+    acc = (Account) replacer.replace(
+      new List<Account>{ acc },
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'AnnualRevenue != 0', CalcItem__c = 'Account') }
+    )[0];
 
     System.assertEquals(ACC_ANNUAL_REVENUE, acc.AnnualRevenue);
   }
@@ -139,9 +147,21 @@ private class RollupCalcItemReplacerTests {
     );
     Account updatedAccount = (Account) replacer.replace(
       new List<Account>{ new Account(Id = acc.Id) },
-      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'CreatedDate != null') }
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'CreatedDate != null', CalcItem__c = 'Account') }
     )[0];
 
     System.assertEquals(acc.CreatedDate, updatedAccount.CreatedDate);
+  }
+
+  @IsTest
+  static void skipsNonMetaMatches() {
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(new RollupControl__mdt(ReplaceCalcItemsAsyncWhenOverCount__c = 1));
+
+    Contact updatedContact = (Contact) replacer.replace(
+      new List<Contact>{ new Contact() },
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'AnnualRevenue > 0', CalcItem__c = 'Account') }
+    )[0];
+
+    System.assertNotEquals(null, updatedContact);
   }
 }

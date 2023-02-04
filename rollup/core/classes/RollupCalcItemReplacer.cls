@@ -73,8 +73,11 @@ public without sharing class RollupCalcItemReplacer {
     SObjectType calcType = calcItems[0].getSObjectType();
     for (Rollup__mdt meta : metadata) {
       if (meta.IsRollupStartedFromParent__c && meta.LookupObject__c == calcType.getDescribe().getName()) {
-        return false;
+        return localNeedsReplacement;
+      } else if (meta.CalcItem__c != calcType.getDescribe().getName()) {
+        return localNeedsReplacement;
       }
+
       Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
       Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
       if (mightNeedReplacement && isPresentInMapAlready == false) {
