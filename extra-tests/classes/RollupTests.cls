@@ -1677,7 +1677,6 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX DATE AFTER_INSERT');
-    ContactPointAddress updatedCpa = (ContactPointAddress) mock.Records[0];
     System.assertEquals(taskTwo.ActivityDate, cpa.ActiveFromDate);
   }
 
