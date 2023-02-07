@@ -5,16 +5,16 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
 
   private Integer countOfItems;
 
-  private without sharing class QueueableResetProcessor implements System.Queueable {
+  private without sharing class QueueableResetProcessor extends RollupAsyncProcessor.QueueableProcessor {
     private final RollupParentResetProcessor processor;
     private final Integer batchChunkSize;
     private QueueableResetProcessor(RollupParentResetProcessor processor, Integer batchChunkSize) {
+      super(processor.invokePoint);
       this.processor = processor;
       this.batchChunkSize = batchChunkSize;
     }
 
-    public void execute(System.QueueableContext qc) {
-      System.attachFinalizer(new RollupFinalizer());
+    protected override void performWork() {
       if (this.processor.getNumberOfItems() > maxQueryRows) {
         Database.executeBatch(this.processor, this.batchChunkSize);
       } else {
@@ -98,7 +98,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   private void runSync() {
     List<SObject> parentItems = Database.query(this.queryString);
     this.execute(null, parentItems);
-    this.logFinish();
+    this.finish(null);
   }
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {

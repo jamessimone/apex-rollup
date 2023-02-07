@@ -1612,9 +1612,10 @@ global without sharing virtual class Rollup {
     apexContext = null;
   }
 
-  global static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+  global static Rollup runFromApex(List<Rollup__mdt> localMetas, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     Rollup rollupConductor = RollupAsyncProcessor.getConductor(InvocationPoint.FROM_APEX, calcItems, oldCalcItems);
-    if (shouldRunFromTrigger() == false) {
+    if (shouldRunFromTrigger() == false || localMetas.isEmpty()) {
+      rollupConductor.calcItems?.clear();
       return rollupConductor;
     }
 
@@ -1634,9 +1635,12 @@ global without sharing virtual class Rollup {
         rollupContext = '';
       }
       when AFTER_DELETE {
-        shouldReturn = rollupConductor.rollupControl.IsMergeReparentingEnabled__c == false
-          ? true
-          : reparentAndGetMergedRecordIds(calcItems, rollupMetadata, mergedParentIds, rollupConductor.rollupControl);
+        if (rollupConductor.rollupControl.IsMergeReparentingEnabled__c == false) {
+          shouldReturn = true;
+        } else {
+          reparentAndGetMergedRecordIds(calcItems, localMetas, mergedParentIds, rollupConductor.rollupControl);
+          shouldReturn = mergedParentIds.isEmpty();
+        }
       }
       when else {
         shouldReturn = true;
@@ -1649,16 +1653,16 @@ global without sharing virtual class Rollup {
 
     Map<SObjectType, List<Rollup>> localRollups = new Map<SObjectType, List<Rollup>>();
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
-    processCustomMetadata(localRollups, rollupMetadata, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX, typeToWrappedMeta);
+    processCustomMetadata(localRollups, localMetas, calcItems, oldCalcItems, mergedParentIds, rollupContext, InvocationPoint.FROM_APEX, typeToWrappedMeta);
 
     SObjectType calcItemSObjectType = calcItems.getSObjectType();
     populateCachedApexOperations(calcItemSObjectType, apexContext);
 
-    if (rollupMetadata.isEmpty() == false) {
+    if (localMetas.isEmpty() == false) {
       populateRollupByType(
         localRollups,
         calcItemSObjectType,
-        getRollup(rollupMetadata, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX)
+        getRollup(localMetas, calcItemSObjectType, calcItems, oldCalcItems, eval, InvocationPoint.FROM_APEX)
       );
     }
 
@@ -1879,21 +1883,25 @@ global without sharing virtual class Rollup {
     List<RollupOrderBy__mdt> orderByMetas,
     Evaluator eval
   ) {
-    Rollup__mdt meta = new Rollup__mdt(
-      RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
-      LookupObject__c = lookupSObjectType.getDescribe().getName(),
-      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
-      LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
-      RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
-      RollupOperation__c = rollupOperation.name()
+    List<SObject> triggerRecords = getTriggerRecords();
+    Rollup__mdt meta = appendOrderByMetadata(
+      new Rollup__mdt(
+        CalcItem__c = triggerRecords.getSObjectType()?.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
+        LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
+        LookupObject__c = lookupSObjectType.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
+        RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
+        RollupOperation__c = rollupOperation.name()
+      ),
+      orderByMetas
     );
     if (defaultRecalculationValue instanceof Decimal) {
       meta.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
     } else if (defaultRecalculationValue instanceof String) {
       meta.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
     }
-    meta = appendOrderByMetadata(meta, orderByMetas);
-    return runFromApex(new List<Rollup__mdt>{ meta }, eval, getTriggerRecords(), getOldTriggerRecordsMap());
+    return runFromApex(new List<Rollup__mdt>{ meta }, eval, triggerRecords, getOldTriggerRecordsMap());
   }
 
   private static void flatten(List<Rollup> stackedRollups) {
@@ -2505,7 +2513,11 @@ global without sharing virtual class Rollup {
         matchingOperation = TriggerOperation.BEFORE_DELETE;
       }
     }
-    apexContext = matchingOperation;
+    // recursive updates from Apex - particularly from merges, but possible elsewhere - can trigger downstream flows
+    // and it's important the original context be maintained in those situations
+    if (apexContext == null) {
+      apexContext = matchingOperation;
+    }
     populateCachedApexOperations(sObjectType, matchingOperation);
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
@@ -2723,10 +2735,14 @@ global without sharing virtual class Rollup {
     }
   }
 
+  /**
+   * - in order to accomodate CDC, we set the apexContext manually there
+   * since technically all CDC is done from an AFTER_INSERT context
+   * - an undelete behaviors _strictly_ the same as an insert
+   * because the underlying SObject can't be modified till afterwards
+   */
   private static Boolean shouldRunFromTrigger() {
     shouldRun = shouldRun || Trigger.isExecuting;
-    // in order to accomodate CDC; we set the apexContext manually there
-    // since technically all CDC is done from an AFTER_INSERT context
     if (Trigger.operationType != null && isCDC == false) {
       apexContext = Trigger.operationType;
     }
@@ -2738,8 +2754,6 @@ global without sharing virtual class Rollup {
         shouldRun = false;
       }
     }
-    // an undelete behaviors **strictly** the same as an insert
-    // because the underlying SObject can't be modified till afterwards
     if (apexContext == TriggerOperation.AFTER_UNDELETE) {
       apexContext = TriggerOperation.AFTER_INSERT;
     }
@@ -2765,7 +2779,7 @@ global without sharing virtual class Rollup {
   }
 
   @SuppressWarnings('PMD.OperationWithLimitsInLoop')
-  private static Boolean reparentAndGetMergedRecordIds(
+  private static void reparentAndGetMergedRecordIds(
     List<SObject> calcItems,
     List<Rollup__mdt> rollupMetadata,
     Set<String> mergedParentIds,
@@ -2778,7 +2792,7 @@ global without sharing virtual class Rollup {
       itemType != Schema.Contact.SObjectType &&
       itemType != Schema.Lead.SObjectType
     ) {
-      return true;
+      return;
     }
     String mergeFieldIndicator = 'MasterRecordId';
     // titled objIds because it's used as a bind variable in SOQL below
@@ -2798,7 +2812,7 @@ global without sharing virtual class Rollup {
     }
 
     if (objIds.isEmpty()) {
-      return true;
+      return;
     }
 
     // only M/D relationships specifically set to reparent do so automatically
@@ -2830,12 +2844,12 @@ global without sharing virtual class Rollup {
       }
     }
     performNonRecursiveUpdate(recordsToUpdate, control);
-    return false;
   }
 
   private static void performNonRecursiveUpdate(List<SObject> recordsToUpdate, RollupControl__mdt control) {
     // prevent downstream rollups from running on this code path; we are already in the midst
     // of calculating each of the record's new rollup values
+    shouldRefreshCachedControl = true;
     RollupControl__mdt earlyExitControl = control.clone(true);
     earlyExitControl.ShouldAbortRun__c = true;
     defaultControl = earlyExitControl;

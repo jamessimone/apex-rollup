@@ -14,6 +14,6 @@ private class RollupFinalizerTests {
     new RollupFinalizer().execute(null);
     Test.stopTest();
 
-    System.assert(true, RollupFinalizer.wasCalled);
+    System.assertEquals(true, RollupFinalizer.wasCalled);
   }
 }

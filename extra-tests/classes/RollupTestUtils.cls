@@ -43,9 +43,9 @@ public class RollupTestUtils {
     return loadMock(records);
   }
 
-  public static DMLMock getTaskMock(List<SObject> records, Id cpaId) {
+  public static DMLMock getWhatIdMock(List<SObject> records, Id whatId) {
     for (SObject task : records) {
-      task.put('WhatId', cpaId);
+      task.put('WhatId', whatId);
     }
     return loadMock(records);
   }
