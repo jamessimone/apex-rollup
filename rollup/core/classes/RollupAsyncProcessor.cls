@@ -23,6 +23,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected final Set<String> recordIds;
 
   @TestVisible
+  private static List<SObject> stubParentRecords;
+  @TestVisible
   private static Boolean shouldRunAsBatch = false;
   @TestVisible
   private static Integer additionalCalcItemCount;
@@ -458,6 +460,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
     if (objIds.isEmpty()) {
       this.lookupItems = new List<SObject>();
+    } else if (stubParentRecords != null) {
+      this.lookupItems = stubParentRecords;
     }
     if (this.lookupItems != null) {
       return this.lookupItems;

@@ -1883,22 +1883,24 @@ global without sharing virtual class Rollup {
     List<RollupOrderBy__mdt> orderByMetas,
     Evaluator eval
   ) {
-    Rollup__mdt meta = new Rollup__mdt(
-      RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
-      LookupObject__c = lookupSObjectType.getDescribe().getName(),
-      LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
-      LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
-      RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
-      RollupOperation__c = rollupOperation.name()
+    List<SObject> triggerRecords = getTriggerRecords();
+    Rollup__mdt meta = appendOrderByMetadata(
+      new Rollup__mdt(
+        CalcItem__c = triggerRecords.getSObjectType()?.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
+        LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
+        LookupObject__c = lookupSObjectType.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
+        RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
+        RollupOperation__c = rollupOperation.name()
+      ),
+      orderByMetas
     );
     if (defaultRecalculationValue instanceof Decimal) {
       meta.FullRecalculationDefaultNumberValue__c = (Decimal) defaultRecalculationValue;
     } else if (defaultRecalculationValue instanceof String) {
       meta.FullRecalculationDefaultStringValue__c = (String) defaultRecalculationValue;
     }
-    meta = appendOrderByMetadata(meta, orderByMetas);
-    List<SObject> triggerRecords = getTriggerRecords();
-    meta.CalcItem__c = (triggerRecords.isEmpty() == false ? triggerRecords[0].getSObjectType() : triggerRecords.getSObjectType())?.getDescribe().getName();
     return runFromApex(new List<Rollup__mdt>{ meta }, eval, triggerRecords, getOldTriggerRecordsMap());
   }
 
