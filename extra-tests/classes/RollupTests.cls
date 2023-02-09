@@ -618,6 +618,38 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldResetRollupValueWhenIsFullRecordSetAndUpdatedItemNoLongerMatches() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 50;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'RollupZ', ParentId = acc.Id, PreferenceRank = 50);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = 'something else') };
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'Name != \'RollupZ\'',
+        IsFullRecordSet__c = true,
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'IsFullRecordSet__c should force non-match to reset its rollup value AFTER_UPDATE');
+    System.assertEquals(null, acc.AnnualRevenue, 'Full record set flag should force empty match set to still update lookup item');
+  }
+
+  @IsTest
   static void shouldRunMultipleOperationsWhenMoreMetadataIsPresent() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
