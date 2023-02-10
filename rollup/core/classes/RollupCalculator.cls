@@ -519,10 +519,10 @@ public without sharing abstract class RollupCalculator {
       Decimal newVal = this.getNumericValue(calcItem);
       Decimal oldVal = oldCalcItem != null ? this.getNumericValue(oldCalcItem) : 0;
 
-      Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
-      Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) == true;
+      Boolean matchesCurrent = this.eval?.matches(calcItem) != false;
+      Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false;
 
-      if (this.isFullRecalc) {
+      if (this.isFullRecalc && matchesCurrent) {
         return newVal;
       } else if (this.isReparented(calcItem, oldCalcItem)) {
         return newVal;
@@ -790,15 +790,15 @@ public without sharing abstract class RollupCalculator {
         return 1.00;
       }
 
-      Boolean matchesCurrent = this.eval?.matches(calcItem) == true;
-      Boolean matchesPrior = oldCalcItem != null && this.eval?.matches(oldCalcItem) == true;
+      Boolean matchesCurrent = this.eval?.matches(calcItem) != false;
+      Boolean matchesPrior = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false;
 
       // for updates, we have to decrement the count if the value has been cleared out
       Decimal retVal = 0.00;
       Object current = calcItem.get(this.opFieldOnCalcItem);
       Object prior = oldCalcItem?.get(this.opFieldOnCalcItem);
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
-      if (this.isFullRecalc) {
+      if (this.isFullRecalc && matchesCurrent) {
         retVal = 1.00;
       } else if (current == null && prior != null || matchesPrior && matchesCurrent == false) {
         retVal = -1.00;

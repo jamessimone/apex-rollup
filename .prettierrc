@@ -1,17 +1,21 @@
 {
-    "trailingComma": "none",
-    "singleQuote": true,
-    "tabWidth": 2,
-    "printWidth": 160,
-    "arrowParens": "avoid",
-    "overrides": [
-        {
-            "files": "**/lwc/**/*.html",
-            "options": { "parser": "lwc" }
-        },
-        {
-            "files": "*.{cmp,page,component}",
-            "options": { "parser": "html" }
-        }
-    ]
+  "trailingComma": "none",
+  "singleQuote": true,
+  "tabWidth": 2,
+  "printWidth": 160,
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": "**/lwc/**/*.html",
+      "options": { "parser": "lwc" }
+    },
+    {
+      "files": "*.{cmp,page,component}",
+      "options": { "parser": "html" }
+    },
+    {
+      "files": "*.{apex}",
+      "options": { "parser": "apex" }
+    }
+  ]
 }
