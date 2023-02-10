@@ -3,7 +3,7 @@ public virtual class RollupFieldInitializer {
   public final Long maximumLongValue = (Math.pow(2, 63) - 1).longValue();
   public final Long minimumLongValue = this.maximumLongValue * -1;
   public final Integer maximumIntegerValue = 2147483647;
-  public final Integer minimumIntegerValue = this.maximumIntegerValue * -1;
+  public final Integer minimumIntegerValue = -2147483647 - 1;
 
   public static final RollupFieldInitializer Current = new RollupFieldInitializer();
 

@@ -10,18 +10,23 @@ Create simple, fast, scalable custom rollups driven by Custom Metadata in your S
 
 Want to see examples of the magic? You can dive in depth on [Replacing DLRS With Custom Rollup](https://www.jamessimone.net/blog/joys-of-apex/replacing-dlrs-with-custom-rollup/) and on [Unofficial SF](https://unofficialsf.com/from-james-simone-create-powerful-rollups-in-your-flows-with-a-single-perform-rollup-action/). Looking to replace DLRS with Apex Rollup? We've even got that covered. [We have a whole migration section, just for you](#migrating-from-dlrs)!
 
-Read below for more on how you can use Apex Rollup in your day-to-day. Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation.
+Read below for more on how you can use Apex Rollup in your day-to-day. Please note that there are _toggleable_ dropdown sections used frequently in this document. Keep your eyes peeled for sections entitled "Expand for ...", as tapping on those will produce much more in the way of documentation. If visual learning is more your style, make sure to check out the YouTube setup walkthroughs:
 
-As well, don't miss [the Wiki](../../wiki), which includes more advanced information available on many topics.
+## YouTube Video Tutorials
+
+- [Setup & Full Recalc Walkthrough](https://youtu.be/QBb0r530ZV4)
+- [Record Triggered Flow Setup](https://youtu.be/jZy4gUKjw3Q)
+
+As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics.
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjZkAAI">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjaYAAQ">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjZkAAI">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjaYAAQ">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
