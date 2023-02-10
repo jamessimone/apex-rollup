@@ -16,6 +16,7 @@ Read below for more on how you can use Apex Rollup in your day-to-day. Please no
 
 - [Setup & Full Recalc Walkthrough](https://youtu.be/QBb0r530ZV4)
 - [Record Triggered Flow Setup](https://youtu.be/jZy4gUKjw3Q)
+- [Apex Setup with one line of code!](https://youtu.be/RyQHXi5boW0)
 
 As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics.
 
