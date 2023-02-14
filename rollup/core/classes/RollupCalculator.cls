@@ -596,11 +596,10 @@ public without sharing abstract class RollupCalculator {
       Decimal newVal = this.getNumericValue(calcItem);
       Decimal thisPriorVal = this.getNumericValue((oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem));
       if (
-        (this.op.name().contains(Rollup.Op.MAX.name()) && thisPriorVal != 0 && thisPriorVal == this.returnDecimal && newVal <= thisPriorVal) ||
-        (this.op.name().contains(Rollup.Op.MIN.name()) &&
         thisPriorVal != 0 &&
         thisPriorVal == this.returnDecimal &&
-        newVal >= thisPriorVal)
+        (this.op.name().contains(Rollup.Op.MAX.name()) && newVal <= thisPriorVal ||
+        this.op.name().contains(Rollup.Op.MIN.name()) && newVal >= thisPriorVal)
       ) {
         this.shouldShortCircuit = true;
         Object potentialReturnValue = this.calculateNewAggregateValue(this.op, oldCalcItems.values(), calcItem.getSObjectType());

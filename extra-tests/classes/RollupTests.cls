@@ -1856,10 +1856,10 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxDatetimeOnDelete() {
-    // TODO - this one wasn't playing nice with the stubParentRecords
     Contract con = [SELECT Id FROM Contract];
-    con.ActivatedDate = System.now();
-    update con;
+    // it's important that this test and the one below it don't have time instances with more than second granularity, since Apex can't retrieve those values
+    con.ActivatedDate = Datetime.newInstance(System.today(), Time.newInstance(0, 0, 0, 0));
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ con };
 
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate, WhatId = con.Id, Id = RollupTestUtils.createId(Event.SObjectType));
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(50), WhatId = con.Id, DurationInMinutes = 50);
@@ -1874,16 +1874,15 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX DATETIME BEFORE_DELETE');
-    Contract updatedContract = (Contract) mock.Records[0];
-    System.assertEquals(eventTwo.ActivityDateTime, updatedContract.ActivatedDate);
+    System.assertEquals(eventTwo.ActivityDateTime, con.ActivatedDate);
   }
 
   @IsTest
   static void shouldMinDatetimeOnDelete() {
-    // TODO - this one wasn't playing nice with the stubParentRecords
     Contract con = [SELECT Id FROM Contract];
-    con.ActivatedDate = System.now();
-    update con;
+    // it's important that this test and the one above it don't have time instances with more than second granularity, since Apex can't retrieve those values
+    con.ActivatedDate = Datetime.newInstance(System.today(), Time.newInstance(0, 0, 0, 0));
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ con };
 
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate);
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(-50), DurationInMinutes = 50, WhatId = con.Id);
@@ -1898,8 +1897,7 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN DATETIME BEFORE_DELETE');
-    Contract updatedContract = (Contract) mock.Records[0];
-    System.assertEquals(eventTwo.ActivityDateTime, updatedContract.ActivatedDate);
+    System.assertEquals(eventTwo.ActivityDateTime, con.ActivatedDate);
   }
 
   @IsTest

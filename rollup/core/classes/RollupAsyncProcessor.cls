@@ -463,6 +463,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (stubParentRecords != null) {
       this.lookupItems = stubParentRecords;
     }
+    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     if (this.lookupItems != null) {
       return this.lookupItems;
     }
@@ -483,7 +484,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
     this.lookupItems = localLookupItems;
-    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
   }
