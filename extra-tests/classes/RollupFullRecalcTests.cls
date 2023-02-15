@@ -1587,8 +1587,7 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.getDescribe().getName(),
         RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.getDescribe().getName(),
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = ' ||| ' +
-          RollupTestUtils.getRelationshipPath(
+        CalcItemWhereClause__c = RollupTestUtils.getRelationshipPath(
             new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.Id }
           ) +
           ' = \'' +
