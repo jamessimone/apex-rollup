@@ -277,7 +277,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (syncRollups.isEmpty() == false) {
       this.logger.log('about to process sync rollups', logLevel);
       this.process(syncRollups);
-      this.logger.log('finished running sync rollups', logLevel);
+      logMessage = 'finished running sync rollups';
+      if (this.rollups.isEmpty()) {
+        rollupProcessId = logMessage;
+      }
     } else {
       Integer totalCountOfRecords = this.getLookupRecordsCount(this.rollups);
       shouldRunAsBatch =
