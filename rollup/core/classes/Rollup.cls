@@ -46,6 +46,7 @@ global without sharing virtual class Rollup {
   protected Integer queryCount;
   protected RollupCalcItemReplacer calcItemReplacer;
   protected TriggerOperation triggerContext;
+  protected System.AccessLevel accessLevel = System.AccessLevel.SYSTEM_MODE;
 
   private Boolean hasResetLogger = false;
 
@@ -659,6 +660,8 @@ global without sharing virtual class Rollup {
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent = false;
+    @InvocableVariable(label='Sharing Mode' description='Defaults to System, set to User to run with sharing')
+    global String sharingMode;
     @InvocableVariable(label='Should run sync?' description='Runs rollup calculations synchronously when set to true')
     global Boolean shouldRunSync = false;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
@@ -1535,7 +1538,9 @@ global without sharing virtual class Rollup {
     }
 
     Set<String> uniqueFieldNames = new Set<String>();
+    System.AccessLevel accessLevel = System.AccessLevel.SYSTEM_MODE;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
+      accessLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
       RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(rollupInfo.CalcItemWhereClause__c)
         ? null
         : RollupEvaluator.getWhereEval(rollupInfo.CalcItemWhereClause__c, sObjectType);
@@ -1555,7 +1560,6 @@ global without sharing virtual class Rollup {
       }
     }
 
-    // non-obvious coupling between objIds and the "queryString" below
     List<Id> objIds = new List<Id>();
     for (SObject cdcRecord : cdcRecords) {
       header = (EventBus.ChangeEventHeader) cdcRecord.get('ChangeEventHeader');
@@ -1567,7 +1571,7 @@ global without sharing virtual class Rollup {
     // getting the items back from the database before putting them into the map is an important step
     // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
     // anything for .getSObjectType() - which we need, further downstream
-    List<SObject> cdcCalcItems = Database.query(queryString);
+    List<SObject> cdcCalcItems = new RollupRepository(accessLevel).get(queryString, new Map<String, Object>{ 'objIds' => objIds });
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
     Rollup rollupToReturn = runFromApex(matchingMetadata, null, cdcCalcItems, cdcCalcItemsMap);
@@ -1760,8 +1764,9 @@ global without sharing virtual class Rollup {
             RollupControl__c,
             RollupOperation__c,
             RollupToUltimateParent__c,
-            SplitConcatDelimiterOnCalcItem__c,
+            SharingMode__c,
             ShouldRunWithoutCustomSettingEnabled__c,
+            SplitConcatDelimiterOnCalcItem__c,
             (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
           FROM Rollup__mdt
           WHERE RollupControl__r.ShouldAbortRun__c = FALSE
@@ -1774,6 +1779,7 @@ global without sharing virtual class Rollup {
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
+          meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
         }
       } else if (onlyUseMockMetadata) {
@@ -1829,6 +1835,7 @@ global without sharing virtual class Rollup {
       RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
       RollupOperation__c = rollupContext + flowInput.rollupOperation,
       RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
+      SharingMode__c = flowInput.sharingMode,
       SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
       UltimateParentLookup__c = flowInput.ultimateParentLookup
     );
@@ -2170,7 +2177,7 @@ global without sharing virtual class Rollup {
       wrappedMeta.whereClause = wrappedMeta.concatenateWhereClauses();
       if (wrappedMeta.whereClause?.length() >= maxQueryLength) {
         wrappedMeta.whereClause = '';
-        wrappedMeta.recordCount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
+        wrappedMeta.recordCount = RollupRepository.SENTINEL_COUNT_VALUE;
       }
       String queryString = RollupQueryBuilder.Current.getQuery(calcType, new List<String>(wrappedMeta.queryFields), 'Id', '!=', wrappedMeta.whereClause);
       RollupFullRecalcProcessor fullRecalc = buildFullRecalcRollup(wrappedMeta, queryString, calcType, localInvokePoint);
@@ -2187,11 +2194,11 @@ global without sharing virtual class Rollup {
   }
 
   private static void appendQueryCount(RollupMetadata metaWrapper, Rollup__mdt meta, String whereClause, Schema.SObjectType childType) {
-    if (metaWrapper.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
-      String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>{ 'Count()' }, meta.LookupFieldOnLookupObject__c, '!=', whereClause);
+    if (metaWrapper.recordCount != RollupRepository.SENTINEL_COUNT_VALUE) {
+      String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause);
       Set<String> emptyCollection = new Set<String>();
-      Integer currentCount = getCountFromDb(countQuery, emptyCollection, emptyCollection);
-      metaWrapper.recordCount = currentCount == RollupQueryBuilder.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
+      Integer currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta)).getCount(countQuery, emptyCollection);
+      metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
   }
 
@@ -2219,7 +2226,7 @@ global without sharing virtual class Rollup {
       invokePoint
     );
     Boolean shouldQueue =
-      wrappedMeta.recordCount != RollupQueryBuilder.SENTINEL_COUNT_VALUE &&
+      wrappedMeta.recordCount != RollupRepository.SENTINEL_COUNT_VALUE &&
       wrappedMeta.recordCount < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
     if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp) {
       return parentResetProcessor;
@@ -2459,27 +2466,6 @@ global without sharing virtual class Rollup {
     }
     wrapper.setQuery(meta.CalcItemWhereClause__c);
     return wrapper;
-  }
-
-  public static Integer getCountFromDb(String countQuery, Set<String> objIds) {
-    return getCountFromDb(countQuery, objIds, null);
-  }
-
-  public static Integer getCountFromDb(String countQuery, Set<String> objIds, Set<String> recordIds) {
-    if (countQuery.contains(RollupQueryBuilder.ALL_ROWS)) {
-      countQuery = countQuery.replace(RollupQueryBuilder.ALL_ROWS, '');
-    }
-
-    Integer countAmount;
-    try {
-      countAmount = Database.countQuery(countQuery);
-    } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + countQuery, ex, LoggingLevel.WARN);
-      // not all queries are valid, particularly those with polymorphic fields referencing parent fields
-      // return a sentinel value instead, to be checked for downstream
-      countAmount = RollupQueryBuilder.SENTINEL_COUNT_VALUE;
-    }
-    return countAmount;
   }
 
   private static void fillWrapper(QueryWrapper wrapper, String fieldName, SObject calcItem, Map<Id, SObject> oldCalcItems) {
@@ -2795,14 +2781,11 @@ global without sharing virtual class Rollup {
       return;
     }
     String mergeFieldIndicator = 'MasterRecordId';
-    // titled objIds because it's used as a bind variable in SOQL below
-    Set<String> objIds = new Set<String>();
     Map<Id, Id> mergedIdToCurrentParentId = new Map<Id, Id>();
     String lookupObjectName;
     for (SObject record : calcItems) {
       if (record.get(mergeFieldIndicator) != null) {
         Id mergedFieldValue = (Id) record.get(mergeFieldIndicator);
-        objIds.add(record.Id);
         mergedIdToCurrentParentId.put(record.Id, mergedFieldValue);
         mergedParentIds.add(mergedFieldValue);
       }
@@ -2811,7 +2794,7 @@ global without sharing virtual class Rollup {
       }
     }
 
-    if (objIds.isEmpty()) {
+    if (mergedIdToCurrentParentId.isEmpty()) {
       return;
     }
 
@@ -2836,7 +2819,8 @@ global without sharing virtual class Rollup {
           meta.LookupFieldOnCalcItem__c,
           '='
         );
-        List<SObject> recordsToReparent = Database.query(queryString);
+        List<SObject> recordsToReparent = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
+          .get(queryString, new Map<String, Object>{ 'objIds' => mergedIdToCurrentParentId.keySet() });
         for (SObject childToReparent : recordsToReparent) {
           childToReparent.put(meta.LookupFieldOnCalcItem__c, mergedIdToCurrentParentId.get((Id) childToReparent.get(meta.LookupFieldOnCalcItem__c)));
           recordsToUpdate.add(childToReparent);
@@ -2889,6 +2873,7 @@ global without sharing virtual class Rollup {
       rollupMetadata
     );
     processor.triggerContext = apexContext;
+    processor.accessLevel = RollupMetaPicklists.getAccessLevel(rollupMetadata);
     return addRollup(rollupConductor, processor);
   }
 

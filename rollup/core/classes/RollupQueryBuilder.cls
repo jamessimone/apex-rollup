@@ -1,6 +1,5 @@
 public without sharing class RollupQueryBuilder {
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
-  public static final Integer SENTINEL_COUNT_VALUE = -1;
   public static final String ALL_ROWS = 'ALL ROWS';
 
   private static final Pattern AGGREGATE_QUERY_REGEX = Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');

@@ -22,6 +22,20 @@ public virtual without sharing class RollupMetaPicklists {
     private set;
   }
 
+  public static System.AccessLevel getAccessLevel(Rollup__mdt meta) {
+    return meta.SharingMode__c == SharingMode.UserLevel ? System.AccessLevel.USER_MODE : System.AccessLevel.SYSTEM_MODE;
+  }
+
+  public static final SharingMode SharingMode {
+    get {
+      if (SharingMode == null) {
+        SharingMode = new SharingMode();
+      }
+      return SharingMode;
+    }
+    private set;
+  }
+
   private RollupMetaPicklists(Schema.SObjectField fieldToken) {
     this.validValues = new Set<String>();
 
@@ -94,6 +108,24 @@ public virtual without sharing class RollupMetaPicklists {
     public String NullsLast {
       get {
         return this.validate('NULLS LAST');
+      }
+    }
+  }
+
+  public class SharingMode extends RollupMetaPicklists {
+    public SharingMode() {
+      super(Rollup__mdt.SharingMode__c);
+    }
+
+    public String SystemLevel {
+      get {
+        return this.validate('System');
+      }
+    }
+
+    public String UserLevel {
+      get {
+        return this.validate('User');
       }
     }
   }

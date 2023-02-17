@@ -12,6 +12,7 @@ public without sharing class RollupCalcItemReplacer {
   private final Map<SObjectType, Set<String>> parentQueryFields;
   private final Map<SObjectType, Set<String>> baseQueryFields;
   private final Set<Integer> calcItemHashCodes = new Set<Integer>();
+  private RollupRepository repo;
 
   public RollupCalcItemReplacer(RollupControl__mdt control) {
     this.control = control;
@@ -77,6 +78,9 @@ public without sharing class RollupCalcItemReplacer {
       } else if (meta.CalcItem__c != calcType.getDescribe().getName()) {
         return localNeedsReplacement;
       }
+      if (this.repo == null) {
+        this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta));
+      }
 
       Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
       Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
@@ -119,9 +123,8 @@ public without sharing class RollupCalcItemReplacer {
         return calcItems;
       }
       String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
-      List<SObject> objIds = calcItems; // for bind variable
       RollupLogger.Instance.log('replacing calc items with missing base fields using query string:', queryString, LoggingLevel.DEBUG);
-      List<SObject> calcItemsWithReplacement = Database.query(queryString);
+      List<SObject> calcItemsWithReplacement = this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems });
       Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
       for (SObject calcItemWithReplacement : calcItemsWithReplacement) {
         if (idToCalcItem.containsKey(calcItemWithReplacement.Id)) {
@@ -197,10 +200,9 @@ public without sharing class RollupCalcItemReplacer {
       '=',
       String.join(optionalWhereClauses, ' AND ')
     );
-    List<SObject> objIds = calcItems; // for bind variable
 
     RollupLogger.Instance.log('replacing calc items with polymorphic where clause using query string:', queryString, LoggingLevel.FINE);
-    calcItems = Database.query(queryString);
+    calcItems = this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems });
     return calcItems;
   }
 
@@ -245,10 +247,9 @@ public without sharing class RollupCalcItemReplacer {
     }
 
     if (hasUnqueriedParentFields) {
-      List<SObject> objIds = calcItems; // for bind variable
       String queryString = RollupQueryBuilder.Current.getQuery(calcItemType, new List<String>(parentQueryFields), 'Id', '=');
       RollupLogger.Instance.log('replacing calc items with parent-level where clause using query string:', queryString, LoggingLevel.FINE);
-      Map<Id, SObject> idToCalcItemsWithParentFields = new Map<Id, SObject>(Database.query(queryString));
+      Map<Id, SObject> idToCalcItemsWithParentFields = new Map<Id, SObject>(this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems }));
       this.appendUpdatedParentFields(calcItems, idToCalcItemsWithParentFields);
     }
   }

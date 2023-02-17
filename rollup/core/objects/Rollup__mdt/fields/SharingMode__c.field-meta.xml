@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SharingMode__c</fullName>
+    <description>Whether or not to run queries in user or system mode. The default is system mode</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Whether or not to run queries in user or system mode. The default is system mode</inlineHelpText>
+    <label>Sharing Mode</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>System</fullName>
+                <default>false</default>
+                <label>System</label>
+            </value>
+            <value>
+                <fullName>User</fullName>
+                <default>false</default>
+                <label>User</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

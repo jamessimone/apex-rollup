@@ -56,6 +56,8 @@ global without sharing class RollupFlowBulkProcessor {
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent;
+    @InvocableVariable(label='Sharing Mode' description='Defaults to System, set to User to run with sharing')
+    global String sharingMode;
     @InvocableVariable(label='Should run sync?' description='Runs rollup calculations synchronously when set to true')
     global Boolean shouldRunSync;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
@@ -109,6 +111,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
             input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
             input.limitAmount = flowInput.limitAmount != null ? flowInput.limitAmount : meta.LimitAmount__c;
+            input.sharingMode = flowInput.sharingMode != null ? flowInput.sharingMode : meta.SharingMode__c;
             // fixup order by children records
             input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
             for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {

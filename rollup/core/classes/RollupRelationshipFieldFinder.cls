@@ -15,6 +15,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private final Set<String> uniqueChildrenFieldNames;
   private final Set<String> uniqueFinalParentFieldNames;
   private final Map<String, List<String>> relationshipNameToWhereClauses;
+  private final RollupRepository repo;
 
   private String calcItemWhereClause;
   private List<SObject> recommencementRecords;
@@ -42,6 +43,7 @@ public without sharing class RollupRelationshipFieldFinder {
     this.uniqueChildrenFieldNames = uniqueChildrenFieldNames;
     this.uniqueFinalParentFieldNames = uniqueFinalParentFieldNames;
     this.calcItemWhereClause = rollupMetadata.CalcItemWhereClause__c;
+    this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(this.metadata));
 
     this.originalParts = new List<String>(this.relationshipParts);
     this.relationshipNameToWhereClauses = new Map<String, List<String>>();
@@ -372,7 +374,7 @@ public without sharing class RollupRelationshipFieldFinder {
     this.setFirstRunFlags(records);
 
     // recurse through till we get to the top/bottom of the chain
-    return this.getParents(Database.query(query));
+    return this.getParents(this.repo.get(query, new Map<String, Object>{ 'objIds' => objIds }));
   }
 
   private String getCurrentRelationshipName(SObjectType baseSObjectType) {
@@ -535,8 +537,9 @@ public without sharing class RollupRelationshipFieldFinder {
         this.trackTraversalIds(otherMatchingParent.Id, (Id) otherMatchingParent.get(this.metadata.UltimateParentLookup__c), null, objIds);
       }
     }
-    List<SObject> otherPotentialParents = Database.query(
-      RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause)
+    List<SObject> otherPotentialParents = this.repo.get(
+      RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause),
+      new Map<String, Object>{ 'objIds' => objIds }
     );
     if (otherPotentialParents.isEmpty()) {
       this.retrieveAdditionalCalcItems();
@@ -556,8 +559,10 @@ public without sharing class RollupRelationshipFieldFinder {
       }
       String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), this.metadata.LookupFieldOnCalcItem__c, '=');
       query += '\nAND Id != :records';
-      Set<Id> objIds = this.traversal.hierarchy.keySet();
-      List<SObject> additionalCalcItems = Database.query(query);
+      List<SObject> additionalCalcItems = this.repo.get(
+        query,
+        new Map<String, Object>{ 'objIds' => this.traversal.hierarchy.keySet(), 'records' => this.records }
+      );
       this.records.addAll(additionalCalcItems);
       for (SObject additionalCalcItem : additionalCalcItems) {
         Id parentId = (Id) additionalCalcItem.get(this.metadata.LookupFieldOnCalcItem__c);
@@ -615,7 +620,7 @@ public without sharing class RollupRelationshipFieldFinder {
       priorLookup = record.getPopulatedFieldsAsMap().containsKey(priorLookup) ? priorLookup : 'Id';
       objIds.add((Id) record.get(priorLookup));
     }
-    records = Database.query(query);
+    records = this.repo.get(query, new Map<String, Object>{ 'objIds' => objIds });
 
     Map<String, SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);

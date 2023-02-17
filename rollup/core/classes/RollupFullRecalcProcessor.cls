@@ -2,6 +2,7 @@
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
+  protected final Map<String, Object> bindVars;
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
 
@@ -23,7 +24,8 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.rollupMetas = rollupMetas;
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
-    this.overrideRollupControl();
+    this.bindVars = new Map<String, Object>{ 'objIds' => this.objIds, 'recordIds' => this.recordIds };
+    this.processMetadata();
   }
 
   public void addMetadata(Rollup__mdt meta) {
@@ -135,12 +137,13 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return canRollupWithoutCustomSetting;
   }
 
-  private void overrideRollupControl() {
+  private void processMetadata() {
     for (Rollup__mdt meta : this.rollupMetas) {
       if (meta.RollupControl__c != null) {
         RollupControl__mdt specificControl = this.getSpecificControl(meta.RollupControl__c);
         this.overrideParentRollupControlValues(specificControl);
       }
+      this.accessLevel = RollupMetaPicklists.getAccessLevel(meta);
     }
   }
 }
