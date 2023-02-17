@@ -136,7 +136,7 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
-                <field>SharingLevel__c</field>
+                <field>SharingMode__c</field>
             </layoutItems>
         </layoutColumns>
         <layoutColumns>
