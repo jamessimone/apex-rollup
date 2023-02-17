@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>BatchChunkSize__c</fullName>
-    <defaultValue>2000</defaultValue>
-    <description>The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default.</description>
+    <defaultValue>500</defaultValue>
+    <description>The amount of records passed into each batchable job in the event that Rollup batches. Defaults to 500.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>The amount of records passed into each batchable job in the event that Rollup batches. Default is 2000, which is the vanilla Salesforce default.</inlineHelpText>
+    <inlineHelpText>The amount of records passed into each batchable job in the event that Rollup batches. Defaults to 500.</inlineHelpText>
     <label>Batch Chunk Size</label>
     <precision>18</precision>
     <required>false</required>

@@ -2914,22 +2914,12 @@ global without sharing virtual class Rollup {
       RollupControl__mdt sensibleDefault = records != null ? null : RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
       if (sensibleDefault == null) {
         // this *should* be impossible, since the record is included on install, but ...
-        sensibleDefault = new RollupControl__mdt(
-          DeveloperName = CONTROL_ORG_DEFAULTS,
-          BatchChunkSize__c = 2000,
-          IsMergeReparentingEnabled__c = true,
-          IsRollupLoggingEnabled__c = false,
-          MaxLookupRowsBeforeBatching__c = Limits.getLimitQueryRows() / 3,
-          MaxNumberOfQueries__c = Limits.getLimitQueries() / 2,
-          MaxQueryRows__c = Limits.getLimitQueryRows() / 2,
-          MaxParentRowsUpdatedAtOnce__c = Limits.getLimitDmlRows() / 2,
-          MaxRollupRetries__c = 10,
-          ReplaceCalcItemsAsyncWhenOverCount__c = 1,
-          ShouldAbortRun__c = false,
-          ShouldDuplicateRulesBeIgnored__c = false,
-          ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
-          ShouldRunSingleRecordsSynchronously__c = false
-        );
+        sensibleDefault = new RollupControl__mdt(DeveloperName = CONTROL_ORG_DEFAULTS);
+        for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe().fields.getMap().values()) {
+          if (fieldToken != RollupControl__mdt.DeveloperName && fieldToken != RollupControl__mdt.Id) {
+            sensibleDefault.put(fieldToken, fieldToken.getDescribe().getDefaultValue());
+          }
+        }
       } else {
         sensibleDefault = sensibleDefault.clone(true, true);
       }
