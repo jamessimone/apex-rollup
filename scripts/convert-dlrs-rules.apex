@@ -82,6 +82,7 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
       Schema.Rollup__mdt.CalcItem__c.getDescribe().getName() => dlrsRule.dlrs__ChildObject__c,
       Schema.Rollup__mdt.CalcItemWhereClause__c.getDescribe().getName() => dlrsRule.dlrs__RelationshipCriteria__c,
       Schema.Rollup__mdt.ConcatDelimiter__c.getDescribe().getName() => operation.startsWith('CONCAT') ? dlrsRule.dlrs__ConcatenateDelimiter__c : null,
+      Schema.Rollup__mdt.Description__c.getDescribe().getName() => dlrsRule.dlrs__Description__c,
       Schema.Rollup__mdt.LookupFieldOnCalcItem__c.getDescribe().getName() => dlrsRule.dlrs__RelationshipField__c,
       Schema.Rollup__mdt.LookupFieldOnLookupObject__c.getDescribe().getName() => 'Id',
       Schema.Rollup__mdt.LookupObject__c.getDescribe().getName() => dlrsRule.dlrs__ParentObject__c,
@@ -89,13 +90,12 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
       Schema.Rollup__mdt.RollupControl__c.getDescribe().getName() => ROLLUP_CONTROL.DeveloperName,
       Schema.Rollup__mdt.RollupFieldOnCalcItem__c.getDescribe().getName() => dlrsRule.dlrs__FieldToAggregate__c,
       Schema.Rollup__mdt.RollupFieldOnLookupObject__c.getDescribe().getName() => dlrsRule.dlrs__AggregateResultField__c,
-      Schema.Rollup__mdt.RollupOperation__c.getDescribe().getName() => operation.toUpperCase()
+      Schema.Rollup__mdt.RollupOperation__c.getDescribe().getName() => operation.toUpperCase(),
+      Schema.Rollup__mdt.SharingMode__c.getDescribe().getName() => dlrsRule.dlrs__CalculationSharingMode__c
 
       // Additional DLRS fields that are not supported/used by Rollup
       // dlrs__AggregateAllRows__c
       // dlrs__CalculationMode__c
-      // dlrs__CalculationSharingMode__c
-      // dlrs__Description__c
       // dlrs__RelationshipCriteriaFields__c
       // dlrs__RowLimit__c
       // dlrs__TestCode__c
