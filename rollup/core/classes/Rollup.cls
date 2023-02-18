@@ -1572,7 +1572,7 @@ global without sharing virtual class Rollup {
     // getting the items back from the database before putting them into the map is an important step
     // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
     // anything for .getSObjectType() - which we need, further downstream
-    List<SObject> cdcCalcItems = new RollupRepository(accessLevel).get(queryString, new Map<String, Object>{ 'objIds' => objIds });
+    List<SObject> cdcCalcItems = new RollupRepository(accessLevel).get(queryString, objIds);
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
     Rollup rollupToReturn = runFromApex(matchingMetadata, null, cdcCalcItems, cdcCalcItemsMap);
@@ -2820,8 +2820,7 @@ global without sharing virtual class Rollup {
           meta.LookupFieldOnCalcItem__c,
           '='
         );
-        List<SObject> recordsToReparent = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
-          .get(queryString, new Map<String, Object>{ 'objIds' => mergedIdToCurrentParentId.keySet() });
+        List<SObject> recordsToReparent = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta)).get(queryString, mergedIdToCurrentParentId.keySet());
         for (SObject childToReparent : recordsToReparent) {
           childToReparent.put(meta.LookupFieldOnCalcItem__c, mergedIdToCurrentParentId.get((Id) childToReparent.get(meta.LookupFieldOnCalcItem__c)));
           recordsToUpdate.add(childToReparent);

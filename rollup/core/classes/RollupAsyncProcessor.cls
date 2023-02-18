@@ -478,7 +478,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         RollupQueryBuilder.Current.getQuery(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=') +
         (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
 
-      localLookupItems = new RollupRepository(rollup.accessLevel).get(queryString, new Map<String, Object>{ 'objIds' => objIds });
+      localLookupItems = new RollupRepository(rollup.accessLevel).get(queryString, objIds);
     }
     List<SObject> recordsToReset = new List<SObject>();
     for (SObject lookupItem : localLookupItems) {
@@ -552,7 +552,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Set<String> recordIds = lookupToCalcItems.keySet();
       RollupRepository repo = new RollupRepository(rollup.accessLevel);
       String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(), 'Id', '!=', whereClause);
-      Map<String, Object> queryBinds = new Map<String, Object>{ 'objIds' => objIds, 'recordIds' => recordIds };
+      Map<String, Object> queryBinds = new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds, 'recordIds' => recordIds };
       if (additionalCalcItemCount != null) {
         outstandingItemCount = additionalCalcItemCount;
         additionalCalcItemCount = null;

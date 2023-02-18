@@ -380,15 +380,14 @@ public without sharing abstract class RollupCalculator {
     return queryFields;
   }
 
-  private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, List<Object> objIds) {
+  private List<SObject> tryQuery(SObjectType sObjectType, Set<String> queryFields, Object objIds) {
     String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
     List<SObject> results;
-    Map<String, Object> queryBinds = new Map<String, Object>{ 'objIds' => objIds };
     try {
-      results = this.repo.get(query, queryBinds);
+      results = this.repo.get(query, objIds);
     } catch (System.QueryException qex) {
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=');
-      results = this.repo.get(query, queryBinds);
+      results = this.repo.get(query, objIds);
     }
     return results;
   }
@@ -468,15 +467,14 @@ public without sharing abstract class RollupCalculator {
       String query =
         RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery + ('\nAND ' + this.opFieldOnCalcItem + '!= null')) +
         (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '');
-      Map<STring, Object> queryBinds = new Map<String, Object>{ 'objIds' => objIds };
 
       if (this.isIdCount) {
-        Integer result = this.repo.getCount(query, queryBinds);
+        Integer result = this.repo.getCount(query, objIds);
         for (Integer index = 0; index < result; index++) {
           this.distinctValues.add(index);
         }
       } else {
-        List<SObject> results = this.repo.get(query, queryBinds);
+        List<SObject> results = this.repo.get(query, objIds);
         String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
         for (SObject res : results) {
           // have to use the String representation of the this.opFieldOnCalcItem to avoid:
@@ -1017,7 +1015,7 @@ public without sharing abstract class RollupCalculator {
           '!=',
           this.lookupKeyQuery
         );
-        List<SObject> relatedItems = this.repo.get(query, new Map<String, Object>{ 'objIds' => this.concatDistinctIds });
+        List<SObject> relatedItems = this.repo.get(query, this.concatDistinctIds);
         for (SObject relatedItem : relatedItems) {
           this.handleConcat(relatedItem);
         }
@@ -1108,7 +1106,7 @@ public without sharing abstract class RollupCalculator {
       if (this.isFullRecalc == false) {
         SObjectType sObjectType = this.getCalcItemType();
         String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery);
-        denominator += this.repo.getCount(query, new Map<String, Object>{ 'objIds' => calcItems });
+        denominator += this.repo.getCount(query, calcItems);
         oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems, sObjectType);
       }
 
@@ -1158,7 +1156,7 @@ public without sharing abstract class RollupCalculator {
         // a full-recalc is always necessary because we don't retain the information about the order by field
         String queryString = RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery);
         // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
-        List<SObject> additionalItems = this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems });
+        List<SObject> additionalItems = this.repo.get(queryString, calcItems);
         switch on this.op {
           when DELETE_FIRST, DELETE_LAST {
             calcItems = additionalItems;

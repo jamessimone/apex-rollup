@@ -374,7 +374,7 @@ public without sharing class RollupRelationshipFieldFinder {
     this.setFirstRunFlags(records);
 
     // recurse through till we get to the top/bottom of the chain
-    return this.getParents(this.repo.get(query, new Map<String, Object>{ 'objIds' => objIds }));
+    return this.getParents(this.repo.get(query, objIds));
   }
 
   private String getCurrentRelationshipName(SObjectType baseSObjectType) {
@@ -528,7 +528,7 @@ public without sharing class RollupRelationshipFieldFinder {
       return;
     }
 
-    String whereClause = 'Id != :objIds';
+    String whereClause = 'Id != :' + RollupQueryBuilder.BIND_VAR;
     List<String> queryFields = new List<String>{ 'Id', this.metadata.UltimateParentLookup__c };
     if (records.isEmpty() == false) {
       objIds = new Set<Id>();
@@ -539,7 +539,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
     List<SObject> otherPotentialParents = this.repo.get(
       RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause),
-      new Map<String, Object>{ 'objIds' => objIds }
+      objIds
     );
     if (otherPotentialParents.isEmpty()) {
       this.retrieveAdditionalCalcItems();
@@ -561,7 +561,7 @@ public without sharing class RollupRelationshipFieldFinder {
       query += '\nAND Id != :records';
       List<SObject> additionalCalcItems = this.repo.get(
         query,
-        new Map<String, Object>{ 'objIds' => this.traversal.hierarchy.keySet(), 'records' => this.records }
+        new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => this.traversal.hierarchy.keySet(), 'records' => this.records }
       );
       this.records.addAll(additionalCalcItems);
       for (SObject additionalCalcItem : additionalCalcItems) {
@@ -620,7 +620,7 @@ public without sharing class RollupRelationshipFieldFinder {
       priorLookup = record.getPopulatedFieldsAsMap().containsKey(priorLookup) ? priorLookup : 'Id';
       objIds.add((Id) record.get(priorLookup));
     }
-    records = this.repo.get(query, new Map<String, Object>{ 'objIds' => objIds });
+    records = this.repo.get(query, objIds);
 
     Map<String, SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);

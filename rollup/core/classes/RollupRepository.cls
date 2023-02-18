@@ -7,12 +7,16 @@ public without sharing class RollupRepository {
     this.accessLevel = accessLevel;
   }
 
+  public List<SObject> get(String queryString, Object objIds) {
+    return this.get(queryString, new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds });
+  }
+
   public List<SObject> get(String queryString, Map<String, Object> queryBinds) {
     return this.query(queryString, queryBinds);
   }
 
-  public Integer getCount(String queryString, Set<String> objIds) {
-    return this.getCount(queryString, new Map<String, Object>{ 'objIds' => objIds });
+  public Integer getCount(String queryString, Object objIds) {
+    return this.getCount(queryString, new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds });
   }
 
   public Integer getCount(String queryString, Map<String, Object> queryBinds) {
