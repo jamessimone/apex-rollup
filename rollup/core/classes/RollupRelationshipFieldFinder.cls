@@ -525,6 +525,9 @@ public without sharing class RollupRelationshipFieldFinder {
   @SuppressWarnings('PMD.ApexSOQLInjection')
   private void retrieveAdditionalHierarchyRecords(List<SObject> records, Set<Id> objIds) {
     if (this.metadata.RollupToUltimateParent__c == false) {
+      if (this.metadata.IsFullRecordSet__c) {
+        this.retrieveGrandparentAdjacentChildren();
+      }
       return;
     }
 
@@ -557,8 +560,16 @@ public without sharing class RollupRelationshipFieldFinder {
       if (childType == this.ultimateParent) {
         queryFields.add(this.metadata.UltimateParentLookup__c);
       }
-      String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), this.metadata.LookupFieldOnCalcItem__c, '=');
-      query += '\nAND Id != :records';
+      String query = RollupQueryBuilder.Current.getAllRowSafeQuery(
+        childType,
+        RollupQueryBuilder.Current.getQuery(
+          childType,
+          new List<String>(queryFields),
+          this.metadata.LookupFieldOnCalcItem__c,
+          '=',
+          this.metadata.CalcItemWhereClause__c
+        ) + '\nAND Id != :records'
+      );
       List<SObject> additionalCalcItems = this.repo.get(
         query,
         new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => this.traversal.hierarchy.keySet(), 'records' => this.records }
@@ -577,6 +588,9 @@ public without sharing class RollupRelationshipFieldFinder {
         }
       }
     }
+  }
+
+  private void retrieveGrandparentAdjacentChildren() {
   }
 
   private void populateFinalRecordsMapping(List<SObject> records) {
