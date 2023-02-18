@@ -14,7 +14,7 @@ function Push-Git-Tag() {
   if ($tagMatches.Matches.Length -eq 1) {
     $tag = $tagMatches.Matches[0].Value.ToLower()
     git tag $tag
-    git push origin $tag
+    git push origin $tag -f
     Write-Host "Created $tag tag and pushed to git"
   }
 }
