@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes min int value setting",
-            "versionNumber": "1.5.47.0",
+            "versionName": "RollupTest improvements, Spring 23 updates",
+            "versionNumber": "1.5.48.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -83,7 +83,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "56.0",
+    "sourceApiVersion": "57.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
@@ -103,6 +103,7 @@
         "apex-rollup@1.5.44-0": "04t6g000008fjXeAAI",
         "apex-rollup@1.5.45-0": "04t6g000008fjY8AAI",
         "apex-rollup@1.5.46-0": "04t6g000008fjZkAAI",
-        "apex-rollup@1.5.47-0": "04t6g000008fjaYAAQ"
+        "apex-rollup@1.5.47-0": "04t6g000008fjaYAAQ",
+        "apex-rollup@1.5.48-0": "04t6g000008fjcPAAQ"
     }
 }

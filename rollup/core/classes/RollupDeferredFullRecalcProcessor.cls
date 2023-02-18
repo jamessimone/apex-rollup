@@ -25,7 +25,7 @@ public without sharing virtual class RollupDeferredFullRecalcProcessor extends R
       this.logger.log('returning pre-queried records from cache', LoggingLevel.FINE);
       return QUERY_TO_CALC_ITEMS.get(this.queryString);
     }
-    List<SObject> localCalcItems = Database.query(this.queryString);
+    List<SObject> localCalcItems = new RollupRepository(this.accessLevel).get(this.queryString, this.bindVars);
     QUERY_TO_CALC_ITEMS.put(this.queryString, localCalcItems);
     return localCalcItems;
   }

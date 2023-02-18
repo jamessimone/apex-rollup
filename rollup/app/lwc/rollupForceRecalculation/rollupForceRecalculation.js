@@ -184,6 +184,9 @@ export default class RollupForceRecalculation extends LightningElement {
     }
 
     this.jobIdToDisplay = jobId;
+    if (this.jobIdToDisplay) {
+      this.jobIdToDisplay = ' for job: ' + this.jobIdToDisplay;
+    }
     this.rollupStatus = await getBatchRollupStatus({ jobId });
 
     const statusPromise = new Promise(resolve => {
@@ -230,7 +233,7 @@ export default class RollupForceRecalculation extends LightningElement {
   _validateAsyncJob(val) {
     const isValidAsyncJob = val?.slice(0, 3) === '707';
     if (!isValidAsyncJob) {
-      this.jobIdToDisplay = 'no job Id';
+      this.jobIdToDisplay = '';
       this.rollupStatus = val;
     }
     return isValidAsyncJob;

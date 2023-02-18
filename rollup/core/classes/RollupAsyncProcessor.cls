@@ -277,7 +277,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (syncRollups.isEmpty() == false) {
       this.logger.log('about to process sync rollups', logLevel);
       this.process(syncRollups);
-      this.logger.log('finished running sync rollups', logLevel);
+      logMessage = 'finished running sync rollups';
+      if (this.rollups.isEmpty()) {
+        rollupProcessId = logMessage;
+      }
     } else {
       Integer totalCountOfRecords = this.getLookupRecordsCount(this.rollups);
       shouldRunAsBatch =
@@ -463,6 +466,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (stubParentRecords != null) {
       this.lookupItems = stubParentRecords;
     }
+    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     if (this.lookupItems != null) {
       return this.lookupItems;
     }
@@ -473,8 +477,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       String queryString =
         RollupQueryBuilder.Current.getQuery(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=') +
         (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
-      // non-obvious coupling between "objIds" and the computed "queryString", which uses dynamic variable binding
-      localLookupItems = Database.query(queryString);
+
+      localLookupItems = new RollupRepository(rollup.accessLevel).get(queryString, new Map<String, Object>{ 'objIds' => objIds });
     }
     List<SObject> recordsToReset = new List<SObject>();
     for (SObject lookupItem : localLookupItems) {
@@ -483,7 +487,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
     this.lookupItems = localLookupItems;
-    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
     this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
     return this.lookupItems;
   }
@@ -547,12 +550,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
     } else {
       Set<String> recordIds = lookupToCalcItems.keySet();
-      String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>{ 'Count()' }, 'Id', '!=', whereClause);
+      RollupRepository repo = new RollupRepository(rollup.accessLevel);
+      String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(), 'Id', '!=', whereClause);
+      Map<String, Object> queryBinds = new Map<String, Object>{ 'objIds' => objIds, 'recordIds' => recordIds };
       if (additionalCalcItemCount != null) {
         outstandingItemCount = additionalCalcItemCount;
         additionalCalcItemCount = null;
       } else {
-        outstandingItemCount = Database.countQuery(countQuery);
+        outstandingItemCount = repo.getCount(countQuery, queryBinds);
       }
       remainingQueryRowsLeft = new RollupLimits.Tester(rollup.rollupControl, this.getIsRunningAsync()).getRemainingQueryRows();
       shouldLimitCalcItemQuery = outstandingItemCount >= remainingQueryRowsLeft;
@@ -596,7 +601,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       if (outstandingItemCount > 0) {
         this.logger.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
-        additionalCalcItems = Database.query(query);
+        additionalCalcItems = repo.get(query, queryBinds);
 
         if (hasAlreadyBeenQueried) {
           this.cachedQueryToAdditionalCalcItems.get(cachedQueryKey).addAll(additionalCalcItems);
@@ -1070,7 +1075,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
 
     Integer totalCountOfRecords = 0;
+    System.AccessLevel localAccessLevel = this.accessLevel;
     for (RollupAsyncProcessor roll : processors) {
+      localAccessLevel = roll.accessLevel;
       if (roll.queryCount != null) {
         totalCountOfRecords += roll.queryCount;
         continue;
@@ -1095,12 +1102,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
 
-      String countQuery = RollupQueryBuilder.Current.getQuery(
-        roll.lookupObj,
-        new List<String>{ 'Count()' },
-        String.valueOf(roll.lookupFieldOnLookupObject),
-        '='
-      );
+      String countQuery = RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(), String.valueOf(roll.lookupFieldOnLookupObject), '=');
       if (queryCountsToLookupIds.containsKey(countQuery)) {
         queryCountsToLookupIds.get(countQuery).addAll(uniqueIds);
       } else {
@@ -1108,10 +1110,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
+    RollupRepository repo = new RollupRepository(localAccessLevel);
     for (String countQuery : queryCountsToLookupIds.keySet()) {
-      Set<String> objIds = queryCountsToLookupIds.get(countQuery);
-      Integer countForSObject = getCountFromDb(countQuery, objIds);
-      if (countForSObject == RollupQueryBuilder.SENTINEL_COUNT_VALUE) {
+      Integer countForSObject = repo.getCount(countQuery, queryCountsToLookupIds.get(countQuery));
+      if (countForSObject == RollupRepository.SENTINEL_COUNT_VALUE) {
         totalCountOfRecords = this.rollupControl.MaxLookupRowsBeforeBatching__c.intValue() - 1;
         break;
       } else {

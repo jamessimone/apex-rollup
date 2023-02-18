@@ -190,7 +190,7 @@
       </template>
     </section>
     <template if:true={rollupStatus}>
-      <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus} for job: {jobIdToDisplay}</b></div>
+      <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus}{jobIdToDisplay}</b></div>
     </template>
     <template if:true={error}>
       <div class="slds-m-top_small" data-id="rollupError">An error occurred: {error}</div>
