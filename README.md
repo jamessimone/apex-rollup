@@ -18,6 +18,7 @@ Read below for more on how you can use Apex Rollup in your day-to-day. Please no
 - [Record Triggered Flow Setup](https://youtu.be/jZy4gUKjw3Q)
 - [Apex Setup with one line of code!](https://youtu.be/RyQHXi5boW0)
 - [Rollup Control custom metadata configuration](https://youtu.be/vUP_uBB2m-k)
+- [Unit testing Apex Rollup](https://lnkd.in/gGSNGXyh)
 
 As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics.
 
