@@ -452,7 +452,6 @@ public without sharing abstract class RollupCalculator {
       this.handleShortCircuit(calcItem);
     }
 
-    @SuppressWarnings('PMD.ApexSOQLInjection')
     protected override Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
       if (this.shouldTriggerFullRecalc == true) {
         this.distinctValues.clear();
@@ -1000,7 +999,6 @@ public without sharing abstract class RollupCalculator {
       return existingVal += this.concatDelimiter + replacementVal;
     }
 
-    @SuppressWarnings('PMD.UnusedLocalVariable')
     private void handleConcatDistinctDelete(SObject calcItem) {
       // we do a replace first, in case this is a reparenting operation
       this.stringVal = this.replaceWithDelimiter(this.stringVal, (String) calcItem.get(this.opFieldOnCalcItem), '');
@@ -1097,7 +1095,6 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupKeyField);
     }
-    @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
@@ -1149,7 +1146,6 @@ public without sharing abstract class RollupCalculator {
       }
     }
 
-    @SuppressWarnings('PMD.UnusedLocalVariable')
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.isFullRecalc == false) {
         Set<String> queryFields = this.getQueryFields();

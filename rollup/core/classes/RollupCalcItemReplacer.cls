@@ -113,7 +113,6 @@ public without sharing class RollupCalcItemReplacer {
     }
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   private List<SObject> potentiallyReplaceMissingBaseFields(List<SObject> calcItems) {
     Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(calcItems);
     if (this.baseQueryFields.containsKey(calcItems[0].getSObjectType())) {
@@ -146,7 +145,6 @@ public without sharing class RollupCalcItemReplacer {
     return calcItems;
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
     final String typeField = '.Type';
     final String owner = 'Owner.';
@@ -228,7 +226,6 @@ public without sharing class RollupCalcItemReplacer {
     }
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   private void replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems) {
     if (calcItems.isEmpty() || this.parentQueryFields.containsKey(calcItems[0].getSObjectType()) == false) {
       return;

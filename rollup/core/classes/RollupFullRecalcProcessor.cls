@@ -1,4 +1,3 @@
-@SuppressWarnings('PMD.UnusedLocalVariable')
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();

@@ -459,7 +459,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
-  @SuppressWarnings('PMD.ApexSOQLInjection')
   protected List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
     if (objIds.isEmpty()) {
       this.lookupItems = new List<SObject>();
@@ -491,7 +490,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.lookupItems;
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     if (
       this.isValidAdditionalCalcItemRetrieval(rollup) == false ||

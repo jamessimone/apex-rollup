@@ -932,11 +932,6 @@ private class RollupFullRecalcTests {
     Rollup.DML = mock;
     Rollup.shouldRun = true;
     Rollup.records = [SELECT Id, AboutMe FROM User WHERE Id = :acc.OwnerId];
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
-      BatchChunkSize__c = 100,
-      IsRollupLoggingEnabled__c = true
-    );
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',
