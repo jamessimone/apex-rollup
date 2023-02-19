@@ -459,7 +459,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
-  @SuppressWarnings('PMD.ApexSOQLInjection')
   protected List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
     if (objIds.isEmpty()) {
       this.lookupItems = new List<SObject>();
@@ -478,7 +477,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         RollupQueryBuilder.Current.getQuery(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=') +
         (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
 
-      localLookupItems = new RollupRepository(rollup.accessLevel).get(queryString, new Map<String, Object>{ 'objIds' => objIds });
+      localLookupItems = new RollupRepository(rollup.accessLevel).get(queryString, objIds);
     }
     List<SObject> recordsToReset = new List<SObject>();
     for (SObject lookupItem : localLookupItems) {
@@ -491,7 +490,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.lookupItems;
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
     if (
       this.isValidAdditionalCalcItemRetrieval(rollup) == false ||
@@ -552,7 +550,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Set<String> recordIds = lookupToCalcItems.keySet();
       RollupRepository repo = new RollupRepository(rollup.accessLevel);
       String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(), 'Id', '!=', whereClause);
-      Map<String, Object> queryBinds = new Map<String, Object>{ 'objIds' => objIds, 'recordIds' => recordIds };
+      Map<String, Object> queryBinds = new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds, 'recordIds' => recordIds };
       if (additionalCalcItemCount != null) {
         outstandingItemCount = additionalCalcItemCount;
         additionalCalcItemCount = null;

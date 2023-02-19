@@ -1,4 +1,3 @@
-@SuppressWarnings('PMD.UnusedLocalVariable')
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
@@ -24,7 +23,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.rollupMetas = rollupMetas;
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
-    this.bindVars = new Map<String, Object>{ 'objIds' => this.objIds, 'recordIds' => this.recordIds };
+    this.bindVars = new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => this.objIds, 'recordIds' => this.recordIds };
     this.processMetadata();
   }
 

@@ -18,17 +18,18 @@ Read below for more on how you can use Apex Rollup in your day-to-day. Please no
 - [Record Triggered Flow Setup](https://youtu.be/jZy4gUKjw3Q)
 - [Apex Setup with one line of code!](https://youtu.be/RyQHXi5boW0)
 - [Rollup Control custom metadata configuration](https://youtu.be/vUP_uBB2m-k)
+- [Unit testing Apex Rollup](https://lnkd.in/gGSNGXyh)
 
 As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics.
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjcPAAQ">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjcZAAQ">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjcPAAQ">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008fjcZAAQ">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>

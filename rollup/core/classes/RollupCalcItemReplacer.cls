@@ -113,7 +113,6 @@ public without sharing class RollupCalcItemReplacer {
     }
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   private List<SObject> potentiallyReplaceMissingBaseFields(List<SObject> calcItems) {
     Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(calcItems);
     if (this.baseQueryFields.containsKey(calcItems[0].getSObjectType())) {
@@ -124,7 +123,7 @@ public without sharing class RollupCalcItemReplacer {
       }
       String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
       RollupLogger.Instance.log('replacing calc items with missing base fields using query string:', queryString, LoggingLevel.DEBUG);
-      List<SObject> calcItemsWithReplacement = this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems });
+      List<SObject> calcItemsWithReplacement = this.repo.get(queryString, calcItems);
       Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
       for (SObject calcItemWithReplacement : calcItemsWithReplacement) {
         if (idToCalcItem.containsKey(calcItemWithReplacement.Id)) {
@@ -146,7 +145,6 @@ public without sharing class RollupCalcItemReplacer {
     return calcItems;
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
     final String typeField = '.Type';
     final String owner = 'Owner.';
@@ -202,7 +200,7 @@ public without sharing class RollupCalcItemReplacer {
     );
 
     RollupLogger.Instance.log('replacing calc items with polymorphic where clause using query string:', queryString, LoggingLevel.FINE);
-    calcItems = this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems });
+    calcItems = this.repo.get(queryString, calcItems);
     return calcItems;
   }
 
@@ -228,7 +226,6 @@ public without sharing class RollupCalcItemReplacer {
     }
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   private void replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems) {
     if (calcItems.isEmpty() || this.parentQueryFields.containsKey(calcItems[0].getSObjectType()) == false) {
       return;
@@ -249,7 +246,7 @@ public without sharing class RollupCalcItemReplacer {
     if (hasUnqueriedParentFields) {
       String queryString = RollupQueryBuilder.Current.getQuery(calcItemType, new List<String>(parentQueryFields), 'Id', '=');
       RollupLogger.Instance.log('replacing calc items with parent-level where clause using query string:', queryString, LoggingLevel.FINE);
-      Map<Id, SObject> idToCalcItemsWithParentFields = new Map<Id, SObject>(this.repo.get(queryString, new Map<String, Object>{ 'objIds' => calcItems }));
+      Map<Id, SObject> idToCalcItemsWithParentFields = new Map<Id, SObject>(this.repo.get(queryString, calcItems));
       this.appendUpdatedParentFields(calcItems, idToCalcItemsWithParentFields);
     }
   }

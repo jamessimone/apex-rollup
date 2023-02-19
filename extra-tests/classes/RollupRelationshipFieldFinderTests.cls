@@ -463,4 +463,40 @@ private class RollupRelationshipFieldFinderTests {
       retrievedAcc.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
     );
   }
+
+  @IsTest
+  static void fullRecordSetProperlyRetrievesAllGrandchildren() {
+    Account acc = [SELECT OwnerId FROM Account];
+    Account secondAccount = new Account(Name = 'Second Parent', OwnerId = acc.OwnerId);
+    insert secondAccount;
+
+    Opportunity opp = new Opportunity(Name = 'Does match', AccountId = acc.Id, CloseDate = System.today(), StageName = 'One');
+    Opportunity secondOpp = new Opportunity(Name = 'Does match', AccountId = secondAccount.Id, CloseDate = System.today(), StageName = 'Two');
+    insert new List<Opportunity>{ opp, secondOpp };
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'PasswordResetAttempt',
+        RollupOperation__c = 'COUNT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.PasswordResetAttempt',
+        CalcItemWhereClause__c = 'Name = \'' + opp.Name + '\'',
+        IsFullRecordSet__c = true
+      ),
+      new Set<String>{ 'Name' },
+      uniqueFieldNames,
+      User.SObjectType,
+      new Map<Id, SObject>{ opp.Id => new Opportunity(AccountId = acc.Id, Name = 'Does not match', Id = opp.Id) }
+    );
+
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Opportunity>{ opp });
+    System.assertEquals(true, traversal.getIsFinished());
+    Map<String, Rollup.CalcItemBag> lookupToCalcItems = traversal.getParentLookupToRecords();
+    System.assertEquals(2, lookupToCalcItems.get(acc.OwnerId).getAll().size(), lookupToCalcItems);
+  }
 }

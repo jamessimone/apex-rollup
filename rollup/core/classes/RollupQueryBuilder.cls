@@ -1,6 +1,7 @@
 public without sharing class RollupQueryBuilder {
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
   public static final String ALL_ROWS = 'ALL ROWS';
+  public static final String BIND_VAR = 'objIds';
 
   private static final Pattern AGGREGATE_QUERY_REGEX = Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');
   private static final Map<String, String> OG_WHERE_CLAUSE_TO_SANITIZED_VERSION = new Map<String, String>();
@@ -30,8 +31,6 @@ public without sharing class RollupQueryBuilder {
       ? OG_WHERE_CLAUSE_TO_SANITIZED_VERSION.get(originalWhereClause)
       : this.adjustWhereClauseForPolymorphicFields(sObjectType, fieldNames, optionalWhereClause);
 
-    // again noting the coupling for consumers of this method
-    // "objIds" is required to be present in the scope where the query is run
     String baseQuery =
       'SELECT ' +
       String.join(fieldNames, ',') +
@@ -41,7 +40,8 @@ public without sharing class RollupQueryBuilder {
       lookupFieldOnLookupObject +
       ' ' +
       equality +
-      ' :objIds';
+      ' :' +
+      BIND_VAR;
     if (String.isNotBlank(optionalWhereClause)) {
       if (hasBeenSanitized == false) {
         optionalWhereClause = this.getSanitizedWhereClause(originalWhereClause, optionalWhereClause, sObjectType);

@@ -305,7 +305,6 @@ public without sharing class RollupRelationshipFieldFinder {
     return childRecord;
   }
 
-  @SuppressWarnings('PMD.ApexSOQLInjection')
   private Traversal recurseThroughObjectChain(List<SObject> records, SObjectType baseSObjectType) {
     this.populateRelationshipNameToWhereClauses(baseSObjectType);
     // cache the latest records through in case we need to continue later
@@ -374,7 +373,7 @@ public without sharing class RollupRelationshipFieldFinder {
     this.setFirstRunFlags(records);
 
     // recurse through till we get to the top/bottom of the chain
-    return this.getParents(this.repo.get(query, new Map<String, Object>{ 'objIds' => objIds }));
+    return this.getParents(this.repo.get(query, objIds));
   }
 
   private String getCurrentRelationshipName(SObjectType baseSObjectType) {
@@ -522,13 +521,15 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
-  @SuppressWarnings('PMD.ApexSOQLInjection')
   private void retrieveAdditionalHierarchyRecords(List<SObject> records, Set<Id> objIds) {
     if (this.metadata.RollupToUltimateParent__c == false) {
+      if (this.metadata.IsFullRecordSet__c) {
+        this.retrieveGrandparentAdjacentChildren();
+      }
       return;
     }
 
-    String whereClause = 'Id != :objIds';
+    String whereClause = 'Id != :' + RollupQueryBuilder.BIND_VAR;
     List<String> queryFields = new List<String>{ 'Id', this.metadata.UltimateParentLookup__c };
     if (records.isEmpty() == false) {
       objIds = new Set<Id>();
@@ -539,7 +540,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
     List<SObject> otherPotentialParents = this.repo.get(
       RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause),
-      new Map<String, Object>{ 'objIds' => objIds }
+      objIds
     );
     if (otherPotentialParents.isEmpty()) {
       this.retrieveAdditionalCalcItems();
@@ -548,35 +549,78 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
-  @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
   private void retrieveAdditionalCalcItems() {
-    if (this.records?.isEmpty() == false) {
-      SObjectType childType = this.records[0].getSObjectType();
-      Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c };
-      queryFields.addAll(this.uniqueChildrenFieldNames);
-      if (childType == this.ultimateParent) {
-        queryFields.add(this.metadata.UltimateParentLookup__c);
-      }
-      String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), this.metadata.LookupFieldOnCalcItem__c, '=');
-      query += '\nAND Id != :records';
-      List<SObject> additionalCalcItems = this.repo.get(
-        query,
-        new Map<String, Object>{ 'objIds' => this.traversal.hierarchy.keySet(), 'records' => this.records }
-      );
-      this.records.addAll(additionalCalcItems);
-      for (SObject additionalCalcItem : additionalCalcItems) {
-        Id parentId = (Id) additionalCalcItem.get(this.metadata.LookupFieldOnCalcItem__c);
-        if (this.traversal.hierarchy.containsKey(parentId)) {
-          List<Id> potentialLinkedLookupIds = this.traversal.hierarchy.get(parentId);
-          for (Id potentialLinkedLookupId : potentialLinkedLookupIds) {
-            if (potentialLinkedLookupId != parentId && this.traversal.finalParentIdToRecords.containsKey(potentialLinkedLookupId)) {
-              SObject ultimateParentRecord = this.traversal.finalParentIdToRecords.get(potentialLinkedLookupId);
-              this.populateFinalLookupMap(additionalCalcItem.Id, ultimateParentRecord);
-            }
+    List<SObject> additionalCalcItems = this.getAdditionalCalcItems(this.traversal.hierarchy.keySet(), this.metadata.LookupFieldOnCalcItem__c);
+    for (SObject additionalCalcItem : additionalCalcItems) {
+      Id parentId = (Id) additionalCalcItem.get(this.metadata.LookupFieldOnCalcItem__c);
+      if (this.traversal.hierarchy.containsKey(parentId)) {
+        List<Id> potentialLinkedLookupIds = this.traversal.hierarchy.get(parentId);
+        for (Id potentialLinkedLookupId : potentialLinkedLookupIds) {
+          if (potentialLinkedLookupId != parentId && this.traversal.finalParentIdToRecords.containsKey(potentialLinkedLookupId)) {
+            SObject ultimateParentRecord = this.traversal.finalParentIdToRecords.get(potentialLinkedLookupId);
+            this.populateFinalLookupMap(additionalCalcItem.Id, ultimateParentRecord);
           }
         }
       }
     }
+  }
+
+  private void retrieveGrandparentAdjacentChildren() {
+    if (this.records?.isEmpty() != false) {
+      return;
+    }
+
+    Schema.SObjectType startingType = this.records[0].getSObjectType();
+    Map<String, Schema.SObjectField> fieldNameToTokens = startingType.getDescribe().fields.getMap();
+    if (fieldNameToTokens.get(this.metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == false) {
+      String relationshipPath = this.metadata.GrandparentRelationshipFieldPath__c.substringBeforeLast('.');
+      // side effect - need to add to uniqueChildrenFieldNames prior to calling getAdditionalCalcItems
+      this.uniqueChildrenFieldNames.add(relationshipPath + '.Id');
+      List<SObject> additionalCalcItems = this.getAdditionalCalcItems(
+        this.traversal.lookupIdMap.keySet(),
+        relationshipPath +
+        '.' +
+        this.metadata.LookupFieldOnLookupObject__c
+      );
+
+      List<String> recurseChainOriginal = relationshipPath.split('\\.');
+      for (SObject additionalItem : additionalCalcItems) {
+        List<String> recurseChainCopy = new List<String>(recurseChainOriginal);
+        SObject parentRecord = additionalItem;
+        // "swim" up the chain till we get to the grandparent of choice
+        while (recurseChainCopy.isEmpty() == false) {
+          parentRecord = parentRecord.getSObject(recurseChainCopy.remove(0));
+        }
+        this.populateFinalLookupMap(additionalItem.Id, parentRecord);
+      }
+    }
+  }
+
+  private List<SObject> getAdditionalCalcItems(Set<Id> inclusiveIds, String relationshipPath) {
+    if (this.records?.isEmpty() == false) {
+      SObjectType childType = this.records[0].getSObjectType();
+      Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c };
+      queryFields.addAll(this.uniqueChildrenFieldNames);
+      if (childType == this.ultimateParent && this.metadata.RollupToUltimateParent__c == true) {
+        queryFields.add(this.metadata.UltimateParentLookup__c);
+      }
+      String query = RollupQueryBuilder.Current.getAllRowSafeQuery(
+        childType,
+        RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), relationshipPath, '=', this.metadata.CalcItemWhereClause__c) +
+        '\nAND Id != :records'
+      );
+      try {
+        List<SObject> additionalCalcItems = this.repo.get(
+          query,
+          new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => inclusiveIds, 'records' => this.records }
+        );
+        this.records.addAll(additionalCalcItems);
+        return additionalCalcItems;
+      } catch (Exception ex) {
+        RollupLogger.Instance.log('error retrieving additional grandparent records', ex, System.LoggingLevel.WARN);
+      }
+    }
+    return new List<SObject>();
   }
 
   private void populateFinalRecordsMapping(List<SObject> records) {
@@ -599,7 +643,6 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
-  @SuppressWarnings('PMD.ApexSOQLInjection, PMD.UnusedLocalVariable')
   private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
     String oneToManyFieldName = this.oneToManyParts.get(junctionObjectName);
     this.oneToManyParts.remove(junctionObjectName);
@@ -620,7 +663,7 @@ public without sharing class RollupRelationshipFieldFinder {
       priorLookup = record.getPopulatedFieldsAsMap().containsKey(priorLookup) ? priorLookup : 'Id';
       objIds.add((Id) record.get(priorLookup));
     }
-    records = this.repo.get(query, new Map<String, Object>{ 'objIds' => objIds });
+    records = this.repo.get(query, objIds);
 
     Map<String, SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
