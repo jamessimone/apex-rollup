@@ -136,7 +136,11 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
-                <field>SharingMode__c</field>
+                <field>GroupByFields__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>GroupByDelimiter__c</field>
             </layoutItems>
         </layoutColumns>
         <layoutColumns>
@@ -151,6 +155,10 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>SplitConcatDelimiterOnCalcItem__c</field>
+            </layoutItems>
+         <layoutItems>
+                <behavior>Edit</behavior>
+                <field>SharingMode__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>

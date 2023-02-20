@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GroupByRowDelimiter__c</fullName>
+    <description>This is the text value that separates each row defined by the Group By Fields</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>This is the text value that separates each row defined by the Group By Fields</inlineHelpText>
+    <label>Group By Delimiter</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
