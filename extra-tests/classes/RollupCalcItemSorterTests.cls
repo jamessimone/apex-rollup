@@ -150,4 +150,27 @@ private class RollupCalcItemSorterTests {
 
     System.assert(true, 'Should make it here');
   }
+
+  @IsTest
+  static void sortsFieldNames() {
+    List<Opportunity> itemsToSort = new List<Opportunity>{
+      new Opportunity(StageName = 'Two'),
+      new Opportunity(StageName = 'Uno Reverse Card'),
+      new Opportunity(StageName = 'Two'),
+      new Opportunity(),
+      new Opportunity(StageName = 'Z'),
+      new Opportunity(StageName = 'One'),
+      new Opportunity(StageName = 'One')
+    };
+
+    new RollupCalcItemSorter(new List<String>{ Opportunity.Name.getDescribe().getName(), Opportunity.StageName.getDescribe().getName() }).sort(itemsToSort);
+
+    System.assertEquals(null, itemsToSort.get(0).StageName);
+    System.assertEquals('One', itemsToSort.get(1).StageName);
+    System.assertEquals('One', itemsToSort.get(2).StageName);
+    System.assertEquals('Two', itemsToSort.get(3).StageName);
+    System.assertEquals('Two', itemsToSort.get(4).StageName);
+    System.assertEquals('Uno Reverse Card', itemsToSort.get(5).StageName);
+    System.assertEquals('Z', itemsToSort.get(6).StageName);
+  }
 }

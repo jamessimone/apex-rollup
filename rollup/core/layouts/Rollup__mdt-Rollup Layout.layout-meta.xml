@@ -140,7 +140,7 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
-                <field>GroupByDelimiter__c</field>
+                <field>GroupByRowDelimiter__c</field>
             </layoutItems>
         </layoutColumns>
         <layoutColumns>

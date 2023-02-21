@@ -634,6 +634,10 @@ global without sharing virtual class Rollup {
 
     @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
     global String grandparentRelationshipFieldPath;
+    @InvocableVariable(label='Group By Fields (Comma-separated)' description='Transforms a rollup into a group by rollup based on the fields provided')
+    global String groupByFields;
+    @InvocableVariable(label='Grandparent Relationship Field Path' description='The text value to separate grouped field rows with')
+    global String groupByRowDelimiter;
     @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
     global String oneToManyGrandparentFields;
     @InvocableVariable(
@@ -1757,6 +1761,8 @@ global without sharing virtual class Rollup {
             FullRecalculationDefaultNumberValue__c,
             FullRecalculationDefaultStringValue__c,
             GrandparentRelationshipFieldPath__c,
+            GroupByFields__c,
+            GroupByRowDelimiter__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
             LimitAmount__c,
@@ -1824,6 +1830,8 @@ global without sharing virtual class Rollup {
       FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
       FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
       GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+      GroupByFields__c = flowInput.groupByFields,
+      GroupByRowDelimiter__c = flowInput.groupByRowDelimiter,
       IsFullRecordSet__c = flowInput.isFullRecordSet,
       IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
       LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
@@ -2623,7 +2631,7 @@ global without sharing virtual class Rollup {
       SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
 
-      if (rollupMetadata.IsFullRecordSet__c != true && isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
+      if (isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c)) || rollupMetadata.GroupByFields__c != null) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
       if (rollupOp.name().contains(Op.FIRST.name()) || rollupOp.name().contains(Op.LAST.name())) {

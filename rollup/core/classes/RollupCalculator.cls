@@ -46,7 +46,9 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       RollupCalculator calc;
-      // TODO before switch statement check group by fields
+      if (metadata.GroupByFields__c != null) {
+        return new GroupByCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      }
       switch on op {
         when ALL, NONE, SOME {
           calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
@@ -1255,6 +1257,63 @@ public without sharing abstract class RollupCalculator {
           this.returnVal = matches;
         }
       }
+    }
+  }
+
+  private without sharing class GroupByCalculator extends RollupCalculator {
+    private final RollupComparer sorter;
+    private final RollupCalculator innerCalculator;
+    private final List<String> fieldNames;
+    private GroupByCalculator(
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      SObjectField lookupKeyField
+    ) {
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
+      this.fieldNames = metadata.GroupByFields__c.split(',');
+      this.sorter = new RollupCalcItemSorter(this.fieldNames);
+      Rollup__mdt clonedMeta = metadata.clone();
+      clonedMeta.GroupByFields__c = null;
+      this.innerCalculator = Factory.getCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, clonedMeta, lookupKeyField);
+      this.metadata.GroupByRowDelimiter__c = this.metadata.GroupByRowDelimiter__c != null ? this.metadata.GroupByRowDelimiter__c : '\n';
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.innerCalculator.setEvaluator(this.eval);
+      this.innerCalculator.setFullRecalc(this.isFullRecalc);
+      this.innerCalculator.setCDCUpdate(this.isCDCUpdate);
+      this.innerCalculator.parentIsoCode = this.parentIsoCode;
+
+      this.winnowItems(calcItems, oldCalcItems);
+      this.sorter.sort(calcItems);
+
+      Map<String, List<SObject>> groupingStringToItems = new Map<String, List<SObject>>();
+      for (SObject item : calcItems) {
+        String currentGrouping = '';
+        for (String fieldName : this.fieldNames) {
+          Object groupingVal = item.get(fieldName.trim());
+          if (groupingVal == null) {
+            groupingVal = '(blank)';
+          }
+          currentGrouping += String.valueOf(groupingVal) + ', ';
+        }
+        if (groupingStringToItems.containsKey(currentGrouping)) {
+          groupingStringToItems.get(currentGrouping).add(item);
+        } else {
+          groupingStringToItems.put(currentGrouping, new List<SObject>{ item });
+        }
+      }
+
+      String newGroupingValue = '';
+      for (String groupingKey : groupingStringToItems.keySet()) {
+        this.innerCalculator.setDefaultValues(this.lookupRecordKey, this.returnVal);
+        this.innerCalculator.performRollup(groupingStringToItems.get(groupingKey), oldCalcItems);
+        newGroupingValue += groupingKey + this.innerCalculator.getReturnValue();
+        newGroupingValue += this.metadata.GroupByRowDelimiter__c;
+      }
+      this.returnVal = String.isBlank(newGroupingValue) ? null : newGroupingValue.removeEnd(this.metadata.GroupByRowDelimiter__c);
     }
   }
 

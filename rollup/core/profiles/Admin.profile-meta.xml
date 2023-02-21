@@ -229,10 +229,9 @@
         <field>Rollup__mdt.GroupByFields__c</field>
         <readable>true</readable>
     </fieldPermissions>
-    </fieldPermissions>
-        <fieldPermissions>
+    <fieldPermissions>
         <editable>true</editable>
-        <field>Rollup__mdt.GroupByDelimiter__c</field>
+        <field>Rollup__mdt.GroupByRowDelimiter__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

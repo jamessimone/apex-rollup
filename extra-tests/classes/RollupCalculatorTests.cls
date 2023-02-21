@@ -1916,6 +1916,45 @@ private class RollupCalculatorTests {
     System.assertEquals(Date.valueOf(oppOne.Description), calc.getReturnValue());
   }
 
+  @IsTest
+  static void performsGroupByWhenSupplied() {
+    String rowDelimiter = '\n\t';
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType), GroupByFields__c = 'StageName, Name', GroupByRowDelimiter__c = rowDelimiter),
+      RollupTestUtils.createId(Account.SObjectType),
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<SObject>{
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'Z', Name = 'A', Amount = 50),
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(Amount = 50),
+        new Opportunity(StageName = 'Z', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50)
+      },
+      new Map<Id, SObject>()
+    );
+
+    String expectedGroupByString =
+      '(blank), (blank), 50.0' +
+      rowDelimiter +
+      'One, (blank), 100.0' +
+      rowDelimiter +
+      'Two, Deux, 100.0' +
+      rowDelimiter +
+      'Z, (blank), 50.0' +
+      rowDelimiter +
+      'Z, A, 50.0';
+    System.assertEquals(expectedGroupByString, calc.getReturnValue());
+  }
+
   private class RollupCalcEmptyMock extends RollupCalculator {
     public RollupCalcEmptyMock() {
       super(Rollup.Op.LAST, null, null, null, new Rollup__mdt(), null);
