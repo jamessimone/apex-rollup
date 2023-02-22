@@ -2546,6 +2546,24 @@ private class RollupTests {
   }
 
   @IsTest
+  static void validatesCorrectSetupForGroupByRowDelimiter() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+    };
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
+    flowInputs[0].groupByRowDelimiter = '\t';
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('You must set group by fields when supplying a group by delimiter', ex?.getMessage());
+  }
+
+  @IsTest
   static void shouldGracefullyExitIfCalcItemsAreNull() {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(null, 'INSERT', 'CONCAT');
 

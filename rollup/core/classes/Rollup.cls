@@ -1780,11 +1780,12 @@ global without sharing virtual class Rollup {
         ];
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {
-          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
           meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
-          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
+          meta.GroupByRowDelimiter__c = meta.GroupByRowDelimiter__c != null ? meta.GroupByRowDelimiter__c.unescapeJava() : null;
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
+          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
+          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
           meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
@@ -2128,6 +2129,12 @@ global without sharing virtual class Rollup {
     if (eval != null) {
       queryFields.addAll(eval.getQueryFields());
     }
+    if (meta.GroupByFields__c != null) {
+      List<String> groupByFields = meta.GroupByFields__c.split(',');
+      for (String groupByField : groupByFields) {
+        queryFields.add(groupByField.trim());
+      }
+    }
     for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
       queryFields.add(orderByInfo.FieldName__c);
     }
@@ -2342,6 +2349,8 @@ global without sharing virtual class Rollup {
       errorMessage = 'Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups';
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
       errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
+    } else if (flowInput.groupByRowDelimiter != null && flowInput.groupByFields == null) {
+      errorMessage = 'You must set group by fields when supplying a group by delimiter';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
       if (String.isNotBlank(flowInput.concatDelimiter)) {
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';

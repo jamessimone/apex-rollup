@@ -2381,6 +2381,7 @@ private class RollupFullRecalcTests {
     Opportunity opp = new Opportunity(Amount = 15, AccountId = acc.Id, CloseDate = System.today(), StageName = 'A', Name = 'Matching opp');
     insert opp;
     acc.AnnualRevenue = opp.Amount;
+    // DML necessary here for the parent reset processor to correctly see the value as not being null
     update acc;
 
     Test.startTest();
@@ -2399,6 +2400,34 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(opp.Amount, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void groupByRollupsCorrectlyQueryFieldsInFullRecalc() {
+    Account acc = [SELECT Id, Description, AnnualRevenue FROM Account];
+    Opportunity opp = new Opportunity(Amount = 15, AccountId = acc.Id, CloseDate = System.today(), StageName = 'A', Name = 'Matching opp');
+    insert opp;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    Test.startTest();
+    Rollup.performFullRecalculation(
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupOperation__c = 'SUM',
+        GroupByFields__c = 'StageName',
+        GroupByRowDelimiter__c = '<p>'
+      )
+    );
+    Test.stopTest();
+
+    acc = [SELECT Description FROM Account];
+    // in actuality, platform self-closes tags on DML
+    System.assertEquals('<p>A, 15.00', acc.Description);
   }
 
   @IsTest

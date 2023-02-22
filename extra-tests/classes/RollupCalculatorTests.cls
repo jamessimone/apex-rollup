@@ -1943,6 +1943,7 @@ private class RollupCalculatorTests {
     );
 
     String expectedGroupByString =
+      rowDelimiter +
       '(blank), (blank), 50.0' +
       rowDelimiter +
       'One, (blank), 100.0' +

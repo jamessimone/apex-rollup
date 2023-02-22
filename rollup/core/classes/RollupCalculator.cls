@@ -26,6 +26,7 @@ public without sharing abstract class RollupCalculator {
 
   @TestVisible
   private static Factory testFactory;
+  private static Boolean isGroupByRollup = false;
 
   public static Factory Factory {
     get {
@@ -69,7 +70,7 @@ public without sharing abstract class RollupCalculator {
           calc = new MostRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when else {
-          switch on opFieldOnLookupObject.getDescribe().getType() {
+          switch on (isGroupByRollup ? opFieldOnCalcItem : opFieldOnLookupObject).getDescribe().getType() {
             when Currency, Double, Integer, Long, Percent {
               calc = new DecimalRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
             }
@@ -124,6 +125,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
+    this.shouldShortCircuit = false;
     this.lookupRecordKey = lookupRecordKey;
     if (priorVal == null) {
       this.returnVal = this.defaultVal != null ? this.defaultVal : RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnLookupObject);
@@ -194,7 +196,7 @@ public without sharing abstract class RollupCalculator {
         this.shouldTriggerFullRecalc = true;
         break;
       } else {
-        switch on op {
+        switch on this.op {
           when COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
             this.handleCountDistinct(calcItem);
           }
@@ -1271,16 +1273,19 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, null, metadata, lookupKeyField);
       this.fieldNames = metadata.GroupByFields__c.split(',');
       this.sorter = new RollupCalcItemSorter(this.fieldNames);
       Rollup__mdt clonedMeta = metadata.clone();
       clonedMeta.GroupByFields__c = null;
+      isGroupByRollup = true;
       this.innerCalculator = Factory.getCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, clonedMeta, lookupKeyField);
-      this.metadata.GroupByRowDelimiter__c = this.metadata.GroupByRowDelimiter__c != null ? this.metadata.GroupByRowDelimiter__c : '\n';
+      isGroupByRollup = false;
+      this.metadata.GroupByRowDelimiter__c = this.metadata.GroupByRowDelimiter__c != null ? this.metadata.GroupByRowDelimiter__c : '<p>';
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      // ceremony section - curry the valuess from this to the inner calculator
       this.innerCalculator.setEvaluator(this.eval);
       this.innerCalculator.setFullRecalc(this.isFullRecalc);
       this.innerCalculator.setCDCUpdate(this.isCDCUpdate);
@@ -1307,11 +1312,17 @@ public without sharing abstract class RollupCalculator {
       }
 
       String newGroupingValue = '';
-      for (String groupingKey : groupingStringToItems.keySet()) {
-        this.innerCalculator.setDefaultValues(this.lookupRecordKey, this.returnVal);
+      List<String> groupingKeys = new List<String>(groupingStringToItems.keySet());
+      for (Integer index = 0; index < groupingKeys.size(); index++) {
+        String groupingKey = groupingKeys[index];
+        this.innerCalculator.setDefaultValues(this.lookupRecordKey, RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem));
         this.innerCalculator.performRollup(groupingStringToItems.get(groupingKey), oldCalcItems);
-        newGroupingValue += groupingKey + this.innerCalculator.getReturnValue();
-        newGroupingValue += this.metadata.GroupByRowDelimiter__c;
+        this.innerCalculator.setReturnValue();
+        newGroupingValue +=
+          (index == 0 ? this.metadata.GroupByRowDelimiter__c : '') +
+          groupingKey +
+          this.innerCalculator.getReturnValue() +
+          this.metadata.GroupByRowDelimiter__c;
       }
       this.returnVal = String.isBlank(newGroupingValue) ? null : newGroupingValue.removeEnd(this.metadata.GroupByRowDelimiter__c);
     }
