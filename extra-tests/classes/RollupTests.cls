@@ -39,7 +39,7 @@ private class RollupTests {
   private class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
-      super(rollupOp, null, Account.AnnualRevenue, null, new Rollup__mdt(), null);
+      super(rollupOp, null, Account.AnnualRevenue, new Rollup__mdt(), null);
       calcMockWasCalled = true;
     }
   }

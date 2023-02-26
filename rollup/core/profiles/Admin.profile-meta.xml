@@ -231,7 +231,12 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>Rollup__mdt.GroupByRowDelimiter__c</field>
+        <field>Rollup__mdt.GroupByRowEndDelimiter__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.GroupByRowStartDelimiter__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

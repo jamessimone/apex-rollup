@@ -2420,7 +2420,7 @@ private class RollupFullRecalcTests {
         RollupFieldOnLookupObject__c = 'Description',
         RollupOperation__c = 'SUM',
         GroupByFields__c = 'StageName',
-        GroupByRowDelimiter__c = '<p>'
+        GroupByRowStartDelimiter__c = '<p>'
       )
     );
     Test.stopTest();

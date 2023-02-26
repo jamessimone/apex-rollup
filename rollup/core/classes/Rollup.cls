@@ -1762,7 +1762,8 @@ global without sharing virtual class Rollup {
             FullRecalculationDefaultStringValue__c,
             GrandparentRelationshipFieldPath__c,
             GroupByFields__c,
-            GroupByRowDelimiter__c,
+            GroupByRowEndDelimiter__c,
+            GroupByRowStartDelimiter__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
             LimitAmount__c,
@@ -1781,7 +1782,7 @@ global without sharing virtual class Rollup {
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {
           meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
-          meta.GroupByRowDelimiter__c = meta.GroupByRowDelimiter__c != null ? meta.GroupByRowDelimiter__c.unescapeJava() : null;
+          meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c != null ? meta.GroupByRowStartDelimiter__c.unescapeJava() : null;
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
           meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
@@ -1832,7 +1833,7 @@ global without sharing virtual class Rollup {
       FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
       GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
       GroupByFields__c = flowInput.groupByFields,
-      GroupByRowDelimiter__c = flowInput.groupByRowDelimiter,
+      GroupByRowStartDelimiter__c = flowInput.groupByRowDelimiter,
       IsFullRecordSet__c = flowInput.isFullRecordSet,
       IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
       LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
