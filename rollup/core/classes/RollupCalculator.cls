@@ -1285,7 +1285,8 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       this.setupFields();
-      this.formatter = this.metadata.IsTableFormatted__c
+      // have to cast here to avoid "Incompatible types in ternary operator: RollupCalculator.DefaultGroupingFormatter, RollupCalculator.TableGroupingFormatter"
+      this.formatter = this.metadata.IsTableFormatted__c == true
         ? (GroupingFormatter) new TableGroupingFormatter(opFieldOnCalcItem)
         : (GroupingFormatter) new DefaultGroupingFormatter(this.metadata, this.concatDelimiter, this.opFieldOnLookupObject);
       this.sorter = new RollupCalcItemSorter(this.fieldNames);
@@ -1332,7 +1333,7 @@ public without sharing abstract class RollupCalculator {
         this.innerCalculator.setReturnValue();
         newGroupingValue += this.formatter.getGroupingRowStart(groupingKey) + this.innerCalculator.getReturnValue() + this.formatter.getGroupingRowEnd();
       }
-      this.returnVal = String.isBlank(newGroupingValue) ? null : this.formatter.getEnd(newGroupingValue);
+      this.returnVal = String.isBlank(newGroupingValue) ? null : this.formatter.getGroupingEnd(newGroupingValue);
     }
 
     private void setupFields() {
@@ -1352,7 +1353,7 @@ public without sharing abstract class RollupCalculator {
     String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast);
     String getGroupingRowStart(String groupingKey);
     String getGroupingRowEnd();
-    String getEnd(String groupByString);
+    String getGroupingEnd(String groupByString);
   }
 
   private class DefaultGroupingFormatter implements GroupingFormatter {
@@ -1381,7 +1382,7 @@ public without sharing abstract class RollupCalculator {
       return this.metadata.GroupByRowEndDelimiter__c;
     }
 
-    public String getEnd(String groupByString) {
+    public String getGroupingEnd(String groupByString) {
       return groupByString.removeEnd(this.getGroupingRowEnd());
     }
 
@@ -1437,7 +1438,7 @@ public without sharing abstract class RollupCalculator {
       return this.tdClose + this.trClose;
     }
 
-    public String getEnd(String groupByString) {
+    public String getGroupingEnd(String groupByString) {
       return groupByString + '</table>';
     }
   }
