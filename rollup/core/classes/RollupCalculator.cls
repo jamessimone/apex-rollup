@@ -26,6 +26,7 @@ public without sharing abstract class RollupCalculator {
 
   @TestVisible
   private static Factory testFactory;
+  private static Boolean isGroupByRollup = false;
 
   public static Factory Factory {
     get {
@@ -46,7 +47,9 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       RollupCalculator calc;
-      // TODO before switch statement check group by fields
+      if (metadata.GroupByFields__c != null && isGroupByRollup == false) {
+        return new GroupByCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      }
       switch on op {
         when ALL, NONE, SOME {
           calc = new ConditionalCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
@@ -67,12 +70,12 @@ public without sharing abstract class RollupCalculator {
           calc = new MostRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
         }
         when else {
-          switch on opFieldOnLookupObject.getDescribe().getType() {
+          switch on (isGroupByRollup ? opFieldOnCalcItem : opFieldOnLookupObject).getDescribe().getType() {
             when Currency, Double, Integer, Long, Percent {
               calc = new DecimalRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
             }
             when Combobox, Email, EncryptedString, Id, MultiPicklist, Phone, Reference, String, TextArea, URL {
-              calc = new PicklistRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField, metadata.ConcatDelimiter__c);
+              calc = new PicklistRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
             }
             when Date {
               calc = new DateRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
@@ -98,7 +101,6 @@ public without sharing abstract class RollupCalculator {
     Rollup.Op op,
     SObjectField opFieldOnCalcItem,
     SObjectField opFieldOnLookupObject,
-    Object defaultVal,
     Rollup__mdt metadata,
     SObjectField lookupKeyField
   ) {
@@ -107,7 +109,7 @@ public without sharing abstract class RollupCalculator {
     this.op = op;
     this.metadata = metadata;
     this.lookupKeyField = lookupKeyField;
-    this.defaultVal = defaultVal;
+    this.defaultVal = getDefaultRecalculationValue(metadata);
     if (this.isMultiCurrencyRollup == null) {
       this.isMultiCurrencyRollup =
         RollupCurrencyInfo.isMultiCurrency() &&
@@ -122,6 +124,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
+    this.shouldShortCircuit = false;
     this.lookupRecordKey = lookupRecordKey;
     if (priorVal == null) {
       this.returnVal = this.defaultVal != null ? this.defaultVal : RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnLookupObject);
@@ -192,7 +195,7 @@ public without sharing abstract class RollupCalculator {
         this.shouldTriggerFullRecalc = true;
         break;
       } else {
-        switch on op {
+        switch on this.op {
           when COUNT_DISTINCT, DELETE_COUNT_DISTINCT {
             this.handleCountDistinct(calcItem);
           }
@@ -413,7 +416,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -495,7 +498,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -816,8 +819,28 @@ public without sharing abstract class RollupCalculator {
     return op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
   }
 
-  private without sharing virtual class StringRollupCalculator extends RollupCalculator {
-    protected String concatDelimiter = ', ';
+  private without sharing abstract class DelimiterCalculator extends RollupCalculator {
+    protected final String concatDelimiter;
+
+    public DelimiterCalculator(
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      Schema.SObjectField lookupKeyField
+    ) {
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      if (opFieldOnLookupObject.getDescribe().getType() == Schema.DisplayType.MULTIPICKLIST) {
+        this.concatDelimiter = ';';
+      } else if (this.metadata.ConcatDelimiter__c != null) {
+        this.concatDelimiter = this.metadata.ConcatDelimiter__c;
+      } else {
+        this.concatDelimiter = ', ';
+      }
+    }
+  }
+
+  private without sharing virtual class StringRollupCalculator extends DelimiterCalculator {
     private String stringVal;
 
     private final Boolean isConcatDistinct;
@@ -828,13 +851,9 @@ public without sharing abstract class RollupCalculator {
       SObjectField opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
       Rollup__mdt metadata,
-      Schema.SObjectField lookupKeyField,
-      String customConcatDelimiter
+      Schema.SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultStringValue__c, metadata, lookupKeyField);
-      if (String.isNotBlank(customConcatDelimiter)) {
-        this.concatDelimiter = customConcatDelimiter + ' ';
-      }
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       this.isConcatDistinct = isConcatDistinct(this.op);
     }
 
@@ -1023,7 +1042,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class PicklistRollupCalculator extends StringRollupCalculator {
-    private final RollupFieldInitializer.PicklistController rollupFieldController;
     private final RollupFieldInitializer.PicklistController picklistController {
       get {
         if (picklistController == null) {
@@ -1038,14 +1056,9 @@ public without sharing abstract class RollupCalculator {
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
       Rollup__mdt metadata,
-      Schema.SObjectField lookupKeyField,
-      String customConcatDelimiter
+      Schema.SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField, customConcatDelimiter);
-      this.rollupFieldController = new RollupFieldInitializer.PicklistController(opFieldOnLookupObject.getDescribe());
-      if (this.rollupFieldController.isMultiSelectPicklist()) {
-        this.concatDelimiter = ';';
-      }
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -1094,7 +1107,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata.FullRecalculationDefaultNumberValue__c, metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
@@ -1135,7 +1148,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       Map<String, SObjectField> fieldMap = this.calcItemSObjectType.getDescribe().fields.getMap();
       for (RollupOrderBy__mdt orderByInfo : this.metadata.RollupOrderBys__r) {
         SObjectField orderByFirstLastField = fieldMap.get(orderByInfo.FieldName__c);
@@ -1190,7 +1203,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -1222,7 +1235,7 @@ public without sharing abstract class RollupCalculator {
       Rollup__mdt metadata,
       SObjectField lookupKeyField
     ) {
-      super(op, opFieldOnCalcItem, opFieldOnLookupObject, getDefaultRecalculationValue(metadata), metadata, lookupKeyField);
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -1255,6 +1268,178 @@ public without sharing abstract class RollupCalculator {
           this.returnVal = matches;
         }
       }
+    }
+  }
+
+  private without sharing class GroupByCalculator extends DelimiterCalculator {
+    private final GroupingFormatter formatter;
+    private final RollupComparer sorter;
+    private final RollupCalculator innerCalculator;
+    private final List<String> fieldNames = new List<String>();
+    private GroupByCalculator(
+      Rollup.Op op,
+      SObjectField opFieldOnCalcItem,
+      SObjectField opFieldOnLookupObject,
+      Rollup__mdt metadata,
+      SObjectField lookupKeyField
+    ) {
+      super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      this.setupFields();
+      // have to cast here to avoid "Incompatible types in ternary operator: RollupCalculator.DefaultGroupingFormatter, RollupCalculator.TableGroupingFormatter"
+      this.formatter = this.metadata.IsTableFormatted__c == true
+        ? (GroupingFormatter) new TableGroupingFormatter(opFieldOnCalcItem)
+        : (GroupingFormatter) new DefaultGroupingFormatter(this.metadata, this.concatDelimiter, this.opFieldOnLookupObject);
+      this.sorter = new RollupCalcItemSorter(this.fieldNames);
+      isGroupByRollup = true;
+      this.innerCalculator = Factory.getCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      isGroupByRollup = false;
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      // ceremony section - curry the values from this to the inner calculator
+      this.innerCalculator.setEvaluator(this.eval);
+      this.innerCalculator.setFullRecalc(this.isFullRecalc);
+      this.innerCalculator.setCDCUpdate(this.isCDCUpdate);
+      this.innerCalculator.parentIsoCode = this.parentIsoCode;
+      this.innerCalculator.isMultiCurrencyRollup = this.isMultiCurrencyRollup;
+
+      this.winnowItems(calcItems, oldCalcItems);
+      this.sorter.sort(calcItems);
+
+      Map<String, List<SObject>> groupingStringToItems = new Map<String, List<SObject>>();
+      for (SObject item : calcItems) {
+        String currentGrouping = '';
+        for (Integer index = 0; index < this.fieldNames.size(); index++) {
+          String fieldName = this.fieldNames[index];
+          Boolean isFirst = index == 0;
+          Boolean isLast = index == this.fieldNames.size() - 1;
+          Object groupingVal = item.get(fieldName);
+          if (groupingVal == null) {
+            groupingVal = '(blank)';
+          }
+          currentGrouping += this.formatter.getGroupingColumn(fieldName, groupingVal, isFirst, isLast);
+        }
+        if (groupingStringToItems.containsKey(currentGrouping)) {
+          groupingStringToItems.get(currentGrouping).add(item);
+        } else {
+          groupingStringToItems.put(currentGrouping, new List<SObject>{ item });
+        }
+      }
+
+      String newGroupingValue = this.formatter.getGroupingStart();
+      for (String groupingKey : groupingStringToItems.keySet()) {
+        this.innerCalculator.setDefaultValues(this.lookupRecordKey, RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem));
+        this.innerCalculator.performRollup(groupingStringToItems.get(groupingKey), oldCalcItems);
+        this.innerCalculator.setReturnValue();
+        newGroupingValue += this.formatter.getGroupingRowStart(groupingKey) + this.innerCalculator.getReturnValue() + this.formatter.getGroupingRowEnd();
+      }
+      this.returnVal = String.isBlank(newGroupingValue) ? null : this.formatter.getGroupingEnd(newGroupingValue);
+    }
+
+    private void setupFields() {
+      List<String> fieldNames = this.metadata.GroupByFields__c.split(',');
+      for (String fieldName : fieldNames) {
+        String trimmedFieldName = fieldName.trim();
+        if (trimmedFieldName == RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME) {
+          this.isMultiCurrencyRollup = false;
+        }
+        this.fieldNames.add(trimmedFieldName);
+      }
+    }
+  }
+
+  private interface GroupingFormatter {
+    String getGroupingStart();
+    String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast);
+    String getGroupingRowStart(String groupingKey);
+    String getGroupingRowEnd();
+    String getGroupingEnd(String groupByString);
+  }
+
+  private class DefaultGroupingFormatter implements GroupingFormatter {
+    private final String delimiter;
+    private final Rollup__mdt metadata;
+
+    public DefaultGroupingFormatter(Rollup__mdt metadata, String delimiter, Schema.SObjectField opFieldOnLookupObject) {
+      this.metadata = metadata;
+      this.delimiter = delimiter;
+      this.setupDelimiters(opFieldOnLookupObject);
+    }
+
+    public String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast) {
+      return String.valueOf(groupingValue) + this.delimiter;
+    }
+
+    public String getGroupingStart() {
+      return '';
+    }
+
+    public String getGroupingRowStart(String groupingKey) {
+      return this.metadata.GroupByRowStartDelimiter__c + groupingKey;
+    }
+
+    public String getGroupingRowEnd() {
+      return this.metadata.GroupByRowEndDelimiter__c;
+    }
+
+    public String getGroupingEnd(String groupByString) {
+      return groupByString.removeEnd(this.getGroupingRowEnd());
+    }
+
+    private void setupDelimiters(Schema.SObjectField opFieldOnLookupObject) {
+      if (this.metadata.GroupByRowEndDelimiter__c == null) {
+        // insane hack to identify rich text fields
+        Boolean isRichText = JSON.serialize(opFieldOnLookupObject.getDescribe()).contains('"extraTypeInfo":"richtextarea"');
+        this.metadata.GroupByRowEndDelimiter__c = isRichText ? '<br>' : '\n';
+      }
+
+      if (this.metadata.GroupByRowStartDelimiter__c == null) {
+        this.metadata.GroupByRowStartDelimiter__c = '• ';
+      }
+    }
+  }
+
+  private class TableGroupingFormatter implements GroupingFormatter {
+    private final Map<String, Schema.SObjectField> fieldNameToToken;
+    private final Schema.SObjectField targetField;
+    private final Set<String> columnHeaders = new Set<String>();
+
+    private final String tdOpen = '<td>';
+    private final String tdClose = '</td>';
+    private final String thOpen = '<th>';
+    private final String thClose = '</th>';
+    private final String trOpen = '<tr>';
+    private final String trClose = '</tr>';
+
+    public TableGroupingFormatter(Schema.SObjectField targetField) {
+      this.fieldNameToToken = targetField.getDescribe().getSObjectType().getDescribe().fields.getMap();
+      this.targetField = targetField;
+    }
+
+    public String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast) {
+      String prefix = isFirst ? this.trOpen : '';
+      String suffix = isLast ? this.trClose : '';
+      this.columnHeaders.add(prefix + this.thOpen + this.fieldNameToToken.get(fieldName).getDescribe().getLabel() + this.thClose);
+      if (isLast) {
+        this.columnHeaders.add(this.thOpen + this.targetField.getDescribe().getName() + this.thClose + suffix);
+      }
+      return prefix + this.tdOpen + String.valueOf(groupingValue) + this.tdClose + suffix;
+    }
+
+    public String getGroupingStart() {
+      return '<table>' + String.join(new List<String>(this.columnHeaders), '');
+    }
+
+    public String getGroupingRowStart(String groupingKey) {
+      return groupingKey.replace(this.trClose, '') + this.tdOpen;
+    }
+
+    public String getGroupingRowEnd() {
+      return this.tdClose + this.trClose;
+    }
+
+    public String getGroupingEnd(String groupByString) {
+      return groupByString + '</table>';
     }
   }
 

@@ -224,6 +224,21 @@
         <field>Rollup__mdt.GrandparentRelationshipFieldPath__c</field>
         <readable>true</readable>
     </fieldPermissions>
+        <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.GroupByFields__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.GroupByRowEndDelimiter__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.GroupByRowStartDelimiter__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Rollup__mdt.IsFullRecordSet__c</field>
@@ -232,6 +247,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Rollup__mdt.IsRollupStartedFromParent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rollup__mdt.IsTableFormatted__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

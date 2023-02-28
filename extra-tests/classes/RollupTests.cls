@@ -39,7 +39,7 @@ private class RollupTests {
   private class RollupCalcMock extends RollupCalculator {
     // everything is a no-op
     public RollupCalcMock() {
-      super(rollupOp, null, Account.AnnualRevenue, null, new Rollup__mdt(), null);
+      super(rollupOp, null, Account.AnnualRevenue, new Rollup__mdt(), null);
       calcMockWasCalled = true;
     }
   }
@@ -2543,6 +2543,24 @@ private class RollupTests {
     }
 
     System.assertEquals('Prior records to rollup collection required for rollup context: UPSERT', ex.getMessage());
+  }
+
+  @IsTest
+  static void validatesCorrectSetupForGroupByRowDelimiter() {
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+    };
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
+    flowInputs[0].groupByRowStartDelimiter = '\t';
+
+    Exception ex;
+    try {
+      Rollup.performRollup(flowInputs);
+    } catch (Exception e) {
+      ex = e;
+    }
+
+    System.assertEquals('You must set group by fields when supplying a group by delimiter', ex?.getMessage());
   }
 
   @IsTest

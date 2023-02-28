@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GroupByRowStartDelimiter__c</fullName>
+    <description>Each row in your group by rollup will be prefaced by these characters/HTML</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Each row in your group by rollup will be prefaced by these characters/HTML</inlineHelpText>
+    <label>Group By Row Start Delimiter</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Concat_Delimiter_Only_Valid_With_Concat</fullName>
     <active>true</active>
@@ -10,9 +10,12 @@
     NOT(
       ISPICKVAL(RollupOperation__c, &apos;CONCAT_DISTINCT&apos;)
     ),
+    NOT(
+      ISBLANK(GroupByFields__c)
+    ),
   NOT(
     ISBLANK(ConcatDelimiter__c)
   )
 )</errorConditionFormula>
-    <errorMessage>Concat Delimiter should only be used with CONCAT or CONCAT_DISTINCT rollup operations</errorMessage>
+    <errorMessage>Concat Delimiter should only be used with CONCAT or CONCAT_DISTINCT or group by rollup operations</errorMessage>
 </ValidationRule>

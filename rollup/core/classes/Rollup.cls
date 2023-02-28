@@ -634,6 +634,12 @@ global without sharing virtual class Rollup {
 
     @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
     global String grandparentRelationshipFieldPath;
+    @InvocableVariable(label='Group By Fields (Comma-separated)' description='Transforms a rollup into a group by rollup based on the fields provided')
+    global String groupByFields;
+    @InvocableVariable(label='Group By Row End Delimiter' description='The text value to suffix grouped field rows with')
+    global String groupByRowEndDelimiter;
+    @InvocableVariable(label='Group By Row Start Delimiter' description='The text value to prefix grouped field rows with')
+    global String groupByRowStartDelimiter;
     @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
     global String oneToManyGrandparentFields;
     @InvocableVariable(
@@ -643,6 +649,8 @@ global without sharing virtual class Rollup {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
+    @InvocableVariable(label='Is Table Formatted' description='If rolling up to a group by text field and you want a table, set this to true')
+    global Boolean isTableFormatted = false;
     @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
     @InvocableVariable(label='Limit Amount')
@@ -1757,8 +1765,12 @@ global without sharing virtual class Rollup {
             FullRecalculationDefaultNumberValue__c,
             FullRecalculationDefaultStringValue__c,
             GrandparentRelationshipFieldPath__c,
+            GroupByFields__c,
+            GroupByRowEndDelimiter__c,
+            GroupByRowStartDelimiter__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
+            IsTableFormatted__c,
             LimitAmount__c,
             OneToManyGrandparentFields__c,
             OrderByFirstLast__c,
@@ -1774,11 +1786,12 @@ global without sharing virtual class Rollup {
         ];
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {
-          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
           meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
-          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
+          meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c != null ? meta.GroupByRowStartDelimiter__c.unescapeJava() : null;
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
+          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
+          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
           meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
           meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
@@ -1824,8 +1837,12 @@ global without sharing virtual class Rollup {
       FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
       FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
       GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+      GroupByFields__c = flowInput.groupByFields,
+      GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
+      GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
       IsFullRecordSet__c = flowInput.isFullRecordSet,
       IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
+      IsTableFormatted__c = flowInput.isTableFormatted,
       LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
       LookupObject__c = flowInput.rollupSObjectName,
@@ -2120,6 +2137,12 @@ global without sharing virtual class Rollup {
     if (eval != null) {
       queryFields.addAll(eval.getQueryFields());
     }
+    if (meta.GroupByFields__c != null) {
+      List<String> groupByFields = meta.GroupByFields__c.split(',');
+      for (String groupByField : groupByFields) {
+        queryFields.add(groupByField.trim());
+      }
+    }
     for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
       queryFields.add(orderByInfo.FieldName__c);
     }
@@ -2334,6 +2357,8 @@ global without sharing virtual class Rollup {
       errorMessage = 'Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups';
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
       errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
+    } else if (flowInput.groupByRowStartDelimiter != null && flowInput.groupByFields == null) {
+      errorMessage = 'You must set group by fields when supplying a group by delimiter';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
       if (String.isNotBlank(flowInput.concatDelimiter)) {
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
@@ -2623,7 +2648,7 @@ global without sharing virtual class Rollup {
       SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
 
-      if (rollupMetadata.IsFullRecordSet__c != true && isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c))) {
+      if (isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c)) || rollupMetadata.GroupByFields__c != null) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
       if (rollupOp.name().contains(Op.FIRST.name()) || rollupOp.name().contains(Op.LAST.name())) {
@@ -2915,7 +2940,7 @@ global without sharing virtual class Rollup {
       if (sensibleDefault == null) {
         // this *should* be impossible, since the record is included on install, but ...
         sensibleDefault = new RollupControl__mdt(DeveloperName = CONTROL_ORG_DEFAULTS);
-        for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe().fields.getMap().values()) {
+        for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().values()) {
           if (fieldToken != RollupControl__mdt.DeveloperName && fieldToken != RollupControl__mdt.Id) {
             sensibleDefault.put(fieldToken, fieldToken.getDescribe().getDefaultValue());
           }

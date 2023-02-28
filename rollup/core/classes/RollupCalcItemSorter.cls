@@ -2,6 +2,10 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
   private final List<RollupOrderBy__mdt> orderByOptions;
   private final Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController> fieldToPicklistController;
 
+  public RollupCalcItemSorter(List<String> sortByFields) {
+    this(transformFieldNames(sortByFields));
+  }
+
   public RollupCalcItemSorter(List<RollupOrderBy__mdt> orderBys) {
     this.fieldToPicklistController = new Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController>();
     this.orderByOptions = this.initializeOrderByOptions(orderBys);
@@ -118,5 +122,14 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
     } else {
       return equalityCheck ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
     }
+  }
+
+  private static List<RollupOrderBy__mdt> transformFieldNames(List<String> sortByFields) {
+    List<RollupOrderBy__mdt> rollupOrderBys = new List<RollupOrderBy__mdt>();
+    for (Integer index = 0; index < sortByFields.size(); index++) {
+      String sortByField = sortByFields[index].trim();
+      rollupOrderBys.add(new RollupOrderBy__mdt(FieldName__c = sortByField, Ranking__c = index));
+    }
+    return rollupOrderBys;
   }
 }

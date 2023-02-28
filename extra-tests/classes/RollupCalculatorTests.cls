@@ -1916,9 +1916,146 @@ private class RollupCalculatorTests {
     System.assertEquals(Date.valueOf(oppOne.Description), calc.getReturnValue());
   }
 
+  @IsTest
+  static void performsGroupByWhenSupplied() {
+    String rowEndDelimiter = '\n\t';
+    String rowStartDelimiter = '* ';
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(
+        CalcItem__c = String.valueOf(Opportunity.SObjectType),
+        GroupByFields__c = 'StageName, Name',
+        GroupByRowEndDelimiter__c = rowEndDelimiter,
+        GroupByRowStartDelimiter__c = rowStartDelimiter
+      ),
+      RollupTestUtils.createId(Account.SObjectType),
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<SObject>{
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'Z', Name = 'A', Amount = 50),
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(Amount = 50),
+        new Opportunity(StageName = 'Z', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50)
+      },
+      new Map<Id, SObject>()
+    );
+
+    String expectedGroupByString =
+      rowStartDelimiter +
+      '(blank), (blank), 50.0' +
+      rowEndDelimiter +
+      rowStartDelimiter +
+      'One, (blank), 100.0' +
+      rowEndDelimiter +
+      rowStartDelimiter +
+      'Two, Deux, 100.0' +
+      rowEndDelimiter +
+      rowStartDelimiter +
+      'Z, (blank), 50.0' +
+      rowEndDelimiter +
+      rowStartDelimiter +
+      'Z, A, 50.0';
+    System.assertEquals(expectedGroupByString, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void respectsCustomConcatDelimiterForGroupBy() {
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType), GroupByFields__c = 'StageName, Name', ConcatDelimiter__c = '; '),
+      RollupTestUtils.createId(Account.SObjectType),
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<SObject>{
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals('• One; (blank); 100.0\n• Two; Deux; 100.0', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void doesNotConvertCurrencyWhenGroupingByCurrencyIsoCode() {
+    if (RollupCurrencyInfo.IS_MULTICURRENCY == false) {
+      return;
+    }
+    Account fakeAccount = new Account(Id = RollupTestUtils.createId(Account.SObjectType));
+    fakeAccount.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, 'USD');
+
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType), GroupByFields__c = 'StageName, CurrencyIsoCode'),
+      fakeAccount.Id,
+      Account.Id
+    );
+    calc.setMultiCurrencyInfo(fakeAccount);
+
+    List<SObject> opportunities = new List<SObject>{
+      new Opportunity(StageName = 'One', Amount = 50),
+      new Opportunity(StageName = 'One', Amount = 50),
+      new Opportunity(StageName = 'One', Amount = 50),
+      new Opportunity(StageName = 'One', Amount = 50)
+    };
+    for (Integer index = 0; index < opportunities.size(); index++) {
+      opportunities[index].put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, Math.mod(index, 2) == 0 ? 'EUR' : 'JPY');
+    }
+
+    calc.performRollup(opportunities, new Map<Id, SObject>());
+
+    System.assertEquals('• One, EUR, 100.0\n• One, JPY, 100.0', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void displaysGroupByAsTableWhenFlagged() {
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType), GroupByFields__c = 'StageName, Name', IsTableFormatted__c = true),
+      RollupTestUtils.createId(Account.SObjectType),
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<SObject>{
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50)
+      },
+      new Map<Id, SObject>()
+    );
+
+    String tableHeader = '<tr><th>Stage</th><th>Name</th><th>Amount</th></tr>';
+    String firstTableBodyRow = '<tr><td>One</td><td>(blank)</td><td>100.0</td></tr>';
+    String secondTableBodyRow = '<tr><td>Two</td><td>Deux</td><td>100.0</td></tr>';
+    System.assertEquals('<table>' + tableHeader + firstTableBodyRow + secondTableBodyRow + '</table>', calc.getReturnValue());
+  }
+
   private class RollupCalcEmptyMock extends RollupCalculator {
     public RollupCalcEmptyMock() {
-      super(Rollup.Op.LAST, null, null, null, new Rollup__mdt(), null);
+      super(Rollup.Op.LAST, null, null, new Rollup__mdt(), null);
     }
   }
 
