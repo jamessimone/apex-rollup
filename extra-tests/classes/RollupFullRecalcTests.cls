@@ -2425,7 +2425,6 @@ private class RollupFullRecalcTests {
     );
     Test.stopTest();
 
-    acc = [SELECT Description FROM Account];
     // in actuality, platform self-closes tags on DML
     System.assertEquals('<p>A, 15.00', acc.Description);
   }

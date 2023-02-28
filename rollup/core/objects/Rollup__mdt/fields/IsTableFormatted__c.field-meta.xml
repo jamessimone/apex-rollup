@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsTableFormatted__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Use this OR the group by row start/end delimiters. Only compatible with rich text fields!</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Use this OR the group by row start/end delimiters. Only compatible with rich text fields!</inlineHelpText>
+    <label>Is Table Formatted?</label>
+    <type>Checkbox</type>
+</CustomField>

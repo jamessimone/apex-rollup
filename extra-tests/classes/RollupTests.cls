@@ -2551,7 +2551,7 @@ private class RollupTests {
       new ContactPointAddress(PreferenceRank = 1000, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
     };
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
-    flowInputs[0].groupByRowDelimiter = '\t';
+    flowInputs[0].groupByRowStartDelimiter = '\t';
 
     Exception ex;
     try {

@@ -2025,6 +2025,34 @@ private class RollupCalculatorTests {
     System.assertEquals('• One, EUR, 100.0\n• One, JPY, 100.0', calc.getReturnValue());
   }
 
+  @IsTest
+  static void displaysGroupByAsTableWhenFlagged() {
+    RollupCalculator calc = getCalculator(
+      null,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType), GroupByFields__c = 'StageName, Name', IsTableFormatted__c = true),
+      RollupTestUtils.createId(Account.SObjectType),
+      Account.Id
+    );
+
+    calc.performRollup(
+      new List<SObject>{
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'Two', Name = 'Deux', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50),
+        new Opportunity(StageName = 'One', Amount = 50)
+      },
+      new Map<Id, SObject>()
+    );
+
+    String tableHeader = '<tr><th>Stage</th><th>Name</th><th>Amount</th></tr>';
+    String firstTableBodyRow = '<tr><td>One</td><td>(blank)</td><td>100.0</td></tr>';
+    String secondTableBodyRow = '<tr><td>Two</td><td>Deux</td><td>100.0</td></tr>';
+    System.assertEquals('<table>' + tableHeader + firstTableBodyRow + secondTableBodyRow + '</table>', calc.getReturnValue());
+  }
+
   private class RollupCalcEmptyMock extends RollupCalculator {
     public RollupCalcEmptyMock() {
       super(Rollup.Op.LAST, null, null, new Rollup__mdt(), null);

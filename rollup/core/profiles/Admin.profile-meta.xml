@@ -251,6 +251,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Rollup__mdt.IsTableFormatted__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Rollup__mdt.LimitAmount__c</field>
         <readable>true</readable>
     </fieldPermissions>

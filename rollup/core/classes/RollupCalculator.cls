@@ -1272,6 +1272,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class GroupByCalculator extends DelimiterCalculator {
+    private final GroupingFormatter formatter;
     private final RollupComparer sorter;
     private final RollupCalculator innerCalculator;
     private final List<String> fieldNames = new List<String>();
@@ -1284,16 +1285,14 @@ public without sharing abstract class RollupCalculator {
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       this.setupFields();
-      this.setupDelimiters();
+      this.formatter = this.metadata.IsTableFormatted__c
+        ? (GroupingFormatter) new TableGroupingFormatter(opFieldOnCalcItem)
+        : (GroupingFormatter) new DefaultGroupingFormatter(this.metadata, this.concatDelimiter, this.opFieldOnLookupObject);
       this.sorter = new RollupCalcItemSorter(this.fieldNames);
       isGroupByRollup = true;
       this.innerCalculator = Factory.getCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       isGroupByRollup = false;
     }
-
-    /**
-      try out "Should display as table" option, as well as "optional group by style tag" field
-     */
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       // ceremony section - curry the values from this to the inner calculator
@@ -1309,12 +1308,15 @@ public without sharing abstract class RollupCalculator {
       Map<String, List<SObject>> groupingStringToItems = new Map<String, List<SObject>>();
       for (SObject item : calcItems) {
         String currentGrouping = '';
-        for (String fieldName : this.fieldNames) {
+        for (Integer index = 0; index < this.fieldNames.size(); index++) {
+          String fieldName = this.fieldNames[index];
+          Boolean isFirst = index == 0;
+          Boolean isLast = index == this.fieldNames.size() - 1;
           Object groupingVal = item.get(fieldName);
           if (groupingVal == null) {
             groupingVal = '(blank)';
           }
-          currentGrouping += String.valueOf(groupingVal) + this.concatDelimiter;
+          currentGrouping += this.formatter.getGroupingColumn(fieldName, groupingVal, isFirst, isLast);
         }
         if (groupingStringToItems.containsKey(currentGrouping)) {
           groupingStringToItems.get(currentGrouping).add(item);
@@ -1323,19 +1325,14 @@ public without sharing abstract class RollupCalculator {
         }
       }
 
-      String newGroupingValue = '';
-      List<String> groupingKeys = new List<String>(groupingStringToItems.keySet());
-      for (String groupingKey : groupingKeys) {
+      String newGroupingValue = this.formatter.getGroupingStart();
+      for (String groupingKey : groupingStringToItems.keySet()) {
         this.innerCalculator.setDefaultValues(this.lookupRecordKey, RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem));
         this.innerCalculator.performRollup(groupingStringToItems.get(groupingKey), oldCalcItems);
         this.innerCalculator.setReturnValue();
-        newGroupingValue +=
-          this.metadata.GroupByRowStartDelimiter__c +
-          groupingKey +
-          this.innerCalculator.getReturnValue() +
-          this.metadata.GroupByRowEndDelimiter__c;
+        newGroupingValue += this.formatter.getGroupingRowStart(groupingKey) + this.innerCalculator.getReturnValue() + this.formatter.getGroupingRowEnd();
       }
-      this.returnVal = String.isBlank(newGroupingValue) ? null : newGroupingValue.removeEnd(this.metadata.GroupByRowEndDelimiter__c);
+      this.returnVal = String.isBlank(newGroupingValue) ? null : this.formatter.getEnd(newGroupingValue);
     }
 
     private void setupFields() {
@@ -1348,16 +1345,100 @@ public without sharing abstract class RollupCalculator {
         this.fieldNames.add(trimmedFieldName);
       }
     }
+  }
 
-    private void setupDelimiters() {
+  private interface GroupingFormatter {
+    String getGroupingStart();
+    String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast);
+    String getGroupingRowStart(String groupingKey);
+    String getGroupingRowEnd();
+    String getEnd(String groupByString);
+  }
+
+  private class DefaultGroupingFormatter implements GroupingFormatter {
+    private final String delimiter;
+    private final Rollup__mdt metadata;
+
+    public DefaultGroupingFormatter(Rollup__mdt metadata, String delimiter, Schema.SObjectField opFieldOnLookupObject) {
+      this.metadata = metadata;
+      this.delimiter = delimiter;
+      this.setupDelimiters(opFieldOnLookupObject);
+    }
+
+    public String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast) {
+      return String.valueOf(groupingValue) + this.delimiter;
+    }
+
+    public String getGroupingStart() {
+      return '';
+    }
+
+    public String getGroupingRowStart(String groupingKey) {
+      return this.metadata.GroupByRowStartDelimiter__c + groupingKey;
+    }
+
+    public String getGroupingRowEnd() {
+      return this.metadata.GroupByRowEndDelimiter__c;
+    }
+
+    public String getEnd(String groupByString) {
+      return groupByString.removeEnd(this.getGroupingRowEnd());
+    }
+
+    private void setupDelimiters(Schema.SObjectField opFieldOnLookupObject) {
       if (this.metadata.GroupByRowEndDelimiter__c == null) {
         // insane hack to identify rich text fields
-        Boolean isRichText = JSON.serialize(this.opFieldOnLookupObject.getDescribe()).contains('"extraTypeInfo":"richtextarea"');
+        Boolean isRichText = JSON.serialize(opFieldOnLookupObject.getDescribe()).contains('"extraTypeInfo":"richtextarea"');
         this.metadata.GroupByRowEndDelimiter__c = isRichText ? '<br>' : '\n';
       }
+
       if (this.metadata.GroupByRowStartDelimiter__c == null) {
         this.metadata.GroupByRowStartDelimiter__c = '• ';
       }
+    }
+  }
+
+  private class TableGroupingFormatter implements GroupingFormatter {
+    private final Map<String, Schema.SObjectField> fieldNameToToken;
+    private final Schema.SObjectField targetField;
+    private final Set<String> columnHeaders = new Set<String>();
+
+    private final String tdOpen = '<td>';
+    private final String tdClose = '</td>';
+    private final String thOpen = '<th>';
+    private final String thClose = '</th>';
+    private final String trOpen = '<tr>';
+    private final String trClose = '</tr>';
+
+    public TableGroupingFormatter(Schema.SObjectField targetField) {
+      this.fieldNameToToken = targetField.getDescribe().getSObjectType().getDescribe().fields.getMap();
+      this.targetField = targetField;
+    }
+
+    public String getGroupingColumn(String fieldName, Object groupingValue, Boolean isFirst, Boolean isLast) {
+      String prefix = isFirst ? this.trOpen : '';
+      String suffix = isLast ? this.trClose : '';
+      this.columnHeaders.add(prefix + this.thOpen + this.fieldNameToToken.get(fieldName).getDescribe().getLabel() + this.thClose);
+      if (isLast) {
+        this.columnHeaders.add(this.thOpen + this.targetField.getDescribe().getName() + this.thClose + suffix);
+      }
+      return prefix + this.tdOpen + String.valueOf(groupingValue) + this.tdClose + suffix;
+    }
+
+    public String getGroupingStart() {
+      return '<table>' + String.join(new List<String>(this.columnHeaders), '');
+    }
+
+    public String getGroupingRowStart(String groupingKey) {
+      return groupingKey.replace(this.trClose, '') + this.tdOpen;
+    }
+
+    public String getGroupingRowEnd() {
+      return this.tdClose + this.trClose;
+    }
+
+    public String getEnd(String groupByString) {
+      return groupByString + '</table>';
     }
   }
 

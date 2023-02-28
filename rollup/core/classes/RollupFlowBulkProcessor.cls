@@ -120,7 +120,9 @@ global without sharing class RollupFlowBulkProcessor {
             input.orderByFirstLast = input.orderByFirstLast.removeEnd(',');
             // metadata values that don't get overridden
             input.groupByFields = meta.GroupByFields__c;
-            input.groupByRowDelimiter = meta.GroupByRowStartDelimiter__c;
+            input.groupByRowEndDelimiter = meta.GroupByRowEndDelimiter__c;
+            input.groupByRowStartDelimiter = meta.GroupByRowStartDelimiter__c;
+            input.isTableFormatted = meta.IsTableFormatted__c;
             input.lookupFieldOnCalcItem = meta.LookupFieldOnCalcItem__c;
             input.lookupFieldOnOpObject = meta.LookupFieldOnLookupObject__c;
             input.rollupFieldOnCalcItem = meta.RollupFieldOnCalcItem__c;

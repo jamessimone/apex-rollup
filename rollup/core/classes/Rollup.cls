@@ -636,8 +636,10 @@ global without sharing virtual class Rollup {
     global String grandparentRelationshipFieldPath;
     @InvocableVariable(label='Group By Fields (Comma-separated)' description='Transforms a rollup into a group by rollup based on the fields provided')
     global String groupByFields;
-    @InvocableVariable(label='Grandparent Relationship Field Path' description='The text value to separate grouped field rows with')
-    global String groupByRowDelimiter;
+    @InvocableVariable(label='Group By Row End Delimiter' description='The text value to suffix grouped field rows with')
+    global String groupByRowEndDelimiter;
+    @InvocableVariable(label='Group By Row Start Delimiter' description='The text value to prefix grouped field rows with')
+    global String groupByRowStartDelimiter;
     @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
     global String oneToManyGrandparentFields;
     @InvocableVariable(
@@ -647,6 +649,8 @@ global without sharing virtual class Rollup {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent = false;
+    @InvocableVariable(label='Is Table Formatted' description='If rolling up to a group by text field and you want a table, set this to true')
+    global Boolean isTableFormatted = false;
     @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
     @InvocableVariable(label='Limit Amount')
@@ -1766,6 +1770,7 @@ global without sharing virtual class Rollup {
             GroupByRowStartDelimiter__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
+            IsTableFormatted__c,
             LimitAmount__c,
             OneToManyGrandparentFields__c,
             OrderByFirstLast__c,
@@ -1833,9 +1838,11 @@ global without sharing virtual class Rollup {
       FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
       GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
       GroupByFields__c = flowInput.groupByFields,
-      GroupByRowStartDelimiter__c = flowInput.groupByRowDelimiter,
+      GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
+      GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
       IsFullRecordSet__c = flowInput.isFullRecordSet,
       IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
+      IsTableFormatted__c = flowInput.isTableFormatted,
       LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
       LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
       LookupObject__c = flowInput.rollupSObjectName,
@@ -2350,7 +2357,7 @@ global without sharing virtual class Rollup {
       errorMessage = 'Rollup To Ultimate Parent and Ultimate Parent Lookup must both be set for hierarchical rollups';
     } else if (String.isNotBlank(flowInput.fullRecalculationDefaultStringValue) && flowInput.fullRecalculationDefaultNumberValue != null) {
       errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
-    } else if (flowInput.groupByRowDelimiter != null && flowInput.groupByFields == null) {
+    } else if (flowInput.groupByRowStartDelimiter != null && flowInput.groupByFields == null) {
       errorMessage = 'You must set group by fields when supplying a group by delimiter';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
       if (String.isNotBlank(flowInput.concatDelimiter)) {
@@ -2933,7 +2940,7 @@ global without sharing virtual class Rollup {
       if (sensibleDefault == null) {
         // this *should* be impossible, since the record is included on install, but ...
         sensibleDefault = new RollupControl__mdt(DeveloperName = CONTROL_ORG_DEFAULTS);
-        for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe().fields.getMap().values()) {
+        for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().values()) {
           if (fieldToken != RollupControl__mdt.DeveloperName && fieldToken != RollupControl__mdt.Id) {
             sensibleDefault.put(fieldToken, fieldToken.getDescribe().getDefaultValue());
           }
