@@ -1388,8 +1388,7 @@ public without sharing abstract class RollupCalculator {
 
     private void setupDelimiters(Schema.SObjectField opFieldOnLookupObject) {
       if (this.metadata.GroupByRowEndDelimiter__c == null) {
-        // insane hack to identify rich text fields
-        Boolean isRichText = JSON.serialize(opFieldOnLookupObject.getDescribe()).contains('"extraTypeInfo":"richtextarea"');
+        Boolean isRichText = opFieldOnLookupObject.getDescribe().isHtmlFormatted();
         this.metadata.GroupByRowEndDelimiter__c = isRichText ? '<br>' : '\n';
       }
 

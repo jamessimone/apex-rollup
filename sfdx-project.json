@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Adding Group By capabilities to rollups",
-            "versionNumber": "1.5.50.0",
+            "versionName": "TODO",
+            "versionNumber": "1.5.51.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -89,7 +89,6 @@
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
         "Apex Rollup - Custom Logger@0.0.12-0": "04t6g000008SjqIAAS",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
-        "Apex Rollup - Extra Code Coverage@0.0.14-0": "04t6g000008b0i4AAA",
         "Apex Rollup - Extra Code Coverage@0.0.15-0": "04t6g000008fjZaAAI",
         "Apex Rollup - Extra Code Coverage@0.0.16-0": "04t6g000008fje1AAA",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
