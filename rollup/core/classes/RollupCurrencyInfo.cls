@@ -3,7 +3,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   @TestVisible
   private static List<RollupCurrencyInfo> mockCurrencyData;
-  private static final Map<Id, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<Id, SObject>();
+  private static final Map<String, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<String, SObject>();
   private static final Set<String> HASHED_ITEM_VALUES = new Set<String>();
   private static Date minDatedCurrencyLookup = Date.newInstance(System.today().year(), 1, 1).addYears(-1);
   private static Date maxDatedCurrencyLookup = System.today().addYears(1);
@@ -91,7 +91,8 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   public static SObject getCalcItem(SObject calcItem) {
-    return TRANSFORMED_MULTICURRENCY_CALC_ITEMS.containsKey(calcItem.Id) ? TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id) : calcItem;
+    SObject potentiallyTransformedItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(getKey(calcItem));
+    return potentiallyTransformedItem != null ? potentiallyTransformedItem : calcItem;
   }
 
   public static RollupCurrencyInfo getCurrencyInfo(String currencyIsoCode) {
@@ -112,8 +113,12 @@ public without sharing virtual class RollupCurrencyInfo {
     return newParent;
   }
 
+  private static String getKey(SObject calcItem) {
+    return calcItem.Id + ((Object) calcItem).hashCode().format();
+  }
+
   private static void loadProperMinMaxDates(List<SObject> calcItems) {
-    if (hasLoadedDatedCurrencyInfo) {
+    if (hasLoadedDatedCurrencyInfo || IS_DATED_MULTICURRENCY == false) {
       return;
     }
     hasLoadedDatedCurrencyInfo = true;
@@ -140,7 +145,8 @@ public without sharing virtual class RollupCurrencyInfo {
   ) {
     if (calcItem.getSObjectType().getDescribe().fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)) {
       String calcItemIsoCode = (String) calcItem.get(CURRENCY_ISO_CODE_FIELD_NAME);
-      SObject clonedCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(calcItem.Id);
+      String transformKey = getKey(calcItem);
+      SObject clonedCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(transformKey);
       String hashKey = getHashKey(calcItem, opFieldOnCalcItem);
       if (
         String.isBlank(parentIsoCode) ||
@@ -165,7 +171,7 @@ public without sharing virtual class RollupCurrencyInfo {
         }
       }
 
-      TRANSFORMED_MULTICURRENCY_CALC_ITEMS.put(calcItem.Id, clonedCalcItem);
+      TRANSFORMED_MULTICURRENCY_CALC_ITEMS.put(transformKey, clonedCalcItem);
     }
   }
 

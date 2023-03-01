@@ -820,13 +820,13 @@ private class RollupCalculatorTests {
     mockUsdInfo.DecimalPlaces = 2;
     mockUsdInfo.IsoCode = 'USD';
     RollupCurrencyInfo mockEurInfo = new RollupCurrencyInfo();
-    mockEurInfo.ConversionRate = .56;
+    mockEurInfo.ConversionRate = .64;
     mockEurInfo.DecimalPlaces = 2;
     mockEurInfo.IsoCode = 'EUR';
     RollupCurrencyInfo.mockCurrencyData = new List<RollupCurrencyInfo>{ mockUsdInfo, mockEurInfo };
 
     RollupCalculator calc = getCalculator(
-      1.56,
+      1.5625,
       Rollup.Op.UPDATE_SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
@@ -845,7 +845,7 @@ private class RollupCalculatorTests {
 
     calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
 
-    System.assertEquals(0, calc.getReturnValue());
+    System.assertEquals(null, calc.getReturnValue());
   }
 
   // CONCAT tests
