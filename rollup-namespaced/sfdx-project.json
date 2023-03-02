@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Adding Group By capabilities to rollups",
-            "versionNumber": "1.0.23.0",
+            "versionName": "Multi-currency bugfix",
+            "versionNumber": "1.0.24.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -44,6 +44,7 @@
         "apex-rollup-namespaced@1.0.20-0": "04t6g000008fjadAAA",
         "apex-rollup-namespaced@1.0.21-0": "04t6g000008fjcUAAQ",
         "apex-rollup-namespaced@1.0.22-0": "04t6g000008fjceAAA",
-        "apex-rollup-namespaced@1.0.23-0": "04t6g000008fjeLAAQ"
+        "apex-rollup-namespaced@1.0.23-0": "04t6g000008fjeLAAQ",
+        "apex-rollup-namespaced@1.0.24-0": "04t6g000008fjeuAAA"
     }
 }

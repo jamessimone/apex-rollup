@@ -809,6 +809,45 @@ private class RollupCalculatorTests {
     System.assertEquals(opp.Amount, calc.getReturnValue());
   }
 
+  @IsTest
+  static void correctlySumsMulticurrencyOnUpdate() {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
+      return;
+    }
+
+    RollupCurrencyInfo mockUsdInfo = new RollupCurrencyInfo();
+    mockUsdInfo.ConversionRate = 1;
+    mockUsdInfo.DecimalPlaces = 2;
+    mockUsdInfo.IsoCode = 'USD';
+    RollupCurrencyInfo mockEurInfo = new RollupCurrencyInfo();
+    mockEurInfo.ConversionRate = .64;
+    mockEurInfo.DecimalPlaces = 2;
+    mockEurInfo.IsoCode = 'EUR';
+    RollupCurrencyInfo.mockCurrencyData = new List<RollupCurrencyInfo>{ mockUsdInfo, mockEurInfo };
+
+    RollupCalculator calc = getCalculator(
+      1.5625,
+      Rollup.Op.UPDATE_SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      '',
+      Opportunity.AccountId
+    );
+    Account parent = new Account();
+    parent.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, mockUsdInfo.IsoCode);
+    calc.setMultiCurrencyInfo(parent);
+    Opportunity opp = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), Amount = 0);
+    opp.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, mockEurInfo.IsoCode);
+    Opportunity oldOpp = opp.clone(true);
+    oldOpp.Amount = 1;
+    Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => oldOpp };
+
+    calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
+
+    System.assertEquals(null, calc.getReturnValue());
+  }
+
   // CONCAT tests
 
   @IsTest

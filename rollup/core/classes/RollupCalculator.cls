@@ -295,6 +295,13 @@ public without sharing abstract class RollupCalculator {
     List<SObject> temporaryItems = new List<SObject>(items);
     items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
     this.transformForMultiCurrencyOrgs(temporaryItems);
+    if (oldCalcItems.isEmpty() == false && this.isMultiCurrencyRollup) {
+      List<SObject> tempOldCalcItems = oldCalcItems.values();
+      this.transformForMultiCurrencyOrgs(tempOldCalcItems);
+      for (SObject oldCalcItem : tempOldCalcItems) {
+        oldCalcItems.put(oldCalcItem.Id, this.getTransformedCalcItem(oldCalcItem));
+      }
+    }
     for (SObject item : temporaryItems) {
       Boolean currentItemMatches = this.eval?.matches(item) != false;
       if (currentItemMatches == false) {
@@ -1388,8 +1395,7 @@ public without sharing abstract class RollupCalculator {
 
     private void setupDelimiters(Schema.SObjectField opFieldOnLookupObject) {
       if (this.metadata.GroupByRowEndDelimiter__c == null) {
-        // insane hack to identify rich text fields
-        Boolean isRichText = JSON.serialize(opFieldOnLookupObject.getDescribe()).contains('"extraTypeInfo":"richtextarea"');
+        Boolean isRichText = opFieldOnLookupObject.getDescribe().isHtmlFormatted();
         this.metadata.GroupByRowEndDelimiter__c = isRichText ? '<br>' : '\n';
       }
 
