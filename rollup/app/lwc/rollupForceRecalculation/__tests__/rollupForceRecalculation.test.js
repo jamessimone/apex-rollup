@@ -12,6 +12,7 @@ import RollupForceRecalculation from 'c/rollupForceRecalculation';
 const mockGetObjectInfo = require('./data/rollupCMDTWireAdapter.json');
 
 function flushPromises() {
+  // eslint-disable-next-line
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
@@ -194,7 +195,7 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
     await flushPromises('apex controller call');
 
-    const expectedList = mockMetadata['Contact'];
+    const expectedList = mockMetadata.Contact;
     delete expectedList[0]['CalcItem__r.QualifiedApiName'];
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(expectedList),
@@ -354,7 +355,7 @@ describe('Rollup force recalc tests', () => {
     submitButton.click();
     await flushPromises('apex controller call');
 
-    const expectedList = mockMetadata['Contact'];
+    const expectedList = mockMetadata.Contact;
     delete expectedList[0]['CalcItem__r.QualifiedApiName'];
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(expectedList),

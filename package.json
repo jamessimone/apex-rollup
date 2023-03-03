@@ -46,7 +46,7 @@
     "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
     "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
     "husky:pre-commit": "lint-staged",
-    "lint:verify": "eslint **/lwc/**",
+    "lint:verify": "sfdx scanner:run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
     "prepare": "husky install && sfdx plugins:link ./node_modules/@salesforce/sfdx-scanner && sfdx plugins:link ./node_modules/@jongpie/sfdx-bummer-plugin",
     "prettier": "prettier",
     "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",
