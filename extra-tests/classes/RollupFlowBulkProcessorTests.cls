@@ -242,7 +242,7 @@ private class RollupFlowBulkProcessorTests {
   @IsTest
   static void shouldMapBulkFlowInputToRegularOne() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
-    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, Id = RollupTestUtils.createId(Opportunity.SObjectType)) };
     input.rollupContext = 'INSERT';
     input.calcItemChangedFields = 'Amount';
     input.calcItemTypeWhenRollupStartedFromParent = 'Opportunity';

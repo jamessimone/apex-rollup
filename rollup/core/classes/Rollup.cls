@@ -2360,7 +2360,7 @@ global without sharing virtual class Rollup {
     } else if (flowInput.groupByRowStartDelimiter != null && flowInput.groupByFields == null) {
       errorMessage = 'You must set group by fields when supplying a group by delimiter';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
-      if (String.isNotBlank(flowInput.concatDelimiter)) {
+      if (String.isNotBlank(flowInput.concatDelimiter) && flowInput.groupByFields == null) {
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
