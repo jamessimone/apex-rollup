@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.5.51",
+  "version": "1.5.52",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -16,10 +16,9 @@
     "@lwc/eslint-plugin-lwc": "latest",
     "@prettier/plugin-xml": "latest",
     "@salesforce/eslint-config-lwc": "latest",
-    "@salesforce/eslint-plugin-aura": "latest",
     "@salesforce/eslint-plugin-lightning": "latest",
     "@salesforce/sfdx-lwc-jest": "0.12.5",
-    "@salesforce/sfdx-scanner": "latest",
+    "@salesforce/sfdx-scanner": "3.10.0",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "husky": "latest",
