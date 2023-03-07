@@ -980,7 +980,6 @@ public without sharing abstract class RollupCalculator {
 
     private void sortAndConcat() {
       List<String> values = this.stringVal.split(this.concatDelimiter);
-      Set<String> distinctValues = new Set<String>();
       if (this.isConcatDistinct) {
         values = new List<String>(new Set<String>(values));
       }
