@@ -1796,7 +1796,7 @@ global without sharing virtual class Rollup {
           meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
         }
-      } else if (onlyUseMockMetadata) {
+      } else if (onlyUseMockMetadata && cachedMetadata == null) {
         cachedMetadata = new List<Rollup__mdt>();
       }
       if (rollupMetadata != null) {
@@ -2006,7 +2006,7 @@ global without sharing virtual class Rollup {
         queryWrapper = getIntermediateGrandparentQueryWrapper(meta, calcItems, oldCalcItems);
       }
 
-      if (queryWrapper != null) {
+      if (queryWrapper?.hasQuery == true) {
         metas.remove(index);
         RollupMetadata wrappedMeta = getWrappedMeta(
           calcItemSObjectType,
@@ -2026,7 +2026,7 @@ global without sharing virtual class Rollup {
         if (isRefresh) {
           prepareReparentDeletionOps(meta, calcItems, oldCalcItems, deleteKeyToReparentOp);
         }
-      } else if (isRefresh) {
+      } else if (isRefresh || queryWrapper != null) {
         // remove non-matches
         metas.remove(index);
       } else {

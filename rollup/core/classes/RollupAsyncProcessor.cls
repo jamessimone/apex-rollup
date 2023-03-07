@@ -261,8 +261,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<RollupAsyncProcessor> syncRollups = new List<RollupAsyncProcessor>();
     Boolean shouldRunWithoutCustomSetting = this.ingestRollupControlData(syncRollups);
 
+    Boolean isBasicNoOp = this.rollups.isEmpty() && syncRollups.isEmpty() && this.isFullRecalc == false;
     if (this.isNoOp) {
-      this.isNoOp = this.rollups.isEmpty() && syncRollups.isEmpty() && (this.isFullRecalc == false && this.calcItems?.isEmpty() == true);
+      this.isNoOp = isBasicNoOp && this.calcItems?.isEmpty() == true;
+    } else {
+      this.isNoOp = isBasicNoOp;
     }
 
     String rollupProcessId = this.getNoProcessId();
