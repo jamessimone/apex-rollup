@@ -36,6 +36,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
         // record detail pages / components still based on Aura need a little kickstart to properly show the updated values
         this.dispatchEvent(new RefreshEvent());
       } catch (err) {
+        // eslint-disable-next-line
         console.error(err);
       }
     }

@@ -737,6 +737,24 @@ private class RollupIntegrationTests {
     if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
       return;
     }
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.shouldFlattenAsyncProcesses = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        )
+      )
+    };
+
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
@@ -754,7 +772,45 @@ private class RollupIntegrationTests {
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
     insert new List<ApplicationLog__c>{ child, secondChild };
 
-    Rollup.shouldFlattenAsyncProcesses = true;
+    Test.startTest();
+    parentApps[0].Account__c = greatGrandparent.Id;
+    parentApps[1].Account__c = secondGreatGrandparent.Id;
+    update parentApps;
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+
+    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - apex');
+    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - apex');
+  }
+
+  @IsTest
+  static void shouldNotRunGrandparentRollupForIntermediateRecordsWhenLookupsAreNotUpdated() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
+
+    Rollup.onlyUseMockMetadata = true;
+
+    Account greatGrandparent = new Account(Name = 'Great-grandparent');
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    List<Account> greatGrandparents = new List<Account>{ greatGrandparent, secondGreatGrandparent };
+    insert greatGrandparents;
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = secondGreatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = greatGrandparent.Id);
+    List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
+    insert parentApps;
+
+    Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
+    insert new List<ApplicationLog__c>{ child, secondChild };
+
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
@@ -769,20 +825,16 @@ private class RollupIntegrationTests {
         )
       )
     };
-    Rollup.shouldRun = true;
-    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    RollupAsyncProcessor.stubParentRecords = greatGrandparents;
 
     Test.startTest();
-    parentApps[0].Account__c = greatGrandparent.Id;
-    parentApps[1].Account__c = secondGreatGrandparent.Id;
+    parentApps[0].Name = 'Grandparent rename';
+    parentApps[1].Name = 'Second grandparent rename';
     update parentApps;
     Test.stopTest();
 
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
-
-    System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - apex');
-    System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - apex');
+    System.assertEquals('Great-grandparent', greatGrandparent.Name, 'Great grandparent name should not have been updated');
+    System.assertEquals('Second great-grandparent', secondGreatGrandparent.Name);
   }
 
   @IsTest

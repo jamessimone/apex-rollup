@@ -865,7 +865,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      super.setDefaultValues(lookupRecordKey, isConcatDistinct(op) ? '' : priorVal);
+      super.setDefaultValues(lookupRecordKey, isConcatDistinct(this.op) ? '' : priorVal);
       this.stringVal = (String) this.returnVal;
     }
 
@@ -880,10 +880,7 @@ public without sharing abstract class RollupCalculator {
           possibleReturnValue = possibleReturnValue.substringAfter(trimmedDelimiter).trim();
         }
 
-        this.stringVal = (possibleReturnValue.startsWith(trimmedDelimiter)
-            ? possibleReturnValue.substring(1, possibleReturnValue.length())
-            : possibleReturnValue)
-          .trim();
+        this.stringVal = possibleReturnValue.trim();
         this.sortAndConcat();
       }
       this.returnVal = this.stringVal;
@@ -1012,11 +1009,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     private String concatWithDelimiter(String newVal) {
-      if (String.isBlank(this.stringVal) || this.stringVal.endsWith(this.concatDelimiter)) {
-        return newVal + this.concatDelimiter;
-      } else {
-        return this.concatDelimiter + newVal + this.concatDelimiter;
-      }
+      return (String.isBlank(this.stringVal) || this.stringVal.endsWith(this.concatDelimiter) ? '' : this.concatDelimiter) + newVal + this.concatDelimiter;
     }
 
     private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {

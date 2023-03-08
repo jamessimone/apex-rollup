@@ -210,6 +210,7 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private without sharing class DefaultUpdater implements IUpdater {
+    @SuppressWarnings('PMD.ApexCrudViolation')
     public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
       Database.update(recordsToUpdate, options);
     }

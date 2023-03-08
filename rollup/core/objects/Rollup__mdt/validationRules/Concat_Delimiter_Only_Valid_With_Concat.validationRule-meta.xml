@@ -10,12 +10,10 @@
     NOT(
       ISPICKVAL(RollupOperation__c, &apos;CONCAT_DISTINCT&apos;)
     ),
+    ISBLANK(GroupByFields__c),
     NOT(
-      ISBLANK(GroupByFields__c)
-    ),
-  NOT(
-    ISBLANK(ConcatDelimiter__c)
-  )
+      ISBLANK(ConcatDelimiter__c)
+    )
 )</errorConditionFormula>
     <errorMessage>Concat Delimiter should only be used with CONCAT or CONCAT_DISTINCT or group by rollup operations</errorMessage>
 </ValidationRule>

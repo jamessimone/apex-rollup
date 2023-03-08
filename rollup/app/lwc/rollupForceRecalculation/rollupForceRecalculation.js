@@ -171,8 +171,9 @@ export default class RollupForceRecalculation extends LightningElement {
       }
       await this._getBatchJobStatus(jobId);
     } catch (e) {
-      const errorMessage = !!e.body && e.body.message ? e.body.message : e.message;
+      const errorMessage = Boolean(e.body) && e.body.message ? e.body.message : e.message;
       this._displayErrorToast('An error occurred while rolling up', errorMessage);
+      // eslint-disable-next-line
       console.error(e); // in the event you dismiss the toast but still want to see the error
     }
   }
@@ -194,6 +195,7 @@ export default class RollupForceRecalculation extends LightningElement {
       if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false && this._validateAsyncJob(jobId)) {
         // some arbitrary wait time - for a huge batch job, it could take ages to resolve
         const waitTimeMs = 3000;
+        /* eslint-disable-next-line */
         timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), waitTimeMs);
       } else {
         this.isRollingUp = false;

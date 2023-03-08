@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.5.51",
+  "version": "1.5.52",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -16,10 +16,9 @@
     "@lwc/eslint-plugin-lwc": "latest",
     "@prettier/plugin-xml": "latest",
     "@salesforce/eslint-config-lwc": "latest",
-    "@salesforce/eslint-plugin-aura": "latest",
     "@salesforce/eslint-plugin-lightning": "latest",
     "@salesforce/sfdx-lwc-jest": "0.12.5",
-    "@salesforce/sfdx-scanner": "latest",
+    "@salesforce/sfdx-scanner": "3.10.0",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "husky": "latest",
@@ -46,7 +45,7 @@
     "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
     "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
     "husky:pre-commit": "lint-staged",
-    "lint:verify": "eslint **/lwc/**",
+    "lint:verify": "sfdx scanner:run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
     "prepare": "husky install && sfdx plugins:link ./node_modules/@salesforce/sfdx-scanner && sfdx plugins:link ./node_modules/@jongpie/sfdx-bummer-plugin",
     "prettier": "prettier",
     "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",

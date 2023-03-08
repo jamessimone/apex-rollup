@@ -46,6 +46,7 @@ jest.mock(
 );
 
 function flushPromises() {
+  // eslint-disable-next-line
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
