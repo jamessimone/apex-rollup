@@ -10,7 +10,7 @@ private class RollupCalculatorTests {
   /** FIRST / LAST operations */
   @IsTest
   static void shouldReturnNullWhenNoCalcItemsFirst() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
@@ -22,7 +22,7 @@ private class RollupCalculatorTests {
   static void fullRecalcDefaultUsedInsteadOfNullWhenSupplied() {
     Integer defaultVal = 0;
     Rollup__mdt metadata = configureOrderByMetadata(
-      new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = defaultVal),
+      new Rollup__mdt(FullRecalculationDefaultNumberValue__c = defaultVal),
       'CloseDate'
     );
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
@@ -34,7 +34,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnFirstValueBasedOnMetadataField() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     // the important part is that the middle item is the one used, to prove that sorting occurred
@@ -53,7 +53,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnLastValueBasedOnMetadataField() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     RollupCalculator calc = getCalculator(0, Rollup.Op.LAST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -70,7 +70,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnFirstValueIfOtherOrderByValueIsNull() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     metadata.RollupOrderBys__r[0].NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast;
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
@@ -88,7 +88,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnMiddleValueForFirst() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     Date today = System.today();
@@ -106,7 +106,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnFirstValueWhenMiddleAndLastAreNull() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     metadata.RollupOrderBys__r[0].NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast;
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
@@ -124,7 +124,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnLastValueIfOtherOrderByValueIsNull() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     metadata.RollupOrderBys__r[0].NullSortOrder__c = RollupMetaPicklists.NullSortOrder.NullsLast;
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
@@ -142,7 +142,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldNotSortAtAllIfOrderByValuesAreNull() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     List<Opportunity> opps = new List<Opportunity>{
@@ -158,7 +158,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnFirstString() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'Name');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -175,7 +175,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnLastString() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'Name');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
     RollupCalculator calc = getCalculator(0, Rollup.Op.LAST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -192,7 +192,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnFirstNumber() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'Amount');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Amount');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -209,7 +209,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnLastNumber() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'Amount');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Amount');
     RollupCalculator calc = getCalculator(0, Rollup.Op.LAST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -226,7 +226,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void regressionShouldRollupFirstLastWithQueriedOrderBy() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'Name');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -243,7 +243,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void regressionShouldExcludeCurrentItemsOnFirstLastDelete() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'Name');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
     RollupCalculator calc = getCalculator(0, Rollup.Op.DELETE_FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(
@@ -288,7 +288,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnNulltWhenNoCalcItemsAverage() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity'), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'CloseDate');
     RollupCalculator calc = getCalculator(
       0,
       Rollup.Op.Average,
@@ -306,7 +306,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldReturnFullRecalcDefaultWhenNoCalcItemsAverage() {
-    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = 5), 'CloseDate');
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(FullRecalculationDefaultNumberValue__c = 5), 'CloseDate');
     RollupCalculator calc = getCalculator(
       0,
       Rollup.Op.Average,
@@ -324,7 +324,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldNotTryToAverageNull() {
-    Rollup__mdt metadata = new Rollup__mdt(CalcItem__c = 'Opportunity');
+    Rollup__mdt metadata = new Rollup__mdt();
     RollupCalculator calc = getCalculator(
       0,
       Rollup.Op.AVERAGE,
@@ -371,6 +371,20 @@ private class RollupCalculatorTests {
     System.assertEquals(4, calc.getReturnValue());
   }
 
+  @IsTest
+  static void filtersIncorrectCalcItems() {
+    Account acc = [SELECT Id FROM Account];
+
+    Task passedInTask = new Task(WhatId = acc.Id, Subject = 'Passed In', CallDurationInSeconds = 3, Id = RollupTestUtils.createId(Task.SObjectType));
+    Opportunity passedInOpp = new Opportunity(AccountId = acc.Id, Amount = 5);
+
+    RollupCalculator calc = getCalculator(0, Rollup.Op.AVERAGE, Task.CallDurationInSeconds, Account.AnnualRevenue, new Rollup__mdt(), acc.Id, Task.AccountId);
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Subject = ' + passedInTask.Subject, Task.SObjectType));
+    calc.performRollup(new List<SObject>{ passedInTask, passedInOpp }, new Map<Id, SObject>());
+
+    System.assertEquals(3, calc.getReturnValue());
+  }
+
   // COUNT tests
 
   @IsTest
@@ -397,7 +411,7 @@ private class RollupCalculatorTests {
       Rollup.Op.COUNT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -416,7 +430,7 @@ private class RollupCalculatorTests {
       Rollup.Op.COUNT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -433,7 +447,7 @@ private class RollupCalculatorTests {
       Rollup.Op.COUNT_DISTINCT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -452,7 +466,7 @@ private class RollupCalculatorTests {
       Rollup.Op.COUNT_DISTINCT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = 15),
+      new Rollup__mdt(FullRecalculationDefaultNumberValue__c = 15),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -471,7 +485,7 @@ private class RollupCalculatorTests {
       Rollup.Op.COUNT_DISTINCT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -497,7 +511,7 @@ private class RollupCalculatorTests {
       Rollup.Op.DELETE_COUNT_DISTINCT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       acc.Id,
       Opportunity.AccountId
     );
@@ -544,7 +558,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_COUNT_DISTINCT,
       Opportunity.Id,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       acc.Id,
       Opportunity.AccountId
     );
@@ -563,7 +577,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_COUNT,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -583,7 +597,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_COUNT,
       Opportunity.Name,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -603,7 +617,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_COUNT,
       Opportunity.Name,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -647,7 +661,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_COUNT,
       Opportunity.CloseDate,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -667,7 +681,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MOST,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -686,7 +700,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MOST,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity', FullRecalculationDefaultNumberValue__c = 5),
+      new Rollup__mdt(FullRecalculationDefaultNumberValue__c = 5),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -705,7 +719,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MOST,
       Opportunity.CloseDate,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -730,7 +744,7 @@ private class RollupCalculatorTests {
       Rollup.Op.SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -749,7 +763,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -776,7 +790,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       acc.Id,
       Opportunity.AccountId
     );
@@ -797,7 +811,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '',
       Opportunity.AccountId
     );
@@ -830,7 +844,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '',
       Opportunity.AccountId
     );
@@ -858,7 +872,7 @@ private class RollupCalculatorTests {
       Rollup.Op.CONCAT,
       Opportunity.Name,
       Account.Name,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -880,7 +894,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_CONCAT,
       Opportunity.Name,
       Account.Name,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       '0011g00003VDGbF002',
       Opportunity.AccountId
     );
@@ -1033,7 +1047,7 @@ private class RollupCalculatorTests {
       Rollup.Op.DELETE_CONCAT_DISTINCT,
       Opportunity.Name,
       Account.Name,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       acc.Id,
       Opportunity.AccountId
     );
@@ -1301,7 +1315,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MIN,
       Opportunity.CloseDate, // not a "MIN"-able field in SOQL; crucial for this test
       Opportunity.CloseDate,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       RollupTestUtils.createId(Opportunity.SObjectType),
       Opportunity.Name
     );
@@ -1393,7 +1407,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_MIN,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       acc.Id,
       Opportunity.AccountId
     );
@@ -1421,7 +1435,7 @@ private class RollupCalculatorTests {
       Rollup.Op.UPDATE_MAX,
       Opportunity.Amount,
       Account.AnnualRevenue,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       acc.Id,
       Opportunity.AccountId
     );
@@ -1456,7 +1470,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MAX,
       Opportunity.CloseDate,
       Contact.BirthDate,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       RollupTestUtils.createId(Contact.SObjectType),
       Opportunity.Name
     );
@@ -1472,7 +1486,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MAX,
       Opportunity.CloseDate,
       Event.ActivityDatetime,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       RollupTestUtils.createId(Contact.SObjectType),
       Opportunity.Name
     );
@@ -1485,7 +1499,7 @@ private class RollupCalculatorTests {
       Rollup.Op.MAX,
       Opportunity.CloseDate,
       ContactPointAddress.BestTimeToContactStartTime,
-      new Rollup__mdt(CalcItem__c = 'Opportunity'),
+      new Rollup__mdt(),
       RollupTestUtils.createId(Contact.SObjectType),
       Opportunity.Name
     );

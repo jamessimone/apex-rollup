@@ -117,9 +117,7 @@ public without sharing abstract class RollupCalculator {
         this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
     }
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
-    if (this.metadata.CalcItem__c != null) {
-      this.calcItemSObjectType = this.getCalcItemType();
-    }
+    this.calcItemSObjectType = opFieldOnCalcItem?.getDescribe().getSObjectType();
     this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(this.metadata));
   }
 
@@ -253,7 +251,7 @@ public without sharing abstract class RollupCalculator {
     // ("performRollup"); this means String, Number, and Datetime variant rollup calculations all need to correctly handle
     // recalculating via "calculateNewAggregateValue"
     if (this.shouldTriggerFullRecalc) {
-      this.returnVal = this.calculateNewAggregateValue(this.op, exclusionIds, this.getCalcItemType());
+      this.returnVal = this.calculateNewAggregateValue(this.op, exclusionIds, this.calcItemSObjectType);
       // bail on calling setReturnValue below
       return;
     } else if (this.shouldTriggerFullRecalc == false && localCalcItems.isEmpty()) {
@@ -303,7 +301,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
     for (SObject item : temporaryItems) {
-      Boolean currentItemMatches = this.eval?.matches(item) != false;
+      Boolean currentItemMatches = item.getSObjectType() == this.calcItemSObjectType && this.eval?.matches(item) != false;
       if (currentItemMatches == false) {
         switch on this.op {
           // not all downstream updates for old item matching when new item doesn't have been defined
@@ -340,10 +338,6 @@ public without sharing abstract class RollupCalculator {
     }
 
     return items;
-  }
-
-  protected SObjectType getCalcItemType() {
-    return RollupFieldInitializer.Current.getDescribeFromName(this.metadata.CalcItem__c).getSObjectType();
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
@@ -1115,10 +1109,9 @@ public without sharing abstract class RollupCalculator {
       Decimal oldSum;
       Decimal denominator = Decimal.valueOf(applicableCalcItems.size());
       if (this.isFullRecalc == false) {
-        SObjectType sObjectType = this.getCalcItemType();
-        String query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery);
+        String query = RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery);
         denominator += this.repo.getCount(query, calcItems);
-        oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems, sObjectType);
+        oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems, this.calcItemSObjectType);
       }
 
       if (oldSum == null) {

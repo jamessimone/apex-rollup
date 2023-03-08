@@ -1539,7 +1539,7 @@ global without sharing virtual class Rollup {
     }
     SObject firstRecord = cdcRecords[0];
     EventBus.ChangeEventHeader header = (EventBus.ChangeEventHeader) firstRecord.get('ChangeEventHeader');
-    SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(header.getEntityName()).getSObjectType();
+    Schema.SObjectType sObjectType = firstRecord.getSObjectType();
 
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(sObjectType);
     if (matchingMetadata.isEmpty()) {
