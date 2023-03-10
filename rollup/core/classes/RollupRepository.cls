@@ -7,10 +7,6 @@ public without sharing class RollupRepository {
     this.accessLevel = accessLevel;
   }
 
-  public Database.QueryLocator getLocator(String queryString, Object objIds) {
-    return Database.getQueryLocatorWithBinds(queryString, new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds }, this.accessLevel);
-  }
-
   public List<SObject> get(String queryString, Object objIds) {
     return this.get(queryString, new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds });
   }

@@ -215,7 +215,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     String query = this.preStart(objIds);
     this.logger.log('starting batch with query: ' + query, context, LoggingLevel.INFO);
     this.logger.save();
-    return new RollupRepository(this.accessLevel).getLocator(query, objIds);
+    return Database.getQueryLocator(query);
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
