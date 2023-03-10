@@ -1,7 +1,6 @@
 public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
-  protected final Map<String, Object> bindVars;
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
 
@@ -23,7 +22,6 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.rollupMetas = rollupMetas;
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
-    this.bindVars = new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => this.objIds, 'recordIds' => this.recordIds };
     this.processMetadata();
   }
 
@@ -100,6 +98,10 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     relatedParentRecords.clear();
     relatedParentRecords.addAll(relatedParentRecordsMap.values());
     this.parentRecordsToClear.clear();
+  }
+
+  protected override RollupRepository preStart() {
+    return new RollupRepository(this.accessLevel).setArg(this.objIds).setArg('recordIds', this.recordIds).setQuery(this.queryString);
   }
 
   protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollups(List<SObject> calcItems) {

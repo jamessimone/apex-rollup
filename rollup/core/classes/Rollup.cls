@@ -1580,7 +1580,7 @@ global without sharing virtual class Rollup {
     // getting the items back from the database before putting them into the map is an important step
     // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
     // anything for .getSObjectType() - which we need, further downstream
-    List<SObject> cdcCalcItems = new RollupRepository(accessLevel).get(queryString, objIds);
+    List<SObject> cdcCalcItems = new RollupRepository(accessLevel).setQuery(queryString).setArg(objIds).get();
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
     Rollup rollupToReturn = runFromApex(matchingMetadata, null, cdcCalcItems, cdcCalcItemsMap);
@@ -2220,8 +2220,7 @@ global without sharing virtual class Rollup {
   private static void appendQueryCount(RollupMetadata metaWrapper, Rollup__mdt meta, String whereClause, Schema.SObjectType childType) {
     if (metaWrapper.recordCount != RollupRepository.SENTINEL_COUNT_VALUE) {
       String countQuery = RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause);
-      Set<String> emptyCollection = new Set<String>();
-      Integer currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta)).getCount(countQuery, emptyCollection);
+      Integer currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta)).setQuery(countQuery).setArg(new Set<String>()).getCount();
       metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
   }
@@ -2845,7 +2844,10 @@ global without sharing virtual class Rollup {
           meta.LookupFieldOnCalcItem__c,
           '='
         );
-        List<SObject> recordsToReparent = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta)).get(queryString, mergedIdToCurrentParentId.keySet());
+        List<SObject> recordsToReparent = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
+          .setQuery(queryString)
+          .setArg(mergedIdToCurrentParentId.keySet())
+          .get();
         for (SObject childToReparent : recordsToReparent) {
           childToReparent.put(meta.LookupFieldOnCalcItem__c, mergedIdToCurrentParentId.get((Id) childToReparent.get(meta.LookupFieldOnCalcItem__c)));
           recordsToUpdate.add(childToReparent);

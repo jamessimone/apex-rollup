@@ -1,35 +1,52 @@
 public without sharing class RollupRepository {
   public static final Integer SENTINEL_COUNT_VALUE = -1;
 
+  private final Args args = new Args();
   private final System.AccessLevel accessLevel;
+
+  private class Args {
+    public final Map<String, Object> bindVars = new Map<String, Object>();
+    public String query;
+  }
 
   public RollupRepository(System.AccessLevel accessLevel) {
     this.accessLevel = accessLevel;
   }
 
-  public List<SObject> get(String queryString, Object objIds) {
-    return this.get(queryString, new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds });
+  public RollupRepository setQuery(String query) {
+    this.args.query = query;
+    return this;
   }
 
-  public List<SObject> get(String queryString, Map<String, Object> queryBinds) {
-    return this.query(queryString, queryBinds);
+  public RollupRepository setArg(Object value) {
+    this.args.bindVars.put(RollupQueryBuilder.BIND_VAR, value);
+    return this;
   }
 
-  public Integer getCount(String queryString, Object objIds) {
-    return this.getCount(queryString, new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds });
+  public RollupRepository setArg(String key, Object value) {
+    this.args.bindVars.put(key, value);
+    return this;
   }
 
-  public Integer getCount(String queryString, Map<String, Object> queryBinds) {
-    if (queryString.contains(RollupQueryBuilder.ALL_ROWS)) {
-      queryString = queryString.replace(RollupQueryBuilder.ALL_ROWS, '');
+  public Database.QueryLocator getLocator() {
+    return Database.getQueryLocatorWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
+  }
+
+  public List<SObject> get() {
+    return Database.queryWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
+  }
+
+  public Integer getCount() {
+    if (this.args.query.contains(RollupQueryBuilder.ALL_ROWS)) {
+      this.args.query = this.args.query.replace(RollupQueryBuilder.ALL_ROWS, '');
     }
-    queryString = queryString.replaceFirst('SELECT.+\n', 'SELECT Count()\n');
+    this.args.query = this.args.query.replaceFirst('SELECT.+\n', 'SELECT Count()\n');
 
     Integer countAmount;
     try {
-      countAmount = Database.countQueryWithBinds(queryString, queryBinds, this.accessLevel);
+      countAmount = Database.countQueryWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + queryString, ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + this.args.query, ex, LoggingLevel.WARN);
       // not all count queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       countAmount = SENTINEL_COUNT_VALUE;
@@ -37,7 +54,7 @@ public without sharing class RollupRepository {
     return countAmount;
   }
 
-  private List<SObject> query(String queryString, Map<String, Object> queryBinds) {
-    return Database.queryWithBinds(queryString, queryBinds, this.accessLevel);
+  public override String toString() {
+    return this.args.query + '\n' + 'with bind var keys: ' + this.args.bindVars.keySet();
   }
 }

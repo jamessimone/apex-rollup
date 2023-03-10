@@ -211,11 +211,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
-    Set<String> objIds = new Set<String>();
-    String query = this.preStart(objIds);
-    this.logger.log('starting batch with query: ' + query, context, LoggingLevel.INFO);
+    RollupRepository repo = this.preStart();
+    this.logger.log('starting batch with query: ' + repo, context, LoggingLevel.INFO);
     this.logger.save();
-    return Database.getQueryLocator(query);
+    return repo.getLocator();
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
@@ -300,19 +299,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return rollupProcessId;
   }
 
-  protected virtual String preStart(Set<String> objIds) {
+  protected virtual RollupRepository preStart() {
     this.winnowRollups(this.rollups);
     this.populateObjectFields(this.rollups);
     String query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
+    RollupRepository repo = new RollupRepository(this.accessLevel);
     if (this.rollups.isEmpty() == false) {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
       SObjectType sObjectType = firstRollup.lookupObj;
       String lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
       Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
-      objIds.addAll(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
+      repo.setArg(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
     }
-    return query;
+    repo.setQuery(query);
+    return repo;
   }
 
   protected virtual override String getTypeName() {
@@ -462,8 +463,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
-  protected List<SObject> getExistingLookupItems(Set<String> objIds, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
-    if (objIds.isEmpty()) {
+  protected List<SObject> getExistingLookupItems(Set<String> lookupKeys, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
+    if (lookupKeys.isEmpty()) {
       this.lookupItems = new List<SObject>();
     } else if (stubParentRecords != null) {
       this.lookupItems = stubParentRecords;
@@ -480,7 +481,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         RollupQueryBuilder.Current.getQuery(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=') +
         (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
 
-      localLookupItems = new RollupRepository(rollup.accessLevel).get(queryString, objIds);
+      localLookupItems = new RollupRepository(rollup.accessLevel).setQuery(queryString).setArg(lookupKeys).get();
     }
     List<SObject> recordsToReset = new List<SObject>();
     for (SObject lookupItem : localLookupItems) {
@@ -551,14 +552,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
     } else {
       Set<String> recordIds = lookupToCalcItems.keySet();
-      RollupRepository repo = new RollupRepository(rollup.accessLevel);
       String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(), 'Id', '!=', whereClause);
-      Map<String, Object> queryBinds = new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => objIds, 'recordIds' => recordIds };
+      RollupRepository repo = new RollupRepository(rollup.accessLevel).setQuery(countQuery).setArg(objIds).setArg('recordIds', recordIds);
       if (additionalCalcItemCount != null) {
         outstandingItemCount = additionalCalcItemCount;
         additionalCalcItemCount = null;
       } else {
-        outstandingItemCount = repo.getCount(countQuery, queryBinds);
+        outstandingItemCount = repo.getCount();
       }
       remainingQueryRowsLeft = new RollupLimits.Tester(rollup.rollupControl, this.getIsRunningAsync()).getRemainingQueryRows();
       shouldLimitCalcItemQuery = outstandingItemCount >= remainingQueryRowsLeft;
@@ -602,7 +602,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       if (outstandingItemCount > 0) {
         this.logger.log('gathering additional calc items with query:', query, LoggingLevel.DEBUG);
-        additionalCalcItems = repo.get(query, queryBinds);
+        additionalCalcItems = repo.setQuery(query).get();
 
         if (hasAlreadyBeenQueried) {
           this.cachedQueryToAdditionalCalcItems.get(cachedQueryKey).addAll(additionalCalcItems);
@@ -1115,7 +1115,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     RollupRepository repo = new RollupRepository(localAccessLevel);
     for (String countQuery : queryCountsToLookupIds.keySet()) {
-      Integer countForSObject = repo.getCount(countQuery, queryCountsToLookupIds.get(countQuery));
+      Integer countForSObject = repo.setQuery(countQuery).setArg(queryCountsToLookupIds.get(countQuery)).getCount();
       if (countForSObject == RollupRepository.SENTINEL_COUNT_VALUE) {
         totalCountOfRecords = this.rollupControl.MaxLookupRowsBeforeBatching__c.intValue() - 1;
         break;

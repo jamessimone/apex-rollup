@@ -90,13 +90,13 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
 
   private Integer getNumberOfItems() {
     if (this.countOfItems == null) {
-      this.countOfItems = new RollupRepository(this.accessLevel).getCount(this.queryString, this.bindVars);
+      this.countOfItems = this.preStart().getCount();
     }
     return this.countOfItems;
   }
 
   private void runSync() {
-    List<SObject> parentItems = new RollupRepository(this.accessLevel).get(this.queryString, this.bindVars);
+    List<SObject> parentItems = this.preStart().get();
     this.execute(null, parentItems);
     this.finish(null);
   }
