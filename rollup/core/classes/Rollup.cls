@@ -2901,6 +2901,7 @@ global without sharing virtual class Rollup {
     );
     processor.triggerContext = apexContext;
     processor.accessLevel = RollupMetaPicklists.getAccessLevel(rollupMetadata);
+    rollupConductor.accessLevel = processor.accessLevel;
     return addRollup(rollupConductor, processor);
   }
 
