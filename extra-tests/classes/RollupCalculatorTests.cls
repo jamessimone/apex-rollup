@@ -21,10 +21,7 @@ private class RollupCalculatorTests {
   @IsTest
   static void fullRecalcDefaultUsedInsteadOfNullWhenSupplied() {
     Integer defaultVal = 0;
-    Rollup__mdt metadata = configureOrderByMetadata(
-      new Rollup__mdt(FullRecalculationDefaultNumberValue__c = defaultVal),
-      'CloseDate'
-    );
+    Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(FullRecalculationDefaultNumberValue__c = defaultVal), 'CloseDate');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
 
     calc.performRollup(new List<Opportunity>(), new Map<Id, SObject>());
@@ -369,20 +366,6 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Task>{ passedIn }, new Map<Id, SObject>());
 
     System.assertEquals(4, calc.getReturnValue());
-  }
-
-  @IsTest
-  static void filtersIncorrectCalcItems() {
-    Account acc = [SELECT Id FROM Account];
-
-    Task passedInTask = new Task(WhatId = acc.Id, Subject = 'Passed In', CallDurationInSeconds = 3, Id = RollupTestUtils.createId(Task.SObjectType));
-    Opportunity passedInOpp = new Opportunity(AccountId = acc.Id, Amount = 5);
-
-    RollupCalculator calc = getCalculator(0, Rollup.Op.AVERAGE, Task.CallDurationInSeconds, Account.AnnualRevenue, new Rollup__mdt(), acc.Id, Task.AccountId);
-    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Subject = ' + passedInTask.Subject, Task.SObjectType));
-    calc.performRollup(new List<SObject>{ passedInTask, passedInOpp }, new Map<Id, SObject>());
-
-    System.assertEquals(3, calc.getReturnValue());
   }
 
   // COUNT tests
@@ -785,15 +768,7 @@ private class RollupCalculatorTests {
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
 
-    RollupCalculator calc = getCalculator(
-      5,
-      Rollup.Op.UPDATE_SUM,
-      Opportunity.Amount,
-      Account.AnnualRevenue,
-      new Rollup__mdt(),
-      acc.Id,
-      Opportunity.AccountId
-    );
+    RollupCalculator calc = getCalculator(5, Rollup.Op.UPDATE_SUM, Opportunity.Amount, Account.AnnualRevenue, new Rollup__mdt(), acc.Id, Opportunity.AccountId);
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
     Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
 
@@ -806,15 +781,7 @@ private class RollupCalculatorTests {
   static void sumForFullRecalcIgnoresDiffForUpdates() {
     Opportunity opp = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), Amount = 5);
 
-    RollupCalculator calc = getCalculator(
-      0,
-      Rollup.Op.UPDATE_SUM,
-      Opportunity.Amount,
-      Account.AnnualRevenue,
-      new Rollup__mdt(),
-      '',
-      Opportunity.AccountId
-    );
+    RollupCalculator calc = getCalculator(0, Rollup.Op.UPDATE_SUM, Opportunity.Amount, Account.AnnualRevenue, new Rollup__mdt(), '', Opportunity.AccountId);
     calc.setFullRecalc(true);
     Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Amount = 2) };
 
@@ -1402,15 +1369,7 @@ private class RollupCalculatorTests {
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
 
-    RollupCalculator calc = getCalculator(
-      5,
-      Rollup.Op.UPDATE_MIN,
-      Opportunity.Amount,
-      Account.AnnualRevenue,
-      new Rollup__mdt(),
-      acc.Id,
-      Opportunity.AccountId
-    );
+    RollupCalculator calc = getCalculator(5, Rollup.Op.UPDATE_MIN, Opportunity.Amount, Account.AnnualRevenue, new Rollup__mdt(), acc.Id, Opportunity.AccountId);
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
     Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
 
@@ -1430,15 +1389,7 @@ private class RollupCalculatorTests {
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
 
-    RollupCalculator calc = getCalculator(
-      5,
-      Rollup.Op.UPDATE_MAX,
-      Opportunity.Amount,
-      Account.AnnualRevenue,
-      new Rollup__mdt(),
-      acc.Id,
-      Opportunity.AccountId
-    );
+    RollupCalculator calc = getCalculator(5, Rollup.Op.UPDATE_MAX, Opportunity.Amount, Account.AnnualRevenue, new Rollup__mdt(), acc.Id, Opportunity.AccountId);
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
     Map<Id, Opportunity> oldOppMap = new Map<Id, Opportunity>{ opp.Id => opp };
 

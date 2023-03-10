@@ -3515,6 +3515,7 @@ private class RollupTests {
       new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
     insert cpas;
+    insert new Contact(AccountId = acc.Id, LastName = 'Minimum');
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -3527,6 +3528,16 @@ private class RollupTests {
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'CONCAT',
         GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Contact',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'LastName',
+        RollupOperation__c = 'MIN',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.LastName'
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -3538,6 +3549,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals('Minimum', updatedUser.LastName);
   }
 
   @IsTest

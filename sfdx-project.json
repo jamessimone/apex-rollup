@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Add extra type safety in RollupCalculator when multiple children types are being rolled up to the same parent",
+            "versionName": "Add extra type safety when multiple children types are being rolled up to the same grandparent",
             "versionNumber": "1.5.53.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",

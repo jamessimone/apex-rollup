@@ -8,4 +8,11 @@ private class RollupRepositoryTests {
 
     System.assertEquals(0, accountCount);
   }
+
+  @IsTest
+  static void returnsQueryLocator() {
+    String queryString = 'SELECT Id FROM Account';
+
+    System.assertNotEquals(null, new RollupRepository(System.AccessLevel.SYSTEM_MODE).getLocator(queryString, new Set<Id>()));
+  }
 }

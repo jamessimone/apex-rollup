@@ -59,8 +59,13 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private class CombinedHierarchy {
-    private List<Id> oldHierarchy;
-    private List<Id> currentHierarchy;
+    private final List<Id> currentHierarchy;
+    private final List<Id> oldHierarchy;
+
+    public CombinedHierarchy(List<Id> currentHierarchy, List<Id> oldHierarchy) {
+      this.currentHierarchy = currentHierarchy;
+      this.oldHierarchy = oldHierarchy;
+    }
 
     public Boolean hasEntries() {
       return this.currentHierarchy?.size() > 0 && this.oldHierarchy?.size() > 0;
@@ -167,10 +172,7 @@ public without sharing class RollupRelationshipFieldFinder {
       Id oldLookupId = (Id) (this.finder.oldRecords.containsKey(record.Id)
         ? this.finder.oldRecords.get(record.Id).get(relationshipFieldName)
         : currentLookupId);
-      CombinedHierarchy combinedHierarchy = new CombinedHierarchy();
-      combinedHierarchy.currentHierarchy = this.hierarchy.get(currentLookupId);
-      combinedHierarchy.oldHierarchy = this.hierarchy.get(oldLookupId);
-      return combinedHierarchy;
+      return new CombinedHierarchy(this.hierarchy.get(currentLookupId), this.hierarchy.get(oldLookupId));
     }
   }
 

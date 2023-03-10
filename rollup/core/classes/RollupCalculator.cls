@@ -301,7 +301,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
     for (SObject item : temporaryItems) {
-      Boolean currentItemMatches = item.getSObjectType() == this.calcItemSObjectType && this.eval?.matches(item) != false;
+      Boolean currentItemMatches = this.eval?.matches(item) != false;
       if (currentItemMatches == false) {
         switch on this.op {
           // not all downstream updates for old item matching when new item doesn't have been defined
