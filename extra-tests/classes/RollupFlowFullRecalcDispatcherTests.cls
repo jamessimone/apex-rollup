@@ -5,6 +5,16 @@ private class RollupFlowFullRecalcDispatcherTests {
     Account acc = new Account(Name = RollupFlowFullRecalcDispatcherTests.class.getName());
     insert acc;
 
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'oneCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'twoCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'threeCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fourCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'fiveCMDT', ParentId = acc.Id, PreferenceRank = 1),
+      new ContactPointAddress(Name = 'sixCMDT', ParentId = acc.Id, PreferenceRank = 1)
+    };
+    insert cpas;
+
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
@@ -26,18 +36,7 @@ private class RollupFlowFullRecalcDispatcherTests {
 
   @IsTest
   static void shouldPerformCMDTFullRecalcFromFlowInput() {
-    Account acc = [SELECT Id FROM Account];
-
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(Name = 'oneCMDT', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'twoCMDT', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'threeCMDT', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'fourCMDT', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'fiveCMDT', ParentId = acc.Id, PreferenceRank = 1),
-      new ContactPointAddress(Name = 'sixCMDT', ParentId = acc.Id, PreferenceRank = 1)
-    };
-    insert cpas;
-
+    Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         DeveloperName = 'Dummy_Account_Revenue_Rollup',
@@ -48,7 +47,7 @@ private class RollupFlowFullRecalcDispatcherTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
       ),
       new Rollup__mdt(
         DeveloperName = 'Dummy_Account_Number_Of_Employees_Rollup',
@@ -59,24 +58,77 @@ private class RollupFlowFullRecalcDispatcherTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'NumberOfEmployees',
         RollupOperation__c = 'COUNT',
-        CalcItemWhereClause__c = 'Name = \'' + cpas[0].Name + '\''
+        CalcItemWhereClause__c = 'Name = \'oneCMDT\''
       )
     };
 
-    String flowInputString = 'Dummy_Account_Revenue_Rollup, Dummy_Account_Number_Of_Employees_Rollup';
-    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
-    RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
-    input.rollupDeveloperNames = flowInputString;
-    flowInputs.add(input);
-
     Test.startTest();
-    Rollup.onlyUseMockMetadata = true;
-    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(getFlowInputs(Rollup.rollupMetadata));
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+  }
+
+  @IsTest
+  static void supportsMultipleChildrenGrandparentTypesAtOnce() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup__mdt cpaMeta = new Rollup__mdt(
+      CalcItem__c = 'ContactPointAddress',
+      DeveloperName = 'Contat_Point_Address_Rollup',
+      GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe',
+      LookupFieldOnCalcItem__c = 'ParentId',
+      LookupFieldOnLookupObject__c = 'Id',
+      LookupObject__c = 'User',
+      RollupFieldOnCalcItem__c = 'Name',
+      RollupFieldOnLookupObject__c = 'Longitude',
+      RollupOperation__c = 'SUM'
+    );
+    Rollup__mdt taskMeta = new Rollup__mdt(
+      CalcItem__c = 'Task',
+      CalcItemWhereClause__c = 'Subject != null',
+      DeveloperName = 'Dummy_Account_Task_Rollup',
+      GrandparentRelationshipFieldPath__c = 'What.Owner.LastName',
+      LookupFieldOnCalcItem__c = 'WhatId',
+      LookupFieldOnLookupObject__c = 'Id',
+      LookupObject__c = 'User',
+      RollupFieldOnCalcItem__c = 'CallDurationInSeconds',
+      RollupFieldOnLookupObject__c = 'Latitude',
+      RollupOperation__c = 'MIN'
+    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{ cpaMeta, taskMeta };
+
+    insert new List<Task>{
+      new Task(WhatId = acc.Id, CallDurationInSeconds = 5, Subject = 'Winner', ActivityDate = System.today()),
+      new Task(WhatId = acc.Id, CallDurationInSeconds = 6, Subject = 'Not Min', ActivityDate = System.today())
+    };
+
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
+    flowInputs.addAll(getFlowInputs(new List<Rollup__mdt>{ cpaMeta }));
+    flowInputs.addAll(getFlowInputs(new List<Rollup__mdt>{ taskMeta }));
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    User user = [SELECT Latitude, Longitude FROM User WHERE Id = :acc.OwnerId];
+    System.assertEquals(6, user.Longitude);
+    System.assertEquals(5, user.Latitude);
+  }
+
+  private static List<RollupFlowFullRecalcDispatcher.FlowInput> getFlowInputs(List<Rollup__mdt> metas) {
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
+    RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
+    input.rollupDeveloperNames = '';
+    for (Rollup__mdt meta : metas) {
+      input.rollupDeveloperNames += meta.DeveloperName + ',';
+    }
+    input.rollupDeveloperNames = input.rollupDeveloperNames.removeEnd(',');
+    flowInputs.add(input);
+    return flowInputs;
   }
 }

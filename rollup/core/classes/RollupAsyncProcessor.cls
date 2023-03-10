@@ -211,7 +211,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
-    Set<String> objIds = new Set<String>(); // bind variable
+    Set<String> objIds = new Set<String>();
     String query = this.preStart(objIds);
     this.logger.log('starting batch with query: ' + query, context, LoggingLevel.INFO);
     this.logger.save();
@@ -629,18 +629,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.populateObjectFields(rollups);
 
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
-    Map<SObjectType, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<SObjectType, RollupRelationshipFieldFinder.Traversal>();
+    Map<String, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<String, RollupRelationshipFieldFinder.Traversal>();
     for (RollupAsyncProcessor roll : rollups) {
       roll.isProcessed = true;
       this.setupCalcItemData(roll);
-      // for each iteration, ensure we're not operating beyond the bounds of our query limits
+      // for each iteration, ensure we're not operating beyond the bounds of our governor limits
       if (this.getIsTimingOut(roll.rollupControl, roll)) {
         this.deferredRollups.add(roll);
         continue;
       }
 
-      if (grandparentRollups.containsKey(roll.lookupObj) && roll.traversal == null) {
-        roll.traversal = grandparentRollups.get(roll.lookupObj);
+      String grandparentKey = '' + roll.lookupObj + roll.calcItemType;
+      if (grandparentRollups.containsKey(grandparentKey)) {
+        roll.traversal = grandparentRollups.get(grandparentKey);
       }
 
       Set<String> uniqueParentObjectFields = this.lookupObjectToUniqueFieldNames.get(roll.lookupObj);
@@ -648,13 +649,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (roll.traversal?.getIsFinished() == false) {
-        roll.isProcessed = false;
-        this.deferredRollups.add(roll);
+        this.addProcessorToDeferredRollups(roll);
         continue;
-      } else if (roll.traversal != null && grandparentRollups.containsKey(roll.lookupObj) == false) {
+      } else if (roll.traversal != null) {
         // cache the traversal for any future callers - because we queried for ALL unique grand(or greater)parent fields
         // we don't need to re-traverse the whole object chain again if there are other grandparent rollups in the list
-        grandparentRollups.put(roll.lookupObj, roll.traversal);
+        grandparentRollups.put(grandparentKey, roll.traversal);
       }
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
@@ -736,6 +736,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
   }
 
+  private void addProcessorToDeferredRollups(RollupAsyncProcessor processor) {
+    processor.isProcessed = false;
+    this.deferredRollups.add(processor);
+  }
+
   private String getParentResetKey(String fieldKey, SObject parent) {
     return fieldKey + parent.Id;
   }
@@ -753,9 +758,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
       this.logger.log('Starting to time out ...', LoggingLevel.WARN);
       this.isTimingOut = true;
-    }
-    if (this.isTimingOut) {
-      processor.isProcessed = false;
     }
     return this.isTimingOut;
   }
@@ -1184,7 +1186,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, List<SObject> unprocessedCalcItems) {
     if (unprocessedCalcItems.isEmpty() == false) {
       roll.calcItems = unprocessedCalcItems;
-      this.deferredRollups.add(roll);
+      this.addProcessorToDeferredRollups(roll);
     }
   }
 

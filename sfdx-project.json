@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "ESLint upgrades, scanner upgrades, grandparent rollup bugfix",
-            "versionNumber": "1.5.52.0",
+            "versionName": "Add extra type safety when multiple children types are being rolled up to the same grandparent",
+            "versionNumber": "1.5.53.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -101,6 +101,7 @@
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.5.50-0": "04t6g000008fjeGAAQ",
         "apex-rollup@1.5.51-0": "04t6g000008fjepAAA",
-        "apex-rollup@1.5.52-0": "04t6g000008fjfYAAQ"
+        "apex-rollup@1.5.52-0": "04t6g000008fjfYAAQ",
+        "apex-rollup@1.5.53-0": "04t6g000008fjg2AAA"
     }
 }

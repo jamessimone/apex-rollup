@@ -1539,7 +1539,7 @@ global without sharing virtual class Rollup {
     }
     SObject firstRecord = cdcRecords[0];
     EventBus.ChangeEventHeader header = (EventBus.ChangeEventHeader) firstRecord.get('ChangeEventHeader');
-    SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(header.getEntityName()).getSObjectType();
+    Schema.SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(header.getEntityName()).getSObjectType();
 
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(sObjectType);
     if (matchingMetadata.isEmpty()) {
@@ -1573,7 +1573,7 @@ global without sharing virtual class Rollup {
     for (SObject cdcRecord : cdcRecords) {
       header = (EventBus.ChangeEventHeader) cdcRecord.get('ChangeEventHeader');
       uniqueFieldNames.addAll(header.changedfields);
-      objIds.add(header.getRecordIds()[0]);
+      objIds.addAll(header.getRecordIds());
     }
 
     String queryString = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueFieldNames), 'Id', '=');
@@ -1590,7 +1590,7 @@ global without sharing virtual class Rollup {
     rollupToReturn.isCDCUpdate = apexContext == TriggerOperation.AFTER_UPDATE;
     // we're already async, so let's not waste any more time
     rollupToReturn.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
-    rollupToReturn?.runCalc();
+    rollupToReturn.runCalc();
   }
 
   global static void runFromTrigger() {
