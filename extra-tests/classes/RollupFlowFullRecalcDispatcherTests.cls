@@ -73,30 +73,31 @@ private class RollupFlowFullRecalcDispatcherTests {
   }
 
   @IsTest
-  static void supportsMultipleChildrenTypesAtOnce() {
-    Account acc = [SELECT Id FROM Account];
+  static void supportsMultipleChildrenGrandparentTypesAtOnce() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt cpaMeta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',
-      CalcItemWhereClause__c = 'PreferenceRank = 1',
-      DeveloperName = 'Dummy_Account_Revenue_Rollup',
+      DeveloperName = 'Contat_Point_Address_Rollup',
+      GrandparentRelationshipFieldPath__c = 'Parent.Owner.AboutMe',
       LookupFieldOnCalcItem__c = 'ParentId',
       LookupFieldOnLookupObject__c = 'Id',
-      LookupObject__c = 'Account',
-      RollupFieldOnCalcItem__c = 'PreferenceRank',
-      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      LookupObject__c = 'User',
+      RollupFieldOnCalcItem__c = 'Name',
+      RollupFieldOnLookupObject__c = 'Longitude',
       RollupOperation__c = 'SUM'
     );
     Rollup__mdt taskMeta = new Rollup__mdt(
       CalcItem__c = 'Task',
       CalcItemWhereClause__c = 'Subject != null',
       DeveloperName = 'Dummy_Account_Task_Rollup',
+      GrandparentRelationshipFieldPath__c = 'What.Owner.LastName',
       LookupFieldOnCalcItem__c = 'WhatId',
       LookupFieldOnLookupObject__c = 'Id',
-      LookupObject__c = 'Account',
+      LookupObject__c = 'User',
       RollupFieldOnCalcItem__c = 'CallDurationInSeconds',
-      RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+      RollupFieldOnLookupObject__c = 'Latitude',
       RollupOperation__c = 'MIN'
     );
     Rollup.rollupMetadata = new List<Rollup__mdt>{ cpaMeta, taskMeta };
@@ -114,9 +115,9 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
-    System.assertEquals(6, acc.AnnualRevenue);
-    System.assertEquals(5, acc.NumberOfEmployees);
+    User user = [SELECT Latitude, Longitude FROM User WHERE Id = :acc.OwnerId];
+    System.assertEquals(6, user.Longitude);
+    System.assertEquals(5, user.Latitude);
   }
 
   private static List<RollupFlowFullRecalcDispatcher.FlowInput> getFlowInputs(List<Rollup__mdt> metas) {
