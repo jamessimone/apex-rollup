@@ -1022,14 +1022,17 @@ public without sharing abstract class RollupCalculator {
       // we have to wait till it's the last iteration; this is what ensures that all of the deleted
       // items are accounted for in concatDistinctIds (for proper exclusion)
       if (this.isLastItem) {
-        String query = RollupQueryBuilder.Current.getQuery(
-          calcItem.getSObjectType(),
-          new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
-          'Id',
-          '!=',
-          this.lookupKeyQuery
-        );
-        List<SObject> relatedItems = this.repo.setArg(this.concatDistinctIds).setQuery(query).get();
+        List<SObject> relatedItems = this.repo.setArg(this.concatDistinctIds)
+          .setQuery(
+            RollupQueryBuilder.Current.getQuery(
+              calcItem.getSObjectType(),
+              new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
+              'Id',
+              '!=',
+              this.lookupKeyQuery
+            )
+          )
+          .get();
         for (SObject relatedItem : relatedItems) {
           this.handleConcat(relatedItem);
         }

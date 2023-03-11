@@ -312,8 +312,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       repo.setArg(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
       query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
     }
-    repo.setQuery(query);
-    return repo;
+    return repo.setQuery(query);
   }
 
   protected virtual override String getTypeName() {
@@ -477,11 +476,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (rollup.traversal != null) {
       localLookupItems = rollup.traversal.getAllParents();
     } else {
-      String queryString =
-        RollupQueryBuilder.Current.getQuery(rollup.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(rollup.lookupFieldOnLookupObject), '=') +
-        (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '');
-
-      localLookupItems = new RollupRepository(rollup.accessLevel).setQuery(queryString).setArg(lookupKeys).get();
+      localLookupItems = new RollupRepository(rollup.accessLevel)
+        .setQuery(
+          RollupQueryBuilder.Current.getQuery(
+            rollup.lookupObj,
+            new List<String>(uniqueQueryFieldNames),
+            String.valueOf(rollup.lookupFieldOnLookupObject),
+            '='
+          ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '')
+        )
+        .setArg(lookupKeys)
+        .get();
     }
     List<SObject> recordsToReset = new List<SObject>();
     for (SObject lookupItem : localLookupItems) {
@@ -503,11 +508,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return;
     }
 
-    Set<String> objIds = new Set<String>();
+    Set<String> lookupKeys = new Set<String>();
     for (CalcItemBag bag : lookupToCalcItems.values()) {
       if (bag.hasQueriedForAdditionalItems == false) {
         bag.hasQueriedForAdditionalItems = true;
-        objIds.addAll(bag.getAllIds());
+        lookupKeys.addAll(bag.getAllIds());
       }
       // calling clear in a loop here might look interesting - and it would be a massive problem if not for the
       // bag only responding to the very first clear() invocation. everything after that is a no-op (so, any rollup with more
@@ -517,7 +522,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    if (objIds.isEmpty()) {
+    if (lookupKeys.isEmpty()) {
       return;
     }
 
@@ -526,7 +531,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       ? rollup.calcObjectToUniqueFieldNames
       : this.calcObjectToUniqueFieldNames;
 
-    String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :recordIds';
+    String recordBindVar = 'recordIds';
+    String whereClause = '' + rollup.lookupFieldOnCalcItem + ' = :' + recordBindVar;
     String query = RollupQueryBuilder.Current.getQuery(
       rollup.calcItemType,
       new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
@@ -552,8 +558,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
     } else {
       Set<String> recordIds = lookupToCalcItems.keySet();
-      String countQuery = RollupQueryBuilder.Current.getQuery(rollup.calcItemType, new List<String>(), 'Id', '!=', whereClause);
-      RollupRepository repo = new RollupRepository(rollup.accessLevel).setQuery(countQuery).setArg(objIds).setArg('recordIds', recordIds);
+      RollupRepository repo = new RollupRepository(rollup.accessLevel).setQuery(query).setArg(lookupKeys).setArg(recordBindVar, recordIds);
       if (additionalCalcItemCount != null) {
         outstandingItemCount = additionalCalcItemCount;
         additionalCalcItemCount = null;
@@ -582,13 +587,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         } else {
           this.logger.log('Populating unexpected full recalc for ' + outstandingItemCount + ' items', LoggingLevel.INFO);
           RollupFullRecalcProcessor fullBatchProcessor = new RollupFullBatchRecalculator(
-            RollupQueryBuilder.Current.getQuery(
-              rollup.calcItemType,
-              new List<String>(localCalcToUniqueFieldNames.get(rollup.calcItemType)),
-              'Id',
-              '!=',
-              whereClause
-            ),
+            query.substringBeforeLast('\nLIMIT'),
             this.invokePoint,
             new List<Rollup__mdt>{ rollup.metadata },
             rollup.calcItemType,
