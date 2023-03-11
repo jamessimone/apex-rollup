@@ -1,4 +1,4 @@
-public without sharing virtual class RollupLogger implements ILogger {
+global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
   private static final String CURRENT_VERSION_NUMBER = 'v1.5.54-beta';
