@@ -352,7 +352,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else {
         roll = this;
       }
-    } else if (canEnqueue && (this instanceof QueueableProcessor) == false && (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false)) {
+    } else if (canEnqueue && (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false)) {
       roll = new QueueableProcessor(this);
     } else if (canEnqueue) {
       roll = this.rollupControl.IsDevEdOrTrialOrg__c && this.stackDepth >= 4 ? new RollupAsyncProcessor(this) : this;
