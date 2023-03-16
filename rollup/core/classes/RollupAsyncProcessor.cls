@@ -339,7 +339,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // swap off on which async process is running to achieve infinite scaling
     Boolean canEnqueue = this.getCanEnqueue();
     RollupAsyncProcessor roll;
-    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
+    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor && (System.isBatch() == false || this.rollups[0].isBatch() == false)) {
       roll = this.rollups[0];
     } else if (this instanceof RollupFullRecalcProcessor && this.isBatch() == false) {
       roll = this;
