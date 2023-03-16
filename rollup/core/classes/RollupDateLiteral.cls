@@ -420,8 +420,8 @@ public without sharing abstract class RollupDateLiteral {
   private class LastNDaysLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME); // includes all of today
-      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-(dateRange + 1)).date(), END_TIME);
+      this.bound = getRelativeDatetime(START_OF_TODAY.dateGmt(), END_TIME); // includes all of today
+      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-(dateRange + 1)).dateGmt(), END_TIME);
     }
   }
 
@@ -431,8 +431,8 @@ public without sharing abstract class RollupDateLiteral {
   private class NDaysAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-dateRange).date(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
+      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-dateRange).dateGmt(), START_TIME);
+      this.bound = getRelativeDatetime(this.ref.dateGmt(), END_TIME);
     }
   }
 

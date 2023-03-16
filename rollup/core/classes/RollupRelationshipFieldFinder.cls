@@ -367,15 +367,18 @@ public without sharing class RollupRelationshipFieldFinder {
     }
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
-    String query = this.appendAdditionalWhereClauses(
-      RollupQueryBuilder.Current.getQuery(baseSObjectType, new List<String>(fieldNames), 'Id', '='),
-      currentRelationshipName,
-      fieldMap
-    );
+    this.repo.setQuery(
+        this.appendAdditionalWhereClauses(
+          RollupQueryBuilder.Current.getQuery(baseSObjectType, new List<String>(fieldNames), 'Id', '='),
+          currentRelationshipName,
+          fieldMap
+        )
+      )
+      .setArg(objIds);
     this.setFirstRunFlags(records);
 
     // recurse through till we get to the top/bottom of the chain
-    return this.getParents(this.repo.get(query, objIds));
+    return this.getParents(this.repo.get());
   }
 
   private String getCurrentRelationshipName(SObjectType baseSObjectType) {
@@ -540,10 +543,12 @@ public without sharing class RollupRelationshipFieldFinder {
         this.trackTraversalIds(otherMatchingParent.Id, (Id) otherMatchingParent.get(this.metadata.UltimateParentLookup__c), null, objIds);
       }
     }
-    List<SObject> otherPotentialParents = this.repo.get(
-      RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause),
-      objIds
-    );
+    List<SObject> otherPotentialParents = this.repo.setQuery(
+        RollupQueryBuilder.Current.getQuery(this.ultimateParent, queryFields, this.metadata.UltimateParentLookup__c, '=', whereClause)
+      )
+      .setArg(objIds)
+      .get();
+
     if (otherPotentialParents.isEmpty()) {
       this.retrieveAdditionalCalcItems();
     } else {
@@ -606,16 +611,19 @@ public without sharing class RollupRelationshipFieldFinder {
       if (childType == this.ultimateParent && this.metadata.RollupToUltimateParent__c == true) {
         queryFields.add(this.metadata.UltimateParentLookup__c);
       }
-      String query = RollupQueryBuilder.Current.getAllRowSafeQuery(
-        childType,
-        RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), relationshipPath, '=', this.metadata.CalcItemWhereClause__c) +
-        '\nAND Id != :records'
-      );
+      String bindVar = 'records';
       try {
-        List<SObject> additionalCalcItems = this.repo.get(
-          query,
-          new Map<String, Object>{ RollupQueryBuilder.BIND_VAR => inclusiveIds, 'records' => this.records }
-        );
+        List<SObject> additionalCalcItems = this.repo.setQuery(
+            RollupQueryBuilder.Current.getAllRowSafeQuery(
+              childType,
+              RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), relationshipPath, '=', this.metadata.CalcItemWhereClause__c)
+            ) +
+            '\nAND Id != :' +
+            bindVar
+          )
+          .setArg(inclusiveIds)
+          .setArg(bindVar, this.records)
+          .get();
         this.records.addAll(additionalCalcItems);
         return additionalCalcItems;
       } catch (Exception ex) {
@@ -650,22 +658,25 @@ public without sharing class RollupRelationshipFieldFinder {
     this.oneToManyParts.remove(junctionObjectName);
     Schema.SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(junctionObjectName).getSObjectType();
     this.currentRelationshipName = this.getCurrentRelationshipName(sObjectType);
-    String query = RollupQueryBuilder.Current.getQuery(
-      sObjectType,
-      new List<String>{
-        'Id',
-        oneToManyFieldName,
-        this.currentRelationshipName.endsWith('__r') ? this.currentRelationshipName.replace('__r', '__c') : this.currentRelationshipName + 'Id'
-      },
-      oneToManyFieldName,
-      '='
-    );
-    Set<Id> objIds = new Set<Id>();
+    Set<Id> junctionRecordIds = new Set<Id>();
     for (SObject record : records) {
       priorLookup = record.getPopulatedFieldsAsMap().containsKey(priorLookup) ? priorLookup : 'Id';
-      objIds.add((Id) record.get(priorLookup));
+      junctionRecordIds.add((Id) record.get(priorLookup));
     }
-    records = this.repo.get(query, objIds);
+    records = this.repo.setQuery(
+        RollupQueryBuilder.Current.getQuery(
+          sObjectType,
+          new List<String>{
+            'Id',
+            oneToManyFieldName,
+            this.currentRelationshipName.endsWith('__r') ? this.currentRelationshipName.replace('__r', '__c') : this.currentRelationshipName + 'Id'
+          },
+          oneToManyFieldName,
+          '='
+        )
+      )
+      .setArg(junctionRecordIds)
+      .get();
 
     Map<String, SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
