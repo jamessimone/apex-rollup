@@ -74,7 +74,7 @@ global without sharing virtual class Rollup {
   }
 
   @TestVisible
-  private static final List<Rollup> CACHED_ROLLUPS {
+  private static List<Rollup> CACHED_ROLLUPS {
     get {
       if (CACHED_ROLLUPS == null) {
         CACHED_ROLLUPS = new List<Rollup>();
@@ -251,7 +251,7 @@ global without sharing virtual class Rollup {
   }
 
   public class CalcItemBag {
-    private final Map<String, SObject> idToCalcItem = new Map<String, SObject>();
+    private Map<String, SObject> idToCalcItem = new Map<String, SObject>();
     private Boolean hasBeenCleared = false;
     public Boolean hasQueriedForAdditionalItems = false;
     public CalcItemBag(List<SObject> calcItems) {
@@ -270,7 +270,7 @@ global without sharing virtual class Rollup {
 
     public void clear() {
       if (this.hasBeenCleared == false) {
-        this.idToCalcItem.clear();
+        this.idToCalcItem = new Map<String, SObject>();
         this.hasBeenCleared = true;
       }
     }
@@ -1628,7 +1628,7 @@ global without sharing virtual class Rollup {
   global static Rollup runFromApex(List<Rollup__mdt> localMetas, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     Rollup rollupConductor = RollupAsyncProcessor.getConductor(InvocationPoint.FROM_APEX, calcItems, oldCalcItems);
     if (shouldRunFromTrigger() == false || localMetas.isEmpty()) {
-      rollupConductor.calcItems?.clear();
+      rollupConductor.calcItems = new List<SObject>();
       return rollupConductor;
     }
 
@@ -1728,7 +1728,7 @@ global without sharing virtual class Rollup {
   public static void processStoredFlowRollups() {
     flatten(CACHED_ROLLUPS);
     List<Rollup> rollupsToProcess = new List<Rollup>(CACHED_ROLLUPS);
-    CACHED_ROLLUPS.clear();
+    CACHED_ROLLUPS = null;
     batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
   }
 
@@ -2222,6 +2222,7 @@ global without sharing virtual class Rollup {
       Integer currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
         .setQuery(RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause))
         .setArg(new Set<String>())
+        .setArg('recordIds', metaWrapper.recordIds)
         .getCount();
       metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }

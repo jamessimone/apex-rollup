@@ -8,6 +8,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   static String stubRequestId;
 
   private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
+  private static Map<String, Boolean> CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
 
   // totally not obvious ranking going on here - it's absolutely imperative that
   // the two-word conditions go first; otherwise replacing will fail on the whole string
@@ -70,6 +71,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     return getCombinedEvals(evals);
+  }
+
+  public static void clearConditionCache() {
+    CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
   }
 
   private static Rollup.Evaluator getCombinedEvals(List<Rollup.Evaluator> evals) {
@@ -599,6 +604,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyCatchBlock')
     public Boolean equals(Object o) {
+      String decisionKey = this.fieldName + this.criteria + this.originalValues + o.hashCode();
+      if (CACHED_WHERE_DECISIONS.containsKey(decisionKey)) {
+        return CACHED_WHERE_DECISIONS.get(decisionKey);
+      }
+
       SObject item = (SObject) o;
       Boolean isEqual = true;
       Boolean hasOnlyOneValue = this.originalValues.size() == 1;
@@ -609,79 +619,82 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
 
       if (hasOnlyOneValue && isDateFunction) {
-        return RollupDateLiteral.getFunction(this.fieldName, this.originalValues[0]).matches(originalValue, this.criteria);
+        isEqual = RollupDateLiteral.getFunction(this.fieldName, this.originalValues[0]).matches(originalValue, this.criteria);
       } else if (hasOnlyOneValue && RollupDateLiteral.isDateLiteral(this.originalValues[0])) {
-        return RollupDateLiteral.get(this.originalValues[0]).matches(originalValue, this.criteria);
-      } else if (originalValue instanceof Decimal) {
-        for (Integer index = 0; index < this.values.size(); index++) {
-          Object val = this.values[index];
-          try {
-            String stringVal = String.valueOf(val);
-            Decimal decimalVal = Decimal.valueOf(stringVal);
-            if (decimalVal == originalValue) {
-              originalValue = decimalVal;
-              storedValue = stringVal;
-              break;
+        isEqual = RollupDateLiteral.get(this.originalValues[0]).matches(originalValue, this.criteria);
+      } else {
+        if (originalValue instanceof Decimal) {
+          for (Integer index = 0; index < this.values.size(); index++) {
+            Object val = this.values[index];
+            try {
+              String stringVal = String.valueOf(val);
+              Decimal decimalVal = Decimal.valueOf(stringVal);
+              if (decimalVal == originalValue) {
+                originalValue = decimalVal;
+                storedValue = stringVal;
+                break;
+              }
+            } catch (Exception ex) {
+              // do nothing
             }
-          } catch (Exception ex) {
-            // do nothing
           }
         }
-      }
 
-      switch on this.criteria {
-        when '=', '!=', '<>' {
-          if (this.hasValues == false) {
-            isEqual = String.isBlank(storedValue);
-          } else {
-            for (String value : this.values) {
-              isEqual = value?.equalsIgnoreCase(storedValue) == true || value == null && storedValue == null;
-              if (isEqual) {
-                break;
+        switch on this.criteria {
+          when '=', '!=', '<>' {
+            if (this.hasValues == false) {
+              isEqual = String.isBlank(storedValue);
+            } else {
+              for (String value : this.values) {
+                isEqual = value?.equalsIgnoreCase(storedValue) == true || value == null && storedValue == null;
+                if (isEqual) {
+                  break;
+                }
               }
             }
+            isEqual = this.criteria == '=' ? isEqual : !isEqual;
           }
-          isEqual = this.criteria == '=' ? isEqual : !isEqual;
-        }
-        when 'like', '!like' {
-          // like/not like have to be handled separately because it's the storedValue
-          // that gets tested against, not the other way around
-          isEqual = false;
-          if (storedValue != null) {
-            for (String val : this.values) {
-              isEqual = storedValue.containsIgnoreCase(val);
-              if (isEqual) {
-                break;
-              }
-            }
-            isEqual = this.criteria == 'like' ? isEqual : isEqual == false;
-          }
-        }
-        // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
-        // greater than / less than routes, but we test for it first just to be triple-sure
-        when '>', '>=', '<', '<=' {
-          if (this.values.size() != 1) {
-            throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
-          } else if (storedValue == null) {
+          when 'like', '!like' {
+            // like/not like have to be handled separately because it's the storedValue
+            // that gets tested against, not the other way around
             isEqual = false;
-          } else {
-            isEqual = this.getGreaterOrLessThan(this.values[0], originalValue);
-          }
-        }
-        when 'includes', '!includes' {
-          isEqual = false;
-          for (String value : this.values) {
-            List<String> splitValues = value.split(';');
-            for (String splitValue : splitValues) {
-              isEqual = storedValue.contains(splitValue);
-              if (isEqual == false) {
-                break;
+            if (storedValue != null) {
+              for (String val : this.values) {
+                isEqual = storedValue.containsIgnoreCase(val);
+                if (isEqual) {
+                  break;
+                }
               }
+              isEqual = this.criteria == 'like' ? isEqual : isEqual == false;
             }
           }
-          isEqual = this.criteria == 'includes' ? isEqual : isEqual == false;
+          // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
+          // greater than / less than routes, but we test for it first just to be triple-sure
+          when '>', '>=', '<', '<=' {
+            if (this.values.size() != 1) {
+              throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
+            } else if (storedValue == null) {
+              isEqual = false;
+            } else {
+              isEqual = this.getGreaterOrLessThan(this.values[0], originalValue);
+            }
+          }
+          when 'includes', '!includes' {
+            isEqual = false;
+            for (String value : this.values) {
+              List<String> splitValues = value.split(';');
+              for (String splitValue : splitValues) {
+                isEqual = storedValue.contains(splitValue);
+                if (isEqual == false) {
+                  break;
+                }
+              }
+            }
+            isEqual = this.criteria == 'includes' ? isEqual : isEqual == false;
+          }
         }
       }
+      CACHED_WHERE_DECISIONS.put(decisionKey, isEqual);
       return isEqual;
     }
 
