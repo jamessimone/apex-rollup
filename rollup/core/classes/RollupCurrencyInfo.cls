@@ -19,6 +19,8 @@ public without sharing virtual class RollupCurrencyInfo {
     'OpportunitySplit' => new List<String>{ 'OpportunityId', 'CloseDate' } // yikes
   };
 
+  private static final Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY = getCurrencyMap();
+
   @TestVisible
   private static Boolean IS_MULTICURRENCY {
     get {
@@ -49,16 +51,6 @@ public without sharing virtual class RollupCurrencyInfo {
         FALLBACK_INFO.ConversionRate = 1;
       }
       return FALLBACK_INFO;
-    }
-    set;
-  }
-
-  private static final Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY {
-    get {
-      if (CURRENCY_ISO_CODE_TO_CURRENCY == null) {
-        CURRENCY_ISO_CODE_TO_CURRENCY = getCurrencyMap();
-      }
-      return CURRENCY_ISO_CODE_TO_CURRENCY;
     }
     set;
   }
