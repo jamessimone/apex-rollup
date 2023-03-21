@@ -118,8 +118,8 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static void loadProperMinMaxDates(List<SObject> calcItems) {
-    if (hasLoadedDatedCurrencyInfo || IS_DATED_MULTICURRENCY == false) {
-      return;
+    if (hasLoadedDatedCurrencyInfo || IS_DATED_MULTICURRENCY == false || CURRENCY_ISO_CODE_TO_CURRENCY == null) {
+      return; // prettier-ignore                                         👆 forces getter to run, if it hasn't already
     }
     hasLoadedDatedCurrencyInfo = true;
     for (SObject calcItem : calcItems) {

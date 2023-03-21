@@ -664,6 +664,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
     }
+    RollupEvaluator.clearConditionCache();
     this.getDML().doUpdate(updatedLookupRecords.values());
     this.populateOtherDeferredRollups();
     this.processDeferredRollups();
@@ -745,9 +746,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
-    if (this.fullRecalcProcessor != null) {
+    if (roll.fullRecalcProcessor != null) {
       // if we aren't batching, safe to assume a full recalc has already pulled the rest of the records back
-      return this.fullRecalcProcessor.isBatch() != true;
+      return roll.fullRecalcProcessor.isBatch() != true;
     } else {
       return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
     }

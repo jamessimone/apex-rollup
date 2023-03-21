@@ -290,9 +290,8 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected List<SObject> winnowItems(List<SObject> items, Map<Id, SObject> oldCalcItems) {
-    List<SObject> temporaryItems = new List<SObject>(items);
-    items.clear(); // the List may not be strongly typed, but this is a good way to keep it typed if it is
-    this.transformForMultiCurrencyOrgs(temporaryItems);
+    List<SObject> temporaryItems = new List<SObject>();
+    this.transformForMultiCurrencyOrgs(items);
     if (oldCalcItems.isEmpty() == false && this.isMultiCurrencyRollup) {
       List<SObject> tempOldCalcItems = oldCalcItems.values();
       this.transformForMultiCurrencyOrgs(tempOldCalcItems);
@@ -300,7 +299,7 @@ public without sharing abstract class RollupCalculator {
         oldCalcItems.put(oldCalcItem.Id, this.getTransformedCalcItem(oldCalcItem));
       }
     }
-    for (SObject item : temporaryItems) {
+    for (SObject item : items) {
       Boolean currentItemMatches = this.eval?.matches(item) != false;
       if (currentItemMatches == false) {
         switch on this.op {
@@ -314,7 +313,7 @@ public without sharing abstract class RollupCalculator {
         }
       }
       if (currentItemMatches) {
-        items.add(this.getTransformedCalcItem(item));
+        temporaryItems.add(this.getTransformedCalcItem(item));
         if (this.op == Rollup.Op.SOME) {
           break;
         }
@@ -324,12 +323,12 @@ public without sharing abstract class RollupCalculator {
       ? new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) }
       : this.metadata.RollupOrderBys__r;
     if (orderBys.isEmpty() == false) {
-      new RollupCalcItemSorter(orderBys).sort(items);
+      new RollupCalcItemSorter(orderBys).sort(temporaryItems);
     }
     if (this.metadata?.LimitAmount__c != null) {
       // we can only safely remove the items after sorting
-      while (items.size() > this.metadata.LimitAmount__c && items.isEmpty() == false) {
-        items.remove(items.size() - 1);
+      while (temporaryItems.size() > this.metadata.LimitAmount__c && temporaryItems.isEmpty() == false) {
+        temporaryItems.remove(items.size() - 1);
       }
       // Limit-based rollups always reset the field's value, and always act as a fresh start
       if (this.metadata.RollupOperation__c.contains('DELETE_') || this.metadata.RollupOperation__c.contains('UPDATE_')) {
@@ -337,7 +336,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
 
-    return items;
+    return temporaryItems;
   }
 
   protected virtual Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
@@ -408,7 +407,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class CountDistinctRollupCalculator extends RollupCalculator {
-    private final Set<Object> distinctValues = new Set<Object>();
+    private Set<Object> distinctValues = new Set<Object>();
     private Boolean isIdCount;
     public CountDistinctRollupCalculator(
       Rollup.Op op,
@@ -422,7 +421,7 @@ public without sharing abstract class RollupCalculator {
 
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
-      this.distinctValues.clear();
+      this.distinctValues = new Set<Object>();
       this.isIdCount = this.opFieldOnCalcItem.getDescribe().getName() == 'Id';
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject);
       if (defaultVal != 0 && this.returnVal != defaultVal && this.isIdCount == false) {
@@ -446,7 +445,7 @@ public without sharing abstract class RollupCalculator {
       if (this.op != Rollup.Op.DELETE_COUNT_DISTINCT && potentiallyNullValue != null) {
         this.distinctValues.add(potentiallyNullValue);
       } else if (this.op == Rollup.Op.DELETE_COUNT_DISTINCT) {
-        this.distinctValues.clear();
+        this.distinctValues = new Set<Object>();
         this.calculateNewAggregateValue(this.op, new List<Id>{ calcItem.Id }, calcItem.getSObjectType());
       }
       this.shouldShortCircuit = true;
@@ -459,7 +458,7 @@ public without sharing abstract class RollupCalculator {
 
     protected override Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
       if (this.shouldTriggerFullRecalc == true) {
-        this.distinctValues.clear();
+        this.distinctValues = new Set<Object>();
       }
       Boolean isArchivable = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
       Boolean isGroupable = isArchivable == false && this.opFieldOnCalcItem.getDescribe().isGroupable();
@@ -1196,7 +1195,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class MostRollupCalculator extends RollupCalculator {
-    private final Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
+    private Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
     private Integer largestCountPointer;
     public MostRollupCalculator(
       Rollup.Op op,
@@ -1209,7 +1208,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      this.occurrenceToCount.clear();
+      this.occurrenceToCount = new Map<Object, Integer>();
       this.largestCountPointer = -1;
       this.returnVal = this.defaultVal;
       List<SObject> localCalcItems = this.winnowItems(calcItems, oldCalcItems);
