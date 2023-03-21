@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Quality of life updates as far as how rollup queries are performed, updated RollupLogger to global visibility",
-            "versionNumber": "1.0.27.0",
+            "versionName": "Optimizations to reduce CPU time",
+            "versionNumber": "1.0.28.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -48,6 +48,7 @@
         "apex-rollup-namespaced@1.0.24-0": "04t6g000008fjeuAAA",
         "apex-rollup-namespaced@1.0.25-0": "04t6g000008fjfdAAA",
         "apex-rollup-namespaced@1.0.26-0": "04t6g000008fjg7AAA",
-        "apex-rollup-namespaced@1.0.27-0": "04t6g000008fjheAAA"
+        "apex-rollup-namespaced@1.0.27-0": "04t6g000008fjheAAA",
+        "apex-rollup-namespaced@1.0.28-0": "04t6g000008fjj1AAA"
     }
 }
