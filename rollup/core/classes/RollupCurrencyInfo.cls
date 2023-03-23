@@ -77,6 +77,14 @@ public without sharing virtual class RollupCurrencyInfo {
   protected virtual void addInfo(RollupCurrencyInfo info) {
   }
 
+  public static List<String> getMultiCurrencyFields(Schema.DescribeSObjectResult objectToken) {
+    List<String> fields = new List<String>{ CURRENCY_ISO_CODE_FIELD_NAME };
+    if (CURRENCY_ISO_CODE_TO_CURRENCY != null && IS_DATED_MULTICURRENCY && DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(objectToken.getName())) {
+      fields.addAll(DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(objectToken.getName()));
+    }
+    return fields;
+  }
+
   public static void transform(List<SObject> calcItems, Schema.SObjectField opFieldOnCalcItem, String parentIsoCode, List<RollupOrderBy__mdt> orderBys) {
     if (IS_MULTICURRENCY) {
       loadProperMinMaxDates(calcItems);

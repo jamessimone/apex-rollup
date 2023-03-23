@@ -1816,6 +1816,8 @@ global without sharing virtual class Rollup {
     RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
+      control.IsRollupLoggingEnabled__c = true;
+      RollupLogger.Instance.updateRollupControl(control);
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
     }
     return hasExceededLimits;
@@ -2068,7 +2070,7 @@ global without sharing virtual class Rollup {
       SObjectType calcItemType = calcItems[0].getSObjectType();
       RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcItemType);
       Boolean matches = false;
-      FilterResults filter = filter(calcItems, oldCalcItems, eval, meta, calcItemType, CALC_ITEM_REPLACER);
+      FilterResults filter = filter(calcItems, oldCalcItems, eval, meta, calcItemType, matches);
       for (SObject calcItem : calcItems) {
         matches = matches || filter.matchingItemIds.contains(calcItem.Id);
         if (matches) {
@@ -2632,6 +2634,9 @@ global without sharing virtual class Rollup {
     if (sObjectType == null) {
       sObjectType = calcItems[0].getSObjectType();
     }
+
+    Boolean shouldFilterCalcItems = CALC_ITEM_REPLACER.hasProcessedMetadata(rollupOperations, calcItems);
+
     /**
      * We have rollup operations to perform. That's great!
      * Let's get ready to rollup!
@@ -2670,7 +2675,7 @@ global without sharing virtual class Rollup {
         rollupConductor.rollupControl.IsRollupLoggingEnabled__c = localControl.IsRollupLoggingEnabled__c;
       }
 
-      FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType, rollupConductor.calcItemReplacer);
+      FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType, shouldFilterCalcItems);
 
       loadRollups(
         rollupFieldOnCalcItem,
@@ -2961,7 +2966,7 @@ global without sharing virtual class Rollup {
     Evaluator eval,
     Rollup__mdt metadata,
     SObjectType calcItemType,
-    RollupCalcItemReplacer calcItemReplacer
+    Boolean shouldFilterCalcItems
   ) {
     FilterResults results = new FilterResults();
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
@@ -2970,7 +2975,7 @@ global without sharing virtual class Rollup {
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
-      if (results.eval.matches(item) || calcItemReplacer.hasProcessedMetadata(new List<Rollup__mdt>{ metadata }, calcItems) == false) {
+      if (results.eval.matches(item) || shouldFilterCalcItems == false) {
         results.matchingItemIds.add(item.Id);
       } else if (oldCalcItems?.containsKey(item.Id) == true && results.eval.matches(oldCalcItems.get(item.Id))) {
         // if the where clause would exclude something, but we're in an update

@@ -22,7 +22,7 @@ public without sharing class RollupQueryBuilder {
     fieldNames.clear();
     fieldNames.addAll(lowerCaseFieldNames);
 
-    this.addCurrencyIsoCodeForMultiCurrencyOrgs(fieldNames, lowerCaseFieldNames, sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED));
+    this.addMultiCurrencyFields(fieldNames, lowerCaseFieldNames, sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED));
 
     String originalWhereClause = optionalWhereClause;
     Boolean isBlank = String.isBlank(originalWhereClause);
@@ -117,15 +117,17 @@ public without sharing class RollupQueryBuilder {
     return hasPolymorphicField;
   }
 
-  private void addCurrencyIsoCodeForMultiCurrencyOrgs(List<String> fieldNames, Set<String> uniqueLowercaseFields, Schema.DescribeSObjectResult objectToken) {
-    if (
-      RollupCurrencyInfo.isMultiCurrency() &&
-      uniqueLowercaseFields.contains(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME.toLowerCase()) == false &&
-      objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)
-    ) {
+  private void addMultiCurrencyFields(List<String> fieldNames, Set<String> uniqueLowercaseFields, Schema.DescribeSObjectResult objectToken) {
+    if (RollupCurrencyInfo.isMultiCurrency() && objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)) {
       Boolean hasAggregateFunction = AGGREGATE_QUERY_REGEX.matcher(String.join(fieldNames, ',')).find();
       if (hasAggregateFunction == false) {
-        fieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
+        List<String> multiCurrencyFields = RollupCurrencyInfo.getMultiCurrencyFields(objectToken);
+        for (String multiCurrencyField : multiCurrencyFields) {
+          if (uniqueLowercaseFields.contains(multiCurrencyField.toLowerCase()) == false) {
+            fieldNames.add(multiCurrencyField);
+          }
+        }
+        uniqueLowercaseFields.addAll(multiCurrencyFields);
       }
     }
   }

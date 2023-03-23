@@ -254,9 +254,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           ConditionalGrouping conditionalGrouping = this.conditionalGroupings[index];
           Boolean hasInnerMatch = conditionalGrouping.equals(calcItem);
           addLog(conditionalGrouping, hasInnerMatch, calcItem, LoggingLevel.FINEST);
-          if (conditionalGrouping.isOrConditional()) {
+          Boolean isOrConditional = conditionalGrouping.isOrConditional();
+          if (isOrConditional) {
             matches = index == 0 ? hasInnerMatch : hasInnerMatch || matches;
-          } else if (conditionalGrouping.isOrConditional() == false) {
+          } else if (isOrConditional == false) {
             matches = matches && hasInnerMatch;
           }
         }
@@ -566,6 +567,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private class WhereFieldCondition {
     private final SObjectType sObjectType;
     private final String fieldName;
+    private final Map<String, Schema.SObjectField> fieldNameToTokens;
     private final String criteria;
     private final List<String> originalValues;
     private final List<String> values;
@@ -579,6 +581,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.criteria = criteria;
       this.originalValues = values;
       this.sObjectType = sObjectType;
+      this.fieldNameToTokens = this.sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
       this.values = new List<String>();
 
       for (String val : values) {
@@ -615,7 +618,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       Boolean isDateFunction = RollupDateLiteral.isSoqlDateFunction(this.fieldName);
 
       String fieldNameToUse = isDateFunction ? getDateFunctionField(this.fieldName) : this.fieldName;
-      Object originalValue = this.getFieldValue(item, fieldNameToUse, this.sObjectType);
+      Object originalValue = this.getFieldValue(item, fieldNameToUse, this.fieldNameToTokens);
       String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
 
       if (hasOnlyOneValue && isDateFunction) {
@@ -698,21 +701,21 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return isEqual;
     }
 
-    private Object getFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
+    private Object getFieldValue(SObject item, String fieldPath, Map<String, Schema.SObjectField> localFieldNameToTokens) {
       if (item == null) {
         return null;
       }
       // handle compound fields separately
-      Boolean hasField = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().containsKey(fieldPath);
+      Boolean hasField = localFieldNameToTokens.containsKey(fieldPath);
       if (fieldPath.contains('.') && hasField == false) {
-        return this.getRelationshipFieldValue(item, fieldPath, sObjectType);
+        return this.getRelationshipFieldValue(item, fieldPath, localFieldNameToTokens);
       } else if ((hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath)) || (hasField && item.get(fieldPath) == null)) {
         return item.get(fieldPath);
       }
       return null;
     }
 
-    private Object getRelationshipFieldValue(SObject item, String fieldPath, SObjectType sObjectType) {
+    private Object getRelationshipFieldValue(SObject item, String fieldPath, Map<String, Schema.SObjectField> localFieldNameToTokens) {
       List<String> fieldNameParts = fieldPath.split(RELATIONSHIP_FIELD_DELIMITER);
       // here, we pop fields off the front of the list because for tertiary+ object relationships (eg Owner.Profile.Name)
       // we need to recurse till the value itself can be captured
@@ -720,7 +723,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       String originalName = relationshipName;
       relationshipName = getRelationshipNameFromField(relationshipName);
 
-      SObjectField fieldToken = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().get(relationshipName);
+      SObjectField fieldToken = localFieldNameToTokens.get(relationshipName);
       if (fieldToken == null) {
         // it could be a rollup started from the parent using a parent-level where clause
         try {
@@ -746,7 +749,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type' && parentSObject?.getPopulatedFieldsAsMap().containsKey('Type') == true) {
         return parentSObject.get(fieldNameParts[0]);
       } else if (fieldNameParts.isEmpty() == false) {
-        return this.getFieldValue(parentSObject, String.join(fieldNameParts, '.'), parentSObjectType);
+        return this.getFieldValue(
+          parentSObject,
+          String.join(fieldNameParts, '.'),
+          parentSObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap()
+        );
       } else {
         return parentSObject?.get(originalName);
       }
@@ -877,7 +884,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {
-    RollupLogger.Instance.log(clazz + '\nMatches? ' + matches + ' for: ' + item, logLevel);
+    RollupLogger.Instance.log('Evaluator matches? ' + matches, item, logLevel);
   }
 
   private static String getCurrentTransactionId() {

@@ -74,7 +74,7 @@ public without sharing abstract class RollupCalculator {
             when Currency, Double, Integer, Long, Percent {
               calc = new DecimalRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
             }
-            when Combobox, Email, EncryptedString, Id, MultiPicklist, Phone, Reference, String, TextArea, URL {
+            when Combobox, Email, EncryptedString, Id, MultiPicklist, Phone, Picklist, Reference, String, TextArea, URL {
               calc = new PicklistRollupCalculator(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
             }
             when Date {

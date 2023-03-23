@@ -1209,6 +1209,21 @@ private class RollupCalculatorTests {
   // MIN / MAX
 
   @IsTest
+  static void supportsMaxFromPicklists() {
+    RollupCalculator calc = getCalculator(
+      '',
+      Rollup.Op.MAX,
+      ContactPointAddress.Name,
+      Account.Industry,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Account.Id
+    );
+
+    Assert.isNotNull(calc);
+  }
+
+  @IsTest
   static void shouldDefaultToNullIfCurrentItemExcludedAndNoOtherMatchingItemsTime() {
     Time max = Time.newInstance(11, 11, 11, 11);
     Rollup__mdt metadata = new Rollup__mdt(CalcItem__c = 'ContactPointAddress', CalcItemWhereClause__c = 'BestTimeToContactEndTime != ' + String.valueOf(max));
