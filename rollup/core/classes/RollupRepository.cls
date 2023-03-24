@@ -29,10 +29,12 @@ public without sharing class RollupRepository {
   }
 
   public Database.QueryLocator getLocator() {
+    RollupLogger.Instance.log('Getting query locator for', this.args.query, LoggingLevel.DEBUG);
     return Database.getQueryLocatorWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
   }
 
   public List<SObject> get() {
+    RollupLogger.Instance.log('Querying...', this.args.query, LoggingLevel.DEBUG);
     return Database.queryWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
   }
 

@@ -1244,6 +1244,53 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldRemoveTextOnConcatDistinctDelete() {
+    Account acc = [SELECT Id, Name, Description FROM Account];
+    String originalAccountName = acc.Name;
+    String somethingElse = 'Something else';
+    acc.Name = acc.Name + ', ' + somethingElse;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    ContactPointAddress originalName = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 0);
+    ContactPointAddress somethingElseName = new ContactPointAddress(Name = somethingElse, ParentId = acc.Id, PreferenceRank = 1);
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ originalName, somethingElseName };
+    insert cpas;
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ somethingElseName });
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ somethingElseName.Id => somethingElseName };
+    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        CalcItemWhereClause__c = 'Parent.Type = \'Account\'',
+        GrandparentRelationshipFieldPath__c = 'Parent.Description'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Account should be updated CONCAT_DISTINCT delete');
+    System.assertEquals(originalAccountName, acc.Name);
+  }
+
+  @IsTest
   static void shouldMaxOnStringsOnInsert() {
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A'), new ContactPointAddress(Name = 'Z') };
 

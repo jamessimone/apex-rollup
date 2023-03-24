@@ -821,7 +821,7 @@ global without sharing virtual class Rollup {
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
     List<SObject> localCalcItems;
     try {
-      localCalcItems = Database.query(query);
+      localCalcItems = new RollupRepository(System.AccessLevel.SYSTEM_MODE).setQuery(query).get();
     } catch (QueryException ex) {
       throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
     }
@@ -2560,7 +2560,7 @@ global without sharing virtual class Rollup {
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
-    String sObjectName = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
+    String sObjectName = '' + sObjectType;
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
@@ -2975,7 +2975,7 @@ global without sharing virtual class Rollup {
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
-      if (results.eval.matches(item) || shouldFilterCalcItems == false) {
+      if (shouldFilterCalcItems == false || results.eval.matches(item)) {
         results.matchingItemIds.add(item.Id);
       } else if (oldCalcItems?.containsKey(item.Id) == true && results.eval.matches(oldCalcItems.get(item.Id))) {
         // if the where clause would exclude something, but we're in an update

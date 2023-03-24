@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Opp Nine</label>
+    <protected>false</protected>
+    <values>
+        <field>CalcItemWhereClause__c</field>
+        <value xsi:type="xsd:string">StageName = &apos;One&apos;</value>
+    </values>
+    <values>
+        <field>CalcItem__c</field>
+        <value xsi:type="xsd:string">Opportunity</value>
+    </values>
+    <values>
+        <field>ChangedFieldsOnCalcItem__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>ConcatDelimiter__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Description__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>FullRecalculationDefaultNumberValue__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>FullRecalculationDefaultStringValue__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>GrandparentRelationshipFieldPath__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>GroupByFields__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>GroupByRowEndDelimiter__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>GroupByRowStartDelimiter__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>IsFullRecordSet__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>IsRollupStartedFromParent__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>IsTableFormatted__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>LimitAmount__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>LookupFieldOnCalcItem__c</field>
+        <value xsi:type="xsd:string">AccountId</value>
+    </values>
+    <values>
+        <field>LookupFieldOnLookupObject__c</field>
+        <value xsi:type="xsd:string">Id</value>
+    </values>
+    <values>
+        <field>LookupObject__c</field>
+        <value xsi:type="xsd:string">Account</value>
+    </values>
+    <values>
+        <field>OneToManyGrandparentFields__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>OrderByFirstLast__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>RollupControl__c</field>
+        <value xsi:type="xsd:string">Org_Defaults</value>
+    </values>
+    <values>
+        <field>RollupFieldOnCalcItem__c</field>
+        <value xsi:type="xsd:string">StageName</value>
+    </values>
+    <values>
+        <field>RollupFieldOnLookupObject__c</field>
+        <value xsi:type="xsd:string">Rollup_To_Checkbox__c</value>
+    </values>
+    <values>
+        <field>RollupOperation__c</field>
+        <value xsi:type="xsd:string">NONE</value>
+    </values>
+    <values>
+        <field>RollupToUltimateParent__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>SharingMode__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>ShouldRunWithoutCustomSettingEnabled__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>SplitConcatDelimiterOnCalcItem__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>UltimateParentLookup__c</field>
+        <value xsi:nil="true"/>
+    </values>
+</CustomMetadata>

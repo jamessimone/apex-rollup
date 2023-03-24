@@ -80,6 +80,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
+  private static Map<Integer, Map<String, CalcItemBag>> CACHED_CALC_ITEM_LOOKUPS {
+    get {
+      if (CACHED_CALC_ITEM_LOOKUPS == null) {
+        CACHED_CALC_ITEM_LOOKUPS = new Map<Integer, Map<String, CalcItemBag>>();
+      }
+      return CACHED_CALC_ITEM_LOOKUPS;
+    }
+    set;
+  }
+
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     return new QueueableProcessor(invokePoint, calcItems, oldCalcItems);
   }
@@ -204,7 +214,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return numberToReturn;
   }
 
-  public virtual Database.QueryLocator start(Database.BatchableContext context) {
+  public Database.QueryLocator start(Database.BatchableContext context) {
     /**
      * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
      * NB: we have to call "populateObjectFields" in both the "start" and "execute" methods because
@@ -212,7 +222,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
      * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
      */
     RollupRepository repo = this.preStart();
-    this.logger.log('starting batch with query: ' + repo, context, LoggingLevel.INFO);
     this.logger.save();
     return repo.getLocator();
   }
@@ -600,7 +609,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         return;
       }
       if (outstandingItemCount > 0) {
-        this.logger.log(this.getTypeName() + ': gathering additional calc items with query:', query, LoggingLevel.DEBUG);
         additionalCalcItems = repo.setQuery(query).get();
 
         if (hasAlreadyBeenQueried) {
@@ -639,7 +647,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       String grandparentKey = '' + roll.lookupObj + roll.calcItemType;
-      if (grandparentRollups.containsKey(grandparentKey)) {
+      if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) && grandparentRollups.containsKey(grandparentKey)) {
         roll.traversal = grandparentRollups.get(grandparentKey);
       }
 
@@ -664,7 +672,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
     }
-    RollupEvaluator.clearConditionCache();
+    this.cleanup();
     this.getDML().doUpdate(updatedLookupRecords.values());
     this.populateOtherDeferredRollups();
     this.processDeferredRollups();
@@ -818,6 +826,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       return roll.traversal.getIsFinished() ? roll.traversal.getParentLookupToRecords() : lookupFieldToCalcItems;
     }
+
+    Integer cacheKey = roll.calcItems.hashCode();
+    switch on this.invokePoint {
+      when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
+        Map<String, CalcItemBag> possiblyCachedItems = CACHED_CALC_ITEM_LOOKUPS.get(cacheKey);
+        if (possiblyCachedItems != null) {
+          return possiblyCachedItems;
+        }
+      }
+    }
+
     for (SObject calcItem : roll.calcItems) {
       if (roll.matchingCalcItemIds.contains(calcItem.Id) == false) {
         continue;
@@ -853,6 +872,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
     }
+    CACHED_CALC_ITEM_LOOKUPS.put(cacheKey, lookupFieldToCalcItems);
     return lookupFieldToCalcItems;
   }
 
@@ -1333,5 +1353,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     this.storeParentResetField(roll, lookupRecord);
     this.logger.log(this.getTypeName() + ': ' + logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
+  }
+
+  private void cleanup() {
+    RollupEvaluator.clearConditionCache();
+    CACHED_CALC_ITEM_LOOKUPS = null;
   }
 }
