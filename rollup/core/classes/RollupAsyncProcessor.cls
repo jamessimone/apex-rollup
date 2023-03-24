@@ -973,38 +973,42 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else {
         this.calcObjectToUniqueFieldNames.put(roll.calcItemType, whereFields);
       }
-      if (this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, roll.calcItems) == false) {
-        Integer oldHashCode = roll.calcItems?.hashCode();
-        roll.calcItems = this.calcItemReplacer.replace(roll.calcItems, combinedMeta);
-        this.replaceCalcItems(oldHashCode, roll.calcItems, roll, CollectionType.ITERABLE);
-      }
-      if (this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, roll.oldCalcItems?.values()) == false) {
-        Integer oldHashCode = roll.oldCalcItems?.hashCode();
-        Map<Id, SObject> oldCalcItemsWithUpdatedFields = new Map<Id, SObject>();
-        for (SObject oldCalcItem : this.calcItemReplacer.replace(roll.oldCalcItems?.values(), combinedMeta)) {
-          oldCalcItemsWithUpdatedFields.put(oldCalcItem.Id, oldCalcItem);
-        }
-        roll.oldCalcItems = oldCalcItemsWithUpdatedFields;
-        this.replaceCalcItems(oldHashCode, roll.oldCalcItems, roll, CollectionType.DICTIONARY);
-      }
       if (this.fullRecalcProcessor != null) {
         this.fullRecalcProcessor.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
         this.fullRecalcProcessor.lookupObjectToUniqueFieldNames = this.lookupObjectToUniqueFieldNames;
       }
     }
+
+    if (this.calcItems != null && this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.calcItems) == false) {
+      Integer oldHashCode = this.calcItems?.hashCode();
+      this.calcItems = this.calcItemReplacer.replace(this.calcItems, combinedMeta);
+      this.replaceCalcItems(oldHashCode, this.calcItems, rollups, CollectionType.ITERABLE);
+    }
+    if (this.oldCalcItems != null && this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.oldCalcItems.values()) == false) {
+      Integer oldHashCode = this.oldCalcItems?.hashCode();
+      Map<Id, SObject> oldCalcItemsWithUpdatedFields = new Map<Id, SObject>();
+      for (SObject oldCalcItem : this.calcItemReplacer.replace(this.oldCalcItems.values(), combinedMeta)) {
+        oldCalcItemsWithUpdatedFields.put(oldCalcItem.Id, oldCalcItem);
+      }
+      this.oldCalcItems = oldCalcItemsWithUpdatedFields;
+      this.replaceCalcItems(oldHashCode, this.oldCalcItems, rollups, CollectionType.DICTIONARY);
+    }
   }
 
-  private void replaceCalcItems(Integer oldHashCode, Object updatedRecords, Rollup innerRollup, CollectionType collectionType) {
+  private void replaceCalcItems(Integer oldHashCode, Object updatedRecords, List<Rollup> innerRollups, CollectionType type) {
     // this unfortunate statement wouldn't be nearly so bad if the collections were passed by reference - but they're not,
     // they're passed by value, which means the reassignments below would not cascade back up to the innerRollup's
     // calcItems / oldCalcItems properties without explicitly being re-set.
-    if (innerRollup.calcItems?.hashCode() == oldHashCode) {
-      switch on collectionType {
-        when ITERABLE {
-          innerRollup.calcItems = (List<SObject>) updatedRecords;
-        }
-        when DICTIONARY {
-          innerRollup.oldCalcItems = (Map<Id, SObject>) updatedRecords;
+    for (Rollup innerRollup : innerRollups) {
+      Boolean isMatch = (type == CollectionType.ITERABLE ? innerRollup.calcItems?.hashCode() : innerRollup.oldCalcItems?.hashCode()) == oldHashCode;
+      if (isMatch) {
+        switch on type {
+          when ITERABLE {
+            innerRollup.calcItems = (List<SObject>) updatedRecords;
+          }
+          when DICTIONARY {
+            innerRollup.oldCalcItems = (Map<Id, SObject>) updatedRecords;
+          }
         }
       }
     }
