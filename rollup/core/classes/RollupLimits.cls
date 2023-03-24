@@ -5,6 +5,9 @@ public without sharing class RollupLimits {
   private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 3000;
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS = 13000;
 
+  private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
+  private static final Integer LIMIT_QUERY_ROWS = 50000;
+
   public class Tester {
     private final transient RollupControl__mdt control;
     private final transient Boolean isRunningAsync;
@@ -25,7 +28,7 @@ public without sharing class RollupLimits {
     }
     public Boolean hasExceededHeapSizeLimit {
       get {
-        return (Limits.getLimitHeapSize() - 2000) < Limits.getHeapSize();
+        return (LIMIT_HEAP_SIZE - 2000) < Limits.getHeapSize();
       }
     }
     public Boolean hasExceededDMLRowLimit {
@@ -53,7 +56,7 @@ public without sharing class RollupLimits {
     public Integer getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows != null ? stubbedQueryRows : Limits.getQueryRows();
       if (this.control?.MaxQueryRows__c == null) {
-        return Limits.getLimitQueryRows() - queryRowsUsed;
+        return LIMIT_QUERY_ROWS - queryRowsUsed;
       }
       Integer remainingQueryRows = this.control.MaxQueryRows__c?.intValue() - queryRowsUsed;
       return remainingQueryRows > 0 ? remainingQueryRows : 0;

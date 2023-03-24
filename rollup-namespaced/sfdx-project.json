@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Optimizations to reduce CPU time",
-            "versionNumber": "1.0.28.0",
+            "versionName": "ACM correctly includes all query fields for full recalcs, further optimizations",
+            "versionNumber": "1.0.29.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -49,6 +49,7 @@
         "apex-rollup-namespaced@1.0.25-0": "04t6g000008fjfdAAA",
         "apex-rollup-namespaced@1.0.26-0": "04t6g000008fjg7AAA",
         "apex-rollup-namespaced@1.0.27-0": "04t6g000008fjheAAA",
-        "apex-rollup-namespaced@1.0.28-0": "04t6g000008fjj1AAA"
+        "apex-rollup-namespaced@1.0.28-0": "04t6g000008fjj1AAA",
+        "apex-rollup-namespaced@1.0.29-0": "04t6g000008fjnsAAA"
     }
 }
