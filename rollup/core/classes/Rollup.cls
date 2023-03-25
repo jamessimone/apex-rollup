@@ -1,4 +1,4 @@
-global without sharing virtual class Rollup {
+global without sharing virtual class Rollup implements RollupLogger.ToStringObject {
   /**
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
    * but this keeps things much simpler

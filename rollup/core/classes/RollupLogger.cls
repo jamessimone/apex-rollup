@@ -25,6 +25,9 @@ global without sharing virtual class RollupLogger implements ILogger {
     private set;
   }
 
+  public interface ToStringObject {
+  }
+
   public interface ILogger {
     void log(String logString, LoggingLevel logLevel);
     void log(String logString, Object logObject, LoggingLevel logLevel);
@@ -97,13 +100,13 @@ global without sharing virtual class RollupLogger implements ILogger {
       return appended;
     } else if (logObject instanceof String) {
       appended = (String) logObject;
-    } else if (logObject instanceof List<Rollup>) {
-      List<Rollup> rolls = (List<Rollup>) logObject;
-      for (Rollup roll : rolls) {
-        appended += this.getLogStringFromObject(roll) + '\n';
+    } else if (logObject instanceof List<Object>) {
+      List<Object> logObjects = (List<Object>) logObject;
+      for (Object obj : logObjects) {
+        appended += this.getLogStringFromObject(obj) + '\n';
       }
       appended = appended.removeEnd('\n');
-    } else if (logObject instanceof Rollup) {
+    } else if (logObject instanceof ToStringObject) {
       appended = logObject.toString();
     } else if (logObject instanceof Exception) {
       Exception ex = (Exception) logObject;
