@@ -1,7 +1,7 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.5.56';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.5.57-beta';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -100,13 +100,7 @@ global without sharing virtual class RollupLogger implements ILogger {
       return appended;
     } else if (logObject instanceof String) {
       appended = (String) logObject;
-    } else if (logObject instanceof List<Object>) {
-      List<Object> logObjects = (List<Object>) logObject;
-      for (Object obj : logObjects) {
-        appended += this.getLogStringFromObject(obj) + '\n';
-      }
-      appended = appended.removeEnd('\n');
-    } else if (logObject instanceof ToStringObject) {
+    } else if (logObject instanceof ToStringObject || logObject instanceof List<ToStringObject>) {
       appended = logObject.toString();
     } else if (logObject instanceof Exception) {
       Exception ex = (Exception) logObject;

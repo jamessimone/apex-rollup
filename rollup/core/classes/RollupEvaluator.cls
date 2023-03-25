@@ -605,6 +605,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
+    public override String toString() {
+      return 'Field: ' + this.fieldName + ', Criteria: ' + this.criteria + ', Values: ' + this.originalValues;
+    }
+
     @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyCatchBlock')
     public Boolean equals(Object o) {
       String decisionKey = this.fieldName + this.criteria + this.originalValues + o.hashCode();
@@ -883,9 +887,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return relationshipField.endsWith('__r') ? relationshipField.substringBeforeLast('__r') + '__c' : relationshipField + 'Id';
   }
 
-  private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {
+  private static void addLog(RollupLogger.ToStringObject clazz, Boolean matches, Object item, LoggingLevel logLevel) {
     if (matches == false) {
-      RollupLogger.Instance.log('Removing non-match for:', new List<Object>{ clazz, item }, logLevel);
+      RollupLogger.Instance.log('Removing non-match for: ' + item, clazz, logLevel);
     }
   }
 
