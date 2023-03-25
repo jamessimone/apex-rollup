@@ -48,11 +48,12 @@ public without sharing class RollupRepository {
     try {
       countAmount = Database.countQueryWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while trying to get count query:\n' + this.args.query, ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('an error occurred while trying to get count query', ex, LoggingLevel.WARN);
       // not all count queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       countAmount = SENTINEL_COUNT_VALUE;
     }
+    RollupLogger.Instance.log('Count query: ' + this.args.query, 'Returned amount: ' + countAmount, LoggingLevel.DEBUG);
     return countAmount;
   }
 

@@ -22,6 +22,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected final SObjectType calcItemType;
   protected final Set<String> recordIds;
 
+  private static Set<String> hashedRollups = new Set<String>();
   @TestVisible
   private static List<SObject> stubParentRecords;
   @TestVisible
@@ -1050,8 +1051,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
         (isRunningAsnyc && this.getIsTimingOut(rollup.rollupControl, rollup) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
-
-      if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
+      String hashedRollupKey = rollup.getHashedContents() + rollup.calcItems?.hashCode() + rollup.oldCalcItems?.hashCode();
+      if (hashedRollups.contains(hashedRollupKey)) {
+        this.rollups.remove(index);
+      } else if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
       } else if (couldRunSync && shouldRunSyncDeferred == false) {
         this.calcItemReplacer?.resetShouldRunAs(RollupMetaPicklists.ShouldRunAs.Synchronous);
@@ -1061,6 +1064,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.rollups.remove(index);
         this.getCachedRollups().add(rollup);
       }
+      hashedRollups.add(hashedRollupKey);
 
       this.overrideParentRollupControlValues(rollup.rollupControl);
     }
