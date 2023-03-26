@@ -2526,6 +2526,58 @@ private class RollupFullRecalcTests {
     System.assertEquals(one.PreferenceRank + two.PreferenceRank, acc.AnnualRevenue);
   }
 
+  @IsTest
+  static void addsCabooseForMultiplFullRecalcsToDifferentParents() {
+    // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
+    // and there are multiple instances of the full batch recalc passed to RollupAsyncProcessor.getAsyncRollup,
+    // need to shortcut to the first processor and append any additional batches as "cabooses" that get called in the finish method
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, BatchChunkSize__c = 100, IsRollupLoggingEnabled__c = true);
+
+    Account parentOne = [SELECT Id FROM Account];
+    ContactPointAddress childOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'child one', PreferenceRank = 25);
+    Account parentTwo = new Account(Name = 'Parent Two');
+    insert new List<SObject>{ childOne, parentTwo };
+
+    // with two different parents this one should be a batch
+    insert new List<Opportunity>{
+      new Opportunity(AccountId = parentOne.Id, StageName = 'One', CloseDate = System.today(), Name = 'Another child rollup', Amount = 5),
+      new Opportunity(AccountId = parentTwo.Id, StageName = 'Two', CloseDate = System.today(), Name = 'Child rollup two', Amount = 10)
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'Opportunity',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          RollupFieldOnCalcItem__c = 'Amount',
+          RollupOperation__c = 'MAX',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'NumberOfEmployees'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+    Test.stopTest();
+
+    parentOne = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
+    Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
+    Assert.areEqual(5, parentOne.NumberOfEmployees);
+    parentTwo = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parentTwo.Id];
+    Assert.areEqual(null, parentOne.AnnualRevenue);
+    Assert.areEqual(10, parentOne.NumberOfEmployees);
+  }
+
   private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {
     public DeferredContactPointAddressRollup(List<Rollup__mdt> meta, Set<String> recordIds) {
       super(

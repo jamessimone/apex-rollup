@@ -51,7 +51,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  private final Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
+  private Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
     get {
       if (childToUnexpectedFullRecalc == null) {
         childToUnexpectedFullRecalc = new Map<Schema.SObjectType, RollupFullRecalcProcessor>();
@@ -590,7 +590,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollup.wasConvertedToFullRecalculation = true;
         rollup.metadata.RollupOperation__c = getBaseOperationName(rollup.metadata.RollupOperation__c);
         for (String lookupKey : recordIds) {
-          this.storeParentResetField(rollup, rollup.lookupObj.newSObject(Id.valueOf(lookupKey)));
+          SObject parentResetRecord = rollup.lookupObj.newSObject();
+          parentResetRecord.put(rollup.lookupFieldOnLookupObject, lookupKey);
+          this.storeParentResetField(rollup, parentResetRecord);
         }
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
@@ -894,6 +896,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private void populateOtherDeferredRollups() {
     this.deferredRollups.addAll(this.childToUnexpectedFullRecalc.values());
+    this.childToUnexpectedFullRecalc = null;
     if (this.getCachedRollups().isEmpty() == false) {
       for (Rollup outerRollup : this.getCachedRollups()) {
         this.deferredRollups.addAll(outerRollup.rollups);
