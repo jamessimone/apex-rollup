@@ -169,7 +169,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
-  private static final RollupControl__mdt CACHED_DEFAULT {
+  private static RollupControl__mdt CACHED_DEFAULT {
     get {
       if (CACHED_DEFAULT == null || shouldRefreshCachedControl == true) {
         CACHED_DEFAULT = getSingleControlOrDefault(RollupControl__mdt.DeveloperName, CONTROL_ORG_DEFAULTS, defaultControl);
@@ -2246,6 +2246,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', equality);
+
     RollupFullRecalcProcessor parentResetProcessor = new RollupParentResetProcessor(
       wrappedMeta.metadata,
       parentType,
@@ -3000,7 +3001,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
     if (controlId != null) {
-      RollupLogger.Instance.updateRollupControl(getSingleControlOrDefault(RollupControl__mdt.Id, controlId, defaultControl));
+      CACHED_DEFAULT = getSingleControlOrDefault(RollupControl__mdt.Id, controlId, defaultControl);
+      RollupLogger.Instance.updateRollupControl(CACHED_DEFAULT);
     }
   }
 }

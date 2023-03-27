@@ -3,6 +3,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
 
   private final Args args = new Args();
   private final System.AccessLevel accessLevel;
+  private final String accessLevelName;
 
   private class Args {
     public final Map<String, Object> bindVars = new Map<String, Object>();
@@ -11,6 +12,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
 
   public RollupRepository(System.AccessLevel accessLevel) {
     this.accessLevel = accessLevel;
+    this.accessLevelName = this.accessLevel == System.AccessLevel.SYSTEM_MODE ? 'System' : 'User';
   }
 
   public RollupRepository setQuery(String query) {
@@ -62,13 +64,6 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   private void createQueryLog(String message) {
-    RollupLogger.Instance.Log(
-      message,
-      'Query: ' +
-      this.args.query +
-      '\nAccess level: ' +
-      (this.accessLevel == System.AccessLevel.SYSTEM_MODE ? 'System' : 'User'),
-      LoggingLevel.DEBUG
-    );
+    RollupLogger.Instance.Log(message, 'Query: ' + this.args.query + '\nAccess level: ' + this.accessLevelName, LoggingLevel.DEBUG);
   }
 }
