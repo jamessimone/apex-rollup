@@ -789,6 +789,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (rollup.overridesRunCalc) {
         rollupsToProcess.remove(index);
         rollup.runCalc();
+      } else if (rollup.getTypeName() == RollupFullBatchRecalculator.class.getName()) {
+        rollupsToProcess.remove(index);
+        RollupFullBatchRecalculator fullRecalc = (RollupFullBatchRecalculator) rollup;
+        Schema.SObjectType childType = fullRecalc.getCalcItemType();
+        this.childToUnexpectedFullRecalc.put(childType, fullRecalc);
       }
     }
     rollupsToProcess.addAll(this.transformFullRecalcRollups());
@@ -895,7 +900,18 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void populateOtherDeferredRollups() {
-    this.deferredRollups.addAll(this.childToUnexpectedFullRecalc.values());
+    RollupFullRecalcProcessor firstFullRecalc;
+    for (Integer index = 0; index < this.childToUnexpectedFullRecalc.values().size(); index++) {
+      RollupFullRecalcProcessor fullRecalc = this.childToUnexpectedFullRecalc.values()[index];
+      if (index == 0) {
+        firstFullRecalc = fullRecalc;
+      } else {
+        firstFullRecalc.addCaboose(fullRecalc);
+      }
+    }
+    if (firstFullRecalc != null) {
+      this.deferredRollups.add(firstFullRecalc);
+    }
     this.childToUnexpectedFullRecalc = null;
     if (this.getCachedRollups().isEmpty() == false) {
       for (Rollup outerRollup : this.getCachedRollups()) {

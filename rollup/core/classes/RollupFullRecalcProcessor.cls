@@ -3,6 +3,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   protected final Set<String> objIds = new Set<String>();
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
+  private final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
 
   protected String queryString;
   private Boolean hasProcessedParentRecords = false;
@@ -23,6 +24,10 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.recordIds = recordIds;
     this.postProcessor = postProcessor;
     this.processMetadata();
+  }
+
+  public void addCaboose(RollupFullRecalcProcessor caboose) {
+    this.cabooses.add(caboose);
   }
 
   public void addMetadata(Rollup__mdt meta) {
@@ -53,7 +58,13 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public void finish() {
-    if (this.postProcessor != null) {
+    if (this.cabooses.isEmpty() == false) {
+      RollupFullRecalcProcessor conductor = this.cabooses.remove(0);
+      for (RollupFullRecalcProcessor caboose : this.cabooses) {
+        conductor.addCaboose(caboose);
+      }
+      this.setCurrentJobId(conductor.startAsyncWork());
+    } else if (this.postProcessor != null) {
       this.logger.log('Starting post-full recalc processor', this.postProcessor, LoggingLevel.INFO);
       // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
       // job continuity is established between the full recalc and then any downstream job that runs
@@ -119,6 +130,7 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     props = super.customizeToStringEntries(props);
     this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
+    this.addToMap(props, 'Caboose Count', this.cabooses.size());
     return props;
   }
 
