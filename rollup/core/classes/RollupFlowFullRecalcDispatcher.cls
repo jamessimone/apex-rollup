@@ -10,7 +10,6 @@ global without sharing class RollupFlowFullRecalcDispatcher {
 
   @InvocableMethod(category='Rollups' label='Full Recalc CMDT-driven Invocable')
   public static List<Rollup.FlowOutput> performFullRecalcRollups(List<FlowInput> inputs) {
-    List<Rollup__mdt> localRollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
     Set<String> rollupDeveloperNames = new Set<String>();
     for (FlowInput input : inputs) {
       if (String.isBlank(input.rollupDeveloperNames)) {
@@ -21,6 +20,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
         rollupDeveloperNames.add(apiName.trim());
       }
     }
+    List<Rollup__mdt> localRollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
     List<Rollup__mdt> selectedRollupMetadata = new List<Rollup__mdt>();
     for (Rollup__mdt rollup : localRollupMetadata) {
       if (rollupDeveloperNames.contains(rollup.DeveloperName)) {

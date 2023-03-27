@@ -22,6 +22,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected final SObjectType calcItemType;
   protected final Set<String> recordIds;
 
+  private static Set<String> hashedRollups = new Set<String>();
   @TestVisible
   private static List<SObject> stubParentRecords;
   @TestVisible
@@ -50,7 +51,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  private final Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
+  private Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
     get {
       if (childToUnexpectedFullRecalc == null) {
         childToUnexpectedFullRecalc = new Map<Schema.SObjectType, RollupFullRecalcProcessor>();
@@ -589,7 +590,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollup.wasConvertedToFullRecalculation = true;
         rollup.metadata.RollupOperation__c = getBaseOperationName(rollup.metadata.RollupOperation__c);
         for (String lookupKey : recordIds) {
-          this.storeParentResetField(rollup, rollup.lookupObj.newSObject(Id.valueOf(lookupKey)));
+          SObject parentResetRecord = rollup.lookupObj.newSObject();
+          parentResetRecord.put(rollup.lookupFieldOnLookupObject, lookupKey);
+          this.storeParentResetField(rollup, parentResetRecord);
         }
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
@@ -786,6 +789,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (rollup.overridesRunCalc) {
         rollupsToProcess.remove(index);
         rollup.runCalc();
+      } else if (rollup.getTypeName() == RollupFullBatchRecalculator.class.getName()) {
+        rollupsToProcess.remove(index);
+        RollupFullBatchRecalculator fullRecalc = (RollupFullBatchRecalculator) rollup;
+        Schema.SObjectType childType = fullRecalc.getCalcItemType();
+        this.childToUnexpectedFullRecalc.put(childType, fullRecalc);
       }
     }
     rollupsToProcess.addAll(this.transformFullRecalcRollups());
@@ -892,7 +900,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void populateOtherDeferredRollups() {
-    this.deferredRollups.addAll(this.childToUnexpectedFullRecalc.values());
+    RollupFullRecalcProcessor firstFullRecalc;
+    for (Integer index = 0; index < this.childToUnexpectedFullRecalc.values().size(); index++) {
+      RollupFullRecalcProcessor fullRecalc = this.childToUnexpectedFullRecalc.values()[index];
+      if (index == 0) {
+        firstFullRecalc = fullRecalc;
+      } else {
+        firstFullRecalc.addCaboose(fullRecalc);
+      }
+    }
+    if (firstFullRecalc != null) {
+      this.deferredRollups.add(firstFullRecalc);
+    }
+    this.childToUnexpectedFullRecalc = null;
     if (this.getCachedRollups().isEmpty() == false) {
       for (Rollup outerRollup : this.getCachedRollups()) {
         this.deferredRollups.addAll(outerRollup.rollups);
@@ -1050,8 +1070,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
         (isRunningAsnyc && this.getIsTimingOut(rollup.rollupControl, rollup) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
-
-      if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
+      String hashedRollupKey = rollup.getHashedContents() + rollup.calcItems?.hashCode() + rollup.oldCalcItems?.hashCode();
+      if (hashedRollups.contains(hashedRollupKey)) {
+        this.rollups.remove(index);
+      } else if (rollup.rollupControl.ShouldAbortRun__c || this.rollupControl.ShouldAbortRun__c) {
         this.rollups.remove(index);
       } else if (couldRunSync && shouldRunSyncDeferred == false) {
         this.calcItemReplacer?.resetShouldRunAs(RollupMetaPicklists.ShouldRunAs.Synchronous);
@@ -1061,6 +1083,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.rollups.remove(index);
         this.getCachedRollups().add(rollup);
       }
+      hashedRollups.add(hashedRollupKey);
 
       this.overrideParentRollupControlValues(rollup.rollupControl);
     }

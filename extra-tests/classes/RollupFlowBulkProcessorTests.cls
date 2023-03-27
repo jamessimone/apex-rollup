@@ -333,6 +333,8 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void handlesRollupsStartedFromParent() {
+    // prior to the introduction of RollupAsyncProcessor.hashedRollups
+    // this test was throwing a silent error that has now been fixed
     Rollup.onlyUseMockMetadata = true;
     List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
     insert new List<SObject>{

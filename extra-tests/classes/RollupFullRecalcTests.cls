@@ -2460,7 +2460,6 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void correctlyHandlesMultipleDeferredFullRecalcs() {
-    // TODO continue on this thread for deferred full recalcs that are themselves INSIDE rollup conductors
     Account acc = [SELECT Id FROM Account];
     ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 25);
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'child two', PreferenceRank = 50);
@@ -2524,6 +2523,83 @@ private class RollupFullRecalcTests {
     acc = [SELECT NumberOfEmployees, AnnualRevenue FROM Account];
     System.assertEquals(2, acc.NumberOfEmployees);
     System.assertEquals(one.PreferenceRank + two.PreferenceRank, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void addsCabooseForMultiplFullRecalcsToDifferentParents() {
+    // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
+    // and there are multiple instances of the full batch recalcs that are present in the list of rollups
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 2,
+      BatchChunkSize__c = 100,
+      IsRollupLoggingEnabled__c = true,
+      MaxRollupRetries__c = 1
+    );
+    Rollup.onlyUseMockMetadata = true;
+
+    Account parentOne = [SELECT Id FROM Account];
+    ContactPointAddress childOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'child one', PreferenceRank = 25);
+    Account parentTwo = new Account(Name = 'Parent Two');
+    insert new List<SObject>{ childOne, parentTwo };
+
+    // with two different parents this one should be a batch
+    insert new List<Opportunity>{
+      new Opportunity(AccountId = parentOne.Id, StageName = 'One', CloseDate = System.today(), Name = 'Another child rollup', Amount = 5),
+      new Opportunity(AccountId = parentTwo.Id, StageName = 'Two', CloseDate = System.today(), Name = 'Child rollup two', Amount = 10)
+    };
+
+    // same thing here; we need TWO different batches to prove that this is working (because getAsyncRollup() shortcuts to the first rollup in the list when
+    // there is only one AND it's a full recalc, but we need this to work for multiple batch full recalcs at once)
+    insert new List<Contact>{
+      new Contact(AccountId = parentOne.Id, LastName = 'Concat'),
+      new Contact(AccountId = parentOne.Id, LastName = 'One'),
+      new Contact(AccountId = parentTwo.Id, LastName = 'Concat'),
+      new Contact(AccountId = parentTwo.Id, LastName = 'Two')
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'Opportunity',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          RollupFieldOnCalcItem__c = 'Amount',
+          RollupOperation__c = 'MAX',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'NumberOfEmployees'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'Contact',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          RollupFieldOnCalcItem__c = 'LastName',
+          RollupOperation__c = 'CONCAT',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Description'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+    Test.stopTest();
+
+    parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
+    Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
+    Assert.areEqual('Concat, One', parentOne.Description);
+    Assert.areEqual(5, parentOne.NumberOfEmployees);
+    parentTwo = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentTwo.Id];
+    Assert.areEqual(null, parentTwo.AnnualRevenue);
+    Assert.areEqual('Concat, Two', parentTwo.Description);
+    Assert.areEqual(10, parentTwo.NumberOfEmployees);
   }
 
   private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {

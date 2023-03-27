@@ -1,4 +1,4 @@
-public without sharing abstract class RollupEvaluator implements Rollup.Evaluator {
+public without sharing abstract class RollupEvaluator implements Rollup.Evaluator, RollupLogger.ToStringObject {
   private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
   private static final String TRUE_VAL = 'true';
   private static final String FALSE_VAL = 'false';
@@ -505,7 +505,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
   }
 
-  private abstract class ConditionalGrouping {
+  private abstract class ConditionalGrouping implements RollupLogger.ToStringObject {
     protected final List<WhereFieldCondition> innerConditions;
     public ConditionalGrouping(List<WhereFieldCondition> innerConditions) {
       this.innerConditions = innerConditions;
@@ -564,7 +564,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
   }
 
-  private class WhereFieldCondition {
+  private class WhereFieldCondition implements RollupLogger.ToStringObject {
     private final SObjectType sObjectType;
     private final String fieldName;
     private final Map<String, Schema.SObjectField> fieldNameToTokens;
@@ -603,6 +603,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (this.hasValues == null) {
         this.hasValues = false;
       }
+    }
+
+    public override String toString() {
+      return 'Field: ' + this.fieldName + ', Criteria: ' + this.criteria + ', Values: ' + this.originalValues;
     }
 
     @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyCatchBlock')
@@ -883,8 +887,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return relationshipField.endsWith('__r') ? relationshipField.substringBeforeLast('__r') + '__c' : relationshipField + 'Id';
   }
 
-  private static void addLog(Object clazz, Boolean matches, Object item, LoggingLevel logLevel) {
-    RollupLogger.Instance.log('Evaluator matches? ' + matches, item, logLevel);
+  private static void addLog(RollupLogger.ToStringObject clazz, Boolean matches, Object item, LoggingLevel logLevel) {
+    if (matches == false) {
+      RollupLogger.Instance.log('Removing non-match for: ' + item, clazz, logLevel);
+    }
   }
 
   private static String getCurrentTransactionId() {
