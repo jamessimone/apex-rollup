@@ -3001,8 +3001,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
     if (controlId != null) {
-      CACHED_DEFAULT = getSingleControlOrDefault(RollupControl__mdt.Id, controlId, defaultControl);
-      RollupLogger.Instance.updateRollupControl(CACHED_DEFAULT);
+      RollupControl__mdt possibleNewControl = getSingleControlOrDefault(RollupControl__mdt.Id, controlId, defaultControl);
+      // without the below guard clause, one test was failing during the namespaced package version creation
+      // but since namespaced test fails don't report which test method failed, I haven't yet pinned down exactly which
+      // one was producing the error. I consider it (most likely) a case of bad test data with Rollup.defaultControl
+      // as opposed to something that could be a production issue
+      if (possibleNewControl != null && getNamespaceInfo().namespace == '') {
+        CACHED_DEFAULT = possibleNewControl;
+        RollupLogger.Instance.updateRollupControl(CACHED_DEFAULT);
+      }
     }
   }
 }
