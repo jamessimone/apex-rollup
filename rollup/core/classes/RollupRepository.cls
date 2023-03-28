@@ -60,10 +60,10 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   public override String toString() {
-    return this.args.query + '\n' + 'with bind var keys: ' + this.args.bindVars.keySet();
+    return this.args.query + '\nBind keys: ' + this.args.bindVars.keySet()  + '\nAccess level: ' + this.accessLevelName;
   }
 
   private void createQueryLog(String message) {
-    RollupLogger.Instance.Log(message, 'Query: ' + this.args.query + '\nAccess level: ' + this.accessLevelName, LoggingLevel.DEBUG);
+    RollupLogger.Instance.Log(message, this, LoggingLevel.DEBUG);
   }
 }
