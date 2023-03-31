@@ -505,7 +505,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
     this.lookupItems = localLookupItems;
-    this.fullRecalcProcessor?.processParentFieldsToReset(this.lookupItems);
+    this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
     return this.lookupItems;
   }
 
