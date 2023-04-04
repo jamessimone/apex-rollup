@@ -1127,4 +1127,22 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(target));
   }
+
+  @IsTest
+  static void pascalCaseForFieldNamesIsNotRequired() {
+    String poorlyCasedFieldName = Opportunity.IsClosed.getDescribe().getName().toLowerCase();
+
+    Opportunity isClosedFalse = (Opportunity) JSON.deserialize('{ "IsClosed": false }', Opportunity.class);
+    OpportunityLineItem target = new OpportunityLineItem(Opportunity = isClosedFalse);
+    System.assertEquals(false, target.Opportunity.IsClosed);
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(
+      'Opportunity.' +
+      poorlyCasedFieldName +
+      ' = false',
+      target.getSObjectType()
+    );
+
+    System.assertEquals(true, eval.matches(target));
+    System.asserteQuals(false, eval.matches(new OpportunityLineItem()), 'Should properly evaluate for null relationship');
+  }
 }

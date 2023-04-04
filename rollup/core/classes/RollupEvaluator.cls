@@ -709,11 +709,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (item == null) {
         return null;
       }
-      // handle compound fields separately
+
       Boolean hasField = localFieldNameToTokens.containsKey(fieldPath);
+      // handle compound fields separately
       if (fieldPath.contains('.') && hasField == false) {
         return this.getRelationshipFieldValue(item, fieldPath, localFieldNameToTokens);
-      } else if ((hasField && item.getPopulatedFieldsAsMap().containsKey(fieldPath)) || (hasField && item.get(fieldPath) == null)) {
+      } else if (hasField) {
         return item.get(fieldPath);
       }
       return null;
