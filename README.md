@@ -444,7 +444,7 @@ global Rollup addLimit(Integer limitAmount, Schema.SObjectField rollupFieldOnCal
 // for use in conjunction with "addLimit" above
 global Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField)
 // use this to do things like turn a regular rollup into a GROUP BY rollup
-global Rollup modifyMetadata(Rollup__mdt meta)
+global Rollup modifyMetadata(Rollup__mdt template)
 
 // static methods
 global static void batch(Rollup rollup, Rollup secondRollup)

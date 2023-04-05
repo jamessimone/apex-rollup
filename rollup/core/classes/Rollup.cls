@@ -350,8 +350,23 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return this;
   }
 
-  global Rollup modifyMetadata(Rollup__mdt meta) {
+  global virtual Rollup modifyMetadata(Rollup__mdt template) {
+    List<Rollup__mdt> metasToModify = new List<Rollup__mdt>{ this.metadata };
+    for (Rollup roll : this.rollups) {
+      metasToModify.add(roll.metadata);
+    }
+    this.modifyMetadata(metasToModify, template);
     return this;
+  }
+
+  protected void modifyMetadata(List<Rollup__mdt> metas, Rollup__mdt template) {
+    for (Rollup__mdt meta : metas) {
+      if (meta != null) {
+        for (String fieldName : template.getPopulatedFieldsAsMap().keySet()) {
+          meta.put(fieldName, template.get(fieldName));
+        }
+      }
+    }
   }
 
   protected Rollup__mdt addOrderBys(Rollup__mdt localMeta, List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
@@ -2591,6 +2606,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c);
   }
 
+  @SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
   private static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
@@ -2605,7 +2621,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         continue;
       } else if (uniqueRelationshipNames.contains(relationshipName)) {
         return fieldToken;
-      } else if (loadOptions == SObjectDescribeOptions.DEFERRED) {
+      } else if (loadOptions == SObjectDescribeOptions.FULL) {
         List<Schema.SObjectType> parents = fieldToken.getDescribe().getReferenceTo();
         for (Schema.SObjectType parent : parents) {
           for (Schema.ChildRelationship child : parent.getDescribe().getChildRelationships()) {

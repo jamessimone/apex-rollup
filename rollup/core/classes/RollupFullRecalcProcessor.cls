@@ -1,4 +1,4 @@
-public abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
+global abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
   private final RollupFullRecalcProcessor postProcessor;
@@ -42,18 +42,23 @@ public abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return this.calcItemType;
   }
 
-  public override Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
+  global override Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
     for (Rollup__mdt rollupMeta : this.rollupMetas) {
       this.addLimitToMetadata(rollupMeta, limitAmount, calcItemRollupField);
     }
     return this;
   }
 
-  public override Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+  global override Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
     for (Integer index = 0; index < this.rollupMetas.size(); index++) {
       Rollup__mdt rollupMeta = this.addOrderBys(this.rollupMetas[index], orderBys, calcItemRollupField);
       this.rollupMetas.set(index, rollupMeta);
     }
+    return this;
+  }
+
+  global override Rollup modifyMetadata(Rollup__mdt template) {
+    this.modifyMetadata(this.rollupMetas, template);
     return this;
   }
 
