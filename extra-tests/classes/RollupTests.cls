@@ -2836,7 +2836,7 @@ private class RollupTests {
       .runCalc();
     Test.stopTest();
 
-    System.assertNotEquals(true, mock.Records.isEmpty(), 'Account should have been updated sync');
+    System.assertEquals(1, mock.Records.size());
     System.assertEquals(
       '<table><tr><th>Name</th><th>PreferenceRank</th></tr><tr><td>Group One</td><td>50</td></tr><tr><td>Group Two</td><td>null</td></tr></table>',
       mock.Records[0].get('Description')
