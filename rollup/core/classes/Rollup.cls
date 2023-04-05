@@ -331,22 +331,26 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return baseString.removeEnd('\n');
   }
 
-  public virtual String runCalc() {
+  global virtual String runCalc() {
     this.logger.log('no-op!', LoggingLevel.WARN);
     return 'Not implemented';
   }
 
-  public virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
+  global virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
       this.addLimitToMetadata(roll.metadata, limitAmount, calcItemRollupField);
     }
     return this;
   }
 
-  public virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+  global virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
       roll.metadata = this.addOrderBys(roll.metadata, orderBys, calcItemRollupField);
     }
+    return this;
+  }
+
+  global Rollup modifyMetadata(Rollup__mdt meta) {
     return this;
   }
 
@@ -2587,20 +2591,25 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c);
   }
 
-  private static SObjectField getPartOfGrandparentChain(Rollup__mdt meta, SObjectType sObjectType) {
+  private static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
     validRelationshipNames.remove(validRelationshipNames.size() - 1);
-    for (SObjectField fieldToken : sObjectType.getDescribe(SObjectDescribeOptions.FULL).fields.getMap().values()) {
-      if (fieldToken.getDescribe().getRelationshipName() == null) {
+    Schema.SObjectDescribeOptions loadOptions = String.isNotBlank(meta.OneToManyGrandparentFields__c)
+      ? SObjectDescribeOptions.FULL
+      : SObjectDescribeOptions.DEFERRED;
+    Set<String> uniqueRelationshipNames = new Set<String>(validRelationshipNames);
+    for (Schema.SObjectField fieldToken : sObjectType.getDescribe(loadOptions).fields.getMap().values()) {
+      String relationshipName = fieldToken.getDescribe().getRelationshipName();
+      if (relationshipName == null) {
         continue;
-      } else if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
+      } else if (uniqueRelationshipNames.contains(relationshipName)) {
         return fieldToken;
-      } else if (String.isNotBlank(meta.OneToManyGrandparentFields__c)) {
-        List<SObjectType> parents = fieldToken.getDescribe().getReferenceTo();
-        for (SObjectType parent : parents) {
-          for (ChildRelationship child : parent.getDescribe().getChildRelationships()) {
-            if (validRelationshipNames.contains(child.getRelationshipName())) {
+      } else if (loadOptions == SObjectDescribeOptions.DEFERRED) {
+        List<Schema.SObjectType> parents = fieldToken.getDescribe().getReferenceTo();
+        for (Schema.SObjectType parent : parents) {
+          for (Schema.ChildRelationship child : parent.getDescribe().getChildRelationships()) {
+            if (uniqueRelationshipNames.contains(child.getRelationshipName())) {
               return fieldToken;
             }
           }
