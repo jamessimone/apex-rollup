@@ -2471,28 +2471,29 @@ private class RollupFullRecalcTests {
     Rollup.batch(
       new List<Rollup>{
         new DeferredContactPointAddressRollup(
-          new List<Rollup__mdt>{
-            new Rollup__mdt(
-              CalcItem__c = 'ContactPointAddress',
-              RollupFieldOnCalcItem__c = 'Id',
-              LookupFieldOnCalcItem__c = 'ParentId',
-              LookupObject__c = 'Account',
-              LookupFieldOnLookupObject__c = 'Id',
-              RollupFieldOnLookupObject__c = 'NumberOfEmployees',
-              RollupOperation__c = 'COUNT'
-            ),
-            new Rollup__mdt(
-              CalcItem__c = 'ContactPointAddress',
-              RollupFieldOnCalcItem__c = 'Id',
-              LookupFieldOnCalcItem__c = 'ParentId',
-              LookupObject__c = 'Account',
-              LookupFieldOnLookupObject__c = 'Id',
-              RollupFieldOnLookupObject__c = 'Name',
-              RollupOperation__c = 'MAX'
-            )
-          },
-          recordIds
-        ),
+            new List<Rollup__mdt>{
+              new Rollup__mdt(
+                CalcItem__c = 'ContactPointAddress',
+                RollupFieldOnCalcItem__c = 'Id',
+                LookupFieldOnCalcItem__c = 'ParentId',
+                LookupObject__c = 'Account',
+                LookupFieldOnLookupObject__c = 'Id',
+                RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+                RollupOperation__c = 'COUNT'
+              ),
+              new Rollup__mdt(
+                CalcItem__c = 'ContactPointAddress',
+                RollupFieldOnCalcItem__c = 'Id',
+                LookupFieldOnCalcItem__c = 'ParentId',
+                LookupObject__c = 'Account',
+                LookupFieldOnLookupObject__c = 'Id',
+                RollupFieldOnLookupObject__c = 'Name',
+                RollupOperation__c = 'MAX'
+              )
+            },
+            recordIds
+          )
+          .modifyMetadata(new Rollup__mdt()),
         new DeferredContactPointAddressRollup(
           new List<Rollup__mdt>{
             new Rollup__mdt(

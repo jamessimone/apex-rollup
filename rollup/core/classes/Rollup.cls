@@ -331,23 +331,42 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return baseString.removeEnd('\n');
   }
 
-  public virtual String runCalc() {
+  global virtual String runCalc() {
     this.logger.log('no-op!', LoggingLevel.WARN);
     return 'Not implemented';
   }
 
-  public virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
+  global virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
       this.addLimitToMetadata(roll.metadata, limitAmount, calcItemRollupField);
     }
     return this;
   }
 
-  public virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
+  global virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
       roll.metadata = this.addOrderBys(roll.metadata, orderBys, calcItemRollupField);
     }
     return this;
+  }
+
+  global virtual Rollup modifyMetadata(Rollup__mdt template) {
+    List<Rollup__mdt> metasToModify = new List<Rollup__mdt>{ this.metadata };
+    for (Rollup roll : this.rollups) {
+      metasToModify.add(roll.metadata);
+    }
+    this.modifyMetadata(metasToModify, template);
+    return this;
+  }
+
+  protected void modifyMetadata(List<Rollup__mdt> metas, Rollup__mdt template) {
+    for (Rollup__mdt meta : metas) {
+      if (meta != null) {
+        for (String fieldName : template.getPopulatedFieldsAsMap().keySet()) {
+          meta.put(fieldName, template.get(fieldName));
+        }
+      }
+    }
   }
 
   protected Rollup__mdt addOrderBys(Rollup__mdt localMeta, List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
@@ -2587,20 +2606,26 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       (meta.IsRollupStartedFromParent__c && sObjectName != meta.LookupObject__c);
   }
 
-  private static SObjectField getPartOfGrandparentChain(Rollup__mdt meta, SObjectType sObjectType) {
+  @SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
+  private static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
     validRelationshipNames.remove(validRelationshipNames.size() - 1);
-    for (SObjectField fieldToken : sObjectType.getDescribe(SObjectDescribeOptions.FULL).fields.getMap().values()) {
-      if (fieldToken.getDescribe().getRelationshipName() == null) {
+    Schema.SObjectDescribeOptions loadOptions = String.isNotBlank(meta.OneToManyGrandparentFields__c)
+      ? SObjectDescribeOptions.FULL
+      : SObjectDescribeOptions.DEFERRED;
+    Set<String> uniqueRelationshipNames = new Set<String>(validRelationshipNames);
+    for (Schema.SObjectField fieldToken : sObjectType.getDescribe(loadOptions).fields.getMap().values()) {
+      String relationshipName = fieldToken.getDescribe().getRelationshipName();
+      if (relationshipName == null) {
         continue;
-      } else if (validRelationshipNames.contains(fieldToken.getDescribe().getRelationshipName())) {
+      } else if (uniqueRelationshipNames.contains(relationshipName)) {
         return fieldToken;
-      } else if (String.isNotBlank(meta.OneToManyGrandparentFields__c)) {
-        List<SObjectType> parents = fieldToken.getDescribe().getReferenceTo();
-        for (SObjectType parent : parents) {
-          for (ChildRelationship child : parent.getDescribe().getChildRelationships()) {
-            if (validRelationshipNames.contains(child.getRelationshipName())) {
+      } else if (loadOptions == SObjectDescribeOptions.FULL) {
+        List<Schema.SObjectType> parents = fieldToken.getDescribe().getReferenceTo();
+        for (Schema.SObjectType parent : parents) {
+          for (Schema.ChildRelationship child : parent.getDescribe().getChildRelationships()) {
+            if (uniqueRelationshipNames.contains(child.getRelationshipName())) {
               return fieldToken;
             }
           }

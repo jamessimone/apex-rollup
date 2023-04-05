@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nzupAAA">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nzwCAAQ">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nzupAAA">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008nzwCAAQ">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -437,25 +437,27 @@ The following methods are exposed:
 // in Rollup.cls
 
 // instance methods
-public Rollup runCalc() // more on this method below
+global Rollup runCalc() // more on this method below
 // see RollupIntegrationTests for examples of how to use addLimit with imperative Apex
-public Rollup addLimit(Integer limitAmount, Schema.SObjectField rollupFieldOnCalcItem)
+global Rollup addLimit(Integer limitAmount, Schema.SObjectField rollupFieldOnCalcItem)
 // imperative Apex can add RollupOrderBy__mdt records to any rollup operation (matching by the "calcItemRollupField")
 // for use in conjunction with "addLimit" above
-public Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField)
+global Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField)
+// use this to do things like turn a regular rollup into a GROUP BY rollup
+global Rollup modifyMetadata(Rollup__mdt template)
 
 // static methods
-public static void batch(Rollup rollup, Rollup secondRollup)
-public static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup)
-public static void batch(List<Rollup> rollups)
+global static void batch(Rollup rollup, Rollup secondRollup)
+global static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup)
+global static void batch(List<Rollup> rollups)
 
 
 // for using as the "one line of code" and CMDT-driven rollups
-public static void runFromTrigger()
+global static void runFromTrigger()
 
 // the alternative one-liner for CDC triggers
 // more on that in the CDC section of "Special Considerations", below
-public static void runFromCDCTrigger()
+global static void runFromCDCTrigger()
 
 // imperatively from Apex, relying on CMDT for additional rollup info
 // if you are actually using this from WITHIN a trigger, the second argument should
