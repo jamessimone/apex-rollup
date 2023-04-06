@@ -26,6 +26,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @TestVisible
   private static Boolean shouldFlattenAsyncProcesses = false;
 
+  private static RollupLimits.Tester limitTester;
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
   private static Boolean isCDC = false;
@@ -1832,7 +1833,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
-    RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
+    if (limitTester == null) {
+      limitTester = new RollupLimits.Tester(control, isContextAsync());
+    }
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
       control.IsRollupLoggingEnabled__c = true;

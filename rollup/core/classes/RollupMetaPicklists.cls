@@ -57,22 +57,34 @@ public virtual without sharing class RollupMetaPicklists {
       super(RollupControl__mdt.ShouldRunAs__c);
     }
 
-    public String Synchronous {
+    public final String Synchronous {
       get {
-        return this.validate('Synchronous Rollup');
+        if (Synchronous == null) {
+          Synchronous = this.validate('Synchronous Rollup');
+        }
+        return Synchronous;
       }
+      private set;
     }
 
-    public String Batchable {
+    public final String Batchable {
       get {
-        return this.validate('Batchable');
+        if (Batchable == null) {
+          Batchable = this.validate('Batchable');
+        }
+        return Batchable;
       }
+      private set;
     }
 
-    public String Queueable {
+    public final String Queueable {
       get {
-        return this.validate('Queueable');
+        if (Queueable == null) {
+          Queueable = this.validate('Queueable');
+        }
+        return Queueable;
       }
+      private set;
     }
   }
 
@@ -81,16 +93,24 @@ public virtual without sharing class RollupMetaPicklists {
       super(RollupOrderBy__mdt.SortOrder__c);
     }
 
-    public String Ascending {
+    public final String Ascending {
       get {
-        return this.validate('Ascending');
+        if (Ascending == null) {
+          Ascending = this.validate('Ascending');
+        }
+        return Ascending;
       }
+      private set;
     }
 
-    public String Descending {
+    public final String Descending {
       get {
-        return this.validate('Descending');
+        if (Descending == null) {
+          Descending = this.validate('Descending');
+        }
+        return Descending;
       }
+      private set;
     }
   }
 
@@ -99,16 +119,24 @@ public virtual without sharing class RollupMetaPicklists {
       super(RollupOrderBy__mdt.NullSortOrder__c);
     }
 
-    public String NullsFirst {
+    public final String NullsFirst {
       get {
-        return this.validate('NULLS FIRST');
+        if (NullsFirst == null) {
+          NullsFirst = this.validate('NULLS FIRST');
+        }
+        return NullsFirst;
       }
+      private set;
     }
 
-    public String NullsLast {
+    public final String NullsLast {
       get {
-        return this.validate('NULLS LAST');
+        if (NullsLast == null) {
+          NullsLast = this.validate('NULLS LAST');
+        }
+        return NullsLast;
       }
+      private set;
     }
   }
 
@@ -117,16 +145,24 @@ public virtual without sharing class RollupMetaPicklists {
       super(Rollup__mdt.SharingMode__c);
     }
 
-    public String SystemLevel {
+    public final String SystemLevel {
       get {
-        return this.validate('System');
+        if (SystemLevel == null) {
+          SystemLevel = this.validate('System');
+        }
+        return SystemLevel;
       }
+      private set;
     }
 
-    public String UserLevel {
+    public final String UserLevel {
       get {
-        return this.validate('User');
+        if (UserLevel == null) {
+          UserLevel = this.validate('User');
+        }
+        return UserLevel;
       }
+      private set;
     }
   }
 }

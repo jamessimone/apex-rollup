@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Updates RollupEvaluator where clause to allow for improperly cased field names",
-            "versionNumber": "1.5.59.0",
+            "versionName": "Updates to RollupMetaPicklists to avoid excessive validation calls, updated a few regexes to avoid undue CPU time, less reliance on System calls that can be expensive",
+            "versionNumber": "1.5.60.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

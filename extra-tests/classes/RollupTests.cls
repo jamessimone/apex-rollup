@@ -2656,21 +2656,26 @@ private class RollupTests {
       new List<ContactPointAddress>{ new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 1) }
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, IsRollupLoggingEnabled__c = true, MaxNumberOfQueries__c = 1);
-    Rollup.specificControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      MaxLookupRowsBeforeBatching__c = 1,
-      BatchChunkSize__c = 1
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxRollupRetries__c = 1,
+      IsRollupLoggingEnabled__c = true,
+      MaxNumberOfQueries__c = 1,
+      BatchChunkSize__c = 1,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
+    Rollup.specificControl = Rollup.defaultControl;
 
     Test.startTest();
     Rollup.batch(
       Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType),
-      Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.NumberOfEmployees, Account.SObjectType)
     );
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
+    Account acc = (Account) mock.Records.get(0);
+    System.assertEquals(1, acc.AnnualRevenue);
+    System.assertEquals(1, acc.NumberOfEmployees);
     System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status, [SELECT Status, JobType FROM AsyncApexJob]);
   }
 
