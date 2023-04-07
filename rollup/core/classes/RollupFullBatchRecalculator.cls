@@ -17,8 +17,10 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    props = super.customizeToStringEntries(props);
-    this.addToMap(props, 'Stateful Previously Reset Parents', this.statefulPreviouslyResetParents);
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      props = super.customizeToStringEntries(props);
+      this.addToMap(props, 'Stateful Previously Reset Parents', this.statefulPreviouslyResetParents);
+    }
     return props;
   }
 

@@ -139,6 +139,23 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private set;
   }
 
+  private Map<String, String> baseProps {
+    get {
+      if (this.baseProps == null) {
+        this.baseProps = new Map<String, String>{
+          'Type' => this.getTypeName(),
+          'Invocation Point' => this.invokePoint?.name(),
+          'Is Full Recalc' => String.valueOf(this.isFullRecalc),
+          'Is No Op' => String.valueOf(this.isNoOp),
+          'Is Conductor' => String.valueOf(this.isConductor),
+          'Inner rollups' => String.valueOf(this.rollups.size())
+        };
+      }
+      return this.baseProps;
+    }
+    set;
+  }
+
   /**
    * receiving an interface/subclass from a property get/set (from the book "The Art Of Unit Testing") is an old technique;
    * useful in limited contexts to get around the classic approach to dependency injection
@@ -314,17 +331,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   public override String toString() {
-    Map<String, String> props = new Map<String, String>{
-      'Type' => this.getTypeName(),
-      'Invocation Point' => this.invokePoint?.name(),
-      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
-      'Is No Op' => String.valueOf(this.isNoOp),
-      'Is Conductor' => String.valueOf(this.isConductor),
-      'Inner rollups' => String.valueOf(this.rollups.size())
-    };
-
-    this.customizeToStringEntries(props);
-
+    Map<String, String> props = this.customizeToStringEntries(this.baseProps);
     String baseString = '';
     for (String key : props.keySet()) {
       baseString += key + ': ' + props.get(key) + '\n';
@@ -441,13 +448,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    this.addToMap(props, 'Rollup Metadata', this.metadata);
-    this.addToMap(props, 'Rollup Control', this.rollupControl);
-    this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
-    if (this.oldCalcItems?.isEmpty() == false) {
-      this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      this.addToMap(props, 'Rollup Metadata', this.metadata);
+      this.addToMap(props, 'Rollup Control', this.rollupControl);
+      this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
+      if (this.oldCalcItems?.isEmpty() == false) {
+        this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
+      }
+      this.addToMap(props, 'Query Count', this.queryCount);
     }
-    this.addToMap(props, 'Query Count', this.queryCount);
     return props;
   }
 
