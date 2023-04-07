@@ -7,16 +7,14 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
 
   private without sharing class QueueableResetProcessor extends RollupAsyncProcessor.QueueableProcessor {
     private final RollupParentResetProcessor processor;
-    private final Integer batchChunkSize;
-    private QueueableResetProcessor(RollupParentResetProcessor processor, Integer batchChunkSize) {
+    private QueueableResetProcessor(RollupParentResetProcessor processor) {
       super(processor.invokePoint);
       this.processor = processor;
-      this.batchChunkSize = batchChunkSize;
     }
 
     protected override void performWork() {
       if (this.processor.getNumberOfItems() > maxQueryRows) {
-        Database.executeBatch(this.processor, this.batchChunkSize);
+        Database.executeBatch(this.processor, this.processor.rollupControl.BatchChunkSize__c.intValue());
       } else {
         this.processor.runSync();
       }
@@ -83,9 +81,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   }
 
   protected override String startAsyncWork() {
-    return this.rollupControl.ShouldSkipResettingParentFields__c
-      ? this.getNoProcessId()
-      : System.enqueueJob(new QueueableResetProcessor(this, this.rollupControl.BatchChunkSize__c.intValue()));
+    return this.rollupControl.ShouldSkipResettingParentFields__c ? this.getNoProcessId() : System.enqueueJob(new QueueableResetProcessor(this));
   }
 
   private Integer getNumberOfItems() {

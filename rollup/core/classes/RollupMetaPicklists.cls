@@ -22,8 +22,8 @@ public virtual without sharing class RollupMetaPicklists {
     private set;
   }
 
-  public static System.AccessLevel getAccessLevel(Rollup__mdt meta) {
-    return meta.SharingMode__c == SharingMode.UserLevel ? System.AccessLevel.USER_MODE : System.AccessLevel.SYSTEM_MODE;
+  public static RollupRepository.PermissionLevel getAccessLevel(Rollup__mdt meta) {
+    return meta.SharingMode__c == SharingMode.UserLevel ? RollupRepository.PermissionLevel.USER_MODE : RollupRepository.PermissionLevel.SYSTEM_MODE;
   }
 
   public static final SharingMode SharingMode {

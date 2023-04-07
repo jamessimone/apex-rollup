@@ -47,7 +47,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   protected Integer queryCount;
   protected RollupCalcItemReplacer calcItemReplacer;
   protected TriggerOperation triggerContext;
-  protected System.AccessLevel accessLevel = System.AccessLevel.SYSTEM_MODE;
+  protected RollupRepository.PermissionLevel accessLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
 
   private Boolean hasResetLogger = false;
 
@@ -841,7 +841,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
     List<SObject> localCalcItems;
     try {
-      localCalcItems = new RollupRepository(System.AccessLevel.SYSTEM_MODE).setQuery(query).get();
+      localCalcItems = new RollupRepository(RollupRepository.PermissionLevel.SYSTEM_MODE).setQuery(query).get();
     } catch (QueryException ex) {
       throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
     }
@@ -1567,7 +1567,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     Set<String> uniqueFieldNames = new Set<String>();
-    System.AccessLevel accessLevel = System.AccessLevel.SYSTEM_MODE;
+    RollupRepository.PermissionLevel accessLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
       accessLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
       RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(rollupInfo.CalcItemWhereClause__c)

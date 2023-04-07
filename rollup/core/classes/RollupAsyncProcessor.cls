@@ -1126,7 +1126,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
 
     Integer totalCountOfRecords = 0;
-    System.AccessLevel localAccessLevel = this.accessLevel;
+    RollupRepository.PermissionLevel localAccessLevel = this.accessLevel;
     for (RollupAsyncProcessor roll : processors) {
       localAccessLevel = roll.accessLevel;
       if (roll.queryCount != null) {
