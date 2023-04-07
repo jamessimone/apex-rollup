@@ -26,6 +26,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @TestVisible
   private static Boolean shouldFlattenAsyncProcesses = false;
 
+  private static RollupLimits.Tester limitTester;
   private static List<Rollup__mdt> cachedMetadata;
   private static RollupControl__mdt cachedOrgDefault;
   private static Boolean isCDC = false;
@@ -46,7 +47,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   protected Integer queryCount;
   protected RollupCalcItemReplacer calcItemReplacer;
   protected TriggerOperation triggerContext;
-  protected System.AccessLevel accessLevel = System.AccessLevel.SYSTEM_MODE;
+  protected RollupRepository.PermissionLevel accessLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
 
   private Boolean hasResetLogger = false;
 
@@ -136,6 +137,23 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       return logger;
     }
     private set;
+  }
+
+  private Map<String, String> baseProps {
+    get {
+      if (this.baseProps == null) {
+        this.baseProps = new Map<String, String>{
+          'Type' => this.getTypeName(),
+          'Invocation Point' => this.invokePoint?.name(),
+          'Is Full Recalc' => String.valueOf(this.isFullRecalc),
+          'Is No Op' => String.valueOf(this.isNoOp),
+          'Is Conductor' => String.valueOf(this.isConductor),
+          'Inner rollups' => String.valueOf(this.rollups.size())
+        };
+      }
+      return this.baseProps;
+    }
+    set;
   }
 
   /**
@@ -313,17 +331,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   public override String toString() {
-    Map<String, String> props = new Map<String, String>{
-      'Type' => this.getTypeName(),
-      'Invocation Point' => this.invokePoint?.name(),
-      'Is Full Recalc' => String.valueOf(this.isFullRecalc),
-      'Is No Op' => String.valueOf(this.isNoOp),
-      'Is Conductor' => String.valueOf(this.isConductor),
-      'Inner rollups' => String.valueOf(this.rollups.size())
-    };
-
-    this.customizeToStringEntries(props);
-
+    Map<String, String> props = this.customizeToStringEntries(this.baseProps);
     String baseString = '';
     for (String key : props.keySet()) {
       baseString += key + ': ' + props.get(key) + '\n';
@@ -440,13 +448,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    this.addToMap(props, 'Rollup Metadata', this.metadata);
-    this.addToMap(props, 'Rollup Control', this.rollupControl);
-    this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
-    if (this.oldCalcItems?.isEmpty() == false) {
-      this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      this.addToMap(props, 'Rollup Metadata', this.metadata);
+      this.addToMap(props, 'Rollup Control', this.rollupControl);
+      this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
+      if (this.oldCalcItems?.isEmpty() == false) {
+        this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
+      }
+      this.addToMap(props, 'Query Count', this.queryCount);
     }
-    this.addToMap(props, 'Query Count', this.queryCount);
     return props;
   }
 
@@ -840,7 +850,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
     List<SObject> localCalcItems;
     try {
-      localCalcItems = new RollupRepository(System.AccessLevel.SYSTEM_MODE).setQuery(query).get();
+      localCalcItems = new RollupRepository(RollupRepository.PermissionLevel.SYSTEM_MODE).setQuery(query).get();
     } catch (QueryException ex) {
       throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
     }
@@ -1566,7 +1576,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     Set<String> uniqueFieldNames = new Set<String>();
-    System.AccessLevel accessLevel = System.AccessLevel.SYSTEM_MODE;
+    RollupRepository.PermissionLevel accessLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
       accessLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
       RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(rollupInfo.CalcItemWhereClause__c)
@@ -1832,7 +1842,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   public static Boolean hasExceededCurrentRollupLimits(RollupControl__mdt control) {
-    RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
+    if (limitTester == null) {
+      limitTester = new RollupLimits.Tester(control, isContextAsync());
+    }
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
       control.IsRollupLoggingEnabled__c = true;

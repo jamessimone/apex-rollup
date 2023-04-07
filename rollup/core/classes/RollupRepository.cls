@@ -3,16 +3,27 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
 
   private final Args args = new Args();
   private final System.AccessLevel accessLevel;
-  private final String accessLevelName;
+  private final PermissionLevel localPermissionLevel;
 
   private class Args {
     public final Map<String, Object> bindVars = new Map<String, Object>();
     public String query;
   }
 
-  public RollupRepository(System.AccessLevel accessLevel) {
-    this.accessLevel = accessLevel;
-    this.accessLevelName = this.accessLevel == System.AccessLevel.SYSTEM_MODE ? 'System' : 'User';
+  /**
+   * Essentially a clone of `System.AccessLevel`, but this one:
+   *  - can actually be serialized
+   *  - doesn't fail an equality check against itself in a Queueable/Batchable (prior comparisons to System.AccessLevel.USER_MODE or System.AccessLevel.SYSTEM_MODE
+   *  failed when the property they were referencing was stored as an instance variable post-serialization)
+   */
+  public enum PermissionLevel {
+    SYSTEM_MODE,
+    USER_MODE
+  }
+
+  public RollupRepository(PermissionLevel localPermissionLevel) {
+    this.localPermissionLevel = localPermissionLevel;
+    this.accessLevel = localPermissionLevel == PermissionLevel.USER_MODE ? System.AccessLevel.USER_MODE : System.AccessLevel.SYSTEM_MODE;
   }
 
   public RollupRepository setQuery(String query) {
@@ -60,7 +71,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   public override String toString() {
-    return this.args.query + '\nBind keys: ' + this.args.bindVars.keySet()  + '\nAccess level: ' + this.accessLevelName;
+    return this.args.query + '\nBind keys: ' + this.args.bindVars.keySet() + '\nAccess level: ' + this.localPermissionLevel;
   }
 
   private void createQueryLog(String message) {

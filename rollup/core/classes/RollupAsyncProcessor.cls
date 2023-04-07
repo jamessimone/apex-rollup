@@ -330,10 +330,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    props = super.customizeToStringEntries(props);
-    this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
-    this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
-    this.addToMap(props, 'Is Processed?', this.isProcessed);
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      props = super.customizeToStringEntries(props);
+      this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
+      this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
+      this.addToMap(props, 'Is Processed?', this.isProcessed);
+    }
     return props;
   }
 
@@ -1126,7 +1128,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
 
     Integer totalCountOfRecords = 0;
-    System.AccessLevel localAccessLevel = this.accessLevel;
+    RollupRepository.PermissionLevel localAccessLevel = this.accessLevel;
     for (RollupAsyncProcessor roll : processors) {
       localAccessLevel = roll.accessLevel;
       if (roll.queryCount != null) {

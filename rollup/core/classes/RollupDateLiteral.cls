@@ -1,12 +1,28 @@
 @SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
 public without sharing abstract class RollupDateLiteral {
-  private static final Pattern RELATIVE_LITERAL_PATTERN = Pattern.compile(
-    '(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*'
-  );
-  private static final Pattern DATE_FUNCTION_PATTERN = Pattern.compile(
-    '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|' +
-    'FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
-  );
+  private static final Pattern RELATIVE_LITERAL_PATTERN {
+    get {
+      if (RELATIVE_LITERAL_PATTERN == null) {
+        RELATIVE_LITERAL_PATTERN = Pattern.compile(
+          '(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*'
+        );
+      }
+      return RELATIVE_LITERAL_PATTERN;
+    }
+    set;
+  }
+  private static final Pattern DATE_FUNCTION_PATTERN {
+    get {
+      if (DATE_FUNCTION_PATTERN == null) {
+        DATE_FUNCTION_PATTERN =  Pattern.compile(
+          '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|' +
+          'FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
+        );
+      }
+      return DATE_FUNCTION_PATTERN;
+    }
+    set;
+  }
 
   private static final Time START_TIME {
     get {

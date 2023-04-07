@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Updates RollupEvaluator where clause to allow for improperly cased field names",
-            "versionNumber": "1.0.32.0",
+            "versionName": "Updates to RollupMetaPicklists to avoid excessive validation calls, updated a few regexes to avoid undue CPU time, less reliance on System calls that can be expensive",
+            "versionNumber": "1.0.33.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -26,6 +26,7 @@
         "apex-rollup-namespaced@1.0.29-0": "04t6g000008fjnsAAA",
         "apex-rollup-namespaced@1.0.30-0": "04t6g000008fjogAAA",
         "apex-rollup-namespaced@1.0.31-0": "04t6g000008nzuuAAA",
-        "apex-rollup-namespaced@1.0.32-0": "04t6g000008nzwHAAQ"
+        "apex-rollup-namespaced@1.0.32-0": "04t6g000008nzwHAAQ",
+        "apex-rollup-namespaced@1.0.33-0": "04t6g000008o01cAAA"
     }
 }

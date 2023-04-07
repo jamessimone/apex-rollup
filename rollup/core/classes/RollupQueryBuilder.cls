@@ -3,8 +3,16 @@ public without sharing class RollupQueryBuilder {
   public static final String ALL_ROWS = 'ALL ROWS';
   public static final String BIND_VAR = 'objIds';
 
-  private static final Pattern AGGREGATE_QUERY_REGEX = Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');
   private static final Map<String, String> OG_WHERE_CLAUSE_TO_SANITIZED_VERSION = new Map<String, String>();
+  private static final Pattern AGGREGATE_QUERY_REGEX {
+    get {
+      if (AGGREGATE_QUERY_REGEX == null) {
+        AGGREGATE_QUERY_REGEX = Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');
+      }
+      return AGGREGATE_QUERY_REGEX;
+    }
+    set;
+  }
 
   private RollupQueryBuilder() {
   }
