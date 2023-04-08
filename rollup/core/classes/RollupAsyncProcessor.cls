@@ -330,12 +330,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
-      props = super.customizeToStringEntries(props);
-      this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
-      this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
-      this.addToMap(props, 'Is Processed?', this.isProcessed);
-    }
+    super.customizeToStringEntries(props);
+    this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
+    this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
+    this.addToMap(props, 'Is Processed?', this.isProcessed);
     return props;
   }
 

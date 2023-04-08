@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Updates to RollupMetaPicklists to avoid excessive validation calls, updated a few regexes to avoid undue CPU time, less reliance on System calls that can be expensive",
-            "versionNumber": "1.5.60.0",
+            "versionName": "Simplified Rollup.toString to only check if logging is enabled once",
+            "versionNumber": "1.5.61.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
