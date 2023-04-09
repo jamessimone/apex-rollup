@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <defaultValue>false</defaultValue>
+    <fullName>Rollup_To_Checkbox__c</fullName>
+    <description>Used in scripts/record-creation-many-parents.apex</description>
+    <externalId>false</externalId>
+    <label>Rollup To Checkbox</label>
+    <type>Checkbox</type>
+</CustomField>
