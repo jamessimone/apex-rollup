@@ -132,12 +132,11 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
-      props = super.customizeToStringEntries(props);
-      this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
-      this.addToMap(props, 'Query String', this.queryString);
-      this.addToMap(props, 'Caboose Count', this.cabooses.size());
-    }
+    super.customizeToStringEntries(props);
+    this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
+    this.addToMap(props, 'Query String', this.queryString);
+    this.addToMap(props, 'Caboose Count', this.cabooses.size());
+
     return props;
   }
 

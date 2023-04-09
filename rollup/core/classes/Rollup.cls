@@ -331,10 +331,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   public override String toString() {
-    Map<String, String> props = this.customizeToStringEntries(this.baseProps);
     String baseString = '';
-    for (String key : props.keySet()) {
-      baseString += key + ': ' + props.get(key) + '\n';
+    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
+      Map<String, String> props = this.customizeToStringEntries(this.baseProps);
+      for (String key : props.keySet()) {
+        baseString += key + ': ' + props.get(key) + '\n';
+      }
     }
     return baseString.removeEnd('\n');
   }
@@ -448,15 +450,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   protected virtual Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
-      this.addToMap(props, 'Rollup Metadata', this.metadata);
-      this.addToMap(props, 'Rollup Control', this.rollupControl);
-      this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
-      if (this.oldCalcItems?.isEmpty() == false) {
-        this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
-      }
-      this.addToMap(props, 'Query Count', this.queryCount);
+    this.addToMap(props, 'Rollup Metadata', this.metadata);
+    this.addToMap(props, 'Rollup Control', this.rollupControl);
+    this.addToMap(props, 'Calc Items', this.calcItems?.size() > 10 ? ((Object) this.calcItems.size() + ' items') : (Object) this.calcItems);
+    if (this.oldCalcItems?.isEmpty() == false) {
+      this.addToMap(props, 'Old Calc Items', this.oldCalcItems?.size() > 10 ? ((Object) this.oldCalcItems.size() + ' items') : (Object) this.oldCalcItems);
     }
+    this.addToMap(props, 'Query Count', this.queryCount);
     return props;
   }
 
