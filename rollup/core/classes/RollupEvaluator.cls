@@ -736,7 +736,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         } catch (System.SObjectException ex) {
           // if the field value is invalid, it's almost certainly a parent-level where clause targeting
           // a different parent - pass the records through for now
-          return this.originalValues.isEmpty() == false ? this.originalValues[0] : null;
+          return this.getValueOrDefault();
         }
       }
       SObjectType parentSObjectType;
@@ -751,8 +751,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       SObject parentSObject = item.getSObject(originalName);
       // the polymorphic "Type" field won't show up in the map of valid fields for an object
       // but if the value's been queried for, it's valid to pass back
-      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type' && parentSObject?.getPopulatedFieldsAsMap().containsKey('Type') == true) {
-        return parentSObject.get(fieldNameParts[0]);
+      if (fieldNameParts.size() == 1 && fieldNameParts[0] == 'Type') {
+        return parentSObject?.getPopulatedFieldsAsMap().containsKey('Type') == true ? parentSObject.get(fieldNameParts[0]) : this.getValueOrDefault();
       } else if (fieldNameParts.isEmpty() == false) {
         return this.getFieldValue(
           parentSObject,
@@ -762,6 +762,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       } else {
         return parentSObject?.get(originalName);
       }
+    }
+
+    private Object getValueOrDefault() {
+      return this.originalValues.isEmpty() == false ? this.originalValues[0] : null;
     }
 
     private Boolean getGreaterOrLessThan(Object comparisonValue, Object storedValue) {
