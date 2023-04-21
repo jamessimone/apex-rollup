@@ -108,8 +108,16 @@ public without sharing class RollupCalcItemReplacer {
   private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
     if (fieldName.contains('.')) {
       parentQueryFieldSet.add(fieldName);
-    } else if (calcItem.isSet(fieldName) == false) {
-      baseQueryFieldSet.add(fieldName);
+    } else {
+      // it'd be great to only calcItem.isSet(fieldName) here, but that returns false for null values
+      // instead, we also test against a very unlikely to be found value
+      try {
+        if (calcItem.isSet(fieldName) == false && calcItem.get(fieldName) != '<<<improbable test value>>>') {
+          baseQueryFieldSet.add(fieldName);
+        }
+      } catch (Exception ex) {
+        baseQueryFieldSet.add(fieldName);
+      }
     }
   }
 

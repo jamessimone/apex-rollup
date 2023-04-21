@@ -69,16 +69,16 @@ global without sharing class RollupFlowBulkProcessor {
   @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup')
   global static List<Rollup.FlowOutput> addRollup(List<FlowInput> flowInputs) {
     List<Rollup.FlowOutput> outputs = new List<Rollup.FlowOutput>();
-
+    List<Rollup.FlowInput> validInputs = new List<Rollup.FlowInput>();
     for (FlowInput flowInput : flowInputs) {
       Rollup.FlowOutput output = new Rollup.FlowOutput();
       if (flowInput.recordsToRollup?.isEmpty() != false) {
         output.message = 'No records';
+        outputs.add(output);
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
         String sObjectName = flowInput.recordsToRollup == null ? '' : flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
-        List<Rollup.FlowInput> rollupFlowInputs = new List<Rollup.FlowInput>();
         for (Rollup__mdt meta : rollupMetadata) {
           if (meta.IsRollupStartedFromParent__c) {
             flowInput.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent != null
@@ -87,6 +87,7 @@ global without sharing class RollupFlowBulkProcessor {
           }
           if (flowInput.recordsToRollup == null || meta.CalcItem__c == sObjectName || flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c) {
             Rollup.FlowInput input = new Rollup.FlowInput();
+            validInputs.add(input);
             // pertinent fields from CMDT (can be overridden by optional flow properties)
             input.calcItemChangedFields = flowInput.calcItemChangedFields != null ? flowInput.calcItemChangedFields : meta.ChangedFieldsOnCalcItem__c;
             input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
@@ -137,23 +138,12 @@ global without sharing class RollupFlowBulkProcessor {
             input.recordsToRollup = flowInput.recordsToRollup;
             input.rollupContext = flowInput.rollupContext;
             input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
-            rollupFlowInputs.add(input);
-
-            output.message = 'Rollup queued for context: ' + meta.RollupOperation__c;
-          }
-        }
-
-        List<Rollup.FlowOutput> innerOutputs = Rollup.performRollup(rollupFlowInputs);
-        for (Rollup.FlowOutput innerOutput : innerOutputs) {
-          if (innerOutput.isSuccess == false) {
-            output.isSuccess = false;
-            output.message = innerOutput.message;
           }
         }
       }
-      outputs.add(output);
     }
 
+    outputs.addAll(Rollup.performRollup(validInputs));
     return outputs;
   }
 }
