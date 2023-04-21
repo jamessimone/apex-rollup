@@ -190,18 +190,12 @@ private class RollupCurrencyInfoTests {
 
     // somewhere within eurPeriodOne
     Opportunity firstOpp = new Opportunity(StageName = 'dated currency', CloseDate = System.today().addDays(-7), Name = 'One');
-    OpportunityLineItem oliToUpdate = (OpportunityLineItem) JSON.deserialize(
-      '{ "' +
-      RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME +
-      '": "' +
-      usdInfo.IsoCode +
-      '" }',
-      OpportunityLineItem.class
+    OpportunityLineItem oliToUpdate = (OpportunityLineItem) RollupCalcItemReplacer.replaceField(
+      //                                                            within eurPeriodTwo 👇
+      new OpportunityLineItem(Opportunity = firstOpp, Quantity = 1, ServiceDate = System.today(), TotalPrice = 5),
+      OpportunityLineItem.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME),
+      usdInfo.IsoCode
     );
-    oliToUpdate.Opportunity = firstOpp;
-    oliToUpdate.ServiceDate = System.today(); // within eurPeriodTwo
-    oliToUpdate.TotalPrice = 5;
-    oliToUpdate.Quantity = 1;
     List<OpportunityLineItem> olis = new List<OpportunityLineItem>{ oliToUpdate };
 
     RollupCurrencyInfo.overrideDatedMultiCurrency(olis.getSObjectType().getDescribe().getName(), new List<String>{ 'Opportunity', 'CloseDate' });
