@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Introduced Rollup__mdt.CurrencyFieldMapping__c to allow ACM-enabled orgs to use custom Date/Datetime fields",
-            "versionNumber": "1.5.62.0",
+            "versionName": "Fixes The number of results does not match the number of interviews that were executed in a single bulk execution request issue in RollupFlowBulkProcessor",
+            "versionNumber": "1.5.63.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
