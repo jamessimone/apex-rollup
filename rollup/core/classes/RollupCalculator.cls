@@ -119,6 +119,7 @@ public without sharing abstract class RollupCalculator {
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
     this.calcItemSObjectType = opFieldOnCalcItem?.getDescribe().getSObjectType();
     this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(this.metadata));
+    this.updateAdvancedCurrencyMappings();
   }
 
   public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -403,6 +404,15 @@ public without sharing abstract class RollupCalculator {
   private void transformForMultiCurrencyOrgs(List<SObject> calcItems) {
     if (this.isMultiCurrencyRollup) {
       RollupCurrencyInfo.transform(calcItems, this.opFieldOnCalcItem, this.parentIsoCode, this.metadata.RollupOrderBys__r);
+    }
+  }
+
+  private void updateAdvancedCurrencyMappings() {
+    if (this.metadata.CurrencyFieldMapping__c != null) {
+      List<String> fieldMappings = this.metadata.CurrencyFieldMapping__c.split(',');
+      for (Integer index = 0; index < fieldMappings.size(); index++) {
+        fieldMappings[index] = fieldMappings[index].trim();
+      }
     }
   }
 

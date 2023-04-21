@@ -159,4 +159,49 @@ private class RollupCurrencyInfoTests {
     System.assertEquals(eurPeriodOne.ConversionRate / (usdInfo.ConversionRate / opps[0].Amount), firstOpp.Amount);
     System.assertEquals(eurPeriodTwo.ConversionRate / (usdInfo.ConversionRate / opps[1].Amount), secondOpp.Amount);
   }
+
+  @IsTest
+  static void usesConfiguredDateFieldForAdvancedCurrencyManagement() {
+    if (RollupCurrencyInfo.isMultiCurrency() == false) {
+      return;
+    }
+    RollupCurrencyInfo.IS_DATED_MULTICURRENCY = true;
+
+    RollupCurrencyInfo usdInfo = new RollupCurrencyInfo();
+    usdInfo.ConversionRate = 1;
+    usdInfo.IsoCode = 'USD';
+    // default dated currency range - all time
+    usdInfo.StartDate = Date.newInstance(0, 12, 30);
+    usdInfo.NextStartDate = Date.newInstance(9999, 12, 31);
+
+    RollupCurrencyInfo eurPeriodOne = new RollupCurrencyInfo();
+    eurPeriodOne.ConversionRate = 1.1;
+    eurPeriodOne.IsoCode = 'EUR';
+    eurPeriodOne.StartDate = System.today().addDays(-10);
+    eurPeriodOne.NextStartDate = System.today().addDays(-5);
+
+    RollupCurrencyInfo eurPeriodTwo = new RollupCurrencyInfo();
+    eurPeriodTwo.ConversionRate = 1.2;
+    eurPeriodTwo.IsoCode = 'EUR';
+    eurPeriodTwo.StartDate = eurPeriodOne.NextStartDate;
+    eurPeriodTwo.NextStartDate = System.today().addDays(1);
+
+    RollupCurrencyInfo.mockCurrencyData = new List<RollupCurrencyInfo>{ usdInfo, eurPeriodOne, eurPeriodTwo };
+
+    // somewhere within eurPeriodOne
+    Opportunity firstOpp = new Opportunity(StageName = 'dated currency', CloseDate = System.today().addDays(-7), Name = 'One');
+    OpportunityLineItem oliToUpdate = (OpportunityLineItem) RollupCalcItemReplacer.replaceField(
+      //                                                            within eurPeriodTwo 👇
+      new OpportunityLineItem(Opportunity = firstOpp, Quantity = 1, ServiceDate = System.today(), TotalPrice = 5),
+      OpportunityLineItem.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME),
+      usdInfo.IsoCode
+    );
+    List<OpportunityLineItem> olis = new List<OpportunityLineItem>{ oliToUpdate };
+
+    RollupCurrencyInfo.overrideDatedMultiCurrency(olis.getSObjectType().getDescribe().getName(), new List<String>{ 'Opportunity', 'CloseDate' });
+    RollupCurrencyInfo.transform(olis, OpportunityLineItem.TotalPrice, eurPeriodOne.IsoCode, new List<RollupOrderBy__mdt>());
+
+    OpportunityLineItem oli = (OpportunityLineItem) RollupCurrencyInfo.getCalcItem(oliToUpdate);
+    System.assertEquals(eurPeriodOne.ConversionRate / (usdInfo.ConversionRate / oliToUpdate.TotalPrice), oli.TotalPrice);
+  }
 }

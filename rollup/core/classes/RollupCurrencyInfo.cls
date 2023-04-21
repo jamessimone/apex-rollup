@@ -10,13 +10,13 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Boolean hasLoadedDatedCurrencyInfo = false;
 
   // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
-  // TODO technically there's a hierarchy for OpportunityLineItem that goes Opportunity.CloseDate > ServiceDate > (ProductDate || ScheduleDate)
-  // it may make more sense to have a switch on the SObjectType and handle accordingly
+  // technically there's a hierarchy for OpportunityLineItem that goes Opportunity.CloseDate > ServiceDate > (ProductDate || ScheduleDate)
+  // but because this can be configured on a per-rollup basis, it's fine to leave Opportunity.CloseDate as the default since it can be overridden
   private static final Map<String, List<String>> DATED_MULTICURRENCY_SUPPORTED_OBJECTS = new Map<String, List<String>>{
     'Opportunity' => new List<String>{ 'CloseDate' },
     'OpportunityLineItem' => new List<String>{ 'ServiceDate' },
     'OpportunityLineItemSchedule' => new List<String>{ 'ScheduleDate' },
-    'OpportunitySplit' => new List<String>{ 'OpportunityId', 'CloseDate' } // yikes
+    'OpportunitySplit' => new List<String>{ 'Opportunity', 'CloseDate' }
   };
 
   @TestVisible
@@ -63,6 +63,16 @@ public without sharing virtual class RollupCurrencyInfo {
     set;
   }
 
+  private static final Map<Schema.SObjectType, Map<String, Schema.SObjectField>> TYPE_TO_FIELDS {
+    get {
+      if (TYPE_TO_FIELDS == null) {
+        TYPE_TO_FIELDS = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>();
+      }
+      return TYPE_TO_FIELDS;
+    }
+    set;
+  }
+
   public String IsoCode { get; set; }
   public Decimal ConversionRate { get; set; }
   public Integer DecimalPlaces { get; set; }
@@ -80,9 +90,20 @@ public without sharing virtual class RollupCurrencyInfo {
   public static List<String> getMultiCurrencyFields(Schema.DescribeSObjectResult objectToken) {
     List<String> fields = new List<String>{ CURRENCY_ISO_CODE_FIELD_NAME };
     if (CURRENCY_ISO_CODE_TO_CURRENCY != null && IS_DATED_MULTICURRENCY && DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(objectToken.getName())) {
-      fields.addAll(DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(objectToken.getName()));
+      String concatenatedName = '';
+      List<String> fieldMappings = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(objectToken.getName());
+      for (Integer index = 0; index < fieldMappings.size(); index++) {
+        concatenatedName += (index == fieldMappings.size() - 1 ? fieldMappings[index] : fieldMappings[index] + '.');
+      }
+      fields.add(concatenatedName);
     }
     return fields;
+  }
+
+  public static void overrideDatedMultiCurrency(String objectName, List<String> fieldNameOverrides) {
+    if (IS_MULTICURRENCY) {
+      DATED_MULTICURRENCY_SUPPORTED_OBJECTS.put(objectName, fieldNameOverrides);
+    }
   }
 
   public static void transform(List<SObject> calcItems, Schema.SObjectField opFieldOnCalcItem, String parentIsoCode, List<RollupOrderBy__mdt> orderBys) {
@@ -134,13 +155,13 @@ public without sharing virtual class RollupCurrencyInfo {
       if (DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(calcItem.getSObjectType().getDescribe().getName()) == false) {
         break;
       }
-      Date currencyDate = getCurrencyDate(calcItem);
+      Datetime currencyDate = getCurrencyDate(calcItem);
       if (currencyDate == null) {
         continue;
       } else if (currencyDate < minDatedCurrencyLookup) {
-        minDatedCurrencyLookup = currencyDate;
+        minDatedCurrencyLookup = currencyDate.date();
       } else if (currencyDate > maxDatedCurrencyLookup) {
-        maxDatedCurrencyLookup = currencyDate;
+        maxDatedCurrencyLookup = currencyDate.date();
       }
     }
   }
@@ -202,7 +223,14 @@ public without sharing virtual class RollupCurrencyInfo {
       Double calcItemAmountInParentCurrency = (CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).getInfo(calcItem, parentIsoCode).ConversionRate /
         calcItemAmountInOrgCurrency)
         .doubleValue();
-      clonedCalcItem.put(CURRENCY_ISO_CODE_FIELD_NAME, parentIsoCode);
+      if (TYPE_TO_FIELDS.containsKey(calcItem.getSObjectType()) == false) {
+        TYPE_TO_FIELDS.put(calcItem.getSObjectType(), calcItem.getSObjectType().getDescribe().fields.getMap());
+      }
+      clonedCalcItem = RollupCalcItemReplacer.replaceField(
+        clonedCalcItem,
+        TYPE_TO_FIELDS.get(calcItem.getSObjectType()).get(CURRENCY_ISO_CODE_FIELD_NAME),
+        parentIsoCode
+      );
       clonedCalcItem = RollupCalcItemReplacer.replaceField(clonedCalcItem, fieldOnCalcItem, calcItemAmountInParentCurrency);
       HASHED_ITEM_VALUES.add(hashKey);
     }
@@ -243,14 +271,20 @@ public without sharing virtual class RollupCurrencyInfo {
     return currencyInfoMap;
   }
 
-  private static Date getCurrencyDate(SObject calcItem) {
+  private static Datetime getCurrencyDate(SObject calcItem) {
     List<String> itemToDateFieldMapping = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().getDescribe().getName());
-    if (itemToDateFieldMapping?.isEmpty() == false && calcItem.isSet(itemToDateFieldMapping[0])) {
-      return itemToDateFieldMapping.size() == 1
-        ? (Date) calcItem.get(itemToDateFieldMapping[0])
-        : (Date) calcItem.getSObject(itemToDateFieldMapping[0]).get(itemToDateFieldMapping[1]);
+    switch on itemToDateFieldMapping?.size() {
+      when 1 {
+        return calcItem.isSet(itemToDateFieldMapping[0]) ? (Datetime) calcItem.get(itemToDateFieldMapping[0]) : null;
+      }
+      when 2 {
+        SObject parentObject = calcItem.getSObject(itemToDateFieldMapping[0]);
+        return parentObject != null ? (Datetime) parentObject.get(itemToDateFieldMapping[1]) : null;
+      }
+      when else {
+        return null;
+      }
     }
-    return null;
   }
 
   private class CurrencyFinder extends RollupCurrencyInfo {
@@ -274,7 +308,7 @@ public without sharing virtual class RollupCurrencyInfo {
       if (cachedItemToInfo.containsKey(calcItem.Id)) {
         return cachedItemToInfo.get(calcItem.Id);
       }
-      Date currencyDate = getCurrencyDate(calcItem);
+      Datetime currencyDate = getCurrencyDate(calcItem);
       if (this.currencyInfos.isEmpty() == false && currencyDate != null) {
         for (RollupCurrencyInfo info : this.currencyInfos) {
           if (info.IsoCode == isoCode && info.NextStartDate > currencyDate && currencyDate >= info.StartDate) {

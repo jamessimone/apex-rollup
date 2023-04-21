@@ -108,19 +108,27 @@ public without sharing class RollupCalcItemReplacer {
   private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
     if (fieldName.contains('.')) {
       parentQueryFieldSet.add(fieldName);
-    } else if (calcItem.isSet(fieldName) == false) {
-      baseQueryFieldSet.add(fieldName);
+    } else {
+      // it'd be great to only calcItem.isSet(fieldName) here, but that returns false for null values
+      // instead, we also test against a very unlikely to be found value
+      try {
+        if (calcItem.isSet(fieldName) == false && calcItem.get(fieldName) != '<<<improbable test value>>>') {
+          baseQueryFieldSet.add(fieldName);
+        }
+      } catch (Exception ex) {
+        baseQueryFieldSet.add(fieldName);
+      }
     }
   }
 
   private List<SObject> potentiallyReplaceMissingBaseFields(List<SObject> calcItems) {
+    if (calcItems.isEmpty()) {
+      return calcItems;
+    }
     Map<Id, SObject> idToCalcItem = new Map<Id, SObject>(calcItems);
-    if (this.baseQueryFields.containsKey(calcItems[0].getSObjectType())) {
+    Set<String> baseFields = this.baseQueryFields.get(calcItems[0].getSObjectType());
+    if (baseFields?.isEmpty() == false) {
       SObject firstItem = calcItems[0];
-      Set<String> baseFields = this.baseQueryFields.get(firstItem.getSObjectType());
-      if (baseFields.isEmpty()) {
-        return calcItems;
-      }
       String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
       List<SObject> calcItemsWithReplacement = this.repo.setQuery(queryString).setArg(calcItems).get();
       Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
@@ -225,13 +233,16 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   private void replaceCalcItemsWithParentWhereClauses(List<SObject> calcItems) {
-    if (calcItems.isEmpty() || this.parentQueryFields.containsKey(calcItems[0].getSObjectType()) == false) {
+    if (calcItems.isEmpty()) {
+      return;
+    }
+    Set<String> parentQueryFields = this.parentQueryFields.get(calcItems[0].getSObjectType());
+    if (parentQueryFields?.isEmpty() != false) {
       return;
     }
     SObjectType calcItemType = calcItems[0].getSObjectType();
     Map<String, SObjectField> fieldNameToToken = calcItemType.getDescribe().fields.getMap();
     Boolean hasUnqueriedParentFields = false;
-    Set<String> parentQueryFields = this.parentQueryFields.get(calcItemType);
     for (String queryField : parentQueryFields) {
       String fieldPart = queryField.substringBefore('.');
       String fieldName = this.getFullyQualifiedFieldName(fieldPart);

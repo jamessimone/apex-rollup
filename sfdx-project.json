@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Simplified Rollup.toString to only check if logging is enabled once",
-            "versionNumber": "1.5.61.0",
+            "versionName": "Introduced Rollup__mdt.CurrencyFieldMapping__c to allow ACM-enabled orgs to use custom Date/Datetime fields",
+            "versionNumber": "1.5.62.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.5.58-0": "04t6g000008nzupAAA",
         "apex-rollup@1.5.59-0": "04t6g000008nzwCAAQ",
         "apex-rollup@1.5.60-0": "04t6g000008o01XAAQ",
-        "apex-rollup@1.5.61-0": "04t6g000008o01wAAA"
+        "apex-rollup@1.5.61-0": "04t6g000008o01wAAA",
+        "apex-rollup@1.5.62-0": "04t6g000008o0DQAAY"
     }
 }

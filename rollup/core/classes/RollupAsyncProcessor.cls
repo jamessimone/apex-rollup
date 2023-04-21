@@ -255,7 +255,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (context == null) {
       context = new AdditionalContext(this.getNoProcessId());
     }
-    this.logger.log(this.getTypeName() + ' finished successfully', context, LoggingLevel.INFO);
+    this.logger.log('finished successfully', context, LoggingLevel.INFO);
     this.logger.save();
   }
 
@@ -287,7 +287,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
     } else if (syncRollups.isEmpty() == false) {
-      this.logger.log(this.getTypeName() + ': about to process sync rollups', logLevel);
+      this.logger.log('about to process sync rollups', logLevel);
       this.process(syncRollups);
       logMessage = 'finished running sync rollups';
       if (this.rollups.isEmpty()) {
@@ -302,7 +302,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
     }
     if (logMessage != null) {
-      this.logger.log(this.getTypeName() + ': ' + logMessage, logLevel);
+      this.logger.log(logMessage, logLevel);
       rollupProcessId = logMessage;
     }
     this.logger.save();
@@ -668,7 +668,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
-      this.logger.log(this.getTypeName() + ' starting rollup for:', roll, LoggingLevel.INFO);
+      this.logger.log('starting rollup for:', roll, LoggingLevel.INFO);
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
@@ -927,8 +927,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
     this.logger.log(
-      this.getTypeName() +
-      ': number of deferred rollups: ' +
+      'number of deferred rollups: ' +
       this.deferredRollups.size() +
       ', still allowed to re-queue?: ' +
       isAllowedToContinue +
@@ -946,10 +945,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isTimingOut = false;
 
     if (isDeferralAllowed) {
-      this.logger.log(this.getTypeName() + ': deferred rollups remaining:', this.rollups, LoggingLevel.INFO);
+      this.logger.log('deferred rollups remaining:', this.rollups, LoggingLevel.INFO);
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
-      this.logger.log(this.getTypeName() + ': deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
+      this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
     }
   }
 
@@ -1349,7 +1348,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
 
         oldLookupsRollup.calcItems = reparentedCalcItems;
-        this.logger.log(this.getTypeName() + ': reparenting operation', oldLookupsRollup, LoggingLevel.DEBUG);
+        this.logger.log('reparenting operation', oldLookupsRollup, LoggingLevel.DEBUG);
         calc = this.getCalculator(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
         this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, ParentUpdateType.REPARENTED, reparentedCalcItems);
       }
@@ -1367,19 +1366,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<SObject> localCalcItems
   ) {
     String logKey = parentUpdateType.name().toLowerCase();
-    this.logger.log(this.getTypeName() + ': ' + logKey + ' record prior to rolling up:', lookupRecord, LoggingLevel.DEBUG);
+    this.logger.log(logKey + ' record prior to rolling up:', lookupRecord, LoggingLevel.DEBUG);
     Object newVal = calc.getReturnValue();
     if (this.rollupControl.ShouldSkipResettingParentFields__c == true && ((localCalcItems.isEmpty() == false && newVal == null) || localCalcItems.isEmpty())) {
       newVal = priorVal;
     }
     if (priorVal != newVal) {
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-      this.logger.log(this.getTypeName() + ': updating record ...', LoggingLevel.FINE);
+      this.logger.log('updating record ...', LoggingLevel.FINE);
       updater.updateField(lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
     }
     this.storeParentResetField(roll, lookupRecord);
-    this.logger.log(this.getTypeName() + ': ' + logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
+    this.logger.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }
 
   private void cleanup() {

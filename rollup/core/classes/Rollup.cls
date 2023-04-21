@@ -649,7 +649,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       description='the text values on the Child Object\'s field being rolled up can also be split if this field is enabled and set to {!$GlobalConstant.True}'
     )
     global Boolean splitConcatDelimiterOnCalcItem;
-
+    @InvocableVariable(
+      label='Advanced Currency Field Mapping (Comma-separated)'
+      description='For parent-level Date/Datetime fields, use the relationship name for the parent object and then the API name of the field - otherwise just use the API name of the field'
+    )
+    global String currencyFieldMapping;
     @InvocableVariable(
       label='Full Recalculation Default Number Value'
       description='If provided, used in place of the existing value on the rollup field for the parent object for number-based rollups'
@@ -1791,6 +1795,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             CalcItemWhereClause__c,
             ChangedFieldsOnCalcItem__c,
             ConcatDelimiter__c,
+            CurrencyFieldMapping__c,
             FullRecalculationDefaultNumberValue__c,
             FullRecalculationDefaultStringValue__c,
             GrandparentRelationshipFieldPath__c,
@@ -1867,6 +1872,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       CalcItemWhereClause__c = flowInput.calcItemWhereClause,
       ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
       ConcatDelimiter__c = flowInput.concatDelimiter,
+      CurrencyFieldMapping__c = flowInput.currencyFieldMapping,
       FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
       FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
       GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
