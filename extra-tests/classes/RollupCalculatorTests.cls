@@ -2023,7 +2023,11 @@ private class RollupCalculatorTests {
       Rollup.Op.SUM,
       Opportunity.Amount,
       Account.Description,
-      new Rollup__mdt(CalcItem__c = String.valueOf(Opportunity.SObjectType), GroupByFields__c = 'StageName, CurrencyIsoCode'),
+      new Rollup__mdt(
+        CalcItem__c = String.valueOf(Opportunity.SObjectType),
+        CurrencyFieldMapping__c = 'CloseDate',
+        GroupByFields__c = 'StageName, CurrencyIsoCode'
+      ),
       fakeAccount.Id,
       Account.Id
     );

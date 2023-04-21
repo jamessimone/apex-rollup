@@ -131,7 +131,7 @@ public without sharing class RollupQueryBuilder {
       if (hasAggregateFunction == false) {
         List<String> multiCurrencyFields = RollupCurrencyInfo.getMultiCurrencyFields(objectToken);
         for (String multiCurrencyField : multiCurrencyFields) {
-          if (uniqueLowercaseFields.contains(multiCurrencyField.toLowerCase()) == false) {
+          if (String.isNotBlank(multiCurrencyField) && uniqueLowercaseFields.contains(multiCurrencyField.toLowerCase()) == false) {
             fieldNames.add(multiCurrencyField);
           }
         }

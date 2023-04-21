@@ -119,6 +119,7 @@ global without sharing class RollupFlowBulkProcessor {
             }
             input.orderByFirstLast = input.orderByFirstLast.removeEnd(',');
             // metadata values that don't get overridden
+            input.currencyFieldMapping = meta.CurrencyFieldMapping__c;
             input.groupByFields = meta.GroupByFields__c;
             input.groupByRowEndDelimiter = meta.GroupByRowEndDelimiter__c;
             input.groupByRowStartDelimiter = meta.GroupByRowStartDelimiter__c;
