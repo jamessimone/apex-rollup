@@ -828,6 +828,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
             roll.lookupObj,
             roll.oldCalcItems
           )
+          .setIsFullRecalc(this.isFullRecalc)
           .getParents(roll.calcItems);
       } else if (roll.traversal?.getIsFinished() == false) {
         roll.traversal.recommence();

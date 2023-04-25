@@ -23,6 +23,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private List<String> relationshipParts;
   private Boolean isFirstRun = true;
   private String currentRelationshipName;
+  private Boolean isFullRecalc = false;
 
   private static final Integer MAX_FOREIGN_KEY_RELATIONSHIP_HOPS = 5;
 
@@ -176,8 +177,18 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
+  public RollupRelationshipFieldFinder setIsFullRecalc(Boolean isFullRecalc) {
+    this.isFullRecalc = isFullRecalc;
+    return this;
+  }
+
   public Traversal getParents(List<SObject> records) {
-    if (records.isEmpty() || (this.relationshipParts.isEmpty() && this.metadata.RollupToUltimateParent__c == false)) {
+    if (this.isFullRecalc && this.metadata.OneToManyGrandparentFields__c == null && this.metadata.RollupToUltimateParent__c == false) {
+      // go "straight to the top" since all children will be part of the calculation
+      // the only awkward part here is we then need to do the mapping ("trackTraversalIds") all at once
+      this.getFullRecalcParents(records);
+      return this.traversal;
+    } else if (records.isEmpty() || (this.relationshipParts.isEmpty() && this.metadata.RollupToUltimateParent__c == false)) {
       this.traversal.isFinished = true;
       return this.traversal;
     } else if (Rollup.hasExceededCurrentRollupLimits(this.rollupControl) && this.isFirstRun == false) {
@@ -267,15 +278,16 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private Boolean isFinishedWithHierarchyTraversal(List<SObject> records) {
-    if (this.metadata.RollupToUltimateParent__c != true) {
+    if (this.metadata.RollupToUltimateParent__c != true || records.isEmpty()) {
       return true;
     }
 
     Boolean allRecordsAreTopOfHierarchy = true;
     List<SObject> finishedRecords = new List<SObject>();
+    Map<String, Schema.SObjectField> fieldMap = records.get(0).getSObjectType().getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     for (Integer index = records.size() - 1; index >= 0; index--) {
       SObject record = records[index];
-      SObject parentRecord = this.getPotentialUltimateParent(record);
+      SObject parentRecord = this.getPotentialUltimateParent(record, fieldMap);
 
       if (parentRecord.get(this.metadata.UltimateParentLookup__c) == null) {
         finishedRecords.add(parentRecord);
@@ -291,8 +303,7 @@ public without sharing class RollupRelationshipFieldFinder {
     return allRecordsAreTopOfHierarchy;
   }
 
-  private SObject getPotentialUltimateParent(SObject childRecord) {
-    Map<String, Schema.SObjectField> fieldMap = childRecord.getSObjectType().getDescribe().fields.getMap();
+  private SObject getPotentialUltimateParent(SObject childRecord, Map<String, Schema.SObjectField> fieldMap) {
     this.currentRelationshipName = this.relationshipParts.size() == 1 ? this.relationshipParts[0] : this.currentRelationshipName;
     if (childRecord.getSObjectType() == this.ultimateParent) {
       this.currentRelationshipName = this.relationshipParts[this.relationshipParts.size() - 1];
@@ -302,7 +313,10 @@ public without sharing class RollupRelationshipFieldFinder {
     if (childRecord.get(this.metadata.UltimateParentLookup__c) != null && childRecord.getPopulatedFieldsAsMap().containsKey(relationshipName)) {
       SObject intermediateParent = childRecord.getSObject(relationshipName);
       this.trackTraversalIds(childRecord.Id, intermediateParent.Id, lookupField, null);
-      return this.getPotentialUltimateParent(intermediateParent);
+      return this.getPotentialUltimateParent(
+        intermediateParent,
+        intermediateParent.getSObjectType().getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap()
+      );
     }
     return childRecord;
   }
@@ -484,7 +498,7 @@ public without sharing class RollupRelationshipFieldFinder {
         if (this.oldRecords.containsKey(recordId)) {
           Id oldLookupId = (Id) this.oldRecords.get(recordId).get(field);
           if (String.isNotBlank(oldLookupId) && oldLookupId != lookupId) {
-            lookupIds.add(oldLookupId);
+            lookupIds?.add(oldLookupId);
             this.traversal.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
           }
         }
@@ -694,6 +708,57 @@ public without sharing class RollupRelationshipFieldFinder {
       }
     }
     return null;
+  }
+
+  private void getFullRecalcParents(List<SObject> children) {
+    this.setFirstRunFlags(children);
+    if (children.isEmpty() == false) {
+      Set<String> parentFieldNames = new Set<String>{ this.metadata.GrandparentRelationshipFieldPath__c };
+      String baseGrandparentPath = this.metadata.GrandparentRelationshipFieldPath__c.substringBeforeLast('.');
+      for (String parentField : this.uniqueFinalParentFieldNames) {
+        parentFieldNames.add(baseGrandparentPath + '.' + parentField);
+      }
+      String query = RollupQueryBuilder.Current.getQuery(
+        children[0].getSObjectType(),
+        new List<String>(parentFieldNames),
+        'Id',
+        '=',
+        this.metadata.CalcItemWhereClause__c
+      );
+      List<String> splitRelationshipNames = baseGrandparentPath.split('\\.');
+      List<SObject> requeriedChildren = this.areParentFieldsAlreadySet(splitRelationshipNames, children[0])
+        ? children
+        : this.repo.setQuery(query).setArg(children).get();
+      List<SObject> finalParents = new List<SObject>();
+      for (SObject requeriedChild : requeriedChildren) {
+        List<String> copiedRelationshipNames = new List<String>(splitRelationshipNames);
+        SObject priorRelationship = requeriedChild;
+        while (copiedRelationshipNames.isEmpty() == false) {
+          SObject nextParent = priorRelationship.getSObject(copiedRelationshipNames.remove(0));
+          this.trackTraversalIds(priorRelationship.Id, nextParent.Id, null, null);
+          priorRelationship = nextParent;
+        }
+        finalParents.add(priorRelationship);
+      }
+      this.prepFinishedObject(finalParents);
+    }
+  }
+
+  private Boolean areParentFieldsAlreadySet(List<String> splitRelationshipNames, SObject firstChild) {
+    Boolean isAlreadySet = false;
+    List<String> copiedRelationshipNames = new List<String>(splitRelationshipNames);
+    SObject ref = firstChild;
+    while (copiedRelationshipNames.isEmpty() == false) {
+      ref = ref.getSObject(copiedRelationshipNames.remove(0));
+      isAlreadySet = ref != null;
+      if (isAlreadySet == false) {
+        break;
+      }
+    }
+    if (ref.getSObjectType() == this.ultimateParent && ref.isSet(this.metadata.GrandparentRelationshipFieldPath__c.substringAfterLast('.')) == false) {
+      isAlreadySet = false;
+    }
+    return isAlreadySet;
   }
 
   private class WhereClauseSorter extends RollupComparer {
