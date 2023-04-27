@@ -2212,6 +2212,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     wrappedMeta.metadata.add(innerMeta);
     RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(whereClause) ? null : RollupEvaluator.getWhereEval(whereClause, childType);
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(innerMeta, eval));
+    if (innerMeta.IsRollupStartedFromParent__c && innerMeta.GrandparentRelationshipFieldPath__c != null) {
+      wrappedMeta.queryFields.add(innerMeta.GrandparentRelationshipFieldPath__c);
+    }
     return wrappedMeta;
   }
 

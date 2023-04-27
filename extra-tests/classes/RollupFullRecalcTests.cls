@@ -879,7 +879,6 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldAllowGrandparentRollupsFromParent() {
-    // TODO - WIP
     // also an integration test for having an ORDER BY statement
     // in RollupFullBatchRecalculator
     Account acc = [SELECT Id, OwnerId FROM Account];
@@ -920,7 +919,6 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldAllowGrandparentRollupFromParentWithPolymorphicFields() {
-    // TODO - WIP
     // technically shouldAllowGrandparentRollupsFromParent also tests polymorphic fields
     // this test does that in conjunction with a more complicated where clause
     Account acc = [SELECT Id, OwnerId FROM Account];

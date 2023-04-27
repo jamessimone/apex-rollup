@@ -161,9 +161,9 @@ public without sharing class RollupCalcItemReplacer {
     Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
     SObjectType sObjectType = firstItem.getSObjectType();
     Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
-    Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
+    Boolean hasPolymorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
-    if (hasPolyMorphicFields == false) {
+    if (hasPolymorphicFields == false) {
       return calcItems;
     }
     if (hasTypeClause == false && hasOwnerClause == false) {
@@ -190,6 +190,12 @@ public without sharing class RollupCalcItemReplacer {
       return calcItems;
     } else if (hasTypeClause && hasTypePrepopulated && hasOwnerClause && hasOwnerPrepolulated) {
       return calcItems;
+    } else if (hasTypeClause && hasTypePrepopulated == false && hasOwnerClause == false) {
+      for (String whereClause : optionalWhereClauses) {
+        if (this.hasSoughtField(typeField, whereClause, firstItem)) {
+          return calcItems;
+        }
+      }
     }
 
     for (String fieldName : populatedFields.keySet()) {
@@ -330,6 +336,19 @@ public without sharing class RollupCalcItemReplacer {
         }
       }
     }
+  }
+
+  @SuppressWarnings('PMD.EmptyCatchBlock')
+  private Boolean hasSoughtField(String fieldName, String whereClause, SObject item) {
+    if (whereClause.containsIgnoreCase(fieldName)) {
+      try {
+        String possibleSoughtField = whereClause.substringBefore(fieldName);
+        return item.getPopulatedFieldsAsMap().get(possibleSoughtField) != null;
+      } catch (Exception ex) {
+        // the field isn't populated, so we SHOULD re-query it
+      }
+    }
+    return false;
   }
 
   private static SObject serializeReplace(SObject calcItem, String fieldName, Object value) {

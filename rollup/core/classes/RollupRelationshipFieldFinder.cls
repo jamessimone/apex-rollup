@@ -755,8 +755,13 @@ public without sharing class RollupRelationshipFieldFinder {
         break;
       }
     }
-    if (ref.getSObjectType() == this.ultimateParent && ref.isSet(this.metadata.GrandparentRelationshipFieldPath__c.substringAfterLast('.')) == false) {
-      isAlreadySet = false;
+    if (ref?.getSObjectType() == this.ultimateParent) {
+      try {
+        ref?.get(this.metadata.GrandparentRelationshipFieldPath__c.substringAfterLast('.'));
+        isAlreadySet = true;
+      } catch (Exception ex) {
+        isAlreadySet = false;
+      }
     }
     return isAlreadySet;
   }

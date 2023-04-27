@@ -97,9 +97,16 @@ public without sharing class RollupQueryBuilder {
         String whoOrWhat = fieldParts.remove(0);
         String indexer = whoOrWhat + '.Type = \'';
         String relationshipName = optionalWhereClause.substring(optionalWhereClause.indexOf(indexer) + indexer.length()).substringBefore('\'');
-        String typeOfField = String.join(fieldParts, '.');
+        Set<String> typeOfFields = new Set<String>{ String.join(fieldParts, '.').toLowerCase() };
+        for (Integer reverseIndex = fieldNames.size() - 1; reverseIndex >= 0; reverseIndex--) {
+          String possiblyRelatedField = fieldNames[reverseIndex];
+          if (possiblyRelatedField.containsIgnoreCase(whoOrWhat + '.')) {
+            fieldNames.remove(reverseIndex);
+            typeOfFields.add(possiblyRelatedField.substringAfter('.'));
+          }
+        }
 
-        fieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + typeOfField + ' END');
+        fieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + String.join(new List<String>(typeOfFields), ',') + ' END');
 
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').replace(whereClause, '');
       }

@@ -91,7 +91,6 @@ private class RollupRelationshipFieldFinderTests {
     // same as above except this one should succeed since everything should be fetched in one go
     Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account];
 
-    // TODO - would be nice to also support something like Parent.Owner.Name from ContactPointAddress (polymorphic lookups, in general)
     Contact con = new Contact(AccountId = acc.Id, LastName = 'Child con');
     insert con;
     control.MaxNumberOfQueries__c = 1;
