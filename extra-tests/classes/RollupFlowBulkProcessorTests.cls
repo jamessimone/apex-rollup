@@ -326,12 +326,13 @@ private class RollupFlowBulkProcessorTests {
     };
 
     Test.startTest();
-    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    List<Rollup.FlowOutput> flowOutputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
     System.assertEquals(2, acc.NumberOfEmployees, 'Account number of employees should have counted properly');
+    System.assertEquals(1, flowOutputs.size(), 'Output size should be the same as input size');
   }
 
   @IsTest

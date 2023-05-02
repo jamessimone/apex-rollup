@@ -87,7 +87,6 @@ public without sharing class RollupCalcItemReplacer {
       if (mightNeedReplacement && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
         RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
-        this.metaToEval.put(meta, whereEval);
         Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
         Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
         for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
@@ -98,7 +97,9 @@ public without sharing class RollupCalcItemReplacer {
         }
         this.parentQueryFields.put(calcType, parentQueryFieldSet);
         this.baseQueryFields.put(calcType, baseQueryFieldSet);
-      } else if (isPresentInMapAlready) {
+        localNeedsReplacement = this.parentQueryFields.isEmpty() == false || this.baseQueryFields.isEmpty() == false;
+        this.metaToEval.put(meta, localNeedsReplacement ? whereEval : null);
+      } else if (isPresentInMapAlready && this.metaToEval.get(meta) != null) {
         localNeedsReplacement = true;
       }
     }
