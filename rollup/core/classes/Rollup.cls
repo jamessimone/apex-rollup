@@ -2183,7 +2183,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
     for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
-      queryFields.add(orderByInfo.FieldName__c);
+      queryFields.add(orderByInfo.FieldName__c.trim());
     }
     return queryFields;
   }

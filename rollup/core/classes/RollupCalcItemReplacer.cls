@@ -73,10 +73,8 @@ public without sharing class RollupCalcItemReplacer {
     }
     SObjectType calcType = calcItems[0].getSObjectType();
     for (Rollup__mdt meta : metadata) {
-      if (meta.IsRollupStartedFromParent__c && meta.LookupObject__c == calcType.getDescribe().getName()) {
-        return localNeedsReplacement;
-      } else if (meta.CalcItem__c != calcType.getDescribe().getName()) {
-        return localNeedsReplacement;
+      if (meta.CalcItem__c != calcType.getDescribe().getName()) {
+        continue;
       }
       if (this.repo == null) {
         this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta));
@@ -90,7 +88,7 @@ public without sharing class RollupCalcItemReplacer {
         Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
         Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
         for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
-          this.addQueryableFields(orderBy.FieldName__c, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
+          this.addQueryableFields(orderBy.FieldName__c.trim(), parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
         }
         for (String queryField : whereEval.getQueryFields()) {
           this.addQueryableFields(queryField, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
@@ -107,6 +105,7 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
+    // TODO - only add parent fields when the calc item doesn't already have the parent-level field populated
     if (fieldName.contains('.')) {
       parentQueryFieldSet.add(fieldName);
     } else {
@@ -177,7 +176,9 @@ public without sharing class RollupCalcItemReplacer {
     Set<String> additionalQueryFields = new Set<String>();
     if (this.metaToEval.containsKey(metadata)) {
       RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
-      this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+      if (eval != null) {
+        this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+      }
     }
 
     Boolean hasOwnerPrepolulated = populatedFields.containsKey('Owner');
@@ -192,10 +193,15 @@ public without sharing class RollupCalcItemReplacer {
     } else if (hasTypeClause && hasTypePrepopulated && hasOwnerClause && hasOwnerPrepolulated) {
       return calcItems;
     } else if (hasTypeClause && hasTypePrepopulated == false && hasOwnerClause == false) {
+      Boolean hasAllSoughtFields = true;
       for (String whereClause : optionalWhereClauses) {
-        if (this.hasSoughtField(typeField, whereClause, firstItem)) {
-          return calcItems;
+        hasAllSoughtFields = hasAllSoughtFields && this.hasSoughtField(typeField, whereClause, firstItem);
+        if (hasAllSoughtFields == false) {
+          break;
         }
+      }
+      if (hasAllSoughtFields) {
+        return calcItems;
       }
     }
 
