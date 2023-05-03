@@ -115,8 +115,10 @@ global without sharing class RollupFlowBulkProcessor {
             input.sharingMode = flowInput.sharingMode != null ? flowInput.sharingMode : meta.SharingMode__c;
             // fixup order by children records
             input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
-            for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
-              input.orderByFirstLast += orderBy.FieldName__c + ' ' + orderBy.NullSortOrder__c + ' ' + orderBy.SortOrder__c + ',';
+            if (input.orderByFirstLast == '') {
+              for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
+                input.orderByFirstLast += orderBy.FieldName__c + ' ' + orderBy.NullSortOrder__c + ' ' + orderBy.SortOrder__c + ',';
+              }
             }
             input.orderByFirstLast = input.orderByFirstLast.removeEnd(',');
             // metadata values that don't get overridden
