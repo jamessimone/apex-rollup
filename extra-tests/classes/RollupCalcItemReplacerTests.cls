@@ -146,7 +146,7 @@ private class RollupCalcItemReplacerTests {
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
     );
     Account updatedAccount = (Account) replacer.replace(
-      new List<Account>{ new Account(Id = acc.Id) },
+      new List<Account>{ acc },
       new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'CreatedDate != null', CalcItem__c = 'Account') }
     )[0];
 

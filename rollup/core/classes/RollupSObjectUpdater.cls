@@ -171,7 +171,7 @@ public without sharing virtual class RollupSObjectUpdater {
   }
 
   private void updateRecords(List<SObject> recordsToUpdate, Database.DMLOptions options) {
-    RollupPlugin__mdt updaterPlugin = new RollupPlugin().getInstance(UPDATER_NAME);
+    RollupPlugin__mdt updaterPlugin = this.plugin.getInstance(UPDATER_NAME);
     Type updaterType = updaterPlugin != null ? Type.forName(updaterPlugin.DeveloperName) : DefaultUpdater.class;
     ((IUpdater) updaterType.newInstance()).performUpdate(recordsToUpdate, options);
     this.forceSyncUpdate = false;

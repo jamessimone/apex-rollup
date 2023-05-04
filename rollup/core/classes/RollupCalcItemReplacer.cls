@@ -105,12 +105,24 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
-    // TODO - only add parent fields when the calc item doesn't already have the parent-level field populated
     if (fieldName.contains('.')) {
-      parentQueryFieldSet.add(fieldName);
+      List<String> relationshipFields = fieldName.split('\\.');
+      String actualField = relationshipFields.remove(relationshipFields.size() - 1);
+      SObject relativeObject = calcItem;
+      while (relationshipFields.isEmpty() == false) {
+        try {
+          relativeObject = relativeObject.getSObject(relationshipFields.remove(0));
+        } catch (Exception ex) {
+          parentQueryFieldSet.add(fieldName);
+        }
+      }
+      try {
+        relativeObject.get(actualField);
+      } catch (Exception ex) {
+        parentQueryFieldSet.add(fieldName);
+      }
     } else {
-      // it'd be great to only calcItem.isSet(fieldName) here, but that returns false for null values
-      // instead, we also test against a very unlikely to be found value
+      // it'd be great to use calcItem.isSet(fieldName) here, but that returns false for null values
       try {
         calcItem.get(fieldName);
       } catch (Exception ex) {
@@ -318,7 +330,12 @@ public without sharing class RollupCalcItemReplacer {
           Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
           if (isAcceptableField && fieldToken.isNamePointing() == false) {
             try {
-              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+              SObject parent = calcItem.getSObject(fieldToken.getRelationshipName());
+              if (parent == null) {
+                calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+              } else {
+                parent.put(fieldName, calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().get(fieldName));
+              }
             } catch (SObjectException ex) {
               // avoids "System.SObjectException: Relationship { relationship name } is not editable"
               if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {

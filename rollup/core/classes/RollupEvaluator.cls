@@ -518,7 +518,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           String relationshipPart = fieldParts.remove(0);
           relationshipPart = relationshipPart.endsWith('__r') ? relationshipPart.replace('__r', '__c') : relationshipPart + 'Id';
           Schema.SObjectField relationField = localFieldNameToField.get(relationshipPart);
-          localFieldNameToField = relationField.getDescribe().getReferenceTo()[0].getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap();
+          Schema.DescribeFieldResult fieldDescribe = relationField.getDescribe();
+          if (fieldDescribe.isFilterable() == false) {
+            return false;
+          } else {
+            localFieldNameToField = fieldDescribe.getReferenceTo()[0].getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap();
+          }
         }
         String endPart = fieldParts[0];
         return localFieldNameToField.containsKey(endPart);
