@@ -73,10 +73,8 @@ public without sharing class RollupCalcItemReplacer {
     }
     SObjectType calcType = calcItems[0].getSObjectType();
     for (Rollup__mdt meta : metadata) {
-      if (meta.IsRollupStartedFromParent__c && meta.LookupObject__c == calcType.getDescribe().getName()) {
-        return localNeedsReplacement;
-      } else if (meta.CalcItem__c != calcType.getDescribe().getName()) {
-        return localNeedsReplacement;
+      if (meta.CalcItem__c != calcType.getDescribe().getName()) {
+        continue;
       }
       if (this.repo == null) {
         this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta));
@@ -87,18 +85,19 @@ public without sharing class RollupCalcItemReplacer {
       if (mightNeedReplacement && isPresentInMapAlready == false) {
         localNeedsReplacement = true;
         RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
-        this.metaToEval.put(meta, whereEval);
         Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
         Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
         for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
-          this.addQueryableFields(orderBy.FieldName__c, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
+          this.addQueryableFields(orderBy.FieldName__c.trim(), parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
         }
         for (String queryField : whereEval.getQueryFields()) {
           this.addQueryableFields(queryField, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
         }
         this.parentQueryFields.put(calcType, parentQueryFieldSet);
         this.baseQueryFields.put(calcType, baseQueryFieldSet);
-      } else if (isPresentInMapAlready) {
+        localNeedsReplacement = this.parentQueryFields.isEmpty() == false || this.baseQueryFields.isEmpty() == false;
+        this.metaToEval.put(meta, localNeedsReplacement ? whereEval : null);
+      } else if (isPresentInMapAlready && this.metaToEval.get(meta) != null) {
         localNeedsReplacement = true;
       }
     }
@@ -107,14 +106,25 @@ public without sharing class RollupCalcItemReplacer {
 
   private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
     if (fieldName.contains('.')) {
-      parentQueryFieldSet.add(fieldName);
-    } else {
-      // it'd be great to only calcItem.isSet(fieldName) here, but that returns false for null values
-      // instead, we also test against a very unlikely to be found value
-      try {
-        if (calcItem.isSet(fieldName) == false && calcItem.get(fieldName) != '<<<improbable test value>>>') {
-          baseQueryFieldSet.add(fieldName);
+      List<String> relationshipFields = fieldName.split('\\.');
+      String actualField = relationshipFields.remove(relationshipFields.size() - 1);
+      SObject relativeObject = calcItem;
+      while (relationshipFields.isEmpty() == false) {
+        try {
+          relativeObject = relativeObject.getSObject(relationshipFields.remove(0));
+        } catch (Exception ex) {
+          parentQueryFieldSet.add(fieldName);
         }
+      }
+      try {
+        relativeObject.get(actualField);
+      } catch (Exception ex) {
+        parentQueryFieldSet.add(fieldName);
+      }
+    } else {
+      // it'd be great to use calcItem.isSet(fieldName) here, but that returns false for null values
+      try {
+        calcItem.get(fieldName);
       } catch (Exception ex) {
         baseQueryFieldSet.add(fieldName);
       }
@@ -161,9 +171,9 @@ public without sharing class RollupCalcItemReplacer {
     Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
     SObjectType sObjectType = firstItem.getSObjectType();
     Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
-    Boolean hasPolyMorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
+    Boolean hasPolymorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
-    if (hasPolyMorphicFields == false) {
+    if (hasPolymorphicFields == false) {
       return calcItems;
     }
     if (hasTypeClause == false && hasOwnerClause == false) {
@@ -176,7 +186,9 @@ public without sharing class RollupCalcItemReplacer {
     Set<String> additionalQueryFields = new Set<String>();
     if (this.metaToEval.containsKey(metadata)) {
       RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
-      this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+      if (eval != null) {
+        this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
+      }
     }
 
     Boolean hasOwnerPrepolulated = populatedFields.containsKey('Owner');
@@ -190,6 +202,17 @@ public without sharing class RollupCalcItemReplacer {
       return calcItems;
     } else if (hasTypeClause && hasTypePrepopulated && hasOwnerClause && hasOwnerPrepolulated) {
       return calcItems;
+    } else if (hasTypeClause && hasTypePrepopulated == false && hasOwnerClause == false) {
+      Boolean hasAllSoughtFields = true;
+      for (String whereClause : optionalWhereClauses) {
+        hasAllSoughtFields = hasAllSoughtFields && this.hasSoughtField(typeField, whereClause, firstItem);
+        if (hasAllSoughtFields == false) {
+          break;
+        }
+      }
+      if (hasAllSoughtFields) {
+        return calcItems;
+      }
     }
 
     for (String fieldName : populatedFields.keySet()) {
@@ -307,7 +330,12 @@ public without sharing class RollupCalcItemReplacer {
           Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
           if (isAcceptableField && fieldToken.isNamePointing() == false) {
             try {
-              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+              SObject parent = calcItem.getSObject(fieldToken.getRelationshipName());
+              if (parent == null) {
+                calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+              } else {
+                parent.put(fieldName, calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().get(fieldName));
+              }
             } catch (SObjectException ex) {
               // avoids "System.SObjectException: Relationship { relationship name } is not editable"
               if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {
@@ -330,6 +358,19 @@ public without sharing class RollupCalcItemReplacer {
         }
       }
     }
+  }
+
+  @SuppressWarnings('PMD.EmptyCatchBlock')
+  private Boolean hasSoughtField(String fieldName, String whereClause, SObject item) {
+    if (whereClause.containsIgnoreCase(fieldName)) {
+      try {
+        String possibleSoughtField = whereClause.substringBefore(fieldName);
+        return item.getPopulatedFieldsAsMap().get(possibleSoughtField) != null;
+      } catch (Exception ex) {
+        // the field isn't populated, so we SHOULD re-query it
+      }
+    }
+    return false;
   }
 
   private static SObject serializeReplace(SObject calcItem, String fieldName, Object value) {

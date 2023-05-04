@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes The number of results does not match the number of interviews that were executed in a single bulk execution request issue in RollupFlowBulkProcessor",
-            "versionNumber": "1.5.63.0",
+            "versionName": "Grandparent full recalc rollup optimizations",
+            "versionNumber": "1.5.64.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -108,6 +108,7 @@
         "apex-rollup@1.5.60-0": "04t6g000008o01XAAQ",
         "apex-rollup@1.5.61-0": "04t6g000008o01wAAA",
         "apex-rollup@1.5.62-0": "04t6g000008o0DQAAY",
-        "apex-rollup@1.5.63-0": "04t6g000008o0DaAAI"
+        "apex-rollup@1.5.63-0": "04t6g000008o0DaAAI",
+        "apex-rollup@1.5.64-0": "04t6g000008SnX0AAK"
     }
 }

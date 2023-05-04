@@ -326,12 +326,13 @@ private class RollupFlowBulkProcessorTests {
     };
 
     Test.startTest();
-    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    List<Rollup.FlowOutput> flowOutputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
     System.assertEquals(2, acc.NumberOfEmployees, 'Account number of employees should have counted properly');
+    System.assertEquals(1, flowOutputs.size(), 'Output size should be the same as input size');
   }
 
   @IsTest
@@ -377,5 +378,50 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals(null, ex, 'Exception should not be thrown when child object info can be inferred from CMDT');
     Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
+  }
+
+  @IsTest
+  static void rollupOrderBysAreHandledProperlyForParentRollups() {
+    Rollup.onlyUseMockMetadata = true;
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    insert new List<SObject>{
+      new Opportunity(Amount = 5, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today().addDays(5), Name = 'Amount 1'),
+      new Opportunity(Amount = 10, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today(), Name = 'Amount 2')
+    };
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = accs;
+    input.rollupContext = 'UPSERT';
+    input.oldRecordsToRollup = new List<SObject>{ null, null };
+    input.deferProcessing = false;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(
+          RollupOperation__c = 'FIRST',
+          CalcItem__c = 'Opportunity',
+          LookupObject__c = 'Account',
+          RollupFieldOnCalcItem__c = 'Amount',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          IsRollupStartedFromParent__c = true
+        ),
+        new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'CloseDate', Ranking__c = 0) }
+      )
+    };
+
+    Exception ex;
+    Test.startTest();
+    try {
+      RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    } catch (Exception e) {
+      ex = e;
+    }
+    Test.stopTest();
+
+    System.assertEquals(null, ex, 'Exception should not be thrown when child object info can be inferred from CMDT');
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have ordered properly');
   }
 }

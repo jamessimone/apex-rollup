@@ -752,10 +752,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // Flow bulkifies things, but poorly. It's possible to get multiple FlowInputs with the same metadata, but different calc items (for example)
     // let's head that off at the pass by bulkifying here
     Map<Rollup__mdt, FlowInputWrapper> metaToInputWrapper = new Map<Rollup__mdt, FlowInputWrapper>();
+    RollupSettings__c settings = RollupSettings__c.getInstance();
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
       flowOutputs.add(flowOutput);
-      if (RollupSettings__c.getInstance().IsEnabled__c == false) {
+      if (settings.IsEnabled__c == false) {
         continue;
       }
 
@@ -809,7 +810,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
       wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
       wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
-      Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>(wrapper.flowInput.oldRecordsToRollup);
+      Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>();
+      for (SObject oldFlowRecord : wrapper.flowInput.oldRecordsToRollup) {
+        oldFlowRecords.put(oldFlowRecord.Id, oldFlowRecord);
+      }
       processCustomMetadata(
         localRollups,
         metas,
@@ -1865,36 +1869,39 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static Rollup__mdt transformFlowInputToRollupMetadata(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
-    return new Rollup__mdt(
-      CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
-        ? flowInput.calcItemTypeWhenRollupStartedFromParent
-        : String.valueOf(sObjectType),
-      CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-      ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
-      ConcatDelimiter__c = flowInput.concatDelimiter,
-      CurrencyFieldMapping__c = flowInput.currencyFieldMapping,
-      FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-      FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
-      GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
-      GroupByFields__c = flowInput.groupByFields,
-      GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
-      GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
-      IsFullRecordSet__c = flowInput.isFullRecordSet,
-      IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
-      IsTableFormatted__c = flowInput.isTableFormatted,
-      LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
-      LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
-      LookupObject__c = flowInput.rollupSObjectName,
-      OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
-      OrderByFirstLast__c = flowInput.orderByFirstLast,
-      RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
-      RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
-      RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-      RollupOperation__c = rollupContext + flowInput.rollupOperation,
-      RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
-      SharingMode__c = flowInput.sharingMode,
-      SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
-      UltimateParentLookup__c = flowInput.ultimateParentLookup
+    return getFirstLastMetadata(
+      new Rollup__mdt(
+        CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
+          ? flowInput.calcItemTypeWhenRollupStartedFromParent
+          : String.valueOf(sObjectType),
+        CalcItemWhereClause__c = flowInput.calcItemWhereClause,
+        ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+        ConcatDelimiter__c = flowInput.concatDelimiter,
+        CurrencyFieldMapping__c = flowInput.currencyFieldMapping,
+        FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+        FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+        GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+        GroupByFields__c = flowInput.groupByFields,
+        GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
+        GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
+        IsFullRecordSet__c = flowInput.isFullRecordSet,
+        IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
+        IsTableFormatted__c = flowInput.isTableFormatted,
+        LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
+        LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
+        LookupObject__c = flowInput.rollupSObjectName,
+        OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
+        OrderByFirstLast__c = flowInput.orderByFirstLast,
+        RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
+        RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
+        RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
+        RollupOperation__c = rollupContext + flowInput.rollupOperation,
+        RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
+        SharingMode__c = flowInput.sharingMode,
+        SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
+        UltimateParentLookup__c = flowInput.ultimateParentLookup
+      ),
+      flowInput.rollupOperation
     );
   }
 
@@ -2183,7 +2190,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
     for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
-      queryFields.add(orderByInfo.FieldName__c);
+      queryFields.add(orderByInfo.FieldName__c.trim());
     }
     return queryFields;
   }
@@ -2212,6 +2219,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     wrappedMeta.metadata.add(innerMeta);
     RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(whereClause) ? null : RollupEvaluator.getWhereEval(whereClause, childType);
     wrappedMeta.queryFields.addAll(getQueryFieldsFromMetadata(innerMeta, eval));
+    if (innerMeta.IsRollupStartedFromParent__c && innerMeta.GrandparentRelationshipFieldPath__c != null) {
+      wrappedMeta.queryFields.add(innerMeta.GrandparentRelationshipFieldPath__c);
+    }
     return wrappedMeta;
   }
 
@@ -2702,9 +2712,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c)) || rollupMetadata.GroupByFields__c != null) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
-      if (rollupOp.name().contains(Op.FIRST.name()) || rollupOp.name().contains(Op.LAST.name())) {
-        rollupMetadata = getFirstLastMetadata(rollupMetadata);
-      }
+      rollupMetadata = getFirstLastMetadata(rollupMetadata, rollupOp.name());
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2740,7 +2748,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return rollupConductor;
   }
 
-  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta) {
+  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta, String rollupOpName) {
     List<RollupOrderBy__mdt> replacementOrderBys;
     if (meta.RollupOrderBys__r.isEmpty() && String.isNotBlank(meta.OrderByFirstLast__c)) {
       List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');
@@ -2759,7 +2767,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         }
         replacementOrderBys.add(orderBy);
       }
-    } else if (meta.RollupOrderBys__r.isEmpty()) {
+    } else if (
+      meta.RollupOrderBys__r.isEmpty() && (rollupOpName.contains(Op.FIRST.name()) || rollupOpName.contains(Op.LAST.name())) || meta.LimitAmount__c != null
+    ) {
       replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
     }
     return appendOrderByMetadata(meta, replacementOrderBys);
