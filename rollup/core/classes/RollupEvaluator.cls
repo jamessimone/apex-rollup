@@ -275,6 +275,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return matches;
     }
 
+    @SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
     private Set<String> getValidRelationshipNames(SObjectType sObjectType) {
       Set<String> localRelationshipNames = new Set<String>();
       List<SObjectField> fields = sObjectType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap().values();
