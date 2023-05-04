@@ -117,7 +117,14 @@ global without sharing class RollupFlowBulkProcessor {
             input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
             if (input.orderByFirstLast == '') {
               for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
-                input.orderByFirstLast += orderBy.FieldName__c + ' ' + orderBy.NullSortOrder__c + ' ' + orderBy.SortOrder__c + ',';
+                input.orderByFirstLast += orderBy.FieldName__c;
+                if (orderBy.NullSortOrder__c != null) {
+                  input.orderByFirstLast += ' ' + orderBy.NullSortOrder__c;
+                }
+                if (orderBy.SortOrder__c != null) {
+                  input.orderByFirstLast += ' ' + orderBy.SortOrder__c;
+                }
+                input.orderByFirstLast += ',';
               }
             }
             input.orderByFirstLast = input.orderByFirstLast.removeEnd(',');

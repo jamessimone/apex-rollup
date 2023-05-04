@@ -752,10 +752,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // Flow bulkifies things, but poorly. It's possible to get multiple FlowInputs with the same metadata, but different calc items (for example)
     // let's head that off at the pass by bulkifying here
     Map<Rollup__mdt, FlowInputWrapper> metaToInputWrapper = new Map<Rollup__mdt, FlowInputWrapper>();
+    RollupSettings__c settings = RollupSettings__c.getInstance();
     for (FlowInput flowInput : flowInputs) {
       FlowOutput flowOutput = new FlowOutput();
       flowOutputs.add(flowOutput);
-      if (RollupSettings__c.getInstance().IsEnabled__c == false) {
+      if (settings.IsEnabled__c == false) {
         continue;
       }
 
@@ -1868,36 +1869,38 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static Rollup__mdt transformFlowInputToRollupMetadata(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
-    return new Rollup__mdt(
-      CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
-        ? flowInput.calcItemTypeWhenRollupStartedFromParent
-        : String.valueOf(sObjectType),
-      CalcItemWhereClause__c = flowInput.calcItemWhereClause,
-      ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
-      ConcatDelimiter__c = flowInput.concatDelimiter,
-      CurrencyFieldMapping__c = flowInput.currencyFieldMapping,
-      FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
-      FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
-      GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
-      GroupByFields__c = flowInput.groupByFields,
-      GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
-      GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
-      IsFullRecordSet__c = flowInput.isFullRecordSet,
-      IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
-      IsTableFormatted__c = flowInput.isTableFormatted,
-      LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
-      LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
-      LookupObject__c = flowInput.rollupSObjectName,
-      OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
-      OrderByFirstLast__c = flowInput.orderByFirstLast,
-      RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
-      RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
-      RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
-      RollupOperation__c = rollupContext + flowInput.rollupOperation,
-      RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
-      SharingMode__c = flowInput.sharingMode,
-      SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
-      UltimateParentLookup__c = flowInput.ultimateParentLookup
+    return getFirstLastMetadata(
+      new Rollup__mdt(
+        CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
+          ? flowInput.calcItemTypeWhenRollupStartedFromParent
+          : String.valueOf(sObjectType),
+        CalcItemWhereClause__c = flowInput.calcItemWhereClause,
+        ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
+        ConcatDelimiter__c = flowInput.concatDelimiter,
+        CurrencyFieldMapping__c = flowInput.currencyFieldMapping,
+        FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
+        FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
+        GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+        GroupByFields__c = flowInput.groupByFields,
+        GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
+        GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
+        IsFullRecordSet__c = flowInput.isFullRecordSet,
+        IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
+        IsTableFormatted__c = flowInput.isTableFormatted,
+        LookupFieldOnCalcItem__c = flowInput.lookupFieldOnCalcItem,
+        LookupFieldOnLookupObject__c = flowInput.lookupFieldOnOpObject,
+        LookupObject__c = flowInput.rollupSObjectName,
+        OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
+        OrderByFirstLast__c = flowInput.orderByFirstLast,
+        RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
+        RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
+        RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
+        RollupOperation__c = rollupContext + flowInput.rollupOperation,
+        RollupToUltimateParent__c = flowInput.rollupToUltimateParent,
+        SharingMode__c = flowInput.sharingMode,
+        SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
+        UltimateParentLookup__c = flowInput.ultimateParentLookup
+      )
     );
   }
 
