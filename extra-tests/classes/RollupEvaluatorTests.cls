@@ -1029,6 +1029,15 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void supportsTypeFieldWhenOnlyPresentOnParent() {
+    String whereClause = 'Account.Type != \'Something\'';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Contact.SObjectType);
+    List<String> queryFields = eval.getQueryFields();
+    System.assertEquals(1, queryFields.size(), queryFields);
+    System.assertEquals('Account.Type', queryFields[0]);
+  }
+
+  @IsTest
   static void gracefullyHandlesFieldNotExistingForDateLiteral() {
     String whereClause = 'SomeFieldThatDoesNotExist = THIS_YEAR';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);

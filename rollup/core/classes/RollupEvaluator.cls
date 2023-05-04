@@ -165,6 +165,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private List<String> queryFields;
 
+    private final Map<String, Schema.SObjectField> fieldNameToField {
+      get {
+        if (this.fieldNameToField == null) {
+          this.fieldNameToField = this.calcItemType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap();
+        }
+        return this.fieldNameToField;
+      }
+      set;
+    }
+
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
       whereClause = whereClause == null ? '' : whereClause.replaceAll('(\n|\r|\t)', '');
       this.originalWhereClause = whereClause;
@@ -267,7 +277,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private Set<String> getValidRelationshipNames(SObjectType sObjectType) {
       Set<String> localRelationshipNames = new Set<String>();
-      List<SObjectField> fields = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().values();
+      List<SObjectField> fields = sObjectType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap().values();
       for (SObjectField field : fields) {
         String relationshipName = field.getDescribe().getRelationshipName();
         // filter out polymorphic relationship fields that can't be queried
@@ -475,17 +485,19 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     private Boolean isValidRelationshipField(String fieldName) {
-      Map<String, SObjectField> fieldNameToField = this.calcItemType.getDescribe().fields.getMap();
+      if (fieldName.contains('.') == false) {
+        return false;
+      }
+      List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
       if (fieldName.contains('Owner.')) {
-        List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
         Integer ownerIndex = fieldParts.indexOf('Owner');
-        SObjectType ownerType;
+        Schema.SObjectType ownerType;
         if (ownerIndex > 0) {
           Integer index = 0;
           while (index < ownerIndex) {
             String relationshipName = fieldParts[index];
             String fieldRef = getRelationshipNameFromField(relationshipName);
-            SObjectField fieldToken = fieldNameToField.get(fieldRef);
+            SObjectField fieldToken = this.fieldNameToField.get(fieldRef);
             if (fieldToken.getDescribe().isNamePointing()) {
               return false;
             }
@@ -495,12 +507,20 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         } else {
           ownerType = this.calcItemType;
         }
-        return ownerType.getDescribe().fields.getMap().get('OwnerId').getDescribe().isNamePointing() == false;
+        return (ownerType == this.calcItemType ? this.fieldNameToField : ownerType.getDescribe().fields.getMap())
+            .get('OwnerId')
+            .getDescribe()
+            .isNamePointing() == false;
       } else {
-        String endPart = fieldName.substringAfter('.');
-        return fieldNameToField.containsKey(endPart) ||
-          (POLYMORPHIC_FIELDS.contains(fieldName.substringBetween('.')) == false &&
-          POLYMORPHIC_FIELDS.contains(endPart) == false);
+        Map<String, Schema.SObjectField> localFieldNameToField = this.fieldNameToField;
+        while (fieldParts.size() > 1) {
+          String relationshipPart = fieldParts.remove(0);
+          relationshipPart = relationshipPart.endsWith('__r') ? relationshipPart.replace('__r', '__c') : relationshipPart + 'Id';
+          Schema.SObjectField relationField = localFieldNameToField.get(relationshipPart);
+          localFieldNameToField = relationField.getDescribe().getReferenceTo()[0].getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap();
+        }
+        String endPart = fieldParts[0];
+        return localFieldNameToField.containsKey(endPart);
       }
     }
   }
