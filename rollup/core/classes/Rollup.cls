@@ -1900,7 +1900,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         SharingMode__c = flowInput.sharingMode,
         SplitConcatDelimiterOnCalcItem__c = flowInput.splitConcatDelimiterOnCalcItem,
         UltimateParentLookup__c = flowInput.ultimateParentLookup
-      )
+      ),
+      flowInput.rollupOperation
     );
   }
 
@@ -2711,9 +2712,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c)) || rollupMetadata.GroupByFields__c != null) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
-      if (rollupOp.name().contains(Op.FIRST.name()) || rollupOp.name().contains(Op.LAST.name())) {
-        rollupMetadata = getFirstLastMetadata(rollupMetadata);
-      }
+      rollupMetadata = getFirstLastMetadata(rollupMetadata, rollupOp.name());
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2749,7 +2748,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return rollupConductor;
   }
 
-  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta) {
+  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta, String rollupOpName) {
     List<RollupOrderBy__mdt> replacementOrderBys;
     if (meta.RollupOrderBys__r.isEmpty() && String.isNotBlank(meta.OrderByFirstLast__c)) {
       List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');
@@ -2768,7 +2767,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         }
         replacementOrderBys.add(orderBy);
       }
-    } else if (meta.RollupOrderBys__r.isEmpty()) {
+    } else if (
+      meta.RollupOrderBys__r.isEmpty() && (rollupOpName.contains(Op.FIRST.name()) || rollupOpName.contains(Op.LAST.name())) || meta.LimitAmount__c != null
+    ) {
       replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
     }
     return appendOrderByMetadata(meta, replacementOrderBys);

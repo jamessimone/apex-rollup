@@ -112,9 +112,7 @@ public without sharing class RollupCalcItemReplacer {
       // it'd be great to only calcItem.isSet(fieldName) here, but that returns false for null values
       // instead, we also test against a very unlikely to be found value
       try {
-        if (calcItem.isSet(fieldName) == false && calcItem.get(fieldName) != '<<<improbable test value>>>') {
-          baseQueryFieldSet.add(fieldName);
-        }
+        calcItem.get(fieldName);
       } catch (Exception ex) {
         baseQueryFieldSet.add(fieldName);
       }
