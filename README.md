@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SnX0AAK">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SnXoAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SnX0AAK">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008SnXoAAK">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -1064,7 +1064,17 @@ You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Le
 
 ### Other Rollup Plugins
 
-- To perform additional post-processing on the newly updated parent records, a ["callback" plugin](plugins/RollupCallback) is also now available as a 2GP unmanaged package. For more information, check out [the Readme](plugins/RollupCallback), as there are a variety of options available when it comes to post-processing.
+- To perform additional asynchronous post-processing on the newly updated parent records, a ["callback" plugin](plugins/RollupCallback) is also now available as a 2GP unmanaged package. For more information, check out [the Readme](plugins/RollupCallback), as there are a variety of options available when it comes to post-processing.
+
+- To customize the `Database.DMLOptions` before records are updated, or to perform additional synchronous pre & post-processing on the newly updated parent records, you can add a Rollup Plugin Parameter CMDT record linked to the `Rollup Pre And Post Updater` Rollup Plugin record. By default, an implementation is included if your org would like to exclude rollup updates from being considered in validation rules by using `$Setup.RollupSettings__c.BypassValidationRules__c = false`, as this value will only be true when Apex Rollup is updating records. To use the default implementation, set the Value for the Plugin Parameter record linked to the Pre/Post Updater plugin to `RollupSObjectUpdater.PreAndPostUpdater` (or the namespaced version of that class name, `please.RollupSObjectUpdater.PreAndPostUpdater` if you are using the namespaced version of Apex Rollup). Otherwise, you can provide your own implementation so long as it implements `RollupSObjectUpdater.IPrePostUpdater` (or `please.RollupSObjectUpdater.IPrePostUpdater` for the namespaced version):
+
+```java
+// in RollupSObjectUpdater
+global interface IPrePostUpdater {
+  void preUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options);
+  void postUpdate(List<SObject> recordsToUpate);
+}
+```
 
 - If you need to generate additional test code coverage for `apex-rollup` (which might be necessary in a highly declarative org), you can install the [Extra Code Coverage plugin](plugins/ExtraCodeCoverage), which automatically gets updated any time I make changes to tests here.
 
