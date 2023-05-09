@@ -149,6 +149,24 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(2, mockUpdatedRecords.size());
   }
 
+  @IsTest
+  static void updatesSettingsWhenPreAndPostUpdaterIsUsed() {
+    upsert new RollupSettings__c();
+    RollupSettings__c initial = RollupSettings__c.getInstance();
+
+    waitSeconds(1);
+    RollupSObjectUpdater.UPDATER_NAME = MockUpdater.class.getName();
+    RollupPlugin.parameterMock = new RollupPluginParameter__mdt(
+      Value__c = RollupSObjectUpdater.class.getName() + '.' + 'PreAndPostUpdater',
+      RollupPlugin__c = RollupPlugin__mdt.getInstance(RollupSObjectUpdater.PRE_AND_POST_UPDATER_NAME).Id
+    );
+    RollupSObjectUpdater updater = new RollupSObjectUpdater();
+    updater.forceSyncUpdate();
+    updater.doUpdate(new List<SObject>{ new Account() });
+
+    System.assertNotEquals(initial, RollupSettings__c.getInstance());
+  }
+
   public class MockUpdater implements RollupSObjectUpdater.IUpdater {
     public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
       mockUpdatedRecords = recordsToUpdate;

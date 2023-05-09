@@ -1,6 +1,8 @@
-public without sharing virtual class RollupSObjectUpdater {
+global without sharing virtual class RollupSObjectUpdater {
   @TestVisible
   private static String UPDATER_NAME = 'RollupCustomUpdater';
+  @TestVisible
+  private static String PRE_AND_POST_UPDATER_NAME = 'RollupPreAndPostUpdater';
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
   private static final SObjectSorter SORTER = new SObjectSorter();
@@ -12,15 +14,20 @@ public without sharing virtual class RollupSObjectUpdater {
   private Boolean forceSyncUpdate = false;
   private RollupControl__mdt rollupControl;
 
-  public interface IDispatcher {
+  global interface IDispatcher {
     void dispatch(List<SObject> records);
   }
 
-  public interface IUpdater {
+  global interface IUpdater {
     void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options);
   }
 
-  public RollupSObjectUpdater() {
+  global interface IPrePostUpdater {
+    void preUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options);
+    void postUpdate(List<SObject> recordsToUpate);
+  }
+
+  global RollupSObjectUpdater() {
     this.plugin = new RollupPlugin();
     this.dispatchers = this.fillDispatchers();
   }
@@ -37,7 +44,7 @@ public without sharing virtual class RollupSObjectUpdater {
     this.forceSyncUpdate = true;
   }
 
-  public virtual void doUpdate(List<SObject> recordsToUpdate) {
+  global virtual void doUpdate(List<SObject> recordsToUpdate) {
     if (this.forceSyncUpdate == false && Rollup.hasExceededCurrentRollupLimits(this.rollupControl)) {
       this.performAsyncUpdate(recordsToUpdate);
       return;
@@ -82,7 +89,7 @@ public without sharing virtual class RollupSObjectUpdater {
             value = Datetime.parse((String) value);
           }
         }
-        when Date {
+        when DATE {
           if (value instanceof Datetime) {
             value = ((Datetime) value).dateGmt();
           } else if (valueisString) {
@@ -172,9 +179,35 @@ public without sharing virtual class RollupSObjectUpdater {
 
   private void updateRecords(List<SObject> recordsToUpdate, Database.DMLOptions options) {
     RollupPlugin__mdt updaterPlugin = this.plugin.getInstance(UPDATER_NAME);
-    Type updaterType = updaterPlugin != null ? Type.forName(updaterPlugin.DeveloperName) : DefaultUpdater.class;
-    ((IUpdater) updaterType.newInstance()).performUpdate(recordsToUpdate, options);
+    IUpdater updater = (IUpdater) this.getInstanceOrDefault(updaterPlugin?.DeveloperName, IUpdater.class, DefaultUpdater.class);
+    IPrePostUpdater preAndPostUpdater = this.getPreAndPostUpdater();
+    preAndPostUpdater?.preUpdate(recordsToUpdate, options);
+    updater.performUpdate(recordsToUpdate, options);
+    preAndPostUpdater?.postUpdate(recordsToUpdate);
     this.forceSyncUpdate = false;
+  }
+
+  private IPrePostUpdater getPreAndPostUpdater() {
+    RollupPlugin__mdt preAndPostUpdaterPlugin = this.plugin.getInstance(PRE_AND_POST_UPDATER_NAME);
+    List<RollupPluginParameter__mdt> parameters = this.plugin.getMatchingParameters(preAndPostUpdaterPlugin?.Id);
+    String typeName;
+
+    for (RollupPluginParameter__mdt param : parameters) {
+      typeName = param.Value__c;
+    }
+    return (IPrePostUpdater) this.getInstanceOrDefault(typeName, IPrePostUpdater.class, null);
+  }
+
+  private Object getInstanceOrDefault(String typeName, Type desiredType, Type defaultType) {
+    Type potentialType;
+    if (typeName != null) {
+      potentialType = Type.forName(typeName);
+    }
+    // Type.isAssignableFrom is great, but it throws instead of returning false for null
+    if (potentialType != null && desiredType.isAssignableFrom(potentialType)) {
+      return potentialType.newInstance();
+    }
+    return defaultType?.newInstance();
   }
 
   private class SObjectSorter extends RollupComparer {
@@ -213,6 +246,21 @@ public without sharing virtual class RollupSObjectUpdater {
     @SuppressWarnings('PMD.ApexCrudViolation')
     public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
       Database.update(recordsToUpdate, options);
+    }
+  }
+
+  @SuppressWarnings('PMD.ApexCrudViolation')
+  global without sharing class PreAndPostUpdater implements IPrePostUpdater {
+    public void preUpdate(List<SObject> records, Database.DMLOptions options) {
+      RollupSettings__c settings = RollupSettings__c.getInstance();
+      settings.BypassValidationRules__c = true;
+      Database.upsert(settings, false);
+    }
+
+    public void postUpdate(List<SObject> records) {
+      RollupSettings__c settings = RollupSettings__c.getInstance();
+      settings.BypassValidationRules__c = false;
+      Database.upsert(settings, false);
     }
   }
 }
