@@ -1751,7 +1751,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
     String childrenJson = '"' + orderByRelationshipName + '" : ' + JSON.serialize(new ChildrenSObject(children));
-    serializedMeta = serializedMeta += ',' + childrenJson + '}';
+    serializedMeta += ',' + childrenJson + '}';
 
     return (Rollup__mdt) JSON.deserialize(serializedMeta, Rollup__mdt.class);
   }
