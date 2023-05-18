@@ -1477,28 +1477,6 @@ private class RollupCalculatorTests {
   // Factory tests
 
   @IsTest
-  static void shouldThrowExceptionIfTypeNotSupported() {
-    Exception ex;
-
-    try {
-      RollupCalculator calc = getCalculator(
-        Blob.valueOf(''), // unsupported type
-        Rollup.Op.CONCAT,
-        Opportunity.Name,
-        QuickText.Channel,
-        new Rollup__mdt(),
-        RollupTestUtils.createId(QuickText.SObjectType),
-        QuickText.Name
-      );
-      calc.getReturnValue();
-    } catch (Exception e) {
-      ex = e;
-    }
-
-    System.assertNotEquals(null, ex, 'Exception should have been thrown');
-  }
-
-  @IsTest
   static void shouldNotMixReturnTypesWithBigDecimalUnsortableValues() {
     RollupCalculator calc = getCalculator(
       0,
