@@ -515,7 +515,9 @@ public without sharing abstract class RollupCalculator {
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
-      this.returnDecimal = (Decimal) this.returnVal;
+      if (this.returnVal instanceof Decimal) {
+        this.returnDecimal = (Decimal) this.returnVal;
+      }
     }
 
     protected virtual Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
@@ -871,7 +873,9 @@ public without sharing abstract class RollupCalculator {
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, isConcatDistinct(this.op) ? '' : priorVal);
-      this.stringVal = (String) this.returnVal;
+      if (this.returnVal instanceof String) {
+        this.stringVal = (String) this.returnVal;
+      }
     }
 
     protected override void setReturnValue() {
