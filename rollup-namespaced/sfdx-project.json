@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Adding RollupSettings__c.BypassValidationRules__c custom setting field to reference in validation rules",
-            "versionNumber": "1.0.38.0",
+            "versionName": "Slight cleanup on RollupOrderBy__mdt transformations",
+            "versionNumber": "1.0.39.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -32,6 +32,7 @@
         "apex-rollup-namespaced@1.0.35-0": "04t6g000008o0DVAAY",
         "apex-rollup-namespaced@1.0.36-0": "04t6g000008o0DfAAI",
         "apex-rollup-namespaced@1.0.37-0": "04t6g000008SnX5AAK",
-        "apex-rollup-namespaced@1.0.38-0": "04t6g000008SnXtAAK"
+        "apex-rollup-namespaced@1.0.38-0": "04t6g000008SnXtAAK",
+        "apex-rollup-namespaced@1.0.39-0": "04t6g000008SneMAAS"
     }
 }
