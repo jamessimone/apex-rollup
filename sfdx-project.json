@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "versionName": "Slight cleanup on RollupOrderBy__mdt transformations",
-            "versionNumber": "1.5.66.0",
+            "versionNumber": "1.5.67.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -100,17 +100,10 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.8.0-NEXT-ignore-origin-method": "04t5Y0000015lslQAA",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.5.55-0": "04t6g000008fjiwAAA",
-        "apex-rollup@1.5.56-0": "04t6g000008fjnnAAA",
-        "apex-rollup@1.5.57-0": "04t6g000008fjoMAAQ",
-        "apex-rollup@1.5.58-0": "04t6g000008nzupAAA",
-        "apex-rollup@1.5.59-0": "04t6g000008nzwCAAQ",
-        "apex-rollup@1.5.60-0": "04t6g000008o01XAAQ",
-        "apex-rollup@1.5.61-0": "04t6g000008o01wAAA",
-        "apex-rollup@1.5.62-0": "04t6g000008o0DQAAY",
         "apex-rollup@1.5.63-0": "04t6g000008o0DaAAI",
         "apex-rollup@1.5.64-0": "04t6g000008SnX0AAK",
         "apex-rollup@1.5.65-0": "04t6g000008SnXoAAK",
-        "apex-rollup@1.5.66-0": "04t6g000008SneHAAS"
+        "apex-rollup@1.5.66-0": "04t6g000008SneHAAS",
+        "apex-rollup@1.5.67-0": "04t6g000008SneWAAS"
     }
 }

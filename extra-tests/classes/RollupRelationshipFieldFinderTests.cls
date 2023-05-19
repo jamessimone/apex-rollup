@@ -112,6 +112,30 @@ private class RollupRelationshipFieldFinderTests {
   }
 
   @IsTest
+  static void fullRecalcDoesNotBlowUpOnParentFields() {
+    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account];
+
+    Contact con = new Contact(AccountId = acc.Id, LastName = 'Child con');
+    insert con;
+    con = [SELECT Id FROM Contact WHERE Id = :con.Id];
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(GrandparentRelationshipFieldPath__c = 'Account.Owner.Name'),
+      uniqueFieldNames,
+      uniqueFieldNames,
+      User.SObjectType,
+      new Map<Id, SObject>()
+    );
+    finder.setIsFullRecalc(true);
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Contact>{ con });
+
+    System.assertEquals(true, traversal.getParentLookupToRecords().containsKey(acc.OwnerId));
+    System.assertEquals(acc.Owner.Name, traversal.retrieveParents(con.Id)[0].get('Name'));
+    System.assertEquals(true, traversal.getIsFinished());
+  }
+
+  @IsTest
   static void shouldNotReportFalsePositiveIfUltimateParentStaysTheSame() {
     Account intermediateOne = new Account(Name = 'Intermediate 1');
     Account intermediateTwo = new Account(Name = 'Intermediate 2');

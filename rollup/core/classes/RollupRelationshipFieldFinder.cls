@@ -748,20 +748,20 @@ public without sharing class RollupRelationshipFieldFinder {
     Boolean isAlreadySet = false;
     List<String> copiedRelationshipNames = new List<String>(splitRelationshipNames);
     SObject ref = firstChild;
-    while (copiedRelationshipNames.isEmpty() == false) {
-      ref = ref.getSObject(copiedRelationshipNames.remove(0));
-      isAlreadySet = ref != null;
-      if (isAlreadySet == false) {
-        break;
+    try {
+      while (copiedRelationshipNames.isEmpty() == false) {
+        ref = ref.getSObject(copiedRelationshipNames.remove(0));
+        isAlreadySet = ref != null;
+        if (isAlreadySet == false) {
+          break;
+        }
       }
-    }
-    if (ref?.getSObjectType() == this.ultimateParent) {
-      try {
+      if (ref?.getSObjectType() == this.ultimateParent) {
         ref?.get(this.metadata.GrandparentRelationshipFieldPath__c.substringAfterLast('.'));
         isAlreadySet = true;
-      } catch (Exception ex) {
-        isAlreadySet = false;
       }
+    } catch (Exception ex) {
+      isAlreadySet = false;
     }
     return isAlreadySet;
   }
