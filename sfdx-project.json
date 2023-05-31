@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Slight cleanup on RollupOrderBy__mdt transformations",
-            "versionNumber": "1.5.67.0",
+            "versionName": "Removed chance for row with duplicate Id possibility in RollupCalcItemReplacer",
+            "versionNumber": "1.5.68.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -104,6 +104,7 @@
         "apex-rollup@1.5.64-0": "04t6g000008SnX0AAK",
         "apex-rollup@1.5.65-0": "04t6g000008SnXoAAK",
         "apex-rollup@1.5.66-0": "04t6g000008SneHAAS",
-        "apex-rollup@1.5.67-0": "04t6g000008SneWAAS"
+        "apex-rollup@1.5.67-0": "04t6g000008SneWAAS",
+        "apex-rollup@1.5.68-0": "04t6g000008SnlYAAS"
     }
 }

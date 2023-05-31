@@ -128,10 +128,10 @@ private class RollupCalcItemReplacerTests {
     Account acc = [SELECT Id FROM Account];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
-      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 2)
     );
     acc = (Account) replacer.replace(
-      new List<Account>{ acc },
+      new List<Account>{ acc, acc },
       new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'AnnualRevenue != 0', CalcItem__c = 'Account') }
     )[0];
 
