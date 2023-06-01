@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Removed chance for row with duplicate Id possibility in RollupCalcItemReplacer",
-            "versionNumber": "1.5.68.0",
+            "versionName": "Tech debt cleanup",
+            "versionNumber": "1.5.69.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

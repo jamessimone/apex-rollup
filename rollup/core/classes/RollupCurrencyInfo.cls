@@ -223,14 +223,12 @@ public without sharing virtual class RollupCurrencyInfo {
       Double calcItemAmountInParentCurrency = (CURRENCY_ISO_CODE_TO_CURRENCY.get(parentIsoCode).getInfo(calcItem, parentIsoCode).ConversionRate /
         calcItemAmountInOrgCurrency)
         .doubleValue();
-      if (TYPE_TO_FIELDS.containsKey(calcItem.getSObjectType()) == false) {
-        TYPE_TO_FIELDS.put(calcItem.getSObjectType(), calcItem.getSObjectType().getDescribe().fields.getMap());
+      Map<String, Schema.SObjectField> fieldNameToField = TYPE_TO_FIELDS.get(calcItem.getSObjectType());
+      if (fieldNameToField == null) {
+        fieldNameToField = calcItem.getSObjectType().getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
+        TYPE_TO_FIELDS.put(calcItem.getSObjectType(), fieldNameToField);
       }
-      clonedCalcItem = RollupCalcItemReplacer.replaceField(
-        clonedCalcItem,
-        TYPE_TO_FIELDS.get(calcItem.getSObjectType()).get(CURRENCY_ISO_CODE_FIELD_NAME),
-        parentIsoCode
-      );
+      clonedCalcItem = RollupCalcItemReplacer.replaceField(clonedCalcItem, fieldNameToField.get(CURRENCY_ISO_CODE_FIELD_NAME), parentIsoCode);
       clonedCalcItem = RollupCalcItemReplacer.replaceField(clonedCalcItem, fieldOnCalcItem, calcItemAmountInParentCurrency);
       HASHED_ITEM_VALUES.add(hashKey);
     }
@@ -261,12 +259,12 @@ public without sharing virtual class RollupCurrencyInfo {
     }
 
     for (RollupCurrencyInfo currencyInfo : currencyInfos) {
-      if (currencyInfoMap.containsKey(currencyInfo.IsoCode)) {
-        currencyInfoMap.get(currencyInfo.IsoCode).addInfo(currencyInfo);
-      } else {
-        RollupCurrencyInfo mappedInfo = IS_DATED_MULTICURRENCY ? new CurrencyFinder(currencyInfo) : currencyInfo;
+      RollupCurrencyInfo mappedInfo = currencyInfoMap.get(currencyInfo.IsoCode);
+      if (mappedInfo == null) {
+        mappedInfo = IS_DATED_MULTICURRENCY ? new CurrencyFinder(currencyInfo) : currencyInfo;
         currencyInfoMap.put(currencyInfo.IsoCode, mappedInfo);
       }
+      mappedInfo.addInfo(currencyInfo);
     }
     return currencyInfoMap;
   }

@@ -810,10 +810,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
       wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
       wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
-      Map<Id, SObject> oldFlowRecords = new Map<Id, SObject>();
-      for (SObject oldFlowRecord : wrapper.flowInput.oldRecordsToRollup) {
-        oldFlowRecords.put(oldFlowRecord.Id, oldFlowRecord);
-      }
+      Map<Id, SObject> oldFlowRecords = RollupFieldInitializer.Current.createSafeMap(wrapper.flowInput.oldRecordsToRollup);
       processCustomMetadata(
         localRollups,
         metas,
@@ -2209,12 +2206,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Rollup__mdt innerMeta,
     String whereClause
   ) {
-    RollupMetadata wrappedMeta;
-    if (typeToWrappedMeta.containsKey(childType) == false) {
+    RollupMetadata wrappedMeta = typeToWrappedMeta.get(childType);
+    if (wrappedMeta == null) {
       wrappedMeta = new RollupMetadata();
       typeToWrappedMeta.put(childType, wrappedMeta);
-    } else {
-      wrappedMeta = typeToWrappedMeta.get(childType);
     }
     wrappedMeta.metadata.add(innerMeta);
     RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(whereClause) ? null : RollupEvaluator.getWhereEval(whereClause, childType);
