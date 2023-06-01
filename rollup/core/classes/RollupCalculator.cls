@@ -1334,11 +1334,12 @@ public without sharing abstract class RollupCalculator {
           }
           currentGrouping += this.formatter.getGroupingColumn(fieldName, groupingVal, isFirst, isLast);
         }
-        if (groupingStringToItems.containsKey(currentGrouping)) {
-          groupingStringToItems.get(currentGrouping).add(item);
-        } else {
-          groupingStringToItems.put(currentGrouping, new List<SObject>{ item });
+        List<SObject> groupedItems = groupingStringToItems.get(currentGrouping);
+        if (groupedItems == null) {
+          groupedItems = new List<SObject>();
+          groupingStringToItems.put(currentGrouping, groupedItems);
         }
+        groupedItems.add(item);
       }
 
       String newGroupingValue = this.formatter.getGroupingStart();

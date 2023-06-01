@@ -32,8 +32,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   public RollupRepository setArg(Object value) {
-    this.args.bindVars.put(RollupQueryBuilder.BIND_VAR, value);
-    return this;
+    return this.setArg(RollupQueryBuilder.BIND_VAR, value);
   }
 
   public RollupRepository setArg(String key, Object value) {

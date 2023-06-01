@@ -19,10 +19,8 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
     Map<String, SObjectField> fieldTokens = objOne.getSObjectType().getDescribe().fields.getMap();
     for (RollupOrderBy__mdt orderByOption : this.orderByOptions) {
       Schema.DescribeFieldResult fieldDescribe = fieldTokens.get(orderByOption.FieldName__c)?.getDescribe();
-      RollupFieldInitializer.PicklistController picklistController;
-      if (this.fieldToPicklistController.containsKey(fieldDescribe)) {
-        picklistController = this.fieldToPicklistController.get(fieldDescribe);
-      } else {
+      RollupFieldInitializer.PicklistController picklistController = this.fieldToPicklistController.get(fieldDescribe);
+      if (picklistController == null) {
         picklistController = new RollupFieldInitializer.PicklistController(fieldDescribe);
         this.fieldToPicklistController.put(fieldDescribe, picklistController);
       }

@@ -135,10 +135,7 @@ public without sharing class RollupCalcItemReplacer {
     if (calcItems.isEmpty()) {
       return calcItems;
     }
-    Map<Id, SObject> idToCalcItem = new Map<Id, SObject>();
-    for (SObject calcItem : calcItems) {
-      idToCalcItem.put(calcItem.Id, calcItem);
-    }
+    Map<Id, SObject> idToCalcItem = RollupFieldInitializer.Current.createSafeMap(calcItems);
     Set<String> baseFields = this.baseQueryFields.get(calcItems[0].getSObjectType());
     if (baseFields?.isEmpty() == false) {
       SObject firstItem = calcItems[0];

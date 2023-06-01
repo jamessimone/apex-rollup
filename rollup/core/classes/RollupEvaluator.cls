@@ -44,10 +44,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
   public static WhereFieldEvaluator getWhereEval(String calcItemWhereClause, SObjectType calcItemType) {
     String key = calcItemWhereClause + calcItemType;
-    WhereFieldEvaluator eval;
-    if (CACHED_WHERE_EVALS.containsKey(key)) {
-      eval = CACHED_WHERE_EVALS.get(key);
-    } else {
+    WhereFieldEvaluator eval = CACHED_WHERE_EVALS.get(key);
+    if (eval == null) {
       eval = new WhereFieldEvaluator(calcItemWhereClause, calcItemType);
       CACHED_WHERE_EVALS.put(key, eval);
     }
@@ -872,15 +870,15 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.metadata = metadata;
       this.metadataKey = String.valueOf(metadata);
 
-      if (OPERATION_TO_RECURSION_TRACKER.containsKey(this.metadataKey) == false) {
+      RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadataKey);
+      if (tracker == null) {
+        tracker = new RecursiveTracker();
         OPERATION_TO_RECURSION_TRACKER.put(this.metadataKey, new RecursiveTracker());
-      } else {
-        RecursiveTracker tracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadataKey);
-        String currentRequestId = getCurrentTransactionId();
-        if (tracker.requestId != currentRequestId) {
-          tracker.requestId = currentRequestId;
-          tracker.stackCount++;
-        }
+      }
+      String currentRequestId = getCurrentTransactionId();
+      if (tracker.requestId != currentRequestId) {
+        tracker.requestId = currentRequestId;
+        tracker.stackCount++;
       }
     }
 

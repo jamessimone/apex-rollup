@@ -859,11 +859,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (hasBlankKey && potentialOldCalcItem == null) {
         continue;
       }
-      if (lookupFieldToCalcItems.containsKey(key) == false) {
-        lookupFieldToCalcItems.put(key, new CalcItemBag(new List<SObject>{ calcItem }));
-      } else {
-        lookupFieldToCalcItems.get(key).add(calcItem);
+      CalcItemBag bag = lookupFieldToCalcItems.get(key);
+      if (bag == null) {
+        bag = new CalcItemBag(new List<SObject>());
+        lookupFieldToCalcItems.put(key, bag);
       }
+      bag.add(calcItem);
 
       // if the lookup key differs from what it was on the old child object,
       // include that value as well so that we can fix reparented records' rollup values
@@ -972,27 +973,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         continue;
       }
       combinedMeta.add(roll.metadata);
-      String rollupField = roll.opFieldOnLookupObject.getDescribe().getName();
-      String lookupfield = roll.lookupFieldOnLookupObject.getDescribe().getName();
-      Set<String> rollupFieldNames = new Set<String>{ rollupField, lookupfield };
-      if (this.lookupObjectToUniqueFieldNames.containsKey(roll.lookupObj)) {
-        this.lookupObjectToUniqueFieldNames.get(roll.lookupObj).addAll(rollupFieldNames);
-      } else {
-        this.lookupObjectToUniqueFieldNames.put(roll.lookupObj, rollupFieldNames);
-      }
+      this.mapFields(
+        this.lookupObjectToUniqueFieldNames,
+        roll.lookupObj,
+        new Set<String>{ roll.opFieldOnLookupObject.getDescribe().getName(), roll.lookupFieldOnLookupObject.getDescribe().getName() }
+      );
 
-      Set<String> whereFields = new Set<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() };
+      Set<String> childFieldsToAdd = new Set<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() };
       if (String.isNotBlank(roll.metadata.CalcItemWhereClause__c)) {
-        whereFields.addAll(RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields());
+        childFieldsToAdd.addAll(RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields());
       }
       for (RollupOrderBy__mdt orderBy : roll.metadata.RollupOrderBys__r) {
-        whereFields.add(orderBy.FieldName__c);
+        childFieldsToAdd.add(orderBy.FieldName__c);
       }
-      if (this.calcObjectToUniqueFieldNames.containsKey(roll.calcItemType)) {
-        this.calcObjectToUniqueFieldNames.get(roll.calcItemType).addAll(whereFields);
-      } else {
-        this.calcObjectToUniqueFieldNames.put(roll.calcItemType, whereFields);
-      }
+      this.mapFields(this.calcObjectToUniqueFieldNames, roll.calcItemType, childFieldsToAdd);
+
       if (this.fullRecalcProcessor != null) {
         this.fullRecalcProcessor.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
         this.fullRecalcProcessor.lookupObjectToUniqueFieldNames = this.lookupObjectToUniqueFieldNames;
@@ -1006,12 +1001,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     if (this.oldCalcItems != null && this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.oldCalcItems.values()) == false) {
       Integer oldHashCode = this.oldCalcItems?.hashCode();
-      Map<Id, SObject> oldCalcItemsWithUpdatedFields = new Map<Id, SObject>();
-      for (SObject oldCalcItem : this.calcItemReplacer.replace(this.oldCalcItems.values(), combinedMeta)) {
-        oldCalcItemsWithUpdatedFields.put(oldCalcItem.Id, oldCalcItem);
-      }
-      this.oldCalcItems = oldCalcItemsWithUpdatedFields;
+      this.oldCalcItems = RollupFieldInitializer.Current.createSafeMap(this.calcItemReplacer.replace(this.oldCalcItems.values(), combinedMeta));
       this.replaceCalcItems(oldHashCode, this.oldCalcItems, rollups, CollectionType.DICTIONARY);
+    }
+  }
+
+  private void mapFields(Map<Schema.SObjectType, Set<String>> typeToFields, Schema.SObjectType targetType, Set<String> fieldsToAdd) {
+    Set<String> existingFields = typeToFields.get(targetType);
+    if (existingFields == null) {
+      typeToFields.put(targetType, fieldsToAdd);
+    } else {
+      existingFields.addAll(fieldsToAdd);
     }
   }
 
@@ -1143,7 +1143,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         continue;
       }
 
-      Set<String> uniqueIds = new Set<String>();
+      String countQuery = RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(), String.valueOf(roll.lookupFieldOnLookupObject), '=');
+      Set<String> uniqueIds = queryCountsToLookupIds.get(countQuery);
+      if (uniqueIds == null) {
+        uniqueIds = new Set<String>();
+        queryCountsToLookupIds.put(countQuery, uniqueIds);
+      }
       for (SObject calcItem : roll.calcItems) {
         if (calcItem.getSObjectType() == roll.calcItemType) {
           String lookupKey = (String) calcItem.get(roll.lookupFieldOnCalcItem.getDescribe().getName());
@@ -1151,13 +1156,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
             uniqueIds.add(lookupKey);
           }
         }
-      }
-
-      String countQuery = RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(), String.valueOf(roll.lookupFieldOnLookupObject), '=');
-      if (queryCountsToLookupIds.containsKey(countQuery)) {
-        queryCountsToLookupIds.get(countQuery).addAll(uniqueIds);
-      } else {
-        queryCountsToLookupIds.put(countQuery, uniqueIds);
       }
     }
 

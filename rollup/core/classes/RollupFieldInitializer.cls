@@ -69,6 +69,14 @@ public virtual class RollupFieldInitializer {
     return Schema.describeSObjects(new List<String>{ sObjectName }, SObjectDescribeOptions.DEFERRED)[0];
   }
 
+  public Map<Id, SObject> createSafeMap(List<SObject> records) {
+    Map<Id, SObject> idToRecord = new Map<Id, SObject>();
+    for (SObject record : records) {
+      idToRecord.put(record.Id, record);
+    }
+    return idToRecord;
+  }
+
   public class PicklistController extends RollupFieldInitializer {
     private final Boolean isPicklist;
     private final Boolean isMultiSelectPicklist;

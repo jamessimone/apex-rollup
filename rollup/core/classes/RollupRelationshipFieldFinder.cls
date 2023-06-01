@@ -258,9 +258,8 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private Set<Id> getDescendantIds(Id lookupId, Set<Id> descendantIds) {
-    Boolean hasMatch = this.traversal.lookupIdMap.containsKey(lookupId);
-    if (hasMatch) {
-      List<Id> extraIds = this.traversal.lookupIdMap.get(lookupId);
+    List<Id> extraIds = this.traversal.lookupIdMap.get(lookupId);
+    if (extraIds != null) {
       for (Id descendantId : extraIds) {
         descendantIds.addAll(this.getDescendantIds(descendantId, descendantIds));
       }
@@ -437,12 +436,12 @@ public without sharing class RollupRelationshipFieldFinder {
         if (key != null) {
           // the +1 is for the period following the key
           String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
-
-          if (this.relationshipNameToWhereClauses.containsKey(key)) {
-            this.relationshipNameToWhereClauses.get(key).add(whereClauseForRelation);
-          } else {
-            this.relationshipNameToWhereClauses.put(key, new List<String>{ whereClauseForRelation });
+          List<String> matchingWhereClauses = this.relationshipNameToWhereClauses.get(key);
+          if (matchingWhereClauses == null) {
+            matchingWhereClauses = new List<String>();
+            this.relationshipNameToWhereClauses.put(key, matchingWhereClauses);
           }
+          matchingWhereClauses.add(whereClauseForRelation);
         }
       }
     }
@@ -470,10 +469,10 @@ public without sharing class RollupRelationshipFieldFinder {
       Boolean isNestedConditionalStart =
         this.calcItemWhereClause.indexOfIgnoreCase('(' + relationshipName + '.' + whereClause) > 0 ||
         this.calcItemWhereClause.indexOfIgnoreCase('(' + whereClause) > 0;
-      Boolean isNestedConditoonalEnd = this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ')') >= 0;
+      Boolean isNestedConditionalEnd = this.calcItemWhereClause.indexOfIgnoreCase(whereClause + ')') >= 0;
       String whereClauseToUse = isNestedConditionalStart ? '(' + whereClause : whereClause;
 
-      if (isNestedConditoonalEnd) {
+      if (isNestedConditionalEnd) {
         whereClauseToUse += ')';
       }
       concatDelim = isOr ? ' OR ' : ' AND ';
@@ -486,12 +485,12 @@ public without sharing class RollupRelationshipFieldFinder {
   private void trackTraversalIds(Id recordId, Id lookupId, Schema.SObjectField field, Set<Id> lookupIds) {
     if (String.isNotBlank(lookupId)) {
       lookupIds?.add(lookupId);
-
-      if (this.traversal.lookupIdMap.containsKey(lookupId)) {
-        this.traversal.lookupIdMap.get(lookupId).add(recordId);
-      } else {
-        this.traversal.lookupIdMap.put(lookupId, new List<Id>{ recordId });
+      List<Id> traversalIds = this.traversal.lookupIdMap.get(lookupId);
+      if (traversalIds == null) {
+        traversalIds = new List<Id>();
+        this.traversal.lookupIdMap.put(lookupId, traversalIds);
       }
+      traversalIds.add(recordId);
 
       if (this.isFirstRun && field != null) {
         // we need to keep track of potentially reparented lookups to aid with the note below
@@ -503,7 +502,7 @@ public without sharing class RollupRelationshipFieldFinder {
           }
         }
         this.traversal.hierarchy.put(lookupId, new List<Id>{ lookupId });
-      } else if (this.traversal.hierarchy.containsKey(recordId)) {
+      } else {
         // track the hierarchy of objects to help in determining whether or not something
         // has ultimately been reparented
         // for example:
@@ -512,9 +511,12 @@ public without sharing class RollupRelationshipFieldFinder {
         // this would "traditionally" be a reparenting situation, but if we are skipping
         // the intermediate objects for a rollup and the end result is the same, we need
         // to avoid reporting false positives like this one
-        this.traversal.hierarchy.get(recordId).add(lookupId);
-      } else {
-        this.traversal.hierarchy.put(recordId, new List<Id>{ lookupId });
+        List<Id> matchingLookupIds = this.traversal.hierarchy.get(recordId);
+        if (matchingLookupIds == null) {
+          matchingLookupIds = new List<Id>();
+          this.traversal.hierarchy.put(recordId, matchingLookupIds);
+        }
+        matchingLookupIds.add(lookupId);
       }
     }
   }
@@ -660,11 +662,12 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void populateFinalLookupMap(Id childId, SObject ultimateParent) {
-    if (this.traversal.lookupIdToFinalRecords.containsKey(childId)) {
-      this.traversal.lookupIdToFinalRecords.get(childId).add(ultimateParent);
-    } else {
-      this.traversal.lookupIdToFinalRecords.put(childId, new List<SObject>{ ultimateParent });
+    List<SObject> ultimateParents = this.traversal.lookupIdToFinalRecords.get(childId);
+    if (ultimateParents == null) {
+      ultimateParents = new List<SObject>();
+      this.traversal.lookupIdToFinalRecords.put(childId, ultimateParents);
     }
+    ultimateParents.add(ultimateParent);
   }
 
   private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
