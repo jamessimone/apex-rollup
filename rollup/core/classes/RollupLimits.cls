@@ -1,12 +1,26 @@
 public without sharing class RollupLimits {
   @TestVisible
   private static Integer stubbedQueryRows;
+  @TestVisible
+  private static Integer orgAsyncJobsUsed;
 
   private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 3000;
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS = 13000;
 
   private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
   private static final Integer LIMIT_QUERY_ROWS = 50000;
+
+  private static final Boolean HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT {
+    get {
+      if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null) {
+        System.OrgLimit asyncJobLimit = OrgLimits.getMap().get('DailyAsyncApexExecutions');
+        Integer countOfJobsUsed = orgAsyncJobsUsed != null ? orgAsyncJobsUsed : asyncJobLimit.getValue();
+        HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT = countOfJobsUsed - asyncJobLimit.getLimit() > 0;
+      }
+      return HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT;
+    }
+    set;
+  }
 
   public class Tester {
     private final transient RollupControl__mdt control;
@@ -60,6 +74,10 @@ public without sharing class RollupLimits {
       }
       Integer remainingQueryRows = this.control.MaxQueryRows__c?.intValue() - queryRowsUsed;
       return remainingQueryRows > 0 ? remainingQueryRows : 0;
+    }
+
+    public Boolean hasExceededOrgAsyncLimit() {
+      return HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT;
     }
   }
 }

@@ -2847,4 +2847,20 @@ private class RollupTests {
       mock.Records[0].get('Description')
     );
   }
+
+  @IsTest
+  static void fallsBackToRunningSyncWhenOutOfAsyncJobs() {
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(
+      new List<ContactPointAddress>{ new ContactPointAddress(Name = 'One', PreferenceRank = 50) }
+    );
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    RollupLimits.orgAsyncJobsUsed = OrgLimits.getMap().get('DailyAsyncApexExecutions').getLimit() + 1;
+
+    // specifically no Test.startTest()/Test.stopTest() to prove it's been run sync
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .runCalc();
+
+    System.assertEquals(1, mock.Records.size());
+    System.assertEquals(50, mock.Records[0].get(Account.AnnualRevenue));
+  }
 }
