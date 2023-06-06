@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Tech debt cleanup",
-            "versionNumber": "1.0.42.0",
+            "versionName": "Check org limits for AsyncApexJob execution prior to enqueueing/batching",
+            "versionNumber": "1.0.43.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -36,6 +36,7 @@
         "apex-rollup-namespaced@1.0.39-0": "04t6g000008SneMAAS",
         "apex-rollup-namespaced@1.0.40-0": "04t6g000008SnebAAC",
         "apex-rollup-namespaced@1.0.41-0": "04t6g000008SnldAAC",
-        "apex-rollup-namespaced@1.0.42-0": "04t6g000008SnlsAAC"
+        "apex-rollup-namespaced@1.0.42-0": "04t6g000008SnlsAAC",
+        "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC"
     }
 }
