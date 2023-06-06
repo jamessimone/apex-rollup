@@ -1058,8 +1058,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
-    Boolean isRunningAsnyc = this.getIsRunningAsync();
+    Boolean isRunningAsync = this.getIsRunningAsync();
     Boolean shouldRollupsRunWithoutCustomSetting = false;
+    RollupLimits.Tester limitTester = new RollupLimits.Tester(this.rollupControl, isRunningAsync);
     for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = this.rollups[index];
       shouldRollupsRunWithoutCustomSetting = rollup.getCanRollupWithoutCustomSetting();
@@ -1068,8 +1069,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        (isRunningAsnyc && this.getIsTimingOut(rollup.rollupControl, rollup) == false) ||
+        (isRunningAsync && this.getIsTimingOut(rollup.rollupControl, rollup) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
+
+      if (limitTester.hasExceededOrgAsyncLimit()) {
+        couldRunSync = true;
+        shouldRunSyncDeferred = false;
+      }
+
       String hashedRollupKey = rollup.getHashedContents() + rollup.calcItems?.hashCode() + rollup.oldCalcItems?.hashCode();
       if (hashedRollups.contains(hashedRollupKey)) {
         this.rollups.remove(index);
