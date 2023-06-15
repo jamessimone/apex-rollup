@@ -3,9 +3,11 @@
   "edition": "Developer",
   "country": "US",
   "language": "en_US",
-  "features": ["MultiCurrency"],
   "hasSampleData": true,
   "settings": {
+    "currencySettings": {
+      "enableMultiCurrency": true
+    },
     "deploymentSettings": {
       "doesSkipAsyncApexValidation": true
     }
