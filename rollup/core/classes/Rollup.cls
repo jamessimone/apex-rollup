@@ -2197,7 +2197,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     for (Rollup__mdt meta : metas) {
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
     }
-    return '\nORDER BY ' + String.join(new List<String>(orderByFields), ',');
+    return '\nORDER BY ' + String.join(orderByFields, ',');
   }
 
   private static RollupMetadata getWrappedMeta(

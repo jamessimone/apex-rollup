@@ -105,7 +105,7 @@ public class RollupTestUtils {
       fieldNames.add(currencyIscoCodeFieldName);
     }
     String whereClause = recordId == null ? '' : '\nWHERE Id = :recordId';
-    String recordQuery = 'SELECT ' + String.join(new List<String>(fieldNames), ', ') + '\nFROM ' + fromObject + whereClause;
+    String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + fromObject + whereClause;
     return Database.query(recordQuery);
   }
 }

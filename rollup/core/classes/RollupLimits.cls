@@ -16,11 +16,11 @@ public without sharing class RollupLimits {
       Integer asyncJobLimit = 250000;
       // at the moment, packaging orgs run tests synchronously, which produces an error when fetching System.OrgLimits.getMap()
       // this is a workaround until it's safe to access OrgLimits from a synchronously running test
-      if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null && Test.isRunningTest() == false) {
+      if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null && orgAsyncJobsUsed == null) {
         System.OrgLimit asyncLimit = System.OrgLimits.getMap().get('DailyAsyncApexExecutions');
         asyncJobLimit = asyncLimit.getLimit();
         countOfJobsUsed = asyncLimit.getValue();
-      } else if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null && orgAsyncJobsUsed != null) {
+      } else if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null) {
         countOfJobsUsed = orgAsyncJobsUsed;
       }
       HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT = countOfJobsUsed - asyncJobLimit > 0;
