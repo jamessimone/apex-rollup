@@ -106,7 +106,7 @@ public without sharing class RollupQueryBuilder {
           }
         }
 
-        fieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + String.join(new List<String>(typeOfFields), ',') + ' END');
+        fieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + String.join(typeOfFields, ',') + ' END');
 
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').replace(whereClause, '');
       }

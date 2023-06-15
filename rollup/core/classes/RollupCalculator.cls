@@ -1442,7 +1442,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public String getGroupingStart() {
-      return '<table>' + String.join(new List<String>(this.columnHeaders), '');
+      return '<table>' + String.join(this.columnHeaders, '');
     }
 
     public String getGroupingRowStart(String groupingKey) {

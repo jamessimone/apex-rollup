@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Check org limits for AsyncApexJob execution prior to enqueueing/batching",
-            "versionNumber": "1.0.43.0",
+            "versionName": "Summer 23 updates",
+            "versionNumber": "1.0.44.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -18,25 +18,12 @@
     ],
     "namespace": "please",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "56.0",
+    "sourceApiVersion": "58.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
-        "apex-rollup-namespaced@1.0.27-0": "04t6g000008fjheAAA",
-        "apex-rollup-namespaced@1.0.28-0": "04t6g000008fjj1AAA",
-        "apex-rollup-namespaced@1.0.29-0": "04t6g000008fjnsAAA",
-        "apex-rollup-namespaced@1.0.30-0": "04t6g000008fjogAAA",
-        "apex-rollup-namespaced@1.0.31-0": "04t6g000008nzuuAAA",
-        "apex-rollup-namespaced@1.0.32-0": "04t6g000008nzwHAAQ",
-        "apex-rollup-namespaced@1.0.33-0": "04t6g000008o01cAAA",
-        "apex-rollup-namespaced@1.0.34-0": "04t6g000008o021AAA",
-        "apex-rollup-namespaced@1.0.35-0": "04t6g000008o0DVAAY",
-        "apex-rollup-namespaced@1.0.36-0": "04t6g000008o0DfAAI",
-        "apex-rollup-namespaced@1.0.37-0": "04t6g000008SnX5AAK",
-        "apex-rollup-namespaced@1.0.38-0": "04t6g000008SnXtAAK",
-        "apex-rollup-namespaced@1.0.39-0": "04t6g000008SneMAAS",
-        "apex-rollup-namespaced@1.0.40-0": "04t6g000008SnebAAC",
         "apex-rollup-namespaced@1.0.41-0": "04t6g000008SnldAAC",
         "apex-rollup-namespaced@1.0.42-0": "04t6g000008SnlsAAC",
-        "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC"
+        "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC",
+        "apex-rollup-namespaced@1.0.44-0": "04t6g000008So66AAC"
     }
 }
