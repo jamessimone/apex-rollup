@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Check org limits for AsyncApexJob execution prior to enqueueing/batching",
-            "versionNumber": "1.0.43.0",
+            "versionName": "Summer 23 updates",
+            "versionNumber": "1.0.44.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -23,6 +23,7 @@
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
         "apex-rollup-namespaced@1.0.41-0": "04t6g000008SnldAAC",
         "apex-rollup-namespaced@1.0.42-0": "04t6g000008SnlsAAC",
-        "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC"
+        "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC",
+        "apex-rollup-namespaced@1.0.44-0": "04t6g000008So66AAC"
     }
 }
