@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Summer 23 updates",
-            "versionNumber": "1.5.71.0",
+            "versionName": "Test coverage for DELETE-based flows resetting values",
+            "versionNumber": "1.5.72.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -104,6 +104,7 @@
         "apex-rollup@1.5.68-0": "04t6g000008SnlYAAS",
         "apex-rollup@1.5.69-0": "04t6g000008SnlnAAC",
         "apex-rollup@1.5.70-0": "04t6g000008SnrXAAS",
-        "apex-rollup@1.5.71-0": "04t6g000008So61AAC"
+        "apex-rollup@1.5.71-0": "04t6g000008So61AAC",
+        "apex-rollup@1.5.72-0": "04t6g000008So6QAAS"
     }
 }
