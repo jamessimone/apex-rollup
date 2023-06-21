@@ -165,4 +165,20 @@ private class InvocableDrivenTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(initialNumber, acc.AnnualRevenue?.intValue(), 'Amount should have properly decremented');
   }
+
+  @IsTest
+  static void shouldClearParentFieldOnDelete() {
+    RollupParent__c parent = new RollupParent__c(NumberField__c = 1, Name = 'Parent');
+    insert parent;
+
+    RollupChild__c child = new RollupChild__c(RollupParent__c = parent.Id, Name = 'child');
+    insert child;
+
+    Test.startTest();
+    delete child;
+    Test.stopTest();
+
+    parent = [SELECT NumberField__c FROM RollupParent__c WHERE Id = :parent.Id];
+    System.assertEquals(null, parent.NumberField__c);
+  }
 }

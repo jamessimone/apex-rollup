@@ -2051,18 +2051,20 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
       if (queryWrapper?.hasQuery == true) {
         metas.remove(index);
+        String query = queryWrapper.getQuery();
         RollupMetadata wrappedMeta = getWrappedMeta(
           calcItemSObjectType,
           typeToWrappedMeta,
           meta,
-          queryWrapper.getQuery() + (String.isNotBlank(meta.CalcItemWhereClause__c) ? ' AND ' + meta.CalcItemWhereClause__c : '')
+          query + (String.isNotBlank(meta.CalcItemWhereClause__c) ? ' AND ' + meta.CalcItemWhereClause__c : '')
         );
         if (rollups.containsKey(calcItemSObjectType)) {
           rollups.get(calcItemSObjectType).clear();
         }
         wrappedMeta.recordIds.addAll(queryWrapper.recordIds);
         if (wrappedMeta.recordIds.isEmpty() == false) {
-          wrappedMeta.possibleWhereClauses.add(queryWrapper.getQuery());
+          wrappedMeta.possibleWhereClauses.add(query);
+          wrappedMeta.whereClause = query;
         }
         wrappedMeta.parentRecordsToReset.addAll(queryWrapper.parentRecordsToReset);
         appendQueryCount(wrappedMeta, meta, wrappedMeta.whereClause, calcItemSObjectType);
