@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Test coverage for DELETE-based flows resetting values",
+            "versionName": "Fixes an issue reported in #457 where using a Limit Amount in conjunction with first/last can throw an error if the number of children exceeds the limit amount",
             "versionNumber": "1.0.45.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
