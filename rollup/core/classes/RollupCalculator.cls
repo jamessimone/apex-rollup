@@ -329,7 +329,7 @@ public without sharing abstract class RollupCalculator {
     if (this.metadata?.LimitAmount__c != null) {
       // we can only safely remove the items after sorting
       while (temporaryItems.size() > this.metadata.LimitAmount__c && temporaryItems.isEmpty() == false) {
-        temporaryItems.remove(items.size() - 1);
+        temporaryItems.remove(temporaryItems.size() - 1);
       }
       // Limit-based rollups always reset the field's value, and always act as a fresh start
       if (this.metadata.RollupOperation__c.contains('DELETE_') || this.metadata.RollupOperation__c.contains('UPDATE_')) {

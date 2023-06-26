@@ -168,6 +168,7 @@ private class InvocableDrivenTests {
 
   @IsTest
   static void shouldClearParentFieldOnDelete() {
+    // driven by extra-tests/flows/Rollup_Integration_refresh_on_delete_clears_value.flow-meta.xml
     RollupParent__c parent = new RollupParent__c(NumberField__c = 1, Name = 'Parent');
     insert parent;
 
