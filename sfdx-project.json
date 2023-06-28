@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes an issue reported in #457 where using a Limit Amount in conjunction with first/last can throw an error if the number of children exceeds the limit amount",
-            "versionNumber": "1.5.73.0",
+            "versionName": "Allows multiple objects to roll up to same parent field from batch full recalcs",
+            "versionNumber": "1.5.74.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

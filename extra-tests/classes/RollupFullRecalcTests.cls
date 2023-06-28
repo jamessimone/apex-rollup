@@ -2603,6 +2603,64 @@ private class RollupFullRecalcTests {
     Assert.areEqual(10, parentTwo.NumberOfEmployees);
   }
 
+  @IsTest
+  static void allowsMultipleRollupsToSameFieldWithDifferentBatches() {
+    // an interesting one because it's again an implementation detail - this time,
+    // of the batch "caboose" process. if the full recalc is BELOW the batch limit,
+    // the queueable will already correctly handle everything since the shared parent field will only be reset once
+    // batch processes, on the other hand, would otherwise simply see the existing value on the parent as something
+    // that needs to be cleared out
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 1,
+      BatchChunkSize__c = 2,
+      IsRollupLoggingEnabled__c = true,
+      MaxRollupRetries__c = 1
+    );
+    Rollup.onlyUseMockMetadata = true;
+    Account parent = [SELECT Id FROM Account];
+
+    insert new List<SObject>{
+      new ContactPointAddress(ParentId = parent.Id, Name = 'child 1 first object', PreferenceRank = 25),
+      new Opportunity(AccountId = parent.Id, StageName = 'One', CloseDate = System.today(), Name = 'child 1 second object', Amount = 5),
+      new Opportunity(AccountId = parent.Id, StageName = 'Two', CloseDate = System.today(), Name = 'child 2 second object', Amount = 10)
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'Opportunity',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          RollupFieldOnCalcItem__c = 'Amount',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+    Test.stopTest();
+
+    Assert.areEqual(
+      'Completed',
+      [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker']
+      .Status,
+      'Test requires batch apex to have been the full recalc mechanism'
+    );
+    parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in batch recalc');
+  }
+
   private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {
     public DeferredContactPointAddressRollup(List<Rollup__mdt> meta, Set<String> recordIds) {
       super(
