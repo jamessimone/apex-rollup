@@ -65,6 +65,12 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   public void finish() {
     if (this.cabooses.isEmpty() == false) {
       RollupFullRecalcProcessor conductor = this.cabooses.remove(0);
+      if (conductor.rollupMetas != null) {
+        for (Rollup__mdt meta : conductor.rollupMetas) {
+          conductor.storeUniqueParentFields(meta);
+        }
+        conductor.uniqueParentFields.addAll(this.uniqueParentFields);
+      }
       for (RollupFullRecalcProcessor caboose : this.cabooses) {
         conductor.addCaboose(caboose);
       }
