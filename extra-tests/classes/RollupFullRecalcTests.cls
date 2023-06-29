@@ -2652,13 +2652,61 @@ private class RollupFullRecalcTests {
     Test.stopTest();
 
     Assert.areEqual(
-      'Completed',
-      [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker']
-      .Status,
+      2,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :RollupFullBatchRecalculator.class.getName()],
       'Test requires batch apex to have been the full recalc mechanism'
     );
     parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
     Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in batch recalc');
+  }
+
+  @IsTest
+  static void allowsMultipleRollupsToSameFieldWithQueueable() {
+    Rollup.onlyUseMockMetadata = true;
+    Account parent = [SELECT Id FROM Account];
+    Account secondParent = new Account(Name = 'Second');
+    insert secondParent;
+
+    insert new List<SObject>{
+      new ContactPointAddress(ParentId = parent.Id, Name = 'child 1 first object', PreferenceRank = 25),
+      new Opportunity(AccountId = parent.Id, StageName = 'One', CloseDate = System.today(), Name = 'child 1 second object', Amount = 5),
+      new Opportunity(AccountId = parent.Id, StageName = 'Two', CloseDate = System.today(), Name = 'child 2 second object', Amount = 10),
+      new Opportunity(AccountId = secondParent.Id, StageName = 'Two', CloseDate = System.today(), Name = 'child 1 second object second parent', Amount = 10)
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'Opportunity',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          RollupFieldOnCalcItem__c = 'Amount',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+    Test.stopTest();
+
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupAsyncProcessor.class.getName()],
+      JSON.serializePretty([SELECT JobType, ApexClass.Name FROM AsyncApexJob])
+    );
+    parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in full recalc');
   }
 
   private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {
