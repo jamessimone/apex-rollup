@@ -548,4 +548,48 @@ private class RollupRelationshipFieldFinderTests {
     Map<String, Rollup.CalcItemBag> lookupToCalcItems = traversal.getParentLookupToRecords();
     System.assertEquals(2, lookupToCalcItems.get(acc.OwnerId).getAll().size(), lookupToCalcItems);
   }
+
+  @IsTest
+  static void correctlyReferencesOneToManyAdjacentRecords() {
+    /**
+     *
+      WARN|Rollup v1.5.74: error retrieving additional grandparent records
+      Didn't understand relationship 'OneToMany__r' in field path.
+      Inner stacktrace: Class.RollupRepository.get: line 50, column 1
+      Class.RollupRelationshipFieldFinder.getAdditionalCalcItems: line 642, column 1
+      Class.RollupRelationshipFieldFinder.retrieveGrandparentAdjacentChildren: line 602, column 1
+      Class.RollupRelationshipFieldFinder.retrieveAdditionalHierarchyRecords: line 548, column 1
+      Class.RollupRelationshipFieldFinder.getParents: line 213, column 1
+      Class.RollupRelationshipFieldFinder.recurseThroughObjectChain: line 394, column 1
+      Class.RollupRelationshipFieldFinder.getParents: line 217, column 1
+      Class.RollupAsyncProcessor.getCalcItemsByLookupField: line 832, column 1
+      Class.RollupAsyncProcessor.process: line 658, column 1
+      Class.RollupAsyncProcessor.performWork: line 345, column 1
+      Class.RollupAsyncProcessor.QueueableProcessor.execute: line 434, column 1
+      Class.RollupRelationshipFieldFinder.getAdditionalCalcItems: line 646, column 1
+      Class.RollupRelationshipFieldFinder.retrieveGrandparentAdjacentChildren: line 602, column 1
+      Class.RollupRelationshipFieldFinder.retrieveAdditionalHierarchyRecords: line 548, column 1
+      Class.RollupRelationshipFieldFinder.getParents: line 213, column 1
+      Class.RollupRelationshipFieldFinder.recurseThroughObjectChain: line 394, column 1
+      Class.RollupRelationshipFieldFinder.getParents: line 217, column 1
+      Class.RollupAsyncProcessor.getCalcItemsByLookupField: line 832, column 1
+      Class.RollupAsyncProcessor.process: line 658, column 1
+      Class.RollupAsyncProcessor.performWork: line 345, column 1
+      Class.RollupAsyncProcessor.QueueableProcessor.execute: line 434, column 1
+
+      Rollup Metadata: {
+        "CalcItem__c" : "Child_Data__c",
+        "GrandparentRelationshipFieldPath__c" : "OneToMany__r.Parent__r.ParentMin__c",
+        "IsFullRecordSet__c" : true,
+        "LookupFieldOnCalcItem__c" : "Id",
+        "LookupFieldOnLookupObject__c" : "Id",
+        "LookupObject__c" : "Parent__c",
+        "OneToManyGrandparentFields__c" : "OneToMany__c.LookupBackToChild_Data__c",
+        "RollupFieldOnCalcItem__c" : "ChildMin__c",
+        "RollupFieldOnLookupObject__c" : "ParentMin__c",
+        "RollupOperation__c" : "MIN",
+      }
+     */
+    Assert.fail('TODO!');
+  }
 }
