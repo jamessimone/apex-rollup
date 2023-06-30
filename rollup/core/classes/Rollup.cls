@@ -1822,7 +1822,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {
           meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
-          meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c != null ? meta.GroupByRowStartDelimiter__c.unescapeJava() : null;
+          meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
+          meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
           meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
           meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;

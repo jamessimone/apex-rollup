@@ -424,4 +424,46 @@ private class RollupFlowBulkProcessorTests {
     Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have ordered properly');
   }
+
+  @IsTest
+  static void supportsOneToManyUpdates() {
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        LookupObject__c = 'Individual',
+        LookupFieldOnCalcItem__c = 'Id',
+        RollupOperation__c = 'MIN',
+        RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupFieldOnLookupObject__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'Contacts.Individual.ConsumerCreditScore',
+        OneToManyGrandparentFields__c = 'Contact.AccountId'
+      )
+    };
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = [SELECT Id, AnnualRevenue, MasterRecordId FROM Account];
+    acc.AnnualRevenue = 67;
+    update acc;
+    Account secondChild = new Account(Name = 'new actual min', AnnualRevenue = 43);
+    Individual indy = new Individual(LastName = 'Indy');
+
+    insert new List<SObject>{ secondChild, indy };
+    insert new List<Contact>{
+      new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id),
+      new Contact(LastName = 'Second one to many', AccountId = secondChild.Id, IndividualId = indy.Id)
+    };
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ acc };
+    input.rollupContext = 'UPSERT';
+    input.oldRecordsToRollup = new List<SObject>{ new Account(Id = acc.Id, AnnualRevenue = secondChild.AnnualRevenue - 1) };
+    input.deferProcessing = false;
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
+    System.assertEquals(secondChild.AnnualRevenue, updatedIndy.ConsumerCreditScore);
+  }
 }

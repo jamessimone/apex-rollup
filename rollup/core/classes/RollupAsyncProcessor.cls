@@ -81,6 +81,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
+  protected final Set<String> uniqueParentFields {
+    get {
+      if (uniqueParentFields == null) {
+        uniqueParentFields = new Set<String>();
+      }
+      return uniqueParentFields;
+    }
+    set;
+  }
+
   private static Map<Integer, Map<String, CalcItemBag>> CACHED_CALC_ITEM_LOOKUPS {
     get {
       if (CACHED_CALC_ITEM_LOOKUPS == null) {
@@ -718,7 +728,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-    return this.hasParentRollupFieldBeenReset(String.valueOf(processor.opFieldOnLookupObject), parent);
+    return this.hasParentRollupFieldBeenReset(String.valueOf(processor.opFieldOnLookupObject), parent) ||
+      this.uniqueParentFields.contains(processor.op.name() + processor.lookupObj + processor.opFieldOnLookupObject);
+  }
+
+  protected void storeUniqueParentFields(Rollup__mdt meta) {
+    if (meta != null) {
+      String uniqueParentKey = meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
+      this.uniqueParentFields.add(uniqueParentKey);
+      this.fullRecalcProcessor?.uniqueParentFields.add(uniqueParentKey);
+    }
   }
 
   protected virtual Set<String> getPreviouslyResetParents() {
@@ -1286,6 +1305,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void handleFullRecalculators(RollupAsyncProcessor roll) {
     if (roll instanceof RollupFullRecalcProcessor && roll.isProcessed == false) {
       this.deferredRollups.add(roll);
+    } else {
+      this.storeUniqueParentFields(roll.metadata);
     }
   }
 

@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008So7xAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008So9AAAS">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008So7xAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008So9AAAS">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -160,6 +160,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Description` (optional) - note-taking field in the event you'd like to provide additional info to other admins/users about your configured rollup
 
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
+
+It is possible to have do SUM/COUNT-based rollups from different children types to the same parent field because these rollup operations utilize diff-based calculations by default. If you are looking to roll up values using other rollup operation types to the same parent field from different children, you may be able to do so with additional setup.
 
 #### Special Considerations For Usage Of Child Object Where Clauses
 
