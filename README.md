@@ -161,6 +161,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 
 You can have as many rollups as you'd like per object/trigger — all operations are boxcarred together for optimal efficiency.
 
+It is possible to have do SUM/COUNT-based rollups from different children types to the same parent field because these rollup operations utilize diff-based calculations by default. If you are looking to roll up values using other rollup operation types to the same parent field from different children, you may be able to do so with additional setup.
+
 #### Special Considerations For Usage Of Child Object Where Clauses
 
 In addition to the above, some other considerations when it comes to the where clause:
