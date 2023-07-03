@@ -551,22 +551,38 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void correctlyReferencesOneToManyAdjacentRecords() {
+    Account acc = [SELECT Id FROM Account];
+    Account secondAccount = new Account(Name = 'Two');
+    Individual firstParent = new Individual(LastName = 'One');
+    insert new List<SObject>{ firstParent, secondAccount };
+    Contact firstChild = new Contact(AccountId = acc.Id, LastName = 'Child One', IndividualId = firstParent.Id);
+    Contact secondChild = new Contact(AccountId = secondAccount.Id, LastName = 'Child Two', IndividualId = firstParent.Id);
+    insert new List<SObject>{ firstChild, secondChild };
+
+    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
+      control,
+      new Rollup__mdt(
+        LookupFieldOnCalcItem__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'Contacts.Individual.Name',
+        OneToManyGrandparentFields__c = 'Contact.AccountId',
+        IsFullRecordSet__c = true,
+        LookupFieldOnLookupObject__c = 'Id'
+      ),
+      uniqueFieldNames,
+      uniqueFieldNames,
+      Individual.SObjectType,
+      new Map<Id, SObject>()
+    );
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Account>{ acc });
+
+    System.assertEquals(true, traversal.getIsFinished());
+    System.assertEquals(true, traversal.getParentLookupToRecords().containsKey('' + secondAccount.Id), traversal.getParentLookupToRecords());
     /**
      *
-      WARN|Rollup v1.5.74: error retrieving additional grandparent records
+      WARN|Rollup v1.5.75-beta: error retrieving additional grandparent records
       Didn't understand relationship 'OneToMany__r' in field path.
       Inner stacktrace: Class.RollupRepository.get: line 50, column 1
       Class.RollupRelationshipFieldFinder.getAdditionalCalcItems: line 642, column 1
-      Class.RollupRelationshipFieldFinder.retrieveGrandparentAdjacentChildren: line 602, column 1
-      Class.RollupRelationshipFieldFinder.retrieveAdditionalHierarchyRecords: line 548, column 1
-      Class.RollupRelationshipFieldFinder.getParents: line 213, column 1
-      Class.RollupRelationshipFieldFinder.recurseThroughObjectChain: line 394, column 1
-      Class.RollupRelationshipFieldFinder.getParents: line 217, column 1
-      Class.RollupAsyncProcessor.getCalcItemsByLookupField: line 832, column 1
-      Class.RollupAsyncProcessor.process: line 658, column 1
-      Class.RollupAsyncProcessor.performWork: line 345, column 1
-      Class.RollupAsyncProcessor.QueueableProcessor.execute: line 434, column 1
-      Class.RollupRelationshipFieldFinder.getAdditionalCalcItems: line 646, column 1
       Class.RollupRelationshipFieldFinder.retrieveGrandparentAdjacentChildren: line 602, column 1
       Class.RollupRelationshipFieldFinder.retrieveAdditionalHierarchyRecords: line 548, column 1
       Class.RollupRelationshipFieldFinder.getParents: line 213, column 1
