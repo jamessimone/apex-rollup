@@ -680,28 +680,86 @@ public without sharing class RollupRelationshipFieldFinder {
       priorLookup = record.getPopulatedFieldsAsMap().containsKey(priorLookup) ? priorLookup : 'Id';
       junctionRecordIds.add((Id) record.get(priorLookup));
     }
-    records = this.repo.setQuery(
-        RollupQueryBuilder.Current.getQuery(
-          sObjectType,
-          new List<String>{
-            'Id',
-            oneToManyFieldName,
-            this.currentRelationshipName.endsWith('__r') ? this.currentRelationshipName.replace('__r', '__c') : this.currentRelationshipName + 'Id'
-          },
-          oneToManyFieldName,
-          '='
-        )
+    String oneToManyRelationshipField = this.currentRelationshipName.endsWith('__r')
+      ? this.currentRelationshipName.replace('__r', '__c')
+      : this.currentRelationshipName + 'Id';
+    List<SObject> matchingRecords = this.repo.setQuery(
+        RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>{ 'Id', oneToManyFieldName, oneToManyRelationshipField }, oneToManyFieldName, '=')
       )
       .setArg(junctionRecordIds)
       .get();
 
     Map<String, SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
     SObjectField field = this.getField(fieldMap, this.currentRelationshipName);
-    for (SObject record : records) {
-      this.trackTraversalIds((Id) record.get(oneToManyFieldName), record.Id, field, new Set<Id>());
+    Set<String> upperAdjacentLookups = new Set<String>();
+    for (SObject record : matchingRecords) {
+      this.trackTraversalIds((Id) record.get(oneToManyFieldName), record.Id, field, null);
+      String upperAdjacentLookup = String.valueOf(record.get(oneToManyRelationshipField));
+      if (upperAdjacentLookup != null) {
+        upperAdjacentLookups.add(upperAdjacentLookup);
+      }
     }
 
-    return records;
+    if (upperAdjacentLookups.isEmpty()) {
+      return matchingRecords;
+    }
+
+    /**
+     * Consider the following data structure:
+     *
+     * - childA
+     * - childB
+     *
+     * - oneToMany A
+     *    - lookup back to childA
+     *    - lookup to ultimate parent 1
+     * - oneToMany B
+     *    - lookup back to childB
+     *    - lookup to ulimate parent 1
+     *
+     * In this situation, we need to check to see if oneToManyB exists, then also pull back childB
+     * so that the full recalc can be processed with all other relevant children
+     */
+    try {
+      List<SObject> otherJunctionRecords = this.repo.setQuery(
+          RollupQueryBuilder.Current.getQuery(
+            sObjectType,
+            new List<String>{ 'Id', oneToManyFieldName, oneToManyRelationshipField },
+            oneToManyRelationshipField,
+            '=',
+            'Id != :matchingRecords'
+          )
+        )
+        .setArg(upperAdjacentLookups)
+        .setArg('matchingRecords', matchingRecords)
+        .get();
+      if (otherJunctionRecords.isEmpty() == false && records.isEmpty() == false) {
+        matchingRecords.addAll(otherJunctionRecords);
+        Set<String> oneToManyLookups = new Set<String>();
+        for (SObject otherJunctionRecord : otherJunctionRecords) {
+          Id oneToManyLookup = (Id) otherJunctionRecord.get(oneToManyFieldName);
+          this.trackTraversalIds(oneToManyLookup, otherJunctionRecord.Id, field, null);
+          oneToManyLookups.add(String.valueOf(oneToManyLookup));
+        }
+        List<SObject> otherChildrenRecords = this.repo.setQuery(
+            RollupQueryBuilder.Current.getQuery(
+              records.get(0).getSObjectType(),
+              new List<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c, 'Name' },
+              'Id',
+              '=',
+              'Id != :records'
+            )
+          )
+          .setArg(oneToManyLookups)
+          .setArg('records', records)
+          .get();
+        records.addAll(otherChildrenRecords);
+      }
+    } catch (Exception ex) {
+      RollupLogger.Instance.log('error retrieving additional one-to-many records', ex, System.LoggingLevel.WARN);
+    }
+
+    return matchingRecords;
   }
 
   private String getChildRelationshipFromType(Schema.SObjectType sObjectType, String relationshipName) {
