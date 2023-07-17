@@ -744,7 +744,7 @@ public without sharing class RollupRelationshipFieldFinder {
         List<SObject> otherChildrenRecords = this.repo.setQuery(
             RollupQueryBuilder.Current.getQuery(
               records.get(0).getSObjectType(),
-              new List<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c, 'Name' },
+              new List<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c },
               'Id',
               '=',
               'Id != :records'

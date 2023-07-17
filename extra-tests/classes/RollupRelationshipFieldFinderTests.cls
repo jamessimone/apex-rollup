@@ -559,22 +559,22 @@ private class RollupRelationshipFieldFinderTests {
     Contact secondChild = new Contact(AccountId = secondAccount.Id, LastName = 'Child Two', IndividualId = firstParent.Id);
     insert new List<SObject>{ firstChild, secondChild };
 
-    RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
-      control,
-      new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'AnnualRevenue',
-        LookupFieldOnCalcItem__c = 'Id',
-        GrandparentRelationshipFieldPath__c = 'Contacts.Individual.Name',
-        OneToManyGrandparentFields__c = 'Contact.AccountId',
-        IsFullRecordSet__c = true, // this flag being true should make the adjacent children also be fetched
-        LookupFieldOnLookupObject__c = 'Id'
-      ),
-      uniqueFieldNames,
-      uniqueFieldNames,
-      Individual.SObjectType,
-      new Map<Id, SObject>()
-    );
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Account>{ acc });
+    RollupRelationshipFieldFinder.Traversal traversal = new RollupRelationshipFieldFinder(
+        control,
+        new Rollup__mdt(
+          RollupFieldOnCalcItem__c = 'AnnualRevenue',
+          LookupFieldOnCalcItem__c = 'Id',
+          GrandparentRelationshipFieldPath__c = 'Contacts.Individual.Name',
+          OneToManyGrandparentFields__c = 'Contact.AccountId',
+          IsFullRecordSet__c = true, // this flag being true should make the adjacent children also be fetched
+          LookupFieldOnLookupObject__c = 'Id'
+        ),
+        uniqueFieldNames,
+        uniqueFieldNames,
+        Individual.SObjectType,
+        new Map<Id, SObject>()
+      )
+      .getParents(new List<Account>{ acc });
 
     System.assertEquals(true, traversal.getIsFinished());
     Boolean hasBothAccounts = false;
