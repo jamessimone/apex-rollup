@@ -1400,7 +1400,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     if (priorVal != newVal) {
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-      this.logger.log('updating record ...', LoggingLevel.FINE);
       updater.updateField(lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
     }
