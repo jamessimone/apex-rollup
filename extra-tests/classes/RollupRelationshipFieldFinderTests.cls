@@ -566,7 +566,6 @@ private class RollupRelationshipFieldFinderTests {
           LookupFieldOnCalcItem__c = 'Id',
           GrandparentRelationshipFieldPath__c = 'Contacts.Individual.Name',
           OneToManyGrandparentFields__c = 'Contact.AccountId',
-          IsFullRecordSet__c = true, // this flag being true should make the adjacent children also be fetched
           LookupFieldOnLookupObject__c = 'Id'
         ),
         uniqueFieldNames,

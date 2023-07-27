@@ -155,7 +155,7 @@ public without sharing class RollupRelationshipFieldFinder {
         return combinedHierarchy.isUltimatelyReparented();
       } else {
         // if there was only one hop, we can just compare the Ids. This comparison has to be last
-        // because it's possible (as explained below, where the hierarchy is created)
+        // because it's possible (as explained in "trackTraversalIds", where the hierarchy is created)
         // that only the intermediate lookup fields have changed, and not the ultimate
         // parent (which is what gets checked above).
         // only if that isn't the case can we do the simple comparison below
