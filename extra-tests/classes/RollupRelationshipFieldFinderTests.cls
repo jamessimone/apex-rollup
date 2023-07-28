@@ -548,4 +548,42 @@ private class RollupRelationshipFieldFinderTests {
     Map<String, Rollup.CalcItemBag> lookupToCalcItems = traversal.getParentLookupToRecords();
     System.assertEquals(2, lookupToCalcItems.get(acc.OwnerId).getAll().size(), lookupToCalcItems);
   }
+
+  @IsTest
+  static void correctlyReferencesOneToManyAdjacentRecords() {
+    Account acc = [SELECT Id FROM Account];
+    Account secondAccount = new Account(Name = 'Two', AnnualRevenue = 50);
+    Individual firstParent = new Individual(LastName = 'One');
+    insert new List<SObject>{ firstParent, secondAccount };
+    Contact firstChild = new Contact(AccountId = acc.Id, LastName = 'Child One', IndividualId = firstParent.Id);
+    Contact secondChild = new Contact(AccountId = secondAccount.Id, LastName = 'Child Two', IndividualId = firstParent.Id);
+    insert new List<SObject>{ firstChild, secondChild };
+
+    RollupRelationshipFieldFinder.Traversal traversal = new RollupRelationshipFieldFinder(
+        control,
+        new Rollup__mdt(
+          RollupFieldOnCalcItem__c = 'AnnualRevenue',
+          LookupFieldOnCalcItem__c = 'Id',
+          GrandparentRelationshipFieldPath__c = 'Contacts.Individual.Name',
+          OneToManyGrandparentFields__c = 'Contact.AccountId',
+          LookupFieldOnLookupObject__c = 'Id'
+        ),
+        uniqueFieldNames,
+        uniqueFieldNames,
+        Individual.SObjectType,
+        new Map<Id, SObject>()
+      )
+      .getParents(new List<Account>{ acc });
+
+    System.assertEquals(true, traversal.getIsFinished());
+    Boolean hasBothAccounts = false;
+    for (SObject calcItem : traversal.getParentLookupToRecords().get('' + firstParent.Id).getAll()) {
+      if (calcItem.Id == secondAccount.Id) {
+        System.assertEquals(secondAccount.AnnualRevenue, calcItem.get(Account.AnnualRevenue));
+        hasBothAccounts = true;
+        break;
+      }
+    }
+    System.assertEquals(true, hasBothAccounts, traversal.getParentLookupToRecords());
+  }
 }

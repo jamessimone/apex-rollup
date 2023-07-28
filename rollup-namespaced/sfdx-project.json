@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Allows multiple objects to roll up to same parent field from batch full recalcs",
+            "versionName": "Fixes one to many grandparent rollup issue with adjacent children not getting pulled properly on updates",
             "versionNumber": "1.0.45.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
