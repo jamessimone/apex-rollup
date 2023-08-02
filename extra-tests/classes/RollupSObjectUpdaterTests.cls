@@ -9,7 +9,7 @@ public class RollupSObjectUpdaterTests {
 
     Opportunity opp = new Opportunity();
 
-    new RollupSObjectUpdater(Opportunity.CloseDate).updateField(opp, now);
+    new RollupSObjectUpdater().updateField(Opportunity.CloseDate, opp, now);
 
     System.assertEquals(now.dateGmt(), opp.CloseDate);
   }
@@ -17,7 +17,7 @@ public class RollupSObjectUpdaterTests {
   @IsTest
   static void shouldAllowDecimalToBeSavedAsInteger() {
     Account acc = new Account();
-    new RollupSObjectUpdater(Account.NumberOfEmployees).updateField(acc, 3.00);
+    new RollupSObjectUpdater().updateField(Account.NumberOfEmployees, acc, 3.00);
 
     System.assertEquals(3, acc.NumberOfEmployees);
   }
@@ -28,7 +28,7 @@ public class RollupSObjectUpdaterTests {
     String nowishString = nowish.format();
 
     Event ev = new Event();
-    new RollupSObjectUpdater(Event.ActivityDatetime).updateField(ev, nowishString);
+    new RollupSObjectUpdater().updateField(Event.ActivityDatetime, ev, nowishString);
 
     System.assertEquals(nowish.addSeconds(-nowish.second()), ev.ActivityDatetime);
   }
@@ -39,7 +39,7 @@ public class RollupSObjectUpdaterTests {
     String todayString = today.format();
 
     Task t = new Task();
-    new RollupSObjectUpdater(Task.ActivityDate).updateField(t, todayString);
+    new RollupSObjectUpdater().updateField(Task.ActivityDate, t, todayString);
 
     System.assertEquals(today, t.ActivityDate);
   }
@@ -49,7 +49,7 @@ public class RollupSObjectUpdaterTests {
     SObjectException ex;
 
     try {
-      new RollupSObjectUpdater(Opportunity.CloseDate).updateField(new Opportunity(), 1);
+      new RollupSObjectUpdater().updateField(Opportunity.CloseDate, new Opportunity(), 1);
     } catch (SObjectException e) {
       ex = e;
     }
@@ -92,7 +92,7 @@ public class RollupSObjectUpdaterTests {
     Blob blobValue = EncodingUtil.base64Decode('10101010');
     Opportunity opp = new Opportunity();
 
-    new RollupSObjectUpdater(Opportunity.Description).updateField(opp, blobValue);
+    new RollupSObjectUpdater().updateField(Opportunity.Description, opp, blobValue);
 
     System.assertEquals(String.valueOf(blobValue), opp.Description);
   }

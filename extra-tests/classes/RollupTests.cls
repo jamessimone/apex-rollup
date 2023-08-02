@@ -2863,4 +2863,26 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size());
     System.assertEquals(50, mock.Records[0].get(Account.AnnualRevenue));
   }
+
+  @IsTest
+  static void doesNotPersistPossiblyStaleFieldsWhenTheyAreNotUpdated() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.NumberOfEmployees = 1;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Id = cpa.Id) };
+
+    Test.startTest();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    Assert.areEqual(50, acc.AnnualRevenue);
+    Assert.areEqual(acc.AnnualRevenue, mock.Records.get(0).get(Account.AnnualRevenue));
+    Assert.isNull(mock.Records.get(0).get(Account.NumberOfEmployees), 'Should not persist potentially stale value');
+  }
 }
