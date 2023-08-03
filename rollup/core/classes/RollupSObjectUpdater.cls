@@ -6,6 +6,8 @@ global without sharing virtual class RollupSObjectUpdater {
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
   private static final SObjectSorter SORTER = new SObjectSorter();
+  @TestVisible
+  private static final Map<Id, SObject> RECORDS_TO_UPDATE = new Map<Id, SObject>();
 
   private final Schema.SObjectField fieldToken;
   private final List<IDispatcher> dispatchers;
@@ -32,16 +34,17 @@ global without sharing virtual class RollupSObjectUpdater {
     this.dispatchers = this.fillDispatchers();
   }
 
-  public RollupSObjectUpdater(Schema.SObjectField fieldToken) {
-    this.fieldToken = fieldToken;
-  }
-
   public void addRollupControl(RollupControl__mdt rollupControl) {
     this.rollupControl = rollupControl;
   }
 
   public void forceSyncUpdate() {
     this.forceSyncUpdate = true;
+  }
+
+  public void updateRecords() {
+    this.doUpdate(RECORDS_TO_UPDATE.values());
+    RECORDS_TO_UPDATE.clear();
   }
 
   global virtual void doUpdate(List<SObject> recordsToUpdate) {
@@ -66,12 +69,8 @@ global without sharing virtual class RollupSObjectUpdater {
     }
   }
 
-  public void updateField(SObject record, Object value) {
-    this.updateValue(record, value);
-  }
-
-  private void updateValue(SObject record, Object value) {
-    Schema.DisplayType fieldType = this.fieldToken.getDescribe().getType();
+  public void updateField(Schema.SObjectField fieldToken, SObject record, Object value) {
+    Schema.DisplayType fieldType = fieldToken.getDescribe().getType();
 
     if (value instanceof Decimal && fieldType == DisplayType.INTEGER) {
       Decimal decimalValue = (Decimal) value;
@@ -98,7 +97,13 @@ global without sharing virtual class RollupSObjectUpdater {
         }
       }
     }
-    record.put(this.fieldToken, value);
+    SObject updateRecord = RECORDS_TO_UPDATE.get(record.Id);
+    if (updateRecord == null) {
+      updateRecord = record.getSObjectType().newSObject(record.Id);
+      RECORDS_TO_UPDATE.put(record.Id, updateRecord);
+    }
+    record.put(fieldToken, value);
+    updateRecord.put(fieldToken, value);
   }
 
   private List<IDispatcher> fillDispatchers() {
@@ -166,12 +171,6 @@ global without sharing virtual class RollupSObjectUpdater {
     for (Integer index = records.size() - 1; index >= 0; index--) {
       Set<String> populatedFields = records.get(index).getPopulatedFieldsAsMap().keySet();
       if (populatedFields.size() == 1 && populatedFields.contains('Id')) {
-        records.remove(index);
-      } else if (
-        RollupCurrencyInfo.isMultiCurrency() &&
-        populatedFields.isEmpty() == false &&
-        new Set<String>{ 'Id', RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME }.containsAll(populatedFields)
-      ) {
         records.remove(index);
       }
     }

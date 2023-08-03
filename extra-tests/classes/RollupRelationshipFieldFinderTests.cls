@@ -141,7 +141,8 @@ private class RollupRelationshipFieldFinderTests {
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
     insert new List<Account>{ intermediateOne, intermediateTwo };
 
-    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account WHERE NAME LIKE 'Intermediate%' LIMIT 2];
+    Set<Id> accountIds = new Set<Id>{ intermediateOne.Id, intermediateTwo.Id };
+    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account WHERE Id = :accountIds];
     if (updatedAccounts.size() == 2) {
       // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate
       // the results

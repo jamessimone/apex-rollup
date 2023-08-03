@@ -685,8 +685,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
     }
+    this.getDML().updateRecords();
     this.cleanup();
-    this.getDML().doUpdate(updatedLookupRecords.values());
     this.populateOtherDeferredRollups();
     this.processDeferredRollups();
   }
@@ -1207,7 +1207,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Map<String, SObject> unprocessedCalcItems = new Map<String, SObject>();
-    RollupSObjectUpdater updater = new RollupSObjectUpdater(roll.opFieldOnLookupObject);
     RollupCalculator calc;
     String priorKey;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
@@ -1235,7 +1234,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
           Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset(roll, lookupRecord) == false ? null : priorVal;
           calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
-          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, ParentUpdateType.LOOKUP, localCalcItems);
+          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }
         if (priorKey != null && key != priorKey) {
           // once we've fully processed a parent (in separate batches)
@@ -1248,7 +1247,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll, updater);
+    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll);
     this.deferCalculationsWhenApproachingLimits(roll, unprocessedCalcItems.values());
     this.handleFullRecalculators(roll);
 
@@ -1339,8 +1338,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<SObject> lookupItems,
     Map<String, List<SObject>> oldLookupItems,
     Map<String, SObject> recordsToUpdate,
-    RollupAsyncProcessor roll,
-    RollupSObjectUpdater updater
+    RollupAsyncProcessor roll
   ) {
     if (oldLookupItems.isEmpty() || this.isEmptyReparentingSet(roll.op)) {
       return;
@@ -1377,7 +1375,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         oldLookupsRollup.calcItems = reparentedCalcItems;
         this.logger.log('reparenting operation', oldLookupsRollup, LoggingLevel.DEBUG);
         calc = this.getCalculator(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
-        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, updater, ParentUpdateType.REPARENTED, reparentedCalcItems);
+        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.REPARENTED, reparentedCalcItems);
       }
     }
   }
@@ -1388,7 +1386,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     SObject lookupRecord,
     RollupAsyncProcessor roll,
     Map<String, SObject> recordsToUpdate,
-    RollupSObjectUpdater updater,
     ParentUpdateType parentUpdateType,
     List<SObject> localCalcItems
   ) {
@@ -1400,7 +1397,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     if (priorVal != newVal) {
       String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-      updater.updateField(lookupRecord, newVal);
+      this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
       recordsToUpdate.put(key, lookupRecord);
     }
     this.storeParentResetField(roll, lookupRecord);

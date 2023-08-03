@@ -2488,6 +2488,44 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldCorrectlyReparentWhenOldItemMatchesAndNewOneDoesNot() {
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+    Account oldAcc = new Account(AnnualRevenue = 50, Name = 'Old Parent');
+    insert oldAcc;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
+
+    ContactPointAddress cpa = new ContactPointAddress(
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType),
+      PreferenceRank = 50,
+      ParentId = acc.Id,
+      Name = 'Does Not Match'
+    );
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = oldAcc.AnnualRevenue.intValue(), Id = cpa.Id, Name = 'Match')
+    };
+
+    Test.startTest();
+    Rollup.sumFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AnnualRevenue,
+        Account.SObjectType,
+        null,
+        RollupEvaluator.getWhereEval('Name NOT IN (\'' + cpa.Name + '\')', cpa.getSObjectType())
+      )
+      .runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Only old account should have been updated, ' + mock.Records);
+    System.assertEquals(null, oldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should remove current amount from old parent');
+    System.assertEquals(null, acc.AnnualRevenue, 'SUM AFTER_UPDATE should not count excluded item on new parent');
+  }
+
+  @IsTest
   static void shouldReparentSameObjectRollups() {
     Rollup.onlyUseMockmetadata = true;
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
@@ -2862,5 +2900,27 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size());
     System.assertEquals(50, mock.Records[0].get(Account.AnnualRevenue));
+  }
+
+  @IsTest
+  static void doesNotPersistPossiblyStaleFieldsWhenTheyAreNotUpdated() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.NumberOfEmployees = 1;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Id = cpa.Id) };
+
+    Test.startTest();
+    Rollup.averageFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    Assert.areEqual(50, acc.AnnualRevenue);
+    Assert.areEqual(acc.AnnualRevenue, mock.Records.get(0).get(Account.AnnualRevenue));
+    Assert.isNull(mock.Records.get(0).get(Account.NumberOfEmployees), 'Should not persist potentially stale value');
   }
 }
