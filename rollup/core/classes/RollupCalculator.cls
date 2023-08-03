@@ -544,7 +544,7 @@ public without sharing abstract class RollupCalculator {
       if (this.isFullRecalc && matchesCurrent) {
         return newVal;
       } else if (this.isReparented(calcItem, oldCalcItem)) {
-        return newVal;
+        return matchesCurrent ? newVal : 0;
       } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false) {
         return newVal;
       } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false) {
@@ -804,11 +804,11 @@ public without sharing abstract class RollupCalculator {
       SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
 
       // for a reparenting, the item counts towards the new record on an update
+      Boolean matchesCurrent = this.eval?.matches(calcItem) != false;
       if (this.isReparented(calcItem, oldCalcItem)) {
-        return 1.00;
+        return matchesCurrent ? 1.00 : 0.00;
       }
 
-      Boolean matchesCurrent = this.eval?.matches(calcItem) != false;
       Boolean matchesPrior = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false;
 
       // for updates, we have to decrement the count if the value has been cleared out
