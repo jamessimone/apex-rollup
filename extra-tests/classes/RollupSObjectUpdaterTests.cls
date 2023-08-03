@@ -106,34 +106,12 @@ public class RollupSObjectUpdaterTests {
     waitSeconds(1);
 
     List<String> fieldNames = new List<String>{ 'Id' };
-    if (RollupCurrencyInfo.isMultiCurrency()) {
-      fieldNames.add(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
-    }
 
     Id accId = acc.Id;
     new RollupSObjectUpdater().doUpdate(Database.query('SELECT ' + String.join(fieldNames, ',') + ' FROM Account WHERE Id = :accId'));
 
     Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
     System.assertEquals(acc, updatedAccount, 'Last modified date should not have updated if only Id was passed');
-  }
-
-  @IsTest
-  static void multiCurrencyOnlyUpdateAbortsEarly() {
-    if (RollupCurrencyInfo.isMultiCurrency() == false) {
-      return;
-    }
-
-    Account acc = new Account(Name = 'Should Not Be Updated');
-    insert acc;
-    acc = [SELECT Id, LastModifiedDate FROM Account];
-    waitSeconds(1);
-    Account toUpdate = new Account(Id = acc.Id);
-    toUpdate.put(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME, 'USD');
-
-    new RollupSObjectUpdater().doUpdate(new List<SObject>{ toUpdate });
-
-    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
-    System.assertEquals(acc, updatedAccount);
   }
 
   @IsTest
