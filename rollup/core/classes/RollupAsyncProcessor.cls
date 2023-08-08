@@ -485,37 +485,35 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected List<SObject> getExistingLookupItems(Set<String> lookupKeys, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
     if (lookupKeys.isEmpty()) {
       this.lookupItems = new List<SObject>();
-    } else if (stubParentRecords != null) {
+    } else if (stubParentRecords != null && this.lookupItems == null) {
       this.lookupItems = stubParentRecords;
-    }
-    // for Rollups that are Batchable, the lookup items are retrieved en masse in the "start" method and cached in the "execute" method
-    if (this.lookupItems != null) {
-      return this.lookupItems;
-    }
-    List<SObject> localLookupItems;
-    if (rollup.traversal != null) {
-      localLookupItems = rollup.traversal.getAllParents();
-    } else {
-      localLookupItems = new RollupRepository(rollup.accessLevel)
-        .setQuery(
-          RollupQueryBuilder.Current.getQuery(
-            rollup.lookupObj,
-            new List<String>(uniqueQueryFieldNames),
-            String.valueOf(rollup.lookupFieldOnLookupObject),
-            '='
-          ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '')
-        )
-        .setArg(lookupKeys)
-        .get();
-    }
-    List<SObject> recordsToReset = new List<SObject>();
-    for (SObject lookupItem : localLookupItems) {
-      if (this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false) {
-        recordsToReset.add(lookupItem);
+    } else if (this.lookupItems == null) {
+      // lookup items are retrieved en masse in the "start" method for standard (not full recalc) Batch rollups, and are cached in the "execute" method
+      List<SObject> localLookupItems;
+      if (rollup.traversal != null) {
+        localLookupItems = rollup.traversal.getAllParents();
+      } else {
+        localLookupItems = new RollupRepository(rollup.accessLevel)
+          .setQuery(
+            RollupQueryBuilder.Current.getQuery(
+              rollup.lookupObj,
+              new List<String>(uniqueQueryFieldNames),
+              String.valueOf(rollup.lookupFieldOnLookupObject),
+              '='
+            ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '')
+          )
+          .setArg(lookupKeys)
+          .get();
       }
+      List<SObject> recordsToReset = new List<SObject>();
+      for (SObject lookupItem : localLookupItems) {
+        if (this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false) {
+          recordsToReset.add(lookupItem);
+        }
+      }
+      this.lookupItems = localLookupItems;
+      this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
     }
-    this.lookupItems = localLookupItems;
-    this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
     return this.lookupItems;
   }
 
@@ -777,8 +775,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
     if (roll.fullRecalcProcessor != null) {
-      // if we aren't batching, safe to assume a full recalc has already pulled the rest of the records back
-      return roll.fullRecalcProcessor.isBatch() != true;
+      return false;
     } else {
       return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
     }

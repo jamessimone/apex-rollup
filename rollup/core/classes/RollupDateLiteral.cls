@@ -3,9 +3,7 @@ public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN {
     get {
       if (RELATIVE_LITERAL_PATTERN == null) {
-        RELATIVE_LITERAL_PATTERN = Pattern.compile(
-          '(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*'
-        );
+        RELATIVE_LITERAL_PATTERN = Pattern.compile('(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*');
       }
       return RELATIVE_LITERAL_PATTERN;
     }
@@ -14,7 +12,7 @@ public without sharing abstract class RollupDateLiteral {
   private static final Pattern DATE_FUNCTION_PATTERN {
     get {
       if (DATE_FUNCTION_PATTERN == null) {
-        DATE_FUNCTION_PATTERN =  Pattern.compile(
+        DATE_FUNCTION_PATTERN = Pattern.compile(
           '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|' +
           'FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
         );
@@ -425,7 +423,7 @@ public without sharing abstract class RollupDateLiteral {
   private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(1);
-      this.bound = getRelativeDatetime(this.ref.addDays(89).date(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addDays(89).dateGmt(), END_TIME);
     }
   }
 

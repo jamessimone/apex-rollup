@@ -565,6 +565,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
       SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
       RollupMetadata wrappedMeta = getWrappedMeta(childType, childToMetaWrapper, matchingMeta, matchingMeta.CalcItemWhereClause__c);
+      // duplicate check to the above, but since the CalcItemWhereClause__c is modified in the original guard clause
+      // we need to wait till after that guard clause to initialize wrappedMeta
       if (possibleParentId != null) {
         wrappedMeta.recordIds.add(possibleParentId);
       }
