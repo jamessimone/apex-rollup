@@ -101,17 +101,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  private static final String REQUEST_ID {
-    get {
-      if (REQUEST_ID == null) {
-        // https://github.com/jongpie/NebulaLogger/issues/227#issuecomment-1143086485 for more on this
-        REQUEST_ID = System.Request.getCurrent().getRequestId() + System.now().getTime();
-      }
-      return REQUEST_ID;
-    }
-    set;
-  }
-
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     return new QueueableProcessor(invokePoint, calcItems, oldCalcItems);
   }
@@ -761,11 +750,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.metadata?.ShouldRunWithoutCustomSettingEnabled__c == true;
   }
 
-  /**
-   * Includes `RollupAsyncProcessor.currentRequestId` to prevent unintentional cross-batch spillover
-   */
   private String getUniqueParentKey(Rollup__mdt meta) {
-    return meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c + REQUEST_ID;
+    return meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
   }
 
   private void clearPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
@@ -1422,5 +1408,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void cleanup() {
     RollupEvaluator.clearConditionCache();
     CACHED_CALC_ITEM_LOOKUPS = null;
+    this.uniqueParentFields.clear();
   }
 }
