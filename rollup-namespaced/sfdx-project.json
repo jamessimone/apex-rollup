@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Memory overhead reduction and prevents stale parent values from being re-saved",
+            "versionName": "Fixes cascading issues with full recalc app, RollupParentResetProcessor improvements",
             "versionNumber": "1.0.45.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
