@@ -30,8 +30,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @TestVisible
   private static Integer additionalCalcItemCount;
   private static Boolean hasAlreadyAsyncEnqueued = false;
-  @TestVisible
-  private static String stubRequestId;
 
   private enum CollectionType {
     DICTIONARY,
@@ -99,16 +97,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CACHED_CALC_ITEM_LOOKUPS = new Map<Integer, Map<String, CalcItemBag>>();
       }
       return CACHED_CALC_ITEM_LOOKUPS;
-    }
-    set;
-  }
-
-  private static String currentRequestId {
-    get {
-      if (currentRequestId == null) {
-        currentRequestId = stubRequestId != null ? stubRequestId : REQUEST_ID;
-      }
-      return currentRequestId;
     }
     set;
   }
@@ -747,17 +735,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.hasParentRollupFieldBeenReset(meta.RollupFieldOnLookupObject__c, parent);
   }
 
-  /**
-   * Includes `RollupAsyncProcessor.currentRequestId` to prevent unintentional cross-batch spillover
-   */
   protected Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
     return this.hasParentRollupFieldBeenReset(String.valueOf(processor.opFieldOnLookupObject), parent) ||
-      this.uniqueParentFields.contains(processor.op.name() + processor.lookupObj + processor.opFieldOnLookupObject + currentRequestId);
+      this.uniqueParentFields.contains(this.getUniqueParentKey(processor.metadata));
   }
 
   protected void storeUniqueParentFields(Rollup__mdt meta) {
     if (meta != null) {
-      String uniqueParentKey = meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
+      String uniqueParentKey = this.getUniqueParentKey(meta);
       this.uniqueParentFields.add(uniqueParentKey);
       this.fullRecalcProcessor?.uniqueParentFields.add(uniqueParentKey);
     }
@@ -773,6 +758,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual Boolean getCanRollupWithoutCustomSetting() {
     return this.metadata?.ShouldRunWithoutCustomSettingEnabled__c == true;
+  }
+
+  /**
+   * Includes `RollupAsyncProcessor.currentRequestId` to prevent unintentional cross-batch spillover
+   */
+  private String getUniqueParentKey(Rollup__mdt meta) {
+    return meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c + REQUEST_ID;
   }
 
   private void clearPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
