@@ -52,7 +52,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
       processId = this.startAsyncWork();
-    } else {
+    } else if (this.getNumberOfItems() > 0) {
       this.runSync();
     }
 

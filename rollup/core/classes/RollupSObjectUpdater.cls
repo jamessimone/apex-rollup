@@ -43,8 +43,11 @@ global without sharing virtual class RollupSObjectUpdater {
   }
 
   public void updateRecords() {
-    this.doUpdate(RECORDS_TO_UPDATE.values());
+    List<SObject> recordsToUpdate = RECORDS_TO_UPDATE.values();
+    // static map has to be cleared BEFORE calling "doUpdate"
+    // otherwise any cascading rollups on the parent will cause recursion here
     RECORDS_TO_UPDATE.clear();
+    this.doUpdate(recordsToUpdate);
   }
 
   global virtual void doUpdate(List<SObject> recordsToUpdate) {
@@ -56,7 +59,7 @@ global without sharing virtual class RollupSObjectUpdater {
     // typically I wouldn't advocate for the use of a guard clause here since an empty list
     // getting updated is a no-op, but the addition of the logging item is annoying ...
     if (recordsToUpdate.isEmpty() == false) {
-      RollupLogger.Instance.log('updating the following records:', recordsToUpdate, LoggingLevel.FINE);
+      RollupLogger.Instance.log('updating ' + recordsToUpdate.size() + ' records', LoggingLevel.INFO);
       SORTER.sort(recordsToUpdate);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
