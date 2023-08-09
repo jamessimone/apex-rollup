@@ -30,6 +30,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   @TestVisible
   private static Integer additionalCalcItemCount;
   private static Boolean hasAlreadyAsyncEnqueued = false;
+  @TestVisible
+  private static String stubRequestId;
 
   private enum CollectionType {
     DICTIONARY,
@@ -97,6 +99,26 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CACHED_CALC_ITEM_LOOKUPS = new Map<Integer, Map<String, CalcItemBag>>();
       }
       return CACHED_CALC_ITEM_LOOKUPS;
+    }
+    set;
+  }
+
+  private static String currentRequestId {
+    get {
+      if (currentRequestId == null) {
+        currentRequestId = stubRequestId != null ? stubRequestId : REQUEST_ID;
+      }
+      return currentRequestId;
+    }
+    set;
+  }
+
+  private static final String REQUEST_ID {
+    get {
+      if (REQUEST_ID == null) {
+        REQUEST_ID = System.Request.getCurrent().getRequestId();
+      }
+      return REQUEST_ID;
     }
     set;
   }
@@ -725,9 +747,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return this.hasParentRollupFieldBeenReset(meta.RollupFieldOnLookupObject__c, parent);
   }
 
+  /**
+   * Includes `RollupAsyncProcessor.currentRequestId` to prevent unintentional cross-batch spillover
+   */
   protected Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
     return this.hasParentRollupFieldBeenReset(String.valueOf(processor.opFieldOnLookupObject), parent) ||
-      this.uniqueParentFields.contains(processor.op.name() + processor.lookupObj + processor.opFieldOnLookupObject);
+      this.uniqueParentFields.contains(processor.op.name() + processor.lookupObj + processor.opFieldOnLookupObject + currentRequestId);
   }
 
   protected void storeUniqueParentFields(Rollup__mdt meta) {

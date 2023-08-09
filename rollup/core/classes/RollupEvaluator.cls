@@ -5,7 +5,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static final Set<String> POLYMORPHIC_FIELDS = new Set<String>{ 'Owner', 'Type' };
   private static final AlwaysTrueEvaluator ALWAYS_TRUE_SINGLETON = new AlwaysTrueEvaluator();
   @TestVisible
-  static String stubRequestId;
+  private static String stubRequestId;
 
   private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
   private static Map<String, Boolean> CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
