@@ -971,6 +971,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
       this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
+      // this.getCachedRollups().addAll(this.rollups);
     }
   }
 

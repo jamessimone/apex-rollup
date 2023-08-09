@@ -1409,7 +1409,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void doesNotClearParentFieldsWhenFullRecalcIsDeferred() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account]; // 1 query
     acc.AnnualRevenue = acc.NumberOfEmployees = 5;
     update acc;
 
@@ -1425,7 +1425,7 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 50,
-      MaxNumberOfQueries__c = 4, // set to explicitly be too low for rollup to proceed
+      MaxNumberOfQueries__c = 2, // set to explicitly be too low for rollup to proceed
       BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
@@ -1481,7 +1481,7 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 50,
-      MaxNumberOfQueries__c = 7, // has to be exactly the number that allows the first rollup but not the second
+      MaxNumberOfQueries__c = 2, // has to be exactly the number that allows the first rollup but not the second
       BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
