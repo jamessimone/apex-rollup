@@ -104,7 +104,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static final String REQUEST_ID {
     get {
       if (REQUEST_ID == null) {
-        REQUEST_ID = System.Request.getCurrent().getRequestId();
+        // https://github.com/jongpie/NebulaLogger/issues/227#issuecomment-1143086485 for more on this
+        REQUEST_ID = System.Request.getCurrent().getRequestId() + System.now().getTime();
       }
       return REQUEST_ID;
     }
