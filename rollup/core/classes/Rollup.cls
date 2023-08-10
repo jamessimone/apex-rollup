@@ -342,7 +342,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   global virtual String runCalc() {
-    this.logger.log('no-op!', LoggingLevel.INFO);
+    this.logger.log('no-op!', this.getTypeName(), LoggingLevel.INFO);
     return 'no-op';
   }
 
