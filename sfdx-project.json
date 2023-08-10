@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes cascading issues with full recalc app, RollupParentResetProcessor improvements",
-            "versionNumber": "1.5.77.0",
+            "versionName": "RollupAsyncProcessor.retrieveAdditionalCalcItems no longer looks for null lookup fields. Further optimizations to prevent async runs when appropriate.",
+            "versionNumber": "1.5.78.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
