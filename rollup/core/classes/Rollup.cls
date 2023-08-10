@@ -342,8 +342,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   global virtual String runCalc() {
-    this.logger.log('no-op!', LoggingLevel.WARN);
-    return 'Not implemented';
+    this.logger.log('no-op!', this.getTypeName(), LoggingLevel.INFO);
+    return 'no-op';
   }
 
   global virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
@@ -1856,8 +1856,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
-      control.IsRollupLoggingEnabled__c = true;
-      RollupLogger.Instance.updateRollupControl(control);
+      if (control.IsRollupLoggingEnabled__c == false) {
+        control.IsRollupLoggingEnabled__c = true;
+        RollupLogger.Instance.updateRollupControl(control);
+      }
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
     }
     return hasExceededLimits;
@@ -2728,21 +2730,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
 
       FilterResults filterResults = filter(calcItems, oldCalcItems, eval, rollupMetadata, sObjectType, shouldFilterCalcItems);
-
-      loadRollups(
-        rollupFieldOnCalcItem,
-        calcLookupField,
-        lookupFieldOnOpObject,
-        rollupFieldOnOpObject,
-        lookupDescribe.getSObjectType(),
-        sObjectType, // child object SObjectType
-        rollupOp,
-        filterResults,
-        rollupConductor,
-        localControl,
-        rollupInvokePoint,
-        rollupMetadata
-      );
+      if (filterResults.matchingItemIds.isEmpty() == false) {
+        loadRollups(
+          rollupFieldOnCalcItem,
+          calcLookupField,
+          lookupFieldOnOpObject,
+          rollupFieldOnOpObject,
+          lookupDescribe.getSObjectType(),
+          sObjectType, // child object SObjectType
+          rollupOp,
+          filterResults,
+          rollupConductor,
+          localControl,
+          rollupInvokePoint,
+          rollupMetadata
+        );
+      }
     }
     rollupConductor.isNoOp = rollupConductor.rollups.isEmpty();
     return rollupConductor;
@@ -3029,7 +3032,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
-      if (shouldFilterCalcItems == false || results.eval.matches(item)) {
+      if (
+        metadata.IsRollupStartedFromParent__c == false &&
+        item.get(metadata.LookupFieldOnCalcItem__c) == null &&
+        oldCalcItems?.get(item.Id)?.get(metadata.LookupFieldOnCalcItem__c) == null
+      ) {
+        continue;
+      } else if (shouldFilterCalcItems == false || results.eval.matches(item)) {
         results.matchingItemIds.add(item.Id);
       } else if (oldCalcItems?.containsKey(item.Id) == true && results.eval.matches(oldCalcItems.get(item.Id))) {
         // if the where clause would exclude something, but we're in an update

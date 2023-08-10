@@ -289,7 +289,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     String rollupProcessId = this.getNoProcessId();
     String logMessage;
-    System.LoggingLevel logLevel = System.LoggingLevel.INFO;
     if (this.isNoOp) {
       logMessage = 'no-op, exiting early to avoid burning async job';
     } else if (this.rollupControl.ShouldAbortRun__c) {
@@ -297,7 +296,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
     } else if (syncRollups.isEmpty() == false) {
-      this.logger.log('about to process sync rollups', logLevel);
+      this.logger.log('about to process sync rollups', System.LoggingLevel.INFO);
       this.process(syncRollups);
       logMessage = 'finished running sync rollups';
       if (this.rollups.isEmpty()) {
@@ -312,7 +311,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
     }
     if (logMessage != null) {
-      this.logger.log(logMessage, logLevel);
+      this.logger.log(logMessage, System.LoggingLevel.INFO);
       rollupProcessId = logMessage;
     }
     this.logger.save();
@@ -377,8 +376,25 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (canEnqueue) {
       roll = this.rollupControl.IsDevEdOrTrialOrg__c && this.stackDepth >= 4 ? new RollupAsyncProcessor(this) : this;
     }
+    if (roll.isNoOp && (roll instanceof RollupFullRecalcProcessor) == false) {
+      roll = new NoOpProcessor(roll.invokePoint);
+    }
 
     return roll;
+  }
+
+  public without sharing class NoOpProcessor extends RollupAsyncProcessor {
+    public NoOpProcessor(InvocationPoint invokePoint) {
+      super(invokePoint);
+    }
+
+    protected override String beginAsyncRollup() {
+      return new Rollup(this.invokePoint).runCalc();
+    }
+
+    protected override String getTypeName() {
+      return NoOpProcessor.class.getName();
+    }
   }
 
   public without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
@@ -468,7 +484,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  protected String beginAsyncRollup() {
+  protected virtual String beginAsyncRollup() {
     this.isTimingOut = false;
     this.logger.log('about to start for ' + this.getTypeName(), this, LoggingLevel.INFO);
     return this.startAsyncWork();
@@ -539,6 +555,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         bag.clear();
       }
     }
+    lookupKeys.remove(null);
 
     if (lookupKeys.isEmpty()) {
       return;
@@ -971,7 +988,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
       this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
-      // this.getCachedRollups().addAll(this.rollups);
     }
   }
 
@@ -1159,6 +1175,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       localAccessLevel = roll.accessLevel;
       if (roll.queryCount != null) {
         totalCountOfRecords += roll.queryCount;
+        continue;
+      } else if (stubParentRecords != null) {
+        totalCountOfRecords += stubParentRecords.size();
         continue;
       }
 

@@ -1800,6 +1800,7 @@ private class RollupTests {
   @IsTest
   static void shouldMinDateOnUpdate() {
     Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
+    insert con;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ con };
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
@@ -1809,13 +1810,13 @@ private class RollupTests {
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.getWhatIdMock(new List<Task>{ taskTwo }, con.Id);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
-    Rollup.oldRecordsMap = new Map<Id, Task>(new List<Task>{ new Task(Id = taskTwo.Id, ActivityDate = con.BirthDate) });
+    Rollup.oldRecordsMap = new Map<Id, Task>(new List<Task>{ new Task(Id = taskTwo.Id, ActivityDate = con.BirthDate, WhoId = con.Id) });
 
     Test.startTest();
     Rollup.minFromApex(Task.ActivityDate, Task.WhoId, Contact.Id, Contact.BirthDate, Contact.SObjectType).runCalc();
     Test.stopTest();
 
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN DATE AFTER_INSERT');
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN DATE AFTER_UPDATE');
     System.assertEquals(taskOne.ActivityDate, con.BirthDate);
   }
 
@@ -2043,7 +2044,8 @@ private class RollupTests {
   static void shouldMinTimeOnUpdate() {
     ContactPointEmail cpe = new ContactPointEmail(
       BestTimeToContactEndTime = Time.newInstance(0, 0, 0, 0),
-      Id = RollupTestUtils.createId(ContactPointEmail.SObjectType)
+      Id = RollupTestUtils.createId(ContactPointEmail.SObjectType),
+      EmailDomain = 'io'
     );
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ cpe };
 
@@ -2059,7 +2061,9 @@ private class RollupTests {
     );
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cp1, cp2 });
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ cp1.Id => new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Id = cp1.Id) };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{
+      cp1.Id => new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Id = cp1.Id, Name = cp1.Name)
+    };
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
 
     Test.startTest();
@@ -2922,5 +2926,25 @@ private class RollupTests {
     Assert.areEqual(50, acc.AnnualRevenue);
     Assert.areEqual(acc.AnnualRevenue, mock.Records.get(0).get(Account.AnnualRevenue));
     Assert.isNull(mock.Records.get(0).get(Account.NumberOfEmployees), 'Should not persist potentially stale value');
+  }
+
+  @IsTest
+  static void isNoOpWhenParentFieldIsNullOnInsert() {
+    Rollup.onlyUseMockMetadata = true;
+    ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = null);
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<SObject>{ cpa };
+
+    String rollupResponse = Rollup.averageFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AnnualRevenue,
+        Account.SObjectType
+      )
+      .runCalc();
+
+    Assert.areEqual('no-op', rollupResponse);
   }
 }

@@ -4,7 +4,7 @@ public without sharing class RollupLimits {
   @TestVisible
   private static Integer orgAsyncJobsUsed;
 
-  private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 3000;
+  private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 1500;
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS = 13000;
 
   private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
