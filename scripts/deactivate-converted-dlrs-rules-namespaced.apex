@@ -25,7 +25,6 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
 
 if (deployment.getMetadata().isEmpty() == false) {
   // Deploy the dlrs__LookupRollupSummary2__mdt CMDT records to deactivate them - these will be treated like an upsert based on DeveloperName
-  // TODO refactor to LOGGER constant
   System.debug(LoggingLevel.INFO, 'Deployment metadata==' + JSON.serialize(deployment));
   Id jobId = Metadata.Operations.enqueueDeployment(deployment, null);
   System.debug(LoggingLevel.INFO, 'Deployment Job ID: ' + jobId);
