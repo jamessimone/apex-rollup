@@ -1,7 +1,7 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.5.79';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.5.80';
   private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -140,7 +140,7 @@ global without sharing virtual class RollupLogger implements ILogger {
         try {
           rollLogger = (ILogger) Type.forName(loggerPlugin.DeveloperName).newInstance();
         } catch (Exception ex) {
-          potentialErrorMessages.add('Cast to ILogger failed for:' + loggerPlugin.DeveloperName);
+          potentialErrorMessages.add('Cast to ILogger failed for: ' + loggerPlugin.DeveloperName);
           if (hasUsedBaseLogger == false) {
             rollLogger = new RollupLogger();
             hasUsedBaseLogger = true;

@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Prevents null pointer exception when cascasding rollups create a no-op rollup",
+            "versionName": "RollupCalcItemReplacer optimizations",
             "versionNumber": "1.0.45.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -24,6 +24,7 @@
         "apex-rollup-namespaced@1.0.41-0": "04t6g000008SnldAAC",
         "apex-rollup-namespaced@1.0.42-0": "04t6g000008SnlsAAC",
         "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC",
-        "apex-rollup-namespaced@1.0.44-0": "04t6g000008So66AAC"
+        "apex-rollup-namespaced@1.0.44-0": "04t6g000008So66AAC",
+        "apex-rollup-namespaced@1.0.45-0": "04t6g000008C6koAAC"
     }
 }

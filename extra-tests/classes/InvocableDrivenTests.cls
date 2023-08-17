@@ -169,17 +169,17 @@ private class InvocableDrivenTests {
   @IsTest
   static void shouldClearParentFieldOnDelete() {
     // driven by extra-tests/flows/Rollup_Integration_refresh_on_delete_clears_value.flow-meta.xml
-    RollupParent__c parent = new RollupParent__c(NumberField__c = 1, Name = 'Parent');
+    Account parent = new Account(AnnualRevenue = 1, Name = 'Parent');
     insert parent;
 
-    RollupChild__c child = new RollupChild__c(RollupParent__c = parent.Id, Name = 'child');
+    ContactRequest child = new ContactRequest(WhatId = parent.Id);
     insert child;
 
     Test.startTest();
     delete child;
     Test.stopTest();
 
-    parent = [SELECT NumberField__c FROM RollupParent__c WHERE Id = :parent.Id];
-    System.assertEquals(null, parent.NumberField__c);
+    parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    System.assertEquals(null, parent.AnnualRevenue);
   }
 }

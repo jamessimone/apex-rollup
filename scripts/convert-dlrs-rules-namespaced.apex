@@ -1,7 +1,7 @@
 // This script converts all DLRS rules (stored in dlrs__LookupRollupSummary2__mdt) to please__Rollup__mdt records and deploys them to the current org
 
 // Use the org defaults for all converted rules
-static final please__RollupControl__mdt ROLLUP_CONTROL = please__RollupControl__mdt.getInstance('Org_Defaults');
+static final please__RollupControl__mdt ROLLUP_CONTROL = please__RollupControl__mdt.getInstance('please__Org_Defaults');
 
 // Prepare the converted Rollup__mdt CMDT records for deployment
 String customMetadataTypePrefix = Schema.please__Rollup__mdt.SObjectType.getDescribe().getName().replace('__mdt', '');
@@ -122,10 +122,9 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
   }
 }
 
-// TODO refactor to use LOGGER constant and remove System.debug statements
 if (shouldDeploy) {
   // Deploy the converted Rollup__mdt CMDT records - these will be treated like an upsert based on DeveloperName
-  System.debug(LoggingLevel.INFO, 'Deployment metadata==' + JSON.serialize(deployment));
+  System.debug(LoggingLevel.INFO, 'Deployment metadata:\n' + JSON.serialize(deployment));
   Id jobId = Metadata.Operations.enqueueDeployment(deployment, null);
   System.debug(LoggingLevel.INFO, 'Deployment Job ID: ' + jobId);
 } else {
