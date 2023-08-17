@@ -377,7 +377,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this.rollupControl.IsDevEdOrTrialOrg__c && this.stackDepth >= 4 ? new RollupAsyncProcessor(this) : this;
     }
     if (roll?.isNoOp != false && (roll instanceof RollupFullRecalcProcessor) == false) {
-      roll = new NoOpProcessor(roll.invokePoint);
+      roll = new NoOpProcessor(this.invokePoint);
     }
 
     return roll;
