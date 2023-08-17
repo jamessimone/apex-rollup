@@ -2653,7 +2653,7 @@ private class RollupFullRecalcTests {
 
     Assert.areEqual(
       2,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :RollupFullBatchRecalculator.class.getName()],
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
       'Test requires batch apex to have been the full recalc mechanism'
     );
     parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
@@ -2702,11 +2702,19 @@ private class RollupFullRecalcTests {
 
     Assert.areEqual(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupAsyncProcessor.class.getName()],
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupAsyncProcessor.class)],
       JSON.serializePretty([SELECT JobType, ApexClass.Name FROM AsyncApexJob])
     );
     parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
     Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in full recalc');
+  }
+
+  private static String getNamespaceSafeClassName(Type intendedClass) {
+    List<String> classNameParts = intendedClass.getName().split('\\.');
+    if (classNameParts.size() > 1) {
+      classNameParts.remove(0);
+    }
+    return classNameParts[0];
   }
 
   private class DeferredContactPointAddressRollup extends RollupDeferredFullRecalcProcessor {

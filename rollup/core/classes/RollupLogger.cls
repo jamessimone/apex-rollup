@@ -140,7 +140,7 @@ global without sharing virtual class RollupLogger implements ILogger {
         try {
           rollLogger = (ILogger) Type.forName(loggerPlugin.DeveloperName).newInstance();
         } catch (Exception ex) {
-          potentialErrorMessages.add('Cast to ILogger failed for:' + loggerPlugin.DeveloperName);
+          potentialErrorMessages.add('Cast to ILogger failed for: ' + loggerPlugin.DeveloperName);
           if (hasUsedBaseLogger == false) {
             rollLogger = new RollupLogger();
             hasUsedBaseLogger = true;

@@ -9,17 +9,17 @@
         <actionType>apex</actionType>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>RollupChild__c</typeValue>
+            <typeValue>ContactRequest</typeValue>
         </dataTypeMappings>
         <dataTypeMappings>
             <typeName>T__recordsToRollup</typeName>
-            <typeValue>RollupChild__c</typeValue>
+            <typeValue>ContactRequest</typeValue>
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <inputParameters>
             <name>lookupFieldOnCalcItem</name>
             <value>
-                <stringValue>RollupParent__c</stringValue>
+                <stringValue>WhatId</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -49,7 +49,7 @@
         <inputParameters>
             <name>rollupFieldOnOpObject</name>
             <value>
-                <stringValue>NumberField__c</stringValue>
+                <stringValue>AnnualRevenue</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -61,7 +61,7 @@
         <inputParameters>
             <name>rollupSObjectName</name>
             <value>
-                <stringValue>RollupParent__c</stringValue>
+                <stringValue>Account</stringValue>
             </value>
         </inputParameters>
         <nameSegment>Rollup</nameSegment>
@@ -113,7 +113,7 @@
         <connector>
             <targetReference>Add_deleted_record_to_collection</targetReference>
         </connector>
-        <object>RollupChild__c</object>
+        <object>ContactRequest</object>
         <recordTriggerType>Delete</recordTriggerType>
         <triggerType>RecordBeforeDelete</triggerType>
     </start>
@@ -124,6 +124,6 @@
         <isCollection>true</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
-        <objectType>RollupChild__c</objectType>
+        <objectType>ContactRequest</objectType>
     </variables>
 </Flow>
