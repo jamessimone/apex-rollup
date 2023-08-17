@@ -204,7 +204,7 @@ public without sharing class RollupCalcItemReplacer {
     Boolean hasOwnerPrepolulated = populatedFields.containsKey('Owner');
     Boolean hasTypePrepopulated = populatedFields.containsKey('Type');
 
-    if (optionalWhereClauses?.isEmpty() != false) {
+    if (optionalWhereClauses.isEmpty()) {
       return calcItems;
     } else if (hasOwnerClause && hasOwnerPrepolulated && hasTypeClause == false) {
       return calcItems;
