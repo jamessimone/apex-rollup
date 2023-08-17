@@ -7,19 +7,20 @@
  */
 public without sharing class RollupCalcItemReplacer {
   private final RollupControl__mdt control;
-  private final Set<Rollup__mdt> processedMetadata;
-  private final Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator> metaToEval;
-  private final Map<SObjectType, Set<String>> parentQueryFields;
-  private final Map<SObjectType, Set<String>> baseQueryFields;
+  private final Set<Rollup__mdt> processedMetadata = new Set<Rollup__mdt>();
+  private final Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator> metaToEval = new Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator>();
+  private final Map<String, Set<String>> parentQueryFields = new Map<String, Set<String>>();
+  private final Map<String, Set<String>> baseQueryFields = new Map<String, Set<String>>();
+  private final Map<String, Set<String>> keyToOptionalWhereClauses = new Map<String, Set<String>>();
+  private final Map<SObjectType, Set<String>> typeToAdditionalQueryFields = new Map<SObjectType, Set<String>>();
   private final Set<Integer> calcItemHashCodes = new Set<Integer>();
   private RollupRepository repo;
 
+  private static final String TYPE_FIELD = '.Type';
+  private static final String OWNER = 'Owner.';
+
   public RollupCalcItemReplacer(RollupControl__mdt control) {
     this.control = control;
-    this.processedMetadata = new Set<Rollup__mdt>();
-    this.metaToEval = new Map<Rollup__mdt, RollupEvaluator.WhereFieldEvaluator>();
-    this.parentQueryFields = new Map<SObjectType, Set<String>>();
-    this.baseQueryFields = new Map<SObjectType, Set<String>>();
   }
 
   public static SObject replaceField(SObject target, Schema.SObjectField fieldToken, Object value) {
@@ -68,43 +69,45 @@ public without sharing class RollupCalcItemReplacer {
 
   private Boolean setupRequiresReplacement(List<SObject> calcItems, List<Rollup__mdt> metadata) {
     Boolean localNeedsReplacement = false;
-    if (calcItems?.isEmpty() != false) {
+    if (calcItems?.isEmpty() != false || metadata?.isEmpty() != false) {
       return localNeedsReplacement;
+    }
+    if (this.repo == null) {
+      this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(metadata[0]));
     }
     SObjectType calcType = calcItems[0].getSObjectType();
     for (Rollup__mdt meta : metadata) {
       if (meta.CalcItem__c != calcType.getDescribe().getName()) {
         continue;
       }
-      if (this.repo == null) {
-        this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta));
-      }
 
-      Boolean isPresentInMapAlready = this.metaToEval.containsKey(meta);
+      RollupEvaluator.WhereFieldEvaluator whereEval = this.metaToEval.get(meta);
       Boolean mightNeedReplacement = String.isNotBlank(meta.CalcItemWhereClause__c) || meta.RollupOrderBys__r.isEmpty() == false;
-      if (mightNeedReplacement && isPresentInMapAlready == false) {
-        localNeedsReplacement = true;
-        RollupEvaluator.WhereFieldEvaluator whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
-        Set<String> parentQueryFieldSet = this.parentQueryFields.containsKey(calcType) ? this.parentQueryFields.get(calcType) : new Set<String>();
-        Set<String> baseQueryFieldSet = this.baseQueryFields.containsKey(calcType) ? this.baseQueryFields.get(calcType) : new Set<String>();
+      if (mightNeedReplacement && whereEval == null) {
+        whereEval = RollupEvaluator.getWhereEval(meta.CalcItemWhereClause__c, calcType);
+        this.processWhereClauseForDownstreamEvals(calcType, meta, whereEval);
         for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
-          this.addQueryableFields(orderBy.FieldName__c.trim(), parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
+          this.addQueryableFields(orderBy.FieldName__c.trim(), calcItems[0]);
         }
         for (String queryField : whereEval.getQueryFields()) {
-          this.addQueryableFields(queryField, parentQueryFieldSet, baseQueryFieldSet, calcItems[0]);
+          this.addQueryableFields(queryField, calcItems[0]);
         }
-        this.parentQueryFields.put(calcType, parentQueryFieldSet);
-        this.baseQueryFields.put(calcType, baseQueryFieldSet);
-        localNeedsReplacement = this.parentQueryFields.isEmpty() == false || this.baseQueryFields.isEmpty() == false;
+
+        String sobjectTypeName = '' + calcItems[0].getSObjectType();
+        localNeedsReplacement =
+          this.parentQueryFields.get(sobjectTypeName)?.isEmpty() == false ||
+          this.baseQueryFields.get(sobjectTypeName)?.isEmpty() == false ||
+          this.keyToOptionalWhereClauses.get(OWNER + sobjectTypeName)?.isEmpty() == false ||
+          this.keyToOptionalWhereClauses.get(TYPE_FIELD + sobjectTypeName)?.isEmpty() == false;
         this.metaToEval.put(meta, localNeedsReplacement ? whereEval : null);
-      } else if (isPresentInMapAlready && this.metaToEval.get(meta) != null) {
+      } else if (whereEval != null) {
         localNeedsReplacement = true;
       }
     }
     return localNeedsReplacement;
   }
 
-  private void addQueryableFields(String fieldName, Set<String> parentQueryFieldSet, Set<String> baseQueryFieldSet, SObject calcItem) {
+  private void addQueryableFields(String fieldName, SObject calcItem) {
     if (fieldName.contains('.')) {
       List<String> relationshipFields = fieldName.split('\\.');
       String actualField = relationshipFields.remove(relationshipFields.size() - 1);
@@ -113,22 +116,31 @@ public without sharing class RollupCalcItemReplacer {
         try {
           relativeObject = relativeObject.getSObject(relationshipFields.remove(0));
         } catch (Exception ex) {
-          parentQueryFieldSet.add(fieldName);
+          this.fillField(this.parentQueryFields, '' + calcItem.getSObjectType(), fieldName);
         }
       }
       try {
         relativeObject.get(actualField);
       } catch (Exception ex) {
-        parentQueryFieldSet.add(fieldName);
+        this.fillField(this.parentQueryFields, '' + calcItem.getSObjectType(), fieldName);
       }
     } else {
       // it'd be great to use calcItem.isSet(fieldName) here, but that returns false for null values
       try {
         calcItem.get(fieldName);
       } catch (Exception ex) {
-        baseQueryFieldSet.add(fieldName);
+        this.fillField(this.baseQueryFields, '' + calcItem.getSObjectType(), fieldName);
       }
     }
+  }
+
+  private void fillField(Map<String, Set<String>> keyToFields, String key, String fieldName) {
+    Set<String> fieldNames = keyToFields.get(key);
+    if (fieldNames == null) {
+      fieldNames = new Set<String>();
+      keyToFields.put(key, fieldNames);
+    }
+    fieldNames.add(fieldName);
   }
 
   private List<SObject> potentiallyReplaceMissingBaseFields(List<SObject> calcItems) {
@@ -136,7 +148,7 @@ public without sharing class RollupCalcItemReplacer {
       return calcItems;
     }
     Map<Id, SObject> idToCalcItem = RollupFieldInitializer.Current.createSafeMap(calcItems);
-    Set<String> baseFields = this.baseQueryFields.get(calcItems[0].getSObjectType());
+    Set<String> baseFields = this.baseQueryFields.get('' + calcItems[0].getSObjectType());
     if (baseFields?.isEmpty() == false) {
       SObject firstItem = calcItems[0];
       String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
@@ -156,21 +168,28 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   private List<SObject> potentiallyReplacePolymorphicWhereClauses(List<SObject> calcItems) {
-    for (Rollup__mdt meta : this.metaToEval.keySet()) {
-      calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, meta);
+    if (calcItems.isEmpty() == false) {
+      Map<String, Schema.SObjectField> fieldMap = calcItems[0].getSObjectType().getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
+      for (Rollup__mdt meta : this.metaToEval.keySet()) {
+        calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, meta, fieldMap);
+      }
     }
     return calcItems;
   }
 
-  private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata) {
-    final String typeField = '.Type';
-    final String owner = 'Owner.';
+  private List<SObject> replaceCalcItemsWithPolymorphicWhereClauses(List<SObject> calcItems, Rollup__mdt metadata, Map<String, Schema.SObjectField> fieldMap) {
     // first we check to see if there is a child object where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
-    Boolean hasOwnerClause = metadata.CalcItemWhereClause__c?.contains(owner) == true;
-    Boolean hasTypeClause = metadata.CalcItemWhereClause__c?.contains(typeField) == true;
     SObjectType sObjectType = firstItem.getSObjectType();
-    Map<String, Schema.SObjectField> fieldMap = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
+    Set<String> optionalWhereClauses = this.keyToOptionalWhereClauses.get(OWNER + sObjectType);
+    if (optionalWhereClauses == null) {
+      optionalWhereClauses = new Set<String>();
+    }
+    Boolean hasOwnerClause = optionalWhereClauses.isEmpty() == false;
+    Boolean hasTypeClause = this.keyToOptionalWhereClauses.containsKey(TYPE_FIELD + sObjectType);
+    if (hasTypeClause) {
+      optionalWhereClauses.addAll(this.keyToOptionalWhereClauses.get(TYPE_FIELD + sObjectType));
+    }
     Boolean hasPolymorphicFields = hasOwnerClause || hasTypeClause || fieldMap.get(metadata.LookupFieldOnCalcItem__c)?.getDescribe().isNamePointing() == true;
 
     if (hasPolymorphicFields == false) {
@@ -182,19 +201,10 @@ public without sharing class RollupCalcItemReplacer {
 
     // the child object where clause contains at least one polymorphic field, but before re-querying we validate whether or not the fields are already provided
     Map<String, Object> populatedFields = firstItem.getPopulatedFieldsAsMap();
-    List<String> optionalWhereClauses = new List<String>();
-    Set<String> additionalQueryFields = new Set<String>();
-    if (this.metaToEval.containsKey(metadata)) {
-      RollupEvaluator.WhereFieldEvaluator eval = this.metaToEval.get(metadata);
-      if (eval != null) {
-        this.processWhereClauseForDownstreamEvals(optionalWhereClauses, additionalQueryFields, sObjectType, typeField, owner, metadata, eval);
-      }
-    }
-
     Boolean hasOwnerPrepolulated = populatedFields.containsKey('Owner');
     Boolean hasTypePrepopulated = populatedFields.containsKey('Type');
 
-    if (optionalWhereClauses.isEmpty()) {
+    if (optionalWhereClauses?.isEmpty() != false) {
       return calcItems;
     } else if (hasOwnerClause && hasOwnerPrepolulated && hasTypeClause == false) {
       return calcItems;
@@ -205,7 +215,7 @@ public without sharing class RollupCalcItemReplacer {
     } else if (hasTypeClause && hasTypePrepopulated == false && hasOwnerClause == false) {
       Boolean hasAllSoughtFields = true;
       for (String whereClause : optionalWhereClauses) {
-        hasAllSoughtFields = hasAllSoughtFields && this.hasSoughtField(typeField, whereClause, firstItem);
+        hasAllSoughtFields = hasAllSoughtFields && this.hasSoughtField(TYPE_FIELD, whereClause, firstItem);
         if (hasAllSoughtFields == false) {
           break;
         }
@@ -215,6 +225,7 @@ public without sharing class RollupCalcItemReplacer {
       }
     }
 
+    Set<String> additionalQueryFields = this.typeToAdditionalQueryFields.get(sObjectType);
     for (String fieldName : populatedFields.keySet()) {
       if (fieldMap.containsKey(fieldName)) {
         additionalQueryFields.add(fieldName);
@@ -233,24 +244,30 @@ public without sharing class RollupCalcItemReplacer {
     return calcItems;
   }
 
-  private void processWhereClauseForDownstreamEvals(
-    List<String> optionalWhereClauses,
-    Set<String> additionalQueryFields,
-    SObjectType sObjectType,
-    String typeField,
-    String owner,
-    Rollup__mdt metadata,
-    RollupEvaluator.WhereFieldEvaluator whereEval
-  ) {
+  private void processWhereClauseForDownstreamEvals(Schema.SObjectType sObjectType, Rollup__mdt metadata, RollupEvaluator.WhereFieldEvaluator whereEval) {
     for (String whereClause : whereEval.getWhereClauses()) {
-      if (whereClause.contains(typeField) || whereClause.contains(owner)) {
+      Boolean hasTypeField = whereClause.contains(TYPE_FIELD);
+      Boolean hasOwnerField = whereClause.contains(OWNER);
+      if (hasTypeField || hasOwnerField) {
         // "consume" the metadata where clause for downstream evaluators
         List<String> splitWheres = whereClause.split(' ');
         if (splitWheres.size() > 0) {
+          Set<String> additionalQueryFields = this.typeToAdditionalQueryFields.get(sObjectType);
+          if (additionalQueryFields == null) {
+            additionalQueryFields = new Set<String>();
+            this.typeToAdditionalQueryFields.put(sObjectType, additionalQueryFields);
+          }
           additionalQueryFields.add(splitWheres[0]);
         }
         metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c.replace(whereClause, '');
-        optionalWhereClauses.add(whereClause);
+        if (hasTypeField) {
+          String key = TYPE_FIELD + sObjectType;
+          this.fillField(this.keyToOptionalWhereClauses, key, whereClause);
+        }
+        if (hasOwnerField) {
+          String key = OWNER + sObjectType;
+          this.fillField(this.keyToOptionalWhereClauses, key, whereClause);
+        }
       }
     }
   }
@@ -259,7 +276,7 @@ public without sharing class RollupCalcItemReplacer {
     if (calcItems.isEmpty()) {
       return;
     }
-    Set<String> parentQueryFields = this.parentQueryFields.get(calcItems[0].getSObjectType());
+    Set<String> parentQueryFields = this.parentQueryFields.get('' + calcItems[0].getSObjectType());
     if (parentQueryFields?.isEmpty() != false) {
       return;
     }
