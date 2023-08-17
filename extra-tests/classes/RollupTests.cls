@@ -2804,7 +2804,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
     Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
-    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 2);
+    Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 4);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',
