@@ -1024,11 +1024,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         childFieldsToAdd.add(orderBy.FieldName__c);
       }
       this.mapFields(this.calcObjectToUniqueFieldNames, roll.calcItemType, childFieldsToAdd);
-
-      if (this.fullRecalcProcessor != null) {
-        this.fullRecalcProcessor.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames;
-        this.fullRecalcProcessor.lookupObjectToUniqueFieldNames = this.lookupObjectToUniqueFieldNames;
-      }
     }
 
     if (this.calcItems != null && this.calcItemReplacer?.hasProcessedMetadata(combinedMeta, this.calcItems) == false) {
