@@ -2607,7 +2607,7 @@ private class RollupFullRecalcTests {
   static void allowsMultipleRollupsToSameFieldWithDifferentBatches() {
     // an interesting one because it's again an implementation detail - this time,
     // of the batch "caboose" process. if the full recalc is BELOW the batch limit,
-    // the queueable will already correctly handle everything since the shared parent field will only be reset once
+    // the queueable will already correctly handle everything since the shared parent field will only be reset once.
     // batch processes, on the other hand, would otherwise simply see the existing value on the parent as something
     // that needs to be cleared out
     Rollup.defaultControl = new RollupControl__mdt(
@@ -2638,6 +2638,15 @@ private class RollupFullRecalcTests {
           RollupFieldOnLookupObject__c = 'AnnualRevenue'
         ),
         new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'MIN',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'NumberOfEmployees'
+        ),
+        new Rollup__mdt(
           CalcItem__c = 'Opportunity',
           LookupFieldOnCalcItem__c = 'AccountId',
           RollupFieldOnCalcItem__c = 'Amount',
@@ -2656,8 +2665,9 @@ private class RollupFullRecalcTests {
       [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
       'Test requires batch apex to have been the full recalc mechanism'
     );
-    parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id];
     Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in batch recalc');
+    Assert.areEqual(25, parent.NumberOfEmployees, 'Additional field on parent should have been queried successfully in second rollup');
   }
 
   @IsTest
