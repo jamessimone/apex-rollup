@@ -207,7 +207,9 @@ Rollup Control CMDT (`RollupControl__mdt`) is used to establish limits on Rollup
 
 - if you're using the CMDT trigger-based approach highlighted above to manage your rollups, you can tie the `Rollup Control` record to an individual `Rollup__mdt` record
 - if you're using an invocable/scheduled/custom Apex-based approach, you can use specific patterns to match on the rollup being performed - see `Trigger Or Invocable Name` below
-- you can use the included Rollup Control with API Name `Org_Defaults` to specify master-level overrides for all your rollups
+- you can use the included Rollup Control with API Name `Org_Defaults` to specify master-level overrides for all your rollups.
+
+**Special note on the Org Default rollup control record** - whenever you upgrade the version of Apex Rollup you're using, any values you've customized on the Org Default will be overwritten. If you aren't customizing the values, or if updating the values back doesn't bother you, this won't be an issue. Otherwise, it can be helpful to use the Org Default record as a _starting point_ for your own Rollup Control record(s) so that the control record(s) you end up using don't get updated when you update Apex Rollup.
 
 These are the fields on the `Rollup Control` custom metadata type:
 
