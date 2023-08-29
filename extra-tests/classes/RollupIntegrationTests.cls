@@ -1672,6 +1672,52 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void recursivelyUpdatesEntireHierarchy() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
+    Rollup.shouldFlattenAsyncProcesses = true;
+    Rollup.onlyUseMockMetadata = true;
+    RollupLimits.stubAsyncTimeoutInterval = 1;
+    Account ultimateParent = [SELECT Id FROM Account];
+
+    Account penultimateChildOne = new Account(Name = 'Penultimate Child 1', ParentId = ultimateParent.Id);
+    Account penultimateChildTwo = new Account(Name = 'Penultimate Child 2', ParentId = ultimateParent.Id);
+    insert new List<Account>{ penultimateChildOne, penultimateChildTwo };
+
+    Account ultimateChildOne = new Account(Name = 'Ultimate child 1', ParentId = penultimateChildOne.Id, AnnualRevenue = 3);
+    Account ultimateChildTwo = new Account(Name = 'Ultimate child 2', ParentId = penultimateChildOne.Id, AnnualRevenue = 2);
+    Account ultimateChildThree = new Account(Name = 'Ultimate child 3', ParentId = penultimateChildTwo.Id, AnnualRevenue = 5);
+    Account ultimateChildFour = new Account(Name = 'Ultimate child 4', ParentId = penultimateChildTwo.Id, AnnualRevenue = 5);
+    List<Account> accounts = new List<Account>{ ultimateChildOne, ultimateChildTwo, ultimateChildThree, ultimateChildFour };
+    insert accounts;
+
+    Rollup.records = accounts;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'AnnualRevenue',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'Account'
+      )
+    };
+
+    // don't wrap in start/stopTest to prove this is all capable of running sync
+    Rollup.runFromTrigger();
+
+    penultimateChildOne = [SELECT AnnualRevenue FROM Account WHERE Id = :penultimateChildOne.Id];
+    Assert.areEqual(5, penultimateChildOne.AnnualRevenue);
+    penultimateChildTwo = [SELECT AnnualRevenue FROM Account WHERE Id = :penultimateChildTwo.Id];
+    Assert.areEqual(10, penultimateChildTwo.AnnualRevenue);
+    ultimateParent = [SELECT AnnualRevenue FROM Account WHERE Id = :ultimateParent.Id];
+    Assert.areEqual(15, ultimateParent.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldRunSyncWhenFlaggedOnRollupLimit() {
     Account acc = [SELECT Id FROM Account];
 

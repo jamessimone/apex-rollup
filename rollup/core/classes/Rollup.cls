@@ -53,7 +53,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   // Lazy-load section. Lots of additional lines, but with the benefit that we keep the heap size down for instances of Rollup
   // that never reference these variables
-  @TestVisible
   private static final Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS {
     get {
       if (CACHED_APEX_OPERATIONS == null) {
@@ -464,6 +463,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     if (ref != null) {
       props.put(key, JSON.serializePretty(ref));
     }
+  }
+
+  protected void cleanupStaticVars() {
+    Rollup.records = null;
+    Rollup.oldRecordsMap = null;
   }
 
   /**
