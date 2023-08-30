@@ -1976,19 +1976,47 @@ private class RollupIntegrationTests {
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRun = true;
-    RollupAsyncProcessor.shouldRunAsBatch = true;
 
-    Exception ex;
     try {
       Test.startTest();
       Rollup.maxFromApex(Task.ActivityDate, Task.WhatId, Account.Id, Account.BillingAddress, Account.SObjectType).runCalc();
       Test.stopTest();
-    } catch (Exception e) {
-      ex = e;
+      Assert.fail('Exception should be thrown above');
+    } catch (Exception ex) {
+      System.assertEquals('Calculation not defined for parent field: BillingAddress and op: MAX', ex.getMessage());
     }
+  }
 
-    System.assertNotEquals(null, ex);
-    System.assertEquals('Calculation not defined for parent field: BillingAddress and op: MAX', ex.getMessage());
+  @IsTest
+  static void throwsExceptionWhenSuppliedRollupFieldIsInvalid() {
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+
+    try {
+      Rollup.runFromApex(
+          new List<Rollup__mdt>{
+            new Rollup__mdt(
+              CalcItem__c = 'Task',
+              RollupFieldOnCalcItem__c = 'CreatedDate',
+              LookupFieldOnCalcItem__c = 'WhatId',
+              LookupObject__c = 'Account',
+              LookupFieldOnLookupObject__c = 'Id',
+              RollupFieldOnLookupObject__c = 'Typo__c ',
+              RollupOperation__c = 'MAX'
+            )
+          },
+          null,
+          new List<Task>{ new Task(ActivityDate = System.today()) },
+          new Map<Id, SObject>()
+        )
+        .runCalc();
+      Assert.fail('Exception should be thrown above');
+    } catch (Exception ex) {
+      System.assertEquals(
+        true,
+        ex.getMessage().contains('At least one of the following values is null when it should not be. Check your rollup configs for possible misspellings')
+      );
+    }
   }
 
   /** Invocable integration tests */
@@ -2167,14 +2195,12 @@ private class RollupIntegrationTests {
     // it's a date field - you tell ME why this query is invalid!
     String veryBadQuery = 'SELECT MAX(ActivityDate) FROM Task';
 
-    Exception ex;
     try {
       Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, 'Account', null);
-    } catch (Exception e) {
-      ex = e;
+      Assert.fail('Exception should be thrown above');
+    } catch (Exception ex) {
+      Assert.isTrue(ex.getMessage().contains('field ActivityDate does not support aggregate operator MAX'));
     }
-
-    System.assertNotEquals(null, ex);
   }
 
   @IsTest

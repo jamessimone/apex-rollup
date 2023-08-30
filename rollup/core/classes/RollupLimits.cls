@@ -7,6 +7,9 @@ public without sharing class RollupLimits {
   private static Integer stubAsyncTimeoutInterval;
 
   private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 1500;
+  private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
+  private static final Integer LIMIT_QUERY_ROWS = 50000;
+
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS {
     get {
       if (ASYNC_TIMEOUT_INTERVAL_MS == null) {
@@ -16,9 +19,6 @@ public without sharing class RollupLimits {
     }
     set;
   }
-
-  private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
-  private static final Integer LIMIT_QUERY_ROWS = 50000;
 
   private static final Boolean HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT {
     get {

@@ -285,7 +285,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.isNoOp = isBasicNoOp;
     }
 
-    String rollupProcessId = this.getNoProcessId();
+    String rollupProcessId = 'no-op';
     String logMessage;
     if (this.isNoOp) {
       logMessage = 'no-op, exiting early to avoid burning async job';
@@ -294,6 +294,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
     } else if (syncRollups.isEmpty() == false) {
+      rollupProcessId = this.getNoProcessId();
       this.logger.log('about to process sync rollups', System.LoggingLevel.INFO);
       this.process(syncRollups);
       this.logger.log('finished sync rollups', System.LoggingLevel.INFO);

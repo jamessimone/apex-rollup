@@ -2715,6 +2715,18 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       SObjectField lookupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.LookupFieldOnLookupObject__c);
       SObjectField rollupFieldOnOpObject = init.getSObjectFieldByName(lookupItemFields, rollupMetadata.RollupFieldOnLookupObject__c);
 
+      if (rollupFieldOnCalcItem == null || calcLookupField == null || lookupFieldOnOpObject == null || rollupFieldOnOpObject == null) {
+        Map<String, String> errorMap = new Map<String, String>{
+          'Child rollup field' => '' + rollupFieldOnCalcItem,
+          'Child lookup field' => '' + calcLookupField,
+          'Parent lookup field' => '' + lookupFieldOnOpObject,
+          'Parent rollup field' => '' + rollupFieldOnOpObject
+        };
+        throw new System.IllegalArgumentException(
+          'At least one of the following values is null when it should not be. Check your rollup configs for possible misspellings: ' + JSON.serialize(errorMap)
+        );
+      }
+
       if (isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c)) || rollupMetadata.GroupByFields__c != null) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
