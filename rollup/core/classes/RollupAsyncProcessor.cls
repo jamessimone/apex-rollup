@@ -285,7 +285,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.isNoOp = isBasicNoOp;
     }
 
-    String rollupProcessId = this.getNoProcessId();
+    String rollupProcessId = 'no-op';
     String logMessage;
     if (this.isNoOp) {
       logMessage = 'no-op, exiting early to avoid burning async job';
@@ -294,13 +294,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
     } else if (syncRollups.isEmpty() == false) {
+      rollupProcessId = this.getNoProcessId();
       this.logger.log('about to process sync rollups', System.LoggingLevel.INFO);
       this.process(syncRollups);
-      logMessage = 'finished running sync rollups';
-      if (this.rollups.isEmpty()) {
-        rollupProcessId = logMessage;
-      }
-    } else {
+      this.logger.log('finished sync rollups', System.LoggingLevel.INFO);
+    } else if (this.rollups.isEmpty() == false || this instanceof RollupFullRecalcProcessor) {
       Integer totalCountOfRecords = this.getLookupRecordsCount(this.rollups);
       shouldRunAsBatch =
         shouldRunAsBatch ||
@@ -369,11 +367,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else {
         roll = this;
       }
-    } else if (canEnqueue && (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false)) {
+    } else if (canEnqueue && (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false) && (this instanceof QueueableProcessor) == false) {
       roll = new QueueableProcessor(this);
     } else if (canEnqueue) {
       roll = this.rollupControl.IsDevEdOrTrialOrg__c && this.stackDepth >= 4 ? new RollupAsyncProcessor(this) : this;
     }
+
     if (roll?.isNoOp != false && (roll instanceof RollupFullRecalcProcessor) == false) {
       roll = new NoOpProcessor(this.invokePoint);
     }
@@ -698,8 +697,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
     }
-    this.getDML().updateRecords();
     this.cleanup();
+    this.getDML().updateRecords();
     this.populateOtherDeferredRollups();
     this.processDeferredRollups();
   }
@@ -1423,5 +1422,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupEvaluator.clearConditionCache();
     CACHED_CALC_ITEM_LOOKUPS = null;
     this.uniqueParentFields.clear();
+    this.cleanupStaticVars();
+    this.getCachedApexOperations().clear();
   }
 }

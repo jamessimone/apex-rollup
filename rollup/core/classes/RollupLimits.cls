@@ -3,12 +3,22 @@ public without sharing class RollupLimits {
   private static Integer stubbedQueryRows;
   @TestVisible
   private static Integer orgAsyncJobsUsed;
+  @TestVisible
+  private static Integer stubAsyncTimeoutInterval;
 
   private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 1500;
-  private static final Integer ASYNC_TIMEOUT_INTERVAL_MS = 13000;
-
   private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
   private static final Integer LIMIT_QUERY_ROWS = 50000;
+
+  private static final Integer ASYNC_TIMEOUT_INTERVAL_MS {
+    get {
+      if (ASYNC_TIMEOUT_INTERVAL_MS == null) {
+        ASYNC_TIMEOUT_INTERVAL_MS = stubAsyncTimeoutInterval == null ? 13000 : stubAsyncTimeoutInterval;
+      }
+      return ASYNC_TIMEOUT_INTERVAL_MS;
+    }
+    set;
+  }
 
   private static final Boolean HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT {
     get {

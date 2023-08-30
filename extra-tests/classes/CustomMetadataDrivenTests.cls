@@ -160,10 +160,6 @@ private class CustomMetadataDrivenTests {
 
     grandparentTwo = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentTwo.Id];
     System.assertEquals(child.NumberField__c, grandparentTwo.AmountfromChildren__c);
-    System.assertEquals(
-      new Set<TriggerOperation>{ TriggerOperation.AFTER_INSERT, TriggerOperation.AFTER_UPDATE },
-      Rollup.CACHED_APEX_OPERATIONS.get(RollupChild__c.SObjectType)
-    );
   }
 
   @IsTest
