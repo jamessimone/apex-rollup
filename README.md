@@ -414,7 +414,7 @@ While the base architecture for retrieving grand(or greater)parent items has no 
 <details>
   <summary>Click for all Apex info</summary>
 
-If the CMDT-based or other solutions won't cut it and you need more customizability, there's an extensive API surface exposed by Apex Rollup using public static helper methods:
+If the CMDT-based or other solutions won't cut it and you need more customizability, there's an extensive API surface exposed by Apex Rollup using global static helper methods:
 
 ```java
 // you can batch rollup operations into one!
@@ -422,17 +422,6 @@ Rollup.batch(
   Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
   Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
 );
-
-// you could even batch multiple batches (not sure why you would do this, but it's technically supported!!)
-Rollup.batch(
-  Rollup.batch(
-    // ... it's batches all the way down!
-    Rollup.countDistinctFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.NumberOfEmployees, Account.SObjectType),
-    Rollup.sumFromApex(Opportunity.Amount, Opportunity.AccountId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
-  ),
-  // don't actually do this, please
-  Rollup.average(Opportunity.CloseDate, Opportunity.Id, Lead.ConvertedDate, Lead.ConvertedOpportunityId, Lead.SObjectType)
-)
 ```
 
 **Note** - the invocable-based Apex methods are not documented here. I have only changed an invocable method's signature twice in the history of this project, but because it _has_ happened, it probably will happen again. Otherwise, the APIs represented here are stable; I can't promise the same of the Invocable methods, but you are free to use them so long as you keep in mind that you may need to update any methods calling the static Invocable methods (outside of Flow/PB) if they are referenced within your Apex code.
