@@ -385,10 +385,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       super(invokePoint);
     }
 
-    public override String runCalc() {
-      return this.beginAsyncRollup();
-    }
-
     protected override String beginAsyncRollup() {
       return new Rollup(this.invokePoint).runCalc();
     }
