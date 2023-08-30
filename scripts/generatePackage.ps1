@@ -22,7 +22,7 @@ function Invoke-Extra-Code-Coverage-Prep() {
 
   Write-Host "Copying rollup tests to gitignored $extraCodeCoveragePath directory"
 
-  $fileNames = "RollupTestUtils","RollupTests","RollupEvaluatorTests","RollupRelationshipFieldFinderTests","RollupLoggerTests","RollupQueryBuilderTests","RollupRecursionItemTests"
+  $fileNames = "RollupTestUtils","RollupTests","RollupEvaluatorTests","RollupFlowTests","RollupRelationshipFieldFinderTests","RollupLoggerTests","RollupQueryBuilderTests","RollupRecursionItemTests"
   foreach ($fileName in $fileNames) {
     Copy-Item "extra-tests/classes/$fileName.cls" $extraCodeCoveragePath
     Copy-Item "extra-tests/classes/$fileName.cls-meta.xml" $extraCodeCoveragePath

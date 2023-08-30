@@ -3,22 +3,26 @@
     <testClassName>CustomMetadataDrivenTests</testClassName>
     <testClassName>InvocableDrivenTests</testClassName>
     <testClassName>RollupCalcItemReplacerTests</testClassName>
+    <testClassName>RollupCalcItemSorterTests</testClassName>
     <testClassName>RollupCalculatorTests</testClassName>
     <testClassName>RollupCurrencyInfoTests</testClassName>
     <testClassName>RollupDateLiteralTests</testClassName>
     <testClassName>RollupEvaluatorTests</testClassName>
     <testClassName>RollupFieldInitializerTests</testClassName>
     <testClassName>RollupFinalizerTests</testClassName>
-    <testClassName>RollupCalcItemSorterTests</testClassName>
     <testClassName>RollupFlowBulkProcessorTests</testClassName>
     <testClassName>RollupFlowFullRecalcDispatcherTests</testClassName>
+    <testClassName>RollupFlowTests</testClassName>
     <testClassName>RollupFullRecalcTests</testClassName>
     <testClassName>RollupIntegrationTests</testClassName>
+    <testClassName>RollupLimitsTest</testClassName>
     <testClassName>RollupLoggerTests</testClassName>
+    <testClassName>RollupMultiCurrencyTests</testClassName>
     <testClassName>RollupParentResetProcessorTests</testClassName>
     <testClassName>RollupQueryBuilderTests</testClassName>
     <testClassName>RollupRecursionItemTests</testClassName>
     <testClassName>RollupRelationshipFieldFinderTests</testClassName>
+    <testClassName>RollupRepositoryTests</testClassName>
     <testClassName>RollupSObjectUpdaterTests</testClassName>
     <testClassName>RollupTests</testClassName>
     <testClassName>RollupTestUtils</testClassName>
