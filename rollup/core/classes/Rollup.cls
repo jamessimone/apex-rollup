@@ -2310,7 +2310,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Boolean shouldQueue =
       wrappedMeta.recordCount != RollupRepository.SENTINEL_COUNT_VALUE &&
       wrappedMeta.recordCount < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
-    if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp) {
+    if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp && control.ShouldSkipResettingParentFields__c == false) {
       return parentResetProcessor;
     } else if (
       (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC && invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) ||
@@ -3061,7 +3061,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         // and the old value wouldn't have been excluded, pass it on through
         // to be handled further downstream
         results.matchingItemIds.add(item.Id);
-      } else if (metadata?.IsFullRecordSet__c == true) {
+      } else if (metadata.IsFullRecordSet__c == true) {
+        results.matchingItemIds.add(item.Id);
+      } else if (metadata.FullRecalculationDefaultNumberValue__c != null || metadata.FullRecalculationDefaultStringValue__c != null) {
         results.matchingItemIds.add(item.Id);
       }
     }

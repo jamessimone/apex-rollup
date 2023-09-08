@@ -484,6 +484,33 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldOverrideNumberBasedDefaultForNonMatches() {
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 100) });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'ContactPointAddress',
+        FullRecalculationDefaultNumberValue__c = 0,
+        CalcItemWhereClause__c = 'PreferenceRank != 100'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should use the default override even for a non-match');
+  }
+
+  @IsTest
   static void shouldOverrideStringBasedDefaultBasedOnMetadata() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'A') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{

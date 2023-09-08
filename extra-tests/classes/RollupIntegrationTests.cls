@@ -2,7 +2,8 @@
 private class RollupIntegrationTests {
   @TestSetup
   static void setup() {
-    Account acc = new Account(Name = RollupIntegrationTests.class.getName());
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = new Account(Name = RollupIntegrationTests.class.getName(), Phone = '9999999999');
     insert acc;
 
     acc.AccountIdText__c = acc.Id;
@@ -1640,6 +1641,48 @@ private class RollupIntegrationTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
+  }
+
+  @IsTest
+  static void allowsMultipleRollupsToOperateOnSameParentField() {
+    Account acc = [SELECT Id, Phone, OwnerId FROM Account];
+    Assert.areEqual('9999999999', acc.Phone, 'Test has started under the wrong conditions!');
+    String winningPhone = '5555555555';
+    insert new Contact(LastName = 'Second child object', Phone = winningPhone, OwnerId = acc.OwnerId);
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Phone',
+        LookupObject__c = 'User',
+        LookupFieldOnCalcItem__c = 'OwnerId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'MAX',
+        CalcItem__c = 'Account',
+        AssociatedRollupKey__c = 'UserAboutMe'
+      ),
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Phone',
+        LookupObject__c = 'User',
+        LookupFieldOnCalcItem__c = 'OwnerId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'MAX',
+        CalcItem__c = 'Contact',
+        AssociatedRollupKey__c = 'UserAboutMe'
+      )
+    };
+
+    Test.startTest();
+    acc.Phone = '0';
+    update acc;
+    Test.stopTest();
+
+    User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId];
+    Assert.isNotNull(updatedUser.AboutMe);
+    // TODO uncomment and finish
+    // Assert.areEqual(winningPhone, updatedUser.AboutMe);
   }
 
   @IsTest
