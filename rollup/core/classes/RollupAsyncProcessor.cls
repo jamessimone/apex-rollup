@@ -1419,7 +1419,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void cleanup() {
-    RollupEvaluator.clearConditionCache();
+    RollupEvaluator.clearCache();
     CACHED_CALC_ITEM_LOOKUPS = null;
     this.uniqueParentFields.clear();
     this.cleanupStaticVars();

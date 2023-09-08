@@ -71,8 +71,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return getCombinedEvals(evals);
   }
 
-  public static void clearConditionCache() {
+  public static void clearCache() {
     CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
+    OPERATION_TO_RECURSION_TRACKER = null;
   }
 
   private static Rollup.Evaluator getCombinedEvals(List<Rollup.Evaluator> evals) {
@@ -900,9 +901,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadataKey);
         RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata, recursionTracker.stackCount);
 
-        if (recursionTracker.recursionItems.contains(rollupItem) == false) {
+        if (recursionTracker?.recursionItems.contains(rollupItem) == false) {
           recursionTracker.recursionItems.add(rollupItem);
-        } else if (recursionTracker.stackCount > 0 && recursionTracker.recursionItems.contains(rollupItem)) {
+        } else if (recursionTracker != null && recursionTracker.stackCount > 0 && recursionTracker.recursionItems.contains(rollupItem)) {
           matches = false;
         }
       }
