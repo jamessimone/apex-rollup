@@ -625,7 +625,9 @@ private class RollupTests {
 
     ContactPointAddress cpa = new ContactPointAddress(Name = 'RollupZ', ParentId = acc.Id, PreferenceRank = 50);
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = 'something else', ParentId = acc.Id) };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{
+      cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = 'something else', ParentId = acc.Id, PreferenceRank = 50)
+    };
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'PreferenceRank',
@@ -639,8 +641,8 @@ private class RollupTests {
         CalcItem__c = 'ContactPointAddress'
       )
     };
-
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
     Test.startTest();
     Rollup.runFromTrigger();
     Test.stopTest();

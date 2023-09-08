@@ -545,9 +545,9 @@ public without sharing abstract class RollupCalculator {
         return newVal;
       } else if (this.isReparented(calcItem, oldCalcItem)) {
         return matchesCurrent ? newVal : 0;
-      } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false) {
+      } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false && this.isFullRecalc == false) {
         return newVal;
-      } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false) {
+      } else if (matchesCurrent == false && matchesOld && this.isChangedFieldCalc == false && this.isFullRecalc == false) {
         return oldVal * Decimal.valueOf(-1).setScale(oldVal.scale());
       }
 
