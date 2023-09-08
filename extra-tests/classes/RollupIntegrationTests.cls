@@ -1659,8 +1659,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'MAX',
-        CalcItem__c = 'Account',
-        AssociatedRollupKey__c = 'UserAboutMe'
+        CalcItem__c = 'Account'
       ),
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Phone',
@@ -1669,8 +1668,7 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'MAX',
-        CalcItem__c = 'Contact',
-        AssociatedRollupKey__c = 'UserAboutMe'
+        CalcItem__c = 'Contact'
       )
     };
 
