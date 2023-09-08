@@ -12,6 +12,7 @@
     <testClassName>RollupFinalizerTests</testClassName>
     <testClassName>RollupFlowBulkProcessorTests</testClassName>
     <testClassName>RollupFlowFullRecalcDispatcherTests</testClassName>
+    <testClassName>RollupFlowFullRecalcTests</testClassName>
     <testClassName>RollupFlowTests</testClassName>
     <testClassName>RollupFullRecalcTests</testClassName>
     <testClassName>RollupIntegrationTests</testClassName>

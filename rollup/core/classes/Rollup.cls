@@ -1587,9 +1587,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     Set<String> uniqueFieldNames = new Set<String>();
-    RollupRepository.PermissionLevel accessLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
+    RollupRepository.PermissionLevel permissionLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
-      accessLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
+      permissionLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
       RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(rollupInfo.CalcItemWhereClause__c)
         ? null
         : RollupEvaluator.getWhereEval(rollupInfo.CalcItemWhereClause__c, sObjectType);
@@ -1620,7 +1620,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // getting the items back from the database before putting them into the map is an important step
     // we COULD just initialize the map with the query, but then the map's .values() list doesn't return
     // anything for .getSObjectType() - which we need, further downstream
-    List<SObject> cdcCalcItems = new RollupRepository(accessLevel).setQuery(queryString).setArg(updatedRecordIds).get();
+    List<SObject> cdcCalcItems = new RollupRepository(permissionLevel).setQuery(queryString).setArg(updatedRecordIds).get();
     Map<Id, SObject> cdcCalcItemsMap = new Map<Id, SObject>(cdcCalcItems);
 
     Rollup rollupToReturn = runFromApex(matchingMetadata, null, cdcCalcItems, cdcCalcItemsMap);
