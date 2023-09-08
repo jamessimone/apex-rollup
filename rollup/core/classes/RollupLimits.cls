@@ -59,7 +59,7 @@ public without sharing class RollupLimits {
     }
     public Boolean hasExceededHeapSizeLimit {
       get {
-        return (LIMIT_HEAP_SIZE - 2000) < Limits.getHeapSize();
+        return (LIMIT_HEAP_SIZE - 2000000) < Limits.getHeapSize();
       }
     }
     public Boolean hasExceededDMLRowLimit {
