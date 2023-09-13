@@ -18,7 +18,7 @@
     "@salesforce/eslint-config-lwc": "latest",
     "@salesforce/eslint-plugin-lightning": "latest",
     "@salesforce/sfdx-lwc-jest": "0.12.5",
-    "@salesforce/sfdx-scanner": "3.10.0",
+    "@salesforce/sfdx-scanner": "3.16.0",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "husky": "latest",
