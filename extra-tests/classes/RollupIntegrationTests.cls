@@ -1603,8 +1603,8 @@ private class RollupIntegrationTests {
   @IsTest
   static void limitsCorrectlyOnUpdate() {
     Account acc = [SELECT Id FROM Account];
-    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
-    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'A');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'B');
     insert new List<ContactPointAddress>{ cpa, two };
 
     Rollup.records = new List<ContactPointAddress>{ two };
@@ -1615,6 +1615,7 @@ private class RollupIntegrationTests {
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
       .addLimit(1, ContactPointAddress.PreferenceRank)
+      .addOrderBys(new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Name', Ranking__c = 1) }, ContactPointAddress.PreferenceRank)
       .runCalc();
     Test.stopTest();
 
