@@ -634,7 +634,9 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void setReturnValue() {
-      this.returnVal = this.returnDecimal;
+      if (this.shouldTriggerFullRecalc == false) {
+        this.returnVal = this.returnDecimal;
+      }
     }
 
     protected virtual override Object calculateNewAggregateValue(Rollup.Op op, List<Object> objIds, SObjectType sObjectType) {
