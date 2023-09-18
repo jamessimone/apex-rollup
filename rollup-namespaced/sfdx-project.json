@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Update layout tab ordering, added friendly error message for misspellings in rollup configuration, optimizations for recursive rollups",
-            "versionNumber": "1.0.49.0",
+            "versionName": "COUNT-based rollup bugfixes",
+            "versionNumber": "1.0.50.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -29,6 +29,7 @@
         "apex-rollup-namespaced@1.0.46-0": "04t6g000008C6l3AAC",
         "apex-rollup-namespaced@1.0.47-0": "04t6g000008C6lcAAC",
         "apex-rollup-namespaced@1.0.48-0": "04t6g000008C6rMAAS",
-        "apex-rollup-namespaced@1.0.49-0": "04t6g000008C6stAAC"
+        "apex-rollup-namespaced@1.0.49-0": "04t6g000008C6stAAC",
+        "apex-rollup-namespaced@1.0.50-0": "04t6g000008C6zbAAC"
     }
 }

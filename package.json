@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.5.84",
+  "version": "1.5.85",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
     "@salesforce/eslint-config-lwc": "latest",
     "@salesforce/eslint-plugin-lightning": "latest",
     "@salesforce/sfdx-lwc-jest": "0.12.5",
-    "@salesforce/sfdx-scanner": "3.10.0",
+    "@salesforce/sfdx-scanner": "3.16.0",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "husky": "latest",
@@ -49,6 +49,7 @@
     "prepare": "husky install && sfdx plugins:link ./node_modules/@salesforce/sfdx-scanner && sfdx plugins:link ./node_modules/@jongpie/sfdx-bummer-plugin",
     "prettier": "prettier",
     "scan": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",
+    "scan:graph": "sfdx scanner:run -e sfge -p . --target 'rollup'",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"

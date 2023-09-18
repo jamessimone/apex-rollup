@@ -480,7 +480,82 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_INSERT');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(100100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original cpaortunity amount to the default override based on CMDT');
+    System.assertEquals(100100, updatedAcc.AnnualRevenue, 'SUM AFTER_INSERT should add the original opp amount to the default override based on CMDT');
+  }
+
+  @IsTest
+  static void shouldOverrideNumberBasedDefaultBasedOnMetadataCount() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Decimal originalValue = 1;
+    acc.AnnualRevenue = originalValue;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = originalValue.intValue());
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'ContactPointAddress',
+        FullRecalculationDefaultNumberValue__c = 0,
+        CalcItemWhereClause__c = 'PreferenceRank != ' + cpa.PreferenceRank
+      )
+    };
+    Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata BEFORE_DELETE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(0, updatedAcc.AnnualRevenue, 'COUNT BEFORE_DELETE should reset to the default override based on CMDT');
+  }
+
+  @IsTest
+  static void shouldNotDoubleCountOnDecrementForMatches() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Decimal originalValue = 3;
+    acc.AnnualRevenue = originalValue;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Amount = 100, Name = 'Will Not Match', CloseDate = System.today().addDays(2), StageName = 'A');
+    insert new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Amount = 1, Name = 'First Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
+      new Opportunity(AccountId = acc.Id, Amount = 2, Name = 'Second Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
+      opp
+    };
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<Opportunity>{ opp });
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Opportunity',
+        IsFullRecordSet__c = true,
+        CalcItemWhereClause__c = 'CloseDate <= TODAY'
+      )
+    };
+    Opportunity oldOpp = opp.clone(true);
+    oldOpp.CloseDate = System.today().addDays(-2);
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ opp.Id => oldOpp };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated based on metadata AFTER_UPDATE');
+    Account updatedAcc = (Account) mock.Records[0];
+    System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT AFTER_UPDATE should properly decrement when one item is updated to not match');
   }
 
   @IsTest
