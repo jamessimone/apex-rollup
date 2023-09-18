@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "versionName": "COUNT-based rollup bugfixes",
-            "versionNumber": "1.5.84.0",
+            "versionNumber": "1.5.85.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,6 +102,7 @@
         "apex-rollup@1.5.81-0": "04t6g000008C6kyAAC",
         "apex-rollup@1.5.82-0": "04t6g000008C6lXAAS",
         "apex-rollup@1.5.83-0": "04t6g000008C6rHAAS",
-        "apex-rollup@1.5.84-0": "04t6g000008C6soAAC"
+        "apex-rollup@1.5.84-0": "04t6g000008C6soAAC",
+        "apex-rollup@1.5.85-0": "04t6g000008C6zWAAS"
     }
 }
