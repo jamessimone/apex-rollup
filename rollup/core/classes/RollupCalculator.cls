@@ -539,10 +539,12 @@ public without sharing abstract class RollupCalculator {
       Decimal oldVal = oldCalcItem != null ? this.getNumericValue(oldCalcItem) : 0;
 
       Boolean matchesCurrent = this.eval?.matches(calcItem) != false;
-      Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false;
+      Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false || oldCalcItem == null;
 
       if (this.isFullRecalc && matchesCurrent) {
         return newVal;
+      } else if (this.isFullRecalc && matchesOld) {
+        return 0;
       } else if (this.isReparented(calcItem, oldCalcItem)) {
         return matchesCurrent ? newVal : 0;
       } else if (matchesCurrent && matchesOld == false && this.isChangedFieldCalc == false && this.isFullRecalc == false) {
@@ -811,7 +813,7 @@ public without sharing abstract class RollupCalculator {
         return matchesCurrent ? 1.00 : 0.00;
       }
 
-      Boolean matchesPrior = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false;
+      Boolean matchesOld = oldCalcItem != null && this.eval?.matches(oldCalcItem) != false || oldCalcItem == null;
 
       // for updates, we have to decrement the count if the value has been cleared out
       Decimal retVal = 0.00;
@@ -820,9 +822,11 @@ public without sharing abstract class RollupCalculator {
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnCalcItem);
       if (this.isFullRecalc && matchesCurrent) {
         retVal = 1.00;
-      } else if (current == null && prior != null || matchesPrior && matchesCurrent == false) {
+      } else if (this.isFullRecalc && matchesOld) {
+        retVal = 0;
+      } else if (current == null && prior != null || matchesOld && matchesCurrent == false) {
         retVal = -1.00;
-      } else if (current != defaultVal && prior == defaultVal || matchesPrior == false && matchesCurrent || current != null && prior == null) {
+      } else if (current != defaultVal && prior == defaultVal || matchesOld == false && matchesCurrent || current != null && prior == null) {
         retVal = 1.00;
       } else if (current == false && prior == true) {
         retVal = -1.00;
