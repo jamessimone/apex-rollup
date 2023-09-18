@@ -1769,6 +1769,37 @@ private class RollupIntegrationTests {
     System.assert(true, 'Should make it here');
   }
 
+  @IsTest
+  static void shouldWorkMultipleOrInWhereClause() {
+    Account acc = [SELECT Id, Name FROM Account];
+
+    insert new List<Opportunity>{
+      new Opportunity(StageName = 'b', CloseDate = System.today(), AccountId = acc.Id, Name = 'a', Amount = 2),
+      new Opportunity(StageName = 'a', CloseDate = System.today(), AccountId = acc.Id, Name = 'b', Amount = 2),
+      new Opportunity(StageName = 'c', CloseDate = System.today().addDays(-2), AccountId = acc.Id, Name = 'c', Amount = 2),
+      new Opportunity(StageName = 'd', CloseDate = System.today().addDays(2), AccountId = acc.Id, Name = 'd', Amount = 2)
+    };
+
+    Test.startTest();
+    Rollup__mdt mdt = new Rollup__mdt(
+      CalcItem__c = 'Opportunity',
+      LookupObject__c = 'Account',
+      RollupFieldOnCalcItem__c = 'StageName',
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      RollupFieldOnLookupObject__c = 'SicDesc',
+      RollupOperation__c = 'LAST',
+      CalcItemWhereClause__c = '(StageName IN (\'a\', \'b\') AND CloseDate = TODAY) OR (StageName = \'d\' AND CloseDate = TODAY)'
+    );
+    Rollup.performFullRecalculation(mdt);
+    Test.stopTest();
+
+    acc = [SELECT SicDesc FROM Account];
+    System.assertEquals('b', acc.SicDesc);
+    // Validate that job ran as queueable - that the where clause was formatted correctly, in other words
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+  }
+
   /** Schedulable tests */
   @IsTest
   static void shouldThrowExceptionForBadQuery() {

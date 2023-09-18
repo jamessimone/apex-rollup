@@ -160,4 +160,17 @@ private class RollupQueryBuilderTests {
 
     System.assertEquals(true, tasks.isEmpty(), 'Should have made it here and query should have been run');
   }
+
+  @IsTest
+  static void properlyFormatsOrWithAndClause() {
+    String whereClause = '(StageName = \'one\' AND CloseDate = TODAY) OR (StageName = \'four\' AND CloseDate = TODAY)';
+
+    String actualQuery = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ 'COUNT()' }, 'Id', '!=', whereClause);
+
+    System.assertEquals(0, Database.countQuery(actualQuery), 'Validation that query is syntactically valid');
+    System.assertEquals(
+      'SELECT count()\nFROM Opportunity\nWHERE Id != :objIds\nAND ((StageName = \'one\' AND CloseDate = TODAY) OR (StageName = \'four\' AND CloseDate = TODAY))',
+      actualQuery
+    );
+  }
 }
