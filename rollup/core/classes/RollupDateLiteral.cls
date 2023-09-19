@@ -997,8 +997,7 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   /**
-   * Week 1 is the first week that has at least 4 days in the current year - yikes!
-   * There can also be a week 53. The sadness.
+   * The first week is from January 1 through January 7.
    */
   private class WeekInYearFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
