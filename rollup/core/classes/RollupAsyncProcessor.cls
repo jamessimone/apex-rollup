@@ -1409,11 +1409,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.rollupControl.ShouldSkipResettingParentFields__c == true && ((localCalcItems.isEmpty() == false && newVal == null) || localCalcItems.isEmpty())) {
       newVal = priorVal;
     }
+    String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
     if (priorVal != newVal) {
-      String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
-      recordsToUpdate.put(key, lookupRecord);
     }
+    recordsToUpdate.put(key, lookupRecord);
     this.storeParentResetField(roll, lookupRecord);
     this.logger.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }

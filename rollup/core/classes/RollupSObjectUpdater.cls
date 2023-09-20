@@ -55,6 +55,7 @@ global without sharing virtual class RollupSObjectUpdater {
       this.performAsyncUpdate(recordsToUpdate);
       return;
     }
+    this.winnowRecords(recordsToUpdate);
     this.splitUpdates(recordsToUpdate);
     // typically I wouldn't advocate for the use of a guard clause here since an empty list
     // getting updated is a no-op, but the addition of the logging item is annoying ...
@@ -66,7 +67,6 @@ global without sharing virtual class RollupSObjectUpdater {
       if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
         dmlOptions.DuplicateRuleHeader.AllowSave = true;
       }
-      this.winnowRecords(recordsToUpdate);
       this.updateRecords(recordsToUpdate, dmlOptions);
       this.dispatch(recordsToUpdate);
     }

@@ -1,5 +1,10 @@
 @IsTest
 private class RollupParentResetProcessorTests {
+  @TestSetup
+  static void setup() {
+    upsert new RollupSettings__c(IsEnabled__c = true);
+  }
+
   @IsTest
   static void shouldNotFailWhenRollupFieldNotFilterable() {
     RollupParentResetProcessor processor = new RollupParentResetProcessor(
@@ -135,7 +140,6 @@ private class RollupParentResetProcessorTests {
 
   @IsTest
   static void skipsTransformWhenDisabled() {
-    upsert new RollupSettings__c(IsEnabled__c = true);
     Rollup.defaultControl = Rollup.getDefaultControl();
     Rollup.defaultControl.ShouldSkipResettingParentFields__c = true;
     Rollup.defaultControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
@@ -153,5 +157,42 @@ private class RollupParentResetProcessorTests {
     Test.stopTest();
 
     System.assertEquals(0, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupParentResetProcessor.class.getName()]);
+  }
+
+  @IsTest
+  static void shouldNotResetWhenParentAlreadyMatchesDuringFullRecalc() {
+    Decimal originalValue = 3;
+    Account acc = new Account(AnnualRevenue = originalValue, Name = 'Should Not Reset');
+    insert acc;
+
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Amount = 100, Name = 'Will Not Match', CloseDate = System.today().addDays(2), StageName = 'A');
+    insert new List<Opportunity>{
+      new Opportunity(AccountId = acc.Id, Amount = originalValue - 1, Name = 'First Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
+      new Opportunity(AccountId = acc.Id, Amount = originalValue - 2, Name = 'Second Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
+      opp
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          RollupFieldOnCalcItem__c = 'Amount',
+          LookupObject__c = 'Account',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          RollupOperation__c = 'SUM',
+          CalcItem__c = 'Opportunity',
+          IsFullRecordSet__c = true,
+          CalcItemWhereClause__c = 'CloseDate <= TODAY'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(originalValue, updatedAcc.AnnualRevenue);
   }
 }
