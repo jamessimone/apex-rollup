@@ -67,7 +67,14 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
     for (SObject parentItem : parentItems) {
       for (Rollup__mdt rollupMeta : this.rollupMetas) {
-        if (this.parentRollupFieldHasBeenReset(rollupMeta, parentItem) == false && parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)) {
+        if (
+          this.parentRollupFieldHasBeenReset(
+            rollupMeta.LookupFieldOnLookupObject__c,
+            parentItem,
+            rollupMeta.LookupObject__c,
+            rollupMeta.RollupFieldOnLookupObject__c
+          ) == false && parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)
+        ) {
           Object resetVal = getDefaultValue(rollupMeta);
           parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, resetVal);
         }

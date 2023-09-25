@@ -1,6 +1,4 @@
 public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful, Database.RaisesPlatformEvents {
-  protected final Set<String> statefulPreviouslyResetParents = new Set<String>();
-
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
@@ -14,12 +12,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
   protected override void performWork() {
     this.process(this.getDelegatedFullRecalcRollups(this.calcItems));
-  }
-
-  protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
-    super.customizeToStringEntries(props);
-    this.addToMap(props, 'Stateful Previously Reset Parents', this.statefulPreviouslyResetParents);
-    return props;
   }
 
   protected override Boolean isBatch() {
@@ -39,9 +31,5 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
   protected virtual override String startAsyncWork() {
     return this.startBatchProcessor();
-  }
-
-  protected override Set<String> getPreviouslyResetParents() {
-    return this.statefulPreviouslyResetParents;
   }
 }

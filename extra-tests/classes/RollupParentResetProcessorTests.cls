@@ -122,8 +122,18 @@ private class RollupParentResetProcessorTests {
     insert new List<SObject>{ new Account(Name = 'Account With Null'), new Contact(LastName = 'Contact With Null') };
     RollupParentResetProcessor processor = new RollupParentResetProcessor(
       new List<Rollup__mdt>{
-        new Rollup__mdt(RollupFieldOnLookupObject__c = 'AnnualRevenue', LookupObject__c = 'Account', FullRecalculationDefaultNumberValue__c = 0),
-        new Rollup__mdt(RollupFieldOnLookupObject__c = 'AccountNumber', LookupObject__c = 'Account', FullRecalculationDefaultStringValue__c = 'a')
+        new Rollup__mdt(
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          FullRecalculationDefaultNumberValue__c = 0
+        ),
+        new Rollup__mdt(
+          RollupFieldOnLookupObject__c = 'AccountNumber',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          FullRecalculationDefaultStringValue__c = 'a'
+        )
       },
       Account.SObjectType,
       'SELECT Id\nFROM Account WHERE Id != null',
