@@ -566,6 +566,7 @@ private class RollupDateLiteralTests {
     comparisonDate = Datetime.newInstance(2020, 12, 22);
     oneWeekBefore = comparisonDate.addDays(-7);
     oneWeekAfter = comparisonDate.addDays(7);
+    // TODO according to SOQL, the below should actually be 51
     weekInYear = RollupDateLiteral.getFunction('WEEK_IN_YEAR(CreatedDate)', '52');
 
     System.assertEquals(true, weekInYear.matches(comparisonDate, '='), weekInYear);

@@ -1663,12 +1663,21 @@ private class RollupFullRecalcTests {
       IsRollupLoggingEnabled__c = true,
       BatchChunkSize__c = 100
     );
-    Account acc = [SELECT Id FROM Account];
+    Account parentA = [SELECT Id FROM Account];
+    Account parentB = new Account(Name = 'Parent B');
+    Account parentC = new Account(Name = 'Parent C');
+    insert new List<SObject>{ parentB, parentC };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'One'),
-      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 2, Name = 'Two'),
-      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 3, Name = 'Three')
+      new ContactPointAddress(ParentId = parentA.Id, PreferenceRank = 1, Name = 'One A', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentB.Id, PreferenceRank = 1, Name = 'One B', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentC.Id, PreferenceRank = 1, Name = 'One C', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentA.Id, PreferenceRank = 2, Name = 'Two A', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentB.Id, PreferenceRank = 2, Name = 'Two B', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentC.Id, PreferenceRank = 2, Name = 'Two C', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentA.Id, PreferenceRank = 3, Name = 'Three A', UsageType = '2'),
+      new ContactPointAddress(ParentId = parentB.Id, PreferenceRank = 3, Name = 'Three B', UsageType = '2'),
+      new ContactPointAddress(ParentId = parentC.Id, PreferenceRank = 3, Name = 'Three C', UsageType = '2')
     };
     insert cpas;
 
@@ -1684,6 +1693,24 @@ private class RollupFullRecalcTests {
           LookupFieldOnLookupObject__c = 'Id',
           RollupFieldOnLookupObject__c = 'AnnualRevenue',
           RollupOperation__c = 'SUM'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+          RollupOperation__c = 'FIRST'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'UsageType',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Description',
+          RollupOperation__c = 'MOST'
         )
       },
       ContactPointAddress.SObjectType,
@@ -1692,13 +1719,17 @@ private class RollupFullRecalcTests {
     );
 
     Test.startTest();
-    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0] });
-    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[1] });
-    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[2] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0], cpas[1], cpas[2] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[3], cpas[4], cpas[5] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[6], cpas[7], cpas[8] });
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
-    System.assertEquals(6, acc.AnnualRevenue, 'Should have included all calc items without double-counting or incorrectly summing');
+    for (Account parent : [SELECT AnnualRevenue, Description, NumberOfEmployees, Name FROM Account]) {
+      System.assertEquals(6, parent.AnnualRevenue, parent);
+      // TODO - add functionality for FIRST/LAST/MOST etc rollups
+      // System.assertEquals(1, parent.NumberOfEmployees, parent);
+      // System.assertEquals('1', parent.Description, parent);
+    }
     System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
   }
 

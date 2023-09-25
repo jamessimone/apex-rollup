@@ -165,7 +165,9 @@ public without sharing class RollupQueryBuilder {
       whereClause = whereClause.replace('()', '');
       whereClause = RollupEvaluator.getWhereEval(whereClause, sObjectType).getSafeQuery();
 
-      if (whereClause.containsIgnoreCase(' or ') && whereClause.containsIgnoreCase(' and ') == false) {
+      if (
+        whereClause.containsIgnoreCase(' or ') && (whereClause.containsIgnoreCase(' and ') == false || whereClause.startsWith('(') && whereClause.endsWith(')'))
+      ) {
         whereClause = '(' + whereClause + ')';
       }
     }

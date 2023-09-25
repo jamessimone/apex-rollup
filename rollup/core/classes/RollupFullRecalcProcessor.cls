@@ -89,8 +89,8 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     }
   }
 
-  public override void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    this.addToPreviouslyResetParents(processor, parent);
+  public override void storeParentResetField(String lookupField, SObject parent) {
+    this.previouslyResetParents.add(String.valueOf(parent.get(lookupField)));
     this.postProcessor?.recordIds.add(parent.Id);
   }
 
@@ -142,7 +142,6 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
     this.addToMap(props, 'Caboose Count', this.cabooses.size());
-
     return props;
   }
 

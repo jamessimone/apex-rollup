@@ -97,7 +97,6 @@ public class RollupSObjectUpdaterTests {
     System.assertEquals(String.valueOf(blobValue), opp.Description);
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   @IsTest
   static void onlyUpdatesRecordsWithRollupChanges() {
     Account acc = new Account(Name = 'Should Not Be Updated');
@@ -105,10 +104,7 @@ public class RollupSObjectUpdaterTests {
     acc = [SELECT Id, LastModifiedDate FROM Account];
     waitSeconds(1);
 
-    List<String> fieldNames = new List<String>{ 'Id' };
-
-    Id accId = acc.Id;
-    new RollupSObjectUpdater().doUpdate(Database.query('SELECT ' + String.join(fieldNames, ',') + ' FROM Account WHERE Id = :accId'));
+    new RollupSObjectUpdater().doUpdate([SELECT Id FROM Account WHERE Id = :acc.Id]);
 
     Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
     System.assertEquals(acc, updatedAccount, 'Last modified date should not have updated if only Id was passed');

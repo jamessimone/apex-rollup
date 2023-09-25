@@ -41,16 +41,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     REPARENTED
   }
 
-  private final Set<String> previouslyResetParents {
-    get {
-      if (previouslyResetParents == null) {
-        previouslyResetParents = new Set<String>();
-      }
-      return previouslyResetParents;
-    }
-    set;
-  }
-
   private Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
     get {
       if (childToUnexpectedFullRecalc == null) {
@@ -77,6 +67,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         deferredRollups = new List<RollupAsyncProcessor>();
       }
       return deferredRollups;
+    }
+    set;
+  }
+
+  protected final Set<String> previouslyResetParents {
+    get {
+      if (previouslyResetParents == null) {
+        previouslyResetParents = new Set<String>();
+      }
+      return previouslyResetParents;
     }
     set;
   }
@@ -153,7 +153,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.stackDepth = innerRollup.stackDepth;
     this.calcItemReplacer = innerRollup.calcItemReplacer;
     this.lookupItems = innerRollup.lookupItems;
-    this.previouslyResetParents.addAll(innerRollup.getPreviouslyResetParents());
+    this.previouslyResetParents.addAll(innerRollup.previouslyResetParents);
   }
 
   // Inner rollup constructor - a rollup solely concerned with calculations
@@ -265,11 +265,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     this.logger.log('finished successfully', context, LoggingLevel.INFO);
     this.logger.save();
-  }
-
-  public virtual void storeParentResetField(RollupAsyncProcessor processor, SObject parent) {
-    this.addToPreviouslyResetParents(processor, parent);
-    this.fullRecalcProcessor?.storeParentResetField(processor, parent);
   }
 
   public virtual override String runCalc() {
@@ -520,7 +515,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       List<SObject> recordsToReset = new List<SObject>();
       for (SObject lookupItem : localLookupItems) {
-        if (this.parentRollupFieldHasBeenReset(rollup, lookupItem) == false) {
+        if (
+          this.parentRollupFieldHasBeenReset(
+            rollup.lookupFieldOnLookupObject.getDescribe().getName(),
+            lookupItem,
+            '' + rollup.lookupObj,
+            '' + rollup.opFieldOnLookupObject
+          ) == false
+        ) {
           recordsToReset.add(lookupItem);
         }
       }
@@ -611,10 +613,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (shouldLimitCalcItemQuery && remainingQueryRowsLeft < outstandingItemCount) {
         rollup.wasConvertedToFullRecalculation = true;
         rollup.metadata.RollupOperation__c = getBaseOperationName(rollup.metadata.RollupOperation__c);
+        // TODO - instead of calling storeParentResetField here, do something else to prevent the parent reset processor from running
+        // based off of wasConvertedToFullRecalculation?
         for (String lookupKey : recordIds) {
           SObject parentResetRecord = rollup.lookupObj.newSObject();
           parentResetRecord.put(rollup.lookupFieldOnLookupObject, lookupKey);
-          this.storeParentResetField(rollup, parentResetRecord);
+          this.storeParentResetField('' + rollup.lookupFieldOnLookupObject, parentResetRecord);
         }
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
@@ -694,6 +698,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
+    for (SObject lookupRecord : updatedLookupRecords.values()) {
+      for (RollupAsyncProcessor roll : rollups) {
+        if (lookupRecord.getSObjectType() == roll.lookupObj) {
+          // TODO use Id + rollup field?
+          this.previouslyResetParents.add(String.valueOf(lookupRecord.get(roll.lookupFieldOnLookupObject)));
+          this.fullRecalcProcessor?.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupRecord);
+        }
+      }
+    }
+
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
     }
@@ -735,47 +749,28 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  protected Boolean parentRollupFieldHasBeenReset(Rollup__mdt meta, SObject parent) {
-    return this.hasParentRollupFieldBeenReset(meta.RollupFieldOnLookupObject__c, parent);
+  protected virtual void storeParentResetField(String lookupField, SObject parent) {
+    String resetKey = String.valueOf(parent.get(lookupField));
+    if (resetKey != null) {
+      this.previouslyResetParents.add(resetKey);
+    }
   }
 
-  protected Boolean parentRollupFieldHasBeenReset(RollupAsyncProcessor processor, SObject parent) {
-    return this.hasParentRollupFieldBeenReset(String.valueOf(processor.opFieldOnLookupObject), parent) ||
-      this.uniqueParentFields.contains(this.getUniqueParentKey(processor.metadata));
+  protected Boolean parentRollupFieldHasBeenReset(String parentKeyField, SObject parent, String parentTypeName, String parentRollupField) {
+    return this.previouslyResetParents.contains(String.valueOf(parent.get(parentKeyField))) ||
+      this.uniqueParentFields.contains('' + parentTypeName + parentRollupField);
   }
 
   protected void storeUniqueParentFields(Rollup__mdt meta) {
     if (meta != null) {
-      String uniqueParentKey = this.getUniqueParentKey(meta);
+      String uniqueParentKey = meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
       this.uniqueParentFields.add(uniqueParentKey);
       this.fullRecalcProcessor?.uniqueParentFields.add(uniqueParentKey);
     }
   }
 
-  protected virtual Set<String> getPreviouslyResetParents() {
-    return this.previouslyResetParents;
-  }
-
-  protected void addToPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
-    this.getPreviouslyResetParents().add(this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent));
-  }
-
   protected virtual Boolean getCanRollupWithoutCustomSetting() {
     return this.metadata?.ShouldRunWithoutCustomSettingEnabled__c == true;
-  }
-
-  private String getUniqueParentKey(Rollup__mdt meta) {
-    return meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
-  }
-
-  private void clearPreviouslyResetParents(RollupAsyncProcessor processor, SObject parent) {
-    String key = this.getParentResetKey(String.valueOf(processor.opFieldOnLookupObject), parent);
-    this.getPreviouslyResetParents().remove(key);
-  }
-
-  private Boolean hasParentRollupFieldBeenReset(String rollupFieldName, SObject parent) {
-    String resetKey = this.getParentResetKey(rollupFieldName, parent);
-    return this.getPreviouslyResetParents().contains(resetKey);
   }
 
   protected Boolean getCanEnqueue() {
@@ -785,10 +780,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void addProcessorToDeferredRollups(RollupAsyncProcessor processor) {
     processor.isProcessed = false;
     this.deferredRollups.add(processor);
-  }
-
-  private String getParentResetKey(String fieldKey, SObject parent) {
-    return fieldKey + parent.Id;
   }
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
@@ -923,6 +914,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private List<SObject> getLookupItems(Map<String, CalcItemBag> calcItemsByLookupField, Map<String, SObject> updatedLookupRecords, RollupAsyncProcessor roll) {
     List<SObject> localLookupItems = new List<SObject>();
     Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
+    for (String resetKey : this.previouslyResetParents) {
+      if (lookupItemKeys.contains(resetKey) == false) {
+        this.previouslyResetParents.remove(resetKey);
+        this.fullRecalcProcessor?.previouslyResetParents.remove(resetKey);
+      }
+    }
     for (String lookupId : calcItemsByLookupField.keySet()) {
       if (updatedLookupRecords.containsKey(lookupId)) {
         lookupItemKeys.remove(lookupId);
@@ -1222,7 +1219,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     Map<String, SObject> unprocessedCalcItems = new Map<String, SObject>();
     RollupCalculator calc;
-    String priorKey;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
@@ -1246,17 +1242,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // has already been setup to adjust the lookup item's rollup field
         if (localCalcItems.isEmpty() == false || (localCalcItems.isEmpty() && oldLookupItems.isEmpty())) {
           Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
-          Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset(roll, lookupRecord) == false ? null : priorVal;
+          Object priorValToUse = roll.isFullRecalc &&
+            this.parentRollupFieldHasBeenReset('' + roll.lookupFieldOnLookupObject, lookupRecord, '' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false
+            ? null
+            : priorVal;
           calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
-        }
-        if (priorKey != null && key != priorKey) {
-          // once we've fully processed a parent (in separate batches)
-          // it's safe to clear the stateful map
-          this.clearPreviouslyResetParents(roll, lookupRecord);
-          priorKey = key;
-        } else if (priorKey == null) {
-          priorKey = key;
         }
       }
     }
@@ -1409,12 +1400,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.rollupControl.ShouldSkipResettingParentFields__c == true && ((localCalcItems.isEmpty() == false && newVal == null) || localCalcItems.isEmpty())) {
       newVal = priorVal;
     }
+    String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
     if (priorVal != newVal) {
-      String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
-      recordsToUpdate.put(key, lookupRecord);
     }
-    this.storeParentResetField(roll, lookupRecord);
+    recordsToUpdate.put(key, lookupRecord);
     this.logger.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
   }
 
