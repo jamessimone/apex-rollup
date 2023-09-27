@@ -223,13 +223,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return numberToReturn;
   }
 
+  /**
+   * Batches can either be started to fetch all lookup items, or all calc items.
+   * - NB: we have to call `populateObjectFields` in both the "start" and "execute" methods because
+   * trying to use `Database.Stateful` on the top-level class _in addition to `Database.Batchable`_ results in the dreaded:
+   * `System.AsyncException: Queueable cannot be implemented with other system interfaces` exception
+   */
   public Database.QueryLocator start(Database.BatchableContext context) {
-    /**
-     * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
-     * NB: we have to call "populateObjectFields" in both the "start" and "execute" methods because
-     * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
-     * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
-     */
     RollupRepository repo = this.preStart();
     this.logger.save();
     return repo.getLocator();
@@ -334,8 +334,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.addToMap(props, 'Full Recalc Processor', this.fullRecalcProcessor?.getTypeName());
     this.addToMap(props, 'Stack depth', this.stackDepth > 0 ? this.stackDepth : null);
     this.addToMap(props, 'Is Processed?', this.isProcessed);
-    this.addToMap(props, 'Stateful reset parents', this.previouslyResetParents);
-    this.addToMap(props, 'Unique parent fields', this.uniqueParentFields);
     return props;
   }
 
@@ -1206,8 +1204,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
     if (roll.wasConvertedToFullRecalculation) {
       for (SObject lookupItem : lookupItems) {
-        recordsToUpdate.put(String.valueOf(lookupItem.get(roll.lookupFieldOnLookupObject)), lookupItem);
-        this.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupItem);
+        if (lookupItem.getSObjectType() == roll.lookupObj) {
+          recordsToUpdate.put(String.valueOf(lookupItem.get(roll.lookupFieldOnLookupObject)), lookupItem);
+          this.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupItem);
+        }
       }
       return recordsToUpdate.values();
     }
