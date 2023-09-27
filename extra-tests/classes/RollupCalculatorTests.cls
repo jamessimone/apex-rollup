@@ -281,6 +281,29 @@ private class RollupCalculatorTests {
     System.assertEquals(first.Name, calc.getReturnValue(), 'First should properly query');
   }
 
+  @IsTest
+  static void defaultValueWhenNoMatchesIsIgnoredForFullRecalc() {
+    Object priorValue = 50;
+    RollupCalculator calc = getCalculator(
+      priorValue,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(FullRecalculationDefaultNumberValue__c = 0),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setFullRecalc(true);
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Amount = 0);
+    Opportunity oppTwo = new Opportunity(Amount = 0);
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(priorValue, calc.getReturnValue());
+  }
+
   // AVERAGE tests
 
   @IsTest

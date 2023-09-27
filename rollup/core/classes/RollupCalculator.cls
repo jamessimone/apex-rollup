@@ -247,15 +247,14 @@ public without sharing abstract class RollupCalculator {
         }
       }
     }
-    // if there were no matching items, it's time for a full recalc
-    // AVERAGE and FIRST/LAST *also* handle this operation, but they override the entirety of the method we're in
-    // ("performRollup"); this means String, Number, and Datetime variant rollup calculations all need to correctly handle
+    // if there were no matching items, it's time for a full recalc (unless a RollupCalculator has overridden this method)
+    // this means String, Number, and Datetime variant rollup calculations all need to correctly handle
     // recalculating via "calculateNewAggregateValue"
     if (this.shouldTriggerFullRecalc) {
       this.returnVal = this.calculateNewAggregateValue(this.op, exclusionIds, this.calcItemSObjectType);
       // bail on calling setReturnValue below
       return;
-    } else if (this.shouldTriggerFullRecalc == false && localCalcItems.isEmpty()) {
+    } else if (this.shouldTriggerFullRecalc == false && localCalcItems.isEmpty() && this.isFullRecalc == false) {
       this.returnVal = this.defaultVal;
       return;
     }
