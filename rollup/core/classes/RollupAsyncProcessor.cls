@@ -71,7 +71,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  protected final Set<String> previouslyResetParents {
+  private final Set<String> previouslyResetParents {
     get {
       if (previouslyResetParents == null) {
         previouslyResetParents = new Set<String>();
@@ -81,7 +81,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  protected final Set<String> uniqueParentFields {
+  private final Set<String> uniqueParentFields {
     get {
       if (uniqueParentFields == null) {
         uniqueParentFields = new Set<String>();
@@ -223,13 +223,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return numberToReturn;
   }
 
+  /**
+   * Batches can either be started to fetch all lookup items, or all calc items.
+   * - NB: we have to call `populateObjectFields` in both the "start" and "execute" methods because
+   * trying to use `Database.Stateful` on the top-level class _in addition to `Database.Batchable`_ results in the dreaded:
+   * `System.AsyncException: Queueable cannot be implemented with other system interfaces` exception
+   */
   public Database.QueryLocator start(Database.BatchableContext context) {
-    /**
-     * for batch, we know 100% for sure there's only 1 SObjectType / Set<String> in the map.
-     * NB: we have to call "populateObjectFields" in both the "start" and "execute" methods because
-     * trying to use Database.Stateful on the top-level class ** in addition to Batchable ** results in the dreaded:
-     * "System.AsyncException: Queueable cannot be implemented with other system interfaces" exception
-     */
     RollupRepository repo = this.preStart();
     this.logger.save();
     return repo.getLocator();
@@ -613,13 +613,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (shouldLimitCalcItemQuery && remainingQueryRowsLeft < outstandingItemCount) {
         rollup.wasConvertedToFullRecalculation = true;
         rollup.metadata.RollupOperation__c = getBaseOperationName(rollup.metadata.RollupOperation__c);
-        // TODO - instead of calling storeParentResetField here, do something else to prevent the parent reset processor from running
-        // based off of wasConvertedToFullRecalculation?
-        for (String lookupKey : recordIds) {
-          SObject parentResetRecord = rollup.lookupObj.newSObject();
-          parentResetRecord.put(rollup.lookupFieldOnLookupObject, lookupKey);
-          this.storeParentResetField('' + rollup.lookupFieldOnLookupObject, parentResetRecord);
-        }
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
         } else {
@@ -701,9 +694,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     for (SObject lookupRecord : updatedLookupRecords.values()) {
       for (RollupAsyncProcessor roll : rollups) {
         if (lookupRecord.getSObjectType() == roll.lookupObj) {
-          // TODO use Id + rollup field?
-          this.previouslyResetParents.add(String.valueOf(lookupRecord.get(roll.lookupFieldOnLookupObject)));
-          this.fullRecalcProcessor?.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupRecord);
+          this.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupRecord);
         }
       }
     }
@@ -749,13 +740,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  protected virtual void storeParentResetField(String lookupField, SObject parent) {
-    String resetKey = String.valueOf(parent.get(lookupField));
-    if (resetKey != null) {
-      this.previouslyResetParents.add(resetKey);
-    }
-  }
-
   protected Boolean parentRollupFieldHasBeenReset(String parentKeyField, SObject parent, String parentTypeName, String parentRollupField) {
     return this.previouslyResetParents.contains(String.valueOf(parent.get(parentKeyField))) ||
       this.uniqueParentFields.contains('' + parentTypeName + parentRollupField);
@@ -765,7 +749,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (meta != null) {
       String uniqueParentKey = meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
       this.uniqueParentFields.add(uniqueParentKey);
-      this.fullRecalcProcessor?.uniqueParentFields.add(uniqueParentKey);
     }
   }
 
@@ -775,6 +758,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected Boolean getCanEnqueue() {
     return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
+  }
+
+  private void storeParentResetField(String lookupField, SObject parent) {
+    String resetKey = String.valueOf(parent.get(lookupField));
+    if (resetKey != null) {
+      this.previouslyResetParents.add(resetKey);
+      this.fullRecalcProcessor?.trackParentRecord(parent);
+    }
   }
 
   private void addProcessorToDeferredRollups(RollupAsyncProcessor processor) {
@@ -917,7 +908,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     for (String resetKey : this.previouslyResetParents) {
       if (lookupItemKeys.contains(resetKey) == false) {
         this.previouslyResetParents.remove(resetKey);
-        this.fullRecalcProcessor?.previouslyResetParents.remove(resetKey);
       }
     }
     for (String lookupId : calcItemsByLookupField.keySet()) {
@@ -1213,6 +1203,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);
     if (roll.wasConvertedToFullRecalculation) {
+      for (SObject lookupItem : lookupItems) {
+        if (lookupItem.getSObjectType() == roll.lookupObj) {
+          recordsToUpdate.put(String.valueOf(lookupItem.get(roll.lookupFieldOnLookupObject)), lookupItem);
+          this.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupItem);
+        }
+      }
       return recordsToUpdate.values();
     }
 

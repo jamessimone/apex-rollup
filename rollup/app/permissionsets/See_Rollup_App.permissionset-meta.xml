@@ -4,9 +4,13 @@
         <application>Rollup</application>
         <visible>true</visible>
     </applicationVisibilities>
+    <classAccesses>
+        <apexClass>Rollup</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <description>Allows users to access the Rollup app</description>
     <hasActivationRequired>false</hasActivationRequired>
-    <label>See Rollup App</label>
+    <label>Apex Rollup: See Rollup App</label>
     <license>Salesforce</license>
     <tabSettings>
         <tab>Recalculate_Rollup</tab>

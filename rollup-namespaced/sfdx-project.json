@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes where clause parsing for nested OR statements",
-            "versionNumber": "1.0.51.0",
+            "versionName": "Continued full recalc optimizations",
+            "versionNumber": "1.0.52.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -31,6 +31,7 @@
         "apex-rollup-namespaced@1.0.48-0": "04t6g000008C6rMAAS",
         "apex-rollup-namespaced@1.0.49-0": "04t6g000008C6stAAC",
         "apex-rollup-namespaced@1.0.50-0": "04t6g000008C6zbAAC",
-        "apex-rollup-namespaced@1.0.51-0": "04t6g000008C71cAAC"
+        "apex-rollup-namespaced@1.0.51-0": "04t6g000008C71cAAC",
+        "apex-rollup-namespaced@1.0.52-0": "04t6g000008C72GAAS"
     }
 }
