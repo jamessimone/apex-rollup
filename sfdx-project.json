@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Continued full recalc optimizations",
-            "versionNumber": "1.5.87.0",
+            "versionName": "Updating stateful batch logic for MOST, FIRST, LAST, AVERAGE, and SOME calculations",
+            "versionNumber": "1.5.88.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -99,10 +99,6 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.8.0-NEXT-ignore-origin-method": "04t5Y0000015lslQAA",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.5.81-0": "04t6g000008C6kyAAC",
-        "apex-rollup@1.5.82-0": "04t6g000008C6lXAAS",
-        "apex-rollup@1.5.83-0": "04t6g000008C6rHAAS",
-        "apex-rollup@1.5.84-0": "04t6g000008C6soAAC",
         "apex-rollup@1.5.85-0": "04t6g000008C6zWAAS",
         "apex-rollup@1.5.86-0": "04t6g000008C71XAAS",
         "apex-rollup@1.5.87-0": "04t6g000008C72BAAS"

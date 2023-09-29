@@ -1711,6 +1711,16 @@ private class RollupFullRecalcTests {
           LookupFieldOnLookupObject__c = 'Id',
           RollupFieldOnLookupObject__c = 'Description',
           RollupOperation__c = 'MOST'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'UsageType',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Sic',
+          RollupOperation__c = 'SOME',
+          CalcItemWhereClause__c = 'PreferenceRank = 2'
         )
       },
       ContactPointAddress.SObjectType,
@@ -1724,11 +1734,11 @@ private class RollupFullRecalcTests {
     fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[6], cpas[7], cpas[8] });
     Test.stopTest();
 
-    for (Account parent : [SELECT AnnualRevenue, Description, NumberOfEmployees, Name FROM Account]) {
+    for (Account parent : [SELECT AnnualRevenue, Description, NumberOfEmployees, Name, Sic FROM Account]) {
       System.assertEquals(6, parent.AnnualRevenue, parent);
-      // TODO - add functionality for FIRST/LAST/MOST etc rollups
-      // System.assertEquals(1, parent.NumberOfEmployees, parent);
-      // System.assertEquals('1', parent.Description, parent);
+      System.assertEquals('1', parent.Description, parent);
+      System.assertEquals(1, parent.NumberOfEmployees, parent);
+      System.assertEquals(String.valueOf(true), parent.Sic, parent);
     }
     System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
   }

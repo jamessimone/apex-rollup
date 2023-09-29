@@ -21,16 +21,6 @@
     "sourceApiVersion": "58.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
-        "apex-rollup-namespaced@1.0.41-0": "04t6g000008SnldAAC",
-        "apex-rollup-namespaced@1.0.42-0": "04t6g000008SnlsAAC",
-        "apex-rollup-namespaced@1.0.43-0": "04t6g000008SnrcAAC",
-        "apex-rollup-namespaced@1.0.44-0": "04t6g000008So66AAC",
-        "apex-rollup-namespaced@1.0.45-0": "04t6g000008C6koAAC",
-        "apex-rollup-namespaced@1.0.46-0": "04t6g000008C6l3AAC",
-        "apex-rollup-namespaced@1.0.47-0": "04t6g000008C6lcAAC",
-        "apex-rollup-namespaced@1.0.48-0": "04t6g000008C6rMAAS",
-        "apex-rollup-namespaced@1.0.49-0": "04t6g000008C6stAAC",
-        "apex-rollup-namespaced@1.0.50-0": "04t6g000008C6zbAAC",
         "apex-rollup-namespaced@1.0.51-0": "04t6g000008C71cAAC",
         "apex-rollup-namespaced@1.0.52-0": "04t6g000008C72GAAS"
     }

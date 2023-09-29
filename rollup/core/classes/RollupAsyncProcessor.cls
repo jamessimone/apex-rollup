@@ -1242,7 +1242,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
             this.parentRollupFieldHasBeenReset('' + roll.lookupFieldOnLookupObject, lookupRecord, '' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false
             ? null
             : priorVal;
-          calc = this.getCalculator(calc, roll, localCalcItems, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
+          calc = this.getCalculator(calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }
       }
@@ -1313,7 +1313,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private RollupCalculator getCalculator(
     RollupCalculator rollupCalc,
     RollupAsyncProcessor roll,
-    List<SObject> calcItems,
+    CalcItemBag bag,
     SObject lookupRecord,
     Object priorVal,
     String lookupRecordKey,
@@ -1329,9 +1329,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupCalc.setCDCUpdate(this.isCDCUpdate);
       rollupCalc.setFullRecalc(roll.isFullRecalc);
     }
+    rollupCalc.setHasAlreadyRetrievedCalcItems(bag.hasQueriedForAdditionalItems);
     rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
     rollupCalc.setMultiCurrencyInfo(lookupRecord);
-    rollupCalc.performRollup(calcItems, roll.oldCalcItems);
+    rollupCalc.performRollup(bag.getAll(), roll.oldCalcItems);
     return rollupCalc;
   }
 
@@ -1375,7 +1376,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         oldLookupsRollup.calcItems = reparentedCalcItems;
         this.logger.log('reparenting operation', oldLookupsRollup, LoggingLevel.DEBUG);
-        calc = this.getCalculator(calc, oldLookupsRollup, reparentedCalcItems, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
+        CalcItemBag bag = new CalcItemBag(reparentedCalcItems);
+        bag.hasQueriedForAdditionalItems = true;
+        calc = this.getCalculator(calc, oldLookupsRollup, bag, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
         this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.REPARENTED, reparentedCalcItems);
       }
     }
