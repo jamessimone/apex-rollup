@@ -286,7 +286,7 @@ private class RollupFlowBulkProcessorTests {
     input.deferProcessing = false;
 
     Test.startTest();
-    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
     User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId];
