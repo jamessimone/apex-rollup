@@ -234,7 +234,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 
 ## Flow / Process Builder Invocable
 
-Invoking the Apex Rollup process from a Flow, in particular, is a joy; with a Record Triggered Flow, you can do the up-front processing to take in only the records you need, and then dispatch the rollup operation to the Apex Rollup invocable.
+Invoking the Apex Rollup process from a Flow is simple, and for most use-cases is the easiest way for admins to get started. If, however, you are using Account, Case, Contact or Lead as the parent for a rollup operation and merges on those objects are supported in your org, the best practice is instead going to be using the Apex trigger one-liner to implement Apex Rollup. Expand the [Special Considerations](#special-considerations) section and then navigate to [Parent Level Merges](#parent-level-merges) for more info.
 
 This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups — be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow.
 
