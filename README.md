@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C72BAAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C734AAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C72BAAS">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C734AAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -133,7 +133,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Rollup Control` - link to the Org Defaults for controlling rollups, or set a specific Rollup Control CMDT to be used with this rollup. Multiple rollups can be tied to one specific Control record, or simply use the Org Default record (included) for all of your rollups.
 - `Currency Field Mapping (Comma-separated)` (optional) - for organizations using Advanced Currency Management with Dated Exchange Rates, fill out this field if you are rolling up a currency field and you'd like to customize which field (or parent-level field) is used as the Date or Datetime to be matched with its corresponding Dated Exchange Rate. As an example, Opportunity Splits use `Opportunity,CloseDate` here by default - if you are using a parent-level field, the relationship name for it is the first value (thus, `Opportunity,CloseDate` is correct - `OpportunityId,CloseDate` would be incorrect).
 - `Concat Delimiter` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the delimiter used between text defaults to a comma (unless you are rolling up to a multi-select picklist, in which case it defaults to a semi-colon), but you can override the default delimiter here. At this time, only single character delimiters are supported - please file [an issue](/issues) if you are looking to use multi-character delimiters!
-- `Changed Fields On Child Object` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless all the stipulated fields have changed. If you are using a `Child Object Where Clause`, I would not recommend using this field.
+- `Changed Fields On Child Object` (optional) - comma-separated list of field API Names to filter child records - only records where at least one of the fields listed has changed on an update will end up triggering a rollup. If you are using a `Child Object Where Clause`, I would not recommend using this field
 - `Full Recalculation Default Number Value` (optional) - for some rollup operations (SUM / COUNT-based operations in particular), you may want to start fresh with each batch of calculation items provided. When this value is provided, it is used as the basis for rolling values up to the "parent" record (instead of whatever the pre-existing value for that field on the "parent" is, which is the default behavior).
   - It's valid to use this field to override the pre-existing value on the "parent" for number-based fields, _and_ that includes Date / Datetime / Time fields as well. In order to work properly for these three field types, however, the value must be converted into UTC milliseconds. You can do this easily using Anonymous Apex, or a site such as [Current Millis](https://currentmillis.com/).
   - Note that the default behavior for rollups that are number-based when there are no matching results is _null_, not `0` - you can put `0` in this field if you would prefer that for reporting purposes.
@@ -171,14 +171,12 @@ In addition to the above, some other considerations when it comes to the where c
 - Use of a negated `LIKE` clause follows the SQL syntax (as opposed to SOQL's basic syntax): `Subject NOT LIKE 'Email`, for example.
 - for rollups set up against objects with Large Data Volume (LDV - typically when the number of records for a given object exceed 300k), please note that full recalculations (either through the `REFRESH` context in Flow or through the `Recalculate Rollups` tab) are subject to the same query limits that exist elsewhere with SOQL; namely, that filtering on non-indexed fields can cause the initial batch recalculation process to timeout. If you receive an error with the message `REQUEST_RUNNING_TOO_LONG`, it's likely you're trying to roll values up using a where clause with non-indexed fields. Try changing your where clause to use indexed fields, or contact Salesforce Support to have a custom index created (as of Winter '23, you can also create custom indexes programmatically through the CLI, but I would only recommend this option to advanced users)
 
-#### Notes On The Use Of CMDT To Control Your Rollups
+#### Task/Event/User Rollups - How To Configure Rollups When An Object Does Not Appear In The CMDT Dropdowns
 
-There are two limitations to Entity Definition relationships that currently exist:
+There are several limitations to Entity Definition relationships when using Custom Metadata Types - most notably that they don't all objects. User, Task, Event, Case Comment, and others are excluded from the dropdowns generated by Entity Definition fields. However, you still have options when it comes to creating Rollups where these unsupported objects are the children or parent. Note that for both options, I've included YouTube links -.
 
-1. They cannot refer to the User object
-2. They cannot refer to the Task/Event objects
-
-For rollups referring to these objects, you can use either the Invocable or the static methods exposed on Apex Rollup from Apex to roll values up. For a specialized use-case for this, please see [setting Rollup up to handle parent-level merges](#parent-level-merges). Note that the "Special Consideration" section needs to be expanded to properly scroll to the parent-level merge section.
+1. You can use the base Invocable action - the one titled `Perform rollup on records` - as that one allows you to enter the values for the child/parent with text. [Here's an example of me filling out the base action on YouTube](https://www.youtube.com/watch?v=jZy4gUKjw3Q&t=251s). If an object supports Record Triggered Flows but not the CMDT dropdowns, this is the perfect way to quickly get up and running
+2. You can create simple Apex triggers - [I show off how to do this on YouTube](https://www.youtube.com/watch?v=RyQHXi5boW0&t=839s). That link will forward you to the exact timestamp where the Task/Event explanation begins, but the example is broadly applicable to any object that isn't supported via the built-in dropdowns
 
 </details>
 
@@ -236,7 +234,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 
 ## Flow / Process Builder Invocable
 
-Invoking the Apex Rollup process from a Flow, in particular, is a joy; with a Record Triggered Flow, you can do the up-front processing to take in only the records you need, and then dispatch the rollup operation to the Apex Rollup invocable.
+Invoking the Apex Rollup process from a Flow is simple, and for most use-cases is the easiest way for admins to get started. If, however, you are using Account, Case, Contact or Lead as the parent for a rollup operation and merges on those objects are supported in your org, the best practice is instead going to be using the Apex trigger one-liner to implement Apex Rollup. Expand the [Special Considerations](#special-considerations) section and then navigate to [Parent Level Merges](#parent-level-merges) for more info.
 
 This is also the preferred method for scheduling; while I do expose the option to schedule a rollup from Apex, I find the ease of use in creating Scheduled Flows in conjunction with the deep power of properly configured Invocables to be much more scalable than the "Scheduled Jobs" of old. This also gives you the chance to do some truly crazy rollups — be it from a Scheduled Flow, an Autolaunched Flow, or a Platform Event-Triggered Flow.
 
@@ -266,7 +264,7 @@ Here are the arguments necessary to invoke Apex Rollup from a Flow / Process Bui
 - `Rollup Operation Context` - INSERT / UPDATE / UPSERT / DELETE / REFRESH. **Special note** - unless you are using a Record-Triggered Flow / After Update Process Builder, you almost assuredly want to simply use the INSERT context (see image below). However, you _would_ use something like UPDATE if, after retrieving records using Get Records in an auto-launched flow, you then looped through your collection and modified fields prior to sending them to Apex Rollup. You would only ever use UPSERT for a record-triggered flow triggering on `A record is created or updated`. REFRESH does a full recalc operation even if the rollup operation being used is not typically a full recalc.
 - `Records To Rollup` - a collection of SObjects. These need to be stored in a collection variable. **Note** - while this is an optional property, that is only because of a bug in the Flow engine caused by `Get Records` returning null when you use filter conditions that in turn make it so that no records are returned - which then throws an error when using this action without explicitly checking the collection returned by `Get Records` to see if it is null. Because that's a lot to ask of the Flow user, we instead let the collection be optional and handle the null check in Apex. You should **always** provide a value for this input!
 - `Prior records to rollup` (optional) - another collection of SObjects. For record-triggered flows set to run when `A record is created or updated`, or `A record is updated`, it's necessary to populate this argument - otherwise, Rollup will helpfully throw an error when you attempt to update records. Add `{!$Record__Prior}` to a collection variable and use that collection to populate this argument
-- `Child Object Changed fields` (optional) - comma-separated list of field API Names to filter items from being used in the rollup calculations unless any of the stipulated fields have changed
+- `Child Object Changed fields` (optional) - comma-separated list of field API Names to filter child records from being used in the rollup calculations unless any of the stipulated fields have changed
 - `Child Object Type When Rollup Started From Parent` (optional) - only necessary to provide if `Is Rollup Started From Parent` field is enabled and set to `{!$GlobalConstant.True}`. Normally in this invocable, the child object type is figured out by examining the passed-in collection - but when the collection is the parent records, we need the SObject API name of the calculation items explicitly defined.
 - `Concat Delimiter` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the delimiter used between text defaults to a comma (unless you are rolling up to a multi-select picklist, in which case it defaults to a semi-colon), but you can override the default delimiter here.
 - `Concat Delimiter Split Should Apply On Child Object` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the text values on the Child Object's field being rolled up can _also_ be split if this field is enabled and set to `{!$GlobalConstant.True}`

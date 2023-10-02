@@ -266,6 +266,34 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @IsTest
+  static void correctlyInvokesGrandparentRollup() {
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'Opportunity',
+        LookupObject__c = 'User',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
+      )
+    };
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Opportunity(Name = 'Hi', AccountId = acc.Id, Id = RollupTestUtils.createId(Opportunity.SObjectType)) };
+    input.rollupContext = 'INSERT';
+    input.deferProcessing = false;
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId];
+    Assert.areEqual('Hi', updatedUser.AboutMe);
+  }
+
+  @IsTest
   static void shouldNotThrowValidationErrorForHierarchyRollups() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5) };
@@ -441,7 +469,7 @@ private class RollupFlowBulkProcessorTests {
       )
     };
     Rollup.onlyUseMockMetadata = true;
-    Account acc = [SELECT Id, AnnualRevenue, MasterRecordId FROM Account];
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MasterRecordId });
     acc.AnnualRevenue = 67;
     update acc;
     Account secondChild = new Account(Name = 'new actual min', AnnualRevenue = 43);

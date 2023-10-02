@@ -741,6 +741,35 @@ private class RollupCalculatorTests {
     System.assertEquals(opp.CloseDate, calc.getReturnValue());
   }
 
+  @IsTest
+  static void mostWithFullRecalcRespectsIntermediateValues() {
+    Account acc = [SELECT Id FROM Account];
+    Integer priorVal = 50;
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'A', PreferenceRank = priorVal, ParentId = acc.Id),
+      new ContactPointAddress(Name = 'B', PreferenceRank = priorVal, ParentId = acc.Id)
+    };
+    RollupCalculator calc = getCalculator(
+      priorVal,
+      Rollup.Op.MOST,
+      ContactPointAddress.PreferenceRank,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      acc.Id,
+      ContactPointAddress.ParentId
+    );
+    calc.setFullRecalc(true);
+
+    ContactPointAddress target = new ContactPointAddress(
+      PreferenceRank = 75,
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType),
+      ParentId = acc.Id
+    );
+    calc.performRollup(new List<SObject>{ target }, new Map<Id, SObject>());
+
+    System.assertEquals(priorVal, calc.getReturnValue());
+  }
+
   // SUM tests
 
   @IsTest
@@ -1849,6 +1878,31 @@ private class RollupCalculatorTests {
     Opportunity oppTwo = new Opportunity(Amount = 0);
 
     calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>());
+
+    System.assertEquals(0, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void correctlyFlipsSomeToFalsyOnNonMatchingUpdate() {
+    RollupCalculator calc = getCalculator(
+      1,
+      Rollup.Op.SOME,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount > 0', Opportunity.SObjectType));
+
+    Opportunity oppOne = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectTYpe), Amount = 0);
+    Opportunity oldOppOne = oppOne.clone(true);
+    oldOppOne.Amount = 1;
+    Opportunity oppTwo = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectTYpe), Amount = 0);
+    Opportunity oldOppTwo = oppTwo.clone(true);
+    oldOppTwo.Amount = 1;
+
+    calc.performRollup(new List<SObject>{ oppOne, oppTwo }, new Map<Id, SObject>{ oppOne.Id => oldOppOne, oppTwo.Id => oldOppTwo });
 
     System.assertEquals(0, calc.getReturnValue());
   }

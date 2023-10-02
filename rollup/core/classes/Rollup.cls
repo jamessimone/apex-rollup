@@ -2022,8 +2022,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Map<String, DeleteReparentOperation> deleteKeyToReparentOp = new Map<String, DeleteReparentOperation>();
     for (Integer index = metas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = metas[index];
+      Schema.SObjectType initialType = calcItems.getSObjectType();
+      if (initialType == null && calcItems.isEmpty() == false) {
+        initialType = calcItems.get(0).getSObjectType();
+      }
       Boolean nonMatchingGrandparent =
-        String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(calcItems.getSObjectType());
+        String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(initialType);
       SObjectType calcItemSObjectType = meta.IsRollupStartedFromParent__c == false &&
         apexContext != TriggerOperation.AFTER_DELETE &&
         nonMatchingGrandparent == false &&
