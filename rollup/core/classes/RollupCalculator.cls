@@ -401,6 +401,10 @@ public without sharing abstract class RollupCalculator {
     return results;
   }
 
+  protected Boolean hasAlreadyBeenFullRecalcUpdated(Map<Id, SObject> oldCalcItems) {
+    return this.returnVal != null && this.isFullRecalc && this.hasAlreadyRetrievedCalcItems == false && oldCalcItems.isEmpty();
+  }
+
   private SObject getTransformedCalcItem(SObject calcItem) {
     return this.isMultiCurrencyRollup ? RollupCurrencyInfo.getCalcItem(calcItem) : calcItem;
   }
@@ -1136,7 +1140,7 @@ public without sharing abstract class RollupCalculator {
       applicableCalcItems = this.winnowItems(applicableCalcItems, oldCalcItems);
       Decimal oldSum;
       Decimal denominator = Decimal.valueOf(applicableCalcItems.size());
-      if (this.isFullRecalc == false || this.returnVal != null && this.hasAlreadyRetrievedCalcItems == false && oldCalcItems.isEmpty()) {
+      if (this.isFullRecalc == false || this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
         denominator += this.repo.setQuery(RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery))
           .setArg(calcItems)
           .getCount();
@@ -1183,7 +1187,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      if (this.isFullRecalc == false || this.returnVal != null && this.hasAlreadyRetrievedCalcItems == false && oldCalcItems.isEmpty()) {
+      if (this.isFullRecalc == false || this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
         Set<String> queryFields = this.getQueryFields();
         // a full-recalc is always necessary because we don't retain the information about the order by field
         // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
@@ -1234,7 +1238,7 @@ public without sharing abstract class RollupCalculator {
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       this.occurrenceToCount = new Map<Object, Integer>();
 
-      if (this.returnVal != null && this.isFullRecalc && this.hasAlreadyRetrievedCalcItems == false && oldCalcItems.isEmpty()) {
+      if (this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
         calcItems.addAll(this.tryQuery(this.calcItemSObjectType, this.getQueryFields(), calcItems));
       }
       this.largestCountPointer = -1;

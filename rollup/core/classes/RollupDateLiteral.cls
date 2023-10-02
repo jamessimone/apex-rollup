@@ -402,7 +402,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextMonthLiteral extends RollupDateLiteral {
     public NextMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).date().toStartOfMonth(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt().toStartOfMonth(), END_TIME));
     }
   }
 
