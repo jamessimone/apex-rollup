@@ -469,7 +469,7 @@ private class RollupFlowBulkProcessorTests {
       )
     };
     Rollup.onlyUseMockMetadata = true;
-    Account acc = [SELECT Id, AnnualRevenue, MasterRecordId FROM Account];
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MasterRecordId });
     acc.AnnualRevenue = 67;
     update acc;
     Account secondChild = new Account(Name = 'new actual min', AnnualRevenue = 43);
