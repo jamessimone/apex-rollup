@@ -952,7 +952,7 @@ trigger ContactTrigger on Contact(after delete) {
   // each of these Rollups should directly correspond to the equivalent invocable Rollup action
   // this is because merge-related rollups will bypass your record-triggered flows and do the work
   // directly within the Apex trigger. If you aren't operating on Task/Event/User as the child object,
-  // set up your rollups using CMDT and use the snippet above instead!
+  // set up your rollups using CMDT and use "Rollup.runFromTrigger();" instead!
   Rollup.batch(
     Rollup.firstFromApex(
       Task.Subject,
@@ -977,29 +977,6 @@ trigger ContactTrigger on Contact(after delete) {
       Contact.SObjectType
     )
   );
-}
-```
-
-Note that if you are also rolling values up from (in this example), Contact to a parent of Contact - like Account - _and_ you were using Apex to invoke Apex Rollup, you would also need the additional trigger contexts listed in the [CMDT-based rollup section](#cmdt-based-rollup) - you might also need to switch on `Trigger.operationType` and only pass `Trigger.old` and `Trigger.oldMap` for `TriggerOperation.AFTER_DELETE`:
-
-```java
-trigger ContactTrigger on Contact(before insert, after insert, before update, after update, before delete, after delete, after undelete) {
-  // assuming the taskMetadata and eventMetadata variables have been declared,
-  // as in the example above
-  switch on Trigger.operationType {
-    when AFTER_DELETE {
-      Rollup.runFromApex(
-        new List<Rollup__mdt>{ taskMetadata, eventMetadata },
-        null,
-        Trigger.old,
-        Trigger.oldMap
-      ).runCalc();
-    }
-    when else {
-      // assuming you have CMDT-based rollups for Contact as the child
-      Rollup.runFromTrigger();
-    }
-  }
 }
 ```
 
