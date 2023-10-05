@@ -316,11 +316,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupRepository repo = new RollupRepository(this.accessLevel);
     if (this.rollups.isEmpty() == false) {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
-      SObjectType sObjectType = firstRollup.lookupObj;
-      String lookupFieldForLookupObject = firstRollup.lookupFieldOnLookupObject.getDescribe().getName();
-      Set<String> uniqueLookupObjectFields = this.lookupObjectToUniqueFieldNames.get(sObjectType);
-      repo.setArg(this.getCalcItemsByLookupField(firstRollup, uniqueLookupObjectFields).keySet());
-      query = RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(uniqueLookupObjectFields), lookupFieldForLookupObject, '=');
+      repo.setArg(this.getCalcItemsByLookupField(firstRollup).keySet());
+      query = RollupQueryBuilder.Current.getQuery(
+        firstRollup.lookupObj,
+        new List<String>(this.lookupObjectToUniqueFieldNames.get(firstRollup.lookupObj)),
+        firstRollup.lookupFieldOnLookupObject.getDescribe().getName(),
+        '='
+      );
     }
     return repo.setQuery(query);
   }
@@ -673,8 +675,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         roll.traversal = grandparentRollups.get(grandparentKey);
       }
 
-      Set<String> uniqueParentObjectFields = this.lookupObjectToUniqueFieldNames.get(roll.lookupObj);
-      Map<String, CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(roll, uniqueParentObjectFields);
+      Map<String, CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(roll);
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (roll.traversal?.getIsFinished() == false) {
@@ -691,6 +692,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
+    // full batch recalc housekeeping - allow next batch chunk to reference previously reset parents
     for (SObject lookupRecord : updatedLookupRecords.values()) {
       for (RollupAsyncProcessor roll : rollups) {
         if (lookupRecord.getSObjectType() == roll.lookupObj) {
@@ -829,27 +831,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     rolls.sort();
   }
 
-  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, Set<String> uniqueLookupObjectFields) {
-    Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
+  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll) {
     if (roll.calcItems == null) {
-      return lookupFieldToCalcItems;
-    }
-    if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
-      if (roll.traversal == null) {
-        roll.traversal = new RollupRelationshipFieldFinder(
-            roll.rollupControl,
-            roll.metadata,
-            this.calcObjectToUniqueFieldNames.get(roll.calcItemType),
-            uniqueLookupObjectFields,
-            roll.lookupObj,
-            roll.oldCalcItems
-          )
-          .setIsFullRecalc(this.isFullRecalc)
-          .getParents(roll.calcItems);
-      } else if (roll.traversal?.getIsFinished() == false) {
-        roll.traversal.recommence();
-      }
-      return roll.traversal.getIsFinished() ? roll.traversal.getParentLookupToRecords() : lookupFieldToCalcItems;
+      return new Map<String, CalcItemBag>();
     }
 
     Integer cacheKey = roll.calcItems.hashCode();
@@ -862,42 +846,66 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    for (SObject calcItem : roll.calcItems) {
-      if (roll.matchingCalcItemIds.contains(calcItem.Id) == false) {
-        continue;
+    Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
+    if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
+      if (roll.traversal == null) {
+        roll.traversal = new RollupRelationshipFieldFinder(
+            roll.rollupControl,
+            roll.metadata,
+            this.calcObjectToUniqueFieldNames.get(roll.calcItemType),
+            this.lookupObjectToUniqueFieldNames.get(roll.lookupObj),
+            roll.lookupObj,
+            roll.oldCalcItems
+          )
+          .setIsFullRecalc(this.isFullRecalc)
+          .getParents(roll.calcItems);
+      } else if (roll.traversal?.getIsFinished() == false) {
+        roll.traversal.recommence();
       }
-      String key = (String) calcItem.get(roll.lookupFieldOnCalcItem);
-      SObject potentialOldCalcItem = roll.oldCalcItems?.get(calcItem.Id);
-      Boolean hasBlankKey = String.isBlank(key);
-      if (hasBlankKey && potentialOldCalcItem != null) {
-        key = (String) potentialOldCalcItem.get(roll.lookupFieldOnCalcItem);
+      if (roll.traversal.getIsFinished()) {
+        lookupFieldToCalcItems = roll.traversal.getParentLookupToRecords();
       }
-      if (hasBlankKey && potentialOldCalcItem == null) {
-        continue;
-      }
-      CalcItemBag bag = lookupFieldToCalcItems.get(key);
-      if (bag == null) {
-        bag = new CalcItemBag(new List<SObject>());
-        lookupFieldToCalcItems.put(key, bag);
-      }
-      bag.add(calcItem);
-
-      // if the lookup key differs from what it was on the old child object,
-      // include that value as well so that we can fix reparented records' rollup values
-      if (potentialOldCalcItem != null) {
-        String oldKey = (String) potentialOldCalcItem.get(roll.lookupFieldOnCalcItem);
-        if (key == oldKey || String.isBlank(key)) {
+    } else {
+      for (SObject calcItem : roll.calcItems) {
+        if (roll.matchingCalcItemIds.contains(calcItem.Id) == false) {
           continue;
         }
+        String key = (String) calcItem.get(roll.lookupFieldOnCalcItem);
+        SObject potentialOldCalcItem = roll.oldCalcItems?.get(calcItem.Id);
+        Boolean hasBlankKey = String.isBlank(key);
+        if (hasBlankKey && potentialOldCalcItem != null) {
+          key = (String) potentialOldCalcItem.get(roll.lookupFieldOnCalcItem);
+        }
+        if (hasBlankKey && potentialOldCalcItem == null) {
+          continue;
+        }
+        CalcItemBag bag = lookupFieldToCalcItems.get(key);
+        if (bag == null) {
+          bag = new CalcItemBag(new List<SObject>());
+          lookupFieldToCalcItems.put(key, bag);
+        }
+        bag.add(calcItem);
 
-        if (lookupFieldToCalcItems.containsKey(oldKey) == false) {
-          List<SObject> oldItems = this.isEmptyReparentingSet(roll.op) ? new List<SObject>() : new List<SObject>{ potentialOldCalcItem };
-          lookupFieldToCalcItems.put(oldKey, new CalcItemBag(oldItems));
-        } else if (this.isEmptyReparentingSet(roll.op) == false) {
-          lookupFieldToCalcItems.get(oldKey).add(potentialOldCalcItem);
+        // if the lookup key differs from what it was on the old child object,
+        // include that value as well so that we can fix reparented records' rollup values
+        if (potentialOldCalcItem != null) {
+          String oldKey = (String) potentialOldCalcItem.get(roll.lookupFieldOnCalcItem);
+          if (key == oldKey || String.isBlank(key)) {
+            continue;
+          }
+
+          CalcItemBag oldBag = lookupFieldToCalcItems.get(oldKey);
+          if (oldBag == null) {
+            oldBag = new CalcItemBag(new List<SObject>());
+            lookupFieldToCalcItems.put(oldKey, oldBag);
+          }
+          if (this.isEmptyReparentingSet(roll.op) == false) {
+            oldBag.add(potentialOldCalcItem);
+          }
         }
       }
     }
+
     CACHED_CALC_ITEM_LOOKUPS.put(cacheKey, lookupFieldToCalcItems);
     return lookupFieldToCalcItems;
   }
