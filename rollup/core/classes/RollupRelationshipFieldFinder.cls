@@ -795,9 +795,13 @@ public without sharing class RollupRelationshipFieldFinder {
         List<String> copiedRelationshipNames = new List<String>(splitRelationshipNames);
         SObject priorRelationship = requeriedChild;
         while (copiedRelationshipNames.isEmpty() == false) {
-          SObject nextParent = priorRelationship.getSObject(copiedRelationshipNames.remove(0));
-          this.trackTraversalIds(priorRelationship.Id, nextParent.Id, null, null);
-          priorRelationship = nextParent;
+          SObject nextParent = priorRelationship?.getSObject(copiedRelationshipNames.remove(0));
+          if (nextParent != null) {
+            this.trackTraversalIds(priorRelationship.Id, nextParent.Id, null, null);
+            priorRelationship = nextParent;
+          } else {
+            break;
+          }
         }
         finalParents.add(priorRelationship);
       }

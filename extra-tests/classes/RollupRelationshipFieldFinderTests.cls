@@ -116,8 +116,10 @@ private class RollupRelationshipFieldFinderTests {
     Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account];
 
     Contact con = new Contact(AccountId = acc.Id, LastName = 'Child con');
-    insert con;
-    con = [SELECT Id FROM Contact WHERE Id = :con.Id];
+    Contact nonParentedContact = new Contact(LastName = 'Non parent');
+    List<Contact> contacts = new List<Contact>{ con, nonParentedContact };
+    insert contacts;
+    contacts = [SELECT Id FROM Contact WHERE Id = :contacts];
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -128,7 +130,7 @@ private class RollupRelationshipFieldFinderTests {
       new Map<Id, SObject>()
     );
     finder.setIsFullRecalc(true);
-    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<Contact>{ con });
+    RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(contacts);
 
     System.assertEquals(true, traversal.getParentLookupToRecords().containsKey(acc.OwnerId));
     System.assertEquals(acc.Owner.Name, traversal.retrieveParents(con.Id)[0].get('Name'));
