@@ -170,12 +170,17 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      // TODO negation
-      return isEqual;
+      return this.isNegated ? !isEqual : isEqual;
     }
 
     public override String toString() {
-      return ConditionalGrouping.class.getName() + '\nIs Or Conditional: ' + this.isOrConditional() + '\nInner conditions: ' + this.innerConditions;
+      return ConditionalGrouping.class.getName() +
+        '\nIs Or Conditional: ' +
+        this.isOrConditional() +
+        '\nInner conditions: ' +
+        this.innerConditions +
+        '\nIs negated: ' +
+        this.isNegated;
     }
   }
 
@@ -204,8 +209,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      // TODO negation
-      return isEqual;
+      return this.isNegated ? !isEqual : isEqual;
     }
   }
 
@@ -234,7 +238,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
       this.createConditions(calcItemSObjectType, whereClause);
       RollupLogger.Instance.log('where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
-      RollupLogger.Instance.log('Conditionals', this.whereConditions, LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('conditionals', this.whereConditions, LoggingLevel.FINER);
     }
 
     public override String toString() {
@@ -292,9 +296,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private void createConditions(Schema.SObjectType calcItemSObjectType, String localWhereClause) {
       try {
-        this.whereConditions.addAll(this.getSoqlWhereClauses(localWhereClause));
+        this.whereConditions.addAll(this.recursivelyCreateConditions(localWhereClause));
       } catch (Exception ex) {
-        this.logError(ex);
+        RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
         RollupLogger.Instance.save();
         throw new IllegalArgumentException(
           'Where clause entered incorrectly: ' +
@@ -307,12 +311,13 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    private List<WhereCondition> getSoqlWhereClauses(String localWhereClause) {
+    private List<WhereCondition> recursivelyCreateConditions(String localWhereClause) {
       if (localWhereClause.startsWith('(') && localWhereClause.endsWith(')')) {
         localWhereClause = localWhereClause.substring(1, localWhereClause.length() - 1);
       }
       List<WhereCondition> conditionals = new List<WhereCondition>();
-      // single pass, stopping only at inner conditionals
+      // double pass through: once to remove blanks and any trailing conditionals
+      // then once straight through, stopping only at inner conditionals
       List<String> words = localWhereClause.split(' ');
       for (Integer reverseIndex = words.size() - 1; reverseIndex >= 0; reverseIndex--) {
         String word = words[reverseIndex].deleteWhitespace().toLowerCase();
@@ -336,6 +341,16 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           word = words[++index];
         }
 
+        Boolean isNegated = false;
+        if (word.startsWithIgnoreCase('(not(')) {
+          word = word.removeStartIgnoreCase('(not');
+          isNegated = true;
+        } else if (word.equalsIgnoreCase('not')) {
+          // check for presence of nested conditional, otherwise let fall through to next NOT check
+          word = words[++index];
+          isNegated = true;
+        }
+
         if (word.startsWith('(')) {
           Integer openParansCounter = 1;
           while (openParansCounter > 0) {
@@ -355,29 +370,27 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
               break;
             }
           }
-          List<WhereCondition> innerConditions = this.getSoqlWhereClauses(word);
-          conditionals.add(
-            isOrConditional ? (ConditionalGrouping) new OrConditionalGrouping(innerConditions) : (ConditionalGrouping) new ConditionalGrouping(innerConditions)
-          );
+          List<WhereCondition> innerConditions = this.recursivelyCreateConditions(word);
+          ConditionalGrouping grouping = isOrConditional
+            ? (ConditionalGrouping) new OrConditionalGrouping(innerConditions)
+            : (ConditionalGrouping) new ConditionalGrouping(innerConditions);
+          grouping.isNegated = isNegated;
+          conditionals.add(grouping);
           continue;
         }
 
-        Boolean isNegated = false;
         if (word.equalsIgnoreCase('not')) {
           isNegated = true;
           word = words[++index];
-          // TODO also need to check if next token is "(" - this would lead to another recursion point here
-          // with a negated grouped conditional
-          // for example: and (not (Amount = 0)) or even worse ....
-          // Amount = 0 AND (Amount = 5 OR (NOT(Amount = 6 AND (Name = 'Gen'))))
+        } else if (word.equalsIgnoreCase('or')) {
+          isOrConditional = true;
+          word = words[++index];
+        } else if (word.equalsIgnoreCase('and')) {
+          isOrConditional = false;
+          word = words[++index];
         }
 
         String fieldName = word;
-        if (fieldName.equalsIgnoreCase('and')) {
-          isOrConditional = false;
-          fieldName = words[++index];
-        }
-
         String criteria = words[++index];
         if (criteria.equalsIgnoreCase('not') && words.size() - 1 > index) {
           String potentialNextToken = words[index + 1];
@@ -464,10 +477,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         whereClausePiece = whereClausePiece.substring(0, whereClausePiece.length() - 1);
       }
       return whereClausePiece.replaceAll('\'', '').trim();
-    }
-
-    private void logError(Exception ex) {
-      RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
     }
 
     private Boolean isValidRelationshipField(String fieldName) {

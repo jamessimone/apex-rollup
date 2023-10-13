@@ -898,6 +898,47 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void shouldDetectNestedNotOrConditions() {
+    String whereClause = 'Amount = 1 OR (NOT (Amount = 0 OR Amount = 5))';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 0)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 1)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 2)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 3)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 4)));
+    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 5)));
+  }
+
+  @IsTest
+  static void shouldDetectNestedNotAndConditions() {
+    String whereClause = 'Amount >= 1 AND (NOT(Amount = 0 OR Amount = 5))';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 0)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 1)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 2)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 3)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 4)));
+    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 5)));
+  }
+
+  @IsTest
+  static void shouldDetectNotInProperly() {
+    String whereClause = 'Amount NOT IN (1, 3)';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 0)));
+    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 1)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 2)));
+    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 3)));
+    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 4)));
+  }
+
+  @IsTest
   static void shouldCorrectlyFormatInQueryWithinEquality() {
     String whereClause = 'StageName IN (\'firstName\', \'secondName\')';
 

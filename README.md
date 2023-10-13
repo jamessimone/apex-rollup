@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C77gAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C78tAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C77gAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C78tAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -141,8 +141,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
   - Note that the default behavior for rollups that are number-based when there are no matching results is _null_, not `0` - you can put `0` in this field if you would prefer that for reporting purposes.
   - Does nothing when the rollup operation is `MOST`
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Child Object Where Clause` (optional) - add conditions to filter the calculation items that are used. Nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways.
-  - Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places.
+- `Child Object Where Clause` (optional) - add conditions to filter the calculation items that are used. Nested conditionals (conditionals contained within parantheses) are supported. For best results, ensure you put spaces between each word, eg: `Amount != 5` works, `Amount!=5` will not work
+  - Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount > 4` will not match if a child record's value is stored as `4.000001`. The only exception to this is zero; there, you are allowed to omit the decimal places (eg `Amount > 4` will work regardless of if the value is 4, 4.00, 4.00000, etc...)
   - For more info, see [Special Considerations For Usage Of Child Object Where Clauses](#special-considerations-for-usage-of-child-object-where-clauses). Please note that the section [Rollup Custom Metadata Field Breakdown](#rollup-custom-metadata-field-breakdown) must be expanded in order for this link to work.
 - `Group By Fields (Comma-separated)` (optional) - filling this field out turns any existing rollup into a group by rollup using the API names of children-level fields as supplied. For example, you could turn a SUM-based rollup on Opportunity into a grouping rollup, supplying fields like `StageName, Name` to sum the rollup field on Opportunity and group the output by Stage and Name. Can be used in conjunction with the next fields, `Group By Row (Start/End) Delimiter`. For multi-currency orgs where you are rolling up currency fields affected by multi-currency, please read the advanced notes in the Multi-Currency section.
 - `Group By Row Start Delimiter` (optional) - if set, this is the delimiter which prefaces each row in the group by rollup to delimit results. Defaults to `•` if not supplied
