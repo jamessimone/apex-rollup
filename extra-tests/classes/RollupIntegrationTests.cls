@@ -1154,7 +1154,7 @@ private class RollupIntegrationTests {
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'COUNT_DISTINCT',
         CalcItem__c = 'ContactPointAddress',
-        CalcItemWhereClause__c = 'Name NOT LIKE \'' + cpa.Name.substring(0, 6) + '%\''
+        CalcItemWhereClause__c = '(NOT Name LIKE \'' + cpa.Name.substring(0, 6) + '%\')'
       )
     };
 
