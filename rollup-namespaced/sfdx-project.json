@@ -25,6 +25,5 @@
         "apex-rollup-namespaced@1.0.52-0": "04t6g000008C72GAAS",
         "apex-rollup-namespaced@1.0.53-0": "04t6g000008C739AAC",
         "apex-rollup-namespaced@1.1.0-0": "04t6g000008C793AAC"
-    },
-    "restDeploy": "false"
+    }
 }
