@@ -1,4 +1,4 @@
-public without sharing class RollupCalcItemSorter extends RollupComparer {
+public without sharing class RollupCalcItemSorter implements System.Comparator<SObject> {
   private final List<RollupOrderBy__mdt> orderByOptions;
   private final Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController> fieldToPicklistController;
 
@@ -11,10 +11,8 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
     this.orderByOptions = this.initializeOrderByOptions(orderBys);
   }
 
-  public override Integer compare(Object o1, Object o2) {
+  public Integer compare(SObject objOne, SObject objTwo) {
     Integer comparisonVal = 0;
-    SObject objOne = (SObject) o1;
-    SObject objTwo = (SObject) o2;
 
     Map<String, SObjectField> fieldTokens = objOne.getSObjectType().getDescribe().fields.getMap();
     for (RollupOrderBy__mdt orderByOption : this.orderByOptions) {
@@ -59,9 +57,9 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
     Object potentialSecondVal = this.getFieldValue(objTwo, orderByOption.FieldName__c);
     // (from the developer docs): "Default [sort] order is ascending. By default, null values are sorted first."
     if (potentialFirstVal == null && potentialSecondVal != null) {
-      return orderByOption.NullSortOrder__c == RollupMetaPicklists.NullSortOrder.NullsFirst ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+      return orderByOption.NullSortOrder__c == RollupMetaPicklists.NullSortOrder.NullsFirst ? -1 : 1;
     } else if (potentialSecondVal == null && potentialFirstVal != null) {
-      return orderByOption.NullSortOrder__c == RollupMetaPicklists.NullSortOrder.NullsFirst ? this.moveTowardBackOfList : this.moveTowardFrontOfList;
+      return orderByOption.NullSortOrder__c == RollupMetaPicklists.NullSortOrder.NullsFirst ? 1 : -1;
     } else if (potentialFirstVal == potentialSecondVal) {
       return sortRanking;
     }
@@ -79,7 +77,7 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
       String secondVal = (String) potentialSecondVal;
 
       if (picklistController.isPicklist() || picklistController.isMultiSelectPicklist()) {
-        sortRanking = picklistController.isTrueFor(firstVal, secondVal, Rollup.Op.MIN) ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+        sortRanking = picklistController.isTrueFor(firstVal, secondVal, Rollup.Op.MIN) ? -1 : 1;
       } else {
         sortRanking = this.getSortOrder(firstVal > secondVal, orderByOption);
       }
@@ -116,9 +114,9 @@ public without sharing class RollupCalcItemSorter extends RollupComparer {
 
   private Integer getSortOrder(Boolean equalityCheck, RollupOrderBy__mdt orderByOption) {
     if (orderByOption.SortOrder__c == RollupMetaPicklists.SortOrder.Ascending) {
-      return equalityCheck ? this.moveTowardBackOfList : this.moveTowardFrontOfList;
+      return equalityCheck ? 1 : -1;
     } else {
-      return equalityCheck ? this.moveTowardFrontOfList : this.moveTowardBackOfList;
+      return equalityCheck ? -1 : 1;
     }
   }
 

@@ -148,7 +148,7 @@ public virtual class RollupFieldInitializer {
     }
 
     public void sort(List<String> picklistValues) {
-      new PicklistSorter(this).sort(picklistValues);
+      picklistValues.sort(new PicklistSorter(this));
     }
 
     private Boolean isMin(Rollup.Op operation) {
@@ -160,15 +160,12 @@ public virtual class RollupFieldInitializer {
     }
   }
 
-  private class PicklistSorter extends RollupComparer {
+  private class PicklistSorter implements System.Comparator<String> {
     private final PicklistController picklistController;
     public PicklistSorter(PicklistController picklistController) {
       this.picklistController = picklistController;
     }
-    public override Integer compare(Object o1, Object o2) {
-      String firstVal = (String) o1;
-      String secondVal = (String) o2;
-
+    public Integer compare(String firstVal, String secondVal) {
       Integer sortValue = 0;
       Integer firstRank = this.picklistController.getRank(firstVal, Rollup.Op.FIRST);
       Integer secondRank = this.picklistController.getRank(secondVal, Rollup.Op.FIRST);
@@ -176,9 +173,9 @@ public virtual class RollupFieldInitializer {
         // fall back to standard sorting if sentinel value is returned
         return firstVal.compareTo(secondVal);
       } else if (firstRank > secondRank) {
-        sortValue = this.moveTowardBackOfList;
+        sortValue = 1;
       } else if (firstRank < secondRank) {
-        sortValue = this.moveTowardFrontOfList;
+        sortValue = -1;
       }
       return sortValue;
     }
