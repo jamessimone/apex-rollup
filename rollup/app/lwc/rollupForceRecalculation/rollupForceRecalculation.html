@@ -31,10 +31,14 @@
                 columns={cmdtColumns}
                 data-id="datatable"
                 data={selectedMetadataCMDTRecords}
+                default-sort-direction={defaultSortDirection}
                 key-field="DeveloperName"
                 max-row-selection={maxRowSelection}
                 onrowselection={handleRowSelect}
                 show-row-number-column
+                onsort={handleSort}
+                sorted-by={sortedBy}
+                sorted-direction={sortDirection}
               >
               </lightning-datatable>
             </template>
