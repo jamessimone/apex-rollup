@@ -161,14 +161,13 @@ public without sharing class RollupQueryBuilder {
         whereClause = whereClause.substringBeforeLast('AND').trim();
         whereClause = whereClause.substringBeforeLast('OR').trim();
       }
-      while (whereClause?.startsWith('(') == true && whereClause?.countMatches('(') > whereClause?.countMatches(')')) {
+      while (whereClause.startsWith('(') == true && whereClause.countMatches('(') > whereClause.countMatches(')')) {
         whereClause = whereClause.removeStart('(');
       }
-      while (whereClause?.endsWith(')') == true && whereClause?.countMatches(')') > whereClause?.countMatches('(')) {
+      while (whereClause.endsWith(')') == true && whereClause.countMatches(')') > whereClause.countMatches('(')) {
         whereClause = whereClause.removeEnd(')');
       }
       whereClause = whereClause.replace('()', '');
-      whereClause = RollupEvaluator.getWhereEval(whereClause, sObjectType).getSafeQuery();
 
       if (
         whereClause.containsIgnoreCase(' or ') && (whereClause.containsIgnoreCase(' and ') == false || whereClause.startsWith('(') && whereClause.endsWith(')'))

@@ -249,10 +249,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return new List<String>(this.splitWheres);
     }
 
-    public String getSafeQuery() {
-      return this.whereClause;
-    }
-
     public List<String> getQueryFields() {
       return new List<String>(this.queryFields);
     }

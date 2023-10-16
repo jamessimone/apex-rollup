@@ -154,16 +154,19 @@ private class RollupEvaluatorTests {
   @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForNotLikeStatements() {
     Account acc = new Account(Name = 'RollupEvaluatorTest');
-    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
-    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
+    Opportunity target = new Opportunity(Name = 'RollupZZ', Account = acc);
 
     String whereClause = 'NOT Account.Name LIKE \'%Rollup%\'';
 
-    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
 
-    System.assertNotEquals(true, eval.matches(oppOne), 'Should not match based on parent field');
-    System.assertNotEquals(true, eval.matches(oppTwo), 'Should not match based on parent field');
-    System.assertEquals(true, eval.matches(new Opportunity(Account = new Account(Name = 'Hello!!'))));
+    System.assertEquals(false, eval.matches(target));
+    target.Account.Name = 'Rollup';
+    System.assertEquals(false, eval.matches(target));
+    target.Account.Name = 'rollUP';
+    System.assertEquals(false, eval.matches(target));
+    target.Account.Name = 'match';
+    System.assertEquals(true, eval.matches(target));
   }
 
   @IsTest
@@ -684,8 +687,7 @@ private class RollupEvaluatorTests {
       ex = e;
     }
 
-    Assert.areNotEqual(null, ex);
-    Assert.areEqual(true, ex.getMessage().contains('Where clause entered incorrectly'));
+    System.assertEquals(true, ex?.getMessage().contains('Where clause entered incorrectly'));
   }
 
   @IsTest
@@ -886,15 +888,15 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
-  static void shouldCorrectlyReformatNotLikeQuery() {
+  static void shouldCorrectlyDetectNestedNot() {
     String whereClause = 'TaskSubType != \'Email\' OR (NOT Subject LIKE \'Email\')';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
 
-    System.assertEquals('TaskSubType != \'Email\' OR (NOT Subject LIKE \'Email\')', eval.getSafeQuery());
     System.assertEquals(true, eval.matches(new Task(TaskSubType = 'Call')));
     System.assertEquals(true, eval.matches(new Task(TaskSubType = 'Email', Subject = 'Hello')));
     System.assertEquals(false, eval.matches(new Task(TaskSubType = 'Email', Subject = 'Email')));
+    System.assertEquals(true, eval.matches(new Task()));
   }
 
   @IsTest
@@ -903,12 +905,12 @@ private class RollupEvaluatorTests {
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 0)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 1)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 2)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 3)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 4)));
-    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 5)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 0)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 1)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 2)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 3)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 4)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 5)));
   }
 
   @IsTest
@@ -917,12 +919,12 @@ private class RollupEvaluatorTests {
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 0)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 1)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 2)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 3)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 4)));
-    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 5)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 0)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 1)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 2)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 3)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 4)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 5)));
   }
 
   @IsTest
@@ -931,38 +933,11 @@ private class RollupEvaluatorTests {
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 0)));
-    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 1)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 2)));
-    Assert.areEqual(false, eval.matches(new Opportunity(Amount = 3)));
-    Assert.areEqual(true, eval.matches(new Opportunity(Amount = 4)));
-  }
-
-  @IsTest
-  static void shouldCorrectlyFormatInQueryWithinEquality() {
-    String whereClause = 'StageName IN (\'firstName\', \'secondName\')';
-
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
-
-    System.assertEquals(whereClause, eval.getSafeQuery());
-  }
-
-  @IsTest
-  static void shouldCorrectlyFormatInQueryWithinValue() {
-    String whereClause = 'StageName != \'Gift in Kind\'';
-
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
-
-    System.assertEquals(whereClause, eval.getSafeQuery());
-  }
-
-  @IsTest
-  static void shouldCorrectlyFormatCapitalizedInQueryWithinValue() {
-    String whereClause = 'StageName != \'Gift In Kind\'';
-
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
-
-    System.assertEquals(whereClause, eval.getSafeQuery());
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 0)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 1)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 2)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 3)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 4)));
   }
 
   @IsTest
@@ -1165,9 +1140,9 @@ private class RollupEvaluatorTests {
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
 
     validateQuery(Opportunity.SObjectType, whereClause);
-    Assert.areEqual(true, eval.matches(target));
-    Assert.areEqual(true, eval.matches(secondMatch));
-    Assert.areEqual(false, eval.matches(new Opportunity(StageName = 'three', LeadSource = 'Web')));
+    System.assertEquals(true, eval.matches(target));
+    System.assertEquals(true, eval.matches(secondMatch));
+    System.assertEquals(false, eval.matches(new Opportunity(StageName = 'three', LeadSource = 'Web')));
   }
 
   @IsTest
