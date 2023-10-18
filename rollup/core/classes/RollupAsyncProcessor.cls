@@ -492,46 +492,41 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
-  protected List<SObject> getExistingLookupItems(Set<String> lookupKeys, RollupAsyncProcessor rollup, Set<String> uniqueQueryFieldNames) {
+  protected List<SObject> getExistingLookupItems(Set<String> lookupKeys, RollupAsyncProcessor roll, Set<String> uniqueQueryFieldNames) {
+    List<SObject> lookupItemsToAssign;
     if (lookupKeys.isEmpty()) {
-      this.lookupItems = new List<SObject>();
-    } else if (stubParentRecords != null && this.lookupItems == null) {
-      this.lookupItems = stubParentRecords;
-    } else if (this.lookupItems == null) {
+      lookupItemsToAssign = new List<SObject>();
+    } else if (stubParentRecords != null && lookupItemsToAssign == null) {
+      lookupItemsToAssign = stubParentRecords;
+    } else if (this.lookupItems != null) {
       // lookup items are retrieved en masse in the "start" method for standard (not full recalc) Batch rollups, and are cached in the "execute" method
-      List<SObject> localLookupItems;
-      if (rollup.traversal != null) {
-        localLookupItems = rollup.traversal.getAllParents();
-      } else {
-        localLookupItems = new RollupRepository(rollup.accessLevel)
-          .setQuery(
-            RollupQueryBuilder.Current.getQuery(
-              rollup.lookupObj,
-              new List<String>(uniqueQueryFieldNames),
-              String.valueOf(rollup.lookupFieldOnLookupObject),
-              '='
-            ) + (this.isSingleRecordSyncUpdate(rollup) ? '\nFOR UPDATE' : '')
-          )
-          .setArg(lookupKeys)
-          .get();
-      }
+      lookupItemsToAssign = this.lookupItems;
+    } else {
+      lookupItemsToAssign = roll.traversal != null
+        ? roll.traversal.getAllParents()
+        : new RollupRepository(roll.accessLevel)
+            .setQuery(
+              RollupQueryBuilder.Current.getQuery(
+                roll.lookupObj,
+                new List<String>(uniqueQueryFieldNames),
+                String.valueOf(roll.lookupFieldOnLookupObject),
+                '='
+              ) + (this.isSingleRecordSyncUpdate(roll) ? '\nFOR UPDATE' : '')
+            )
+            .setArg(lookupKeys)
+            .get();
+
       List<SObject> recordsToReset = new List<SObject>();
-      for (SObject lookupItem : localLookupItems) {
+      for (SObject lookupItem : lookupItemsToAssign) {
         if (
-          this.parentRollupFieldHasBeenReset(
-            rollup.lookupFieldOnLookupObject.getDescribe().getName(),
-            lookupItem,
-            '' + rollup.lookupObj,
-            '' + rollup.opFieldOnLookupObject
-          ) == false
+          this.parentRollupFieldHasBeenReset('' + roll.lookupFieldOnLookupObject, lookupItem, '' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false
         ) {
           recordsToReset.add(lookupItem);
         }
       }
-      this.lookupItems = localLookupItems;
       this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
     }
-    return this.lookupItems;
+    return lookupItemsToAssign;
   }
 
   protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
@@ -913,11 +908,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private List<SObject> getLookupItems(Map<String, CalcItemBag> calcItemsByLookupField, Map<String, SObject> updatedLookupRecords, RollupAsyncProcessor roll) {
     List<SObject> localLookupItems = new List<SObject>();
     Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
-    for (String resetKey : this.previouslyResetParents) {
-      if (lookupItemKeys.contains(resetKey) == false) {
-        this.previouslyResetParents.remove(resetKey);
-      }
-    }
+    this.previouslyResetParents.retainAll(lookupItemKeys);
     for (String lookupId : calcItemsByLookupField.keySet()) {
       if (updatedLookupRecords.containsKey(lookupId)) {
         lookupItemKeys.remove(lookupId);
