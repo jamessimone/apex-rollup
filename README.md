@@ -18,18 +18,18 @@ Read below for more on how you can use Apex Rollup in your day-to-day. Please no
 - [Record Triggered Flow Setup](https://youtu.be/jZy4gUKjw3Q)
 - [Apex Setup with one line of code!](https://youtu.be/RyQHXi5boW0)
 - [Rollup Control custom metadata configuration](https://youtu.be/vUP_uBB2m-k)
-- [Unit testing Apex Rollup](https://lnkd.in/gGSNGXyh)
+- [Unit testing Apex Rollup](https://youtu.be/u7ly5xGMfFM)
 
 As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics.
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C734AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C7AQAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C734AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C7AQAA0">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -76,6 +76,8 @@ You have several different options when it comes to making use of Apex Rollup:
 | [Via Scheduled Job](#scheduled-jobs)                                   | Use Anonymous Apex or Scheduled Flow to setup                                       |
 
 ## CMDT-based Rollup Solution
+
+Custom Metadata Type (CMDT) records are the preferred way to configure and organize your rollups. There are some limitations to this approach, particularly for popular objects like Task and Event - expand the section below and navigate to the ["How To Configure Rollups When An Object Does Not Appear In The CMDT Dropdowns"](#taskeventuser-rollups---how-to-configure-rollups-when-an-object-does-not-appear-in-the-cmdt-dropdowns) section.
 
 <details>
     <summary>Expand for CMDT-driven info</summary>
@@ -139,8 +141,8 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
   - Note that the default behavior for rollups that are number-based when there are no matching results is _null_, not `0` - you can put `0` in this field if you would prefer that for reporting purposes.
   - Does nothing when the rollup operation is `MOST`
 - `Full Recalculation Default String Value` (optional) - same as `Full Recalculation Default Number Value`, but for String-based fields (including Lookup and Id fields).
-- `Child Object Where Clause` (optional) - add conditions to filter the calculation items that are used. Nested conditionals (conditionals contained within parantheses) are supported. However, due to the orthogonal nature of deeply nested conditionals from the original problem area, it's entirely possible that some forms of nested conditionals will not work, or will work in unintended ways.
-  - Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount != 4` will not work if the value is stored as `4.00`. The only exception to this is zero; there, you are allowed to omit the decimal places.
+- `Child Object Where Clause` (optional) - add conditions to filter the calculation items that are used. Nested conditionals (conditionals contained within parantheses) are supported. For best results, ensure you put spaces between each word, eg: `Amount != 5` works, `Amount!=5` will not work
+  - Please [submit an issue](../../issues) if you are using Rollup and experience issues with calculation items correctly being flagged / not flagged toward the rollup field. For currency or number fields with multiple decimals, keep in mind that however the number appears in a SOQL query (ie `4.00`) is the format that you should use when performing filtering; `Amount > 4` will not match if a child record's value is stored as `4.000001`. The only exception to this is zero; there, you are allowed to omit the decimal places (eg `Amount > 4` will work regardless of if the value is 4, 4.00, 4.00000, etc...)
   - For more info, see [Special Considerations For Usage Of Child Object Where Clauses](#special-considerations-for-usage-of-child-object-where-clauses). Please note that the section [Rollup Custom Metadata Field Breakdown](#rollup-custom-metadata-field-breakdown) must be expanded in order for this link to work.
 - `Group By Fields (Comma-separated)` (optional) - filling this field out turns any existing rollup into a group by rollup using the API names of children-level fields as supplied. For example, you could turn a SUM-based rollup on Opportunity into a grouping rollup, supplying fields like `StageName, Name` to sum the rollup field on Opportunity and group the output by Stage and Name. Can be used in conjunction with the next fields, `Group By Row (Start/End) Delimiter`. For multi-currency orgs where you are rolling up currency fields affected by multi-currency, please read the advanced notes in the Multi-Currency section.
 - `Group By Row Start Delimiter` (optional) - if set, this is the delimiter which prefaces each row in the group by rollup to delimit results. Defaults to `•` if not supplied
@@ -168,14 +170,13 @@ It is possible to have do SUM/COUNT-based rollups from different children types 
 In addition to the above, some other considerations when it comes to the where clause:
 
 - Any time a polymorphic field is used in your `Child Object Where Clause`, you must also have a constraint on the parent-level `Type` in order for it to work. If you are filtering on `Task.What`, for example, you must have only a single SObject-parent type as part of your where clause, e.g. `What.Name = 'someName' AND What.Type = 'Account'`.
-- Use of a negated `LIKE` clause follows the SQL syntax (as opposed to SOQL's basic syntax): `Subject NOT LIKE 'Email`, for example.
 - for rollups set up against objects with Large Data Volume (LDV - typically when the number of records for a given object exceed 300k), please note that full recalculations (either through the `REFRESH` context in Flow or through the `Recalculate Rollups` tab) are subject to the same query limits that exist elsewhere with SOQL; namely, that filtering on non-indexed fields can cause the initial batch recalculation process to timeout. If you receive an error with the message `REQUEST_RUNNING_TOO_LONG`, it's likely you're trying to roll values up using a where clause with non-indexed fields. Try changing your where clause to use indexed fields, or contact Salesforce Support to have a custom index created (as of Winter '23, you can also create custom indexes programmatically through the CLI, but I would only recommend this option to advanced users)
 
 #### Task/Event/User Rollups - How To Configure Rollups When An Object Does Not Appear In The CMDT Dropdowns
 
-There are several limitations to Entity Definition relationships when using Custom Metadata Types - most notably that they don't all objects. User, Task, Event, Case Comment, and others are excluded from the dropdowns generated by Entity Definition fields. However, you still have options when it comes to creating Rollups where these unsupported objects are the children or parent. Note that for both options, I've included YouTube links -.
+There are several limitations to Entity Definition relationships when using Custom Metadata Types - most notably that they don't work with all objects. User, Task, Event, Case Comment, and others are excluded from the dropdowns generated by Entity Definition fields. However, you still have options when it comes to creating Rollups where these unsupported objects are the children or parent. Note that for both options, I've included YouTube links -.
 
-1. You can use the base Invocable action - the one titled `Perform rollup on records` - as that one allows you to enter the values for the child/parent with text. [Here's an example of me filling out the base action on YouTube](https://www.youtube.com/watch?v=jZy4gUKjw3Q&t=251s). If an object supports Record Triggered Flows but not the CMDT dropdowns, this is the perfect way to quickly get up and running
+1. You can use the base Invocable action - the one titled `Perform rollup on records` - as that one allows you to enter the values for the child/parent with text. [Here's an example of me filling out the base action on YouTube](https://youtu.be/jZy4gUKjw3Q?t=1133). If an object supports Record Triggered Flows but not the CMDT dropdowns, this is the perfect way to quickly get up and running
 2. You can create simple Apex triggers - [I show off how to do this on YouTube](https://www.youtube.com/watch?v=RyQHXi5boW0&t=839s). That link will forward you to the exact timestamp where the Task/Event explanation begins, but the example is broadly applicable to any object that isn't supported via the built-in dropdowns
 
 </details>
@@ -950,7 +951,7 @@ trigger ContactTrigger on Contact(after delete) {
   // each of these Rollups should directly correspond to the equivalent invocable Rollup action
   // this is because merge-related rollups will bypass your record-triggered flows and do the work
   // directly within the Apex trigger. If you aren't operating on Task/Event/User as the child object,
-  // set up your rollups using CMDT and use the snippet above instead!
+  // set up your rollups using CMDT and use "Rollup.runFromTrigger();" instead!
   Rollup.batch(
     Rollup.firstFromApex(
       Task.Subject,
@@ -975,29 +976,6 @@ trigger ContactTrigger on Contact(after delete) {
       Contact.SObjectType
     )
   );
-}
-```
-
-Note that if you are also rolling values up from (in this example), Contact to a parent of Contact - like Account - _and_ you were using Apex to invoke Apex Rollup, you would also need the additional trigger contexts listed in the [CMDT-based rollup section](#cmdt-based-rollup) - you might also need to switch on `Trigger.operationType` and only pass `Trigger.old` and `Trigger.oldMap` for `TriggerOperation.AFTER_DELETE`:
-
-```java
-trigger ContactTrigger on Contact(before insert, after insert, before update, after update, before delete, after delete, after undelete) {
-  // assuming the taskMetadata and eventMetadata variables have been declared,
-  // as in the example above
-  switch on Trigger.operationType {
-    when AFTER_DELETE {
-      Rollup.runFromApex(
-        new List<Rollup__mdt>{ taskMetadata, eventMetadata },
-        null,
-        Trigger.old,
-        Trigger.oldMap
-      ).runCalc();
-    }
-    when else {
-      // assuming you have CMDT-based rollups for Contact as the child
-      Rollup.runFromTrigger();
-    }
-  }
 }
 ```
 

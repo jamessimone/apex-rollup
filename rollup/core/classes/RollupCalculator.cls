@@ -328,7 +328,7 @@ public without sharing abstract class RollupCalculator {
       ? new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) }
       : this.metadata.RollupOrderBys__r;
     if (orderBys.isEmpty() == false) {
-      new RollupCalcItemSorter(orderBys).sort(temporaryItems);
+      temporaryItems.sort(new RollupCalcItemSorter(orderBys));
     }
     if (this.metadata?.LimitAmount__c != null) {
       // we can only safely remove the items after sorting
@@ -486,7 +486,7 @@ public without sharing abstract class RollupCalculator {
       }
 
       this.repo.setQuery(
-          RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery + ('\nAND ' + this.opFieldOnCalcItem + '!= null')) +
+          RollupQueryBuilder.Current.getQuery(sObjectType, queryFields, 'Id', '!=', this.lookupKeyQuery + ('\nAND ' + this.opFieldOnCalcItem + ' != null')) +
           (isGroupable && this.isIdCount == false ? ('\nGROUP BY ' + this.opFieldOnCalcItem) : '')
         )
         .setArg(objIds);
@@ -1314,7 +1314,7 @@ public without sharing abstract class RollupCalculator {
 
   private without sharing class GroupByCalculator extends DelimiterCalculator {
     private final GroupingFormatter formatter;
-    private final RollupComparer sorter;
+    private final System.Comparator<SObject> sorter;
     private final RollupCalculator innerCalculator;
     private final List<String> fieldNames = new List<String>();
     private GroupByCalculator(
@@ -1346,7 +1346,7 @@ public without sharing abstract class RollupCalculator {
       this.innerCalculator.isMultiCurrencyRollup = this.isMultiCurrencyRollup;
 
       this.winnowItems(calcItems, oldCalcItems);
-      this.sorter.sort(calcItems);
+      calcItems.sort(this.sorter);
 
       Map<String, List<SObject>> groupingStringToItems = new Map<String, List<SObject>>();
       for (SObject item : calcItems) {

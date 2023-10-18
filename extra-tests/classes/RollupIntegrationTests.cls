@@ -1154,7 +1154,7 @@ private class RollupIntegrationTests {
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'COUNT_DISTINCT',
         CalcItem__c = 'ContactPointAddress',
-        CalcItemWhereClause__c = 'Name NOT LIKE \'' + cpa.Name.substring(0, 6) + '%\''
+        CalcItemWhereClause__c = '(NOT Name LIKE \'' + cpa.Name.substring(0, 6) + '%\')'
       )
     };
 
@@ -1592,7 +1592,7 @@ private class RollupIntegrationTests {
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
       .addLimit(1, ContactPointAddress.PreferenceRank)
-      .addOrderBys(new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Id') }, ContactPointAddress.PreferenceRank)
+      .addOrderBys(new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = 'Name') }, ContactPointAddress.PreferenceRank)
       .runCalc();
     Test.stopTest();
 

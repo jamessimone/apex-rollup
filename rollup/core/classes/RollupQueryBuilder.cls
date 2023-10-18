@@ -3,6 +3,7 @@ public without sharing class RollupQueryBuilder {
   public static final String ALL_ROWS = 'ALL ROWS';
   public static final String BIND_VAR = 'objIds';
 
+  private static final String VERBOTEN_ENDINGS = 'or and ()';
   private static final Map<String, String> OG_WHERE_CLAUSE_TO_SANITIZED_VERSION = new Map<String, String>();
   private static final Pattern AGGREGATE_QUERY_REGEX {
     get {
@@ -108,7 +109,11 @@ public without sharing class RollupQueryBuilder {
 
         fieldNames.add('TYPEOF ' + whoOrWhat + ' WHEN ' + relationshipName + ' THEN ' + String.join(typeOfFields, ',') + ' END');
 
+        Integer replaceIndex = optionalWhereClause.indexOf(indexer + relationshipName + '\'');
         optionalWhereClause = optionalWhereClause.replace(indexer + relationshipName + '\'', '').replace(whereClause, '');
+        if (optionalWhereClause.substring(replaceIndex).toLowerCase().containsOnly(VERBOTEN_ENDINGS)) {
+          optionalWhereClause = optionalWhereClause.substring(0, replaceIndex);
+        }
       }
     } catch (Exception ex) {
       RollupLogger.Instance.log('exception occurred while converting polymorphic where clause:', ex, LoggingLevel.WARN);
@@ -149,21 +154,20 @@ public without sharing class RollupQueryBuilder {
 
   private String getSanitizedWhereClause(String key, String whereClause, Schema.SObjectType sObjectType) {
     // sanitize what's left of the where clause
-    if (whereClause.containsOnly('() AND OR')) {
+    if (whereClause.toLowerCase().containsOnly(VERBOTEN_ENDINGS)) {
       whereClause = '';
     } else {
       while (whereClause.trim().endsWith('AND') || whereClause.trim().endsWith('OR')) {
         whereClause = whereClause.substringBeforeLast('AND').trim();
         whereClause = whereClause.substringBeforeLast('OR').trim();
       }
-      while (whereClause?.startsWith('(') == true && whereClause?.countMatches('(') > whereClause?.countMatches(')')) {
+      while (whereClause.startsWith('(') == true && whereClause.countMatches('(') > whereClause.countMatches(')')) {
         whereClause = whereClause.removeStart('(');
       }
-      while (whereClause?.endsWith(')') == true && whereClause?.countMatches(')') > whereClause?.countMatches('(')) {
+      while (whereClause.endsWith(')') == true && whereClause.countMatches(')') > whereClause.countMatches('(')) {
         whereClause = whereClause.removeEnd(')');
       }
       whereClause = whereClause.replace('()', '');
-      whereClause = RollupEvaluator.getWhereEval(whereClause, sObjectType).getSafeQuery();
 
       if (
         whereClause.containsIgnoreCase(' or ') && (whereClause.containsIgnoreCase(' and ') == false || whereClause.startsWith('(') && whereClause.endsWith(')'))

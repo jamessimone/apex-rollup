@@ -154,15 +154,19 @@ private class RollupEvaluatorTests {
   @IsTest
   static void shouldFilterCalcItemsBasedOnWhereClauseCmdtFieldForNotLikeStatements() {
     Account acc = new Account(Name = 'RollupEvaluatorTest');
-    Opportunity oppOne = new Opportunity(Name = 'RollupZZ', Account = acc);
-    Opportunity oppTwo = new Opportunity(Name = 'RollupZ', Account = acc);
+    Opportunity target = new Opportunity(Name = 'RollupZZ', Account = acc);
 
-    String whereClause = 'Account.Name NOT LIKE \'%Rollup%\'';
+    String whereClause = 'NOT Account.Name LIKE \'%Rollup%\'';
 
-    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
 
-    System.assertNotEquals(true, eval.matches(oppOne), 'Should not match based on parent field');
-    System.assertNotEquals(true, eval.matches(oppTwo), 'Should not match based on parent field');
+    System.assertEquals(false, eval.matches(target));
+    target.Account.Name = 'Rollup';
+    System.assertEquals(false, eval.matches(target));
+    target.Account.Name = 'rollUP';
+    System.assertEquals(false, eval.matches(target));
+    target.Account.Name = 'match';
+    System.assertEquals(true, eval.matches(target));
   }
 
   @IsTest
@@ -225,7 +229,7 @@ private class RollupEvaluatorTests {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
 
-    String whereClause = 'CloseDate > ' + oppTwo.CloseDate;
+    String whereClause = 'CloseDate > ' + getSoqlCompliantDatetime(Datetime.newInstance(oppTwo.CloseDate, Time.newInstance(0, 0, 0, 0)));
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
@@ -235,10 +239,10 @@ private class RollupEvaluatorTests {
 
   @IsTest
   static void shouldWorkForGreaterThanDatetimes() {
-    Event evOne = new Event(ActivityDateTime = System.now());
+    Event evOne = new Event(ActivityDateTime = System.now().addSeconds(-1));
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(2));
 
-    String whereClause = 'ActivityDateTime > ' + evOne.ActivityDateTime;
+    String whereClause = 'ActivityDateTime > ' + getSoqlCompliantDatetime(System.now());
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
 
@@ -263,7 +267,7 @@ private class RollupEvaluatorTests {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
 
-    String whereClause = 'CloseDate >= ' + oppTwo.CloseDate;
+    String whereClause = 'CloseDate >= ' + getSoqlCompliantDatetime(Datetime.newInstance(oppTwo.CloseDate, Time.newInstance(0, 0, 0, 0)));
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
@@ -288,7 +292,7 @@ private class RollupEvaluatorTests {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
 
-    String whereClause = 'ActivityDateTime >= ' + evOne.ActivityDateTime;
+    String whereClause = 'ActivityDateTime >= ' + getSoqlCompliantDatetime(evOne.ActivityDateTime);
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
 
@@ -327,7 +331,7 @@ private class RollupEvaluatorTests {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
 
-    String whereClause = 'CloseDate < ' + oppTwo.CloseDate;
+    String whereClause = 'CloseDate < ' + getSoqlCompliantDatetime(Datetime.newInstance(oppTwo.CloseDate, Time.newInstance(0, 0, 0, 0)));
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
@@ -352,7 +356,7 @@ private class RollupEvaluatorTests {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
 
-    String whereClause = 'ActivityDateTime < ' + evOne.ActivityDateTime;
+    String whereClause = 'ActivityDateTime < ' + getSoqlCompliantDatetime(evOne.ActivityDateTime);
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
 
@@ -365,7 +369,7 @@ private class RollupEvaluatorTests {
     Opportunity oppOne = new Opportunity(CloseDate = System.today());
     Opportunity oppTwo = new Opportunity(CloseDate = System.today().addDays(-2));
 
-    String whereClause = 'CloseDate <= ' + oppTwo.CloseDate;
+    String whereClause = 'CloseDate <= ' + getSoqlCompliantDatetime(Datetime.newInstance(oppTwo.CloseDate, Time.newInstance(0, 0, 0, 0)));
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, oppOne.getSObjectType());
 
@@ -390,7 +394,7 @@ private class RollupEvaluatorTests {
     Event evOne = new Event(ActivityDateTime = System.now());
     Event evTwo = new Event(ActivityDateTime = System.now().addDays(-2));
 
-    String whereClause = 'ActivityDateTime <= ' + evOne.ActivityDateTime;
+    String whereClause = 'ActivityDateTime <= ' + getSoqlCompliantDatetime(evOne.ActivityDateTime);
 
     Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, evOne.getSObjectType());
 
@@ -477,30 +481,6 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(active), 'Mixed case True should match');
     System.assertNotEquals(true, eval.matches(nonActive), 'Mixed case True should not match');
-  }
-
-  @IsTest
-  static void shouldReturnCorrectlyForNestedConditionals() {
-    Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
-    Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
-    Opportunity oppThree = new Opportunity(Amount = 3.01, StageName = 'Hello there');
-    Opportunity oppFour = new Opportunity(StageName = 'Hi', Amount = 0);
-    Opportunity oppFive = new Opportunity(Id = '0066g000000000000T', Amount = 3.99999);
-
-    String whereClause =
-      'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\' OR (Id IN (\'' +
-      oppFive.Id +
-      '\' AND Amount = ' +
-      oppFive.Amount +
-      ')))';
-
-    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
-
-    System.assertNotEquals(true, eval.matches(oppOne), 'Name does not match!');
-    System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
-    System.assertEquals(true, eval.matches(oppThree), 'Amount matches and name roughly matches!');
-    System.assertEquals(true, eval.matches(oppFour), 'Amount and name match');
-    System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');
   }
 
   @IsTest
@@ -696,36 +676,18 @@ private class RollupEvaluatorTests {
     System.assertEquals(new List<String>{ 'CreatedDate' }, eval.getQueryFields());
   }
 
-  @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
   @IsTest
   static void shouldThrowExceptionForImproperlyEnteredWhereClause() {
-    assertExceptionContains('= 1', 'Where clause entered incorrectly', null);
-  }
-
-  @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
-  @IsTest
-  static void shouldThrowExceptionForMultipleValuesWithGreaterThan() {
-    assertExceptionContains('Amount > (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
-  }
-
-  @SuppressWarnings('PMD.ApexUnitTestClassShouldHaveAsserts')
-  @IsTest
-  static void shouldThrowExceptionForMultipleValuesWithLessThan() {
-    assertExceptionContains('Amount < (1, 2, 3, 4)', 'Comparison not valid with multiple arguments', new Opportunity(Amount = 1));
-  }
-
-  private static void assertExceptionContains(String whereClause, String expectedException, Opportunity opp) {
     Exception ex;
-
     try {
-      RollupEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
-      eval.matches(opp);
+      RollupEvaluator eval = new RollupEvaluator.WhereFieldEvaluator('= 1', Opportunity.SObjectType);
+      eval.matches(null);
+      Assert.fail('Exception should be thrown above');
     } catch (Exception e) {
       ex = e;
     }
 
-    System.assertNotEquals(null, ex);
-    System.assertEquals(true, ex.getMessage().contains(expectedException));
+    System.assertEquals(true, ex?.getMessage().contains('Where clause entered incorrectly'));
   }
 
   @IsTest
@@ -926,39 +888,56 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
-  static void shouldCorrectlyReformatNotLikeQuery() {
-    String whereClause = 'TaskSubType != \'Email\' OR Subject NOT LIKE \'Email\'';
+  static void shouldCorrectlyDetectNestedNot() {
+    String whereClause = 'TaskSubType != \'Email\' OR (NOT Subject LIKE \'Email\')';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
 
-    System.assertEquals('TaskSubType != \'Email\' OR (NOT Subject LIKE \'Email\')', eval.getSafeQuery());
+    System.assertEquals(true, eval.matches(new Task(TaskSubType = 'Call')));
+    System.assertEquals(true, eval.matches(new Task(TaskSubType = 'Email', Subject = 'Hello')));
+    System.assertEquals(false, eval.matches(new Task(TaskSubType = 'Email', Subject = 'Email')));
+    System.assertEquals(true, eval.matches(new Task()));
   }
 
   @IsTest
-  static void shouldCorrectlyFormatInQueryWithinEquality() {
-    String whereClause = 'StageName IN (\'firstName\', \'secondName\')';
+  static void shouldDetectNestedNotOrConditions() {
+    String whereClause = 'Amount = 1 OR (NOT (Amount = 0 OR Amount = 5))';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    System.assertEquals(whereClause, eval.getSafeQuery());
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 0)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 1)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 2)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 3)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 4)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 5)));
   }
 
   @IsTest
-  static void shouldCorrectlyFormatInQueryWithinValue() {
-    String whereClause = 'StageName != \'Gift in Kind\'';
+  static void shouldDetectNestedNotAndConditions() {
+    String whereClause = 'Amount >= 1 AND (NOT(Amount = 0 OR Amount = 5))';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    System.assertEquals(whereClause, eval.getSafeQuery());
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 0)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 1)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 2)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 3)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 4)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 5)));
   }
 
   @IsTest
-  static void shouldCorrectlyFormatCapitalizedInQueryWithinValue() {
-    String whereClause = 'StageName != \'Gift In Kind\'';
+  static void shouldDetectNotInProperly() {
+    String whereClause = 'Amount NOT IN (1, 3)';
 
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
 
-    System.assertEquals(whereClause, eval.getSafeQuery());
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 0)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 1)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 2)));
+    System.assertEquals(false, eval.matches(new Opportunity(Amount = 3)));
+    System.assertEquals(true, eval.matches(new Opportunity(Amount = 4)));
   }
 
   @IsTest
@@ -979,6 +958,8 @@ private class RollupEvaluatorTests {
 
     System.assertEquals(true, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 1)));
     System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 0)), 'cpa should not match');
+    System.assertEquals(false, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 4)), 'preference rank should not match');
+    System.assertEquals(true, eval.matches(new ContactPointAddress(Name = 'someValue', PreferenceRank = 3)));
   }
 
   @IsTest
@@ -1090,7 +1071,7 @@ private class RollupEvaluatorTests {
     String whereClause =
       'AccountId = \'' +
       accountId +
-      '\' AND CloseDate <= LAST_YEAR AND CloseDate > N_YEARS_AGO:3 AND StageName != \'Closed Lost\' AND StageName != \'Closed/No Event Fees Only';
+      '\' AND CloseDate <= LAST_YEAR AND CloseDate > N_YEARS_AGO:3 AND StageName != \'Closed Lost\' AND StageName != \'Closed/No Event Fees Only\'';
     Opportunity matchingOpp = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-1));
     Opportunity stageClosedLostNonMatch = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2), StageName = 'Closed Lost');
     Opportunity stageClosedNonMatch = new Opportunity(AccountId = accountId, CloseDate = System.today().addYears(-2), StageName = 'Closed/No Event Fees Only');
@@ -1117,27 +1098,6 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
-  static void crazilyNestedConditionalsAreRecursedProperly() {
-    String whereClause = '((IsActive = TRUE) OR (IsActive = FALSE) OR (IsActive = FALSE AND FirstName LIKE \'Special%\') OR (FirstName = \'One Item\' AND IsActive = TRUE) OR (FirstName = \'One Item\'))';
-    User target = new User(IsActive = false, FirstName = 'One');
-
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
-
-    System.assertEquals(true, eval.matches(target));
-    System.assertEquals(true, eval.matches(new User(IsActive = true)));
-  }
-
-  @IsTest
-  static void moreCrazilyNestedConditionalsAreParsedCorrectly() {
-    String whereClause = '((StageName = \'Bequest\' AND AccountId = :recordIds) OR (IsClosed = false AND Amount > 0 AND Amount > 0 AND AccountId = :recordIds) OR (IsClosed = true AND Amount = 0 AND IsClosed = true AND Amount = 0 AND AccountId = :recordIds))';
-    Opportunity target = new Opportunity(StageName = 'Bequest', Amount = 1);
-
-    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
-
-    System.assertEquals(true, eval.matches(target));
-  }
-
-  @IsTest
   static void pascalCaseForFieldNamesIsNotRequired() {
     String poorlyCasedFieldName = Opportunity.IsClosed.getDescribe().getName().toLowerCase();
 
@@ -1152,6 +1112,73 @@ private class RollupEvaluatorTests {
     );
 
     System.assertEquals(true, eval.matches(target));
-    System.asserteQuals(false, eval.matches(new OpportunityLineItem()), 'Should properly evaluate for null relationship');
+    System.assertEquals(false, eval.matches(new OpportunityLineItem()), 'Should properly evaluate for null relationship');
+  }
+
+  @IsTest
+  static void nestedConditionalsWork() {
+    String whereClause = '((IsActive = TRUE) OR (IsActive = FALSE AND FirstName = \'One\') OR (IsActive = FALSE AND FirstName LIKE \'Special%\') OR (FirstName = \'a\' AND AboutMe = \'b\') OR (FirstName = \'b\'))';
+    User target = new User(IsActive = false, FirstName = 'One');
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
+
+    validateQuery(User.SObjectType, whereClause);
+    System.assertEquals(true, eval.matches(target));
+    System.assertEquals(true, eval.matches(new User(IsActive = true)));
+    System.assertEquals(true, eval.matches(new User(IsActive = false, FirstName = 'SpecialK')));
+    System.assertEquals(true, eval.matches(new User(FirstName = 'a', AboutMe = 'b')));
+    System.assertEquals(true, eval.matches(new User(FirstName = 'b')));
+    System.assertEquals(false, eval.matches(new User(IsActive = false, FirstName = 'c')));
+  }
+
+  @IsTest
+  static void nestedConditionalsWorkWithSomeMatchingInnerClauses() {
+    String whereClause = '(StageName = \'one\' AND LeadSource IN (\'Web\', \'Phone\') ) OR (LeadSource in (\'Web\', \'Phone\') AND StageName = \'two\')';
+
+    Opportunity target = new Opportunity(StageName = 'one', LeadSource = 'Web');
+    Opportunity secondMatch = new Opportunity(StageName = 'two', LeadSource = 'Phone');
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, target.getSObjectType());
+
+    validateQuery(Opportunity.SObjectType, whereClause);
+    System.assertEquals(true, eval.matches(target));
+    System.assertEquals(true, eval.matches(secondMatch));
+    System.assertEquals(false, eval.matches(new Opportunity(StageName = 'three', LeadSource = 'Web')));
+  }
+
+  @IsTest
+  static void nestedConditionalsWorkWithMoreThanOneLevel() {
+    Opportunity oppOne = new Opportunity(StageName = 'Not A Match');
+    Opportunity oppTwo = new Opportunity(Amount = 5, StageName = 'Hi');
+    Opportunity oppThree = new Opportunity(Amount = 3.01, StageName = 'Hello there');
+    Opportunity oppFour = new Opportunity(StageName = 'Hi', Amount = 0);
+    Opportunity oppFive = new Opportunity(Id = '0066g000000000000T', Amount = 3.99999);
+
+    String whereClause =
+      'Amount < 4 AND (StageName LIKE \'%Hello%\' OR StageName = \'Hi\' OR (Id IN (\'' +
+      oppFive.Id +
+      '\',' +
+      '\'0066g000000000000Z\'' +
+      ')' +
+      ' AND Amount = ' +
+      oppFive.Amount +
+      '))';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);
+
+    validateQuery(Opportunity.SObjectType, whereClause);
+    System.assertNotEquals(true, eval.matches(oppOne), 'Name does not match!');
+    System.assertNotEquals(true, eval.matches(oppTwo), 'Amount does not match');
+    System.assertEquals(true, eval.matches(oppThree), 'Amount matches and name roughly matches!');
+    System.assertEquals(true, eval.matches(oppFour), 'Amount and name match');
+    System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');
+  }
+
+  private static String getSoqlCompliantDatetime(Datetime dt) {
+    return dt.format('yyyy-MM-dd\'T\'HH:mm:ssZ');
+  }
+
+  private static void validateQuery(Schema.SObjectType target, String whereClause) {
+    // sanity check - is the where clause valid?
+    Database.query('SELECT Id FROM ' + target + ' WHERE ' + whereClause);
   }
 }

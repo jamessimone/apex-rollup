@@ -775,7 +775,7 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AccountNumber',
         RollupOperation__c = 'CONCAT',
-        CalcItemWhereClause__c = 'Subject NOT LIKE \'Email\' ||| WhatId = \'' + acc.Id + '\''
+        CalcItemWhereClause__c = '(NOT Subject LIKE \'Email\') ||| WhatId = \'' + acc.Id + '\''
       )
     };
 

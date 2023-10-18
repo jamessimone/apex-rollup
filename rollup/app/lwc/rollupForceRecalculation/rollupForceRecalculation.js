@@ -11,28 +11,8 @@ import { getRollupMetadata, transformToSerializableChildren } from 'c/rollupUtil
 const MAX_ROW_SELECTION = 200;
 
 export default class RollupForceRecalculation extends LightningElement {
-  @api
-  isCMDTRecalc = false;
-
-  selectedRows = [];
-  rollupMetadataOptions = [];
-  cmdtColumns = [];
-  rollupOperationValues = [];
-
-  maxRowSelection = MAX_ROW_SELECTION;
-  selectedMetadata;
-  selectedMetadataCMDTRecords;
-
-  isRollingUp = false;
-  isOrderByRollup = false;
-  rollupStatus;
-  jobIdToDisplay;
-  error = '';
-  canDisplayCmdtToggle = false;
-
   _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
   _localMetadata = {};
-
   _metadata = {
     RollupFieldOnCalcItem__c: '',
     LookupFieldOnCalcItem__c: '',
@@ -46,10 +26,6 @@ export default class RollupForceRecalculation extends LightningElement {
     SplitConcatDelimiterOnCalcItem__c: false,
     LimitAmount__c: null
   };
-
-  namespace = '';
-  safeObjectName = '';
-  safeRollupOperationField = '';
   _cmdtFieldNames = [
     'MasterLabel',
     'DeveloperName',
@@ -59,6 +35,28 @@ export default class RollupForceRecalculation extends LightningElement {
     'RollupFieldOnLookupObject__c',
     'LookupObject__c'
   ];
+
+  canDisplayCmdtToggle = false;
+  cmdtColumns = [];
+  defaultSortDirection = 'asc';
+  error = '';
+  isOrderByRollup = false;
+  isRollingUp = false;
+  jobIdToDisplay;
+  maxRowSelection = MAX_ROW_SELECTION;
+  namespace = '';
+  rollupMetadataOptions = [];
+  rollupOperationValues = [];
+  rollupStatus;
+  safeObjectName = '';
+  safeRollupOperationField = '';
+  selectedMetadata;
+  selectedMetadataCMDTRecords;
+  selectedRows = [];
+  sortDirection = 'asc';
+
+  @api
+  isCMDTRecalc = false;
 
   get rollupOperation() {
     return this._metadata[this._getNamespacedFieldName(this.safeRollupOperationField)] || '';
@@ -77,7 +75,7 @@ export default class RollupForceRecalculation extends LightningElement {
     if (data) {
       this._cmdtFieldNames.forEach(fieldName => {
         if (data.fields[fieldName]) {
-          this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName });
+          this.cmdtColumns.push({ label: data.fields[fieldName].label, fieldName: fieldName, sortable: true });
         }
       });
     } else if (error) {
@@ -108,6 +106,28 @@ export default class RollupForceRecalculation extends LightningElement {
       this.rollupOperation.indexOf('LAST') !== -1 ||
       this._getNamespaceSafeFieldValue(limitAmountWithoutNamespace) ||
       this.rollupOperation.indexOf('MOST') !== -1;
+  }
+
+  handleSort(event) {
+    const { fieldName, sortDirection } = event.detail;
+    const clonedMeta = [...this.selectedMetadataCMDTRecords];
+    let reverse = 1;
+    if (sortDirection === 'desc') {
+      reverse = -1;
+    }
+
+    clonedMeta.sort((a, b) => {
+      let sort = 0;
+      if (a[fieldName] > b[fieldName]) {
+        sort = 1;
+      } else if (b[fieldName] > a[fieldName]) {
+        sort = -1;
+      }
+      return reverse * sort;
+    });
+    this.selectedMetadataCMDTRecords = clonedMeta;
+    this.sortDirection = sortDirection;
+    this.sortedBy = fieldName;
   }
 
   handleToggle() {

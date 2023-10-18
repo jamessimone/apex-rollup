@@ -5,7 +5,7 @@ global without sharing virtual class RollupSObjectUpdater {
   private static String PRE_AND_POST_UPDATER_NAME = 'RollupPreAndPostUpdater';
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
-  private static final SObjectSorter SORTER = new SObjectSorter();
+  private static final SObjectTypeSorter SORTER = new SObjectTypeSorter();
   @TestVisible
   private static final Map<Id, SObject> RECORDS_TO_UPDATE = new Map<Id, SObject>();
 
@@ -61,7 +61,7 @@ global without sharing virtual class RollupSObjectUpdater {
     // getting updated is a no-op, but the addition of the logging item is annoying ...
     if (recordsToUpdate.isEmpty() == false) {
       RollupLogger.Instance.log('updating ' + recordsToUpdate.size() + ' records', LoggingLevel.INFO);
-      SORTER.sort(recordsToUpdate);
+      recordsToUpdate.sort(SORTER);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
       if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
@@ -212,17 +212,15 @@ global without sharing virtual class RollupSObjectUpdater {
     return defaultType?.newInstance();
   }
 
-  private class SObjectSorter extends RollupComparer {
-    public override Integer compare(Object first, Object second) {
+  private class SObjectTypeSorter implements System.Comparator<SObject> {
+    public Integer compare(SObject first, SObject second) {
       Integer returnVal = 0;
-      if (first instanceof SObject && second instanceof SObject) {
-        String firstSObjectType = String.valueOf(((SObject) first).getSObjectType());
-        String secondSObjectType = String.valueOf(((SObject) second).getSObjectType());
-        if (firstSObjectType > secondSObjectType) {
-          returnVal = this.moveTowardBackOfList;
-        } else if (secondSObjectType > firstSObjectType) {
-          returnVal = this.moveTowardFrontOfList;
-        }
+      String firstSObjectType = String.valueOf(first.getSObjectType());
+      String secondSObjectType = String.valueOf(second.getSObjectType());
+      if (firstSObjectType > secondSObjectType) {
+        returnVal = 1;
+      } else if (secondSObjectType > firstSObjectType) {
+        returnVal = -1;
       }
       return returnVal;
     }

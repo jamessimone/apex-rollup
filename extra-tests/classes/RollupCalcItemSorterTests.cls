@@ -20,7 +20,7 @@ private class RollupCalcItemSorterTests {
       expectedSecondItem,
       expectedFirstItem
     };
-    sorter.sort(oppsToSort);
+    oppsToSort.sort(sorter);
 
     System.assertEquals(expectedFirstItem, oppsToSort[0]);
     System.assertEquals(expectedSecondItem, oppsToSort[1]);
@@ -42,7 +42,7 @@ private class RollupCalcItemSorterTests {
     Opportunity expectedSecondItem = new Opportunity(Amount = 1, CloseDate = today, Name = 'c');
     Opportunity expectedFourthItem = new Opportunity(Amount = 2, CloseDate = today.addDays(1), Name = 'a');
     List<Opportunity> oppsToSort = new List<Opportunity>{ expectedSecondItem, expectedFourthItem, expectedThirdItem, expectedFirstItem };
-    sorter.sort(oppsToSort);
+    oppsToSort.sort(sorter);
 
     System.assertEquals(expectedFirstItem, oppsToSort[0]);
     System.assertEquals(expectedSecondItem, oppsToSort[1]);
@@ -67,7 +67,7 @@ private class RollupCalcItemSorterTests {
       expectedSecondItem,
       expectedFirstItem
     };
-    sorter.sort(oppsToSort);
+    oppsToSort.sort(sorter);
 
     System.assertEquals(expectedFirstItem, oppsToSort[0]);
     System.assertEquals(expectedSecondItem, oppsToSort[1]);
@@ -89,7 +89,7 @@ private class RollupCalcItemSorterTests {
     Opportunity expectedThirdItem = new Opportunity(Amount = 1, CloseDate = today);
 
     List<Opportunity> oppsToSort = new List<Opportunity>{ expectedThirdItem, expectedFirstItem, expectedSecondItem };
-    sorter.sort(oppsToSort);
+    oppsToSort.sort(sorter);
 
     System.assertEquals(expectedFirstItem, oppsToSort[0]);
     System.assertEquals(expectedSecondItem, oppsToSort[1]);
@@ -107,8 +107,7 @@ private class RollupCalcItemSorterTests {
       Schema.PicklistEntry entry = picklistEntries[reverseIndex];
       accs.add(new Account(Name = entry.getValue(), Industry = entry.getValue()));
     }
-
-    sorter.sort(accs);
+    accs.sort(sorter);
 
     for (Integer index = 0; index < accs.size(); index++) {
       System.assertEquals(picklistEntries[index].getValue(), accs[index].Industry, 'Account at index: ' + index + ' should have matched');
@@ -131,7 +130,7 @@ private class RollupCalcItemSorterTests {
     );
 
     List<Opportunity> opps = new List<Opportunity>{ second, opp };
-    sorter.sort(opps);
+    opps.sort(sorter);
 
     System.assertEquals(opp, opps[0]);
     System.assertEquals(second, opps[1]);
@@ -146,7 +145,7 @@ private class RollupCalcItemSorterTests {
     Opportunity expectedFirstItem = new Opportunity(Amount = null);
     Opportunity expectedSecondItem = new Opportunity(Amount = 1);
     List<Opportunity> oppsToSort = new List<Opportunity>{ new Opportunity(Amount = 1), new Opportunity(Amount = 3), expectedSecondItem, expectedFirstItem };
-    sorter.sort(oppsToSort);
+    oppsToSort.sort(sorter);
 
     System.assert(true, 'Should make it here');
   }
@@ -163,7 +162,7 @@ private class RollupCalcItemSorterTests {
       new Opportunity(StageName = 'One')
     };
 
-    new RollupCalcItemSorter(new List<String>{ Opportunity.Name.getDescribe().getName(), Opportunity.StageName.getDescribe().getName() }).sort(itemsToSort);
+    itemsToSort.sort(new RollupCalcItemSorter(new List<String>{ Opportunity.Name.getDescribe().getName(), Opportunity.StageName.getDescribe().getName() }));
 
     System.assertEquals(null, itemsToSort.get(0).StageName);
     System.assertEquals('One', itemsToSort.get(1).StageName);

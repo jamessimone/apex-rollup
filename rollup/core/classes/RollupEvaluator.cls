@@ -10,24 +10,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
   private static Map<String, Boolean> CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
 
-  // totally not obvious ranking going on here - it's absolutely imperative that
-  // the two-word conditions go first; otherwise replacing will fail on the whole string
-  // due to casing issues (NOT like, NOT in). I could make those be part of the map, too,
-  // but that seems even worse than the pseudo-ranking going on here
-  private static final Map<String, String> CONDITION_MAP = new Map<String, String>{
-    ' not in ' => ' != ',
-    ' NOT IN ' => ' != ',
-    ' not like ' => ' !like ',
-    ' NOT LIKE ' => ' !like ',
-    ' in ' => ' = ',
-    ' IN ' => ' = ',
-    ' LIKE ' => ' like ',
-    ' INCLUDES ' => ' includes ',
-    ' includes ' => ' includes ',
-    ' EXCLUDES ' => ' !includes ',
-    ' excludes ' => ' !includes '
-  };
-
   private static Map<String, RecursiveTracker> OPERATION_TO_RECURSION_TRACKER {
     get {
       if (OPERATION_TO_RECURSION_TRACKER == null) {
@@ -153,16 +135,91 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
   }
 
+  private abstract class WhereCondition implements RollupLogger.ToStringObject {
+    protected Boolean isNegated = false;
+
+    public virtual Boolean isNegatedConditional() {
+      return this.isNegated;
+    }
+    public virtual Boolean isOrConditional() {
+      return false;
+    }
+    public abstract Boolean matches(Object calcItem);
+    public abstract override String toString();
+  }
+
+  private virtual class ConditionalGrouping extends WhereCondition {
+    protected final List<WhereCondition> innerConditions;
+    public ConditionalGrouping(List<WhereCondition> innerConditions) {
+      this.innerConditions = new List<WhereCondition>(innerConditions);
+    }
+
+    public virtual override Boolean matches(Object calcItem) {
+      Boolean isEqual = true;
+      for (WhereCondition innerCondition : this.innerConditions) {
+        Boolean innerEquals = innerCondition.matches(calcItem);
+        isEqual = isEqual && innerEquals;
+        if (innerCondition.isOrConditional()) {
+          isEqual = isEqual || innerEquals;
+          if (isEqual) {
+            break;
+          }
+        } else {
+          if (isEqual == false) {
+            break;
+          }
+        }
+      }
+      return this.isNegated ? !isEqual : isEqual;
+    }
+
+    public override String toString() {
+      return ConditionalGrouping.class.getName() +
+        '\nIs Or Conditional: ' +
+        this.isOrConditional() +
+        '\nInner conditions: ' +
+        this.innerConditions +
+        '\nIs negated: ' +
+        this.isNegated;
+    }
+  }
+
+  private class OrConditionalGrouping extends ConditionalGrouping {
+    public OrConditionalGrouping(List<WhereCondition> innerConditions) {
+      super(innerConditions);
+    }
+
+    public override Boolean isOrConditional() {
+      return true;
+    }
+
+    public override Boolean matches(Object calcItem) {
+      Boolean isEqual = this.innerConditions.isEmpty();
+      for (Integer index = 0; index < this.innerConditions.size(); index++) {
+        if (index == 0) {
+          isEqual = true;
+        }
+        WhereCondition innerCondition = this.innerConditions[index];
+        if (innerCondition.isOrConditional() == false) {
+          isEqual = isEqual && innerCondition.matches(calcItem);
+        } else {
+          isEqual = innerCondition.matches(calcItem);
+          if (isEqual) {
+            break;
+          }
+        }
+      }
+      return this.isNegated ? !isEqual : isEqual;
+    }
+  }
+
   public class WhereFieldEvaluator extends RollupEvaluator {
     private final SObjectType calcItemType;
-    private final String originalWhereClause;
     private final String whereClause;
-    private final List<ConditionalGrouping> conditionalGroupings = new List<ConditionalGrouping>();
+    private final List<WhereCondition> whereConditions = new List<WhereCondition>();
     private final Set<String> validRelationshipNames;
     private final Set<String> splitWheres = new Set<String>();
-    private final Set<String> previouslyParsedClauses = new Set<String>();
-
-    private List<String> queryFields;
+    private final Set<String> queryFields = new Set<String>();
 
     private final Map<String, Schema.SObjectField> fieldNameToField {
       get {
@@ -175,98 +232,37 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
-      whereClause = whereClause == null ? '' : whereClause.replaceAll('(\n|\r|\t)', '');
-      this.originalWhereClause = whereClause;
-
-      if (String.isNotBlank(whereClause)) {
-        for (String conditionKey : CONDITION_MAP.keySet()) {
-          whereClause = whereClause.replace(conditionKey, CONDITION_MAP.get(conditionKey));
-        }
-      }
+      whereClause = whereClause == null ? '' : whereClause.replaceAll('(\n|\r|\t)', ' ');
       this.whereClause = whereClause;
       this.calcItemType = calcItemSObjectType;
-      this.createConditions(calcItemSObjectType);
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
+      this.createConditions(calcItemSObjectType, whereClause);
       RollupLogger.Instance.log('where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
+      RollupLogger.Instance.log('conditionals', this.whereConditions, LoggingLevel.FINER);
     }
 
     public override String toString() {
-      return WhereFieldEvaluator.class.getName() + '\nWhere clause: ' + this.originalWhereClause;
+      return WhereFieldEvaluator.class.getName() + '\nWhere clause: ' + this.whereClause;
     }
 
     public List<String> getWhereClauses() {
       return new List<String>(this.splitWheres);
     }
 
-    public String getSafeQuery() {
-      String startingPoint = this.whereClause;
-      for (String whereClausePart : this.splitWheres) {
-        List<String> completelySplitClauses = whereClausePart.split(' ');
-        if (completelySplitClauses.size() >= 3 && completelySplitClauses[1] == '!like') {
-          String supplementalClause = '(NOT ' + completelySplitClauses[0] + ' LIKE ' + completelySplitClauses[2] + ')';
-          startingPoint = startingPoint.replace(whereClausePart, supplementalClause);
-        } else if (
-          completelySplitClauses.size() >= 3 &&
-          completelySplitClauses[1].contains('=') &&
-          completelySplitClauses[2].startsWith('(') &&
-          completelySplitClauses[completelySplitClauses.size() - 1].endsWith(')')
-        ) {
-          completelySplitClauses[1] = completelySplitClauses[1] == '!=' ? 'NOT IN' : 'IN';
-          startingPoint = startingPoint.replace(whereClausePart, String.join(completelySplitClauses, ' '));
-        } else if (completelySplitClauses.size() >= 3 && this.originalWhereClause.indexOf(whereClausePart) == -1) {
-          for (String replacementKey : CONDITION_MAP.keySet()) {
-            String replacementVal = CONDITION_MAP.get(replacementKey);
-            String potentialReplacement = whereClausePart.replace(replacementVal, replacementKey);
-            if (this.originalWhereClause.indexOf(potentialReplacement) >= 0) {
-              startingPoint = startingPoint.replace(whereClausePart, potentialReplacement);
-              break;
-            }
-          }
-        }
-      }
-      return startingPoint;
-    }
-
     public List<String> getQueryFields() {
-      if (this.queryFields == null) {
-        Set<String> fieldNames = new Set<String>();
-        for (ConditionalGrouping conditionalGrouping : this.conditionalGroupings) {
-          for (WhereFieldCondition condition : conditionalGrouping.innerConditions) {
-            Boolean hasRelationshipField = condition.fieldName.contains('.');
-            if (condition.fieldName.toLowerCase() == 'not') {
-              continue;
-            }
-            if (
-              hasRelationshipField &&
-              fieldNames.contains(condition.fieldName) == false &&
-              condition.fieldName.contains('__c.') == false &&
-              this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
-              this.isValidRelationshipField(condition.fieldName)
-            ) {
-              fieldNames.add(condition.fieldName);
-            } else if (RollupDateLiteral.isSoqlDateFunction(condition.fieldName)) {
-              fieldNames.add(getDateFunctionField(condition.fieldName));
-            } else if (hasRelationshipField == false) {
-              fieldNames.add(condition.fieldName);
-            }
-          }
-        }
-        this.queryFields = new List<String>(fieldNames);
-      }
-      return this.queryFields;
+      return new List<String>(this.queryFields);
     }
 
     public override Boolean matches(Object calcItem) {
       Boolean matches = calcItem instanceof SObject;
       if (matches) {
-        for (Integer index = 0; index < this.conditionalGroupings.size(); index++) {
-          ConditionalGrouping conditionalGrouping = this.conditionalGroupings[index];
-          Boolean hasInnerMatch = conditionalGrouping.equals(calcItem);
-          addLog(conditionalGrouping, hasInnerMatch, calcItem, LoggingLevel.FINEST);
-          Boolean isOrConditional = conditionalGrouping.isOrConditional();
-          if (isOrConditional) {
+        for (Integer index = 0; index < this.whereConditions.size(); index++) {
+          WhereCondition condition = this.whereConditions[index];
+          Boolean hasInnerMatch = condition.matches(calcItem);
+          addLog(condition, hasInnerMatch, calcItem, LoggingLevel.FINEST);
+          if (condition.isOrConditional()) {
             matches = index == 0 ? hasInnerMatch : hasInnerMatch || matches;
-          } else if (isOrConditional == false) {
+          } else {
             matches = matches && hasInnerMatch;
           }
         }
@@ -294,19 +290,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       return localRelationshipNames;
     }
 
-    private void createConditions(SObjectType calcItemSObjectType) {
-      List<String> localSplitWheres = this.getSoqlWhereClauses(this.whereClause, calcItemSObjectType);
+    private void createConditions(Schema.SObjectType calcItemSObjectType, String localWhereClause) {
       try {
-        for (String splitWhereClause : localSplitWheres) {
-          List<WhereFieldCondition> conditions = this.createConditionsFromString(splitWhereClause, calcItemSObjectType);
-          if (this.isOrConditional(this.whereClause, splitWhereClause)) {
-            this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
-          } else {
-            this.conditionalGroupings.add(new AndConditionalGrouping(conditions));
-          }
-        }
+        this.whereConditions.addAll(this.recursivelyCreateConditions(localWhereClause));
       } catch (Exception ex) {
-        this.logError(ex);
+        RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
         RollupLogger.Instance.save();
         throw new IllegalArgumentException(
           'Where clause entered incorrectly: ' +
@@ -319,147 +307,154 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
-    private List<String> getSoqlWhereClauses(String localWhereClause, SObjectType calcItemSObjectType) {
-      List<String> localSplitWheres = localWhereClause.split('( and | AND | OR | or )');
-      this.reconstructImproperlySplitClauses(localSplitWheres, localWhereClause);
-      this.recurseForNestedConditionals(localSplitWheres, calcItemSObjectType, localWhereClause);
-      return localSplitWheres;
-    }
-
-    private void reconstructImproperlySplitClauses(List<String> localSplitWheres, String whereClause) {
-      // shocker - strings can have the criteria keywords IN them. reconstitute the strings that have been incorrectly split
-      for (Integer index = localSplitWheres.size() - 1; index >= 0; index--) {
-        String splitWhereClause = localSplitWheres[index];
-        // we have to assume that the only place where this could happen is at the back of the string
-        if (splitWhereClause.endsWith('\'') && splitWhereClause.indexOf('\'') == splitWhereClause.length() - 1 && index > 0) {
-          try {
-            String nextString = localSplitWheres[index - 1];
-            String foundCriteria = whereClause.substring(whereClause.indexOf(nextString) + nextString.length(), whereClause.indexOf(splitWhereClause)).trim();
-            localSplitWheres[index - 1] = (nextString + ' ' + foundCriteria + ' ' + splitWhereClause);
-            localSplitWheres.remove(index);
-          } catch (Exception ex) {
-            this.logError(ex);
-          }
+    private List<WhereCondition> recursivelyCreateConditions(String localWhereClause) {
+      if (localWhereClause.startsWith('(') && localWhereClause.endsWith(')')) {
+        localWhereClause = localWhereClause.substring(1, localWhereClause.length() - 1);
+      }
+      List<WhereCondition> conditionals = new List<WhereCondition>();
+      // double pass through: once to remove blanks and any trailing conditionals
+      // then once straight through, stopping only at inner conditionals
+      List<String> words = localWhereClause.split(' ');
+      for (Integer reverseIndex = words.size() - 1; reverseIndex >= 0; reverseIndex--) {
+        String word = words[reverseIndex].deleteWhitespace().toLowerCase();
+        if (word == '') {
+          words.remove(reverseIndex);
+        } else if (reverseIndex == words.size() - 1 && (word == 'or' || word == 'and')) {
+          words.remove(reverseIndex);
         }
       }
-    }
+      for (Integer index = 0; index < words.size(); index++) {
+        Boolean isOrConditional = index == 0;
+        String word = words[index].trim();
+        if (word == ')') {
+          word = words[++index];
+        }
+        if (word.equalsIgnoreCase('or')) {
+          isOrConditional = true;
+          word = words[++index];
+        } else if (word.equalsIgnoreCase('and')) {
+          isOrConditional = false;
+          word = words[++index];
+        }
 
-    private void recurseForNestedConditionals(List<String> localSplitWheres, SObjectType calcItemSObjectType, String whereClause) {
-      // this time we can't iterate through the list in reverse simply because there are
-      // multiple instances where a parathenses is perfectly valid to have at the end of the where clause;
-      // any IN-based condition, for example, would end with a paranthetical list of Ids/Strings
-      // on the other hand, there's only one way there would be parantheses at the beginning of the statement -
-      // if it was a nested conditional
-      for (Integer index = 0; index < localSplitWheres.size(); index++) {
-        String potentialNestedConditional = localSplitWheres[index].trim();
-        Integer originalMatchIndex = index;
-        Integer openParansRange = potentialNestedConditional.indexOf('(');
-        if (openParansRange == 0 && potentialNestedConditional.length() > 1) {
-          // remove the parans now
-          potentialNestedConditional = potentialNestedConditional.substring(
-            1,
-            potentialNestedConditional.length() - (potentialNestedConditional.endsWith(')') ? 1 : 0)
-          );
-          // iterate through the rest of the list, stopping at the end of the parantheses
-          for (Integer innerIndex = index + 1; innerIndex < localSplitWheres.size(); innerIndex++) {
-            String innerMatch = localSplitWheres[innerIndex].trim();
-            // remove the blanks afterwards!
-            localSplitWheres[innerIndex] = '';
-            if (innerMatch.endsWith(')')) {
-              Integer startingPoint = whereClause.indexOf(potentialNestedConditional);
-              Integer endingPoint = whereClause.indexOf(innerMatch) + (innerMatch.length() - 1);
-              potentialNestedConditional = whereClause.substring(startingPoint, endingPoint < startingPoint ? whereClause.length() : endingPoint)
-                .removeStart('(')
-                .removeEnd(')');
+        Boolean isNegated = false;
+        if (word.startsWithIgnoreCase('(not(')) {
+          word = word.removeStartIgnoreCase('(not');
+          isNegated = true;
+        } else if (word.equalsIgnoreCase('not')) {
+          // check for presence of nested conditional, otherwise let fall through to next NOT check
+          word = words[++index];
+          isNegated = true;
+        }
+
+        if (word.startsWith('(')) {
+          Integer openParansCounter = 1;
+          while (openParansCounter > 0) {
+            String nextToken = words[++index];
+            if (nextToken.contains('(')) {
+              openParansCounter++;
+            }
+            if (nextToken.contains(')')) {
+              openParansCounter--;
+              if (openParansCounter == 0) {
+                nextToken = nextToken.removeEnd(')');
+              }
+            }
+            word += ' ' + nextToken;
+            if (index == words.size() - 1) {
+              word = word.removeStart('(');
               break;
-            } else {
-              this.splitWheres.add(innerMatch);
             }
           }
-          // we'll remove these blanks in a second
-          localSplitWheres[originalMatchIndex] = '';
+          List<WhereCondition> innerConditions = this.recursivelyCreateConditions(word);
+          ConditionalGrouping grouping = isOrConditional
+            ? (ConditionalGrouping) new OrConditionalGrouping(innerConditions)
+            : (ConditionalGrouping) new ConditionalGrouping(innerConditions);
+          grouping.isNegated = isNegated;
+          conditionals.add(grouping);
+          continue;
+        }
 
-          if (this.previouslyParsedClauses.contains(potentialNestedConditional)) {
-            continue;
-          }
-          this.previouslyParsedClauses.add(potentialNestedConditional);
+        if (word.equalsIgnoreCase('not')) {
+          isNegated = true;
+          word = words[++index];
+        } else if (word.equalsIgnoreCase('or')) {
+          isOrConditional = true;
+          word = words[++index];
+        } else if (word.equalsIgnoreCase('and')) {
+          isOrConditional = false;
+          word = words[++index];
+        }
 
-          List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
-          Boolean isAnInnerOrCondition = false;
-          List<String> innerWhereClauses = this.getSoqlWhereClauses(potentialNestedConditional, calcItemSObjectType);
-          for (String innerWhere : innerWhereClauses) {
-            this.splitWheres.add(innerWhere);
-            isAnInnerOrCondition = isAnInnerOrCondition || this.isOrConditional(this.whereClause, innerWhere);
-            conditions.addAll(this.createConditionsFromString(innerWhere, calcItemSObjectType));
-          }
-
-          if (isAnInnerOrCondition) {
-            this.conditionalGroupings.add(new OrConditionalGrouping(conditions));
-          } else {
-            this.conditionalGroupings.add(new AndConditionalGrouping(conditions));
+        String fieldName = word;
+        String criteria = words[++index];
+        if (criteria.equalsIgnoreCase('not') && words.size() - 1 > index) {
+          String potentialNextToken = words[index + 1];
+          if (potentialNextToken.equalsIgnoreCase('in')) {
+            criteria += ' ' + potentialNextToken;
+            index++;
           }
         }
-      }
-      for (Integer reverseIndex = localSplitWheres.size() - 1; reverseIndex >= 0; reverseIndex--) {
-        String potentialWhereClause = localSplitWheres[reverseIndex];
-        if (String.isBlank(potentialWhereClause)) {
-          localSplitWheres.remove(reverseIndex);
+        String value = words[++index];
+        if (criteria.endsWithIgnoreCase('in')) {
+          while (value.endsWith(')') == false) {
+            value += ' ' + words[++index];
+          }
+        } else if (value.startsWith('\'') && value.endsWith('\'') == false) {
+          String tempVal = value;
+          while (tempVal.endsWith(')')) {
+            tempVal = tempVal.removeEnd(')');
+          }
+          while (tempVal.endsWith('\'') == false) {
+            tempVal += ' ' + words[++index];
+          }
+          value = tempVal;
         } else {
-          this.splitWheres.add(potentialWhereClause);
+          value = value.removeEnd(')');
         }
+
+        WhereFieldCondition simpleCondition = this.createConditionsFromString(fieldName, criteria, value);
+        this.splitWheres.add(fieldName + ' ' + criteria + ' ' + value);
+        if (index < words.size() - 1) {
+          Integer forwardCounter = index;
+          String nextToken = words[++forwardCounter];
+          isOrConditional = nextToken.equalsIgnoreCase('or');
+        }
+        simpleCondition.isOrConditional = isOrConditional;
+        simpleCondition.isNegated = isNegated;
+        conditionals.add(simpleCondition);
       }
+
+      return conditionals;
     }
 
-    private Boolean isOrConditional(String fullString, String conditionalStatement) {
-      Boolean isOr = false;
-      Boolean isFirstConditional = fullString.indexOf(conditionalStatement) == 0;
-      if (isFirstConditional == false) {
-        Integer whereWeAreInTheFullString = fullString.indexOf(conditionalStatement);
-        Integer clauseStartingIndex = whereWeAreInTheFullString - 7; // enough to encapsulate " or " with spaces
-        if (clauseStartingIndex > 0) {
-          isOr = fullString.substring(clauseStartingIndex, whereWeAreInTheFullString).containsIgnoreCase(' or ');
-        }
-      }
-      return isOr;
-    }
-
-    private List<WhereFieldCondition> createConditionsFromString(String localClause, SObjectType calcItemSObjectType) {
-      List<WhereFieldCondition> conditions = new List<WhereFieldCondition>();
-      localClause = localClause.trim();
-      String fieldName = localClause.substring(0, localClause.indexOf(' '));
-
-      localClause = localClause.removeStart(fieldName).trim();
-      String criteria = localClause.substring(0, localClause.indexOf(' ')).trim();
-      String value = this.getValue(localClause.substringAfter(criteria));
-
+    private WhereFieldCondition createConditionsFromString(String fieldName, String criteria, String value) {
+      WhereFieldCondition condition;
+      value = this.getValue(value);
       if (value.startsWith('(') && value.endsWith(')')) {
         List<String> values = value.substring(1, value.length() - 1).split(',');
-        conditions.add(new WhereFieldCondition(fieldName, criteria, values, calcItemSObjectType));
+        condition = new WhereFieldCondition(fieldName, criteria, values, this.calcItemType);
       } else {
-        conditions.add(new WhereFieldCondition(fieldName, criteria, value, calcItemSObjectType));
+        condition = new WhereFieldCondition(fieldName, criteria, value, this.calcItemType);
       }
-      return conditions;
+
+      Boolean hasRelationshipField = condition.fieldName.contains('.');
+      if (
+        hasRelationshipField &&
+        condition.fieldName.contains('__c.') == false &&
+        this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
+        this.isValidRelationshipField(condition.fieldName)
+      ) {
+        this.queryFields.add(condition.fieldName);
+      } else if (RollupDateLiteral.isSoqlDateFunction(condition.fieldName)) {
+        this.queryFields.add(getDateFunctionField(condition.fieldName));
+      } else if (hasRelationshipField == false) {
+        this.queryFields.add(condition.fieldName);
+      }
+      return condition;
     }
 
     private String getValue(String whereClausePiece) {
-      if (this.originalWhereClause.contains(whereClausePiece) == false) {
-        // whoops - we may have accidentally replaced a conditional keyword in the value
-        // let's fix that
-        for (String conditionKey : CONDITION_MAP.keySet()) {
-          String conditionValue = CONDITION_MAP.get(conditionKey);
-          String potentialReplacement = whereClausePiece.replace(conditionKey, conditionValue.trim());
-          if (this.originalWhereClause.contains(potentialReplacement)) {
-            whereClausePiece = potentialReplacement;
-            break;
-          } else if (this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' = ', ' in '))) {
-            whereClausePiece = whereClausePiece.replace(' = ', ' in ');
-            break;
-          } else if (this.originalWhereClause.containsIgnoreCase(whereClausePiece.replace(' != ', ' not in '))) {
-            whereClausePiece = whereClausePiece.replace(' != ', ' not in ');
-            break;
-          }
-        }
-      }
       whereClausePiece = whereClausePiece.trim();
 
       // if it's just a singular value enclosed in quotes or a multi-select picklist, we can just take the inner string
@@ -478,10 +473,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         whereClausePiece = whereClausePiece.substring(0, whereClausePiece.length() - 1);
       }
       return whereClausePiece.replaceAll('\'', '').trim();
-    }
-
-    private void logError(Exception ex) {
-      RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
     }
 
     private Boolean isValidRelationshipField(String fieldName) {
@@ -530,66 +521,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
   }
 
-  private abstract class ConditionalGrouping implements RollupLogger.ToStringObject {
-    protected final List<WhereFieldCondition> innerConditions;
-    public ConditionalGrouping(List<WhereFieldCondition> innerConditions) {
-      this.innerConditions = innerConditions;
-    }
-
-    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode')
-    public Boolean equals(Object calcItem) {
-      return this.conditionallyEquals(calcItem);
-    }
-
-    public virtual Boolean isOrConditional() {
-      return false;
-    }
-
-    protected abstract Boolean conditionallyEquals(Object calcItem);
-
-    public override String toString() {
-      return ConditionalGrouping.class.getName() + '\nIs Or Conditional: ' + this.isOrConditional() + '\nInner conditions: ' + this.innerConditions;
-    }
-  }
-
-  private class OrConditionalGrouping extends ConditionalGrouping {
-    public OrConditionalGrouping(List<WhereFieldCondition> innerConditions) {
-      super(innerConditions);
-    }
-
-    public override Boolean isOrConditional() {
-      return true;
-    }
-
-    protected override Boolean conditionallyEquals(Object calcItem) {
-      Boolean isEqual = false;
-      for (WhereFieldCondition innerCondition : this.innerConditions) {
-        isEqual = innerCondition.equals(calcItem);
-        if (isEqual) {
-          break;
-        }
-      }
-      return isEqual;
-    }
-  }
-
-  private class AndConditionalGrouping extends ConditionalGrouping {
-    public AndConditionalGrouping(List<WhereFieldCondition> innerConditions) {
-      super(innerConditions);
-    }
-    protected override Boolean conditionallyEquals(Object calcItem) {
-      Boolean isEqual = true;
-      for (WhereFieldCondition condition : this.innerConditions) {
-        isEqual = condition.equals(calcItem);
-        if (isEqual == false) {
-          break;
-        }
-      }
-      return isEqual;
-    }
-  }
-
-  private class WhereFieldCondition implements RollupLogger.ToStringObject {
+  private class WhereFieldCondition extends WhereCondition implements RollupLogger.ToStringObject {
     private final SObjectType sObjectType;
     private final String fieldName;
     private final Map<String, Schema.SObjectField> fieldNameToTokens;
@@ -597,6 +529,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     private final List<String> originalValues;
     private final List<String> values;
     private final Boolean hasValues;
+
+    private Boolean isOrConditional = false;
 
     public WhereFieldCondition(String fieldName, String criteria, String value, SObjectType sObjectType) {
       this(fieldName, criteria, new List<String>{ value }, sObjectType);
@@ -631,11 +565,24 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     }
 
     public override String toString() {
-      return 'Field: ' + this.fieldName + ', Criteria: ' + this.criteria + ', Values: ' + this.originalValues;
+      return WhereFieldCondition.class.getName() +
+        ':{Field: ' +
+        this.fieldName +
+        ', Criteria: ' +
+        this.criteria +
+        ', Values: ' +
+        this.originalValues +
+        ', Is Or Conditional: ' +
+        this.isOrConditional +
+        '}';
     }
 
-    @SuppressWarnings('PMD.OverrideBothEqualsAndHashCode, PMD.EmptyCatchBlock')
-    public Boolean equals(Object o) {
+    public override Boolean isOrConditional() {
+      return this.isOrConditional;
+    }
+
+    @SuppressWarnings('PMD.EmptyCatchBlock')
+    public override Boolean matches(Object o) {
       String decisionKey = this.fieldName + this.criteria + this.originalValues + o.hashCode();
       if (CACHED_WHERE_DECISIONS.containsKey(decisionKey)) {
         return CACHED_WHERE_DECISIONS.get(decisionKey);
@@ -672,8 +619,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
 
-        switch on this.criteria {
-          when '=', '!=', '<>' {
+        switch on this.criteria.toLowerCase() {
+          when '=', '!=', '<>', 'in', 'not in' {
+            String criteria = this.criteria;
+            if (criteria == 'in') {
+              criteria = '=';
+            } else if (criteria == 'not in') {
+              criteria = '!=';
+            }
             if (this.hasValues == false) {
               isEqual = String.isBlank(storedValue);
             } else {
@@ -684,9 +637,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
                 }
               }
             }
-            isEqual = this.criteria == '=' ? isEqual : !isEqual;
+            isEqual = criteria == '=' ? isEqual : !isEqual;
           }
-          when 'like', '!like' {
+          when 'like', 'not like' {
             // like/not like have to be handled separately because it's the storedValue
             // that gets tested against, not the other way around
             isEqual = false;
@@ -697,15 +650,11 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
                   break;
                 }
               }
-              isEqual = this.criteria == 'like' ? isEqual : isEqual == false;
+              isEqual = criteria == 'like' ? isEqual : isEqual == false;
             }
           }
-          // then there's this whole paradigm; it really shouldn't be possible to have multiple values for either
-          // greater than / less than routes, but we test for it first just to be triple-sure
           when '>', '>=', '<', '<=' {
-            if (this.values.size() != 1) {
-              throw new IllegalArgumentException('Comparison not valid with multiple arguments: ' + JSON.serialize(this.values));
-            } else if (storedValue == null) {
+            if (storedValue == null) {
               isEqual = false;
             } else {
               isEqual = this.getGreaterOrLessThan(this.values[0], originalValue);
@@ -722,9 +671,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
                 }
               }
             }
-            isEqual = this.criteria == 'includes' ? isEqual : isEqual == false;
+            isEqual = criteria == 'includes' ? isEqual : isEqual == false;
           }
         }
+      }
+      if (this.isNegatedConditional()) {
+        isEqual = !isEqual;
       }
       CACHED_WHERE_DECISIONS.put(decisionKey, isEqual);
       return isEqual;
@@ -795,12 +747,12 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private Boolean getGreaterOrLessThan(Object comparisonValue, Object storedValue) {
       // storedValue is still strongly typed, so it just needs to be cast to the appropriate type
-      // find me a language where equality operations are strongly typed so that we can avoid the
-      // conditionals below!
       Boolean isLessThan = this.criteria.startsWith('<');
       Boolean isEqualTo = this.criteria.endsWith('=');
       String comparisonText = String.valueOf(comparisonValue);
 
+      // the order of the instanceof checks matters here; both Date and Time classes are subclasses of Datetime
+      // and thus have to be checked first
       if (storedValue instanceof Date) {
         Date comparisonDate = Date.valueOf(comparisonText);
         Date storedDate = (Date) storedValue;
@@ -827,7 +779,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           return isEqualTo ? storedTime >= comparisonTime : storedTime > comparisonTime;
         }
       } else if (storedValue instanceof Datetime) {
-        Datetime comparisonDatetime = Datetime.valueOfGmt(comparisonText);
+        if (comparisonText.contains('T')) {
+          comparisonText = comparisonText.replace('T', ' ');
+        }
+        Datetime comparisonDatetime = Datetime.valueOf(comparisonText);
         Datetime storedDatetime = RollupFieldInitializer.Current.getApexCompliantDatetime((Datetime) storedValue);
 
         if (isLessThan) {

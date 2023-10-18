@@ -12,7 +12,7 @@
     <isNavAutoTempTabsDisabled>true</isNavAutoTempTabsDisabled>
     <isNavPersonalizationDisabled>true</isNavPersonalizationDisabled>
     <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
-    <label>Rollup</label>
+    <label>Apex Rollup</label>
     <navType>Standard</navType>
     <tabs>Recalculate_Rollup</tabs>
     <uiType>Lightning</uiType>

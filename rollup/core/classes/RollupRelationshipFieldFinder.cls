@@ -416,7 +416,7 @@ public without sharing class RollupRelationshipFieldFinder {
       RollupEvaluator.WhereFieldEvaluator eval = RollupEvaluator.getWhereEval(this.calcItemWhereClause, sObjectType);
       List<String> whereClauses = eval.getWhereClauses();
       // we have to reconstitute the where clause conditions later, which requires them to be in the right order
-      new WhereClauseSorter(this.calcItemWhereClause).sort(whereClauses);
+      whereClauses.sort(new WhereClauseSorter(this.calcItemWhereClause));
       for (String whereClause : whereClauses) {
         // each where clause should begin with the field name:
         // "AccountId = 'someId'" - so by splitting on the space,
@@ -795,9 +795,13 @@ public without sharing class RollupRelationshipFieldFinder {
         List<String> copiedRelationshipNames = new List<String>(splitRelationshipNames);
         SObject priorRelationship = requeriedChild;
         while (copiedRelationshipNames.isEmpty() == false) {
-          SObject nextParent = priorRelationship.getSObject(copiedRelationshipNames.remove(0));
-          this.trackTraversalIds(priorRelationship.Id, nextParent.Id, null, null);
-          priorRelationship = nextParent;
+          SObject nextParent = priorRelationship?.getSObject(copiedRelationshipNames.remove(0));
+          if (nextParent != null) {
+            this.trackTraversalIds(priorRelationship.Id, nextParent.Id, null, null);
+            priorRelationship = nextParent;
+          } else {
+            break;
+          }
         }
         finalParents.add(priorRelationship);
       }
@@ -827,27 +831,21 @@ public without sharing class RollupRelationshipFieldFinder {
     return isAlreadySet;
   }
 
-  private class WhereClauseSorter extends RollupComparer {
+  private class WhereClauseSorter implements System.Comparator<String> {
     private final String fullWhereClause;
     public WhereClauseSorter(String fullWhereClause) {
       this.fullWhereClause = fullWhereClause;
     }
 
-    public override Integer compare(Object o1, Object o2) {
+    public Integer compare(String first, String second) {
       Integer returnVal = 0;
+      Integer whereFirstIs = this.fullWhereClause.indexOf(first);
+      Integer whereSecondIs = this.fullWhereClause.indexOf(second);
 
-      if (o1 instanceof String && o2 instanceof String) {
-        String first = (String) o1;
-        String second = (String) o2;
-
-        Integer whereFirstIs = this.fullWhereClause.indexOf(first);
-        Integer whereSecondIs = this.fullWhereClause.indexOf(second);
-
-        if (whereFirstIs > whereSecondIs) {
-          returnVal = this.moveTowardBackOfList;
-        } else if (whereSecondIs > whereFirstIs) {
-          returnVal = this.moveTowardFrontOfList;
-        }
+      if (whereFirstIs > whereSecondIs) {
+        returnVal = 1;
+      } else if (whereSecondIs > whereFirstIs) {
+        returnVal = -1;
       }
 
       return returnVal;
