@@ -110,22 +110,17 @@ export default class RollupForceRecalculation extends LightningElement {
 
   handleSort(event) {
     const { fieldName, sortDirection } = event.detail;
-    const clonedMeta = [...this.selectedMetadataCMDTRecords];
-    let reverse = 1;
-    if (sortDirection === 'desc') {
-      reverse = -1;
-    }
 
-    clonedMeta.sort((a, b) => {
+    this.selectedMetadataCMDTRecords.sort((a, b) => {
       let sort = 0;
       if (a[fieldName] > b[fieldName]) {
         sort = 1;
       } else if (b[fieldName] > a[fieldName]) {
         sort = -1;
       }
-      return reverse * sort;
+      return sortDirection === 'asc' ? sort : -sort;
     });
-    this.selectedMetadataCMDTRecords = clonedMeta;
+    this.selectedMetadataCMDTRecords = [...this.selectedMetadataCMDTRecords];
     this.sortDirection = sortDirection;
     this.sortedBy = fieldName;
   }
