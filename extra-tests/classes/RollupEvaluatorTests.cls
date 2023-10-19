@@ -170,6 +170,28 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void shouldProperlyDetectWildcardsForLike() {
+    Opportunity target = new Opportunity(Name = 'Something new');
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator('Name LIKE \'thi%\'', Opportunity.SObjectType);
+
+    System.assertEquals(false, eval.matches(target));
+    System.assertEquals(true, eval.matches(new Opportunity(Name = 'thing')));
+
+    eval = new RollupEvaluator.WhereFieldEvaluator('Name LIKE \'%thi%\'', Opportunity.SObjectType);
+    System.assertEquals(true, eval.matches(target));
+
+    eval = new RollupEvaluator.WhereFieldEvaluator('Name LIKE \'%t%i%\'', Opportunity.SObjectType);
+    System.assertEquals(true, eval.matches(target));
+    target.Name = 'Created From: Parent Initiated Rollup';
+    System.assertEquals(true, eval.matches(target));
+    target.Name = 'ti';
+    System.assertEquals(true, eval.matches(target));
+    target.Name = 'it';
+    System.assertEquals(false, eval.matches(target));
+  }
+
+  @IsTest
   static void shouldFilterCalcItemsThatContainAndOrStringsThatAreNotFilterConditions() {
     Opportunity oppOne = new Opportunity(Name = 'A or B');
     Opportunity oppTwo = new Opportunity(Name = 'A and B');
