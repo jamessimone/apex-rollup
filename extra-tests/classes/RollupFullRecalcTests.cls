@@ -1009,9 +1009,8 @@ private class RollupFullRecalcTests {
     Rollup.performBulkFullRecalc(new List<Rollup__mdt>{ sumRollup, countRollup }, Rollup.InvocationPoint.FROM_APEX.name());
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
-    System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been reset due to being deferred');
-    System.assertEquals(5, acc.AnnualRevenue, 'AnnualRevenue should not have been reset due to being deferred');
+    Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(acc, updatedAccount, 'Fields should not have been reset due to impossible deferral');
   }
 
   @IsTest

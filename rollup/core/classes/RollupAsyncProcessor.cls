@@ -288,18 +288,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       logMessage = String.valueOf(RollupControl__mdt.SObjectType) + '.' + String.valueOf(RollupControl__mdt.ShouldAbortRun__c) + ' set to true, exiting early';
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
-    } else if (syncRollups.isEmpty() == false) {
-      rollupProcessId = this.getNoProcessId();
-      this.logger.log('about to process sync rollups', System.LoggingLevel.INFO);
-      this.process(syncRollups);
-      this.logger.log('finished sync rollups', System.LoggingLevel.INFO);
-    } else if (this.rollups.isEmpty() == false || this instanceof RollupFullRecalcProcessor) {
-      Integer totalCountOfRecords = this.getLookupRecordsCount(this.rollups);
-      shouldRunAsBatch =
-        shouldRunAsBatch ||
-        (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Batchable &&
-        totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c);
-      rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
+    } else {
+      if (syncRollups.isEmpty() == false) {
+        rollupProcessId = this.getNoProcessId();
+        this.logger.log('about to process sync rollups', System.LoggingLevel.INFO);
+        this.process(syncRollups);
+        this.logger.log('finished sync rollups', System.LoggingLevel.INFO);
+      }
+      if (this.rollups.isEmpty() == false || this instanceof RollupFullRecalcProcessor) {
+        Integer totalCountOfRecords = this.getLookupRecordsCount(this.rollups);
+        shouldRunAsBatch =
+          shouldRunAsBatch ||
+          (this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Batchable &&
+          totalCountOfRecords >= this.rollupControl.MaxLookupRowsBeforeBatching__c);
+        rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
+      }
     }
     if (logMessage != null) {
       this.logger.log(logMessage, System.LoggingLevel.INFO);
@@ -660,7 +663,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll.isProcessed = true;
       this.setupCalcItemData(roll);
       // for each iteration, ensure we're not operating beyond the bounds of our governor limits
-      if (this.getIsTimingOut(roll.rollupControl, roll)) {
+      if (this.getIsTimingOut(roll.rollupControl)) {
         this.deferredRollups.add(roll);
         continue;
       }
@@ -778,7 +781,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private Boolean getIsTimingOut(RollupControl__mdt control, RollupAsyncProcessor processor) {
+  private Boolean getIsTimingOut(RollupControl__mdt control) {
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
       this.logger.log(this.getTypeName() + ': starting to time out ...', LoggingLevel.WARN);
       this.isTimingOut = true;
@@ -962,18 +965,18 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.stackDepth++;
     this.setIsDeferralAllowed(this.rollupControl.MaxRollupRetries__c > stackDepth);
     this.rollups.clear();
-    this.rollups.addAll(this.deferredRollups);
-    this.deferredRollups.clear();
     this.isTimingOut = false;
     this.lookupObjectToUniqueFieldNames = null;
     this.calcObjectToUniqueFieldNames = null;
 
     if (isDeferralAllowed) {
+      this.rollups.addAll(this.deferredRollups);
       this.logger.log('deferred rollups remaining:', this.rollups, LoggingLevel.INFO);
       this.getAsyncRollup()?.beginAsyncRollup();
     } else if (this.rollups.isEmpty() == false) {
       this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
     }
+    this.deferredRollups.clear();
   }
 
   private void setupCalcItemData(Rollup roll) {
@@ -1085,7 +1088,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        (isRunningAsync && this.getIsTimingOut(rollup.rollupControl, rollup) == false) ||
+        (isRunningAsync && this.getIsTimingOut(rollup.rollupControl) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (limitTester.hasExceededOrgAsyncLimit()) {
@@ -1224,7 +1227,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = calcItemsByLookupField.get(key);
         List<SObject> localCalcItems = bag.getAll();
 
-        if (this.getIsTimingOut(this.rollupControl, roll) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
+        if (this.getIsTimingOut(this.rollupControl) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
           unprocessedCalcItems.putAll(localCalcItems);
           lookupItems.remove(index);
           continue;
