@@ -2026,8 +2026,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (initialType == null && calcItems.isEmpty() == false) {
         initialType = calcItems.get(0).getSObjectType();
       }
-      Boolean nonMatchingGrandparent =
-        String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(initialType);
+      Boolean nonMatchingGrandparent = String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(initialType);
       SObjectType calcItemSObjectType = meta.IsRollupStartedFromParent__c == false &&
         apexContext != TriggerOperation.AFTER_DELETE &&
         nonMatchingGrandparent == false &&
@@ -2294,15 +2293,18 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     InvocationPoint invokePoint
   ) {
     Id rollupControlId;
+    Set<String> lookupFields = new Set<String>{ 'Id' };
     for (Rollup__mdt meta : wrappedMeta.metadata) {
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
       rollupControlId = meta.RollupControl__c;
+      lookupFields.add(meta.LookupFieldOnLookupObject__c);
+      lookupFields.add(meta.RollupFieldOnLookupObject__c);
     }
     RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
-    SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
+    Schema.SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
-    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', equality);
+    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>(lookupFields), 'Id', equality);
 
     RollupFullRecalcProcessor parentResetProcessor = new RollupParentResetProcessor(
       wrappedMeta.metadata,

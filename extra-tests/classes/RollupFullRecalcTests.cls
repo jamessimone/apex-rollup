@@ -1464,6 +1464,34 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldResetParentValueWithoutMatchingChildrenNotUsingId() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Name',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
+    System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + acc);
+  }
+
+  @IsTest
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverQueryLimit() {
     RollupParentResetProcessor.maxQueryRows = 0;
     Rollup.defaultControl = new RollupControl__mdt(
