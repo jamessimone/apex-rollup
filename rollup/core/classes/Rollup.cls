@@ -773,7 +773,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         flowOutput.message = 'No records to rollup, returning early';
       } else {
         // flow collections are not strongly typed, so we grab from the first record
-        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+        Schema.SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+        if (String.isNotBlank(flowInput.grandparentRelationshipFieldPath) && String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)) {
+          Rollup__mdt grandparentMeta = new Rollup__mdt(
+            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+            OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields
+          );
+          if (getPartOfGrandparentChain(grandparentMeta, sObjectType) != null) {
+            sObjectType = RollupFieldInitializer.Current.getDescribeFromName(flowInput.calcItemTypeWhenRollupStartedFromParent).getSObjectType();
+          }
+        }
+
         // this will throw back up to the Flow engine if the inputs don't pass validation
         enforceValidationRules(flowInput);
         enforceFlowSpecificRules(flowInput, sObjectType);
@@ -814,11 +824,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
       // here we clone the list because it can get winnowed in "processCustomMetadata"
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
+      Map<Schema.SObjectType, List<Rollup>> typeToWinnowedRollups;
       wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
       wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
       Map<Id, SObject> oldFlowRecords = RollupFieldInitializer.Current.createSafeMap(wrapper.flowInput.oldRecordsToRollup);
+
+      if (wrapper.flowInput.deferProcessing) {
+        typeToWinnowedRollups = new Map<Schema.SObjectType, List<Rollup>>{ wrapper.sObjectType => new List<Rollup>() };
+      }
+
       processCustomMetadata(
-        localRollups,
+        typeToWinnowedRollups != null ? typeToWinnowedRollups : localRollups,
         metas,
         wrapper.flowInput.recordsToRollup,
         oldFlowRecords,
@@ -827,6 +843,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         fromInvocable,
         typeToWrappedMeta
       );
+
+      if (typeToWinnowedRollups != null) {
+        for (Schema.SObjectType typeKey : typeToWinnowedRollups.keyset()) {
+          CACHED_ROLLUPS.addAll(typeToWinnowedRollups.get(typeKey));
+        }
+      }
 
       if (metas.isEmpty() == false) {
         Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
@@ -2647,7 +2669,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   @SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
-  private static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
+  public static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
     validRelationshipNames.remove(validRelationshipNames.size() - 1);

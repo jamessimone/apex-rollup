@@ -48,6 +48,44 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @IsTest
+  static void shouldAddToRollupsForIntermediateGrandparentReparenting() {
+    Account oldGrandparent = [SELECT Id FROM Account];
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ContactPointPhoneId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        // TODO support polymorphic parent fields here with the correct Type supplied in the calc item where clause
+        GrandparentRelationshipFieldPath__c = 'ContactPointPhone.Parent.Name'
+      )
+    };
+    Account newGrandparent = new Account(Name = 'New Grandparent');
+    ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent', ParentId = oldGrandparent.Id);
+    insert new List<SObject>{ parent, newGrandparent };
+    ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello', ContactPointPhoneId = parent.Id);
+    insert grandchild;
+    ContactPointPhone updatedParent = parent.clone(true);
+    updatedParent.ParentId = newGrandparent.Id;
+    update updatedParent;
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ updatedParent };
+    input.oldRecordsToRollup = new List<SObject>{ parent };
+    input.rollupContext = 'UPDATE';
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    System.assertEquals(1, new CachedRollup().getCurrentlyCachedRollups().size());
+  }
+
+  @IsTest
   static void shouldProcessDeferredFlowRollups() {
     Account acc = [SELECT Id FROM Account];
 
