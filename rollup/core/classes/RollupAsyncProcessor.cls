@@ -880,6 +880,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = lookupFieldToCalcItems.get(key);
         if (bag == null) {
           bag = new CalcItemBag(new List<SObject>());
+          if (this.fullRecalcProcessor != null && this.isValidAdditionalCalcItemRetrieval(roll) == false) {
+            bag.hasQueriedForAdditionalItems = true;
+          }
           lookupFieldToCalcItems.put(key, bag);
         }
         bag.add(calcItem);
