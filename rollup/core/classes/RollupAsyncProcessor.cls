@@ -1334,7 +1334,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupCalc.setCDCUpdate(this.isCDCUpdate);
       rollupCalc.setFullRecalc(roll.isFullRecalc);
     }
-    rollupCalc.setHasAlreadyRetrievedCalcItems(bag.hasQueriedForAdditionalItems);
+    rollupCalc.setHasAlreadyRetrievedCalcItems(bag.hasQueriedForAdditionalItems && this.previouslyResetParents.contains(lookupRecordKey) == false);
     rollupCalc.setDefaultValues(lookupRecordKey, priorVal);
     rollupCalc.setMultiCurrencyInfo(lookupRecord);
     rollupCalc.performRollup(bag.getAll(), roll.oldCalcItems);
