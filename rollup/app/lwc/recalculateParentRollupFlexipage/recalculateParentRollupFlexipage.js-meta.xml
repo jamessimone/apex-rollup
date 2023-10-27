@@ -6,4 +6,9 @@
     <targets>
         <target>lightning__RecordPage</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <property name="alternativeParentFieldName" label="Alternative parent field name" type="String" />
+        </targetConfig>
+    </targetConfigs>
 </LightningComponentBundle>

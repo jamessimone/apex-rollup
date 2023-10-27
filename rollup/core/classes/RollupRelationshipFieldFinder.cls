@@ -803,6 +803,13 @@ public without sharing class RollupRelationshipFieldFinder {
             break;
           }
         }
+        if (priorRelationship?.getSObjectType() == Name.SObjectType) {
+          SObject replacement = this.ultimateParent.newSObject(priorRelationship.Id);
+          for (String populatedField : priorRelationship.getPopulatedFieldsAsMap().keySet()) {
+            replacement.put(populatedField, priorRelationship.get(populatedField));
+          }
+          priorRelationship = replacement;
+        }
         finalParents.add(priorRelationship);
       }
       this.prepFinishedObject(finalParents);

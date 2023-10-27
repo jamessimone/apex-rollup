@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Breaking change: where clause evaluation improvements",
-            "versionNumber": "1.6.0.0",
+            "versionName": "Fixes wildcard support for LIKE where clauses. Adds support for intermediate rollup reparenting detection in Flow.",
+            "versionNumber": "1.6.1.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,6 +102,7 @@
         "apex-rollup@1.5.87-0": "04t6g000008C72BAAS",
         "apex-rollup@1.5.88-0": "04t6g000008C734AAC",
         "apex-rollup@1.5.89-0": "04t6g000008C77gAAC",
-        "apex-rollup@1.6.0-0": "04t6g000008C7AQAA0"
+        "apex-rollup@1.6.0-0": "04t6g000008C7AQAA0",
+        "apex-rollup@1.6.1-0": "04t6g000008OZwYAAW"
     }
 }

@@ -39,16 +39,23 @@ private class CustomMetadataDrivenTests {
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parent.Id, NumberField__c = 2);
     insert new List<RollupChild__c>{ childOne, childTwo };
 
-    Test.startTest();
     childOne.TextField__c = 'c';
     childOne.NumberField__c = 0;
+    // Rollup.RollupIntegrationChildRollupNumber uses RollupControl.Integration_Sync, so the NumberField__c update should happen BEFORE
+    // going async
     update childOne;
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    System.assertEquals(childTwo.NumberField__c, parent.NumberField__c);
+    System.assertEquals(null, parent.TextField__c, 'Should not have a value yet since this rollup occurs async');
+
+    Test.startTest();
+    // now we force the async part to complete
     Test.stopTest();
 
+    // re-assert on both fields being correct now, just to be sure
     parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
-
-    System.assertEquals(childTwo.TextField__c, parent.TextField__c);
     System.assertEquals(childTwo.NumberField__c, parent.NumberField__c);
+    System.assertEquals(childTwo.TextField__c, parent.TextField__c);
   }
 
   @IsTest

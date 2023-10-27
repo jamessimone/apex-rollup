@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C7AQAA0">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OZwYAAW">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008C7AQAA0">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OZwYAAW">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -266,7 +266,7 @@ Here are the arguments necessary to invoke Apex Rollup from a Flow / Process Bui
 - `Records To Rollup` - a collection of SObjects. These need to be stored in a collection variable. **Note** - while this is an optional property, that is only because of a bug in the Flow engine caused by `Get Records` returning null when you use filter conditions that in turn make it so that no records are returned - which then throws an error when using this action without explicitly checking the collection returned by `Get Records` to see if it is null. Because that's a lot to ask of the Flow user, we instead let the collection be optional and handle the null check in Apex. You should **always** provide a value for this input!
 - `Prior records to rollup` (optional) - another collection of SObjects. For record-triggered flows set to run when `A record is created or updated`, or `A record is updated`, it's necessary to populate this argument - otherwise, Rollup will helpfully throw an error when you attempt to update records. Add `{!$Record__Prior}` to a collection variable and use that collection to populate this argument
 - `Child Object Changed fields` (optional) - comma-separated list of field API Names to filter child records from being used in the rollup calculations unless any of the stipulated fields have changed
-- `Child Object Type When Rollup Started From Parent` (optional) - only necessary to provide if `Is Rollup Started From Parent` field is enabled and set to `{!$GlobalConstant.True}`. Normally in this invocable, the child object type is figured out by examining the passed-in collection - but when the collection is the parent records, we need the SObject API name of the calculation items explicitly defined.
+- `Child Object Type When Rollup Started From Parent` (optional) - only necessary to provide if `Is Rollup Started From Parent` field is enabled and set to `{!$GlobalConstant.True}` _or_ if you are using the base Rollup invocable action to detect reparenting for an intermediate parent in a grandparent rollup. Normally in this invocable, the child object type is figured out by examining the passed-in collection - but when the collection is the parent records, we need the SObject API name of the children items to be explicitly defined.
 - `Concat Delimiter` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the delimiter used between text defaults to a comma (unless you are rolling up to a multi-select picklist, in which case it defaults to a semi-colon), but you can override the default delimiter here.
 - `Concat Delimiter Split Should Apply On Child Object` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the text values on the Child Object's field being rolled up can _also_ be split if this field is enabled and set to `{!$GlobalConstant.True}`
 - `Currency Field Mapping (Comma-separated)` (optional) - for organizations using Advanced Currency Management with Dated Exchange Rates, fill out this field if you are rolling up a currency field and you'd like to customize which field (or parent-level field) is used as the Date or Datetime to be matched with its corresponding Dated Exchange Rate. As an example, Opportunity Splits use `Opportunity,CloseDate` here by default - if you are using a parent-level field, the relationship name for it is the first value (thus, `Opportunity,CloseDate` is correct - `OpportunityId,CloseDate` would be incorrect).

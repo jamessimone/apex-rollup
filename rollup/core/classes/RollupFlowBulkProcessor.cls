@@ -78,14 +78,21 @@ global without sharing class RollupFlowBulkProcessor {
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
-        String sObjectName = flowInput.recordsToRollup == null ? '' : flowInput.recordsToRollup[0].getSObjectType().getDescribe().getName();
+        Schema.SObjectType sObjectType = flowInput.recordsToRollup == null ? null : flowInput.recordsToRollup[0].getSObjectType();
         for (Rollup__mdt meta : rollupMetadata) {
-          if (meta.IsRollupStartedFromParent__c) {
+          if (
+            meta.IsRollupStartedFromParent__c ||
+            sObjectType != null && String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && Rollup.getPartOfGrandparentChain(meta, sObjectType) != null
+          ) {
             flowInput.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent != null
               ? flowInput.calcItemTypeWhenRollupStartedFromParent
               : meta.CalcItem__c;
           }
-          if (flowInput.recordsToRollup == null || meta.CalcItem__c == sObjectName || flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c) {
+          if (
+            flowInput.recordsToRollup == null ||
+            meta.CalcItem__c == sObjectType?.getDescribe().getName() ||
+            flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
+          ) {
             Rollup.FlowInput input = new Rollup.FlowInput();
             validInputs.add(input);
             // pertinent fields from CMDT (can be overridden by optional flow properties)

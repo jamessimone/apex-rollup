@@ -1,7 +1,8 @@
-import { api, LightningElement } from 'lwc';
+import { api, LightningElement, wire } from 'lwc';
 import { RefreshEvent } from 'lightning/refresh';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
+import { getRecord } from 'lightning/uiRecordApi';
 
 import { getRollupMetadata, transformToSerializableChildren } from 'c/rollupUtils';
 
@@ -10,20 +11,31 @@ const DELIMITER = ' ||| ';
 export default class RecalculateParentRollupFlexipage extends LightningElement {
   @api recordId;
   @api objectApiName;
+  @api alternativeParentFieldName;
 
   isRecalculating = false;
   isValid = false;
 
+  _hasPopulatedAdditionalFields = false;
   _matchingMetas = [];
   _namespaceInfo = {};
 
   async connectedCallback() {
-    try {
-      this._namespaceInfo = await getNamespaceInfo();
-      const metadata = await getRollupMetadata();
-      this._fillValidMetadata(metadata);
-    } catch (err) {
-      this.isValid = false;
+    await this._setup();
+  }
+
+  renderedCallback() {
+    if (this.alternativeParentFieldName && !this._hasPopulatedAdditionalFields) {
+      this._hasPopulatedAdditionalFields = true;
+      this.alternativeField = { fieldApiName: this.alternativeParentFieldName, objectApiName: this.objectApiName };
+    }
+  }
+
+  @wire(getRecord, { recordId: '$recordId', fields: [], optionalFields: '$alternativeField' })
+  wiredRecord({ data }) {
+    if (data && this.alternativeParentFieldName) {
+      this.recordId = data.fields[this.alternativeParentFieldName]?.value ?? this.recordId;
+      this._setup();
     }
   }
 
@@ -33,7 +45,6 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     if (this._matchingMetas.length > 0) {
       try {
         await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(this._matchingMetas), invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
-        // record detail pages / components still based on Aura need a little kickstart to properly show the updated values
         this.dispatchEvent(new RefreshEvent());
       } catch (err) {
         // eslint-disable-next-line
@@ -42,6 +53,18 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     }
 
     this.isRecalculating = false;
+  }
+
+  async _setup() {
+    try {
+      if (!this._namespaceInfo.namespace) {
+        this._namespaceInfo = await getNamespaceInfo();
+      }
+      const metas = await getRollupMetadata();
+      this._fillValidMetadata(metas);
+    } catch (err) {
+      this.isValid = false;
+    }
   }
 
   _fillValidMetadata(metadata) {

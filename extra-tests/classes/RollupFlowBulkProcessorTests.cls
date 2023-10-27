@@ -48,6 +48,89 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @IsTest
+  static void shouldAddToRollupsForIntermediateGrandparentReparenting() {
+    Account oldGrandparent = [SELECT Id FROM Account];
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ContactPointPhoneId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        // TODO support polymorphic parent fields here with the correct Type supplied in the calc item where clause
+        GrandparentRelationshipFieldPath__c = 'ContactPointPhone.Parent.Name'
+      )
+    };
+    Account newGrandparent = new Account(Name = 'New Grandparent');
+    ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent', ParentId = oldGrandparent.Id);
+    insert new List<SObject>{ parent, newGrandparent };
+    ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello', ContactPointPhoneId = parent.Id);
+    insert grandchild;
+    ContactPointPhone updatedParent = parent.clone(true);
+    updatedParent.ParentId = newGrandparent.Id;
+    update updatedParent;
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ updatedParent };
+    input.oldRecordsToRollup = new List<SObject>{ parent };
+    input.rollupContext = 'UPDATE';
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    System.assertEquals(1, new CachedRollup().getCurrentlyCachedRollups().size());
+  }
+
+  @IsTest
+  static void shouldClearOldParentForIntermediateReparenting() {
+    Account oldGrandparent = [SELECT Id, Name FROM Account];
+    oldGrandparent.NaicsDesc = oldGrandparent.Name;
+    update oldGrandparent;
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ContactPointPhoneId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NaicsDesc',
+        GrandparentRelationshipFieldPath__c = 'ContactPointPhone.Parent.Name'
+      )
+    };
+    Account newGrandparent = new Account(Name = 'New Grandparent Again');
+    newGrandparent.NaicsDesc = newGrandparent.Name;
+    ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent Again', ParentId = oldGrandparent.Id);
+    insert new List<SObject>{ parent, newGrandparent };
+    ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello Again', ContactPointPhoneId = parent.Id);
+    insert grandchild;
+    ContactPointPhone updatedParent = parent.clone(true);
+    updatedParent.ParentId = newGrandparent.Id;
+    update updatedParent;
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ updatedParent };
+    input.oldRecordsToRollup = new List<SObject>{ parent };
+    input.rollupContext = 'UPDATE';
+    input.deferProcessing = false;
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    newGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :newGrandparent.Id];
+    System.assertEquals(grandchild.Name, newGrandparent.NaicsDesc);
+    // TODO - continue WIP to fully fix the reset part
+    // oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
+    // System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
+  }
+
+  @IsTest
   static void shouldProcessDeferredFlowRollups() {
     Account acc = [SELECT Id FROM Account];
 

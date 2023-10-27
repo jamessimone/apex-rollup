@@ -56,7 +56,7 @@
     </values>
     <values>
         <field>RollupControl__c</field>
-        <value xsi:type="xsd:string">Org_Defaults</value>
+        <value xsi:type="xsd:string">Integration_Sync</value>
     </values>
     <values>
         <field>RollupFieldOnCalcItem__c</field>

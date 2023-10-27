@@ -556,7 +556,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           } else if (val.equalsIgnoreCase('null')) {
             val = null;
           }
-          this.values.add(val?.trim()?.replace('%', ''));
+          this.values.add(val?.trim());
         }
       }
       if (this.hasValues == null) {
@@ -640,18 +640,22 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             isEqual = criteria == '=' ? isEqual : !isEqual;
           }
           when 'like', 'not like' {
-            // like/not like have to be handled separately because it's the storedValue
-            // that gets tested against, not the other way around
             isEqual = false;
-            if (storedValue != null) {
-              for (String val : this.values) {
-                isEqual = storedValue.containsIgnoreCase(val);
-                if (isEqual) {
-                  break;
-                }
-              }
-              isEqual = criteria == 'like' ? isEqual : isEqual == false;
+            if (storedValue == null) {
+              return false;
             }
+            storedValue = storedValue.toLowerCase();
+            String val = this.values[0].toLowerCase();
+
+            if (val.contains('%')) {
+              // % as a wildcard can be read as either:
+              // "any character till the next match sequence, or no character till the next match"
+              isEqual = storedValue.replaceAll(val.replace('%', '(.+|)'), '') == '';
+            } else {
+              isEqual = storedValue.equals(val);
+            }
+
+            isEqual = criteria == 'like' ? isEqual : isEqual == false;
           }
           when '>', '>=', '<', '<=' {
             if (storedValue == null) {
@@ -665,7 +669,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             for (String value : this.values) {
               List<String> splitValues = value.split(';');
               for (String splitValue : splitValues) {
-                isEqual = storedValue.contains(splitValue);
+                isEqual = storedValue.containsIgnoreCase(splitValue);
                 if (isEqual == false) {
                   break;
                 }

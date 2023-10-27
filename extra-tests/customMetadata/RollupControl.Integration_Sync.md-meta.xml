@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Integration Sync</label>
+    <protected>false</protected>
+    <values>
+        <field>BatchChunkSize__c</field>
+        <value xsi:type="xsd:double">500.0</value>
+    </values>
+    <values>
+        <field>IsDevEdOrTrialOrg__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>IsMergeReparentingEnabled__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>IsRollupLoggingEnabled__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>MaxLookupRowsBeforeBatching__c</field>
+        <value xsi:type="xsd:double">3000.0</value>
+    </values>
+    <values>
+        <field>MaxNumberOfQueries__c</field>
+        <value xsi:type="xsd:double">100.0</value>
+    </values>
+    <values>
+        <field>MaxParentRowsUpdatedAtOnce__c</field>
+        <value xsi:type="xsd:double">5000.0</value>
+    </values>
+    <values>
+        <field>MaxQueryRows__c</field>
+        <value xsi:type="xsd:double">25000.0</value>
+    </values>
+    <values>
+        <field>MaxRollupRetries__c</field>
+        <value xsi:type="xsd:double">10.0</value>
+    </values>
+    <values>
+        <field>OnlyRunInFlowContexts__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>ReplaceCalcItemsAsyncWhenOverCount__c</field>
+        <value xsi:type="xsd:double">1.0</value>
+    </values>
+    <values>
+        <field>ShouldAbortRun__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>ShouldDuplicateRulesBeIgnored__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>ShouldRunAs__c</field>
+        <value xsi:type="xsd:string">Synchronous Rollup</value>
+    </values>
+    <values>
+        <field>ShouldRunSingleRecordsSynchronously__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>ShouldSkipResettingParentFields__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>TriggerOrInvocableName__c</field>
+        <value xsi:nil="true"/>
+    </values>
+</CustomMetadata>

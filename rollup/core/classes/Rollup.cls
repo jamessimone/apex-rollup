@@ -240,6 +240,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private class RollupMetadata {
+    public final Map<Schema.SObjectType, Set<String>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<String>>();
     public final Set<String> recordIds = new Set<String>();
     public final Set<String> queryFields = new Set<String>();
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
@@ -773,7 +774,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         flowOutput.message = 'No records to rollup, returning early';
       } else {
         // flow collections are not strongly typed, so we grab from the first record
-        SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+        Schema.SObjectType sObjectType = flowInput.recordsToRollup[0].getSObjectType();
+        if (String.isNotBlank(flowInput.grandparentRelationshipFieldPath) && String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)) {
+          Rollup__mdt grandparentMeta = new Rollup__mdt(
+            GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
+            OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields
+          );
+          if (getPartOfGrandparentChain(grandparentMeta, sObjectType) != null) {
+            sObjectType = RollupFieldInitializer.Current.getDescribeFromName(flowInput.calcItemTypeWhenRollupStartedFromParent).getSObjectType();
+          }
+        }
+
         // this will throw back up to the Flow engine if the inputs don't pass validation
         enforceValidationRules(flowInput);
         enforceFlowSpecificRules(flowInput, sObjectType);
@@ -814,11 +825,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
       // here we clone the list because it can get winnowed in "processCustomMetadata"
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
+      Map<Schema.SObjectType, List<Rollup>> typeToWinnowedRollups;
       wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
       wrapper.flowInput.oldRecordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas);
       Map<Id, SObject> oldFlowRecords = RollupFieldInitializer.Current.createSafeMap(wrapper.flowInput.oldRecordsToRollup);
+
+      if (wrapper.flowInput.deferProcessing) {
+        typeToWinnowedRollups = new Map<Schema.SObjectType, List<Rollup>>{ wrapper.sObjectType => new List<Rollup>() };
+      }
+
       processCustomMetadata(
-        localRollups,
+        typeToWinnowedRollups != null ? typeToWinnowedRollups : localRollups,
         metas,
         wrapper.flowInput.recordsToRollup,
         oldFlowRecords,
@@ -827,6 +844,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         fromInvocable,
         typeToWrappedMeta
       );
+
+      if (typeToWinnowedRollups != null) {
+        for (Schema.SObjectType typeKey : typeToWinnowedRollups.keyset()) {
+          CACHED_ROLLUPS.addAll(typeToWinnowedRollups.get(typeKey));
+        }
+      }
 
       if (metas.isEmpty() == false) {
         Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
@@ -2026,8 +2049,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (initialType == null && calcItems.isEmpty() == false) {
         initialType = calcItems.get(0).getSObjectType();
       }
-      Boolean nonMatchingGrandparent =
-        String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(initialType);
+      Boolean nonMatchingGrandparent = String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && meta.CalcItem__c != String.valueOf(initialType);
       SObjectType calcItemSObjectType = meta.IsRollupStartedFromParent__c == false &&
         apexContext != TriggerOperation.AFTER_DELETE &&
         nonMatchingGrandparent == false &&
@@ -2075,6 +2097,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           rollups.get(calcItemSObjectType).clear();
         }
         wrappedMeta.recordIds.addAll(queryWrapper.recordIds);
+        wrappedMeta.typeToOldIntermediateParents.putAll(queryWrapper.typeToOldIntermediateParents);
         if (wrappedMeta.recordIds.isEmpty() == false) {
           wrappedMeta.possibleWhereClauses.add(query);
           wrappedMeta.whereClause = query;
@@ -2294,17 +2317,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     InvocationPoint invokePoint
   ) {
     Id rollupControlId;
+    String keyField = 'Id';
+    Set<String> lookupFields = new Set<String>{ keyField };
     for (Rollup__mdt meta : wrappedMeta.metadata) {
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
       rollupControlId = meta.RollupControl__c;
+      lookupFields.add(meta.LookupFieldOnLookupObject__c);
+      lookupFields.add(meta.RollupFieldOnLookupObject__c);
+      keyField = meta.LookupFieldOnLookupObject__c;
     }
     RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
-    SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
+    Schema.SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
-    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>{ 'Id' }, 'Id', equality);
+    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>(lookupFields), keyField, equality);
 
-    RollupFullRecalcProcessor parentResetProcessor = new RollupParentResetProcessor(
+    RollupParentResetProcessor parentResetProcessor = new RollupParentResetProcessor(
       wrappedMeta.metadata,
       parentType,
       parentQuery,
@@ -2471,7 +2499,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    if (isCDC) {
+    if (isCDC || oldCalcItems?.isEmpty() != false) {
       return new QueryWrapper();
     }
 
@@ -2492,12 +2520,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     QueryWrapper wrapper = new QueryWrapper('', priorFieldPath);
     for (SObject calcItem : calcItems) {
-      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
-      String currentLookup = (String) calcItem.get(fieldToken);
-      String oldLookup = (String) oldCalcItem.get(fieldToken);
-      if (currentLookup != oldLookup) {
-        wrapper.addRecordId(currentLookup);
-        wrapper.addRecordId(oldLookup);
+      SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
+      if (oldCalcItem != null) {
+        String currentLookup = (String) calcItem.get(fieldToken);
+        String oldLookup = (String) oldCalcItem.get(fieldToken);
+        if (currentLookup != oldLookup) {
+          wrapper.addRecordId(currentLookup);
+          if (oldLookup != null) {
+            wrapper.addRecordId(oldLookup);
+            Set<String> oldIntermediateParents = wrapper.typeToOldIntermediateParents.get(calcItem.getSObjectType());
+            if (oldIntermediateParents == null) {
+              oldIntermediateParents = new Set<String>();
+              wrapper.typeToOldIntermediateParents.put(calcItem.getSObjectType(), oldIntermediateParents);
+            }
+            oldIntermediateParents.add(oldLookup);
+          }
+        }
       }
     }
     return wrapper;
@@ -2508,6 +2546,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private String query;
     private final List<SObject> parentRecordsToReset = new List<SObject>();
     private final Set<String> recordIds = new Set<String>();
+    private final Map<Schema.SObjectType, Set<String>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<String>>();
 
     private QueryWrapper() {
     }
@@ -2645,7 +2684,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   @SuppressWarnings('PMD.EagerlyLoadedDescribeSObjectResult')
-  private static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
+  public static Schema.SObjectField getPartOfGrandparentChain(Rollup__mdt meta, Schema.SObjectType sObjectType) {
     List<String> validRelationshipNames = meta.GrandparentRelationshipFieldPath__c.split('\\.');
     // remove the last field since it's not a relationship
     validRelationshipNames.remove(validRelationshipNames.size() - 1);

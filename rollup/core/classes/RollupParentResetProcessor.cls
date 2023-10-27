@@ -75,8 +75,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
             rollupMeta.RollupFieldOnLookupObject__c
           ) == false && parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)
         ) {
-          Object resetVal = getDefaultValue(rollupMeta);
-          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, resetVal);
+          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, getDefaultValue(rollupMeta));
         }
       }
     }

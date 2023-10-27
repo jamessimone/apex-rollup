@@ -1009,9 +1009,8 @@ private class RollupFullRecalcTests {
     Rollup.performBulkFullRecalc(new List<Rollup__mdt>{ sumRollup, countRollup }, Rollup.InvocationPoint.FROM_APEX.name());
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
-    System.assertEquals(5, acc.NumberOfEmployees, 'NumberOfEmployees should not have been reset due to being deferred');
-    System.assertEquals(5, acc.AnnualRevenue, 'AnnualRevenue should not have been reset due to being deferred');
+    Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(acc, updatedAccount, 'Fields should not have been reset due to impossible deferral');
   }
 
   @IsTest
@@ -1462,6 +1461,34 @@ private class RollupFullRecalcTests {
       System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
       System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
     }
+  }
+
+  @IsTest
+  static void shouldResetParentValueWithoutMatchingChildrenNotUsingId() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AccountNumber = 'someString';
+    acc.AnnualRevenue = 5;
+    update acc;
+
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Name',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'LAST',
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
+    Test.stopTest();
+
+    acc = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
+    System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + acc);
   }
 
   @IsTest
