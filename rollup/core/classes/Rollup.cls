@@ -240,6 +240,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private class RollupMetadata {
+    public final Map<Schema.SObjectType, Set<String>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<String>>();
     public final Set<String> recordIds = new Set<String>();
     public final Set<String> queryFields = new Set<String>();
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
@@ -2096,6 +2097,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           rollups.get(calcItemSObjectType).clear();
         }
         wrappedMeta.recordIds.addAll(queryWrapper.recordIds);
+        wrappedMeta.typeToOldIntermediateParents.putAll(queryWrapper.typeToOldIntermediateParents);
         if (wrappedMeta.recordIds.isEmpty() == false) {
           wrappedMeta.possibleWhereClauses.add(query);
           wrappedMeta.whereClause = query;
@@ -2315,20 +2317,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     InvocationPoint invokePoint
   ) {
     Id rollupControlId;
-    Set<String> lookupFields = new Set<String>{ 'Id' };
+    String keyField = 'Id';
+    Set<String> lookupFields = new Set<String>{ keyField };
     for (Rollup__mdt meta : wrappedMeta.metadata) {
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
       rollupControlId = meta.RollupControl__c;
       lookupFields.add(meta.LookupFieldOnLookupObject__c);
       lookupFields.add(meta.RollupFieldOnLookupObject__c);
+      keyField = meta.LookupFieldOnLookupObject__c;
     }
     RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
     Schema.SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
-    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>(lookupFields), 'Id', equality);
+    String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>(lookupFields), keyField, equality);
 
-    RollupFullRecalcProcessor parentResetProcessor = new RollupParentResetProcessor(
+    RollupParentResetProcessor parentResetProcessor = new RollupParentResetProcessor(
       wrappedMeta.metadata,
       parentType,
       parentQuery,
@@ -2495,7 +2499,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static QueryWrapper getIntermediateGrandparentQueryWrapper(Rollup__mdt meta, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-    if (isCDC) {
+    if (isCDC || oldCalcItems?.isEmpty() != false) {
       return new QueryWrapper();
     }
 
@@ -2516,12 +2520,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     QueryWrapper wrapper = new QueryWrapper('', priorFieldPath);
     for (SObject calcItem : calcItems) {
-      SObject oldCalcItem = oldCalcItems.containsKey(calcItem.Id) ? oldCalcItems.get(calcItem.Id) : calcItem;
-      String currentLookup = (String) calcItem.get(fieldToken);
-      String oldLookup = (String) oldCalcItem.get(fieldToken);
-      if (currentLookup != oldLookup) {
-        wrapper.addRecordId(currentLookup);
-        wrapper.addRecordId(oldLookup);
+      SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
+      if (oldCalcItem != null) {
+        String currentLookup = (String) calcItem.get(fieldToken);
+        String oldLookup = (String) oldCalcItem.get(fieldToken);
+        if (currentLookup != oldLookup) {
+          wrapper.addRecordId(currentLookup);
+          if (oldLookup != null) {
+            wrapper.addRecordId(oldLookup);
+            Set<String> oldIntermediateParents = wrapper.typeToOldIntermediateParents.get(calcItem.getSObjectType());
+            if (oldIntermediateParents == null) {
+              oldIntermediateParents = new Set<String>();
+              wrapper.typeToOldIntermediateParents.put(calcItem.getSObjectType(), oldIntermediateParents);
+            }
+            oldIntermediateParents.add(oldLookup);
+          }
+        }
       }
     }
     return wrapper;
@@ -2532,6 +2546,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private String query;
     private final List<SObject> parentRecordsToReset = new List<SObject>();
     private final Set<String> recordIds = new Set<String>();
+    private final Map<Schema.SObjectType, Set<String>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<String>>();
 
     private QueryWrapper() {
     }
