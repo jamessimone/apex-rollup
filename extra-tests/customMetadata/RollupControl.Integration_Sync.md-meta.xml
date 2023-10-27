@@ -19,10 +19,6 @@
         <value xsi:type="xsd:boolean">true</value>
     </values>
     <values>
-        <field>IsRunningAsync__c</field>
-        <value xsi:type="xsd:boolean">false</value>
-    </values>
-    <values>
         <field>MaxLookupRowsBeforeBatching__c</field>
         <value xsi:type="xsd:double">3000.0</value>
     </values>
