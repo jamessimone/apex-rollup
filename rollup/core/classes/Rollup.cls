@@ -240,7 +240,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private class RollupMetadata {
-    public final Map<Schema.SObjectType, Set<String>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<String>>();
+    public final Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<Id>>();
     public final Set<String> recordIds = new Set<String>();
     public final Set<String> queryFields = new Set<String>();
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
@@ -2376,6 +2376,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       fullRecalc.storeParentFieldsToClear(wrappedMeta.parentRecordsToReset);
       fullRecalc.isNoOp = false;
     }
+    if (wrappedMeta.typeToOldIntermediateParents.isEmpty() == false) {
+      fullRecalc.setOldIntermediateGrandparents(wrappedMeta.typeToOldIntermediateParents);
+      fullRecalc.isNoOp = false;
+    }
     return fullRecalc;
   }
 
@@ -2528,12 +2532,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           wrapper.addRecordId(currentLookup);
           if (oldLookup != null) {
             wrapper.addRecordId(oldLookup);
-            Set<String> oldIntermediateParents = wrapper.typeToOldIntermediateParents.get(calcItem.getSObjectType());
+            Set<Id> oldIntermediateParents = wrapper.typeToOldIntermediateParents.get(calcItem.getSObjectType());
             if (oldIntermediateParents == null) {
-              oldIntermediateParents = new Set<String>();
+              oldIntermediateParents = new Set<Id>();
               wrapper.typeToOldIntermediateParents.put(calcItem.getSObjectType(), oldIntermediateParents);
             }
-            oldIntermediateParents.add(oldLookup);
+            oldIntermediateParents.add((Id) oldLookup);
           }
         }
       }
@@ -2546,7 +2550,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private String query;
     private final List<SObject> parentRecordsToReset = new List<SObject>();
     private final Set<String> recordIds = new Set<String>();
-    private final Map<Schema.SObjectType, Set<String>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<String>>();
+    private final Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<Id>>();
 
     private QueryWrapper() {
     }

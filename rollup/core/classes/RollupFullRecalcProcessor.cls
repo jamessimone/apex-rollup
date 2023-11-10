@@ -1,11 +1,12 @@
 global abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
+  protected String queryString;
+
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
   private final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
-
-  protected String queryString;
+  private Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents;
   private Boolean hasProcessedParentRecords = false;
 
   protected RollupFullRecalcProcessor(
@@ -116,6 +117,14 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     relatedParentRecords.clear();
     relatedParentRecords.addAll(relatedParentRecordsMap.values());
     this.parentRecordsToClear.clear();
+  }
+
+  public void setOldIntermediateGrandparents(Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents) {
+    this.typeToOldIntermediateGrandparents = typeToOldIntermediateGrandparents;
+  }
+
+  public Map<Schema.SObjectType, Set<Id>> getOldIntermediateGrandparents() {
+    return this.typeToOldIntermediateGrandparents == null ? new Map<Schema.SObjectType, Set<Id>>() : this.typeToOldIntermediateGrandparents;
   }
 
   protected override RollupRepository preStart() {

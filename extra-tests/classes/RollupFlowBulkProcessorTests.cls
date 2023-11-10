@@ -125,9 +125,8 @@ private class RollupFlowBulkProcessorTests {
 
     newGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :newGrandparent.Id];
     System.assertEquals(grandchild.Name, newGrandparent.NaicsDesc);
-    // TODO - continue WIP to fully fix the reset part
-    // oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
-    // System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
+    oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
+    System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
   }
 
   @IsTest

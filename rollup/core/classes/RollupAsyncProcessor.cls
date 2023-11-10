@@ -153,7 +153,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.stackDepth = innerRollup.stackDepth;
     this.calcItemReplacer = innerRollup.calcItemReplacer;
     this.lookupItems = innerRollup.lookupItems;
-    this.previouslyResetParents.addAll(innerRollup.previouslyResetParents);
   }
 
   // Inner rollup constructor - a rollup solely concerned with calculations
@@ -856,6 +855,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
             roll.oldCalcItems
           )
           .setIsFullRecalc(this.isFullRecalc)
+          .setOldIntermediateGrandparents(this.fullRecalcProcessor?.getOldIntermediateGrandparents())
           .getParents(roll.calcItems);
       } else if (roll.traversal?.getIsFinished() == false) {
         roll.traversal.recommence();
