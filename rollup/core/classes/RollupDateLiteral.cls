@@ -361,7 +361,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisWeekLiteral extends RollupDateLiteral {
     public ThisWeekLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfWeek(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addDays(6).date(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addDays(6).dateGmt(), END_TIME);
     }
   }
 
@@ -392,7 +392,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).date().toStartOfMonth(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt().toStartOfMonth(), END_TIME));
     }
   }
 
