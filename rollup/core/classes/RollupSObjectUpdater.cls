@@ -247,7 +247,18 @@ global without sharing virtual class RollupSObjectUpdater {
   private without sharing class DefaultUpdater implements IUpdater {
     @SuppressWarnings('PMD.ApexCrudViolation')
     public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
-      Database.update(recordsToUpdate, options);
+      List<Database.SaveResult> results = Database.update(recordsToUpdate, options);
+      for (Integer index = 0; index < results.size(); index++) {
+        Database.SaveResult res = results[index];
+        if (res.isSuccess() == false) {
+          String flattenedErrorString = '';
+          for (Database.Error err : res.getErrors()) {
+            flattenedErrorString += err.getStatusCode() + ': ' + err.getMessage() + '\n';
+          }
+
+          RollupLogger.Instance.log(flattenedErrorString.removeEnd('\n'), recordsToUpdate[index], System.LoggingLevel.ERROR);
+        }
+      }
     }
   }
 
