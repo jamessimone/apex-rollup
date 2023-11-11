@@ -132,7 +132,6 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollups(List<SObject> calcItems) {
-    this.fullRecalcProcessor = this;
     for (Schema.SObjectType intermediateGrandparent : this.getOldIntermediateGrandparents().keySet()) {
       for (Id resetId : this.getOldIntermediateGrandparents().get(intermediateGrandparent)) {
         this.parentRecordsToClear.put(resetId, resetId.getSobjectType().newSObject(resetId));
@@ -144,6 +143,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = calcItems;
     }
+    this.fullRecalcProcessor = this;
     return processor.rollups;
   }
 

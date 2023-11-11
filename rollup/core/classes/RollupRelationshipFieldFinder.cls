@@ -191,7 +191,9 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   public RollupRelationshipFieldFinder setOldIntermediateGrandparents(Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents) {
-    this.typeToOldIntermediateGrandparents = typeToOldIntermediateGrandparents;
+    if (typeToOldIntermediateGrandparents != null) {
+      this.typeToOldIntermediateGrandparents = typeToOldIntermediateGrandparents;
+    }
     return this;
   }
 
@@ -792,14 +794,14 @@ public without sharing class RollupRelationshipFieldFinder {
       parentFieldNames.add(baseGrandparentPath + '.' + parentField);
     }
     List<String> splitRelationshipNames = baseGrandparentPath.split('\\.');
-    String query = RollupQueryBuilder.Current.getQuery(
-      children[0].getSObjectType(),
-      new List<String>(parentFieldNames),
-      'Id',
-      '=',
-      this.metadata.CalcItemWhereClause__c
-    );
     if (children.isEmpty() == false) {
+      String query = RollupQueryBuilder.Current.getQuery(
+        children[0].getSObjectType(),
+        new List<String>(parentFieldNames),
+        'Id',
+        '=',
+        this.metadata.CalcItemWhereClause__c
+      );
       List<SObject> requeriedChildren = this.areParentFieldsAlreadySet(splitRelationshipNames, children[0])
         ? children
         : this.repo.setQuery(query).setArg(children).get();
@@ -845,7 +847,7 @@ public without sharing class RollupRelationshipFieldFinder {
           // TODO handle idType == null
           if (idType == this.ultimateParent) {
             fullParentPath = splitRelationshipName + this.metadata.GrandparentRelationshipFieldPath__c.substringAfter(splitRelationshipName);
-            query = RollupQueryBuilder.Current.getQuery(
+            String query = RollupQueryBuilder.Current.getQuery(
               this.ultimateParent,
               new List<String>{ this.metadata.RollupFieldOnLookupObject__c, this.metadata.LookupFieldOnLookupObject__c },
               'Id',
