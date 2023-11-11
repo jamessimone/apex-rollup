@@ -125,9 +125,46 @@ private class RollupFlowBulkProcessorTests {
 
     newGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :newGrandparent.Id];
     System.assertEquals(grandchild.Name, newGrandparent.NaicsDesc);
-    // TODO - continue WIP to fully fix the reset part
-    // oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
-    // System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
+    oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
+    System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
+  }
+
+  @IsTest
+  static void shouldClearGrandparentForIntermediateParentDeletion() {
+    Account oldGrandparent = [SELECT Id, Name FROM Account];
+    oldGrandparent.NaicsDesc = oldGrandparent.Name;
+    update oldGrandparent;
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'ContactPointAddress',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ContactPointPhoneId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NaicsDesc',
+        GrandparentRelationshipFieldPath__c = 'ContactPointPhone.Parent.Name'
+      )
+    };
+    ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent Again', ParentId = oldGrandparent.Id);
+    insert parent;
+    ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello Again', ContactPointPhoneId = parent.Id);
+    insert grandchild;
+
+    delete parent;
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ parent };
+    input.rollupContext = 'DELETE';
+    input.deferProcessing = false;
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
+    System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
   }
 
   @IsTest

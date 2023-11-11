@@ -548,6 +548,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (this.hasValues == null) {
             this.hasValues = true;
           }
+          val = val.trim();
           // coerce Boolean values to their standard representation
           if (val.equalsIgnoreCase(TRUE_VAL)) {
             val = TRUE_VAL;
@@ -556,7 +557,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           } else if (val.equalsIgnoreCase('null')) {
             val = null;
           }
-          this.values.add(val?.trim());
+          this.values.add(val);
         }
       }
       if (this.hasValues == null) {

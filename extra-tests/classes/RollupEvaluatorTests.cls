@@ -1195,6 +1195,63 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(oppFive), 'Id matches inner nested conditional!');
   }
 
+  @IsTest
+  static void nestedConditionalWorksWithInSpaces() {
+    String whereClause = 'PrivacyConsentStatus = \'Yes\' and EffectiveTo <= TODAY and Effectivefrom >= TODAY and CaptureSource in ( \'Hi\' , \'Hello\' , \'Hola\') and (Name = \'excellent\' or Name = \'stellar\')';
+
+    ContactPointConsent match1 = new ContactPointConsent(
+      PrivacyConsentStatus = 'Yes',
+      EffectiveTo = System.now().addDays(-1),
+      EffectiveFrom = System.now(),
+      CaptureSource = 'Hi',
+      Name = 'Excellent'
+    );
+    ContactPointConsent match2 = new ContactPointConsent(
+      PrivacyConsentStatus = 'Yes',
+      EffectiveTo = System.now().addDays(-1),
+      EffectiveFrom = System.now(),
+      CaptureSource = 'hello',
+      Name = 'stellar'
+    );
+    ContactPointConsent match3 = new ContactPointConsent(
+      PrivacyConsentStatus = 'Yes',
+      EffectiveTo = System.now().addDays(-1),
+      EffectiveFrom = System.now(),
+      CaptureSource = 'Hola',
+      Name = 'stellar'
+    );
+    ContactPointConsent nonMatch1 = new ContactPointConsent(
+      PrivacyConsentStatus = 'nonmatch',
+      EffectiveTo = System.now().addDays(2),
+      EffectiveFrom = System.now().addDays(-1),
+      CaptureSource = 'Hi',
+      Name = 'stellar'
+    );
+    ContactPointConsent nonMatch2 = new ContactPointConsent(
+      PrivacyConsentStatus = 'Yes',
+      EffectiveTo = System.now(),
+      EffectiveFrom = System.now().addDays(-1),
+      CaptureSource = 'nonmatch',
+      Name = 'stellar'
+    );
+    ContactPointConsent nonMatch3 = new ContactPointConsent(
+      PrivacyConsentStatus = 'Yes',
+      EffectiveTo = System.now(),
+      EffectiveFrom = System.now().addDays(-1),
+      CaptureSource = 'hi',
+      Name = 'nonmatch'
+    );
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointConsent.SObjectType);
+
+    System.assertEquals(true, eval.matches(match1));
+    System.assertEquals(true, eval.matches(match2));
+    System.assertEquals(true, eval.matches(match3));
+    System.assertEquals(false, eval.matches(nonMatch1));
+    System.assertEquals(false, eval.matches(nonMatch2));
+    System.assertEquals(false, eval.matches(nonMatch3));
+  }
+
   private static String getSoqlCompliantDatetime(Datetime dt) {
     return dt.format('yyyy-MM-dd\'T\'HH:mm:ssZ');
   }

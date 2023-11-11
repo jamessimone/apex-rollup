@@ -1,11 +1,12 @@
 global abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
+  protected String queryString;
+
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
   private final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
-
-  protected String queryString;
+  private Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents;
   private Boolean hasProcessedParentRecords = false;
 
   protected RollupFullRecalcProcessor(
@@ -118,11 +119,24 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.parentRecordsToClear.clear();
   }
 
+  public void setOldIntermediateGrandparents(Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents) {
+    this.typeToOldIntermediateGrandparents = typeToOldIntermediateGrandparents;
+  }
+
+  public Map<Schema.SObjectType, Set<Id>> getOldIntermediateGrandparents() {
+    return this.typeToOldIntermediateGrandparents == null ? new Map<Schema.SObjectType, Set<Id>>() : this.typeToOldIntermediateGrandparents;
+  }
+
   protected override RollupRepository preStart() {
     return new RollupRepository(this.accessLevel).setArg(this.objIds).setArg('recordIds', this.recordIds).setQuery(this.queryString);
   }
 
   protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollups(List<SObject> calcItems) {
+    for (Schema.SObjectType intermediateGrandparent : this.getOldIntermediateGrandparents().keySet()) {
+      for (Id resetId : this.getOldIntermediateGrandparents().get(intermediateGrandparent)) {
+        this.parentRecordsToClear.put(resetId, resetId.getSobjectType().newSObject(resetId));
+      }
+    }
     RollupAsyncProcessor processor = this.getAsyncRollup(this.rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = this;

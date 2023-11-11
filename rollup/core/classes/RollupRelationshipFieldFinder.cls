@@ -24,6 +24,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private Boolean isFirstRun = true;
   private String currentRelationshipName;
   private Boolean isFullRecalc = false;
+  private Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents = new Map<Schema.SObjectType, Set<Id>>();
 
   private static final Integer MAX_FOREIGN_KEY_RELATIONSHIP_HOPS = 5;
 
@@ -87,6 +88,7 @@ public without sharing class RollupRelationshipFieldFinder {
     private Map<Id, List<Id>> lookupIdMap = new Map<Id, List<Id>>();
     private final Map<Id, List<Id>> hierarchy = new Map<Id, List<Id>>();
     private final RollupRelationshipFieldFinder finder;
+    private final List<SObject> oldGrandparents = new List<SObject>();
 
     private Traversal(RollupRelationshipFieldFinder finder) {
       this.finder = finder;
@@ -127,14 +129,20 @@ public without sharing class RollupRelationshipFieldFinder {
           continue;
         }
         for (SObject parentRecord : parentRecords) {
-          if (parentToLookupRecords.containsKey(parentRecord.Id)) {
-            parentToLookupRecords.get(parentRecord.Id).add(record);
-          } else {
-            Rollup.CalcItemBag bag = new Rollup.CalcItemBag(new List<SObject>{ record });
+          Rollup.CalcItemBag bag = parentToLookupRecords.get(parentRecord.Id);
+          if (bag == null) {
+            bag = new Rollup.CalcItemBag(new List<SObject>());
             bag.hasQueriedForAdditionalItems = true;
             parentToLookupRecords.put(parentRecord.Id, bag);
           }
+          bag.add(record);
         }
+      }
+      for (SObject oldGrandparent : this.oldGrandparents) {
+        Rollup.CalcItemBag bag = new Rollup.CalcItemBag(new List<SObject>());
+        bag.hasQueriedForAdditionalItems = true;
+        parentToLookupRecords.put(oldGrandparent.Id, bag);
+        this.lookupIdToFinalRecords.put(oldGrandparent.Id, new List<SObject>{ oldGrandparent });
       }
       return parentToLookupRecords;
     }
@@ -179,6 +187,13 @@ public without sharing class RollupRelationshipFieldFinder {
 
   public RollupRelationshipFieldFinder setIsFullRecalc(Boolean isFullRecalc) {
     this.isFullRecalc = isFullRecalc;
+    return this;
+  }
+
+  public RollupRelationshipFieldFinder setOldIntermediateGrandparents(Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents) {
+    if (typeToOldIntermediateGrandparents != null) {
+      this.typeToOldIntermediateGrandparents = typeToOldIntermediateGrandparents;
+    }
     return this;
   }
 
@@ -773,12 +788,13 @@ public without sharing class RollupRelationshipFieldFinder {
 
   private void getFullRecalcParents(List<SObject> children) {
     this.setFirstRunFlags(children);
+    Set<String> parentFieldNames = new Set<String>{ this.metadata.GrandparentRelationshipFieldPath__c };
+    String baseGrandparentPath = this.metadata.GrandparentRelationshipFieldPath__c.substringBeforeLast('.');
+    for (String parentField : this.uniqueFinalParentFieldNames) {
+      parentFieldNames.add(baseGrandparentPath + '.' + parentField);
+    }
+    List<String> splitRelationshipNames = baseGrandparentPath.split('\\.');
     if (children.isEmpty() == false) {
-      Set<String> parentFieldNames = new Set<String>{ this.metadata.GrandparentRelationshipFieldPath__c };
-      String baseGrandparentPath = this.metadata.GrandparentRelationshipFieldPath__c.substringBeforeLast('.');
-      for (String parentField : this.uniqueFinalParentFieldNames) {
-        parentFieldNames.add(baseGrandparentPath + '.' + parentField);
-      }
       String query = RollupQueryBuilder.Current.getQuery(
         children[0].getSObjectType(),
         new List<String>(parentFieldNames),
@@ -786,7 +802,6 @@ public without sharing class RollupRelationshipFieldFinder {
         '=',
         this.metadata.CalcItemWhereClause__c
       );
-      List<String> splitRelationshipNames = baseGrandparentPath.split('\\.');
       List<SObject> requeriedChildren = this.areParentFieldsAlreadySet(splitRelationshipNames, children[0])
         ? children
         : this.repo.setQuery(query).setArg(children).get();
@@ -813,6 +828,42 @@ public without sharing class RollupRelationshipFieldFinder {
         finalParents.add(priorRelationship);
       }
       this.prepFinishedObject(finalParents);
+    }
+    for (Schema.SObjectType intermediateGrandparent : this.typeToOldIntermediateGrandparents.keySet()) {
+      List<Schema.SObjectField> fields = intermediateGrandparent.getDescribe().fields.getMap().values();
+      Boolean hasFoundMatch = false;
+      String fullParentPath = '';
+      for (String splitRelationshipName : splitRelationshipNames) {
+        for (Schema.SObjectField field : fields) {
+          if (field.getDescribe().getRelationshipName() == splitRelationshipName) {
+            hasFoundMatch = true;
+            break;
+          }
+        }
+        if (hasFoundMatch) {
+          Set<Id> otherIds = this.typeToOldIntermediateGrandparents.get(intermediateGrandparent);
+          System.Iterator<Id> iterator = otherIds.iterator();
+          Schema.SObjectType idType = iterator.hasNext() ? iterator.next().getSObjectType() : null;
+          // TODO handle idType == null
+          if (idType == this.ultimateParent) {
+            fullParentPath = splitRelationshipName + this.metadata.GrandparentRelationshipFieldPath__c.substringAfter(splitRelationshipName);
+            String query = RollupQueryBuilder.Current.getQuery(
+              this.ultimateParent,
+              new List<String>{ this.metadata.RollupFieldOnLookupObject__c, this.metadata.LookupFieldOnLookupObject__c },
+              'Id',
+              '=',
+              this.metadata.CalcItemWhereClause__c
+            );
+
+            List<SObject> otherPossibleGrandparents = this.repo.setQuery(query).setArg(otherIds).get();
+            for (SObject otherPossibleGrandparent : otherPossibleGrandparents) {
+              if (this.traversal.finalParentIdToRecords.containsKey(otherPossibleGrandparent.Id) == false) {
+                this.traversal.oldGrandparents.add(otherPossibleGrandparent);
+              }
+            }
+          }
+        }
+      }
     }
   }
 

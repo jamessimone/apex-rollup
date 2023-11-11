@@ -3,11 +3,11 @@
     <fullName>IsFullRecordSet__c</fullName>
     <defaultValue>false</defaultValue>
     <description
-  >If the calc items you are passing in comprise the entirety of the rollup values you&apos;d like, toggle this to ensure Rollup does not abort before clearing the lookup item&apos;s rollup value</description>
+  >Turns any diff-based rollup (COUNT or SUM) into a query-based rollup that pulls back all children for any given parent</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText
-  >If the calc items you are passing in comprise the entirety of the rollup values you&apos;d like, toggle this to ensure Rollup does not abort before clearing the lookup item&apos;s rollup value</inlineHelpText>
+  >Turns any diff-based rollup (COUNT or SUM) into a query-based rollup that pulls back all children for any given parent</inlineHelpText>
     <label>Is Full Record Set</label>
     <type>Checkbox</type>
 </CustomField>
