@@ -725,6 +725,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
       this.rollupControl.BatchChunkSize__c = specificControl.BatchChunkSize__c;
     }
+    if (this.rollupControl.BatchChunkSize__c == null) {
+      this.rollupControl.BatchChunkSize__c = 2000;
+    }
     if (specificControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
       this.rollupControl.MaxLookupRowsBeforeBatching__c = specificControl.MaxLookupRowsBeforeBatching__c;
     }

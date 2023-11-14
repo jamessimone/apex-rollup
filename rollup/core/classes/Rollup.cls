@@ -63,6 +63,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
+  @TestVisible
   private static final List<RollupFullRecalcProcessor> CACHED_FULL_RECALCS {
     get {
       if (CACHED_FULL_RECALCS == null) {
@@ -2233,6 +2234,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   private static String getFullRecalcQueryString(List<Rollup__mdt> metas) {
     Set<String> orderByFields = new Set<String>();
     for (Rollup__mdt meta : metas) {
+      if (meta.GrandparentRelationshipFieldPath__c != null) {
+        orderByFields.add(meta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.Id');
+      }
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
     }
     return '\nORDER BY ' + String.join(orderByFields, ',');

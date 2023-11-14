@@ -49,7 +49,7 @@ private class RollupFlowFullRecalcTests {
   @IsTest
   static void shouldBulkifyBatchFullRecalcsProperly() {
     RollupAsyncProcessor.additionalCalcItemCount = 1;
-    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 2);
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
     // ensure another matching item exists outside of the passed in list
     insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
