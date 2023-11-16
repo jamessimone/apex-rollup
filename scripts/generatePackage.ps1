@@ -44,7 +44,7 @@ function Update-Package-Install-Links {
 
 function Get-Is-Version-Promoted {
   param ($versionNumber, $packageName)
-  $promotedPackageVersions = (npx sf package version list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version # ERROR: Unable to convert this command; you must convert it manually.
+  $promotedPackageVersions = (npx sf package version list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version
 
   if ($null -eq $promotedPackageVersions) {
     return $false

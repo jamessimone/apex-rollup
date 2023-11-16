@@ -40,7 +40,7 @@ function Start-Tests() {
 
 Write-Debug "Starting build script"
 
-$scratchOrgAllotment = ((npx sf limits api display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining # ERROR: Unable to convert this command; you must convert it manually.
+$scratchOrgAllotment = ((npx sf limits api display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
 
 
 Write-Debug "Total remaining scratch orgs for the day: $scratchOrgAllotment"
