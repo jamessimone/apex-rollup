@@ -13,11 +13,5 @@ updates:
     rebase-strategy: 'auto'
     schedule:
       interval: 'weekly'
-  - package-ecosystem: 'github-actions' # See documentation for possible values
-    directory: '/' # Location of package manifests
-    commit-message:
-      prefix: 'ci'
-      include: 'scope'
-    rebase-strategy: 'auto'
-    schedule:
-      interval: 'weekly'
+    allow:
+      - dependency-name: '@salesforce/sfdx-scanner'
