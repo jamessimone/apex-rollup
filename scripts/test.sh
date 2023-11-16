@@ -4,7 +4,7 @@
 
 echo "Starting build script"
 
-orgInfo=$(sfdx force:org:display --json --verbose 2>/dev/null)
+orgInfo=$(sf org display --json --verbose 2>/dev/null)
 userNameHasBeenSet=0
 
 if [ -f "./DEVHUB_SFDX_URL.txt" ]; then
@@ -16,37 +16,38 @@ fi
 
 # Authorize Dev Hub using prior creds. There's some issue with the flags --setdefaultdevhubusername and --setdefaultusername both being passed when run remotely
 
-sfdx auth:sfdxurl:store -f ./DEVHUB_SFDX_URL.txt -a apex-rollup
-sfdx config:set defaultusername=james@sheandjim.com defaultdevhubusername=james@sheandjim.com
+sf org login sfdx-url --sfdx-url-file ./DEVHUB_SFDX_URL.txt --alias apex-rollup
+sf config set target-org james@sheandjim.com target-dev-hub james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
-scratchOrgAllotment=$(sfdx force:limits:api:display 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
+scratchOrgAllotment=$(sf limits api display 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining') # ERROR: Unable to convert this command; you must convert it manually.
+
 echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-testInvocation='sfdx force:apex:test:run -c -d ./tests/apex -r human -w 20'
+testInvocation='sf apex run test --code-coverage --output-dir ./tests/apex --result-format human --wait 20'
 echo "Test command to use: $testInvocation"
 
 if [ $scratchOrgAllotment -gt 0 ]; then
   echo "Beginning scratch org creation"
   userNameHasBeenSet=1
   {
-    sfdx force:org:create -f config/project-scratch-def.json -a apex-rollup-scratch-org -s -d 1
-    sfdx force:data:tree:import -f config/data/CurrencyTypes.json
+    sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 1
+    sf data import tree --files config/data/CurrencyTypes.json
     # Deploy
-    sfdx force:source:push
+    sf project deploy start
     # Run tests
     echo "Starting test run ..."
     $testInvocation
     echo "Scratch org tests finished running with success: $?"
     # Delete scratch org
-    sfdx force:org:delete -p -u apex-rollup-scratch-org
+    sf org delete scratch --no-prompt --target-org apex-rollup-scratch-org
   } || {
     echo "there was a problem with scratch org creation. continuing..."
   }
 else
   echo "No scratch orgs remaining, running tests on sandbox"
   # Deploy
-  sfdx force:source:deploy -p rollup
+  sf project deploy start --source-dir rollup
   # Run tests
   $testInvocation
   echo "Tests finished running with success: $?"
@@ -57,7 +58,7 @@ fi
 if [ "$(echo $orgInfo | jq -r '.result.username' 2>/dev/null)" != "" ] && [ $userNameHasBeenSet -gt 0 ]; then
   priorUserName=$(echo $orgInfo | jq -r '.result.username')
   echo "Resetting SFDX to previously authorized org"
-  sfdx force:config:set defaultusername=$priorUserName
+  sf config set target-org $priorUserName
 fi
 
 echo "Resetting SFDX project JSON at project root"

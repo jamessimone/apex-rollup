@@ -14,3 +14,7 @@ plugins/ExtraCodeCoverage
 .sf/
 rollup-namespaced/source
 sfge-*.log.gz
+#PMD
+.pmdCache
+#OSX
+.DS_Store

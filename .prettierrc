@@ -14,8 +14,10 @@
       "options": { "parser": "html" }
     },
     {
-      "files": "*.{apex}",
+      "files": "*.{cls, apex}",
       "options": { "parser": "apex" }
     }
-  ]
+  ],
+  "plugins": ["prettier-plugin-apex", "@prettier/plugin-xml"],
+  "$schema": "https://json.schemastore.org/prettierrc"
 }
