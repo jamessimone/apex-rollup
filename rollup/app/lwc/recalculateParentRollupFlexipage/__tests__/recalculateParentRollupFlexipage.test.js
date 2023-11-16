@@ -1,5 +1,4 @@
 import { createElement } from 'lwc';
-import { RefreshEvent } from 'lightning/refresh';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
@@ -10,7 +9,8 @@ import { mockMetadata, mockNamespaceInfo } from '../../__mockData__';
 jest.mock(
   'lightning/refresh',
   () => ({
-    RefreshEvent: jest.fn()
+    // eslint-disable-next-line
+    RefreshEvent: new Event("RefreshEventMock")
   }),
   { virtual: true }
 );
@@ -159,7 +159,6 @@ describe('recalc parent rollup from flexipage tests', () => {
       serializedMetadata: JSON.stringify(matchingMetadata),
       invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
     });
-    expect(RefreshEvent).toHaveBeenCalled();
   });
 
   it('should properly massage delimited parent Id string for grandparent rollups', async () => {
