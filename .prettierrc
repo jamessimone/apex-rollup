@@ -18,5 +18,6 @@
       "options": { "parser": "apex" }
     }
   ],
-  "plugins": ["prettier-plugin-apex"]
+  "plugins": ["prettier-plugin-apex", "@prettier/plugin-xml"],
+  "$schema": "https://json.schemastore.org/prettierrc"
 }
