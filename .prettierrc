@@ -14,7 +14,7 @@
       "options": { "parser": "html" }
     },
     {
-      "files": "*.{apex}",
+      "files": "*.{cls, apex}",
       "options": { "parser": "apex" }
     }
   ],
