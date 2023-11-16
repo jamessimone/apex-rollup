@@ -17,5 +17,6 @@
       "files": "*.{apex}",
       "options": { "parser": "apex" }
     }
-  ]
+  ],
+  "plugins": ["prettier-plugin-apex"]
 }
