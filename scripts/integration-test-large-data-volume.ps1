@@ -27,7 +27,7 @@ function Get-Expected-Annual-Revenue() {
 
 function Get-SFDX-Batch-Status() {
   param($scriptPath, $sleepSeconds)
-  $sfdxResponse = (npx sfdx force:apex:execute -f $scriptPath --json) | Join-String
+  $sfdxResponse = (npx sf apex run --file $scriptPath --json) | Join-String
   Write-Host $sfdxResponse
   $responseObject = ConvertFrom-Json -InputObject $sfdxResponse -Depth 2
   if ($responseObject.result.success -eq $false) {

@@ -3,6 +3,7 @@ node_modules/
 .vim-force.com/
 yarn.lock
 .sfdx/
+.sf/
 .localdevserver/
 debug.log
 DEVHUB_SFDX_URL.txt
@@ -14,3 +15,5 @@ plugins/ExtraCodeCoverage
 .sf/
 rollup-namespaced/source
 sfge-*.log.gz
+scripts/test.ps1
+.pmdCache

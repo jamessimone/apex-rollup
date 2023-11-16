@@ -1,7 +1,7 @@
 $DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows
-$testInvocation = 'npx sfdx force:apex:test:run -s ApexRollupTestSuite -r human -w 20 -c -d ./tests/apex'
+$testInvocation = 'npx sf apex run test --suite-names ApexRollupTestSuite --result-format human --wait 20 --code-coverage --output-dir ./tests/apex'
 $currentUserAlias = 'apex-rollup-scratch-org'
 
 . .\scripts\string-utils.ps1
@@ -9,8 +9,8 @@ $currentUserAlias = 'apex-rollup-scratch-org'
 
 function Start-Tests() {
   Write-Debug "Deploying metadata ..."
-  npx sfdx force:source:deploy -p rollup
-  npx sfdx force:source:deploy -p extra-tests
+  npx sf project deploy start --source-dir rollup
+  npx sf project deploy start --source-dir extra-tests
 
   $currentBranch = Get-Current-Git-Branch
   Write-Debug "Starting test run on branch $currentBranch ..."
@@ -28,7 +28,7 @@ function Start-Tests() {
 
   try {
     Write-Debug "Deleting scratch org ..."
-    npx sfdx force:org:delete -p
+    npx sf org delete scratch --no-prompt
   } catch {
     Write-Debug "Scratch org deletion failed, continuing ..."
   }
@@ -40,7 +40,8 @@ function Start-Tests() {
 
 Write-Debug "Starting build script"
 
-$scratchOrgAllotment = ((npx sfdx force:limits:api:display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining
+$scratchOrgAllotment = ((npx sf limits api display --json | ConvertFrom-Json).result | Where-Object -Property name -eq "DailyScratchOrgs").remaining # ERROR: Unable to convert this command; you must convert it manually.
+
 
 Write-Debug "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 Write-Debug "Test command to use: $testInvocation"
@@ -50,7 +51,7 @@ $shouldDeployToSandbox = $false
 if($scratchOrgAllotment -gt 0) {
   Write-Debug "Beginning scratch org creation"
   # Create Scratch Org
-  $scratchOrgCreateMessage = npx sfdx force:org:create -f config/project-scratch-def.json -a $currentUserAlias -s -d 1
+  $scratchOrgCreateMessage = npx sf org create scratch --definition-file config/project-scratch-def.json --alias $currentUserAlias --set-default --duration-days 1
   # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
   # The other issue is that this doesn't throw, so we have to test the response message ourselves
   if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
@@ -58,7 +59,7 @@ if($scratchOrgAllotment -gt 0) {
   }
   # Multi-currency prep
   Write-Debug 'Importing multi-currency config data to scratch org ...'
-  npx sfdx force:data:tree:import -f ./config/data/CurrencyTypes.json
+  npx sf data import tree --files ./config/data/CurrencyTypes.json
   # Run tests
   Start-Tests
 } else {

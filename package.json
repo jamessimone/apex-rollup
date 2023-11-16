@@ -15,17 +15,17 @@
     "@ljharb/eslint-config": "latest",
     "@lwc/eslint-plugin-lwc": "latest",
     "@prettier/plugin-xml": "latest",
+    "@salesforce/cli": "latest",
     "@salesforce/eslint-config-lwc": "latest",
     "@salesforce/eslint-plugin-lightning": "latest",
-    "@salesforce/sfdx-lwc-jest": "0.12.5",
-    "@salesforce/sfdx-scanner": "3.16.0",
+    "@salesforce/sfdx-lwc-jest": "^3",
+    "@salesforce/sfdx-scanner": "^3.16.0",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "husky": "latest",
     "lint-staged": "latest",
-    "prettier-plugin-apex": "latest",
     "prettier": "latest",
-    "sfdx-cli": "latest"
+    "prettier-plugin-apex": "latest"
   },
   "keywords": [
     "salesforce",

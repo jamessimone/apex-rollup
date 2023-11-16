@@ -44,7 +44,8 @@ function Update-Package-Install-Links {
 
 function Get-Is-Version-Promoted {
   param ($versionNumber, $packageName)
-  $promotedPackageVersions = (npx sfdx force:package:version:list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version
+  $promotedPackageVersions = (npx sf package version list --released --packages $packageName --json | ConvertFrom-Json).result | Select-Object -ExpandProperty Version # ERROR: Unable to convert this command; you must convert it manually.
+
   if ($null -eq $promotedPackageVersions) {
     return $false
   } else {
@@ -137,7 +138,7 @@ function Generate() {
   Write-Host "Creating package version: $currentPackageVersion ..." -ForegroundColor White
 
   $stopWatch = [system.diagnostics.stopwatch]::startNew()
-  $createPackageResult = npx sfdx force:package:version:create -p $packageName -w 30 -c -x -n $currentPackageVersion --json | ConvertFrom-Json
+  $createPackageResult = npx sf package version create --package $packageName --wait 30 --code-coverage --installation-key-bypass --version-number $currentPackageVersion --json | ConvertFrom-Json
   $stopWatch.Stop()
 
   Write-Host "Packaging took: $($stopWatch.Elapsed.TotalMilliseconds) ms" -ForegroundColor White
