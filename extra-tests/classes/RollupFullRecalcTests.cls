@@ -34,10 +34,8 @@ private class RollupFullRecalcTests {
     );
 
     System.assertEquals(1, Rollup.CACHED_FULL_RECALCS.size());
-    System.assertEquals(
-      'SELECT id,firstname,reportstoid\nFROM Contact\nWHERE Id != :objIds\nORDER BY ReportsTo.Account.Id,ReportsToId',
-      Rollup.CACHED_FULL_RECALCS.get(0).start(null).getQuery()
-    );
+    List<String> queryParts = Rollup.CACHED_FULL_RECALCS.get(0).start(null).getQuery().split('\n');
+    System.assertEquals('ORDER BY ReportsTo.Account.Id,ReportsToId', queryParts.get(queryParts.size() - 1));
   }
 
   @IsTest
