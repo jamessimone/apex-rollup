@@ -528,11 +528,11 @@ public without sharing abstract class RollupCalculator {
       }
     }
 
-    protected virtual Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
-      if (potentiallyUnitializedDecimal instanceof Decimal) {
-        return (Decimal) potentiallyUnitializedDecimal;
+    protected virtual Decimal getDecimalOrDefault(Object potentiallyUninitialized) {
+      if (potentiallyUninitialized instanceof Decimal) {
+        return (Decimal) potentiallyUninitialized;
       } else {
-        return Decimal.valueOf(potentiallyUnitializedDecimal == null ? 0 : 1);
+        return potentiallyUninitialized == null ? 0.00 : 1.00;
       }
     }
 
@@ -778,12 +778,12 @@ public without sharing abstract class RollupCalculator {
       return returnValue;
     }
 
-    protected override Decimal getDecimalOrDefault(Object potentiallyUnitializedDecimal) {
+    protected override Decimal getDecimalOrDefault(Object potentiallyUninitialized) {
       Datetime defaultDatetime;
-      if (potentiallyUnitializedDecimal instanceof Time) {
-        defaultDatetime = Datetime.newInstanceGmt(RollupFieldInitializer.Current.defaultDateTime.dateGmt(), (Time) potentiallyUnitializedDecimal);
-      } else if (potentiallyUnitializedDecimal instanceof Decimal) {
-        defaultDatetime = Datetime.newInstance(((Decimal) potentiallyUnitializedDecimal).longValue());
+      if (potentiallyUninitialized instanceof Time) {
+        defaultDatetime = Datetime.newInstanceGmt(RollupFieldInitializer.Current.defaultDateTime.dateGmt(), (Time) potentiallyUninitialized);
+      } else if (potentiallyUninitialized instanceof Decimal) {
+        defaultDatetime = Datetime.newInstance(((Decimal) potentiallyUninitialized).longValue());
       }
       return (defaultDatetime != null ? defaultDatetime : RollupFieldInitializer.Current.defaultDateTime).getTime();
     }

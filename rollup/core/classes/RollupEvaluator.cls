@@ -297,12 +297,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
         RollupLogger.Instance.save();
         throw new IllegalArgumentException(
-          'Where clause entered incorrectly: ' +
-          whereClause +
-          '\nException: ' +
-          ex.getMessage() +
-          '\n' +
-          ex.getStackTraceString()
+          'Where clause entered incorrectly: ' + whereClause + '\nException: ' + ex.getMessage() + '\n' + ex.getStackTraceString()
         );
       }
     }
