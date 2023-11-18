@@ -43,7 +43,7 @@ private class InvocableDrivenTests {
 
   @IsTest
   static void shouldWorkWhenBatchedFromRefresh() {
-    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, BatchChunkSize__c = 1000);
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true);
     // Driven by extra-tests/flows/Rollup_Integration_Multiple_Deferred_Case_Rollups.flow-meta.xml
     Account acc = [SELECT Id FROM Account];
     // Description and Subject both are referenced in the Flow

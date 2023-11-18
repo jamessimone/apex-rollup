@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Intermediate grandparent reparenting/deletion now properly recalculates grandparent rollups",
-            "versionNumber": "1.6.2.0",
+            "versionName": "Fixes grandparent full recalcs with same grandparent different intermediate children issue",
+            "versionNumber": "1.6.3.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -104,6 +104,7 @@
         "apex-rollup@1.5.89-0": "04t6g000008C77gAAC",
         "apex-rollup@1.6.0-0": "04t6g000008C7AQAA0",
         "apex-rollup@1.6.1-0": "04t6g000008OZwYAAW",
-        "apex-rollup@1.6.2-0": "04t6g000008Oa7TAAS"
+        "apex-rollup@1.6.2-0": "04t6g000008Oa7TAAS",
+        "apex-rollup@1.6.3": "04t6g000008Oa8gAAC"
     }
 }

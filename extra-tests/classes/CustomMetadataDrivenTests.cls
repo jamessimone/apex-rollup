@@ -117,8 +117,7 @@ private class CustomMetadataDrivenTests {
     Rollup.defaultControl = new RollupControl__mdt(
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
-      ReplaceCalcItemsAsyncWhenOverCount__c = 2,
-      BatchChunkSize__c = 10
+      ReplaceCalcItemsAsyncWhenOverCount__c = 2
     );
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Parent');
     insert parentApp;

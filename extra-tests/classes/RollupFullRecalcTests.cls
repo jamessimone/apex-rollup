@@ -9,6 +9,36 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void correctlyOrdersGrandparentRollupQueryString() {
+    Rollup.defaultControl = new RollupControl__mdt(
+      IsRollupLoggingEnabled__c = true,
+      MaxLookupRowsBeforeBatching__c = 0,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable
+    );
+    insert new Contact(LastName = 'grandparent rollup query string');
+
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'Contact',
+          GrandparentRelationshipFieldPath__c = 'ReportsTo.Account.Name',
+          LookupFieldOnCalcItem__c = 'ReportsToId',
+          LookupFieldOnLookupObject__c = 'Id',
+          LookupObject__c = 'Account',
+          RollupFieldOnCalcItem__c = 'FirstName',
+          RollupFieldOnLookupObject__c = 'Name',
+          RollupOperation__c = 'CONCAT'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+
+    System.assertEquals(1, Rollup.CACHED_FULL_RECALCS.size());
+    List<String> queryParts = Rollup.CACHED_FULL_RECALCS.get(0).start(null).getQuery().split('\n');
+    System.assertEquals('ORDER BY ReportsTo.Account.Id,ReportsToId', queryParts.get(queryParts.size() - 1));
+  }
+
+  @IsTest
   static void shouldSortParentResetProcessorsToBeginning() {
     RollupAsyncProcessor actualProcessor = RollupAsyncProcessor.getProcessor(
       new Rollup.FilterResults(),
@@ -841,7 +871,6 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
-      BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
       IsRollupLoggingEnabled__c = true
     );
@@ -885,7 +914,6 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
-      BatchChunkSize__c = 100,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
       IsRollupLoggingEnabled__c = true
     );
@@ -931,7 +959,6 @@ private class RollupFullRecalcTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 2, // this is the important part; that only the qualified cpa ends up counting
       MaxNumberOfQueries__c = 5,
-      BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
       MaxParentRowsUpdatedAtOnce__c = 2,
@@ -977,7 +1004,6 @@ private class RollupFullRecalcTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 50,
       MaxNumberOfQueries__c = 2, // set to explicitly be too low for rollup to proceed
-      BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
       MaxParentRowsUpdatedAtOnce__c = 10,
@@ -1032,7 +1058,6 @@ private class RollupFullRecalcTests {
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 50,
       MaxNumberOfQueries__c = 2, // has to be exactly the number that allows the first rollup but not the second
-      BatchChunkSize__c = 10,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
       IsRollupLoggingEnabled__c = true,
       MaxParentRowsUpdatedAtOnce__c = 10,
@@ -1494,11 +1519,7 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverQueryLimit() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      BatchChunkSize__c = 3,
-      IsRollupLoggingEnabled__c = true
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -1545,11 +1566,7 @@ private class RollupFullRecalcTests {
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverLimitWithBatching() {
     RollupParentResetProcessor.maxQueryRows = 0;
     RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
-      BatchChunkSize__c = 3,
-      IsRollupLoggingEnabled__c = true
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -1597,11 +1614,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRuns() {
-    Rollup.defaultControl = new RollupControl__mdt(
-      IsRollupLoggingEnabled__c = true,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      BatchChunkSize__c = 100
-    );
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -1641,11 +1654,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldCacheRetrievedCalcItemsBetweenFullRecalcRunsCount() {
-    Rollup.defaultControl = new RollupControl__mdt(
-      IsRollupLoggingEnabled__c = true,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      BatchChunkSize__c = 100
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account acc = [SELECT Id FROM Account];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
@@ -1685,11 +1694,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void limitsFullBatchRecalcCachedItemsProperly() {
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      IsRollupLoggingEnabled__c = true,
-      BatchChunkSize__c = 100
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account parentA = [SELECT Id FROM Account];
     Account parentB = new Account(Name = 'Parent B');
     Account parentC = new Account(Name = 'Parent C');
@@ -1774,11 +1779,7 @@ private class RollupFullRecalcTests {
   static void shouldFullRecalcWithInWhereClauses() {
     RollupParentResetProcessor.maxQueryRows = 0;
     RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
-      BatchChunkSize__c = 3,
-      IsRollupLoggingEnabled__c = true
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
     Account acc = [SELECT Id FROM Account];
 
     insert new List<Opportunity>{
@@ -1838,12 +1839,7 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldNotRequeryForAverageItemsInFullRecalc() {
     RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      BatchChunkSize__c = 4,
-      MaxLookupRowsBeforeBatching__c = 2,
-      IsRollupLoggingEnabled__c = true
-    );
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxLookupRowsBeforeBatching__c = 2);
     Account acc = [SELECT Id FROM Account];
     Account second = new Account(Name = 'Second');
     insert second;
@@ -1890,12 +1886,7 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldNotRequeryInFullRecalcForFirstLast() {
     RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      BatchChunkSize__c = 4,
-      MaxLookupRowsBeforeBatching__c = 2,
-      IsRollupLoggingEnabled__c = true
-    );
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account acc = [SELECT Id FROM Account];
     Account second = new Account(Name = 'Second');
     insert second;
@@ -2156,12 +2147,7 @@ private class RollupFullRecalcTests {
   static void addsCabooseForMultiplFullRecalcsToDifferentParents() {
     // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
     // and there are multiple instances of the full batch recalcs that are present in the list of rollups
-    Rollup.defaultControl = new RollupControl__mdt(
-      MaxLookupRowsBeforeBatching__c = 2,
-      BatchChunkSize__c = 100,
-      IsRollupLoggingEnabled__c = true,
-      MaxRollupRetries__c = 1
-    );
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, MaxLookupRowsBeforeBatching__c = 2);
     Rollup.onlyUseMockMetadata = true;
 
     Account parentOne = [SELECT Id FROM Account];
@@ -2236,12 +2222,7 @@ private class RollupFullRecalcTests {
     // the queueable will already correctly handle everything since the shared parent field will only be reset once.
     // batch processes, on the other hand, would otherwise simply see the existing value on the parent as something
     // that needs to be cleared out
-    Rollup.defaultControl = new RollupControl__mdt(
-      MaxLookupRowsBeforeBatching__c = 1,
-      BatchChunkSize__c = 2,
-      IsRollupLoggingEnabled__c = true,
-      MaxRollupRetries__c = 1
-    );
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, MaxLookupRowsBeforeBatching__c = 1);
     Rollup.onlyUseMockMetadata = true;
     Account parent = [SELECT Id FROM Account];
 

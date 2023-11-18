@@ -308,7 +308,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void fullRecalculationStartsProperlyOnUpdateWhenOverQueryLimit() {
-    Rollup.defaultControl = new RollupControl__mdt(BatchChunkSize__c = 3, IsRollupLoggingEnabled__c = true, MaxQueryRows__c = 2, MaxRollupRetries__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, MaxRollupRetries__c = 1);
     Rollup.onlyUseMockMetadata = true;
     Account acc = [SELECT Id FROM Account];
     Opportunity priorOpp = [SELECT Amount, StageName FROM Opportunity];
@@ -1346,7 +1346,7 @@ private class RollupIntegrationTests {
 
   @IsTest
   static void recursivelyUpdatesEntireHierarchy() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.onlyUseMockMetadata = true;
     RollupLimits.stubAsyncTimeoutInterval = 1;
@@ -1426,10 +1426,8 @@ private class RollupIntegrationTests {
 
     // start as synchronous rollup to allow for one deferral
     Rollup.defaultControl = new RollupControl__mdt(
-      BatchChunkSize__c = 1,
-      MaxRollupRetries__c = 1,
       MaxNumberOfQueries__c = 1,
-      IsRollupLoggingEnabled__c = true,
+      MaxRollupRetries__c = 1,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
     Rollup.shouldRun = true;
@@ -1477,10 +1475,8 @@ private class RollupIntegrationTests {
     insert cpas;
 
     Rollup.defaultControl = new RollupControl__mdt(
-      BatchChunkSize__c = 2,
-      MaxRollupRetries__c = 1,
       MaxNumberOfQueries__c = 7,
-      IsRollupLoggingEnabled__c = true,
+      MaxRollupRetries__c = 1,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
     RollupAsyncProcessor.shouldRunAsBatch = true;
@@ -1568,7 +1564,7 @@ private class RollupIntegrationTests {
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, BatchChunkSize__c = 1, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0);
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();

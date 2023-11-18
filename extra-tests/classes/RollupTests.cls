@@ -1193,9 +1193,7 @@ private class RollupTests {
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated CONCAT BEFORE_DELETE');
     System.assertEquals(
-      notDeleted.Name +
-      ', ' +
-      alsoNotDeleted.Name,
+      notDeleted.Name + ', ' + alsoNotDeleted.Name,
       acc.AccountNumber,
       'CONCAT BEFORE_DELETE should replace the outgoing string value with empty string'
     );
@@ -2489,11 +2487,7 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
-      BatchChunkSize__c = 1,
-      MaxLookupRowsBeforeBatching__c = 1
-    );
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2509,11 +2503,7 @@ private class RollupTests {
   static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable,
-      MaxLookupRowsBeforeBatching__c = 1000,
-      BatchChunkSize__c = 50
-    );
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2631,6 +2621,48 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Only old account should have been updated, ' + mock.Records);
     System.assertEquals(null, oldAcc.AnnualRevenue, 'SUM AFTER_UPDATE should remove current amount from old parent');
     System.assertEquals(null, acc.AnnualRevenue, 'SUM AFTER_UPDATE should not count excluded item on new parent');
+  }
+
+  @IsTest
+  static void shouldNotDecrementForReparentingWhereItemDoesNotMatch() {
+    Account acc = [SELECT Id, AnnualRevenue, NumberOfEmployees FROM Account];
+    Account oldAcc = new Account(AnnualRevenue = 0, NumberOfEmployees = 50, Name = 'AnotherRollupTest');
+    insert oldAcc;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
+
+    ContactPointAddress cpa = new ContactPointAddress(
+      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType),
+      PreferenceRank = 50,
+      ParentId = acc.Id,
+      Name = 'Non-match'
+    );
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{
+      cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, PreferenceRank = cpa.PreferenceRank, Id = cpa.Id, Name = cpa.Name)
+    };
+
+    Test.startTest();
+    Rollup.batch(
+      Rollup.sumFromApex(
+        ContactPointAddress.PreferenceRank,
+        ContactPointAddress.ParentId,
+        Account.Id,
+        Account.AnnualRevenue,
+        Account.SObjectType,
+        0,
+        RollupEvaluator.getWhereEval('Name NOT IN (\'' + cpa.Name + '\')', cpa.getSObjectType())
+      ),
+      Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.NumberOfEmployees, Account.SObjectType, 0)
+    );
+    Test.stopTest();
+
+    System.assertEquals(2, mock.Records.size(), mock.Records);
+    System.assertEquals(0, acc.AnnualRevenue);
+    System.assertEquals(0, oldAcc.AnnualRevenue);
+    System.assertEquals(50, acc.NumberOfEmployees);
+    System.assertEquals(0, oldAcc.NumberOfEmployees);
   }
 
   @IsTest
@@ -2803,10 +2835,8 @@ private class RollupTests {
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(
-      MaxRollupRetries__c = 1,
-      IsRollupLoggingEnabled__c = true,
       MaxNumberOfQueries__c = 1,
-      BatchChunkSize__c = 1,
+      MaxRollupRetries__c = 1,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
     Rollup.specificControl = Rollup.defaultControl;
@@ -2869,7 +2899,7 @@ private class RollupTests {
     insert cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
-    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 1);
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 2);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2906,7 +2936,7 @@ private class RollupTests {
     insert cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
-    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, BatchChunkSize__c = 1, MaxRollupRetries__c = 100);
+    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 4);
     Rollup.rollupMetadata = new List<Rollup__mdt>{

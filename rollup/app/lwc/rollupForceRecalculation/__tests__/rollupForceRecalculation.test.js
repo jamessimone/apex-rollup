@@ -26,6 +26,16 @@ async function mountComponent() {
 }
 
 jest.mock(
+  '@salesforce/apex/Rollup.getBatchRollupStatus',
+  () => {
+    return {
+      default: jest.fn()
+    };
+  },
+  { virtual: true }
+);
+
+jest.mock(
   '@salesforce/apex/Rollup.getNamespaceInfo',
   () => {
     return {

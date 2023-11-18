@@ -63,6 +63,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
+  @TestVisible
   private static final List<RollupFullRecalcProcessor> CACHED_FULL_RECALCS {
     get {
       if (CACHED_FULL_RECALCS == null) {
@@ -2233,6 +2234,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   private static String getFullRecalcQueryString(List<Rollup__mdt> metas) {
     Set<String> orderByFields = new Set<String>();
     for (Rollup__mdt meta : metas) {
+      if (meta.GrandparentRelationshipFieldPath__c != null) {
+        orderByFields.add(meta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.Id');
+      }
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
     }
     return '\nORDER BY ' + String.join(orderByFields, ',');
@@ -3106,13 +3110,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
+      if (shouldFilterCalcItems == false) {
+        results.matchingItemIds.add(item.Id);
+        continue;
+      }
       if (
         metadata.IsRollupStartedFromParent__c == false &&
         item.get(metadata.LookupFieldOnCalcItem__c) == null &&
         oldCalcItems?.get(item.Id)?.get(metadata.LookupFieldOnCalcItem__c) == null
       ) {
         continue;
-      } else if (shouldFilterCalcItems == false || results.eval.matches(item)) {
+      } else if (results.eval.matches(item)) {
         results.matchingItemIds.add(item.Id);
       } else if (oldCalcItems?.containsKey(item.Id) == true && results.eval.matches(oldCalcItems.get(item.Id))) {
         // if the where clause would exclude something, but we're in an update

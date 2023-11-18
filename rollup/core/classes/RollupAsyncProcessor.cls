@@ -725,6 +725,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
       this.rollupControl.BatchChunkSize__c = specificControl.BatchChunkSize__c;
     }
+    if (this.rollupControl.BatchChunkSize__c == null) {
+      this.rollupControl.BatchChunkSize__c = 2000;
+    }
     if (specificControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
       this.rollupControl.MaxLookupRowsBeforeBatching__c = specificControl.MaxLookupRowsBeforeBatching__c;
     }
@@ -956,11 +959,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Boolean isAllowedToContinue = this.rollupControl.MaxRollupRetries__c >= stackDepth;
     this.logger.log(
       'number of deferred rollups: ' +
-      this.deferredRollups.size() +
-      ', still allowed to re-queue?: ' +
-      isAllowedToContinue +
-      ' with stackDepth: ' +
-      this.stackDepth,
+        this.deferredRollups.size() +
+        ', still allowed to re-queue?: ' +
+        isAllowedToContinue +
+        ' with stackDepth: ' +
+        this.stackDepth,
       LoggingLevel.INFO
     );
 
@@ -1352,8 +1355,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     RollupCalculator calc;
     Op deleteOp = this.getOpMap().get('DELETE_' + getBaseOperationName(roll.op.name()));
+    FilterResults results = new FilterResults();
+    results.eval = roll.eval;
+    Rollup__mdt clonedMeta = roll.metadata.clone();
+    clonedMeta.RollupOperation__c = deleteOp.name();
     RollupAsyncProcessor oldLookupsRollup = getProcessor(
-      new FilterResults(),
+      results,
       roll.opFieldOnCalcItem,
       roll.lookupFieldOnCalcItem,
       roll.lookupFieldOnLookupObject,
@@ -1363,7 +1370,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       deleteOp,
       this.invokePoint,
       this.rollupControl,
-      roll.metadata
+      clonedMeta
     );
     for (SObject lookupRecord : lookupItems) {
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
@@ -1380,6 +1387,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
 
         oldLookupsRollup.calcItems = reparentedCalcItems;
+        oldLookupsRollup.oldCalcItems = roll.oldCalcItems;
         this.logger.log('reparenting operation', oldLookupsRollup, LoggingLevel.DEBUG);
         CalcItemBag bag = new CalcItemBag(reparentedCalcItems);
         bag.hasQueriedForAdditionalItems = true;
