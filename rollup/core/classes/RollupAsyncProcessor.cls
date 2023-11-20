@@ -315,7 +315,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.winnowRollups(this.rollups);
     this.populateObjectFields(this.rollups);
     String query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
-    RollupRepository repo = new RollupRepository(this.accessLevel);
+    RollupRepository repo = new RollupRepository(this.runAsMode);
     if (this.rollups.isEmpty() == false) {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
       repo.setArg(this.getCalcItemsByLookupField(firstRollup).keySet());
@@ -506,7 +506,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else {
       lookupItemsToAssign = roll.traversal != null
         ? roll.traversal.getAllParents()
-        : new RollupRepository(roll.accessLevel)
+        : new RollupRepository(roll.runAsMode)
             .setQuery(
               RollupQueryBuilder.Current.getQuery(
                 roll.lookupObj,
@@ -591,7 +591,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       additionalCalcItems = this.cachedQueryToAdditionalCalcItems.get(query);
     } else {
       Set<String> recordIds = lookupToCalcItems.keySet();
-      RollupRepository repo = new RollupRepository(rollup.accessLevel).setQuery(query).setArg(lookupKeys).setArg(recordBindVar, recordIds);
+      RollupRepository repo = new RollupRepository(rollup.runAsMode).setQuery(query).setArg(lookupKeys).setArg(recordBindVar, recordIds);
       if (additionalCalcItemCount != null) {
         outstandingItemCount = additionalCalcItemCount;
         additionalCalcItemCount = null;
@@ -1158,9 +1158,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Map<String, Set<String>> queryCountsToLookupIds = new Map<String, Set<String>>();
 
     Integer totalCountOfRecords = 0;
-    RollupRepository.PermissionLevel localAccessLevel = this.accessLevel;
+    RollupRepository.RunAsMode localRunAsMode = this.runAsMode;
     for (RollupAsyncProcessor roll : processors) {
-      localAccessLevel = roll.accessLevel;
+      runAsMode = roll.runAsMode;
       if (roll.queryCount != null) {
         totalCountOfRecords += roll.queryCount;
         continue;
@@ -1194,7 +1194,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    RollupRepository repo = new RollupRepository(localAccessLevel);
+    RollupRepository repo = new RollupRepository(localRunAsMode);
     for (String countQuery : queryCountsToLookupIds.keySet()) {
       Integer countForSObject = repo.setQuery(countQuery).setArg(queryCountsToLookupIds.get(countQuery)).getCount();
       if (countForSObject == RollupRepository.SENTINEL_COUNT_VALUE) {

@@ -47,7 +47,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   protected Integer queryCount;
   protected RollupCalcItemReplacer calcItemReplacer;
   protected TriggerOperation triggerContext;
-  protected RollupRepository.PermissionLevel accessLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
+  protected RollupRepository.RunAsMode runAsMode = RollupRepository.RunAsMode.SYSTEM_LEVEL;
 
   private Boolean hasResetLogger = false;
 
@@ -885,7 +885,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
     List<SObject> localCalcItems;
     try {
-      localCalcItems = new RollupRepository(RollupRepository.PermissionLevel.SYSTEM_MODE).setQuery(query).get();
+      localCalcItems = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL).setQuery(query).get();
     } catch (QueryException ex) {
       throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
     }
@@ -1611,7 +1611,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     Set<String> uniqueFieldNames = new Set<String>();
-    RollupRepository.PermissionLevel permissionLevel = RollupRepository.PermissionLevel.SYSTEM_MODE;
+    RollupRepository.RunAsMode permissionLevel = RollupRepository.RunAsMode.SYSTEM_LEVEL;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
       permissionLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
       RollupEvaluator.WhereFieldEvaluator eval = String.isBlank(rollupInfo.CalcItemWhereClause__c)
@@ -3039,8 +3039,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       rollupMetadata
     );
     processor.triggerContext = apexContext;
-    processor.accessLevel = RollupMetaPicklists.getAccessLevel(rollupMetadata);
-    rollupConductor.accessLevel = processor.accessLevel;
+    processor.runAsMOde = RollupMetaPicklists.getAccessLevel(rollupMetadata);
+    rollupConductor.runAsMode = processor.runAsMode;
     return addRollup(rollupConductor, processor);
   }
 

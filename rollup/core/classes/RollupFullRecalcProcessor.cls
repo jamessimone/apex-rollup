@@ -128,7 +128,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   protected override RollupRepository preStart() {
-    return new RollupRepository(this.accessLevel).setArg(this.objIds).setArg('recordIds', this.recordIds).setQuery(this.queryString);
+    return new RollupRepository(this.runAsMode).setArg(this.objIds).setArg('recordIds', this.recordIds).setQuery(this.queryString);
   }
 
   protected List<RollupAsyncProcessor> getDelegatedFullRecalcRollups(List<SObject> calcItems) {
@@ -177,7 +177,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         RollupControl__mdt specificControl = this.getSpecificControl(meta.RollupControl__c);
         this.overrideParentRollupControlValues(specificControl);
       }
-      this.accessLevel = RollupMetaPicklists.getAccessLevel(meta);
+      this.runAsMode = RollupMetaPicklists.getAccessLevel(meta);
     }
   }
 }

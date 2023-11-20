@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes grandparent full recalcs with same grandparent different intermediate children issue",
-            "versionNumber": "1.6.3.0",
+            "versionName": "Fixes serialization issue with RollupRepository",
+            "versionNumber": "1.6.4.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
