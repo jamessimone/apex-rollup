@@ -2,8 +2,16 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   public static final Integer SENTINEL_COUNT_VALUE = -1;
 
   private final Args args = new Args();
-  private final System.AccessLevel accessLevel;
-  private final PermissionLevel localPermissionLevel;
+  private final RunAsMode localRunAsMode;
+  private transient System.AccessLevel accessLevel {
+    get {
+      if (this.accessLevel == null) {
+        this.accessLevel = this.transformPermissionLevel(this.localRunAsMode);
+      }
+      return this.accessLevel;
+    }
+    set;
+  }
 
   private class Args {
     public final Map<String, Object> bindVars = new Map<String, Object>();
@@ -16,14 +24,14 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
    *  - doesn't fail an equality check against itself in a Queueable/Batchable (prior comparisons to System.AccessLevel.USER_MODE or System.AccessLevel.SYSTEM_MODE
    *  failed when the property they were referencing was stored as an instance variable post-serialization)
    */
-  public enum PermissionLevel {
-    SYSTEM_MODE,
-    USER_MODE
+  public enum RunAsMode {
+    SYSTEM_LEVEL,
+    USER
   }
 
-  public RollupRepository(PermissionLevel localPermissionLevel) {
-    this.localPermissionLevel = localPermissionLevel;
-    this.accessLevel = localPermissionLevel == PermissionLevel.USER_MODE ? System.AccessLevel.USER_MODE : System.AccessLevel.SYSTEM_MODE;
+  public RollupRepository(RunAsMode localRunAsMode) {
+    this.localRunAsMode = localRunAsMode;
+    this.accessLevel = this.transformPermissionLevel(localRunAsMode);
   }
 
   public RollupRepository setQuery(String query) {
@@ -70,10 +78,14 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   public override String toString() {
-    return this.args.query + '\nBind keys: ' + this.args.bindVars.keySet() + '\nAccess level: ' + this.localPermissionLevel;
+    return this.args.query + '\nBind keys: ' + this.args.bindVars.keySet() + '\nAccess level: ' + this.localRunAsMode;
   }
 
   private void createQueryLog(String message) {
     RollupLogger.Instance.Log(message, this, LoggingLevel.DEBUG);
+  }
+
+  private System.AccessLevel transformPermissionLevel(RunAsMode currentRunAs) {
+    return currentRunAs == RunAsMode.USER ? System.AccessLevel.USER_MODE : System.AccessLevel.SYSTEM_MODE;
   }
 }

@@ -350,11 +350,7 @@ private class RollupIntegrationTests {
     Account updatedAccount = [SELECT Id, AnnualRevenue, Description FROM Account WHERE Id = :acc.Id];
     System.assertEquals(priorOpp.Amount + opp.Amount + secondOpp.Amount, updatedAccount.AnnualRevenue, 'SUM should have fully rolled up');
     System.assertEquals(
-      opp.StageName +
-      ', ' +
-      secondOpp.StageName +
-      ', ' +
-      priorOpp.StageName,
+      opp.StageName + ', ' + secondOpp.StageName + ', ' + priorOpp.StageName,
       updatedAccount.Description,
       'CONCAT should have fully rolled up'
     );
@@ -456,6 +452,58 @@ private class RollupIntegrationTests {
 
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - apex');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - apex');
+  }
+
+  @IsTest
+  static void shouldRunGrandparentRollupsWhenIntermediateObjectsAreUndeletedFromApex() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.shouldFlattenAsyncProcesses = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name',
+        RollupOperation__c = 'CONCAT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        )
+      )
+    };
+
+    Account greatGrandparent = new Account(Name = 'Great-grandparent');
+    Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
+    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = secondGreatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = greatGrandparent.Id);
+    List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
+    insert parentApps;
+
+    Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'child one');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'child two', Application__c = parent.Id);
+    insert new List<ApplicationLog__c>{ child, secondChild };
+
+    Test.startTest();
+    delete parentApps;
+    undelete parentApps;
+    Test.stopTest();
+
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+
+    System.assertEquals(secondChild.Name, updatedGreatGrandparentTwo.Name);
+    System.assertEquals(child.Name, updatedGreatGrandparent.Name);
   }
 
   @IsTest
@@ -1125,9 +1173,7 @@ private class RollupIntegrationTests {
 
     Account updatedAcc = [SELECT AccountNumber FROM Account];
     System.assertEquals(
-      cpa.Name +
-      ', ' +
-      acc.AccountNumber,
+      cpa.Name + ', ' + acc.AccountNumber,
       updatedAcc.AccountNumber,
       'CONCAT_DISTINCT AFTER_UPDATE should have both values when another matching item present'
     );
