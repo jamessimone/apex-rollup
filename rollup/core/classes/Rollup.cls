@@ -738,13 +738,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private final FlowInput flowInput;
     private final String rollupContext;
     private final SObjectType sObjectType;
-    private final Set<Rollup__mdt> rollupMetadata;
+    private final Set<Rollup__mdt> rollupMetadata = new Set<Rollup__mdt>();
 
-    private FlowInputWrapper(FlowInput flowInput, String rollupContext, SObjectType sObjectType, Rollup__mdt meta) {
+    private FlowInputWrapper(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
       this.flowInput = flowInput;
       this.rollupContext = rollupContext;
       this.sObjectType = sObjectType;
-      this.rollupMetadata = new Set<Rollup__mdt>{ meta };
     }
   }
 
@@ -797,16 +796,16 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         if (shouldSkipRollupForFlow(meta, rollupContext)) {
           continue;
         }
-        if (metaToInputWrapper.containsKey(meta)) {
-          FlowInputWrapper wrapper = metaToInputWrapper.get(meta);
-          if (wrapper.rollupMetadata.contains(meta)) {
-            wrapper.flowInput.recordsToRollup.addAll(flowInput.recordsToRollup);
-            wrapper.flowInput.oldRecordsToRollup.addAll(flowInput.oldRecordsToRollup);
-          } else {
-            wrapper.rollupMetadata.add(meta);
-          }
+        FlowInputWrapper wrapper = metaToInputWrapper.get(meta);
+        if (wrapper == null) {
+          wrapper = new FlowInputWrapper(flowInput, rollupContext, sObjectType);
+          metaToInputWrapper.put(meta, wrapper);
+        }
+        if (wrapper.rollupMetadata.contains(meta)) {
+          wrapper.flowInput.recordsToRollup.addAll(flowInput.recordsToRollup);
+          wrapper.flowInput.oldRecordsToRollup.addAll(flowInput.oldRecordsToRollup);
         } else {
-          metaToInputWrapper.put(meta, new FlowInputWrapper(flowInput, rollupContext, sObjectType, meta));
+          wrapper.rollupMetadata.add(meta);
         }
       }
     }
@@ -819,11 +818,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Map<SObjectType, List<Rollup>> localRollups = new Map<SObjectType, List<Rollup>>();
     Map<Integer, List<SObject>> hashCodeToCalcItems = new Map<Integer, List<SObject>>();
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
-    for (Rollup__mdt key : metaToInputWrapper.keySet()) {
-      FlowInputWrapper wrapper = metaToInputWrapper.get(key);
-      if (wrapper == null) {
-        continue;
-      }
+    for (FlowInputWrapper wrapper : metaToInputWrapper.values()) {
       // here we clone the list because it can get winnowed in "processCustomMetadata"
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
       Map<Schema.SObjectType, List<Rollup>> typeToWinnowedRollups;
@@ -2739,14 +2734,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Evaluator eval,
     InvocationPoint rollupInvokePoint
   ) {
-    switch on rollupInvokePoint {
-      when FROM_APEX, FROM_INVOCABLE {
-        calcItems = CALC_ITEM_REPLACER.replace(calcItems, rollupOperations);
-        if (oldCalcItems?.isEmpty() == false) {
-          oldCalcItems = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(oldCalcItems.values(), rollupOperations));
-        }
+    if (rollupInvokePoint == InvocationPoint.FROM_APEX || rollupInvokePoint == InvocationPoint.FROM_INVOCABLE) {
+      // if (rollupInvokePoint == InvocationPoint.FROM_APEX) {
+      calcItems = CALC_ITEM_REPLACER.replace(calcItems, rollupOperations);
+      if (oldCalcItems?.isEmpty() == false) {
+        oldCalcItems = new Map<Id, SObject>(CALC_ITEM_REPLACER.replace(oldCalcItems.values(), rollupOperations));
       }
     }
+
     RollupAsyncProcessor rollupConductor = RollupAsyncProcessor.getConductor(rollupInvokePoint, calcItems, oldCalcItems);
     if (rollupOperations.isEmpty() || calcItems.isEmpty()) {
       return rollupConductor;

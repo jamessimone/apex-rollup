@@ -41,12 +41,13 @@ public without sharing class RollupCalcItemReplacer {
   }
 
   public List<SObject> replace(List<SObject> calcItems, List<Rollup__mdt> metadata) {
-    Boolean shouldRunSync = this.control?.ReplaceCalcItemsAsyncWhenOverCount__c >= calcItems?.size();
-    Boolean mightNeedReplacement = this.setupRequiresReplacement(calcItems, metadata);
-
     if (this.hasProcessedMetadata(metadata, calcItems)) {
       return calcItems;
-    } else if (
+    }
+
+    Boolean shouldRunSync = this.control?.ReplaceCalcItemsAsyncWhenOverCount__c >= calcItems?.size();
+    Boolean mightNeedReplacement = this.setupRequiresReplacement(calcItems, metadata);
+    if (
       mightNeedReplacement &&
       shouldRunSync == false &&
       this.control.ShouldRunAs__c != RollupMetaPicklists.ShouldRunAs.Synchronous &&

@@ -1,6 +1,5 @@
 public without sharing class RollupRecursionItem {
-  public final Id Id;
-
+  private final Id Id;
   private final Integer stackCount;
   private final String lookupKey;
   private final Object rollupValue;

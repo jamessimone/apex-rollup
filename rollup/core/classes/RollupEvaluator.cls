@@ -259,7 +259,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         for (Integer index = 0; index < this.whereConditions.size(); index++) {
           WhereCondition condition = this.whereConditions[index];
           Boolean hasInnerMatch = condition.matches(calcItem);
-          addLog(condition, hasInnerMatch, calcItem, LoggingLevel.FINEST);
           if (condition.isOrConditional()) {
             matches = index == 0 ? hasInnerMatch : hasInnerMatch || matches;
           } else {
@@ -855,14 +854,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         SObject calcItem = (SObject) item;
         RecursiveTracker recursionTracker = OPERATION_TO_RECURSION_TRACKER.get(this.metadataKey);
         RollupRecursionItem rollupItem = new RollupRecursionItem(calcItem, this.metadata, recursionTracker.stackCount);
+        Boolean hasSeenItemPreviously = recursionTracker?.recursionItems.contains(rollupItem) == true;
 
-        if (recursionTracker?.recursionItems.contains(rollupItem) == false) {
+        if (hasSeenItemPreviously == false) {
           recursionTracker.recursionItems.add(rollupItem);
-        } else if (recursionTracker != null && recursionTracker.stackCount > 0 && recursionTracker.recursionItems.contains(rollupItem)) {
+        } else if (recursionTracker != null && recursionTracker.stackCount > 0 && hasSeenItemPreviously) {
           matches = false;
         }
       }
-      addLog(this, matches, item, LoggingLevel.FINEST);
 
       return matches;
     }
