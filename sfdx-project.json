@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Fixes serialization issue with RollupRepository",
-            "versionNumber": "1.6.4.0",
+            "versionName": "Flow optimizations",
+            "versionNumber": "1.6.5.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.6.1-0": "04t6g000008OZwYAAW",
         "apex-rollup@1.6.2-0": "04t6g000008Oa7TAAS",
         "apex-rollup@1.6.3": "04t6g000008Oa8gAAC",
-        "apex-rollup@1.6.4": "04t6g000008Oa9UAAS"
+        "apex-rollup@1.6.4": "04t6g000008Oa9UAAS",
+        "apex-rollup@1.6.5": "04t6g000008OaAXAA0"
     }
 }
