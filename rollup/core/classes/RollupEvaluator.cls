@@ -164,10 +164,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           if (isEqual) {
             break;
           }
-        } else {
-          if (isEqual == false) {
-            break;
-          }
+        } else if (isEqual == false) {
+          break;
         }
       }
       return this.isNegated ? !isEqual : isEqual;
