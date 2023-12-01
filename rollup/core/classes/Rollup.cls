@@ -739,6 +739,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private final String rollupContext;
     private final SObjectType sObjectType;
     private final Set<Rollup__mdt> rollupMetadata = new Set<Rollup__mdt>();
+    private final Map<Id, SObject> children = new Map<Id, SObject>();
+    private final Map<Id, SObject> oldChildren = new Map<Id, SObject>();
 
     private FlowInputWrapper(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
       this.flowInput = flowInput;
@@ -801,12 +803,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           wrapper = new FlowInputWrapper(flowInput, rollupContext, sObjectType);
           metaToInputWrapper.put(meta, wrapper);
         }
-        if (wrapper.rollupMetadata.contains(meta)) {
-          wrapper.flowInput.recordsToRollup.addAll(flowInput.recordsToRollup);
-          wrapper.flowInput.oldRecordsToRollup.addAll(flowInput.oldRecordsToRollup);
-        } else {
-          wrapper.rollupMetadata.add(meta);
-        }
+        wrapper.children.putAll(flowInput.recordsToRollup);
+        wrapper.oldChildren.putAll(flowInput.oldRecordsToRollup);
+        wrapper.rollupMetadata.add(meta);
       }
     }
     if (metaToInputWrapper.isEmpty()) {
@@ -822,9 +821,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       // here we clone the list because it can get winnowed in "processCustomMetadata"
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
       Map<Schema.SObjectType, List<Rollup>> typeToWinnowedRollups;
-      wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.recordsToRollup, metas);
+      List<SObject> children = wrapper.children.values();
+      wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, children, metas);
       Map<Id, SObject> oldFlowRecords = RollupFieldInitializer.Current.createSafeMap(
-        replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.flowInput.oldRecordsToRollup, metas)
+        replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.oldChildren.values(), metas)
       );
 
       if (wrapper.flowInput.deferProcessing) {
@@ -834,7 +834,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       processCustomMetadata(
         typeToWinnowedRollups != null ? typeToWinnowedRollups : localRollups,
         metas,
-        wrapper.flowInput.recordsToRollup,
+        children,
         oldFlowRecords,
         new Set<String>(),
         wrapper.rollupContext,
@@ -849,7 +849,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
 
       if (metas.isEmpty() == false) {
-        Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, wrapper.flowInput.recordsToRollup, oldFlowRecords, null, fromInvocable);
+        Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, children, oldFlowRecords, null, fromInvocable);
         String logMessage = 'adding invocable rollup to list:';
         if (wrapper.flowInput.deferProcessing) {
           logMessage = 'deferring processing for rollup:';
