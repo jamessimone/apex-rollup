@@ -139,7 +139,7 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static void loadProperMinMaxDates(List<SObject> calcItems, Schema.SObjectField rollupField) {
-    if (hasLoadedDatedCurrencyInfo || CURRENCY_ISO_CODE_TO_CURRENCY == null) {
+    if (hasLoadedDatedCurrencyInfo || CURRENCY_ISO_CODE_TO_CURRENCY == null || rollupField.getDescribe().getType() != Schema.DisplayType.CURRENCY) {
       return;
     }
     for (SObject calcItem : calcItems) {
@@ -147,9 +147,6 @@ public without sharing virtual class RollupCurrencyInfo {
         return;
       }
       Datetime currencyDate = getCurrencyDate(calcItem);
-      if (currencyDate == null) {
-        return;
-      }
       if (currencyDate < minDatedCurrencyLookup) {
         minDatedCurrencyLookup = currencyDate.date();
       } else if (currencyDate > maxDatedCurrencyLookup) {
