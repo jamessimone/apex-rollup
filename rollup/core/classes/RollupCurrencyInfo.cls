@@ -31,15 +31,7 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   @TestVisible
-  private static Boolean IS_DATED_MULTICURRENCY {
-    get {
-      if (IS_DATED_MULTICURRENCY == null) {
-        IS_DATED_MULTICURRENCY = IS_MULTICURRENCY;
-      }
-      return IS_DATED_MULTICURRENCY;
-    }
-    set;
-  }
+  private static Boolean IS_DATED_MULTICURRENCY = false;
 
   private static final RollupCurrencyInfo FALLBACK_INFO {
     get {
@@ -89,9 +81,9 @@ public without sharing virtual class RollupCurrencyInfo {
 
   public static List<String> getMultiCurrencyFields(Schema.DescribeSObjectResult objectToken) {
     List<String> fields = new List<String>{ CURRENCY_ISO_CODE_FIELD_NAME };
-    if (CURRENCY_ISO_CODE_TO_CURRENCY != null && IS_DATED_MULTICURRENCY && DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(objectToken.getName())) {
+    List<String> fieldMappings = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(objectToken.getName());
+    if (fieldMappings != null) {
       String concatenatedName = '';
-      List<String> fieldMappings = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(objectToken.getName());
       for (Integer index = 0; index < fieldMappings.size(); index++) {
         concatenatedName += (index == fieldMappings.size() - 1 ? fieldMappings[index] : fieldMappings[index] + '.');
       }
@@ -108,7 +100,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   public static void transform(List<SObject> calcItems, Schema.SObjectField opFieldOnCalcItem, String parentIsoCode, List<RollupOrderBy__mdt> orderBys) {
     if (IS_MULTICURRENCY) {
-      loadProperMinMaxDates(calcItems);
+      loadProperMinMaxDates(calcItems, opFieldOnCalcItem);
       for (SObject calcItem : calcItems) {
         actuallyTransformCurrency(calcItem, opFieldOnCalcItem, parentIsoCode, orderBys);
       }
@@ -146,24 +138,34 @@ public without sharing virtual class RollupCurrencyInfo {
     return calcItem.Id + ((Object) calcItem).hashCode().format();
   }
 
-  private static void loadProperMinMaxDates(List<SObject> calcItems) {
-    if (hasLoadedDatedCurrencyInfo || IS_DATED_MULTICURRENCY == false || CURRENCY_ISO_CODE_TO_CURRENCY == null) {
-      return; // prettier-ignore                                         👆 forces getter to run, if it hasn't already
+  private static void loadProperMinMaxDates(List<SObject> calcItems, Schema.SObjectField rollupField) {
+    if (hasLoadedDatedCurrencyInfo || CURRENCY_ISO_CODE_TO_CURRENCY == null) {
+      return;
     }
-    hasLoadedDatedCurrencyInfo = true;
     for (SObject calcItem : calcItems) {
       if (DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(calcItem.getSObjectType().getDescribe().getName()) == false) {
-        break;
+        return;
       }
       Datetime currencyDate = getCurrencyDate(calcItem);
       if (currencyDate == null) {
-        continue;
-      } else if (currencyDate < minDatedCurrencyLookup) {
+        return;
+      }
+      if (currencyDate < minDatedCurrencyLookup) {
         minDatedCurrencyLookup = currencyDate.date();
       } else if (currencyDate > maxDatedCurrencyLookup) {
         maxDatedCurrencyLookup = currencyDate.date();
       }
     }
+
+    hasLoadedDatedCurrencyInfo = true;
+    String query = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate from DatedConversionRate WHERE StartDate >= :minDatedCurrencyLookup AND NextStartDate <= :maxDatedCurrencyLookup';
+    List<RollupCurrencyInfo> datedCurrencyInfos = (List<RollupCurrencyInfo>) JSON.deserialize(
+      JSON.serialize(Database.query(query)),
+      List<RollupCurrencyInfo>.class
+    );
+    IS_DATED_MULTICURRENCY = datedCurrencyInfos.isEmpty() == false;
+    mapCurrencies(CURRENCY_ISO_CODE_TO_CURRENCY, datedCurrencyInfos);
+    IS_DATED_MULTICURRENCY = false;
   }
 
   private static void actuallyTransformCurrency(
@@ -246,18 +248,15 @@ public without sharing virtual class RollupCurrencyInfo {
       currencyInfos.addAll(mockCurrencyData);
     } else {
       if (IS_MULTICURRENCY) {
-        String query = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate from DatedConversionRate WHERE StartDate >= :minDatedCurrencyLookup AND NextStartDate <= :maxDatedCurrencyLookup';
-        List<RollupCurrencyInfo> datedCurrencyInfos = (List<RollupCurrencyInfo>) JSON.deserialize(
-          JSON.serialize(Database.query(query)),
-          List<RollupCurrencyInfo>.class
-        );
-        IS_DATED_MULTICURRENCY = datedCurrencyInfos.isEmpty() == false;
-        currencyInfos.addAll(datedCurrencyInfos);
-        query = 'SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE';
+        String query = 'SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE';
         currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(Database.query(query)), List<RollupCurrencyInfo>.class));
       }
     }
+    mapCurrencies(currencyInfoMap, currencyInfos);
+    return currencyInfoMap;
+  }
 
+  private static void mapCurrencies(Map<String, RollupCurrencyInfo> currencyInfoMap, List<RollupCurrencyInfo> currencyInfos) {
     for (RollupCurrencyInfo currencyInfo : currencyInfos) {
       RollupCurrencyInfo mappedInfo = currencyInfoMap.get(currencyInfo.IsoCode);
       if (mappedInfo == null) {
@@ -266,7 +265,6 @@ public without sharing virtual class RollupCurrencyInfo {
       }
       mappedInfo.addInfo(currencyInfo);
     }
-    return currencyInfoMap;
   }
 
   private static Datetime getCurrencyDate(SObject calcItem) {
