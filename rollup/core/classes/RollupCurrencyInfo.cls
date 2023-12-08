@@ -9,6 +9,9 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Date maxDatedCurrencyLookup = System.today().addYears(1);
   private static Boolean hasLoadedDatedCurrencyInfo = false;
 
+  @TestVisible
+  private static Boolean IS_DATED_MULTICURRENCY = false;
+
   // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
   // technically there's a hierarchy for OpportunityLineItem that goes Opportunity.CloseDate > ServiceDate > (ProductDate || ScheduleDate)
   // but because this can be configured on a per-rollup basis, it's fine to leave Opportunity.CloseDate as the default since it can be overridden
@@ -29,9 +32,6 @@ public without sharing virtual class RollupCurrencyInfo {
     }
     set;
   }
-
-  @TestVisible
-  private static Boolean IS_DATED_MULTICURRENCY = false;
 
   private static final RollupCurrencyInfo FALLBACK_INFO {
     get {
