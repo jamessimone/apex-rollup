@@ -7,7 +7,10 @@ public without sharing virtual class RollupCurrencyInfo {
   private static final Set<String> HASHED_ITEM_VALUES = new Set<String>();
   private static Date minDatedCurrencyLookup = Date.newInstance(System.today().year(), 1, 1).addYears(-1);
   private static Date maxDatedCurrencyLookup = System.today().addYears(1);
+  @TestVisible
   private static Boolean hasLoadedDatedCurrencyInfo = false;
+
+  private static final RollupRepository REPOSITORY = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL);
 
   @TestVisible
   private static Boolean IS_DATED_MULTICURRENCY = false;
@@ -155,11 +158,12 @@ public without sharing virtual class RollupCurrencyInfo {
     }
 
     hasLoadedDatedCurrencyInfo = true;
-    String query = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate from DatedConversionRate WHERE StartDate >= :minDatedCurrencyLookup AND NextStartDate <= :maxDatedCurrencyLookup';
-    List<RollupCurrencyInfo> datedCurrencyInfos = (List<RollupCurrencyInfo>) JSON.deserialize(
-      JSON.serialize(Database.query(query)),
-      List<RollupCurrencyInfo>.class
-    );
+    REPOSITORY.setQuery(
+        'SELECT IsoCode, ConversionRate, StartDate, NextStartDate FROM DatedConversionRate WHERE StartDate >= :minDatedCurrencyLookup AND NextStartDate <= :maxDatedCurrencyLookup'
+      )
+      .setArg('minDatedCurrencyLookup', minDatedCurrencyLookup)
+      .setArg('maxDatedCurrencyLookup', maxDatedCurrencyLookup);
+    List<RollupCurrencyInfo> datedCurrencyInfos = (List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(REPOSITORY.get()), List<RollupCurrencyInfo>.class);
     IS_DATED_MULTICURRENCY = datedCurrencyInfos.isEmpty() == false;
     mapCurrencies(CURRENCY_ISO_CODE_TO_CURRENCY, datedCurrencyInfos);
     IS_DATED_MULTICURRENCY = false;
@@ -246,7 +250,7 @@ public without sharing virtual class RollupCurrencyInfo {
     } else {
       if (IS_MULTICURRENCY) {
         String query = 'SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE';
-        currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(Database.query(query)), List<RollupCurrencyInfo>.class));
+        currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(REPOSITORY.setQuery(query).get()), List<RollupCurrencyInfo>.class));
       }
     }
     mapCurrencies(currencyInfoMap, currencyInfos);

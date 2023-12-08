@@ -21,12 +21,13 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void doesNotQueryDatedCurrenciesForNonMatchingObject() {
-    Integer currentQueryCount = Limits.getQueries();
     Account acc = new Account();
 
     RollupCurrencyInfo.transform(new List<Account>{ acc }, Account.AnnualRevenue, getCurrencyIsoCode(acc), new List<RollupOrderBy__mdt>());
 
-    Assert.areEqual(currentQueryCount + 1, Limits.getQueries());
+    // this test was flapping when comparing query counts during packaging despite passing in each multi-currency org
+    // previously. normally I don't like to resort to exposing @TestVisible properties but that's preferable to a flapping test
+    Assert.isFalse(RollupCurrencyInfo.hasLoadedDatedCurrencyInfo);
   }
 
   @IsTest
