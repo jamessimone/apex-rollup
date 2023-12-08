@@ -1014,4 +1014,22 @@ private class RollupFlowTests {
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(expectedMost.PreferenceRank, updatedAcc.AnnualRevenue);
   }
+
+  @IsTest
+  static void runsWithoutChildrenWhenFlagged() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 50;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(new List<SObject>(), 'REFRESH', 'SUM');
+    flowInputs[0].parentRecordIdForEmptyChildrenCollections = acc.Id;
+    flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
+
+    Test.startTest();
+    List<Rollup.FlowOutput> flowOutputs = Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    System.assertNotEquals('No records to rollup, returning early', flowOutputs[0].message);
+    System.assertEquals(null, acc.AnnualRevenue);
+  }
 }

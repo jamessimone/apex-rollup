@@ -26,6 +26,9 @@ public without sharing virtual class RollupDeferredFullRecalcProcessor extends R
       return QUERY_TO_CALC_ITEMS.get(this.queryString);
     }
     List<SObject> localCalcItems = this.preStart().get();
+    if (this.isNoOpOverridden && this.calcItems?.isEmpty() == false) {
+      localCalcItems.addAll(this.calcItems);
+    }
     QUERY_TO_CALC_ITEMS.put(this.queryString, localCalcItems);
     return localCalcItems;
   }
