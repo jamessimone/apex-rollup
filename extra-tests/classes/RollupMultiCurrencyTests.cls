@@ -20,6 +20,17 @@ private class RollupMultiCurrencyTests {
   }
 
   @IsTest
+  static void doesNotQueryDatedCurrenciesForNonMatchingObject() {
+    Account acc = new Account();
+
+    RollupCurrencyInfo.transform(new List<Account>{ acc }, Account.AnnualRevenue, getCurrencyIsoCode(acc), new List<RollupOrderBy__mdt>());
+
+    // this test was flapping when comparing query counts during packaging despite passing in each multi-currency org
+    // previously. normally I don't like to resort to exposing @TestVisible properties but that's preferable to a flapping test
+    Assert.isFalse(RollupCurrencyInfo.hasLoadedDatedCurrencyInfo);
+  }
+
+  @IsTest
   static void shouldCorrectlyRollupMaxForMultiCurrency() {
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
@@ -347,7 +358,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
   }
 
-    private static String getCurrencyIsoCode(SObject record) {
+  private static String getCurrencyIsoCode(SObject record) {
     return UserInfo.isMultiCurrencyOrganization() ? (String) record.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME) : 'USD';
   }
 }

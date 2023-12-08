@@ -421,6 +421,7 @@ public without sharing abstract class RollupCalculator {
       for (Integer index = 0; index < fieldMappings.size(); index++) {
         fieldMappings[index] = fieldMappings[index].trim();
       }
+      RollupCurrencyInfo.overrideDatedMultiCurrency(this.metadata.CalcItem__c, fieldMappings);
     }
   }
 

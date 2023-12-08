@@ -52,6 +52,11 @@ global without sharing class RollupFlowBulkProcessor {
     global Decimal limitAmount;
 
     @InvocableVariable(
+      label='Parent Record Id for Empty Children Collections'
+      description='Runs rollup calculations even if no matching children when passed. Must also fill out Child Object Type When Rollup Started From Parent property'
+    )
+    global Id parentRecordIdForEmptyChildrenCollections;
+    @InvocableVariable(
       label='Should rollup to ultimate hierarchy parent'
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
@@ -117,6 +122,7 @@ global without sharing class RollupFlowBulkProcessor {
               ? flowInput.oneToManyGrandparentFields
               : meta.OneToManyGrandparentFields__c;
             input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
+            input.parentRecordIdForEmptyChildrenCollections = flowInput.parentRecordIdForEmptyChildrenCollections;
             input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
             input.limitAmount = flowInput.limitAmount != null ? flowInput.limitAmount : meta.LimitAmount__c;
             input.sharingMode = flowInput.sharingMode != null ? flowInput.sharingMode : meta.SharingMode__c;
