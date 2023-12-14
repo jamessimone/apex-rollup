@@ -1629,7 +1629,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       return;
     }
 
-    Set<String> uniqueFieldNames = new Set<String>();
+    Set<String> uniqueFieldNames = new Set<String>(firstRecord.getPopulatedFieldsAsMap().keySet());
+    uniqueFieldNames.remove('ChangeEventHeader');
     RollupRepository.RunAsMode permissionLevel = RollupRepository.RunAsMode.SYSTEM_LEVEL;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
       permissionLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
