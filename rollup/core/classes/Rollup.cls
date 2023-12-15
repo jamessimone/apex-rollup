@@ -784,8 +784,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (
         flowInput.parentRecordIdForEmptyChildrenCollections != null &&
         flowInput.calcItemTypeWhenRollupStartedFromParent != null &&
-        flowInput.recordsToRollup?.isEmpty() == true
+        flowInput.recordsToRollup?.isEmpty() != false
       ) {
+        flowInput.recordsToRollup = new List<SObject>();
         Schema.DescribeSObjectResult childDescribe = RollupFieldInitializer.Current.getDescribeFromName(flowInput.calcItemTypeWhenRollupStartedFromParent);
         SObject stubChild = childDescribe.getSObjectType().newSObject(childDescribe.getKeyPrefix() + '0'.repeat(12));
         stubChild.put(flowInput.lookupFieldOnCalcItem, flowInput.parentRecordIdForEmptyChildrenCollections);

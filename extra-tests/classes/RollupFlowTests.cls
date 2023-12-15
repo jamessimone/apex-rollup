@@ -1022,6 +1022,7 @@ private class RollupFlowTests {
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(new List<SObject>(), 'REFRESH', 'SUM');
+    flowInputs[0].recordsToRollup = null; // Get Records passes null for something that doesn't match
     flowInputs[0].parentRecordIdForEmptyChildrenCollections = acc.Id;
     flowInputs[0].calcItemTypeWhenRollupStartedFromParent = 'ContactPointAddress';
 
