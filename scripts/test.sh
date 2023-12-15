@@ -21,7 +21,7 @@ sf config set target-org james@sheandjim.com target-dev-hub james@sheandjim.com
 
 # For local dev, store currently auth'd org to return to
 # Also store test command shared between script branches, below
-scratchOrgAllotment=$(sf limits api display 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining') # ERROR: Unable to convert this command; you must convert it manually.
+scratchOrgAllotment=$(sf org list limits 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
 
 echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
 testInvocation='sf apex run test --code-coverage --output-dir ./tests/apex --result-format human --wait 20'
