@@ -2319,7 +2319,6 @@ private class RollupTests {
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'CREATE';
-    header.changedFields = new List<String>{ 'PreferenceRank', 'LastModifiedDate' };
     header.recordIds = new List<Id>{ cpa.Id };
     header.entityName = 'ContactPointAddress';
     ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent(ChangeEventHeader = header, PreferenceRank = 500);

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Flow optimizations continued",
-            "versionNumber": "1.6.6.0",
+            "versionName": "CDC create updates",
+            "versionNumber": "1.6.7.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -108,6 +108,7 @@
         "apex-rollup@1.6.3": "04t6g000008Oa8gAAC",
         "apex-rollup@1.6.4": "04t6g000008Oa9UAAS",
         "apex-rollup@1.6.5": "04t6g000008OaAXAA0",
-        "apex-rollup@1.6.6": "04t6g000008OaFiAAK"
+        "apex-rollup@1.6.6": "04t6g000008OaFiAAK",
+        "apex-rollup@1.6.7": "04t6g000008OaHKAA0"
     }
 }

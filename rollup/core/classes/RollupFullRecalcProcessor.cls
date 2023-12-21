@@ -162,7 +162,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   protected override Boolean getCanRollupWithoutCustomSetting() {
     Boolean canRollupWithoutCustomSetting = false;
     for (Rollup__mdt rollupMeta : this.rollupMetas) {
-      canRollupWithoutCustomSetting = rollupMeta.ShouldRunWithoutCustomSettingEnabled__c == true;
+      canRollupWithoutCustomSetting = rollupMeta.ShouldRunWithoutCustomSettingEnabled__c;
       // all included rollups need to have the override enabled; if even one does NOT, we can stop
       if (canRollupWithoutCustomSetting == false) {
         break;

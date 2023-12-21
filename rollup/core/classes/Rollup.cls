@@ -784,8 +784,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (
         flowInput.parentRecordIdForEmptyChildrenCollections != null &&
         flowInput.calcItemTypeWhenRollupStartedFromParent != null &&
-        flowInput.recordsToRollup?.isEmpty() == true
+        flowInput.recordsToRollup?.isEmpty() != false
       ) {
+        flowInput.recordsToRollup = new List<SObject>();
         Schema.DescribeSObjectResult childDescribe = RollupFieldInitializer.Current.getDescribeFromName(flowInput.calcItemTypeWhenRollupStartedFromParent);
         SObject stubChild = childDescribe.getSObjectType().newSObject(childDescribe.getKeyPrefix() + '0'.repeat(12));
         stubChild.put(flowInput.lookupFieldOnCalcItem, flowInput.parentRecordIdForEmptyChildrenCollections);
@@ -1629,7 +1630,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       return;
     }
 
-    Set<String> uniqueFieldNames = new Set<String>();
+    Set<String> uniqueFieldNames = new Set<String>(firstRecord.getPopulatedFieldsAsMap().keySet());
+    uniqueFieldNames.remove('ChangeEventHeader');
     RollupRepository.RunAsMode permissionLevel = RollupRepository.RunAsMode.SYSTEM_LEVEL;
     for (Rollup__mdt rollupInfo : matchingMetadata) {
       permissionLevel = RollupMetaPicklists.getAccessLevel(rollupInfo);
@@ -1641,7 +1643,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     // it would have been nice if this was an enum!
     switch on header.changeType {
-      when 'CREATE', 'GAP_CREATE' {
+      when 'CREATE', 'GAP_CREATE', 'UNDELETE' {
         apexContext = TriggerOperation.AFTER_INSERT;
       }
       when 'UPDATE', 'GAP_UPDATE' {
