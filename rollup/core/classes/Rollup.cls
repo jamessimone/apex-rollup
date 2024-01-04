@@ -2030,8 +2030,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Map<String, Rollup> rollupOperationToRollup = new Map<String, Rollup>();
     for (Rollup stackedRollup : stackedRollups) {
       // If the hashed content doesn't match, we can't collapse the two rollup operations
-      String rollupKey = stackedRollup.getHashedContents();
-      if (rollupOperationToRollup.containsKey(rollupKey)) {
+      String rollupKey = stackedRollup?.getHashedContents();
+      if (stackedRollup?.calcItems != null && rollupOperationToRollup.containsKey(rollupKey)) {
         Rollup matchingRollup = rollupOperationToRollup.get(rollupKey);
         Map<Id, SObject> stackedMatchingItems = new Map<Id, SObject>(stackedRollup.calcItems);
         stackedMatchingItems.putAll(matchingRollup.calcItems);
