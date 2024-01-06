@@ -2346,13 +2346,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       meta.IsFullRecordSet__c = true;
       meta.RollupOperation__c = getBaseOperationName(meta.RollupOperation__c);
       rollupControlId = meta.RollupControl__c;
-      lookupFields.add(meta.LookupFieldOnLookupObject__c);
-      lookupFields.add(meta.RollupFieldOnLookupObject__c);
+      lookupFields.add(meta.LookupFieldOnLookupObject__c.toLowerCase());
+      lookupFields.add(meta.RollupFieldOnLookupObject__c.toLowerCase());
       keyField = meta.LookupFieldOnLookupObject__c;
     }
     RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
     Schema.SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
     String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
+    lookupFields.retainAll(parentType.getDescribe().fields.getMap().keyset());
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>(lookupFields), keyField, equality);
 
     RollupParentResetProcessor parentResetProcessor = new RollupParentResetProcessor(
