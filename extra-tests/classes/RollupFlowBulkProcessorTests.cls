@@ -362,7 +362,13 @@ private class RollupFlowBulkProcessorTests {
   @IsTest
   static void shouldMapBulkFlowInputToRegularOne() {
     Rollup.rollupMetadata = new List<Rollup__mdt>{
-      new Rollup__mdt(CalcItem__c = 'Opportunity', LookupFieldOnLookupObject__c = 'Id', LookupObject__c = 'User', RollupOperation__c = 'CONCAT')
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupFieldOnLookupObject__c = 'Id',
+        LookupObject__c = 'User',
+        RollupOperation__c = 'CONCAT',
+        RollupFieldOnLookupObject__c = 'AboutMe'
+      )
     };
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, Id = RollupTestUtils.createId(Opportunity.SObjectType)) };

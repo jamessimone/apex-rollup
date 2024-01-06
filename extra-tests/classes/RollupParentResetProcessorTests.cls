@@ -205,4 +205,23 @@ private class RollupParentResetProcessorTests {
     Account updatedAcc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(originalValue, updatedAcc.AnnualRevenue);
   }
+
+  @IsTest
+  static void skipsMetadataForDifferentResetParents() {
+    insert new Account(AnnualRevenue = 5, Name = 'Should reset');
+    RollupParentResetProcessor processor = new RollupParentResetProcessor(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(RollupFieldOnLookupObject__c = 'AnnualRevenue', LookupObject__c = 'Account', LookupFieldOnLookupObject__c = 'Id'),
+        new Rollup__mdt(RollupFieldOnLookupObject__c = 'FirstName', LookupObject__c = 'Contact')
+      },
+      Account.SObjectType,
+      'SELECT Id, AnnualRevenue\nFROM Account WHERE Id != null',
+      new Set<String>(),
+      null
+    );
+
+    processor.runCalc();
+
+    Assert.areEqual(null, [SELECT AnnualRevenue FROM Account].AnnualRevenue);
+  }
 }
