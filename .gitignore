@@ -18,3 +18,4 @@ sfge-*.log.gz
 .pmdCache
 #OSX
 .DS_Store
+.config

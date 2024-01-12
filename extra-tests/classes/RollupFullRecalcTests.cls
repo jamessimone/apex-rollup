@@ -1565,7 +1565,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverLimitWithBatching() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
@@ -1778,7 +1777,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldFullRecalcWithInWhereClauses() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
     Account acc = [SELECT Id FROM Account];
 
@@ -1838,7 +1836,6 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldNotRequeryForAverageItemsInFullRecalc() {
-    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxLookupRowsBeforeBatching__c = 2);
     Account acc = [SELECT Id FROM Account];
     Account second = new Account(Name = 'Second');
@@ -1885,7 +1882,6 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldNotRequeryInFullRecalcForFirstLast() {
-    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Account acc = [SELECT Id FROM Account];
     Account second = new Account(Name = 'Second');
@@ -2147,7 +2143,7 @@ private class RollupFullRecalcTests {
   static void addsCabooseForMultiplFullRecalcsToDifferentParents() {
     // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
     // and there are multiple instances of the full batch recalcs that are present in the list of rollups
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, MaxLookupRowsBeforeBatching__c = 2);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 2, MaxLookupRowsBeforeBatching__c = 2, IsRollupLoggingEnabled__c = true);
     Rollup.onlyUseMockMetadata = true;
 
     Account parentOne = [SELECT Id FROM Account];
@@ -2222,7 +2218,7 @@ private class RollupFullRecalcTests {
     // the queueable will already correctly handle everything since the shared parent field will only be reset once.
     // batch processes, on the other hand, would otherwise simply see the existing value on the parent as something
     // that needs to be cleared out
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 1, MaxLookupRowsBeforeBatching__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100, MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true);
     Rollup.onlyUseMockMetadata = true;
     Account parent = [SELECT Id FROM Account];
 

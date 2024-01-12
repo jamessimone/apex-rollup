@@ -1525,7 +1525,6 @@ private class RollupIntegrationTests {
       MaxRollupRetries__c = 1,
       ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous
     );
-    RollupAsyncProcessor.shouldRunAsBatch = true;
     Rollup.shouldRun = true;
     Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1609,8 +1608,7 @@ private class RollupIntegrationTests {
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    RollupAsyncProcessor.shouldRunAsBatch = true;
-    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0);
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -1779,14 +1777,15 @@ private class RollupIntegrationTests {
   static void shouldFilterNonMatchingRollupsOutOfBatch() {
     Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
     insert con;
-    RollupControl__mdt control = RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS);
+    RollupControl__mdt control = RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS).clone();
+    control.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable;
     Rollup.FilterResults results = new Rollup.FilterResults();
     results.matchingItemIds.add(con.Id);
     RollupAsyncProcessor batchProcessor = new RollupAsyncProcessor(
       results,
       Contact.FirstName,
       Contact.Id,
-      Contact.Id,
+      Contact.AccountId,
       Contact.FirstName,
       Campaign.SObjectType,
       Contact.SObjectType,
@@ -1804,6 +1803,7 @@ private class RollupIntegrationTests {
     );
     RollupAsyncProcessor conductor = new RollupAsyncProcessor(Rollup.InvocationPoint.FROM_APEX, new List<Contact>{ con }, new Map<Id, SObject>());
     conductor.rollups.add(batchProcessor);
+
     Test.startTest();
     Database.executeBatch(conductor);
     Test.stopTest();

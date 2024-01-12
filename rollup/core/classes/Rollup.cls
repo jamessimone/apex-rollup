@@ -582,6 +582,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     List<Rollup> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
+    // TODO if there are two or more full batch recalcs, consolidate with cabooses??
     isFullRecalcApp = false;
     return batch(processors, localInvokePoint);
   }
