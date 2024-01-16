@@ -51,7 +51,7 @@ $shouldDeployToSandbox = $false
 if($scratchOrgAllotment -gt 0) {
   Write-Debug "Beginning scratch org creation"
   # Create Scratch Org
-  $scratchOrgCreateMessage = npx sf org create scratch --definition-file config/project-scratch-def.json --alias $currentUserAlias --set-default --duration-days 1
+  $scratchOrgCreateMessage = npm run create:org
   # Sometimes SFDX lies (UTC date problem?) about the number of scratch orgs remaining in a given day
   # The other issue is that this doesn't throw, so we have to test the response message ourselves
   if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {

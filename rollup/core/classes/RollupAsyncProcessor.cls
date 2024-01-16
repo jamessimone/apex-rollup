@@ -257,9 +257,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut == false) {
       this.fullRecalcProcessor?.finish();
       // Serves the "passthrough" code path where the conductor was also a batch and all rollups were winnowed out in preStart
-      if (this.isProcessed == false && this.rollups.isEmpty() == false) {
+      if (this.isBatch() && this.isProcessed == false && this.rollups.isEmpty() == false) {
         this.preProcessRollups(this.rollups);
         RollupFullRecalcProcessor proc = this.loadCabooses();
+        RollupLogger.Instance.log('Proc in finish', proc, LoggingLevel.DEBUG);
         proc?.runCalc();
       }
     }
@@ -804,7 +805,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     for (Integer index = rollupsToProcess.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = rollupsToProcess[index];
       if (rollup.isProcessed) {
-        continue;
+        rollupsToProcess.remove(index);
       }
       List<RollupAsyncProcessor> additionalRollups = rollup.transformFullRecalcRollups();
       // this can be a conductor containing full recalc rollups
@@ -823,6 +824,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollupsToProcess.remove(index);
         RollupFullBatchRecalculator fullRecalc = (RollupFullBatchRecalculator) rollup;
         Schema.SObjectType childType = fullRecalc.getCalcItemType();
+        RollupLogger.Instance.log('Populating child to unexpected full recalc for child type: ' + childType, System.LoggingLevel.DEBUG);
         this.childToUnexpectedFullRecalc.put(childType, fullRecalc);
       }
     }
@@ -962,6 +964,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (firstFullRecalc == null) {
         firstFullRecalc = fullRecalc;
       } else {
+        RollupLogger.Instance.log('Loading caboose for batch full recalc chain', System.LoggingLevel.DEBUG);
         firstFullRecalc.addCaboose(fullRecalc);
       }
     }

@@ -2143,7 +2143,7 @@ private class RollupFullRecalcTests {
   static void addsCabooseForMultiplFullRecalcsToDifferentParents() {
     // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
     // and there are multiple instances of the full batch recalcs that are present in the list of rollups
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 2, MaxLookupRowsBeforeBatching__c = 2, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100, MaxLookupRowsBeforeBatching__c = 2, IsRollupLoggingEnabled__c = true);
     Rollup.onlyUseMockMetadata = true;
 
     Account parentOne = [SELECT Id FROM Account];
@@ -2190,7 +2190,7 @@ private class RollupFullRecalcTests {
         new Rollup__mdt(
           CalcItem__c = 'Contact',
           LookupFieldOnCalcItem__c = 'AccountId',
-          RollupFieldOnCalcItem__c = 'LastName',
+          RollupFieldOnCalcItem__c = 'Name',
           RollupOperation__c = 'CONCAT',
           LookupObject__c = 'Account',
           LookupFieldOnLookupObject__c = 'Id',
@@ -2201,6 +2201,93 @@ private class RollupFullRecalcTests {
     );
     Test.stopTest();
 
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupAsyncProcessor.class)],
+      'Conductor should begin async as queueable'
+    );
+    Assert.areEqual(
+      2,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
+      'Only two batch classes should have run'
+    );
+    parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
+    Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
+    Assert.areEqual('Concat, One', parentOne.Description);
+    Assert.areEqual(5, parentOne.NumberOfEmployees);
+    parentTwo = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentTwo.Id];
+    Assert.areEqual(null, parentTwo.AnnualRevenue);
+    Assert.areEqual('Concat, Two', parentTwo.Description);
+    Assert.areEqual(10, parentTwo.NumberOfEmployees);
+  }
+
+  @IsTest
+  static void addsCabooseForMultiplFullRecalcsToDifferentParentsWithoutOtherRollups() {
+    // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
+    // and there are multiple instances of the full batch recalcs that are present in the list of rollups
+    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100, MaxLookupRowsBeforeBatching__c = 2, IsRollupLoggingEnabled__c = true);
+    Rollup.onlyUseMockMetadata = true;
+
+    Account parentOne = [SELECT Id FROM Account];
+    ContactPointAddress childOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'child one', PreferenceRank = 25);
+    Account parentTwo = new Account(Name = 'Parent Two');
+    insert new List<SObject>{ childOne, parentTwo };
+
+    // with two different parents this one should be a batch
+    insert new List<Opportunity>{
+      new Opportunity(AccountId = parentOne.Id, StageName = 'One', CloseDate = System.today(), Name = 'Another child rollup', Amount = 5),
+      new Opportunity(AccountId = parentTwo.Id, StageName = 'Two', CloseDate = System.today(), Name = 'Child rollup two', Amount = 10)
+    };
+
+    // same thing here; we need TWO different batches to prove that this is working (because getAsyncRollup() shortcuts to the first rollup in the list when
+    // there is only one AND it's a full recalc, but we need this to work for multiple batch full recalcs at once)
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = parentOne.Id, Name = 'Concat'),
+      new ContactPointAddress(ParentId = parentOne.Id, Name = 'One'),
+      new ContactPointAddress(ParentId = parentTwo.Id, Name = 'Concat'),
+      new ContactPointAddress(ParentId = parentTwo.Id, Name = 'Two')
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'Opportunity',
+          LookupFieldOnCalcItem__c = 'AccountId',
+          RollupFieldOnCalcItem__c = 'Amount',
+          RollupOperation__c = 'MAX',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'NumberOfEmployees'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'Name',
+          RollupOperation__c = 'CONCAT',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Description'
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+    Test.stopTest();
+
+    Assert.areEqual(
+      2,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
+      'Only two batch classes should have run'
+    );
     parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
     Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
     Assert.areEqual('Concat, One', parentOne.Description);

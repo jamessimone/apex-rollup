@@ -38,6 +38,7 @@
     "aura"
   ],
   "scripts": {
+    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30",
     "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
     "create:package:namespaced": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; New-Namespaced-Package }\"",
     "create:package:nebula:adapter": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Nebula Logger\"' -ReadmePath \"./plugins/NebulaLogger/README.md\" }\"",
