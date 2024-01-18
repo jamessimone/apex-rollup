@@ -492,11 +492,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected String startBatchProcessor() {
-    Integer batchChunkSize = this.rollupControl.BatchChunkSize__c?.intValue();
-    if (batchChunkSize == null) {
-      batchChunkSize = 2000;
-    }
-    return Database.executeBatch(this, batchChunkSize);
+    return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
   protected List<SObject> getExistingLookupItems(Set<String> lookupKeys, RollupAsyncProcessor roll, Set<String> uniqueQueryFieldNames) {
