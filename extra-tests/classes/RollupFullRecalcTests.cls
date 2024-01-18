@@ -2229,9 +2229,8 @@ private class RollupFullRecalcTests {
     Rollup.onlyUseMockMetadata = true;
 
     Account parentOne = [SELECT Id FROM Account];
-    ContactPointAddress childOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'child one', PreferenceRank = 25);
     Account parentTwo = new Account(Name = 'Parent Two');
-    insert new List<SObject>{ childOne, parentTwo };
+    insert parentTwo;
 
     // with two different parents this one should be a batch
     insert new List<Opportunity>{
@@ -2241,7 +2240,9 @@ private class RollupFullRecalcTests {
 
     // same thing here; we need TWO different batches to prove that this is working (because getAsyncRollup() shortcuts to the first rollup in the list when
     // there is only one AND it's a full recalc, but we need this to work for multiple batch full recalcs at once)
+    ContactPointAddress childOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'child one', PreferenceRank = 25);
     insert new List<ContactPointAddress>{
+      childOne,
       new ContactPointAddress(ParentId = parentOne.Id, Name = 'Concat'),
       new ContactPointAddress(ParentId = parentOne.Id, Name = 'One'),
       new ContactPointAddress(ParentId = parentTwo.Id, Name = 'Concat'),
@@ -2290,7 +2291,7 @@ private class RollupFullRecalcTests {
     );
     parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
     Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
-    Assert.areEqual('Concat, One', parentOne.Description);
+    Assert.areEqual('Concat, One, child one', parentOne.Description);
     Assert.areEqual(5, parentOne.NumberOfEmployees);
     parentTwo = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentTwo.Id];
     Assert.areEqual(null, parentTwo.AnnualRevenue);

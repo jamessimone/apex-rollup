@@ -256,13 +256,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   public virtual void finish(Database.BatchableContext context) {
     if (this.isTimingOut == false) {
       this.fullRecalcProcessor?.finish();
-      // Serves the "passthrough" code path where the conductor was also a batch and all rollups were winnowed out in preStart
-      if (this.isBatch() && this.isProcessed == false && this.rollups.isEmpty() == false) {
-        this.preProcessRollups(this.rollups);
-        RollupFullRecalcProcessor proc = this.loadCabooses();
-        RollupLogger.Instance.log('Proc in finish', proc, LoggingLevel.DEBUG);
-        proc?.runCalc();
-      }
     }
     if (context == null) {
       context = new AdditionalContext(this.getNoProcessId());
@@ -313,8 +306,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual RollupRepository preStart() {
     this.winnowRollups(this.rollups);
+    String equality = '!=';
+    if (this.childToUnexpectedFullRecalc.isEmpty() == false) {
+      equality = '=';
+    }
     this.populateObjectFields(this.rollups);
-    String query = 'SELECT Id FROM Organization WHERE Name != \'' + UserInfo.getOrganizationName() + '\'';
+    String query = 'SELECT Id FROM Organization WHERE Name ' + equality + '\'' + UserInfo.getOrganizationName() + '\'';
     RollupRepository repo = new RollupRepository(this.runAsMode);
     if (this.rollups.isEmpty() == false) {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
@@ -804,9 +801,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private void preProcessRollups(List<RollupAsyncProcessor> rollupsToProcess) {
     for (Integer index = rollupsToProcess.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor rollup = rollupsToProcess[index];
-      if (rollup.isProcessed) {
-        rollupsToProcess.remove(index);
-      }
       List<RollupAsyncProcessor> additionalRollups = rollup.transformFullRecalcRollups();
       // this can be a conductor containing full recalc rollups
       if (rollup.rollups.isEmpty() == false) {
@@ -823,9 +817,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (rollup.getTypeName() == RollupFullBatchRecalculator.class.getName()) {
         rollupsToProcess.remove(index);
         RollupFullBatchRecalculator fullRecalc = (RollupFullBatchRecalculator) rollup;
-        Schema.SObjectType childType = fullRecalc.getCalcItemType();
-        RollupLogger.Instance.log('Populating child to unexpected full recalc for child type: ' + childType, System.LoggingLevel.DEBUG);
-        this.childToUnexpectedFullRecalc.put(childType, fullRecalc);
+        this.childToUnexpectedFullRecalc.put(fullRecalc.getCalcItemType(), fullRecalc);
       }
     }
     rollupsToProcess.addAll(this.transformFullRecalcRollups());
@@ -964,7 +956,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (firstFullRecalc == null) {
         firstFullRecalc = fullRecalc;
       } else {
-        RollupLogger.Instance.log('Loading caboose for batch full recalc chain', System.LoggingLevel.DEBUG);
         firstFullRecalc.addCaboose(fullRecalc);
       }
     }
