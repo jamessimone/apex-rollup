@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
-            "versionName": "Safer RollupParentResetProcessor queries",
-            "versionNumber": "1.6.9.0",
+            "versionName": "Better control over when Batch class versus Queueable class is used for rollup conductor (the means by which Apex Rollup goes async)",
+            "versionNumber": "1.6.10.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -103,6 +103,7 @@
         "apex-rollup@1.6.6": "04t6g000008OaFiAAK",
         "apex-rollup@1.6.7": "04t6g000008OaHKAA0",
         "apex-rollup@1.6.8": "04t6g000008OaJLAA0",
-        "apex-rollup@1.6.9": "04t6g000008OaJkAAK"
+        "apex-rollup@1.6.9": "04t6g000008OaJkAAK",
+        "apex-rollup@1.6.10": "04t6g000008OaLCAA0"
     }
 }

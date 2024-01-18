@@ -31,7 +31,7 @@ if [ $scratchOrgAllotment -gt 0 ]; then
   echo "Beginning scratch org creation"
   userNameHasBeenSet=1
   {
-    sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 1
+    npm run create:org
     sf data import tree --files config/data/CurrencyTypes.json
     # Deploy
     sf project deploy start

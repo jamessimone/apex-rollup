@@ -2441,7 +2441,7 @@ private class RollupTests {
   static void shouldRunSuccessfullyAsBatch() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    RollupAsyncProcessor.shouldRunAsBatch = true;
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, MaxLookupRowsBeforeBatching__c = 1);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2499,7 +2499,7 @@ private class RollupTests {
   }
 
   @IsTest
-  static void shouldNotRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
+  static void shouldRunAsBatchableWhenDefaultIsBatchableAndRecordsAreLessThanBatchableLimit() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1000, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
@@ -2511,7 +2511,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
     Account acc = (Account) mock.Records[0];
     System.assertEquals(1, acc.AnnualRevenue);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' LIMIT 1]?.Status);
   }
 
   @IsTest
@@ -2898,7 +2898,7 @@ private class RollupTests {
     insert cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
-    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 2);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2922,11 +2922,11 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Grandparent record should have been found!');
     User updatedUser = (User) mock.Records[0];
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable'].Status);
   }
 
   @IsTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrievedWithBatch() {
-    RollupAsyncProcessor.shouldRunAsBatch = true;
     Account acc = [SELECT Id, OwnerId FROM Account];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
@@ -2935,7 +2935,12 @@ private class RollupTests {
     insert cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
-    Rollup.defaultControl = new RollupControl__mdt(MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 100);
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 0,
+      MaxNumberOfQueries__c = 2,
+      MaxRollupRetries__c = 100,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable
+    );
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 4);
     Rollup.rollupMetadata = new List<Rollup__mdt>{

@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OaJkAAK">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OaLCAA0">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OaJkAAK">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OaLCAA0">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -226,7 +226,7 @@ These are the fields on the `Rollup Control` custom metadata type:
 - Apex Rollup (optional) - lookup field to the `Rollup__mdt` metadata record.
 - `Should Abort Run` - if done at the `Org_Defaults` level, completely shuts down all rollup operations in the org. Otherwise, can be used on an individual rollup basis to turn on/off.
 - `Should Duplicate Rules Be Ignored` (defaults to false) - By default, duplicate rules are enforced on rollup updates. Set this to true to bypass duplicate rules for rollups.
-- `Should Run As` - a picklist dictating the preferred method for running rollup operations. Possible values are `Queueable`, `Batchable`, or `Synchronous Rollup`.
+- `Should Run As` - a picklist dictating the preferred method for running rollup operations. Possible values are `Queueable`, `Batchable`, or `Synchronous Rollup`. By default, Apex Rollup runs asynchronously as a queueable. Only one queueable can be fired from a process that's already asynchronous, and while Apex Rollup automatically detects such things, if _another_ bit of code that runs _after_ Apex Rollup needs to use that Queueable, `Batchable` may be a better option. When set to `Synchronous Rollup`, all calculations occur prior to an insert / update / delete being finished on the children records.
 - `Should Run Single Records Synchronously` - Apex Rollup typically uses the `Should Run As` picklist to determine the default execution context for rollups (which tends to be async). This checkbox deviates from that methodology by forcing single record updates to run sync (whenever possible), which helps with handling updates from datatables or other features using Lightning Data Service (LDS).
 - `Should Skip Resetting Parent Fields` (defaults to false) - for full recalculations and REFRESH-based child item updates, Apex Rollup by default assumes that for a parent record with no matching children, the parent-level field should be reset. If this checkbox is set to true, those parent records without results will simply be ignored, and will not be updated.
 - `Trigger Or Invocable Name` - If you are using custom Apex, a schedulable, or rolling up by way of the Invocable action and can't use the Apex Rollup lookup field. Use the pattern `trigger_fieldOnCalcItem_to_rollupFieldOnTarget_rollup` - for example: 'trigger_opportunity_stagename_to_account_name_rollup' (use lowercase on the field names). If there is a matching Rollup Limit record, those rules will be used. The first part of the string comes from how a rollup has been invoked - either by `trigger`, `invocable`, or `schedule`. A scheduled flow still uses `invocable`!
