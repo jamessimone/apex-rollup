@@ -147,7 +147,7 @@ function Generate() {
   if ($null -eq $currentPackageVersionId) {
     throw $createPackageResult
   } else {
-    npx sfdx bummer:package:aliases:sort
+    npx sf bummer package aliases sort
     git add $sfdxProjectJsonPath -f
   }
 
