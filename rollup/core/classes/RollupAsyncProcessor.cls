@@ -528,6 +528,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
       this.fullRecalcProcessor?.processParentFieldsToReset(recordsToReset);
+      Map<Id, SObject> idToLookupItem = new Map<Id, SObject>(lookupItemsToAssign);
+      for (SObject recordToReset : recordsToReset) {
+        if (idToLookupItem.containsKey(recordToReset.Id) == false && roll.lookupObj == recordToReset.getSObjectType()) {
+          lookupItemsToAssign.add(recordToReset);
+        }
+      }
     }
     return lookupItemsToAssign;
   }
@@ -765,6 +771,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return Limits.getLimitQueueableJobs() > Limits.getQueueableJobs();
   }
 
+  protected Object getDefaultValue(Rollup__mdt meta) {
+    Object resetVal = null;
+    if (meta.FullRecalculationDefaultNumberValue__c != null) {
+      resetVal = meta.FullRecalculationDefaultNumberValue__c;
+    } else if (meta.FullRecalculationDefaultStringValue__c != null) {
+      resetVal = meta.FullRecalculationDefaultStringValue__c;
+    }
+    return resetVal;
+  }
+
   private void storeParentResetField(String lookupField, SObject parent) {
     String resetKey = String.valueOf(parent.get(lookupField));
     if (resetKey != null) {
@@ -928,7 +944,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         localLookupItems.add(updatedLookupObject);
       }
     }
-    localLookupItems.addAll(roll.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
+    localLookupItems.addAll(this.getExistingLookupItems(lookupItemKeys, roll, this.lookupObjectToUniqueFieldNames.get(roll.lookupObj)));
     return localLookupItems;
   }
 
@@ -1263,6 +1279,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           calc = this.getCalculator(calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }
+      } else {
+        this.logger.log('About to reset parent field for', lookupRecord, LoggingLevel.INFO);
+        this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, this.getDefaultValue(roll.metadata));
       }
     }
 
@@ -1423,7 +1442,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       newVal = priorVal;
     }
     String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-    if (priorVal != newVal) {
+    if (priorVal != newVal || this.fullRecalcProcessor != null) {
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     recordsToUpdate.put(key, lookupRecord);

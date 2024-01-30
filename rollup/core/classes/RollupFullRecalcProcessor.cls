@@ -137,6 +137,9 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         this.parentRecordsToClear.put(resetId, resetId.getSobjectType().newSObject(resetId));
       }
     }
+    for (Id possibleResetId : this.recordIds) {
+      this.parentRecordsToClear.put(possibleResetId, possibleResetId.getSobjectType().newSObject(possibleResetId));
+    }
     RollupAsyncProcessor processor = this.getAsyncRollup(this.rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = this;

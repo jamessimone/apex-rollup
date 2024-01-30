@@ -230,54 +230,6 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void doesNotUpdateParentRecordsWhereRollupValueHasNotChangedInFullRecalc() {
-    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
-    Rollup.DML = mock;
-
-    Account acc = [SELECT Id FROM Account];
-    Account secondParent = new Account(Name = 'Second', NumberOfEmployees = 1);
-    insert secondParent;
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
-      // ensure that the count of children records associated with the second parent DOES match
-      // the second parent's existing NumberOfEmployees; here we are looking to ensure only the parent records needing an update are saved
-      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two')
-    };
-    insert cpas;
-
-    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'ParentId',
-        RollupOperation__c = 'SUM',
-        RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupFieldOnCalcItem__c = 'PreferenceRank',
-        LookupFieldOnLookupObject__c = 'Id',
-        CalcItemWhereClause__c = 'Name != \'Two\''
-      ),
-      new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'ParentId',
-        RollupOperation__c = 'COUNT',
-        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
-        RollupFieldOnCalcItem__c = 'Id',
-        LookupFieldOnLookupObject__c = 'Id',
-        CalcItemWhereClause__c = 'Name != \'One\''
-      )
-    };
-
-    Test.startTest();
-    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
-    Test.stopTest();
-
-    Map<Id, SObject> updatedRecordMap = new Map<Id, SObject>(mock.Records);
-    System.assertEquals(1, updatedRecordMap.size());
-    System.assertEquals(true, updatedRecordMap.containsKey(acc.Id));
-  }
-
-  @IsTest
   static void updatesParentRecordsWhenAtLeastOneCmdtRecordDoesNotHaveWhereClause() {
     RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
     Rollup.DML = mock;
@@ -329,7 +281,6 @@ private class RollupFullRecalcTests {
 
     Map<Id, SObject> updatedRecordMap = new Map<Id, SObject>(mock.Records);
     System.assertEquals(true, updatedRecordMap.containsKey(acc.Id));
-    System.assertNotEquals(true, updatedRecordMap.containsKey(secondParent.Id));
     System.assertEquals(cpas[0].Name, updatedRecordMap.get(acc.Id).get('Description'));
   }
 
@@ -382,53 +333,6 @@ private class RollupFullRecalcTests {
 
     Account updatedAccount = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id];
     System.assertEquals(acc, updatedAccount);
-  }
-
-  @IsTest
-  static void doesNotUpdateParentRecordsWithoutUpdatesWhenRecordsExcludedByEvaluator() {
-    RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
-    Rollup.DML = mock;
-
-    Account acc = [SELECT Id FROM Account];
-    Account secondParent = new Account(Name = 'Second');
-    insert secondParent;
-    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
-      new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
-      new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two')
-    };
-    insert cpas;
-
-    List<Rollup__mdt> metadata = new List<Rollup__mdt>{
-      new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'ParentId',
-        RollupOperation__c = 'SUM',
-        RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupFieldOnCalcItem__c = 'PreferenceRank',
-        LookupFieldOnLookupObject__c = 'Id'
-      ),
-      new Rollup__mdt(
-        CalcItem__c = 'ContactPointAddress',
-        LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = 'ParentId',
-        RollupOperation__c = 'COUNT',
-        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
-        RollupFieldOnCalcItem__c = 'Id',
-        LookupFieldOnLookupObject__c = 'Id',
-        CalcItemWhereClause__c = 'ParentId != \'' + secondParent.Id + '\''
-      )
-    };
-
-    Test.startTest();
-    Rollup.performBulkFullRecalc(metadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
-    Test.stopTest();
-
-    Map<Id, SObject> updatedRecordMap = new Map<Id, SObject>(mock.Records);
-    System.assertEquals(1, updatedRecordMap.size());
-    System.assertEquals(true, updatedRecordMap.containsKey(acc.Id));
-    acc = (Account) mock.Records[0];
-    System.assertEquals(500, acc.AnnualRevenue);
   }
 
   @IsTest
