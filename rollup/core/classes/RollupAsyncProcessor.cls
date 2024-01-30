@@ -1280,7 +1280,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }
       } else {
-        this.logger.log('About to reset parent field for', lookupRecord, LoggingLevel.INFO);
+        this.logger.log('About to reset parent field for', lookupRecord, System.LoggingLevel.DEBUG);
         this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, this.getDefaultValue(roll.metadata));
       }
     }
