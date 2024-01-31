@@ -87,6 +87,10 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     }
   }
 
+  public Set<String> getRecordIdentifiers() {
+    return new Set<String>(this.recordIds);
+  }
+
   public void trackParentRecord(SObject parent) {
     this.postProcessor?.recordIds.add(parent.Id);
   }
@@ -137,12 +141,6 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         this.parentRecordsToClear.put(resetId, resetId.getSObjectType().newSObject(resetId));
       }
     }
-    for (String possibleResetId : this.recordIds) {
-      SObject resetRecord = this.fillLookupField(possibleResetId);
-      if (resetRecord != null) {
-        this.parentRecordsToClear.put(possibleResetId, resetRecord);
-      }
-    }
     RollupAsyncProcessor processor = this.getAsyncRollup(this.rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = this;
@@ -185,19 +183,5 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
       }
       this.runAsMode = RollupMetaPicklists.getAccessLevel(meta);
     }
-  }
-
-  private SObject fillLookupField(String resetIdentifier) {
-    SObject parentRecord;
-    if (resetIdentifier instanceof Id) {
-      parentRecord = ((Id) resetIdentifier).getSObjectType().newSObject();
-      for (Rollup__mdt meta : this.rollupMetas) {
-        if (meta.LookupObject__c == parentRecord.getSObjectType().getDescribe().getName()) {
-          parentRecord.put(meta.LookupFieldOnLookupObject__c, resetIdentifier);
-          break;
-        }
-      }
-    }
-    return parentRecord;
   }
 }

@@ -936,6 +936,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<SObject> localLookupItems = new List<SObject>();
     Set<String> lookupItemKeys = new Set<String>(calcItemsByLookupField.keySet());
     this.previouslyResetParents.retainAll(lookupItemKeys);
+    if (this.fullRecalcProcessor != null) {
+      lookupItemKeys.addAll(this.fullRecalcProcessor.getRecordIdentifiers());
+    }
     for (String lookupId : calcItemsByLookupField.keySet()) {
       if (updatedLookupRecords.containsKey(lookupId)) {
         lookupItemKeys.remove(lookupId);
@@ -1442,7 +1445,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       newVal = priorVal;
     }
     String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-    if (priorVal != newVal || this.fullRecalcProcessor != null) {
+    if (priorVal != newVal) {
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     recordsToUpdate.put(key, lookupRecord);
