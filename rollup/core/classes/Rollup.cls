@@ -1902,11 +1902,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
-      if (control.IsRollupLoggingEnabled__c == false) {
+      Boolean isLoggingCurrentlyDisabled = control.IsRollupLoggingEnabled__c == false;
+      if (isLoggingCurrentlyDisabled) {
         control.IsRollupLoggingEnabled__c = true;
         RollupLogger.Instance.updateRollupControl(control);
       }
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
+      if (isLoggingCurrentlyDisabled) {
+        RollupLogger.Instance.log('disabling logging again', LoggingLevel.INFO);
+        control.isRollupLoggingEnabled__c = false;
+        RollupLogger.Instance.updateRollupControl(control);
+      }
     }
     return hasExceededLimits;
   }
@@ -2134,7 +2140,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         }
       }
     }
-
 
     List<RollupFullRecalcProcessor> fullRecalcs = transformWrappedMetadataToFullRecalcRollups(typeToWrappedMeta, invokePoint);
     for (RollupFullRecalcProcessor fullRecalc : fullRecalcs) {
