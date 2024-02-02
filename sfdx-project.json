@@ -4,6 +4,7 @@
             "default": true,
             "package": "apex-rollup",
             "path": "rollup",
+            "scopeProfiles": true,
             "versionName": "Continuation from v1.6.5 with big CPU time improvements made to Flow-based rollups, particularly for the update record code path",
             "versionNumber": "1.6.11.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
