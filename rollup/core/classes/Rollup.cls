@@ -836,7 +836,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     Map<SObjectType, List<Rollup>> localRollups = new Map<SObjectType, List<Rollup>>();
-    Map<Integer, List<SObject>> hashCodeToCalcItems = new Map<Integer, List<SObject>>();
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
     for (FlowInputWrapper wrapper : metaToInputWrapper.values()) {
       // here we clone the list because it can get winnowed in "processCustomMetadata"
