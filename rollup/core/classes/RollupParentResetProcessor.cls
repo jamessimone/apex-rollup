@@ -28,7 +28,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     Set<String> recordIds,
     InvocationPoint invokePoint
   ) {
-    super(getRefinedQueryString(queryString, matchingMeta), invokePoint, matchingMeta, calcItemType, recordIds, null);
+    super(getRefinedQueryString(queryString, matchingMeta, invokePoint), invokePoint, matchingMeta, calcItemType, recordIds, null);
     this.overridesRunCalc = true;
     this.isNoOp = false;
     this.shouldSortToFront = true;
@@ -37,7 +37,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   public override String runCalc() {
     this.isProcessed = true;
     // reset isValidRun flag properly
-    getRefinedQueryString(this.queryString, this.rollupMetas);
+    getRefinedQueryString(this.queryString, this.rollupMetas, this.invokePoint);
     this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
     if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true) {
@@ -77,7 +77,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
           ) == false &&
           parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)
         ) {
-          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, getDefaultValue(rollupMeta));
+          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, this.getDefaultValue(rollupMeta));
         }
       }
     }
@@ -105,7 +105,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     this.finish(null);
   }
 
-  private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta) {
+  private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta, InvocationPoint invokePoint) {
     isValidRun = false;
     String additionalFilters = '';
     String orClause = ' OR ';
@@ -115,7 +115,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
         SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
         if (token?.getDescribe().isFilterable() == true) {
           isValidRun = isValidRun || true;
-          Object searchObject = getDefaultValue(meta);
+          Object searchObject = getDefaultValue(meta, invokePoint);
           String searchValue = String.valueOf(searchObject);
           if (searchObject instanceof String) {
             searchValue = '\'' + searchValue + '\'';
@@ -129,13 +129,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     return isValidRun ? localQueryString + '\nAND (' + additionalFilters.removeEnd(orClause) + ')' : localQueryString;
   }
 
-  private static Object getDefaultValue(Rollup__mdt meta) {
-    Object resetVal = null;
-    if (meta.FullRecalculationDefaultNumberValue__c != null) {
-      resetVal = meta.FullRecalculationDefaultNumberValue__c;
-    } else if (meta.FullRecalculationDefaultStringValue__c != null) {
-      resetVal = meta.FullRecalculationDefaultStringValue__c;
-    }
-    return resetVal;
+  private static Object getDefaultValue(Rollup__mdt meta, InvocationPoint invokePoint) {
+    return new RollupAsyncProcessor.NoOpProcessor(invokePoint).getDefaultValue(meta);
   }
 }

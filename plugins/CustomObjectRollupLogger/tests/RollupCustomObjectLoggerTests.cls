@@ -62,4 +62,19 @@ private class RollupCustomObjectLoggerTests {
 
     System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c], 'Log should not have been created because FINE is below DEBUG in LoggingLevel');
   }
+
+  @IsTest
+  static void shouldNotPublishLogsWhenDisabled() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
+    RollupPlugin.pluginMocks.add(new RollupPlugin__mdt(DeveloperName = RollupCustomObjectLogger.class.getName()));
+    // load a valid message into the buffer prior to disabling logging again
+    RollupLogger.Instance.log('Test message', LoggingLevel.ERROR);
+    RollupLogger.Instance.updateRollupControl(new RollupControl__mdt(IsRollupLoggingEnabled__c = false));
+
+    Test.startTest();
+    RollupLogger.Instance.save();
+    Test.stopTest();
+
+    System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c]);
+  }
 }

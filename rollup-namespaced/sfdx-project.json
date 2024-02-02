@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Better control over when Batch class versus Queueable class is used for rollup conductor (the means by which Apex Rollup goes async)",
-            "versionNumber": "1.1.9.0",
+            "versionName": "Continuation from v1.6.5 with big CPU time improvements made to Flow-based rollups, particularly for the update record code path",
+            "versionNumber": "1.1.10.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -33,6 +33,7 @@
         "apex-rollup-namespaced@1.1.6": "04t6g000008OaFnAAK",
         "apex-rollup-namespaced@1.1.7": "04t6g000008OaJQAA0",
         "apex-rollup-namespaced@1.1.8": "04t6g000008OaJpAAK",
-        "apex-rollup-namespaced@1.1.9": "04t6g000008OaLHAA0"
+        "apex-rollup-namespaced@1.1.9": "04t6g000008OaLHAA0",
+        "apex-rollup-namespaced@1.1.10": "04t6g000008OaOBAA0"
     }
 }

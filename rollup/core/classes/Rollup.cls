@@ -836,17 +836,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     Map<SObjectType, List<Rollup>> localRollups = new Map<SObjectType, List<Rollup>>();
-    Map<Integer, List<SObject>> hashCodeToCalcItems = new Map<Integer, List<SObject>>();
     Map<SObjectType, RollupMetadata> typeToWrappedMeta = new Map<SObjectType, RollupMetadata>();
     for (FlowInputWrapper wrapper : metaToInputWrapper.values()) {
       // here we clone the list because it can get winnowed in "processCustomMetadata"
       List<Rollup__mdt> metas = new List<Rollup__mdt>(wrapper.rollupMetadata);
       Map<Schema.SObjectType, List<Rollup>> typeToWinnowedRollups;
       List<SObject> children = wrapper.children.values();
-      wrapper.flowInput.recordsToRollup = replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, children, metas);
-      Map<Id, SObject> oldFlowRecords = RollupFieldInitializer.Current.createSafeMap(
-        replaceFlowInputCalcItemsIfNecessary(hashCodeToCalcItems, wrapper.oldChildren.values(), metas)
-      );
+      Map<Id, SObject> oldFlowRecords = RollupFieldInitializer.Current.createSafeMap(wrapper.oldChildren.values());
 
       if (wrapper.flowInput.deferProcessing) {
         typeToWinnowedRollups = new Map<Schema.SObjectType, List<Rollup>>{ wrapper.sObjectType => new List<Rollup>() };
@@ -1905,11 +1901,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     Boolean hasExceededLimits = limitTester.hasExceededLimits && isDeferralAllowed;
     if (hasExceededLimits) {
-      if (control.IsRollupLoggingEnabled__c == false) {
+      Boolean isLoggingCurrentlyDisabled = control.IsRollupLoggingEnabled__c == false;
+      if (isLoggingCurrentlyDisabled) {
         control.IsRollupLoggingEnabled__c = true;
         RollupLogger.Instance.updateRollupControl(control);
       }
       RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
+      if (isLoggingCurrentlyDisabled) {
+        RollupLogger.Instance.log('disabling logging again', LoggingLevel.INFO);
+        control.isRollupLoggingEnabled__c = false;
+        RollupLogger.Instance.updateRollupControl(control);
+      }
     }
     return hasExceededLimits;
   }
@@ -2064,7 +2066,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     InvocationPoint invokePoint,
     Map<SObjectType, RollupMetadata> typeToWrappedMeta
   ) {
-    Map<String, DeleteReparentOperation> deleteKeyToReparentOp = new Map<String, DeleteReparentOperation>();
     for (Integer index = metas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = metas[index];
       Schema.SObjectType initialType = calcItems.getSObjectType();
@@ -2124,9 +2125,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         }
         wrappedMeta.parentRecordsToReset.addAll(queryWrapper.parentRecordsToReset);
         appendQueryCount(wrappedMeta, meta, wrappedMeta.whereClause, calcItemSObjectType);
-        if (isRefresh) {
-          prepareReparentDeletionOps(meta, calcItems, oldCalcItems, deleteKeyToReparentOp);
-        }
       } else if (isRefresh || queryWrapper != null) {
         // remove non-matches
         metas.remove(index);
@@ -2142,20 +2140,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
 
-    // collapse delete/full recalc operations
-    for (String deleteKey : deleteKeyToReparentOp.keySet()) {
-      DeleteReparentOperation deleteReparentOp = deleteKeyToReparentOp.get(deleteKey);
-      Schema.SObjectType deleteSObjectType = deleteReparentOp.reparentedRecords[0].getSObjectType();
-      Rollup deleteProcessor = getRollup(
-        deleteReparentOp.rollupMetas,
-        deleteSObjectType,
-        deleteReparentOp.reparentedRecords,
-        new Map<Id, SObject>(),
-        null,
-        invokePoint
-      );
-      populateRollupByType(rollups, deleteSObjectType, deleteProcessor);
-    }
     List<RollupFullRecalcProcessor> fullRecalcs = transformWrappedMetadataToFullRecalcRollups(typeToWrappedMeta, invokePoint);
     for (RollupFullRecalcProcessor fullRecalc : fullRecalcs) {
       populateRollupByType(rollups, fullRecalc.getCalcItemType(), fullRecalc);
@@ -2190,47 +2174,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
 
     return wrapper;
-  }
-
-  private class DeleteReparentOperation {
-    public List<SObject> reparentedRecords;
-    public final List<Rollup__mdt> rollupMetas = new List<Rollup__mdt>();
-  }
-
-  private static void prepareReparentDeletionOps(
-    Rollup__mdt meta,
-    List<SObject> calcItems,
-    Map<Id, SObject> oldCalcItems,
-    Map<String, DeleteReparentOperation> deleteKeyToOps
-  ) {
-    if (oldCalcItems?.isEmpty() != false || calcItems?.isEmpty() != false || meta.IsRollupStartedFromParent__c) {
-      return;
-    }
-    List<SObject> typedCalcItems = calcItems.clone();
-    typedCalcItems.clear();
-    String potentialDeleteOpName = 'DELETE_' + getBaseOperationName(meta.RollupOperation__c);
-    Rollup__mdt clonedMeta = meta.clone();
-    clonedMeta.RollupOperation__c = potentialDeleteOpName;
-    String deleteKey = potentialDeleteOpName + meta.LookupFieldOnCalcItem__c + meta.LookupObject__c;
-
-    if (deleteKeyToOps.containsKey(deleteKey)) {
-      deleteKeyToOps.get(deleteKey).rollupMetas.add(clonedMeta);
-    } else if (calcItems[0].getSObjectType().getDescribe().fields.getMap().containsKey(meta.LookupFieldOnCalcItem__c)) {
-      for (SObject calcItem : calcItems) {
-        if (oldCalcItems.containsKey(calcItem.Id)) {
-          SObject oldCalcItem = oldCalcItems.get(calcItem.Id);
-          if (calcItem.get(meta.LookupFieldOnCalcItem__c) != oldCalcItem.get(meta.LookupFieldOnCalcItem__c)) {
-            typedCalcItems.add(oldCalcItem);
-          }
-        }
-      }
-      if (typedCalcItems.isEmpty() == false) {
-        DeleteReparentOperation deleteReparentOp = new DeleteReparentOperation();
-        deleteReparentOp.reparentedRecords = typedCalcItems;
-        deleteReparentOp.rollupMetas.add(clonedMeta);
-        deleteKeyToOps.put(deleteKey, deleteReparentOp);
-      }
-    }
   }
 
   private static Set<String> getQueryFieldsFromMetadata(Rollup__mdt meta, RollupEvaluator.WhereFieldEvaluator eval) {
