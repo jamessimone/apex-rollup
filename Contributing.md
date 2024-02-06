@@ -8,6 +8,18 @@ yarn
 npm -i
 ```
 
+## Before You Begin
+
+### Ensure Nebula Logger Is Installed
+
+The package requires Nebula Logger to be installed. To be more specific: the unmanaged version, where the `Logger` class can be accessed.
+
+Install the package version provided in the `sfdx-project.json`'s `packageAliases` attribute, like:
+
+```bash
+sf package install -p <package version 04t> -w 30 -r
+```
+
 ## Ensure All Rollup Files Are Installed
 
 Whether you are developing on a sandbox or a new scratch org, please be sure to also deploy the `extra-tests` directory. I've included helper scripts to aid in programmatically testing only Apex Rollup's test classes when developing in a sandbox within the `package.json` file - one need only invoke the tests like such on the command line:
