@@ -20,6 +20,15 @@ Install the package version provided in the `sfdx-project.json`'s `packageAliase
 sf package install -p <package version 04t> -w 30 -r
 ```
 
+### Ensure You Have The Permissions
+
+The app is available to users that have the two permissions. For development purposes we recommend having at least the two main permission sets assigned to your user. Assign them with these commands:
+
+```bash
+sf org assign permset -n See_Rollup_App
+sf org assign permset -n See_Rollup_Button
+```
+
 ## Ensure All Rollup Files Are Installed
 
 Whether you are developing on a sandbox or a new scratch org, please be sure to also deploy the `extra-tests` directory. I've included helper scripts to aid in programmatically testing only Apex Rollup's test classes when developing in a sandbox within the `package.json` file - one need only invoke the tests like such on the command line:
