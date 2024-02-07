@@ -1,4 +1,4 @@
-# Contributions Welcome
+# Contributions are welcome
 
 I'm open to collaborating! Please make sure you install this repo's dependencies using NPM or Yarn:
 
@@ -8,9 +8,46 @@ yarn
 npm -i
 ```
 
-## Ensure All Rollup Files Are Installed
+## Before you begin
 
-Whether you are developing on a sandbox or a new scratch org, please be sure to also deploy the `extra-tests` directory. I've included helper scripts to aid in programmatically testing only Apex Rollup's test classes when developing in a sandbox within the `package.json` file - one need only invoke the tests like such on the command line:
+### Check your development environment
+
+This monorepo allows you to develop the app in either a scratch org or in a sandbox or Developer Edition org.
+
+#### For orgs with Source Tracking enabled
+
+Install the Nebula Logger version provided in the `sfdx-project.json`'s `packageAliases` attribute. Using the CLI, do it like this:
+
+```bash
+sf package install -p <package version 04t> -w 30 -r
+```
+
+#### For orgs that do not have Source Tracking enabled
+
+Deploy the contents of the `rollup` folder directly with:
+
+```bash
+sf project deploy start --source-dir ./rollup
+```
+
+### Make sure to assign permissions to your user
+
+The app is available to users that have the two permissions. For development purposes we recommend having at least the two main permission sets assigned to your user. Assign them with these commands:
+
+```bash
+sf org assign permset -n See_Rollup_App
+sf org assign permset -n See_Rollup_Button
+```
+
+## Ensure all rollup files are installed
+
+Whether you are developing on a sandbox or a new scratch org, please be sure to also deploy the `extra-tests` directory:
+
+```bash
+sf project deploy start --source-dir ./extra-tests
+```
+
+I've included helper scripts to aid in programmatically testing only Apex Rollup's test classes when developing in a sandbox within the `package.json` file - one need only invoke the tests like such on the command line:
 
 - `yarn test`
 - or `npm run test`
