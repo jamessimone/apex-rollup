@@ -101,6 +101,8 @@
         "Nebula Logger - Core@4.8.0-NEXT-ignore-origin-method": "04t5Y0000015lslQAA",
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.6.10": "04t6g000008OaLCAA0",
-        "apex-rollup@1.6.11": "04t6g000008OaO6AAK"
-    }
+        "apex-rollup@1.6.11": "04t6g000008OaO6AAK",
+        "apex-rollup@1.6.12": "04t6g000008OaOuAAK"
+    },
+    "target-dev-hub": "tester@sheandjim.com"
 }
