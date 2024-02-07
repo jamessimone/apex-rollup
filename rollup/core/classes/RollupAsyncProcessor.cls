@@ -556,7 +556,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // calling clear in a loop here might look interesting - and it would be a massive problem if not for the
       // bag only responding to the very first clear() invocation. everything after that is a no-op (so, any rollup with more
       // than one rollup operation going at a time)
-      if (rollup.triggerContext == System.TriggerOperation.BEFORE_DELETE) {
+      if (rollup.triggerContext == System.TriggerOperation.BEFORE_DELETE || rollup.op.name().contains('DELETE')) {
         bag.clear();
       }
     }

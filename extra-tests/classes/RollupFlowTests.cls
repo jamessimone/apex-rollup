@@ -1033,4 +1033,35 @@ private class RollupFlowTests {
     System.assertNotEquals('No records to rollup, returning early', flowOutputs[0].message);
     System.assertEquals(null, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void worksWithMultipleDmlWithDeletes() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 1;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1, ParentId = acc.Id, Name = 'Non-match 1'),
+      new ContactPointAddress(PreferenceRank = 2, ParentId = acc.Id, Name = 'Match to be deleted')
+    };
+    insert cpas;
+
+    ContactPointAddress toDelete = cpas.remove(1);
+    List<ContactPointAddress> deletedCpas = new List<ContactPointAddress>{ toDelete };
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(deletedCpas, 'UPDATE', 'COUNT');
+    flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>(deletedCpas);
+    flowInputs[0].isFullRecordSet = true;
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank = 2';
+    flowInputs.addAll(RollupTestUtils.prepareFlowTest(deletedCpas, 'DELETE', 'COUNT'));
+    flowInputs[1].calcItemWhereClause = 'PreferenceRank = 2';
+    flowInputs[1].isFullRecordSet = true;
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(null, updatedAcc.AnnualRevenue);
+  }
 }
