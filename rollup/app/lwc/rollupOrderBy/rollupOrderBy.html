@@ -15,7 +15,7 @@
 
       <lightning-datatable columns={columns} data={orderBys} hide-checkbox-column key-field="Id" show-row-number-column sorted-direction="asc">
       </lightning-datatable>
-      <template if:true={showModal} onkeydown={handleKeyDown}>
+      <template if:true={showModal}>
         <section class="slds-modal slds-fade-in-open" onkeydown={handleKeyDown} role="dialog" tabindex="-1">
           <div class="slds-modal__container" onkeydown={handleKeyDown}>
             <!-- Record modal header -->
