@@ -752,14 +752,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected Boolean parentRollupFieldHasBeenReset(String parentKeyField, SObject parent, String parentTypeName, String parentRollupField) {
-    return this.previouslyResetParents.get(parent.getSObjectType()).contains(String.valueOf(parent.get(parentKeyField))) ||
-      this.uniqueParentFields.contains('' + parentTypeName + parentRollupField);
+    return this.previouslyResetParents.get(parent.getSObjectType())?.contains(String.valueOf(parent.get(parentKeyField))) == true ||
+      this.uniqueParentFields.contains(parentTypeName + parentRollupField);
   }
 
   protected void storeUniqueParentFields(Rollup__mdt meta) {
     if (meta != null) {
-      String uniqueParentKey = meta.LookupObject__c + meta.RollupFieldOnLookupObject__c;
-      this.uniqueParentFields.add(uniqueParentKey);
+      this.uniqueParentFields.add(meta.LookupObject__c + meta.RollupFieldOnLookupObject__c);
     }
   }
 
