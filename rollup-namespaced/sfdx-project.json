@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Flow bugfix for flows triggered via Apex that both update AND delete records",
-            "versionNumber": "1.1.11.0",
+            "versionName": "Spring 24",
+            "versionNumber": "1.1.12.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -25,6 +25,7 @@
         "apex-rollup-namespaced@1.1.8": "04t6g000008OaJpAAK",
         "apex-rollup-namespaced@1.1.9": "04t6g000008OaLHAA0",
         "apex-rollup-namespaced@1.1.10": "04t6g000008OaOBAA0",
-        "apex-rollup-namespaced@1.1.11": "04t6g000008OaOzAAK"
+        "apex-rollup-namespaced@1.1.11": "04t6g000008OaOzAAK",
+        "apex-rollup-namespaced@1.1.12": "04t6g000008OaUZAA0"
     }
 }

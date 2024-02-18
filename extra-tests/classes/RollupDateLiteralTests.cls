@@ -175,13 +175,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(
       true,
       literal.matches(possibleDate, equality),
-      'Literal defined as ' +
-      literal +
-      ' should have matched ' +
-      possibleDate +
-      ' for ' +
-      equality +
-      '\n'
+      'Literal defined as ' + literal + ' should have matched ' + possibleDate + ' for ' + equality + '\n'
     );
   }
 

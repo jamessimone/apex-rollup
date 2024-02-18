@@ -2303,7 +2303,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       wrappedMeta.metadata,
       parentType,
       parentQuery,
-      wrappedMeta.recordIds,
+      // here we duplicate the recordId list because it's also passed to the fullRecalc instance initialized below and
+      // "bad things" can happen if both collections have the same reference
+      new Set<String>(wrappedMeta.recordIds),
       invokePoint
     );
     Boolean shouldQueue =
