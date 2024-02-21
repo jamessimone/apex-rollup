@@ -667,7 +667,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.setupCalcItemData(roll);
       // for each iteration, ensure we're not operating beyond the bounds of our governor limits
       if (this.getIsTimingOut(roll.rollupControl)) {
-        this.deferredRollups.add(roll);
+        this.addProcessorToDeferredRollups(roll);
         continue;
       }
 
@@ -1239,7 +1239,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
-    Map<String, SObject> unprocessedCalcItems = new Map<String, SObject>();
     RollupCalculator calc;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
@@ -1252,7 +1251,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         List<SObject> localCalcItems = bag.getAll();
 
         if (this.getIsTimingOut(this.rollupControl) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
-          unprocessedCalcItems.putAll(localCalcItems);
+          this.addProcessorToDeferredRollups(roll);
           lookupItems.remove(index);
           continue;
         }
@@ -1278,21 +1277,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll);
-    this.deferCalculationsWhenApproachingLimits(roll, unprocessedCalcItems.values());
     this.handleFullRecalculators(roll);
 
     return recordsToUpdate.values();
   }
 
-  private void deferCalculationsWhenApproachingLimits(RollupAsyncProcessor roll, List<SObject> unprocessedCalcItems) {
-    if (unprocessedCalcItems.isEmpty() == false) {
-      roll.calcItems = unprocessedCalcItems;
-      this.addProcessorToDeferredRollups(roll);
-    }
-  }
-
   private void populateReparentedItems(RollupAsyncProcessor roll, List<SObject> localCalcItems, Map<String, List<SObject>> oldLookupItems) {
-    if (roll.oldCalcItems?.isEmpty() == true || this.isEmptyReparentingSet(roll.op)) {
+    if (roll.oldCalcItems?.isEmpty() != false || this.isEmptyReparentingSet(roll.op)) {
       return;
     }
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
