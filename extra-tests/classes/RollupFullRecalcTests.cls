@@ -1775,6 +1775,92 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void multipleParentRollupsMultipleBatchesStoreStateProperly() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
+    Account parentA = [SELECT Id FROM Account];
+    Individual parentB = new Individual(LastName = 'Parent B');
+    Individual unrelatedParent = new Individual(LastName = 'Unrelated');
+    Opportunity parentC = new Opportunity(Name = 'Parent C', StageName = 'Test', CloseDate = System.today());
+    insert new List<SObject>{ parentB, parentC, unrelatedParent };
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = parentA.Id, PreferenceRank = 1, Name = 'One A', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentB.Id, PreferenceRank = 1, Name = 'One B', UsageType = '1'),
+      new ContactPointAddress(ParentId = unrelatedParent.Id, PreferenceRank = 1, Name = parentC.Id, UsageType = '1'),
+      new ContactPointAddress(ParentId = parentA.Id, PreferenceRank = 2, Name = 'Two A', UsageType = '1'),
+      new ContactPointAddress(ParentId = parentB.Id, PreferenceRank = 8, Name = 'Two B', UsageType = '1'),
+      new ContactPointAddress(ParentId = unrelatedParent.Id, PreferenceRank = 7, Name = parentC.Id, UsageType = '1'),
+      new ContactPointAddress(ParentId = parentA.Id, PreferenceRank = 3, Name = 'Three A', UsageType = '2'),
+      new ContactPointAddress(ParentId = parentB.Id, PreferenceRank = 3, Name = 'Three B', UsageType = '2'),
+      new ContactPointAddress(ParentId = unrelatedParent.Id, PreferenceRank = 2, Name = parentC.Id, UsageType = '2')
+    };
+    insert cpas;
+
+    RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
+      'SELECT Id, PreferenceRank, ParentId, Name FROM ContactPointAddress ORDER BY ParentId, Name',
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          RollupOperation__c = 'SUM'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Individual',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
+          RollupOperation__c = 'SUM'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'Name',
+          LookupObject__c = 'Opportunity',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Amount',
+          RollupOperation__c = 'MAX'
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'UsageType',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'Sic',
+          RollupOperation__c = 'SOME',
+          CalcItemWhereClause__c = 'PreferenceRank = 2'
+        )
+      },
+      ContactPointAddress.SObjectType,
+      new Set<String>(),
+      null
+    );
+
+    Test.startTest();
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[0], cpas[1], cpas[2] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[3], cpas[4], cpas[5] });
+    fullRecalc.execute(null, new List<ContactPointAddress>{ cpas[6], cpas[7], cpas[8] });
+    Test.stopTest();
+
+    parentA = [SELECT AnnualRevenue, Description, NumberOfEmployees, Name, Sic FROM Account WHERE Id = :parentA.Id];
+    System.assertEquals(6, parentA.AnnualRevenue);
+    System.assertEquals('true', parentA.Sic);
+    parentB = [SELECT ConsumerCreditScore FROM Individual WHERE Id = :parentB.Id];
+    System.assertEquals(12, parentB.ConsumerCreditScore);
+    parentC = [SELECT Amount FROM Opportunity WHERE Id = :parentC.Id];
+    System.assertEquals(7, parentC.Amount);
+
+    System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
+  }
+
+  @IsTest
   static void shouldFullRecalcWithInWhereClauses() {
     RollupParentResetProcessor.maxQueryRows = 0;
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);

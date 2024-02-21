@@ -1865,6 +1865,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
           FROM Rollup__mdt
           WHERE RollupControl__r.ShouldAbortRun__c = FALSE
+          ORDER BY CalcItem__c, LookupObject__c
         ];
         // do the transforms
         for (Rollup__mdt meta : cachedMetadata) {

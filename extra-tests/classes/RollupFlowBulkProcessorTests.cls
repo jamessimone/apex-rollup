@@ -370,6 +370,7 @@ private class RollupFlowBulkProcessorTests {
         RollupFieldOnLookupObject__c = 'AboutMe'
       )
     };
+    Rollup.onlyUseMockMetadata = true;
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Amount = 5, Id = RollupTestUtils.createId(Opportunity.SObjectType)) };
     input.rollupContext = 'INSERT';

@@ -89,16 +89,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  private static Map<Integer, Map<String, CalcItemBag>> CACHED_CALC_ITEM_LOOKUPS {
-    get {
-      if (CACHED_CALC_ITEM_LOOKUPS == null) {
-        CACHED_CALC_ITEM_LOOKUPS = new Map<Integer, Map<String, CalcItemBag>>();
-      }
-      return CACHED_CALC_ITEM_LOOKUPS;
-    }
-    set;
-  }
-
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     return new QueueableProcessor(invokePoint, calcItems, oldCalcItems);
   }
@@ -148,6 +138,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isFullRecalc = innerRollup.isFullRecalc;
     this.isCDCUpdate = innerRollup.isCDCUpdate;
     this.fullRecalcProcessor = innerRollup.fullRecalcProcessor;
+    this.fullRecalcProcessor?.previouslyResetParents.clear();
     this.stackDepth = innerRollup.stackDepth;
     this.calcItemReplacer = innerRollup.calcItemReplacer;
     this.lookupItems = innerRollup.lookupItems;
@@ -354,7 +345,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // swap off on which async process is running to achieve infinite scaling
     Boolean canEnqueue = this.getCanEnqueue();
     RollupAsyncProcessor roll;
-    if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor && (System.isBatch() == false || this.rollups[0].isBatch() == false)) {
+    if (
+      this.rollups.size() == 1 &&
+      this.rollups[0] instanceof RollupFullRecalcProcessor &&
+      (System.isBatch() == false || this.isBatch() == false && this.rollups[0].isBatch() == false)
+    ) {
       roll = this.rollups[0];
     } else if (this instanceof RollupFullRecalcProcessor && this.isBatch() == false) {
       roll = this;
@@ -858,16 +853,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return new Map<String, CalcItemBag>();
     }
 
-    Integer cacheKey = roll.calcItems.hashCode();
-    switch on this.invokePoint {
-      when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
-        Map<String, CalcItemBag> possiblyCachedItems = CACHED_CALC_ITEM_LOOKUPS.get(cacheKey);
-        if (possiblyCachedItems != null) {
-          return possiblyCachedItems;
-        }
-      }
-    }
-
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
       if (roll.traversal == null) {
@@ -932,7 +917,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    CACHED_CALC_ITEM_LOOKUPS.put(cacheKey, lookupFieldToCalcItems);
     return lookupFieldToCalcItems;
   }
 
@@ -1002,6 +986,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isTimingOut = false;
     this.lookupObjectToUniqueFieldNames = null;
     this.calcObjectToUniqueFieldNames = null;
+    this.fullRecalcProcessor?.previouslyResetParents.clear();
 
     if (isDeferralAllowed) {
       this.rollups.clear();
@@ -1460,7 +1445,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private void cleanup() {
     RollupEvaluator.clearCache();
-    CACHED_CALC_ITEM_LOOKUPS = null;
     this.uniqueParentFields.clear();
     this.cleanupStaticVars();
     this.getCachedApexOperations().clear();
