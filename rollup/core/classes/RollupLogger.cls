@@ -25,6 +25,10 @@ global without sharing virtual class RollupLogger implements ILogger {
     private set;
   }
 
+  public static Boolean isPluginParamEnabled(String devNameOrId) {
+    return PLUGIN.getParameterInstance(devNameOrId)?.Value__c == 'true';
+  }
+
   public interface ToStringObject {
   }
 

@@ -187,7 +187,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         numberToReturn = 1;
       } else if (that.shouldSortToFront == false && this.shouldSortToFront) {
         numberToReturn = -1;
-      } else if (this.op != null && that.op != null) {
+      } else if (this.op != null && that.op != null && this.op != that.op) {
         Boolean thisDelete = this.op.name().contains('DELETE');
         Boolean thatDelete = that.op.name().contains('DELETE');
         Boolean thisUpdate = this.op.name().contains('UPDATE');
@@ -237,6 +237,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     } else {
       this.calcItems = scope;
+    }
+    if (RollupLogger.isPluginParamEnabled('ExtraDebugging')) {
+      this.logger.log('Current children', scope, LoggingLevel.INFO);
     }
 
     this.performWork();
@@ -487,6 +490,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected String startBatchProcessor() {
+    if (System.isBatch()) {
+      return new QueueableProcessor(this).startAsyncWork();
+    }
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 

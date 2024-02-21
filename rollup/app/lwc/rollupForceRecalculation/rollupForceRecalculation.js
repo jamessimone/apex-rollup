@@ -209,7 +209,7 @@ export default class RollupForceRecalculation extends LightningElement {
       let timeoutId;
       if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false && this._validateAsyncJob(jobId)) {
         // some arbitrary wait time - for a huge batch job, it could take ages to resolve
-        const waitTimeMs = 3000;
+        const waitTimeMs = 10000;
         /* eslint-disable-next-line */
         timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), waitTimeMs);
       } else {
