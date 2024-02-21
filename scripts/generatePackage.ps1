@@ -75,7 +75,7 @@ function Update-Logger-Class {
 
 function Update-SFDX-Project-JSON {
   Write-Host "Re-writing sfdx-project.json  ..."
-  ConvertTo-Json -InputObject $sfdxProjectJson -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
+  Get-SFDX-Project-JSON | ConvertTo-Json -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
   # sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
   # to run on it
   npx prettier --write $sfdxProjectJsonPath --tab-width 4 --ignore-path ..\.forceignore
