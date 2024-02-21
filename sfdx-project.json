@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Spring 24",
-            "versionNumber": "1.6.13.0",
+            "versionName": "Fixes an issue where rollups to multiple parents running in an unordered fashion could accidentally reset parents between bulk full recalc batches",
+            "versionNumber": "1.6.14.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
