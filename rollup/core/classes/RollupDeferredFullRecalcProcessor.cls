@@ -22,7 +22,7 @@ public without sharing virtual class RollupDeferredFullRecalcProcessor extends R
 
   protected List<SObject> getCalcItems() {
     if (QUERY_TO_CALC_ITEMS.containsKey(this.queryString)) {
-      this.logger.log('returning pre-queried records from cache', LoggingLevel.FINE);
+      this.logger.log('returning pre-queried records from cache', System.LoggingLevel.FINE);
       return QUERY_TO_CALC_ITEMS.get(this.queryString);
     }
     List<SObject> localCalcItems = this.preStart().get();

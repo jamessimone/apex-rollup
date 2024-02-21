@@ -224,7 +224,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
-    this.logger.log('starting batch chunk', this, LoggingLevel.INFO);
+    this.logger.log('starting batch chunk', this, System.LoggingLevel.INFO);
 
     if (this.getTypeName() == RollupAsyncProcessor.class.getName()) {
       this.lookupItems = scope;
@@ -240,7 +240,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     this.performWork();
-    this.logger.log('batch chunk end', LoggingLevel.INFO);
+    this.logger.log('batch chunk end', System.LoggingLevel.INFO);
     this.logger.save();
   }
 
@@ -251,7 +251,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (context == null) {
       context = new AdditionalContext(this.getNoProcessId());
     }
-    this.logger.log('finished successfully', context, LoggingLevel.INFO);
+    this.logger.log('finished successfully', context, System.LoggingLevel.INFO);
     this.logger.save();
   }
 
@@ -478,7 +478,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected virtual String beginAsyncRollup() {
     this.isTimingOut = false;
-    this.logger.log('about to start for ' + this.getTypeName(), this, LoggingLevel.INFO);
+    this.logger.log('about to start for ' + this.getTypeName(), this, System.LoggingLevel.INFO);
     return this.startAsyncWork();
   }
 
@@ -617,7 +617,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
         } else {
-          this.logger.log(this.getTypeName() + ': Populating unexpected full recalc for ' + outstandingItemCount + ' items', LoggingLevel.INFO);
+          this.logger.log(this.getTypeName() + ': Populating unexpected full recalc for ' + outstandingItemCount + ' items', System.LoggingLevel.INFO);
           RollupFullRecalcProcessor fullBatchProcessor = new RollupFullBatchRecalculator(
             query.substringBeforeLast('\nLIMIT'),
             this.invokePoint,
@@ -689,7 +689,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
 
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
-      this.logger.log('starting rollup for:', roll, LoggingLevel.INFO);
+      this.logger.log('starting rollup for:', roll, System.LoggingLevel.INFO);
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
@@ -798,7 +798,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Boolean getIsTimingOut(RollupControl__mdt control) {
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
-      this.logger.log(this.getTypeName() + ': starting to time out ...', LoggingLevel.WARN);
+      this.logger.log(this.getTypeName() + ': starting to time out ...', System.LoggingLevel.WARN);
       this.isTimingOut = true;
     }
     return this.isTimingOut;
@@ -977,7 +977,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         isAllowedToContinue +
         ' with stackDepth: ' +
         this.stackDepth,
-      LoggingLevel.INFO
+      System.LoggingLevel.WARN
     );
 
     Boolean isDeferralAllowed = this.getIsDeferralAllowed() && isAllowedToContinue;
@@ -992,13 +992,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.rollups.clear();
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
-      this.logger.log('deferred rollups remaining:', this.rollups, LoggingLevel.INFO);
+      this.logger.log('deferred rollups remaining:', this.rollups, System.LoggingLevel.WARN);
       this.getAsyncRollup()?.beginAsyncRollup();
       // for synchronous runs with a timeout, we need to ensure this.rollups is re-cleared here
       // to prevent re-running through the same logic in runCalc()
       this.rollups.clear();
     } else if (this.rollups.isEmpty() == false) {
-      this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, LoggingLevel.ERROR);
+      this.logger.log('deferral was explicitly disallowed for rollups:', this.rollups, System.LoggingLevel.ERROR);
       this.deferredRollups.clear();
     }
   }
@@ -1402,7 +1402,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
         oldLookupsRollup.calcItems = reparentedCalcItems;
         oldLookupsRollup.oldCalcItems = roll.oldCalcItems;
-        this.logger.log('reparenting operation', oldLookupsRollup, LoggingLevel.DEBUG);
+        this.logger.log('reparenting operation', oldLookupsRollup, System.LoggingLevel.DEBUG);
         CalcItemBag bag = new CalcItemBag(reparentedCalcItems);
         bag.hasQueriedForAdditionalItems = true;
         calc = this.getCalculator(calc, oldLookupsRollup, bag, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
@@ -1421,7 +1421,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<SObject> localCalcItems
   ) {
     String logKey = parentUpdateType.name().toLowerCase();
-    this.logger.log(logKey + ' record prior to rolling up:', lookupRecord, LoggingLevel.DEBUG);
+    this.logger.log(logKey + ' record prior to rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
     Object newVal = calc.getReturnValue();
     if (this.rollupControl.ShouldSkipResettingParentFields__c == true && ((localCalcItems.isEmpty() == false && newVal == null) || localCalcItems.isEmpty())) {
       newVal = priorVal;
@@ -1431,7 +1431,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     recordsToUpdate.put(key, lookupRecord);
-    this.logger.log(logKey + ' record after rolling up:', lookupRecord, LoggingLevel.DEBUG);
+    this.logger.log(logKey + ' record after rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
   }
 
   private void cleanup() {

@@ -344,7 +344,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   global virtual String runCalc() {
-    this.logger.log('no-op!', this.getTypeName(), LoggingLevel.INFO);
+    this.logger.log('no-op!', this.getTypeName(), System.LoggingLevel.INFO);
     return 'no-op';
   }
 
@@ -531,7 +531,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     updateLoggingControl(matchingMetadata);
-    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, LoggingLevel.INFO);
+    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, System.LoggingLevel.INFO);
 
     String delimiter = ' ||| ';
     String possibleParentId;
@@ -779,7 +779,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
 
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
-      RollupLogger.Instance.log('processing invocable data:', flowInput, LoggingLevel.INFO);
+      RollupLogger.Instance.log('processing invocable data:', flowInput, System.LoggingLevel.INFO);
 
       if (
         flowInput.parentRecordIdForEmptyChildrenCollections != null &&
@@ -882,7 +882,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             roll.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
           }
         }
-        RollupLogger.Instance.log(logMessage, rollupConductor, LoggingLevel.INFO);
+        RollupLogger.Instance.log(logMessage, rollupConductor, System.LoggingLevel.INFO);
       }
     }
 
@@ -1907,9 +1907,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         control.IsRollupLoggingEnabled__c = true;
         RollupLogger.Instance.updateRollupControl(control);
       }
-      RollupLogger.Instance.log('exceeded limits:', limitTester, LoggingLevel.WARN);
+      RollupLogger.Instance.log('exceeded limits:', limitTester, System.LoggingLevel.WARN);
       if (isLoggingCurrentlyDisabled) {
-        RollupLogger.Instance.log('disabling logging again', LoggingLevel.INFO);
+        RollupLogger.Instance.log('disabling logging again', System.LoggingLevel.INFO);
         control.isRollupLoggingEnabled__c = false;
         RollupLogger.Instance.updateRollupControl(control);
       }
@@ -2259,7 +2259,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
       }
       fullRecalc.queryCount = wrappedMeta.recordCount;
-      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, LoggingLevel.INFO);
+      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, System.LoggingLevel.INFO);
       fullRecalcRollups.add(fullRecalc);
       CACHED_FULL_RECALCS.add(fullRecalc);
     }
@@ -2467,7 +2467,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static void logAndThrowFlowException(Exception ex, String logString) {
-    RollupLogger.Instance.log(logString + ':', ex, LoggingLevel.ERROR);
+    RollupLogger.Instance.log(logString + ':', ex, System.LoggingLevel.ERROR);
     RollupLogger.Instance.save();
     throw ex;
   }

@@ -68,7 +68,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     try {
       countAmount = Database.countQueryWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
     } catch (Exception ex) {
-      RollupLogger.Instance.log('an error occurred while trying to get count query', ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('an error occurred while trying to get count query', ex, System.LoggingLevel.WARN);
       // not all count queries are valid, particularly those with polymorphic fields referencing parent fields
       // return a sentinel value instead, to be checked for downstream
       countAmount = SENTINEL_COUNT_VALUE;
@@ -82,7 +82,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   private void createQueryLog(String message) {
-    RollupLogger.Instance.Log(message, this, LoggingLevel.DEBUG);
+    RollupLogger.Instance.Log(message, this, System.LoggingLevel.DEBUG);
   }
 
   private System.AccessLevel transformPermissionLevel(RunAsMode currentRunAs) {

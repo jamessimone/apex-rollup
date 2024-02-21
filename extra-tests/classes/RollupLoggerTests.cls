@@ -9,10 +9,10 @@ private class RollupLoggerTests {
   static void shouldLogUsingCustomLoggerWhenSupplied() {
     setup();
 
-    RollupLogger.Instance.log('hi', LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('hi', System.LoggingLevel.DEBUG);
 
     System.assertEquals('hi', locallogString);
-    System.assertEquals(LoggingLevel.DEBUG, localLogLevel);
+    System.assertEquals(System.LoggingLevel.DEBUG, localLogLevel);
   }
 
   @IsTest
@@ -20,11 +20,11 @@ private class RollupLoggerTests {
     setup();
     Account acc = new Account();
 
-    RollupLogger.Instance.log('hello', acc, LoggingLevel.FINE);
+    RollupLogger.Instance.log('hello', acc, System.LoggingLevel.FINE);
 
     System.assertEquals('hello', locallogString);
     System.assertEquals(acc, localLogObject);
-    System.assertEquals(LoggingLevel.FINE, localLogLevel);
+    System.assertEquals(System.LoggingLevel.FINE, localLogLevel);
   }
 
   @IsTest
@@ -61,15 +61,15 @@ private class RollupLoggerTests {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = false);
     RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ControlUpdatingLogger.class.getName()) };
 
-    RollupLogger.Instance.log('Should not be logged', LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('Should not be logged', System.LoggingLevel.DEBUG);
     System.assertEquals('logging isn\'t enabled, no further output', localLogString);
 
     RollupLogger.Instance.updateRollupControl(new RollupControl__mdt(IsRollupLoggingEnabled__c = true));
     String expectedLogMessage = 'hi';
-    RollupLogger.Instance.log(expectedLogMessage, LoggingLevel.INFO);
+    RollupLogger.Instance.log(expectedLogMessage, System.LoggingLevel.INFO);
 
     System.assertEquals(expectedLogMessage, localLogString);
-    System.assertEquals(LoggingLevel.INFO, localLogLevel);
+    System.assertEquals(System.LoggingLevel.INFO, localLogLevel);
   }
 
   private static void setup() {
@@ -79,11 +79,11 @@ private class RollupLoggerTests {
 
   // Type.forName requires public visibility
   public class ExampleLogger implements RollupLogger.ILogger {
-    public void log(String logString, LoggingLevel logLevel) {
+    public void log(String logString, System.LoggingLevel logLevel) {
       locallogString = logString;
       localLogLevel = logLevel;
     }
-    public void log(String logString, Object logObject, LoggingLevel logLevel) {
+    public void log(String logString, Object logObject, System.LoggingLevel logLevel) {
       locallogString = logString;
       localLogObject = logObject;
       localLogLevel = logLevel;

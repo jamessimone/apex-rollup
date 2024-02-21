@@ -116,7 +116,7 @@ public without sharing class RollupQueryBuilder {
         }
       }
     } catch (Exception ex) {
-      RollupLogger.Instance.log('exception occurred while converting polymorphic where clause:', ex, LoggingLevel.WARN);
+      RollupLogger.Instance.log('exception occurred while converting polymorphic where clause:', ex, System.LoggingLevel.WARN);
     }
     return optionalWhereClause;
   }

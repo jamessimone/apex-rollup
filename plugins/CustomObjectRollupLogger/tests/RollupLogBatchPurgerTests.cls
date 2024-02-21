@@ -9,7 +9,7 @@ private class RollupLogBatchPurgerTests {
     List<RollupLog__c> logs = new List<RollupLog__c>{ log, logWithoutChildren };
     insert logs;
 
-    RollupLogEntry__c entry = new RollupLogEntry__c(LoggingLevel__c = 'DEBUG', RollupLog__c = log.Id);
+    RollupLogEntry__c entry = new RollupLogEntry__c(LoggingLevel__c = System.LoggingLevel.DEBUG.name(), RollupLog__c = log.Id);
     insert entry;
     // UTC time can lead to some weird Datetime issues with adding simply a single day
     // Let's go with 2 to make things completely solid

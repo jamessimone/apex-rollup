@@ -1020,8 +1020,8 @@ You have several options for custom logging plugins for Rollup (all Rollup Plugi
 public class RollupLogger {
 
   public interface ILogger {
-    void log(String logString, LoggingLevel logLevel);
-    void log(String logString, Object logObject, LoggingLevel logLevel);
+    void log(String logString, System.LoggingLevel logLevel);
+    void log(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
   }
 }
@@ -1030,7 +1030,7 @@ public class RollupLogger {
 
 You can implement `RollupLogger.ILogger` with your own code and specify that class name in the `Rollup Plugin` CMDT records. _Alternatively_, you can also _extend_ `RollupLogger` itself and override its own logging methods; this gives you the benefit of built-in message formatting through the use of the protected method `getLogStringFromObject`, found in `RollupLogger.cls`. For more info, refer to that class and its methods. Either way, the API name for the CMDT record **must** include `Logger` in order to work (eg: `RollupCustomObjectLogger`, `RollupNebulaLoggerAdapter`).
 
-You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Level` to fine-tune the logging level you'd like to use when making use of Apex debug logs (from method #3, above). Valid entries conform to the `LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least. INFO will provide a high-level overview, while DEBUG will contain data about individual parent records being rolled up. The granularity of the data logged will continue to get finer as you move towards FINEST as the logging level.
+You can use the included `Rollup Plugin Parameter` CMDT record `Logging Debug Level` to fine-tune the logging level you'd like to use when making use of Apex debug logs (from method #3, above). Valid entries conform to the `System.LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least. INFO will provide a high-level overview, while DEBUG will contain data about individual parent records being rolled up. The granularity of the data logged will continue to get finer as you move towards FINEST as the logging level.
 
 ### Other Rollup Plugins
 

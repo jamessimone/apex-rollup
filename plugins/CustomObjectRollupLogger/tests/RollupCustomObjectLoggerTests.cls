@@ -4,7 +4,7 @@ private class RollupCustomObjectLoggerTests {
   static void shouldSaveToRollupLog() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
-    rollupCustomLogger.log('Test log', LoggingLevel.DEBUG);
+    rollupCustomLogger.log('Test log', System.LoggingLevel.DEBUG);
     rollupCustomLogger.log('Second test log with record', new Account(), LoggingLevel.ERROR);
 
     Test.startTest();
@@ -22,10 +22,10 @@ private class RollupCustomObjectLoggerTests {
 
     // Rollup Log Entries
     System.assertEquals(2, firstEntry.RollupLogEntry__r.size());
-    System.assertEquals(LoggingLevel.DEBUG.name(), firstEntry.RollupLogEntry__r[0].LoggingLevel__c);
+    System.assertEquals(System.LoggingLevel.DEBUG.name(), firstEntry.RollupLogEntry__r[0].LoggingLevel__c);
     System.assertEquals('Rollup ' + RollupLogger.CURRENT_VERSION_NUMBER + ': Test log', firstEntry.RollupLogEntry__r[0].Message__c);
 
-    System.assertEquals(LoggingLevel.ERROR.name(), firstEntry.RollupLogEntry__r[1].LoggingLevel__c);
+    System.assertEquals(System.LoggingLevel.ERROR.name(), firstEntry.RollupLogEntry__r[1].LoggingLevel__c);
     System.assertEquals(true, firstEntry.RollupLogEntry__r[1].Message__c.contains('Second test log with record' + '\n' + JSON.serializePretty(new Account())));
   }
 
@@ -36,7 +36,7 @@ private class RollupCustomObjectLoggerTests {
     // this test is to ensure a RollupLogEntry__c is created
     RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
     Integer maximumLength = RollupLogEvent__e.Message__c.getDescribe().getLength();
-    rollupCustomLogger.log('1'.repeat(maximumLength + 1), LoggingLevel.ERROR);
+    rollupCustomLogger.log('1'.repeat(maximumLength + 1), System.LoggingLevel.ERROR);
 
     Test.startTest();
     rollupCustomLogger.save();
@@ -51,10 +51,10 @@ private class RollupCustomObjectLoggerTests {
   static void shouldNotLogBelowSpecifiedLoggingLevel() {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     // override whatever's included in the CMDT to ensure we arrive at this value deterministically
-    RollupPlugin.parameterMock = new RollupPluginParameter__mdt(Value__c = LoggingLevel.DEBUG.name());
+    RollupPlugin.parameterMock = new RollupPluginParameter__mdt(Value__c = System.LoggingLevel.DEBUG.name());
 
     RollupCustomObjectLogger rollupCustomLogger = new RollupCustomObjectLogger();
-    rollupCustomLogger.log('Test message', LoggingLevel.FINE);
+    rollupCustomLogger.log('Test message', System.LoggingLevel.FINE);
 
     Test.startTest();
     rollupCustomLogger.save();
@@ -68,7 +68,7 @@ private class RollupCustomObjectLoggerTests {
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupPlugin.pluginMocks.add(new RollupPlugin__mdt(DeveloperName = RollupCustomObjectLogger.class.getName()));
     // load a valid message into the buffer prior to disabling logging again
-    RollupLogger.Instance.log('Test message', LoggingLevel.ERROR);
+    RollupLogger.Instance.log('Test message', System.LoggingLevel.ERROR);
     RollupLogger.Instance.updateRollupControl(new RollupControl__mdt(IsRollupLoggingEnabled__c = false));
 
     Test.startTest();

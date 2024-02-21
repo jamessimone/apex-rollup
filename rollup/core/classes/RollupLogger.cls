@@ -1,8 +1,8 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.6.14';
-  private static final LoggingLevel FALLBACK_LOGGING_LEVEL = LoggingLevel.DEBUG;
+  private static final String CURRENT_VERSION_NUMBER = 'v1.6.15-beta';
+  private static final System.LoggingLevel FALLBACK_LOGGING_LEVEL = System.LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
   private final System.LoggingLevel currentLoggingLevel;
@@ -29,17 +29,17 @@ global without sharing virtual class RollupLogger implements ILogger {
   }
 
   public interface ILogger {
-    void log(String logString, LoggingLevel logLevel);
-    void log(String logString, Object logObject, LoggingLevel logLevel);
+    void log(String logString, System.LoggingLevel logLevel);
+    void log(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
     ILogger updateRollupControl(RollupControl__mdt control);
   }
 
-  public void log(String logString, LoggingLevel logLevel) {
+  public void log(String logString, System.LoggingLevel logLevel) {
     this.log(logString, null, logLevel);
   }
 
-  public virtual void log(String logString, Object logObject, LoggingLevel logLevel) {
+  public virtual void log(String logString, Object logObject, System.LoggingLevel logLevel) {
     if (logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
     }
@@ -58,7 +58,7 @@ global without sharing virtual class RollupLogger implements ILogger {
   }
 
   @SuppressWarnings('PMD.AvoidDebugStatements')
-  protected virtual void innerLog(String logString, Object logObject, LoggingLevel logLevel) {
+  protected virtual void innerLog(String logString, Object logObject, System.LoggingLevel logLevel) {
     String appended = this.getLogStringFromObject(logObject);
     List<String> messages = new List<String>{ logString };
     if (String.isNotBlank(appended)) {
@@ -82,12 +82,12 @@ global without sharing virtual class RollupLogger implements ILogger {
     return 'LoggingDebugLevel';
   }
 
-  protected LoggingLevel getLogLevel() {
-    LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
+  protected System.LoggingLevel getLogLevel() {
+    System.LoggingLevel toReturn = FALLBACK_LOGGING_LEVEL;
     RollupPluginParameter__mdt loggingLevelParamater = this.getLoggingLevelParameter();
     String logLevelNameToSearch = loggingLevelParamater != null ? loggingLevelParamater.Value__c : toReturn.name();
     try {
-      toReturn = LoggingLevel.valueOf(logLevelNameToSearch);
+      toReturn = System.LoggingLevel.valueOf(logLevelNameToSearch);
     } catch (Exception ex) {
       toReturn = FALLBACK_LOGGING_LEVEL;
     }
@@ -154,7 +154,7 @@ global without sharing virtual class RollupLogger implements ILogger {
 
     ILogger combinedLogger = new CombinedLogger(loggers, Rollup.getDefaultControl());
     for (String potentialError : potentialErrorMessages) {
-      combinedLogger.log(potentialError, LoggingLevel.WARN);
+      combinedLogger.log(potentialError, System.LoggingLevel.WARN);
     }
 
     return combinedLogger;
@@ -171,15 +171,15 @@ global without sharing virtual class RollupLogger implements ILogger {
       this.control = control;
     }
 
-    public void log(String logString, LoggingLevel logLevel) {
+    public void log(String logString, System.LoggingLevel logLevel) {
       this.log(logString, null, logLevel);
     }
 
-    public void log(String logString, Object logObject, LoggingLevel logLevel) {
+    public void log(String logString, Object logObject, System.LoggingLevel logLevel) {
       if (this.control.IsRollupLoggingEnabled__c == false && this.hasDisabledMessageBeenLogged == false) {
         this.hasDisabledMessageBeenLogged = true;
         this.control.IsRollupLoggingEnabled__c = true;
-        this.log('logging isn\'t enabled, no further output', LoggingLevel.WARN);
+        this.log('logging isn\'t enabled, no further output', System.LoggingLevel.WARN);
         this.control.IsRollupLoggingEnabled__c = false;
       } else if (this.control.IsRollupLoggingEnabled__c) {
         for (ILogger logger : this.loggers) {
@@ -198,7 +198,7 @@ global without sharing virtual class RollupLogger implements ILogger {
 
     public CombinedLogger updateRollupControl(RollupControl__mdt control) {
       this.control = control;
-      this.log('updating control record', control, LoggingLevel.INFO);
+      this.log('updating control record', control, System.LoggingLevel.INFO);
       return this;
     }
   }

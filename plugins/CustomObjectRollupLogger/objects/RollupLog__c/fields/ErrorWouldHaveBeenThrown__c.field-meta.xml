@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ErrorWouldHaveBeenThrown__c</fullName>
     <defaultValue>false</defaultValue>
-    <description>If Rollup logs an otherwise fatal exception (with LoggingLevel.ERROR), this field is checked off</description>
+    <description>If Rollup logs an otherwise fatal exception (with System.LoggingLevel.ERROR), this field is checked off</description>
     <externalId>false</externalId>
-    <inlineHelpText>If Rollup logs an otherwise fatal exception (with LoggingLevel.ERROR), this field is checked off</inlineHelpText>
+    <inlineHelpText>If Rollup logs an otherwise fatal exception (with System.LoggingLevel.ERROR), this field is checked off</inlineHelpText>
     <label>Error Would Have Been Thrown</label>
     <trackHistory>false</trackHistory>
     <trackTrending>false</trackTrending>

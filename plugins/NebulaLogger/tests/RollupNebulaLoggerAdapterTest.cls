@@ -6,7 +6,7 @@ private class RollupNebulaLoggerAdapterTest {
     String testString = 'Test String';
 
     Test.startTest();
-    RollupLogger.Instance.log(testString, new Account(), LoggingLevel.INFO);
+    RollupLogger.Instance.log(testString, new Account(), System.LoggingLevel.INFO);
     RollupLogger.Instance.save();
     Test.stopTest();
 
