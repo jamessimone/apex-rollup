@@ -246,11 +246,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     BatchEndSnapshot snapshot = new BatchEndSnapshot();
     snapshot.currentHeapUsage = Limits.getHeapSize();
     snapshot.previouslyResetParentsSize = this.previouslyResetParents.size();
-    this.logger.log(
-      'batch chunk end',
-      snapshot,
-      System.LoggingLevel.INFO
-    );
+    this.logger.log('batch chunk end', snapshot, System.LoggingLevel.INFO);
     this.logger.save();
   }
 
@@ -507,9 +503,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected String startBatchProcessor() {
-    if (System.isBatch()) {
-      return new QueueableProcessor(this).startAsyncWork();
-    }
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
@@ -716,6 +709,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
     }
 
+    // full batch recalc housekeeping - allow next batch chunk to reference previously reset parents
+    // this might look inefficient - and it probably is! - but this particular loop needs to happen
+    // after ALL of the rollups in the loop above have completed
+    for (SObject lookupRecord : updatedLookupRecords.values()) {
+      for (RollupAsyncProcessor roll : rollups) {
+        if (lookupRecord.getSObjectType() == roll.lookupObj) {
+          this.storeParentResetField(roll.lookupFieldOnLookupObject, lookupRecord);
+        }
+      }
+    }
+
     if (this.isTimingOut) {
       this.getDML().forceSyncUpdate();
     }
@@ -789,7 +793,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return resetVal;
   }
 
-  private void storeParentResetField(String lookupField, SObject parent, String rollupField) {
+  private void storeParentResetField(Schema.SObjectField lookupField, SObject parent) {
     String resetKey = String.valueOf(parent.get(lookupField));
     if (resetKey != null) {
       this.previouslyResetParents.add(resetKey);
@@ -1239,7 +1243,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       for (SObject lookupItem : lookupItems) {
         if (lookupItem.getSObjectType() == roll.lookupObj) {
           recordsToUpdate.put(String.valueOf(lookupItem.get(roll.lookupFieldOnLookupObject)), lookupItem);
-          this.storeParentResetField('' + roll.lookupFieldOnLookupObject, lookupItem, '' + roll.opFieldOnLookupObject);
+          this.storeParentResetField(roll.lookupFieldOnLookupObject, lookupItem);
         }
       }
       return recordsToUpdate.values();
@@ -1251,6 +1255,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (roll.isFullRecalc && roll.op.name().contains('DELETE')) {
       rollupOp = this.getOpMap().get(roll.op.name().substringAfter('_'));
     }
+    Object fallbackValue = this.getDefaultValue(roll.metadata);
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
@@ -1276,14 +1281,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           Object priorVal = lookupRecord.get(roll.opFieldOnLookupObject);
           Object priorValToUse = roll.isFullRecalc &&
             this.parentRollupFieldHasBeenReset('' + roll.lookupFieldOnLookupObject, lookupRecord, '' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false
-            ? this.getDefaultValue(roll.metadata)
+            ? fallbackValue
             : priorVal;
           calc = this.getCalculator(rollupOp, calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }
       } else {
         this.logger.log('About to reset parent field for', lookupRecord, System.LoggingLevel.DEBUG);
-        this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, this.getDefaultValue(roll.metadata));
+        this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, fallbackValue);
       }
     }
 
@@ -1437,7 +1442,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     recordsToUpdate.put(key, lookupRecord);
-    this.previouslyResetParents.add(String.valueOf(lookupRecord.get(roll.lookupFieldOnLookupObject)));
     this.logger.log(logKey + ' record after rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
   }
 
