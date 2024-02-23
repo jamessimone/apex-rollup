@@ -41,7 +41,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
     if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true) {
-      this.logger.log('Parent reset processor no-op', LoggingLevel.INFO);
+      this.logger.log('Parent reset processor no-op', System.LoggingLevel.INFO);
       return processId;
     }
     Boolean isOverLimit = this.getNumberOfItems() > maxQueryRows;
@@ -63,7 +63,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     if (parentItems.isEmpty()) {
       return;
     }
-    this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', LoggingLevel.INFO);
+    this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', System.LoggingLevel.INFO);
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
     for (SObject parentItem : parentItems) {
       for (Rollup__mdt rollupMeta : this.rollupMetas) {

@@ -1749,30 +1749,30 @@ private class RollupTests {
   static void shouldPassRecalcValueForConcatDistinct() {
     rollupOp = Rollup.Op.CONCAT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
-    RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Hi', PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.concatDistinctFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a')
-      .runCalc();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Description, Account.SObjectType, 'a').runCalc();
     Test.stopTest();
 
     System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
+    System.assertEquals('a', mock.Records.get(0).get(Account.Description));
   }
 
   @IsTest
   static void shouldPassRecalcValueForConcat() {
     rollupOp = Rollup.Op.CONCAT;
     RollupCalculator.Factory = new FactoryMock();
-    RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Hi', PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.concatFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType, 'a')
-      .runCalc();
+    Rollup.concatFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.Description, Account.SObjectType, 'a').runCalc();
     Test.stopTest();
 
     System.assertEquals('a', testMetadata.FullRecalculationDefaultStringValue__c);
+    System.assertEquals('a', mock.Records.get(0).get(Account.Description));
   }
 
   @IsTest

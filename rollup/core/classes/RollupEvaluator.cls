@@ -126,7 +126,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
       }
-      addLog(this, matches, calcItem, LoggingLevel.FINEST);
+      addLog(this, matches, calcItem, System.LoggingLevel.FINEST);
       return matches;
     }
 
@@ -240,8 +240,8 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       this.calcItemType = calcItemSObjectType;
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);
       this.createConditions(calcItemSObjectType, whereClause);
-      RollupLogger.Instance.log('where clause for eval: ' + this.whereClause, LoggingLevel.FINER);
-      RollupLogger.Instance.log('conditionals', this.whereConditions, LoggingLevel.FINER);
+      RollupLogger.Instance.log('where clause for eval: ' + this.whereClause, System.LoggingLevel.FINER);
+      RollupLogger.Instance.log('conditionals', this.whereConditions, System.LoggingLevel.FINER);
     }
 
     public override String toString() {
@@ -296,7 +296,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       try {
         this.whereConditions.addAll(this.recursivelyCreateConditions(localWhereClause));
       } catch (Exception ex) {
-        RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, LoggingLevel.ERROR);
+        RollupLogger.Instance.log('an error occurred in RollupEvaluator:', ex, System.LoggingLevel.ERROR);
         RollupLogger.Instance.save();
         throw new IllegalArgumentException(
           'Where clause entered incorrectly: ' + whereClause + '\nException: ' + ex.getMessage() + '\n' + ex.getStackTraceString()
@@ -870,7 +870,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     return relationshipField.endsWith('__r') ? relationshipField.substringBeforeLast('__r') + '__c' : relationshipField + 'Id';
   }
 
-  private static void addLog(RollupLogger.ToStringObject clazz, Boolean matches, Object item, LoggingLevel logLevel) {
+  private static void addLog(RollupLogger.ToStringObject clazz, Boolean matches, Object item, System.LoggingLevel logLevel) {
     if (matches == false) {
       RollupLogger.Instance.log('Removing non-match for: ' + item, clazz, logLevel);
     }

@@ -11,7 +11,7 @@ public class RollupCustomObjectLogger extends RollupLogger {
     this.rollupLogEvents.clear();
   }
 
-  protected override void innerLog(String logString, Object logObject, LoggingLevel logLevel) {
+  protected override void innerLog(String logString, Object logObject, System.LoggingLevel logLevel) {
     logString = this.getBaseLoggingMessage() + logString + '\n' + this.getLogStringFromObject(logObject);
     if (logString.length() >= MAX_LENGTH) {
       // normally we could do this with the AllowFieldTruncation property on Database.DMLOptions

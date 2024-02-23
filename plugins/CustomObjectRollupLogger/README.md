@@ -16,7 +16,7 @@ To install this plugin and get it setup within your org properly:
 2. Navigate to the Rollup Plugin CMDT (Setup -> Custom Metadata Types -> Manage Records next to Rollup Plugin -> New)
 3. (This should already be done for you, upon install, but always good to double-check) - Enter `RollupCustomObjectLogger` into the `Rollup Plugin Name` field, choose the `Org_Default` rollup control record (and ensure `Is Rollup Logging Enabled?` is checked off on that record); the label can be whatever you'd like
 
-That's it! Logs will now start flowing through on all rollup operations to `RollupLog__c`. A permission set, `Rollup Log Viewer` is included so that you can grant Rollup Log access to users other than yourself (should you be so inclined). You can use the included `Rollup Plugin Parameter` CMDT record `Custom Logging Debug Level` to fine-tune the logging level you'd like to use. Valid entries conform to the `LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.
+That's it! Logs will now start flowing through on all rollup operations to `RollupLog__c`. A permission set, `Rollup Log Viewer` is included so that you can grant Rollup Log access to users other than yourself (should you be so inclined). You can use the included `Rollup Plugin Parameter` CMDT record `Custom Logging Debug Level` to fine-tune the logging level you'd like to use. Valid entries conform to the `System.LoggingLevel` enum: ERROR, WARN, INFO, DEBUG, FINE, FINER, FINEST. FINEST provides the highest level of detail; ERROR provides the least.
 
 ---
 

@@ -60,7 +60,7 @@ global without sharing virtual class RollupSObjectUpdater {
     // typically I wouldn't advocate for the use of a guard clause here since an empty list
     // getting updated is a no-op, but the addition of the logging item is annoying ...
     if (recordsToUpdate.isEmpty() == false) {
-      RollupLogger.Instance.log('updating ' + recordsToUpdate.size() + ' records', LoggingLevel.INFO);
+      RollupLogger.Instance.log('updating ' + recordsToUpdate.size() + ' records', System.LoggingLevel.INFO);
       recordsToUpdate.sort(SORTER);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
@@ -128,7 +128,7 @@ global without sharing virtual class RollupSObjectUpdater {
 
   private void dispatch(List<SObject> updatedRecords) {
     if (updatedRecords.isEmpty() == false && this.dispatchers.isEmpty() == false) {
-      RollupLogger.Instance.log('dispatching updated records to: ' + this.getLogString(this.dispatchers), LoggingLevel.FINE);
+      RollupLogger.Instance.log('dispatching updated records to: ' + this.getLogString(this.dispatchers), System.LoggingLevel.FINE);
       for (IDispatcher dispatcher : this.dispatchers) {
         dispatcher.dispatch(updatedRecords);
       }
