@@ -581,8 +581,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
     @SuppressWarnings('PMD.EmptyCatchBlock')
     public override Boolean matches(Object o) {
       String decisionKey = this.fieldName + this.criteria + this.originalValues + o.hashCode();
-      if (CACHED_WHERE_DECISIONS.containsKey(decisionKey)) {
-        return CACHED_WHERE_DECISIONS.get(decisionKey);
+      Boolean possiblePriorMatchOutcome = CACHED_WHERE_DECISIONS.get(decisionKey);
+      if (possiblePriorMatchOutcome != null) {
+        return possiblePriorMatchOutcome;
       }
 
       SObject item = (SObject) o;

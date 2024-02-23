@@ -74,14 +74,12 @@ public without sharing class RollupLimits {
       }
     }
 
-    public transient Boolean hasExceededLimits {
-      get {
+    public Boolean hasExceededLimits() {
         return this.hasExceededQueryNumberLimit ||
           this.hasExceededQueryRowLimit ||
           this.hasExceededHeapSizeLimit ||
           this.hasExceededDMLRowLimit ||
           this.hasExceededCPUTimeLimit;
-      }
     }
 
     public Integer getRemainingQueryRows() {

@@ -13,6 +13,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<SObjectType, Set<String>> lookupObjectToUniqueFieldNames;
   private RollupRelationshipFieldFinder.Traversal traversal;
   private Boolean wasConvertedToFullRecalculation = false;
+  private Boolean isFromBatchExecute = false;
 
   protected Boolean isTimingOut = false;
   protected Boolean isProcessed = false;
@@ -37,6 +38,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private enum ParentUpdateType {
     LOOKUP,
     REPARENTED
+  }
+
+  private enum TimeoutCheckLevel {
+    AT_ROLLUP,
+    AT_PARENT
   }
 
   private Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
@@ -85,6 +91,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         uniqueParentFields = new Set<String>();
       }
       return uniqueParentFields;
+    }
+    set;
+  }
+
+  private static Map<String, Map<String, CalcItemBag>> CACHED_CALC_ITEM_BAGS {
+    get {
+      if (CACHED_CALC_ITEM_BAGS == null) {
+        CACHED_CALC_ITEM_BAGS = new Map<String, Map<String, CalcItemBag>>();
+      }
+      return CACHED_CALC_ITEM_BAGS;
     }
     set;
   }
@@ -227,6 +243,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
     this.logger.log('starting batch chunk', this, System.LoggingLevel.INFO);
+    this.isFromBatchExecute = true;
 
     if (this.getTypeName() == RollupAsyncProcessor.class.getName()) {
       this.lookupItems = scope;
@@ -243,6 +260,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     this.performWork();
 
+    this.isFromBatchExecute = false;
     BatchEndSnapshot snapshot = new BatchEndSnapshot();
     snapshot.currentHeapUsage = Limits.getHeapSize();
     snapshot.previouslyResetParentsSize = this.previouslyResetParents.size();
@@ -503,6 +521,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected String startBatchProcessor() {
+    if (this.isFromBatchExecute) {
+      return new QueueableProcessor(this).startAsyncWork();
+    }
     return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
   }
 
@@ -682,7 +703,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll.isProcessed = true;
       this.setupCalcItemData(roll);
       // for each iteration, ensure we're not operating beyond the bounds of our governor limits
-      if (this.getIsTimingOut(roll.rollupControl)) {
+      if (this.getIsTimingOut(roll.rollupControl, TimeoutCheckLevel.AT_ROLLUP)) {
         this.addProcessorToDeferredRollups(roll);
         continue;
       }
@@ -814,7 +835,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private Boolean getIsTimingOut(RollupControl__mdt control) {
+  private Boolean getIsTimingOut(RollupControl__mdt control, TimeoutCheckLevel timeCheckLevel) {
+    if (timeCheckLevel == TimeoutCheckLevel.AT_PARENT && this.fullRecalcProcessor?.isBatch() == true) {
+      return false;
+    }
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
       this.logger.log(this.getTypeName() + ': starting to time out ...', System.LoggingLevel.WARN);
       this.isTimingOut = true;
@@ -864,6 +888,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll) {
     if (roll.calcItems == null) {
       return new Map<String, CalcItemBag>();
+    }
+
+    String cacheKey = '' + roll.lookupObj + roll.lookupFieldOnCalcItem;
+    switch on this.invokePoint {
+      when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
+        Map<String, CalcItemBag> possiblyCachedItems = CACHED_CALC_ITEM_BAGS.get(cacheKey);
+        if (possiblyCachedItems != null) {
+          return possiblyCachedItems;
+        }
+      }
     }
 
     Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
@@ -929,7 +963,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
     }
-
+    CACHED_CALC_ITEM_BAGS.put(cacheKey, lookupFieldToCalcItems);
     return lookupFieldToCalcItems;
   }
 
@@ -1123,7 +1157,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        (isRunningAsync && this.getIsTimingOut(rollup.rollupControl) == false) ||
+        (isRunningAsync && this.getIsTimingOut(rollup.rollupControl, TimeoutCheckLevel.AT_ROLLUP) == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (limitTester.hasExceededOrgAsyncLimit()) {
@@ -1266,7 +1300,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = calcItemsByLookupField.get(key);
         List<SObject> localCalcItems = bag.getAll();
 
-        if (this.getIsTimingOut(this.rollupControl) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
+        if (this.getIsTimingOut(this.rollupControl, TimeoutCheckLevel.AT_PARENT) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
           this.addProcessorToDeferredRollups(roll);
           lookupItems.remove(index);
           continue;
@@ -1447,6 +1481,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private void cleanup() {
     RollupEvaluator.clearCache();
+    CACHED_CALC_ITEM_BAGS = null;
     this.uniqueParentFields.clear();
     this.cleanupStaticVars();
     this.getCachedApexOperations().clear();
