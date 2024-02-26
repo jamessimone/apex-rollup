@@ -42,44 +42,34 @@ public without sharing class RollupLimits {
   public class Tester {
     private final transient RollupControl__mdt control;
     private final transient Boolean isRunningAsync;
+    private final Boolean hasExceededOverallLimits;
+
+    public final Boolean hasExceededQueryNumberLimit;
+    public final Boolean hasExceededQueryRowLimit;
+    public final Boolean hasExceededHeapSizeLimit;
+    public final Boolean hasExceededDMLRowLimit;
+    public final Boolean hasExceededCPUTimeLimit;
+
     public Tester(RollupControl__mdt control, Boolean isRunningAsync) {
       this.control = control;
       this.isRunningAsync = isRunningAsync;
-    }
+      this.hasExceededQueryNumberLimit = this.control?.MaxNumberOfQueries__c < Limits.getQueries();
+      this.hasExceededQueryRowLimit = this.getRemainingQueryRows() < 0;
+      this.hasExceededHeapSizeLimit = (LIMIT_HEAP_SIZE - 2000000) < Limits.getHeapSize();
+      this.hasExceededDMLRowLimit = this.control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
 
-    public Boolean hasExceededQueryNumberLimit {
-      get {
-        return this.control?.MaxNumberOfQueries__c < Limits.getQueries();
-      }
-    }
-    public Boolean hasExceededQueryRowLimit {
-      get {
-        return this.getRemainingQueryRows() < 0;
-      }
-    }
-    public Boolean hasExceededHeapSizeLimit {
-      get {
-        return (LIMIT_HEAP_SIZE - 2000000) < Limits.getHeapSize();
-      }
-    }
-    public Boolean hasExceededDMLRowLimit {
-      get {
-        return this.control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
-      }
-    }
-    public Boolean hasExceededCPUTimeLimit {
-      get {
-        Integer intervalTillTimeout = this.isRunningAsync ? ASYNC_TIMEOUT_INTERVAL_MS : SYNC_TIMEOUT_INTERVAL_MS;
-        return (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
-      }
+      Integer intervalTillTimeout = this.isRunningAsync ? ASYNC_TIMEOUT_INTERVAL_MS : SYNC_TIMEOUT_INTERVAL_MS;
+      this.hasExceededCPUTimeLimit = (Limits.getCpuTime() + intervalTillTimeout) >= Limits.getLimitCpuTime();
+      this.hasExceededOverallLimits =
+        this.hasExceededQueryNumberLimit ||
+        this.hasExceededQueryRowLimit ||
+        this.hasExceededHeapSizeLimit ||
+        this.hasExceededDMLRowLimit ||
+        this.hasExceededCPUTimeLimit;
     }
 
     public Boolean hasExceededLimits() {
-        return this.hasExceededQueryNumberLimit ||
-          this.hasExceededQueryRowLimit ||
-          this.hasExceededHeapSizeLimit ||
-          this.hasExceededDMLRowLimit ||
-          this.hasExceededCPUTimeLimit;
+      return this.hasExceededOverallLimits;
     }
 
     public Integer getRemainingQueryRows() {
