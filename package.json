@@ -45,6 +45,7 @@
     "create:package:logger": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Custom Logger\"' -ReadmePath \"./plugins/CustomObjectRollupLogger/README.md\" }\"",
     "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
     "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
+    "get:project:json": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Update-SFDX-Project-JSON }\"",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "sfdx scanner:run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
     "prepare": "husky install && sfdx plugins:link ./node_modules/@salesforce/sfdx-scanner && sfdx plugins:link ./node_modules/@jongpie/sfdx-bummer-plugin",

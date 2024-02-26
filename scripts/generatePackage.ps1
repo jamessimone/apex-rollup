@@ -140,6 +140,7 @@ function Generate() {
   $stopWatch = [system.diagnostics.stopwatch]::startNew()
   $createPackageResult = npx sf package version create --package $packageName --wait 30 --code-coverage --installation-key-bypass --version-number $currentPackageVersion --json | ConvertFrom-Json
   $stopWatch.Stop()
+  Update-SFDX-Project-JSON
 
   Write-Host "Packaging took: $($stopWatch.Elapsed.TotalMilliseconds) ms" -ForegroundColor White
 
