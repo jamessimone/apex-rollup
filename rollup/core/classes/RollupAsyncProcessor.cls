@@ -243,29 +243,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
     this.logger.log('starting batch chunk', this, System.LoggingLevel.INFO);
+
     this.isFromBatchExecute = true;
-
-    if (this.getTypeName() == RollupAsyncProcessor.class.getName()) {
-      this.lookupItems = scope;
-      for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
-        RollupAsyncProcessor roll = this.rollups[index];
-        if (scope.getSObjectType() != roll.lookupObj) {
-          this.rollups.remove(index);
-          this.deferredRollups.add(roll);
-        }
-      }
-    } else {
-      this.calcItems = scope;
-    }
-
-    this.performWork();
-
+    this.innerBatchExecute(scope);
     this.isFromBatchExecute = false;
-    BatchEndSnapshot snapshot = new BatchEndSnapshot();
-    snapshot.currentHeapUsage = Limits.getHeapSize();
-    snapshot.previouslyResetParentsSize = this.previouslyResetParents.size();
-    this.logger.log('batch chunk end', snapshot, System.LoggingLevel.INFO);
-    this.logger.save();
+
+    this.executeFinish(new Map<String, String>{ 'previouslyResetParents size' => '' + this.previouslyResetParents.size() });
   }
 
   public virtual void finish(Database.BatchableContext context) {
@@ -355,6 +338,23 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected String getNoProcessId() {
     return 'No process Id';
+  }
+
+  protected virtual void innerBatchExecute(List<SObject> scope) {
+    if (this.getTypeName() == RollupAsyncProcessor.class.getName()) {
+      this.lookupItems = scope;
+      for (Integer index = this.rollups.size() - 1; index >= 0; index--) {
+        RollupAsyncProcessor roll = this.rollups[index];
+        if (scope.getSObjectType() != roll.lookupObj) {
+          this.rollups.remove(index);
+          this.deferredRollups.add(roll);
+        }
+      }
+    } else {
+      this.calcItems = scope;
+    }
+
+    this.performWork();
   }
 
   protected virtual void performWork() {
@@ -470,13 +470,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     public void execute(System.QueueableContext qc) {
+      this.logger.log('Starting queueable', this, System.LoggingLevel.INFO);
       AdditionalContext context = new AdditionalContext(qc);
       this.setCurrentJobId(context.getJobId());
       System.attachFinalizer(new RollupFinalizer());
+
       this.performWork();
+
       if (this.fullRecalcProcessor?.isBatch() != true) {
         this.finish(context);
       }
+      this.executeFinish(null);
     }
   }
 
@@ -500,14 +504,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private class BatchEndSnapshot {
-    public Long currentHeapUsage { get; set; }
-    public Long heapLimit {
+  private class RollupEndSnapshot {
+    public RollupEndSnapshot(Map<String, String> additionalContext) {
+      this.additionalContext = additionalContext;
+    }
+    public Long currentHeapUsage {
       get {
-        return 12000000;
+        return Limits.getHeapSize();
       }
     }
-    public Long previouslyResetParentsSize { get; set; }
+    public Long heapLimit {
+      get {
+        return Limits.getLimitHeapSize();
+      }
+    }
+    public Map<String, String> additionalContext { get; set; }
   }
 
   protected virtual String beginAsyncRollup() {
@@ -1300,7 +1311,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = calcItemsByLookupField.get(key);
         List<SObject> localCalcItems = bag.getAll();
 
-        if (this.getIsTimingOut(this.rollupControl, TimeoutCheckLevel.AT_PARENT) || (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)) {
+        if (
+          this.getIsTimingOut(this.rollupControl, TimeoutCheckLevel.AT_PARENT) ||
+          (this.isValidAdditionalCalcItemRetrieval(roll) && bag.hasQueriedForAdditionalItems == false)
+        ) {
           this.addProcessorToDeferredRollups(roll);
           lookupItems.remove(index);
           continue;
@@ -1485,5 +1499,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.uniqueParentFields.clear();
     this.cleanupStaticVars();
     this.getCachedApexOperations().clear();
+  }
+
+  private void executeFinish(Map<String, String> additionalContext) {
+    RollupEndSnapshot snapshot = new RollupEndSnapshot(additionalContext);
+    this.logger.log(this.getTypeName() + ' execute end', snapshot, System.LoggingLevel.INFO);
+    this.logger.save();
   }
 }
