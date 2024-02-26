@@ -847,7 +847,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean getIsTimingOut(RollupControl__mdt control, TimeoutCheckLevel timeCheckLevel) {
-    if (timeCheckLevel == TimeoutCheckLevel.AT_PARENT && this.fullRecalcProcessor?.isBatch() == true) {
+    if (timeCheckLevel == TimeoutCheckLevel.AT_PARENT && this.fullRecalcProcessor != null) {
       return false;
     }
     if (this.isTimingOut == false && hasExceededCurrentRollupLimits(control)) {
