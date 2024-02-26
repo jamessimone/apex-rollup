@@ -2226,7 +2226,7 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void addsCabooseForMultiplFullRecalcsToDifferentParents() {
+  static void addsCabooseForMultipleFullRecalcsToDifferentParents() {
     // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
     // and there are multiple instances of the full batch recalcs that are present in the list of rollups
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100, MaxLookupRowsBeforeBatching__c = 2, IsRollupLoggingEnabled__c = true);
@@ -2308,7 +2308,7 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void addsCabooseForMultiplFullRecalcsToDifferentParentsWithoutOtherRollups() {
+  static void addsCabooseForMultipleFullRecalcsToDifferentParentsWithoutOtherRollups() {
     // when there are multiple children types passed to Rollup.performBulkFullRecalc (or any other method ending in a full recalc),
     // and there are multiple instances of the full batch recalcs that are present in the list of rollups
     Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100, MaxLookupRowsBeforeBatching__c = 2, IsRollupLoggingEnabled__c = true);

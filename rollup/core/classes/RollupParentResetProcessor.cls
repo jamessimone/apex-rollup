@@ -59,7 +59,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     return processId;
   }
 
-  public override void execute(Database.BatchableContext bc, List<SObject> parentItems) {
+  protected override void innerBatchExecute(List<SObject> parentItems) {
     if (parentItems.isEmpty()) {
       return;
     }
