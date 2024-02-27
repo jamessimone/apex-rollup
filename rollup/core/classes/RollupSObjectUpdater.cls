@@ -5,7 +5,7 @@ global without sharing virtual class RollupSObjectUpdater {
   private static String PRE_AND_POST_UPDATER_NAME = 'RollupPreAndPostUpdater';
   @TestVisible
   private static final String DISPATCH_NAME = 'RollupDispatch';
-  private static final SObjectTypeSorter SORTER = new SObjectTypeSorter();
+  private static final System.Comparator<SObject> SORTER = new SObjectTypeSorter();
   @TestVisible
   private static final Map<Id, SObject> RECORDS_TO_UPDATE = new Map<Id, SObject>();
 
@@ -215,16 +215,9 @@ global without sharing virtual class RollupSObjectUpdater {
   }
 
   private class SObjectTypeSorter implements System.Comparator<SObject> {
+    private final System.Comparator<String> innerSorter = new RollupFieldInitializer.StringSorter();
     public Integer compare(SObject first, SObject second) {
-      Integer returnVal = 0;
-      String firstSObjectType = String.valueOf(first.getSObjectType());
-      String secondSObjectType = String.valueOf(second.getSObjectType());
-      if (firstSObjectType > secondSObjectType) {
-        returnVal = 1;
-      } else if (secondSObjectType > firstSObjectType) {
-        returnVal = -1;
-      }
-      return returnVal;
+      return this.innerSorter.compare('' + first.getSObjectType(), '' + second.getSObjectType());
     }
   }
 
@@ -238,9 +231,12 @@ global without sharing virtual class RollupSObjectUpdater {
 
     public void execute(System.QueueableContext qc) {
       System.attachFinalizer(new RollupFinalizer());
+      RollupLogger.Instance.log('Deferred async saving starting for parent records', new Map<Id, SObject>(this.records).keySet(), System.LoggingLevel.INFO);
       RollupSObjectUpdater updater = new RollupSObjectUpdater();
       updater.addRollupControl(this.control);
       new RollupSObjectUpdater().doUpdate(this.records);
+      RollupLogger.Instance.log('Saving finished', System.LoggingLevel.INFO);
+      RollupLogger.Instance.save();
     }
   }
 

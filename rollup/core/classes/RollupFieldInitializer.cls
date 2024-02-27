@@ -160,18 +160,33 @@ public virtual class RollupFieldInitializer {
     }
   }
 
+  public class StringSorter implements System.Comparator<String> {
+    public Integer compare(String first, String second) {
+      Integer sortValue = 0;
+      if (first > second) {
+        sortValue = 1;
+      } else if (second > first) {
+        sortValue = -1;
+      }
+      return sortValue;
+    }
+  }
+
   private class PicklistSorter implements System.Comparator<String> {
     private final PicklistController picklistController;
+    private final System.Comparator<String> stringSorter = new StringSorter();
+
     public PicklistSorter(PicklistController picklistController) {
       this.picklistController = picklistController;
     }
+
     public Integer compare(String firstVal, String secondVal) {
       Integer sortValue = 0;
       Integer firstRank = this.picklistController.getRank(firstVal, Rollup.Op.FIRST);
       Integer secondRank = this.picklistController.getRank(secondVal, Rollup.Op.FIRST);
       if (firstRank == this.picklistController.minimumIntegerValue || secondRank == this.picklistController.minimumIntegerValue) {
         // fall back to standard sorting if sentinel value is returned
-        return firstVal.compareTo(secondVal);
+        sortValue = this.stringSorter.compare(firstVal, secondVal);
       } else if (firstRank > secondRank) {
         sortValue = 1;
       } else if (firstRank < secondRank) {
