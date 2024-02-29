@@ -375,6 +375,43 @@ private class RollupFlowFullRecalcTests {
   }
 
   @IsTest
+  static void shouldRefreshMultipleBatchFullRecalcs() {
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, MaxRollupRetries__c = 3);
+    Account acc = [SELECT Id FROM Account];
+    Individual secondParent = new Individual(LastName = 'Second');
+    insert secondParent;
+    List<ContactPointAddress> childrenToInsert = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'A1'),
+      new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'A2'),
+      new ContactPointAddress(PreferenceRank = 250, ParentId = secondParent.Id, Name = 'B1'),
+      new ContactPointAddress(PreferenceRank = 250, ParentId = secondParent.Id, Name = 'B2')
+    };
+    insert childrenToInsert;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ childrenToInsert[0], childrenToInsert[2] };
+
+    List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    flowInputs[0].deferProcessing = true;
+    flowInputs[0].calcItemWhereClause = 'PreferenceRank > 0';
+    List<Rollup.FlowInput> secondInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
+    secondInputs[0].rollupSObjectName = 'Individual';
+    secondInputs[0].rollupFieldOnOpObject = 'ConsumerCreditScore';
+    secondInputs[0].rollupOperation = 'SUM';
+    secondInputs[0].deferProcessing = true;
+
+    Test.startTest();
+    Rollup.performRollup(flowInputs);
+    Rollup.performRollup(secondInputs);
+    Rollup.processStoredFlowRollups();
+    Test.stopTest();
+
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(1000, updatedAcc.AnnualRevenue);
+    Individual updatedSecondParent = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :secondParent.Id];
+    System.assertEquals(500, updatedSecondParent.ConsumerCreditScore);
+  }
+
+  @IsTest
   static void shouldCorrectlyFilterParentFieldsFromFlowChildren() {
     Account acc = [SELECT Id, Name FROM Account];
     // ensure another matching item exists outside of the passed in list
