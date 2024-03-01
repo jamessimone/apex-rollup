@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rollup_Field_Child_Required</fullName>
+    <active>true</active>
+    <errorConditionFormula>OR(
+  AND(ISBLANK(RollupFieldOnCalcItem__c), ISBLANK(RollupFieldOnCalcItemText__c)),
+  AND(NOT(ISBLANK(RollupFieldOnCalcItem__c)), NOT(ISBLANK(RollupFieldOnCalcItemText__c)))
+)</errorConditionFormula>
+    <errorDisplayField>RollupFieldOnCalcItem__c</errorDisplayField>
+    <errorMessage>Rollup Field On Child Object or Rollup Field On Child Object (Text) are required, and only one can be filled out</errorMessage>
+</ValidationRule>

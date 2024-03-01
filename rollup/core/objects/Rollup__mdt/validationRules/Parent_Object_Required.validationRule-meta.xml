@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Parent_Object_Required</fullName>
+    <active>true</active>
+    <errorConditionFormula>OR(
+  AND(ISBLANK(LookupObject__c), ISBLANK(LookupObjectText__c)),
+  AND(NOT(ISBLANK(LookupObject__c)), NOT(ISBLANK(LookupObjectText__c)))
+)</errorConditionFormula>
+    <errorDisplayField>LookupObject__c</errorDisplayField>
+    <errorMessage>Parent Object or Parent Object (Text) are required, and only one can be filled out</errorMessage>
+</ValidationRule>

@@ -1822,8 +1822,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           SELECT
             MasterLabel,
             DeveloperName,
-            // we have to do transforms on these fields because custom objects/custom fields
-            // have references that otherwise won't work with the rest of the code
             LookupObject__c,
             LookupObjectText__c,
             LookupObject__r.QualifiedApiName,
@@ -1844,7 +1842,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             RollupFieldOnLookupObject__r.QualifiedApiName,
             UltimateParentLookup__c,
             UltimateParentLookup__r.QualifiedApiName,
-            // rest of the fields
             CalcItemWhereClause__c,
             ChangedFieldsOnCalcItem__c,
             ConcatDelimiter__c,
@@ -1872,7 +1869,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           WHERE RollupControl__r.ShouldAbortRun__c = FALSE
           ORDER BY LookupObject__c
         ];
-        // do the transforms
+        // we have to do transforms on the Entity Definition fields because custom objects/custom fields
+        // have references that otherwise won't work with the rest of the code
         for (Rollup__mdt meta : cachedMetadata) {
           meta.CalcItem__c = meta.CalcItem__r != null ? meta.CalcItem__r.QualifiedApiName : meta.CalcItemText__c;
           meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r != null
