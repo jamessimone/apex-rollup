@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Child_Object_Required</fullName>
+    <active>true</active>
+    <errorConditionFormula>OR(
+  AND(ISBLANK(CalcItem__c), ISBLANK(CalcItemText__c)),
+  AND(NOT(ISBLANK(CalcItem__c)), NOT(ISBLANK(CalcItemText__c)))
+)</errorConditionFormula>
+    <errorDisplayField>CalcItem__c</errorDisplayField>
+    <errorMessage>Either Child Object or Child Object (Text) are required, and only one can be filled out.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lookup_Field_Child_Required</fullName>
+    <active>true</active>
+    <errorConditionFormula>OR(
+  AND(ISBLANK(LookupFieldOnCalcItem__c), ISBLANK(LookupFieldOnCalcItemText__c)),
+  AND(NOT(ISBLANK(LookupFieldOnCalcItem__c)), NOT(ISBLANK(LookupFieldOnCalcItemText__c)))
+)</errorConditionFormula>
+    <errorDisplayField>LookupFieldOnCalcItem__c</errorDisplayField>
+    <errorMessage>Lookup Field On Child Object or Lookup Field On Child Object (Text) are required, and only one can be filled out</errorMessage>
+</ValidationRule>

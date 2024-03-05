@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.6.16",
+  "version": "1.6.17",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -11,7 +11,7 @@
   "devDependencies": {
     "@babel/core": "7.23.7",
     "@babel/eslint-parser": "7.23.3",
-    "@jongpie/sfdx-bummer-plugin": "0.0.19",
+    "@jongpie/sfdx-bummer-plugin": "^0.0.20",
     "@ljharb/eslint-config": "21.1.0",
     "@lwc/eslint-plugin-lwc": "1.7.2",
     "@prettier/plugin-xml": "3.2.2",
@@ -24,8 +24,8 @@
     "eslint-config-prettier": "9.1.0",
     "husky": "8.0.3",
     "lint-staged": "15.2.0",
-    "prettier": "3.2.4",
-    "prettier-plugin-apex": "2.0.1"
+    "prettier": "3.2.5",
+    "prettier-plugin-apex": "2.1.0"
   },
   "keywords": [
     "salesforce",

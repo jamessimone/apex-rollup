@@ -1822,23 +1822,26 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           SELECT
             MasterLabel,
             DeveloperName,
-            // we have to do transforms on these fields because custom objects/custom fields
-            // have references that otherwise won't work with the rest of the code
             LookupObject__c,
+            LookupObjectText__c,
             LookupObject__r.QualifiedApiName,
             CalcItem__c,
+            CalcItemText__c,
             CalcItem__r.QualifiedApiName,
             RollupFieldOnCalcItem__c,
+            RollupFieldOnCalcItemText__c,
             RollupFieldOnCalcItem__r.QualifiedApiName,
             LookupFieldOnCalcItem__c,
+            LookupFieldOnCalcItemText__c,
             LookupFieldOnCalcItem__r.QualifiedApiName,
             LookupFieldOnLookupObject__c,
+            LookupFieldOnLookupObjectText__c,
             LookupFieldOnLookupObject__r.QualifiedApiName,
             RollupFieldOnLookupObject__c,
+            RollupFieldOnLookupObjectText__c,
             RollupFieldOnLookupObject__r.QualifiedApiName,
             UltimateParentLookup__c,
             UltimateParentLookup__r.QualifiedApiName,
-            // rest of the fields
             CalcItemWhereClause__c,
             ChangedFieldsOnCalcItem__c,
             ConcatDelimiter__c,
@@ -1866,16 +1869,26 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           WHERE RollupControl__r.ShouldAbortRun__c = FALSE
           ORDER BY LookupObject__c
         ];
-        // do the transforms
+        // we have to do transforms on the Entity Definition fields because custom objects/custom fields
+        // have references that otherwise won't work with the rest of the code
         for (Rollup__mdt meta : cachedMetadata) {
-          meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName;
+          meta.CalcItem__c = meta.CalcItem__r != null ? meta.CalcItem__r.QualifiedApiName : meta.CalcItemText__c;
+          meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r != null
+            ? meta.LookupFieldOnCalcItem__r.QualifiedApiName
+            : meta.LookupFieldOnCalcItemText__c;
+          meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r != null
+            ? meta.LookupFieldOnLookupObject__r.QualifiedApiName
+            : meta.LookupFieldOnLookupObjectText__c;
+          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r != null
+            ? meta.RollupFieldOnCalcItem__r.QualifiedApiName
+            : meta.RollupFieldOnCalcItemText__c;
+          meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r != null
+            ? meta.RollupFieldOnLookupObject__r.QualifiedApiName
+            : meta.RollupFieldOnLookupObjectText__c;
+          meta.LookupObject__c = meta.LookupObject__r != null ? meta.LookupObject__r.QualifiedApiName : meta.LookupObjectText__c;
+
           meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
           meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
-          meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName;
-          meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName;
-          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName;
-          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName;
-          meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName;
           meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
           meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
         }

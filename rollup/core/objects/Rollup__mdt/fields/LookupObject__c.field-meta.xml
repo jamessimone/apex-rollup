@@ -9,7 +9,7 @@
     <referenceTo>EntityDefinition</referenceTo>
     <relationshipLabel>Rollups</relationshipLabel>
     <relationshipName>Rollups</relationshipName>
-    <required>true</required>
+    <required>false</required>
     <type>MetadataRelationship</type>
     <unique>false</unique>
 </CustomField>

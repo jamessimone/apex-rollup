@@ -876,7 +876,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (rollup.getTypeName() == RollupFullBatchRecalculator.class.getName()) {
         rollupsToProcess.remove(index);
         RollupFullBatchRecalculator fullRecalc = (RollupFullBatchRecalculator) rollup;
-        this.childToUnexpectedFullRecalc.put(fullRecalc.getCalcItemType(), fullRecalc);
+        RollupFullRecalcProcessor existingFullRecalc = this.childToUnexpectedFullRecalc.get(fullRecalc.getCalcItemType());
+        if (existingFullRecalc == null) {
+          this.childToUnexpectedFullRecalc.put(fullRecalc.getCalcItemType(), fullRecalc);
+        } else {
+          existingFullRecalc.addCaboose(fullRecalc);
+        }
       }
     }
     rollupsToProcess.addAll(this.transformFullRecalcRollups());

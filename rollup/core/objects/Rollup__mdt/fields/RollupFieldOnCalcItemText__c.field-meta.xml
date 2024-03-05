@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RollupFieldOnCalcItemText__c</fullName>
+    <description>Text reference to the API name for the field on the child object that will be rolled up</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Text reference to the API name for the field on the child object that will be rolled up</inlineHelpText>
+    <label>Rollup Field On Child Object (Text)</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

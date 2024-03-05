@@ -3,12 +3,16 @@
     <label>ParentWhereClauseFromTrigger</label>
     <protected>false</protected>
     <values>
+        <field>CalcItemText__c</field>
+        <value xsi:type="xsd:string">Application__c</value>
+    </values>
+    <values>
         <field>CalcItemWhereClause__c</field>
         <value xsi:type="xsd:string">ParentApplication__r.Name = &apos;Parent&apos;</value>
     </values>
     <values>
         <field>CalcItem__c</field>
-        <value xsi:type="xsd:string">Application__c</value>
+        <value xsi:nil="true"/>
     </values>
     <values>
         <field>ChangedFieldsOnCalcItem__c</field>
@@ -16,6 +20,14 @@
     </values>
     <values>
         <field>ConcatDelimiter__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>CurrencyFieldMapping__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Description__c</field>
         <value xsi:nil="true"/>
     </values>
     <values>
@@ -31,6 +43,18 @@
         <value xsi:nil="true"/>
     </values>
     <values>
+        <field>GroupByFields__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>GroupByRowEndDelimiter__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>GroupByRowStartDelimiter__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
         <field>IsFullRecordSet__c</field>
         <value xsi:type="xsd:boolean">false</value>
     </values>
@@ -39,16 +63,40 @@
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
-        <field>LookupFieldOnCalcItem__c</field>
+        <field>IsTableFormatted__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>LimitAmount__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>LookupFieldOnCalcItemText__c</field>
         <value xsi:type="xsd:string">ParentApplication__c</value>
     </values>
     <values>
-        <field>LookupFieldOnLookupObject__c</field>
+        <field>LookupFieldOnCalcItem__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>LookupFieldOnLookupObjectText__c</field>
         <value xsi:type="xsd:string">Id</value>
     </values>
     <values>
-        <field>LookupObject__c</field>
+        <field>LookupFieldOnLookupObject__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>LookupObjectText__c</field>
         <value xsi:type="xsd:string">ParentApplication__c</value>
+    </values>
+    <values>
+        <field>LookupObject__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>OneToManyGrandparentFields__c</field>
+        <value xsi:nil="true"/>
     </values>
     <values>
         <field>OrderByFirstLast__c</field>
@@ -59,12 +107,20 @@
         <value xsi:type="xsd:string">Org_Defaults</value>
     </values>
     <values>
-        <field>RollupFieldOnCalcItem__c</field>
+        <field>RollupFieldOnCalcItemText__c</field>
         <value xsi:type="xsd:string">Picklist__c</value>
     </values>
     <values>
-        <field>RollupFieldOnLookupObject__c</field>
+        <field>RollupFieldOnCalcItem__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>RollupFieldOnLookupObjectText__c</field>
         <value xsi:type="xsd:string">Name</value>
+    </values>
+    <values>
+        <field>RollupFieldOnLookupObject__c</field>
+        <value xsi:nil="true"/>
     </values>
     <values>
         <field>RollupOperation__c</field>
@@ -72,6 +128,14 @@
     </values>
     <values>
         <field>RollupToUltimateParent__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>SharingMode__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>ShouldRunWithoutCustomSettingEnabled__c</field>
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
