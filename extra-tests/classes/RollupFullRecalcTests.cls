@@ -1624,7 +1624,7 @@ private class RollupFullRecalcTests {
 
     RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
       'SELECT Id, PreferenceRank, ParentId FROM ContactPointAddress',
-      Rollup.InvocationPoint.FROM_APEX,
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
       new List<Rollup__mdt>{
         new Rollup__mdt(
           CalcItem__c = 'ContactPointAddress',
@@ -1664,7 +1664,7 @@ private class RollupFullRecalcTests {
 
     RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
       'SELECT Id, PreferenceRank, ParentId FROM ContactPointAddress',
-      Rollup.InvocationPoint.FROM_APEX,
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
       new List<Rollup__mdt>{
         new Rollup__mdt(
           CalcItem__c = 'ContactPointAddress',

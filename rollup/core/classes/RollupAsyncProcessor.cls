@@ -668,7 +668,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           this.logger.log(this.getTypeName() + ': Populating unexpected full recalc for ' + outstandingItemCount + ' items', System.LoggingLevel.INFO);
           RollupFullRecalcProcessor fullBatchProcessor = new RollupFullBatchRecalculator(
             query.substringBeforeLast('\nLIMIT'),
-            this.invokePoint,
+            InvocationPoint.FROM_FULL_RECALC_APEX,
             new List<Rollup__mdt>{ rollup.metadata },
             rollup.calcItemType,
             recordIds,
@@ -839,7 +839,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private Boolean isValidAdditionalCalcItemRetrieval(RollupAsyncProcessor roll) {
-    if (roll.fullRecalcProcessor != null) {
+    Set<InvocationPoint> alwaysFalseForRetrieval = new Set<InvocationPoint>{
+      InvocationPoint.FROM_FULL_RECALC_APEX,
+      InvocationPoint.FROM_FULL_RECALC_LWC,
+      InvocationPoint.FROM_FULL_RECALC_FLOW,
+      InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC
+    };
+    if (roll.fullRecalcProcessor != null && alwaysFalseForRetrieval.contains(roll.invokePoint)) {
       return false;
     } else {
       return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;

@@ -126,8 +126,11 @@ public without sharing class RollupCalcItemReplacer {
         this.fillField(this.parentQueryFields, '' + calcItem.getSObjectType(), fieldName);
       }
     } else {
-      // it'd be great to use calcItem.isSet(fieldName) here, but that returns false for null values
+      if (fieldName.startsWithIgnoreCase('not(')) {
+        fieldName = fieldName.substring(4, fieldName.length());
+      }
       try {
+        // it'd be great to use calcItem.isSet(fieldName) here, but that returns false for null values
         calcItem.get(fieldName);
       } catch (Exception ex) {
         this.fillField(this.baseQueryFields, '' + calcItem.getSObjectType(), fieldName);

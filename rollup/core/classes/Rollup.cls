@@ -64,12 +64,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   @TestVisible
-  private static final List<RollupFullRecalcProcessor> CACHED_FULL_RECALCS {
+  private static List<RollupFullRecalcProcessor> CACHED_FULL_RECALCS {
     get {
       if (CACHED_FULL_RECALCS == null) {
         CACHED_FULL_RECALCS = new List<RollupFullRecalcProcessor>();
       }
       return CACHED_FULL_RECALCS;
+    }
+    set;
+  }
+
+  private static Set<String> CACHED_COUNT_QUERIES {
+    get {
+      if (CACHED_COUNT_QUERIES == null) {
+        CACHED_COUNT_QUERIES = new Set<String>();
+      }
+      return CACHED_COUNT_QUERIES;
     }
     set;
   }
@@ -308,9 +318,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     FROM_APEX,
     FROM_INVOCABLE,
     FROM_SCHEDULED,
+    FROM_FULL_RECALC_APEX,
     FROM_FULL_RECALC_LWC,
-    FROM_SINGULAR_PARENT_RECALC_LWC,
-    FROM_FULL_RECALC_FLOW
+    FROM_FULL_RECALC_FLOW,
+    FROM_SINGULAR_PARENT_RECALC_LWC
   }
 
   protected Rollup() {
@@ -725,6 +736,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     // internal variables!
     public Id rollupControlId;
+    public String developerName;
   }
 
   global class FlowOutput {
@@ -869,11 +881,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
       if (metas.isEmpty() == false) {
         Rollup rollupConductor = getRollup(metas, wrapper.sObjectType, children, oldFlowRecords, null, fromInvocable);
-        String logMessage = 'adding invocable rollup to list:';
-        if (wrapper.flowInput.deferProcessing) {
-          logMessage = 'deferring processing for rollup:';
+        String logMessage;
+        if (rollupConductor.isNoOp) {
+          logMessage = 'skipping no-op conductor';
+        } else if (wrapper.flowInput.deferProcessing) {
+          logMessage = 'deferring processing for rollup';
           CACHED_ROLLUPS.add(rollupConductor);
         } else {
+          logMessage = 'adding invocable rollup to list';
           populateRollupByType(localRollups, wrapper.sObjectType, rollupConductor);
         }
         if (wrapper.flowInput.shouldRunSync) {
@@ -881,7 +896,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             roll.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
           }
         }
-        RollupLogger.Instance.log(logMessage, rollupConductor, System.LoggingLevel.INFO);
+        RollupLogger.Instance.log(logMessage + ':', rollupConductor, System.LoggingLevel.INFO);
       }
     }
 
@@ -1809,6 +1824,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     flatten(CACHED_ROLLUPS);
     List<Rollup> rollupsToProcess = new List<Rollup>(CACHED_ROLLUPS);
     CACHED_ROLLUPS = null;
+    CACHED_FULL_RECALCS = null;
+    CACHED_COUNT_QUERIES = null;
     batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
   }
 
@@ -1942,6 +1959,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         ChangedFieldsOnCalcItem__c = flowInput.calcItemChangedFields,
         ConcatDelimiter__c = flowInput.concatDelimiter,
         CurrencyFieldMapping__c = flowInput.currencyFieldMapping,
+        DeveloperName = flowInput.DeveloperName,
         FullRecalculationDefaultNumberValue__c = flowInput.fullRecalculationDefaultNumberValue,
         FullRecalculationDefaultStringValue__c = flowInput.fullRecalculationDefaultStringValue,
         GrandparentRelationshipFieldPath__c = flowInput.grandparentRelationshipFieldPath,
@@ -2278,11 +2296,19 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   private static void appendQueryCount(RollupMetadata metaWrapper, Rollup__mdt meta, String whereClause, Schema.SObjectType childType) {
     if (metaWrapper.recordCount != RollupRepository.SENTINEL_COUNT_VALUE) {
-      Integer currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
-        .setQuery(RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause))
-        .setArg(new Set<String>())
-        .setArg('recordIds', metaWrapper.recordIds)
-        .getCount();
+      String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause);
+      String hashedQuery = query + meta.LookupObject__c + metaWrapper.recordIds;
+      Integer currentCount;
+      if (CACHED_COUNT_QUERIES.contains(hashedQuery)) {
+        currentCount = 0;
+      } else {
+        currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
+          .setQuery(query)
+          .setArg(new Set<String>())
+          .setArg('recordIds', metaWrapper.recordIds)
+          .getCount();
+        CACHED_COUNT_QUERIES.add(hashedQuery);
+      }
       metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
   }
