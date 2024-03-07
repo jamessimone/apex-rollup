@@ -156,6 +156,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
     this.addToMap(props, 'Caboose Count', this.cabooses.size());
+    this.addToMap(props, 'Inner rollups', this.rollupMetas?.size());
     return props;
   }
 
