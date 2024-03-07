@@ -162,4 +162,19 @@ private class RollupCalcItemReplacerTests {
 
     System.assertNotEquals(null, updatedContact);
   }
+
+  @IsTest
+  static void worksWithParantheticalNotClauses() {
+    Account acc = [SELECT Id FROM Account];
+
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 2)
+    );
+    acc = (Account) replacer.replace(
+      new List<Account>{ acc, acc },
+      new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'NOT(AnnualRevenue != 0 AND Name != null)', CalcItem__c = 'Account') }
+    )[0];
+
+    System.assertEquals(ACC_ANNUAL_REVENUE, acc.AnnualRevenue);
+  }
 }
