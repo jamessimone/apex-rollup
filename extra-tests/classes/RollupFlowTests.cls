@@ -1064,4 +1064,64 @@ private class RollupFlowTests {
     Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(null, updatedAcc.AnnualRevenue);
   }
+
+  @IsTest
+  static void shouldCorrectlyDecrementOnRollupsToMultipleParentsDelete() {
+    List<Account> accounts = new List<Account>{
+      new Account(Name = 'Parent 1', AnnualRevenue = 1),
+      new Account(Name = 'Parent 2', AnnualRevenue = 2),
+      new Account(Name = 'Parent 3', AnnualRevenue = 3),
+      new Account(Name = 'Parent 4', AnnualRevenue = 4)
+    };
+    insert accounts;
+    Individual bParentOne = new Individual(LastName = 'B1', ConsumerCreditScore = 3, ConvictionsCount = 2);
+    Individual bParentTwo = new Individual(LastName = 'B2', ConsumerCreditScore = 7, ConvictionsCount = 2);
+    insert new List<Individual>{ bParentOne, bParentTwo };
+    List<ContactPointAddress> childrenToInsert = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = accounts[0].AnnualRevenue.intValue(), ParentId = accounts[0].Id, Name = bParentOne.Id),
+      new ContactPointAddress(PreferenceRank = accounts[1].AnnualRevenue.intValue(), ParentId = accounts[1].Id, Name = bParentOne.Id),
+      new ContactPointAddress(PreferenceRank = accounts[2].AnnualRevenue.intValue(), ParentId = accounts[2].Id, Name = bParentTwo.Id),
+      new ContactPointAddress(PreferenceRank = accounts[3].AnnualRevenue.intValue(), ParentId = accounts[3].Id, Name = bParentTwo.Id)
+    };
+    insert childrenToInsert;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ childrenToInsert[0], childrenToInsert[2] };
+
+    Rollup.FlowInput firstInput = RollupTestUtils.prepareFlowTest(cpas, 'DELETE', 'SUM')[0];
+    firstInput.deferProcessing = true;
+    Rollup.FlowInput secondInput = firstInput.clone();
+    secondInput.lookupFieldOnCalcItem = 'Name';
+    secondInput.rollupSObjectName = 'Individual';
+    secondInput.rollupFieldOnOpObject = 'ConsumerCreditScore';
+    Rollup.FlowInput thirdInput = secondInput.clone();
+    thirdInput.calcItemWhereClause = 'PreferenceRank > 0';
+    thirdInput.rollupFieldOnOpObject = 'ConvictionsCount';
+    thirdInput.rollupOperation = 'COUNT';
+    Rollup.FlowInput fourthInput = secondInput.clone();
+    fourthInput.rollupSObjectName = 'Task';
+    fourthInput.rollupFieldOnOpObject = 'CallDurationInSeconds';
+    fourthInput.calcItemWhereClause = '(NOT Name LIKE \'' + bParentOne.Id.toString().substring(0, 3) + '%\')';
+
+    Test.startTest();
+    Rollup.performRollup(new List<Rollup.FlowInput>{ firstInput, secondInput, thirdInput, fourthInput });
+    System.assertEquals(3, Rollup.CACHED_ROLLUPS.size());
+    Rollup.processStoredFlowRollups();
+    Test.stopTest();
+
+    Map<Id, Decimal> accountToExpectedAmount = new Map<Id, Decimal>{
+      accounts[0].Id => null,
+      accounts[1].Id => accounts[1].AnnualRevenue,
+      accounts[2].Id => null,
+      accounts[3].Id => accounts[3].AnnualRevenue
+    };
+    for (Account updatedAcc : [SELECT Id, Name, AnnualRevenue FROM Account WHERE Id = :accounts]) {
+      System.assertEquals(accountToExpectedAmount.get(updatedAcc.Id), updatedAcc.AnnualRevenue, updatedAcc);
+    }
+    bParentOne = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentOne.Id];
+    System.assertEquals(2, bParentOne.ConsumerCreditScore);
+    System.assertEquals(1, bParentOne.ConvictionsCount);
+    bParentTwo = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentTwo.Id];
+    System.assertEquals(4, bParentTwo.ConsumerCreditScore);
+    System.assertEquals(1, bParentTwo.ConvictionsCount);
+  }
 }

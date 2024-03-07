@@ -160,6 +160,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.recordsToRollup = flowInput.recordsToRollup;
             input.rollupContext = flowInput.rollupContext;
             input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
+            input.developerName = meta.DeveloperName;
           }
         }
       }

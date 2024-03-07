@@ -376,7 +376,7 @@ private class RollupFlowFullRecalcTests {
 
   @IsTest
   static void shouldRefreshMultipleBatchFullRecalcs() {
-    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true, MaxRollupRetries__c = 3);
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 0, IsRollupLoggingEnabled__c = true, MaxRollupRetries__c = 3);
     Account acc = [SELECT Id FROM Account];
     Individual secondParent = new Individual(LastName = 'Second');
     insert secondParent;
@@ -524,5 +524,64 @@ private class RollupFlowFullRecalcTests {
     Account updatedAcc = [SELECT Id, AnnualRevenue, Name FROM Account WHERE Id = :acc.Id];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH hierarchy from flow should fully recalc');
     System.assertEquals('One, Two', updatedAcc.Name, 'CONCAT_DISTINCT REFRESH hierarchy from flow should full recalc');
+  }
+
+  @IsTest
+  static void shouldCorrectlyFindAdjacentChildrenForRollupsToMultipleParents() {
+    List<Account> accounts = new List<Account>{
+      new Account(Name = 'Parent 1'),
+      new Account(Name = 'Parent 2'),
+      new Account(Name = 'Parent 3'),
+      new Account(Name = 'Parent 4')
+    };
+    insert accounts;
+    Individual bParentOne = new Individual(LastName = 'B1', ConsumerCreditScore = 3, ConvictionsCount = 2);
+    Individual bParentTwo = new Individual(LastName = 'B2', ConsumerCreditScore = 7, ConvictionsCount = 2);
+    insert new List<Individual>{ bParentOne, bParentTwo };
+    List<ContactPointAddress> childrenToInsert = new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 1, ParentId = accounts[0].Id, Name = bParentOne.Id),
+      new ContactPointAddress(PreferenceRank = 2, ParentId = accounts[1].Id, Name = bParentOne.Id),
+      new ContactPointAddress(PreferenceRank = 3, ParentId = accounts[2].Id, Name = bParentTwo.Id),
+      new ContactPointAddress(PreferenceRank = 4, ParentId = accounts[3].Id, Name = bParentTwo.Id)
+    };
+    insert childrenToInsert;
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{ childrenToInsert[0], childrenToInsert[2] };
+
+    Rollup.FlowInput firstInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM')[0];
+    firstInput.deferProcessing = true;
+    Rollup.FlowInput secondInput = firstInput.clone();
+    secondInput.lookupFieldOnCalcItem = 'Name';
+    secondInput.rollupSObjectName = 'Individual';
+    secondInput.rollupFieldOnOpObject = 'ConsumerCreditScore';
+    Rollup.FlowInput thirdInput = secondInput.clone();
+    thirdInput.calcItemWhereClause = 'PreferenceRank > 0';
+    thirdInput.rollupFieldOnOpObject = 'ConvictionsCount';
+    thirdInput.rollupOperation = 'COUNT';
+    Rollup.FlowInput fourthInput = secondInput.clone();
+    fourthInput.rollupSObjectName = 'Task';
+    fourthInput.rollupFieldOnOpObject = 'CallDurationInSeconds';
+    fourthInput.calcItemWhereClause = '(NOT Name LIKE \'' + bParentOne.Id.toString().substring(0, 3) + '%\')';
+
+    Test.startTest();
+    Rollup.performRollup(new List<Rollup.FlowInput>{ firstInput, secondInput, thirdInput, fourthInput });
+    Rollup.processStoredFlowRollups();
+    Test.stopTest();
+
+    Map<Id, Decimal> accountToExpectedAmount = new Map<Id, Decimal>{
+      accounts[0].Id => childrenToInsert[0].PreferenceRank,
+      accounts[1].Id => childrenToInsert[1].PreferenceRank,
+      accounts[2].Id => childrenToInsert[2].PreferenceRank,
+      accounts[3].Id => childrenToInsert[3].PreferenceRank
+    };
+    for (Account updatedAcc : [SELECT Id, Name, AnnualRevenue FROM Account WHERE Id = :accounts]) {
+      System.assertEquals(accountToExpectedAmount.get(updatedAcc.Id), updatedAcc.AnnualRevenue, updatedAcc);
+    }
+    bParentOne = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentOne.Id];
+    System.assertEquals(3, bParentOne.ConsumerCreditScore);
+    System.assertEquals(2, bParentOne.ConvictionsCount);
+    bParentTwo = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentTwo.Id];
+    System.assertEquals(7, bParentTwo.ConsumerCreditScore);
+    System.assertEquals(2, bParentTwo.ConvictionsCount);
   }
 }

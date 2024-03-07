@@ -14,16 +14,34 @@ private class RollupFlowBulkProcessorTests {
     System.assertEquals('No records', outputs[0].message);
   }
 
-  private class CachedRollup extends Rollup {
-    public List<Rollup> getCurrentlyCachedRollups() {
-      return this.getCachedRollups();
-    }
+  @IsTest
+  static void skipsAddingRollupForNoOps() {
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    // this contact should be filtered out due to not having an AccountId filled out
+    input.recordsToRollup = new List<SObject>{ new Contact() };
+    input.rollupContext = 'INSERT';
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupOperation__c = 'CONCAT',
+        CalcItem__c = 'Contact',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'FirstName',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Name'
+      )
+    };
+
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty());
   }
 
   @IsTest
   static void shouldAddToRollupsIfCMDTPresent() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
-    input.recordsToRollup = new List<SObject>{ new Contact() };
+    input.recordsToRollup = new List<SObject>{ new Contact(AccountId = RollupTestUtils.createId(Account.SObjectType)) };
     input.rollupContext = 'INSERT';
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -44,7 +62,7 @@ private class RollupFlowBulkProcessorTests {
     for (Rollup.FlowOutput output : outputs) {
       System.assertEquals(true, outputs[0].isSuccess, 'Should not error when adding deferred flow rollup');
     }
-    System.assertNotEquals(true, new CachedRollup().getCurrentlyCachedRollups().isEmpty(), 'Deferred rollup should be kept in buffer');
+    System.assertNotEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'Deferred rollup should be kept in buffer');
   }
 
   @IsTest
@@ -82,7 +100,7 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    System.assertEquals(1, new CachedRollup().getCurrentlyCachedRollups().size());
+    System.assertEquals(1, Rollup.CACHED_ROLLUPS.size());
   }
 
   @IsTest
@@ -196,7 +214,7 @@ private class RollupFlowBulkProcessorTests {
 
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(5, acc.AnnualRevenue);
-    System.assertEquals(0, new CachedRollup().getCurrentlyCachedRollups().size(), 'Flow rollup buffer should have been flushed!');
+    System.assertEquals(0, Rollup.CACHED_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
   }
 
   @IsTest
