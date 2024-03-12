@@ -19,7 +19,7 @@
     "@salesforce/eslint-config-lwc": "3.5.2",
     "@salesforce/eslint-plugin-lightning": "1.0.0",
     "@salesforce/sfdx-lwc-jest": "3.1.1",
-    "@salesforce/sfdx-scanner": "^3.21.0",
+    "@salesforce/sfdx-scanner": "^3.22.0",
     "eslint": "*",
     "eslint-config-prettier": "9.1.0",
     "husky": "8.0.3",
