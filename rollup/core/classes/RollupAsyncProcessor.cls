@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, Database.RaisesPlatformEvents, System.Comparable {
   private final Evaluator eval;
   private final Op op;

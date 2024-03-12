@@ -2,8 +2,9 @@
  * Big caveat here - this class can only be used with lookup relationships. The larger Rollup framework
  * accepts and even welcomes text-based keys being used, but here we accept that text-based keys
  * are likely niche, anyway, and that people looking to make use of a grandchild -> grandparent (or greater!)
- * rollup are likely operating using lookups anyway
+ * rollup are likely operating using lookups
  */
+@SuppressWarnings('PMD.NcssTypeCount')
 public without sharing class RollupRelationshipFieldFinder {
   private final Rollup__mdt metadata;
   private final List<String> originalParts;
@@ -616,9 +617,7 @@ public without sharing class RollupRelationshipFieldFinder {
       this.uniqueChildrenFieldNames.add(relationshipPath + '.Id');
       List<SObject> additionalCalcItems = this.getAdditionalCalcItems(
         this.traversal.lookupIdMap.keySet(),
-        relationshipPath +
-        '.' +
-        this.metadata.LookupFieldOnLookupObject__c
+        relationshipPath + '.' + this.metadata.LookupFieldOnLookupObject__c
       );
 
       List<String> recurseChainOriginal = relationshipPath.split('\\.');
@@ -646,11 +645,11 @@ public without sharing class RollupRelationshipFieldFinder {
       try {
         List<SObject> additionalCalcItems = this.repo.setQuery(
             RollupQueryBuilder.Current.getAllRowSafeQuery(
-              childType,
-              RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), relationshipPath, '=', this.metadata.CalcItemWhereClause__c)
-            ) +
-            '\nAND Id != :' +
-            bindVar
+                childType,
+                RollupQueryBuilder.Current.getQuery(childType, new List<String>(queryFields), relationshipPath, '=', this.metadata.CalcItemWhereClause__c)
+              ) +
+              '\nAND Id != :' +
+              bindVar
           )
           .setArg(inclusiveIds)
           .setArg(bindVar, this.records)

@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 global without sharing virtual class Rollup implements RollupLogger.ToStringObject {
   /**
    * Test override / bookkeeping section. Normally I would do this through dependency injection,

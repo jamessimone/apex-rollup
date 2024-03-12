@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 @IsTest
 private class RollupTests {
   static Rollup.Op testOp;
