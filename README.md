@@ -20,7 +20,7 @@ Read below for more on how you can use Apex Rollup in your day-to-day. Please no
 - [Rollup Control custom metadata configuration](https://youtu.be/vUP_uBB2m-k)
 - [Unit testing Apex Rollup](https://youtu.be/u7ly5xGMfFM)
 
-As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics.
+As well, don't miss [the Wiki](../../wiki), which includes even more info for common topics like [setting up Task/Event/User rollups](../../wiki/Creating-Task-User-Event-Based-Rollups).
 
 ## Deployment & Setup
 
