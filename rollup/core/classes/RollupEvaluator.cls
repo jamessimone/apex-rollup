@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 public without sharing abstract class RollupEvaluator implements Rollup.Evaluator, RollupLogger.ToStringObject {
   private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
   private static final String TRUE_VAL = 'true';

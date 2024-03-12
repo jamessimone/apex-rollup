@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.6.18",
+  "version": "1.6.19",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -19,7 +19,7 @@
     "@salesforce/eslint-config-lwc": "3.5.2",
     "@salesforce/eslint-plugin-lightning": "1.0.0",
     "@salesforce/sfdx-lwc-jest": "3.1.1",
-    "@salesforce/sfdx-scanner": "^3.21.0",
+    "@salesforce/sfdx-scanner": "^3.22.0",
     "eslint": "*",
     "eslint-config-prettier": "9.1.0",
     "husky": "8.0.3",
@@ -47,12 +47,12 @@
     "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
     "get:project:json": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Update-SFDX-Project-JSON }\"",
     "husky:pre-commit": "lint-staged",
-    "lint:verify": "sfdx scanner:run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
-    "prepare": "husky install && sfdx plugins:link ./node_modules/@salesforce/sfdx-scanner && sfdx plugins:link ./node_modules/@jongpie/sfdx-bummer-plugin",
+    "lint:verify": "sf scanner run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
+    "prepare": "husky install && sf plugins link ./node_modules/@salesforce/sfdx-scanner && sf plugins link ./node_modules/@jongpie/sfdx-bummer-plugin",
     "prettier": "prettier",
     "scan": "npm run lint:verify && npm run scan:pmd",
-    "scan:pmd": "sfdx scanner:run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",
-    "scan:graph": "sfdx scanner:run -e sfge -p . --target 'rollup'",
+    "scan:pmd": "sf scanner run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3 --preview-pmd7",
+    "scan:graph": "sf scanner run -e sfge -p . --target 'rollup'",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"

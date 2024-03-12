@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 public without sharing abstract class RollupCalculator {
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
