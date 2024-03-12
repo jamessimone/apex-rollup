@@ -3035,7 +3035,7 @@ private class RollupTests {
     );
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     // one over the default limit
-    RollupLimits.orgAsyncJobsUsed = 250001;
+    RollupLimits.currentAsyncJobsUsed = 250001;
 
     // specifically no Test.startTest()/Test.stopTest() to prove it's been run sync
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
