@@ -95,7 +95,7 @@ global without sharing class RollupFlowBulkProcessor {
           }
           if (
             flowInput.recordsToRollup == null ||
-            meta.CalcItem__c == sObjectType?.getDescribe().getName() ||
+            meta.CalcItem__c == sObjectType?.getDescribe(SObjectDescribeOptions.DEFERRED).getName() ||
             flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
           ) {
             Rollup.FlowInput input = new Rollup.FlowInput();
