@@ -2496,8 +2496,6 @@ private class RollupFullRecalcTests {
     Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in full recalc');
   }
 
-  // TODO - test for skipping parent rollup updates on full recalc?
-
   private static String getNamespaceSafeClassName(Type intendedClass) {
     List<String> classNameParts = intendedClass.getName().split('\\.');
     if (classNameParts.size() > 1) {

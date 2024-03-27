@@ -7,7 +7,7 @@ public class RollupLogControl {
 
   public static Integer Offset {
     get {
-      Offset = Offset ?? DATE_OFFSET != null && PLUGIN.getInstance('CustomObjectRollupLogger')?.Id == DATE_OFFSET.RollupPlugin__c
+      Offset = Offset ?? DATE_OFFSET != null && PLUGIN.getInstance('CustomObjectRollupLogger')?.Id == DATE_OFFSET?.RollupPlugin__c
         ? Integer.valueOf(DATE_OFFSET.Value__c)
         : FALLBACK_DATE_OFFSET;
       return Offset;
@@ -17,7 +17,7 @@ public class RollupLogControl {
 
   public static Integer BatchSize {
     get {
-      BatchSize = BatchSize ?? ORG_DEFAULT != null ? ORG_DEFAULT.BatchChunkSize__c.intValue() : FALLBACK_BATCH_CHUNK_SIZE;
+      BatchSize = BatchSize ?? ORG_DEFAULT?.BatchChunkSize__c?.intValue() ?? FALLBACK_BATCH_CHUNK_SIZE;
       return BatchSize;
     }
     private set;
