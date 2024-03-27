@@ -32,9 +32,7 @@ public without sharing abstract class RollupCalculator {
 
   public static Factory Factory {
     get {
-      if (Factory == null) {
-        Factory = testFactory == null ? new RollupCalculator.Factory() : testFactory;
-      }
+      Factory = Factory ?? testFactory ?? new RollupCalculator.Factory();
       return Factory;
     }
     set;
@@ -112,12 +110,10 @@ public without sharing abstract class RollupCalculator {
     this.metadata = metadata;
     this.lookupKeyField = lookupKeyField;
     this.defaultVal = getDefaultRecalculationValue(metadata);
-    if (this.isMultiCurrencyRollup == null) {
-      this.isMultiCurrencyRollup =
-        RollupCurrencyInfo.isMultiCurrency() &&
-        (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
-        this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
-    }
+    this.isMultiCurrencyRollup = this.isMultiCurrencyRollup ??
+      RollupCurrencyInfo.isMultiCurrency() &&
+      (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
+      this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
     this.calcItemSObjectType = opFieldOnCalcItem?.getDescribe().getSObjectType();
     this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(this.metadata));
@@ -127,11 +123,7 @@ public without sharing abstract class RollupCalculator {
   public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
     this.shouldShortCircuit = false;
     this.lookupRecordKey = lookupRecordKey;
-    if (priorVal == null) {
-      this.returnVal = this.defaultVal != null ? this.defaultVal : RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnLookupObject);
-    } else {
-      this.returnVal = priorVal;
-    }
+    this.returnVal = priorVal ?? this.defaultVal ?? RollupFieldInitializer.Current.getDefaultValue(this.opFieldOnLookupObject);
     this.lookupKeyQuery =
       this.lookupKeyField +
       ' = \'' +
@@ -662,10 +654,8 @@ public without sharing abstract class RollupCalculator {
       // but otherwise, it's more accurate to be nulling out the parent fields if there isn't a max, for example
       if (aggregate == 0 && op.name().contains('COUNT') == false) {
         aggregate = null;
-      } else if (aggregate == null) {
-        aggregate = this.defaultVal;
       }
-      return aggregate;
+      return aggregate ?? this.defaultVal;
     }
   }
 
@@ -689,9 +679,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      if (priorVal == null) {
-        priorVal = RollupFieldInitializer.Current.defaultDateTime;
-      }
+      priorVal = priorVal ?? RollupFieldInitializer.Current.defaultDateTime;
       if (priorVal instanceof Datetime) {
         priorVal = ((Datetime) priorVal).getTime();
       }
@@ -1072,10 +1060,8 @@ public without sharing abstract class RollupCalculator {
   private without sharing class PicklistRollupCalculator extends StringRollupCalculator {
     private final RollupFieldInitializer.PicklistController picklistController {
       get {
-        if (picklistController == null) {
-          picklistController = new RollupFieldInitializer.PicklistController(this.opFieldOnCalcItem.getDescribe());
-        }
-        return picklistController;
+        this.picklistController = this.picklistController ?? new RollupFieldInitializer.PicklistController(this.opFieldOnCalcItem.getDescribe());
+        return this.picklistController;
       }
       set;
     }
@@ -1149,19 +1135,16 @@ public without sharing abstract class RollupCalculator {
         oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems, this.calcItemSObjectType);
       }
 
-      if (oldSum == null) {
-        oldSum = 0.00;
-      }
       Decimal newSum = 0.00;
       for (SObject calcItem : applicableCalcItems) {
         Object potentialDecimal = calcItem.get(this.opFieldOnCalcItem);
-        newSum += potentialDecimal == null ? 0.00 : (Decimal) potentialDecimal;
+        newSum += (Decimal) potentialDecimal ?? 0.00;
       }
 
       Decimal average = (Decimal) this.defaultVal;
       // We can't do the division if the denominator is 0
       if (denominator != 0) {
-        Decimal numerator = oldSum + newSum;
+        Decimal numerator = (oldSum ?? 0.00) + newSum;
         average = numerator / denominator;
       }
       this.returnVal = average;
@@ -1357,10 +1340,7 @@ public without sharing abstract class RollupCalculator {
           String fieldName = this.fieldNames[index];
           Boolean isFirst = index == 0;
           Boolean isLast = index == this.fieldNames.size() - 1;
-          Object groupingVal = item.get(fieldName);
-          if (groupingVal == null) {
-            groupingVal = '(blank)';
-          }
+          Object groupingVal = item.get(fieldName) ?? '(blank)';
           currentGrouping += this.formatter.getGroupingColumn(fieldName, groupingVal, isFirst, isLast);
         }
         List<SObject> groupedItems = groupingStringToItems.get(currentGrouping);
@@ -1432,14 +1412,9 @@ public without sharing abstract class RollupCalculator {
     }
 
     private void setupDelimiters(Schema.SObjectField opFieldOnLookupObject) {
-      if (this.metadata.GroupByRowEndDelimiter__c == null) {
-        Boolean isRichText = opFieldOnLookupObject.getDescribe().isHtmlFormatted();
-        this.metadata.GroupByRowEndDelimiter__c = isRichText ? '<br>' : '\n';
-      }
-
-      if (this.metadata.GroupByRowStartDelimiter__c == null) {
-        this.metadata.GroupByRowStartDelimiter__c = '• ';
-      }
+      this.metadata.GroupByRowEndDelimiter__c = this.metadata.GroupByRowEndDelimiter__c ??
+        (opFieldOnLookupObject.getDescribe().isHtmlFormatted() ? '<br>' : '\n');
+      this.metadata.GroupByRowStartDelimiter__c = this.metadata.GroupByRowStartDelimiter__c ?? '• ';
     }
   }
 

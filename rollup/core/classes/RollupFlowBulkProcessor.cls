@@ -83,7 +83,7 @@ global without sharing class RollupFlowBulkProcessor {
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
-        Schema.SObjectType sObjectType = flowInput.recordsToRollup == null ? null : flowInput.recordsToRollup[0].getSObjectType();
+        Schema.SObjectType sObjectType = flowInput.recordsToRollup?.get(0).getSObjectType();
         for (Rollup__mdt meta : rollupMetadata) {
           if (
             meta.IsRollupStartedFromParent__c ||

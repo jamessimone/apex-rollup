@@ -538,8 +538,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       enforceValidationRules(validationRuleWrapper);
 
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && possibleParentId == null) {
-        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter);
-        if (delimiterIndex != null && delimiterIndex > -1) {
+        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter) ?? -1;
+        if (delimiterIndex > -1) {
           possibleParentId = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length())
             .substringAfter(' = ')
             .remove('\'');
@@ -549,10 +549,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         String lookupFieldName = String.isNotBlank(matchingMeta.GrandparentRelationshipFieldPath__c)
           ? matchingMeta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.' + matchingMeta.LookupFieldOnLookupObject__c
           : matchingMeta.LookupFieldOnCalcItem__c;
-        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
-        if (matchingMeta.CalcItemWhereClause__c == null) {
-          matchingMeta.CalcItemWhereClause__c = '';
-        }
+        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter) ?? '';
         matchingMeta.CalcItemWhereClause__c +=
           (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? ' AND ' : '') +
           lookupFieldName +
@@ -2447,9 +2444,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
-        if (errorMessage == null) {
-          errorMessage = '';
-        }
+        errorMessage = errorMessage ?? '';
         errorMessage += (String.isNotBlank(errorMessage) ? ' ' : '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
       }
     }
@@ -2632,16 +2627,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     // recursive updates from Apex - particularly from merges, but possible elsewhere - can trigger downstream flows
     // and it's important the original context be maintained in those situations
-    if (apexContext == null) {
-      apexContext = matchingOperation;
-    }
+    apexContext = apexContext ?? matchingOperation;
     populateCachedApexOperations(sObjectType, matchingOperation);
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
   private static void winnowOldFlowRecords(FlowInput flowInput) {
-    flowInput.oldRecordsToRollup = flowInput.oldRecordsToRollup == null ? new List<SObject>() : flowInput.oldRecordsToRollup.clone();
+    flowInput.oldRecordsToRollup = flowInput.oldRecordsToRollup?.clone() ?? new List<SObject>();
     for (Integer index = flowInput.oldRecordsToRollup.size() - 1; index >= 0; index--) {
       SObject oldRecord = flowInput.oldRecordsToRollup[index];
       // record-triggered flows set up to run when "A record is created or modified"
@@ -2739,9 +2732,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     } else if (rollupOperations.size() == 1) {
       rollupConductor.metadata = rollupOperations[0];
     }
-    if (sObjectType == null) {
-      sObjectType = calcItems[0].getSObjectType();
-    }
+    sObjectType = sObjectType ?? calcItems[0].getSObjectType();
 
     Boolean shouldFilterCalcItems = CALC_ITEM_REPLACER.hasProcessedMetadata(rollupOperations, calcItems);
 
@@ -2943,9 +2934,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         mergedIdToCurrentParentId.put(record.Id, mergedFieldValue);
         mergedParentIds.add(mergedFieldValue);
       }
-      if (lookupObjectName == null) {
-        lookupObjectName = String.valueOf(record.getSObjectType());
-      }
+      lookupObjectName = lookupObjectName ?? String.valueOf(record.getSObjectType());
     }
 
     if (mergedIdToCurrentParentId.isEmpty()) {

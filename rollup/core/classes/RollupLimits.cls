@@ -12,9 +12,7 @@ public without sharing class RollupLimits {
 
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS {
     get {
-      if (ASYNC_TIMEOUT_INTERVAL_MS == null) {
-        ASYNC_TIMEOUT_INTERVAL_MS = stubAsyncTimeoutInterval == null ? 13000 : stubAsyncTimeoutInterval;
-      }
+      ASYNC_TIMEOUT_INTERVAL_MS = ASYNC_TIMEOUT_INTERVAL_MS ?? stubAsyncTimeoutInterval ?? 13000;
       return ASYNC_TIMEOUT_INTERVAL_MS;
     }
     set;
@@ -71,10 +69,7 @@ public without sharing class RollupLimits {
 
     public Integer getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows != null ? stubbedQueryRows : Limits.getQueryRows();
-      if (this.control?.MaxQueryRows__c == null) {
-        return LIMIT_QUERY_ROWS - queryRowsUsed;
-      }
-      Integer remainingQueryRows = this.control.MaxQueryRows__c?.intValue() - queryRowsUsed;
+      Integer remainingQueryRows = (this.control.MaxQueryRows__c?.intValue() ?? LIMIT_QUERY_ROWS) - queryRowsUsed;
       return remainingQueryRows > 0 ? remainingQueryRows : 0;
     }
 

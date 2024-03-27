@@ -128,7 +128,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public Map<Schema.SObjectType, Set<Id>> getOldIntermediateGrandparents() {
-    return this.typeToOldIntermediateGrandparents == null ? new Map<Schema.SObjectType, Set<Id>>() : this.typeToOldIntermediateGrandparents;
+    return this.typeToOldIntermediateGrandparents ?? new Map<Schema.SObjectType, Set<Id>>();
   }
 
   protected override RollupRepository preStart() {

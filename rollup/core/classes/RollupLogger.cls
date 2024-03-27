@@ -17,9 +17,7 @@ global without sharing virtual class RollupLogger implements ILogger {
 
   public static ILogger Instance {
     get {
-      if (Instance == null) {
-        Instance = getRollupLogger();
-      }
+      Instance = Instance ?? getRollupLogger();
       return Instance;
     }
     private set;

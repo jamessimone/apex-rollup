@@ -345,7 +345,7 @@ public without sharing class RollupRelationshipFieldFinder {
 
     String relationshipObject = this.getChildRelationshipFromType(baseSObjectType, this.currentRelationshipName);
     if (this.oneToManyParts.containsKey(relationshipObject)) {
-      priorLookup = priorLookup == null ? this.oneToManyParts.get(relationshipObject) : priorLookup.replace('__r', '__c');
+      priorLookup = priorLookup?.replace('__r', '__c') ?? this.oneToManyParts.get(relationshipObject);
       this.setFirstRunFlags(records);
       records = this.getJunctionRecords(records, relationshipObject, priorLookup);
       baseSObjectType = records.isEmpty() ? baseSObjectType : records.get(0).getSObjectType();

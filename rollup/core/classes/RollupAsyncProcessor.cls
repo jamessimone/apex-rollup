@@ -48,49 +48,39 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private Map<Schema.SObjectType, RollupFullRecalcProcessor> childToUnexpectedFullRecalc {
     get {
-      if (childToUnexpectedFullRecalc == null) {
-        childToUnexpectedFullRecalc = new Map<Schema.SObjectType, RollupFullRecalcProcessor>();
-      }
-      return childToUnexpectedFullRecalc;
+      this.childToUnexpectedFullRecalc = this.childToUnexpectedFullRecalc ?? new Map<Schema.SObjectType, RollupFullRecalcProcessor>();
+      return this.childToUnexpectedFullRecalc;
     }
     set;
   }
 
   private final Map<String, List<SObject>> cachedQueryToAdditionalCalcItems {
     get {
-      if (cachedQueryToAdditionalCalcItems == null) {
-        cachedQueryToAdditionalCalcItems = new Map<String, List<SObject>>();
-      }
-      return cachedQueryToAdditionalCalcItems;
+      this.cachedQueryToAdditionalCalcItems = this.cachedQueryToAdditionalCalcItems ?? new Map<String, List<SObject>>();
+      return this.cachedQueryToAdditionalCalcItems;
     }
     set;
   }
 
   private final List<RollupAsyncProcessor> deferredRollups {
     get {
-      if (deferredRollups == null) {
-        deferredRollups = new List<RollupAsyncProcessor>();
-      }
-      return deferredRollups;
+      this.deferredRollups = this.deferredRollups ?? new List<RollupAsyncProcessor>();
+      return this.deferredRollups;
     }
     set;
   }
 
   private final Set<String> previouslyResetParents {
     get {
-      if (previouslyResetParents == null) {
-        previouslyResetParents = new Set<String>();
-      }
-      return previouslyResetParents;
+      this.previouslyResetParents = this.previouslyResetParents ?? new Set<String>();
+      return this.previouslyResetParents;
     }
     set;
   }
 
   private final Set<String> uniqueParentFields {
     get {
-      if (uniqueParentFields == null) {
-        uniqueParentFields = new Set<String>();
-      }
+      this.uniqueParentFields = this.uniqueParentFields ?? new Set<String>();
       return uniqueParentFields;
     }
     set;
@@ -98,9 +88,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   private static Map<String, Map<String, CalcItemBag>> CACHED_CALC_ITEM_BAGS {
     get {
-      if (CACHED_CALC_ITEM_BAGS == null) {
-        CACHED_CALC_ITEM_BAGS = new Map<String, Map<String, CalcItemBag>>();
-      }
+      CACHED_CALC_ITEM_BAGS = CACHED_CALC_ITEM_BAGS ?? new Map<String, Map<String, CalcItemBag>>();
       return CACHED_CALC_ITEM_BAGS;
     }
     set;
@@ -256,9 +244,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isTimingOut == false) {
       this.fullRecalcProcessor?.finish();
     }
-    if (context == null) {
-      context = new AdditionalContext(this.getNoProcessId());
-    }
+    context = context ?? new AdditionalContext(this.getNoProcessId());
     this.logger.log('finished successfully', context, System.LoggingLevel.INFO);
     this.logger.save();
   }
@@ -777,11 +763,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected void overrideParentRollupControlValues(RollupControl__mdt specificControl) {
     // override section - most updates go from a rollup specific control -> this.rollupControl
+    this.rollupControl.BatchChunkSize__c = this.rollupControl.BatchChunkSize__c ?? 2000;
     if (specificControl.BatchChunkSize__c < this.rollupControl.BatchChunkSize__c) {
       this.rollupControl.BatchChunkSize__c = specificControl.BatchChunkSize__c;
-    }
-    if (this.rollupControl.BatchChunkSize__c == null) {
-      this.rollupControl.BatchChunkSize__c = 2000;
     }
     if (specificControl.MaxLookupRowsBeforeBatching__c > this.rollupControl.MaxLookupRowsBeforeBatching__c) {
       this.rollupControl.MaxLookupRowsBeforeBatching__c = specificControl.MaxLookupRowsBeforeBatching__c;
@@ -789,9 +773,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (specificControl.ShouldRunAs__c != this.rollupControl.ShouldRunAs__c) {
       this.rollupControl.ShouldRunAs__c = specificControl.ShouldRunAs__c;
     }
-    if (specificControl.MaxParentRowsUpdatedAtOnce__c == null) {
-      specificControl.MaxParentRowsUpdatedAtOnce__c = this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
-    }
+    specificControl.MaxParentRowsUpdatedAtOnce__c = specificControl.MaxParentRowsUpdatedAtOnce__c ?? this.rollupControl.MaxParentRowsUpdatedAtOnce__c;
     if (specificControl.ShouldDuplicateRulesBeIgnored__c == true) {
       this.rollupControl.ShouldDuplicateRulesBeIgnored__c = true;
     }
@@ -1079,10 +1061,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private void populateObjectFields(List<RollupAsyncProcessor> rollups) {
-    if (this.lookupObjectToUniqueFieldNames == null) {
-      this.lookupObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
-      this.calcObjectToUniqueFieldNames = new Map<SObjectType, Set<String>>();
-    }
+    this.lookupObjectToUniqueFieldNames = this.lookupObjectToUniqueFieldNames ?? new Map<SObjectType, Set<String>>();
+    this.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames ?? new Map<SObjectType, Set<String>>();
     List<Rollup__mdt> combinedMeta = new List<Rollup__mdt>();
     for (RollupAsyncProcessor roll : rollups) {
       if (roll.lookupObj == null) {
