@@ -28,7 +28,7 @@ function Start-Tests() {
 
   try {
     Write-Debug "Deleting scratch org ..."
-    npx sf org delete scratch --no-prompt
+    npm run delete:org
   } catch {
     Write-Debug "Scratch org deletion failed, continuing ..."
   }

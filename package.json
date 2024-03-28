@@ -45,6 +45,7 @@
     "create:package:logger": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Custom Logger\"' -ReadmePath \"./plugins/CustomObjectRollupLogger/README.md\" }\"",
     "create:package:callback": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Rollup Callback\"' -ReadmePath \"./plugins/RollupCallback/README.md\"\" }\"",
     "create:package:code-coverage": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Extra Code Coverage\"' -ReadmePath \"./plugins/ExtraCodeCoverage/README.md\" }\"",
+    "delete:org": "sf org delete scratch --no-prompt --target-org apex-rollup-scratch-org",
     "get:project:json": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Update-SFDX-Project-JSON }\"",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "sf scanner run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
