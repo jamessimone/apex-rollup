@@ -28,9 +28,7 @@ public without sharing virtual class RollupCurrencyInfo {
   @TestVisible
   private static Boolean IS_MULTICURRENCY {
     get {
-      if (IS_MULTICURRENCY == null) {
-        IS_MULTICURRENCY = UserInfo.isMultiCurrencyOrganization();
-      }
+      IS_MULTICURRENCY = IS_MULTICURRENCY ?? UserInfo.isMultiCurrencyOrganization();
       return IS_MULTICURRENCY;
     }
     set;
@@ -38,11 +36,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private static final RollupCurrencyInfo FALLBACK_INFO {
     get {
-      if (FALLBACK_INFO == null) {
-        FALLBACK_INFO = new RollupCurrencyInfo();
-        FALLBACK_INFO.DecimalPlaces = 2;
-        FALLBACK_INFO.ConversionRate = 1;
-      }
+      FALLBACK_INFO = FALLBACK_INFO ?? new RollupCurrencyInfo().setDefaults(1, 2);
       return FALLBACK_INFO;
     }
     set;
@@ -50,9 +44,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private static final Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY {
     get {
-      if (CURRENCY_ISO_CODE_TO_CURRENCY == null) {
-        CURRENCY_ISO_CODE_TO_CURRENCY = getCurrencyMap();
-      }
+      CURRENCY_ISO_CODE_TO_CURRENCY = CURRENCY_ISO_CODE_TO_CURRENCY ?? getCurrencyMap();
       return CURRENCY_ISO_CODE_TO_CURRENCY;
     }
     set;
@@ -60,9 +52,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private static final Map<Schema.SObjectType, Map<String, Schema.SObjectField>> TYPE_TO_FIELDS {
     get {
-      if (TYPE_TO_FIELDS == null) {
-        TYPE_TO_FIELDS = new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>();
-      }
+      TYPE_TO_FIELDS = TYPE_TO_FIELDS ?? new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>();
       return TYPE_TO_FIELDS;
     }
     set;
@@ -80,6 +70,12 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   protected virtual void addInfo(RollupCurrencyInfo info) {
+  }
+
+  private RollupCurrencyInfo setDefaults(Decimal conversionRate, Integer decimalPlaces) {
+    this.conversionRate = conversionRate;
+    this.DecimalPlaces = decimalPlaces;
+    return this;
   }
 
   public static List<String> getMultiCurrencyFields(Schema.DescribeSObjectResult objectToken) {
@@ -192,7 +188,7 @@ public without sharing virtual class RollupCurrencyInfo {
         return;
       }
       // the worst possible scenario has occurred - the currencies differ and we haven't already populated the map
-      clonedCalcItem = clonedCalcItem == null ? calcItem.clone(true, true, true, true) : clonedCalcItem;
+      clonedCalcItem = clonedCalcItem ?? calcItem.clone(true, true, true, true);
       clonedCalcItem = convertToParentCurrency(calcItem, clonedCalcItem, opFieldOnCalcItem, calcItemIsoCode, parentIsoCode, hashKey);
 
       for (RollupOrderBy__mdt orderBy : orderBys) {

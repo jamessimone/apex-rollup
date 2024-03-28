@@ -4,9 +4,7 @@ public virtual without sharing class RollupMetaPicklists {
   public static final ShouldRunAs ShouldRunAs = new ShouldRunAs();
   public static final SortOrder SortOrder {
     get {
-      if (SortOrder == null) {
-        SortOrder = new SortOrder();
-      }
+      SortOrder = SortOrder ?? new SortOrder();
       return SortOrder;
     }
     private set;
@@ -14,9 +12,7 @@ public virtual without sharing class RollupMetaPicklists {
 
   public static final NullSortOrder NullSortOrder {
     get {
-      if (NullSortOrder == null) {
-        NullSortOrder = new NullSortOrder();
-      }
+      NullSortOrder = NullSortOrder ?? new NullSortOrder();
       return NullSortOrder;
     }
     private set;
@@ -28,9 +24,7 @@ public virtual without sharing class RollupMetaPicklists {
 
   public static final SharingMode SharingMode {
     get {
-      if (SharingMode == null) {
-        SharingMode = new SharingMode();
-      }
+      SharingMode = SharingMode ?? new SharingMode();
       return SharingMode;
     }
     private set;
@@ -59,30 +53,24 @@ public virtual without sharing class RollupMetaPicklists {
 
     public final String Synchronous {
       get {
-        if (Synchronous == null) {
-          Synchronous = this.validate('Synchronous Rollup');
-        }
-        return Synchronous;
+        this.Synchronous = this.Synchronous ?? this.validate('Synchronous Rollup');
+        return this.Synchronous;
       }
       private set;
     }
 
     public final String Batchable {
       get {
-        if (Batchable == null) {
-          Batchable = this.validate('Batchable');
-        }
-        return Batchable;
+        this.Batchable = this.Batchable ?? this.validate('Batchable');
+        return this.Batchable;
       }
       private set;
     }
 
     public final String Queueable {
       get {
-        if (Queueable == null) {
-          Queueable = this.validate('Queueable');
-        }
-        return Queueable;
+        this.Queueable = this.Queueable ?? this.validate('Queueable');
+        return this.Queueable;
       }
       private set;
     }
@@ -95,20 +83,16 @@ public virtual without sharing class RollupMetaPicklists {
 
     public final String Ascending {
       get {
-        if (Ascending == null) {
-          Ascending = this.validate('Ascending');
-        }
-        return Ascending;
+        this.Ascending = this.Ascending ?? this.validate('Ascending');
+        return this.Ascending;
       }
       private set;
     }
 
     public final String Descending {
       get {
-        if (Descending == null) {
-          Descending = this.validate('Descending');
-        }
-        return Descending;
+        this.Descending = this.Descending ?? this.validate('Descending');
+        return this.Descending;
       }
       private set;
     }
@@ -121,9 +105,7 @@ public virtual without sharing class RollupMetaPicklists {
 
     public final String NullsFirst {
       get {
-        if (NullsFirst == null) {
-          NullsFirst = this.validate('NULLS FIRST');
-        }
+        this.NullsFirst = this.NullsFirst ?? this.validate('NULLS FIRST');
         return NullsFirst;
       }
       private set;
@@ -131,10 +113,8 @@ public virtual without sharing class RollupMetaPicklists {
 
     public final String NullsLast {
       get {
-        if (NullsLast == null) {
-          NullsLast = this.validate('NULLS LAST');
-        }
-        return NullsLast;
+        this.NullsLast = this.NullsLast ?? this.validate('NULLS LAST');
+        return this.NullsLast;
       }
       private set;
     }
@@ -147,20 +127,16 @@ public virtual without sharing class RollupMetaPicklists {
 
     public final String SystemLevel {
       get {
-        if (SystemLevel == null) {
-          SystemLevel = this.validate('System');
-        }
-        return SystemLevel;
+        this.SystemLevel = this.SystemLevel ?? this.validate('System');
+        return this.SystemLevel;
       }
       private set;
     }
 
     public final String UserLevel {
       get {
-        if (UserLevel == null) {
-          UserLevel = this.validate('User');
-        }
-        return UserLevel;
+        this.UserLevel = this.UserLevel ?? this.validate('User');
+        return this.UserLevel;
       }
       private set;
     }

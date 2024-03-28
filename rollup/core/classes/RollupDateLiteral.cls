@@ -2,21 +2,19 @@
 public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN {
     get {
-      if (RELATIVE_LITERAL_PATTERN == null) {
-        RELATIVE_LITERAL_PATTERN = Pattern.compile('(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*');
-      }
+      RELATIVE_LITERAL_PATTERN = RELATIVE_LITERAL_PATTERN ??
+        Pattern.compile('(LAST_|NEXT_|)N_(DAYS|WEEKS|MONTHS|YEARS|QUARTERS|FISCAL_QUARTERS|FISCAL_YEARS)(|_AGO):\\s?\\d*');
       return RELATIVE_LITERAL_PATTERN;
     }
     set;
   }
   private static final Pattern DATE_FUNCTION_PATTERN {
     get {
-      if (DATE_FUNCTION_PATTERN == null) {
-        DATE_FUNCTION_PATTERN = Pattern.compile(
+      DATE_FUNCTION_PATTERN = DATE_FUNCTION_PATTERN ??
+        Pattern.compile(
           '(CALENDAR_MONTH|CALENDAR_QUARTER|CALENDAR_YEAR|DAY_IN_MONTH|DAY_IN_WEEK|DAY_IN_YEAR|DAY_ONLY|FISCAL_MONTH|' +
           'FISCAL_QUARTER|FISCAL_YEAR|HOUR_IN_DAY|WEEK_IN_MONTH|WEEK_IN_YEAR)\\(.+?\\)'
         );
-      }
       return DATE_FUNCTION_PATTERN;
     }
     set;
@@ -24,9 +22,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private static final Time START_TIME {
     get {
-      if (START_TIME == null) {
-        START_TIME = Time.newInstance(0, 0, 0, 0);
-      }
+      START_TIME = START_TIME ?? Time.newInstance(0, 0, 0, 0);
       return START_TIME;
     }
     set;
@@ -34,9 +30,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private static final Time END_TIME {
     get {
-      if (END_TIME == null) {
-        END_TIME = Time.newInstance(23, 59, 59, 59);
-      }
+      END_TIME = END_TIME ?? Time.newInstance(23, 59, 59, 59);
       return END_TIME;
     }
     set;
@@ -44,9 +38,8 @@ public without sharing abstract class RollupDateLiteral {
 
   private static final Datetime START_OF_TODAY {
     get {
-      if (START_OF_TODAY == null) {
-        return getRelativeDatetime(System.today(), START_TIME);
-      }
+      START_OF_TODAY = START_OF_TODAY ?? getRelativeDatetime(System.today(), START_TIME);
+
       return START_OF_TODAY;
     }
     set;
@@ -54,9 +47,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private static final FiscalInfo FISCAL_INFO {
     get {
-      if (FISCAL_INFO == null) {
-        FISCAL_INFO = getFiscalInfo();
-      }
+      FISCAL_INFO = FISCAL_INFO ?? getFiscalInfo();
       return FISCAL_INFO;
     }
     set;
@@ -67,8 +58,8 @@ public without sharing abstract class RollupDateLiteral {
 
   private static final Map<String, Object> KEY_TO_DATE_LITERAL {
     get {
-      if (KEY_TO_DATE_LITERAL == null) {
-        KEY_TO_DATE_LITERAL = new Map<String, Object>{
+      KEY_TO_DATE_LITERAL = KEY_TO_DATE_LITERAL ??
+        new Map<String, Object>{
           'YESTERDAY' => YesterdayLiteral.class,
           'TODAY' => TodayLiteral.class,
           'TOMORROW' => TomorrowLiteral.class,
@@ -128,7 +119,6 @@ public without sharing abstract class RollupDateLiteral {
           'WEEK_IN_MONTH(' => WeekInMonthFunctionLiteral.class,
           'WEEK_IN_YEAR(' => WeekInYearFunctionLiteral.class
         };
-      }
       return KEY_TO_DATE_LITERAL;
     }
     set;

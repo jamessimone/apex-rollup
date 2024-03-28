@@ -14,11 +14,8 @@ public without sharing class RollupFinalizer implements Finalizer {
   }
 
   private ParentJobResult getParentJobResult(FinalizerContext fc) {
-    ParentJobResult res = fc?.getResult();
-    if (testResult != null) {
-      res = testResult;
-      testResult = null;
-    }
+    ParentJobResult res = testResult ?? fc?.getResult();
+    testResult = null;
     return res;
   }
 

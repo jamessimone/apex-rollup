@@ -13,9 +13,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
   private static Map<String, RecursiveTracker> OPERATION_TO_RECURSION_TRACKER {
     get {
-      if (OPERATION_TO_RECURSION_TRACKER == null) {
-        OPERATION_TO_RECURSION_TRACKER = new Map<String, RecursiveTracker>();
-      }
+      OPERATION_TO_RECURSION_TRACKER = OPERATION_TO_RECURSION_TRACKER ?? new Map<String, RecursiveTracker>();
       return OPERATION_TO_RECURSION_TRACKER;
     }
     private set;
@@ -227,16 +225,14 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
     private final Map<String, Schema.SObjectField> fieldNameToField {
       get {
-        if (this.fieldNameToField == null) {
-          this.fieldNameToField = this.calcItemType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap();
-        }
+        this.fieldNameToField = this.fieldNameToField ?? this.calcItemType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap();
         return this.fieldNameToField;
       }
       set;
     }
 
     public WhereFieldEvaluator(String whereClause, SObjectType calcItemSObjectType) {
-      whereClause = whereClause == null ? '' : whereClause.replaceAll('(\n|\r|\t)', ' ');
+      whereClause = whereClause?.replaceAll('(\n|\r|\t)', ' ') ?? '';
       this.whereClause = whereClause;
       this.calcItemType = calcItemSObjectType;
       this.validRelationshipNames = this.getValidRelationshipNames(calcItemSObjectType);

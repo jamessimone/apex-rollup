@@ -3,7 +3,13 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
   private static Boolean isValidRun = false;
 
-  private Integer countOfItems;
+  private Integer countOfItems {
+    get {
+      this.countOfItems = this.countOfItems ?? this.preStart().getCount();
+      return this.countOfItems;
+    }
+    set;
+  }
 
   private without sharing class QueueableResetProcessor extends RollupAsyncProcessor.QueueableProcessor {
     private final RollupParentResetProcessor processor;
@@ -13,7 +19,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     }
 
     protected override void performWork() {
-      if (this.processor.getNumberOfItems() > maxQueryRows) {
+      if (this.processor.countOfItems > maxQueryRows) {
         Database.executeBatch(this.processor, this.processor.rollupControl.BatchChunkSize__c.intValue());
       } else {
         this.processor.runSync();
@@ -44,7 +50,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       this.logger.log('Parent reset processor no-op', System.LoggingLevel.INFO);
       return processId;
     }
-    Boolean isOverLimit = this.getNumberOfItems() > maxQueryRows;
+    Boolean isOverLimit = this.countOfItems > maxQueryRows;
     if (isOverLimit && this.isBatch() == false) {
       // avoids: System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method
       processId = super.startAsyncWork();
@@ -52,7 +58,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
       processId = this.startAsyncWork();
-    } else if (this.getNumberOfItems() > 0) {
+    } else if (this.countOfItems > 0) {
       this.runSync();
     }
 
@@ -90,13 +96,6 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
 
   protected override String startAsyncWork() {
     return this.rollupControl.ShouldSkipResettingParentFields__c ? this.getNoProcessId() : System.enqueueJob(new QueueableResetProcessor(this));
-  }
-
-  private Integer getNumberOfItems() {
-    if (this.countOfItems == null) {
-      this.countOfItems = this.preStart().getCount();
-    }
-    return this.countOfItems;
   }
 
   private void runSync() {

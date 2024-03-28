@@ -56,9 +56,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   // that never reference these variables
   private static final Map<SObjectType, Set<TriggerOperation>> CACHED_APEX_OPERATIONS {
     get {
-      if (CACHED_APEX_OPERATIONS == null) {
-        CACHED_APEX_OPERATIONS = new Map<SObjectType, Set<TriggerOperation>>();
-      }
+      CACHED_APEX_OPERATIONS = CACHED_APEX_OPERATIONS ?? new Map<SObjectType, Set<TriggerOperation>>();
       return CACHED_APEX_OPERATIONS;
     }
     set;
@@ -67,9 +65,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @TestVisible
   private static List<RollupFullRecalcProcessor> CACHED_FULL_RECALCS {
     get {
-      if (CACHED_FULL_RECALCS == null) {
-        CACHED_FULL_RECALCS = new List<RollupFullRecalcProcessor>();
-      }
+      CACHED_FULL_RECALCS = CACHED_FULL_RECALCS ?? new List<RollupFullRecalcProcessor>();
       return CACHED_FULL_RECALCS;
     }
     set;
@@ -77,9 +73,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   private static Set<String> CACHED_COUNT_QUERIES {
     get {
-      if (CACHED_COUNT_QUERIES == null) {
-        CACHED_COUNT_QUERIES = new Set<String>();
-      }
+      CACHED_COUNT_QUERIES = CACHED_COUNT_QUERIES ?? new Set<String>();
       return CACHED_COUNT_QUERIES;
     }
     set;
@@ -88,9 +82,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @TestVisible
   private static List<Rollup> CACHED_ROLLUPS {
     get {
-      if (CACHED_ROLLUPS == null) {
-        CACHED_ROLLUPS = new List<Rollup>();
-      }
+      CACHED_ROLLUPS = CACHED_ROLLUPS ?? new List<Rollup>();
       return CACHED_ROLLUPS;
     }
     set;
@@ -98,9 +90,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   private static final RollupCalcItemReplacer CALC_ITEM_REPLACER {
     get {
-      if (CALC_ITEM_REPLACER == null) {
-        CALC_ITEM_REPLACER = new RollupCalcItemReplacer(CACHED_DEFAULT);
-      }
+      CALC_ITEM_REPLACER = CALC_ITEM_REPLACER ?? new RollupCalcItemReplacer(CACHED_DEFAULT);
       return CALC_ITEM_REPLACER;
     }
     set;
@@ -108,19 +98,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   protected Map<Id, SObject> oldCalcItems {
     get {
-      if (oldCalcItems == null) {
-        oldCalcItems = new Map<Id, SObject>();
-      }
-      return oldCalcItems;
+      this.oldCalcItems = this.oldCalcItems ?? new Map<Id, SObject>();
+      return this.oldCalcItems;
     }
     set;
   }
 
   protected final Set<Id> matchingCalcItemIds {
     get {
-      if (matchingCalcItemIds == null) {
-        matchingCalcItemIds = new Set<Id>();
-      }
+      this.matchingCalcItemIds = this.matchingCalcItemIds ?? new Set<Id>();
       return matchingCalcItemIds;
     }
     set;
@@ -129,10 +115,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @TestVisible
   protected final List<RollupAsyncProcessor> rollups {
     get {
-      if (rollups == null) {
-        rollups = new List<RollupAsyncProcessor>();
-      }
-      return rollups;
+      this.rollups = this.rollups ?? new List<RollupAsyncProcessor>();
+      return this.rollups;
     }
     set;
   }
@@ -152,8 +136,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   private Map<String, String> baseProps {
     get {
-      if (this.baseProps == null) {
-        this.baseProps = new Map<String, String>{
+      this.baseProps = this.baseProps ??
+        new Map<String, String>{
           'Type' => this.getTypeName(),
           'Invocation Point' => this.invokePoint?.name(),
           'Is Full Recalc' => String.valueOf(this.isFullRecalc),
@@ -161,7 +145,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           'Is Conductor' => String.valueOf(this.isConductor),
           'Inner rollups' => String.valueOf(this.rollups.size())
         };
-      }
       return this.baseProps;
     }
     set;
@@ -177,9 +160,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @TestVisible
   private static RollupSObjectUpdater DML {
     get {
-      if (DML == null) {
-        DML = new RollupSObjectUpdater();
-      }
+      DML = DML ?? new RollupSObjectUpdater();
       return DML;
     }
     set;
@@ -557,8 +538,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       enforceValidationRules(validationRuleWrapper);
 
       if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && possibleParentId == null) {
-        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter);
-        if (delimiterIndex != null && delimiterIndex > -1) {
+        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter) ?? -1;
+        if (delimiterIndex > -1) {
           possibleParentId = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length())
             .substringAfter(' = ')
             .remove('\'');
@@ -568,10 +549,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         String lookupFieldName = String.isNotBlank(matchingMeta.GrandparentRelationshipFieldPath__c)
           ? matchingMeta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.' + matchingMeta.LookupFieldOnLookupObject__c
           : matchingMeta.LookupFieldOnCalcItem__c;
-        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter);
-        if (matchingMeta.CalcItemWhereClause__c == null) {
-          matchingMeta.CalcItemWhereClause__c = '';
-        }
+        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter) ?? '';
         matchingMeta.CalcItemWhereClause__c +=
           (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? ' AND ' : '') +
           lookupFieldName +
@@ -1830,6 +1808,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     batch(rollupsToProcess, InvocationPoint.FROM_INVOCABLE);
   }
 
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     List<SObject> matchingMetadata;
     // We need to clean up the Entity Definition / Field Definition
@@ -2465,9 +2444,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
-        if (errorMessage == null) {
-          errorMessage = '';
-        }
+        errorMessage = errorMessage ?? '';
         errorMessage += (String.isNotBlank(errorMessage) ? ' ' : '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
       }
     }
@@ -2650,16 +2627,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     // recursive updates from Apex - particularly from merges, but possible elsewhere - can trigger downstream flows
     // and it's important the original context be maintained in those situations
-    if (apexContext == null) {
-      apexContext = matchingOperation;
-    }
+    apexContext = apexContext ?? matchingOperation;
     populateCachedApexOperations(sObjectType, matchingOperation);
 
     return flowContext == 'INSERT' ? '' : flowContext + '_';
   }
 
   private static void winnowOldFlowRecords(FlowInput flowInput) {
-    flowInput.oldRecordsToRollup = flowInput.oldRecordsToRollup == null ? new List<SObject>() : flowInput.oldRecordsToRollup.clone();
+    flowInput.oldRecordsToRollup = flowInput.oldRecordsToRollup?.clone() ?? new List<SObject>();
     for (Integer index = flowInput.oldRecordsToRollup.size() - 1; index >= 0; index--) {
       SObject oldRecord = flowInput.oldRecordsToRollup[index];
       // record-triggered flows set up to run when "A record is created or modified"
@@ -2757,9 +2732,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     } else if (rollupOperations.size() == 1) {
       rollupConductor.metadata = rollupOperations[0];
     }
-    if (sObjectType == null) {
-      sObjectType = calcItems[0].getSObjectType();
-    }
+    sObjectType = sObjectType ?? calcItems[0].getSObjectType();
 
     Boolean shouldFilterCalcItems = CALC_ITEM_REPLACER.hasProcessedMetadata(rollupOperations, calcItems);
 
@@ -2961,9 +2934,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         mergedIdToCurrentParentId.put(record.Id, mergedFieldValue);
         mergedParentIds.add(mergedFieldValue);
       }
-      if (lookupObjectName == null) {
-        lookupObjectName = String.valueOf(record.getSObjectType());
-      }
+      lookupObjectName = lookupObjectName ?? String.valueOf(record.getSObjectType());
     }
 
     if (mergedIdToCurrentParentId.isEmpty()) {

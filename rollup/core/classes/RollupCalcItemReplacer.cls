@@ -73,9 +73,7 @@ public without sharing class RollupCalcItemReplacer {
     if (calcItems?.isEmpty() != false || metadata?.isEmpty() != false) {
       return localNeedsReplacement;
     }
-    if (this.repo == null) {
-      this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(metadata[0]));
-    }
+    this.repo = this.repo ?? new RollupRepository(RollupMetaPicklists.getAccessLevel(metadata[0]));
     SObjectType calcType = calcItems[0].getSObjectType();
     for (Rollup__mdt meta : metadata) {
       if (meta.CalcItem__c != calcType.getDescribe().getName()) {
@@ -185,10 +183,7 @@ public without sharing class RollupCalcItemReplacer {
     // first we check to see if there is a child object where clause, and that it contains any of the common polymorphic fields
     SObject firstItem = calcItems[0];
     SObjectType sObjectType = firstItem.getSObjectType();
-    Set<String> optionalWhereClauses = this.keyToOptionalWhereClauses.get(OWNER + sObjectType);
-    if (optionalWhereClauses == null) {
-      optionalWhereClauses = new Set<String>();
-    }
+    Set<String> optionalWhereClauses = this.keyToOptionalWhereClauses.get(OWNER + sObjectType) ?? new Set<String>();
     Boolean hasOwnerClause = optionalWhereClauses.isEmpty() == false;
     Boolean hasTypeClause = this.keyToOptionalWhereClauses.containsKey(TYPE_FIELD + sObjectType);
     if (hasTypeClause) {

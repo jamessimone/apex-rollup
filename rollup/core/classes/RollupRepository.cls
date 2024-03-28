@@ -5,9 +5,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   private final RunAsMode localRunAsMode;
   private transient System.AccessLevel accessLevel {
     get {
-      if (this.accessLevel == null) {
-        this.accessLevel = this.transformPermissionLevel(this.localRunAsMode);
-      }
+      this.accessLevel = this.accessLevel ?? this.transformPermissionLevel(this.localRunAsMode);
       return this.accessLevel;
     }
     set;

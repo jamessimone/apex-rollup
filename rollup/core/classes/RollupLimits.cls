@@ -12,9 +12,7 @@ public without sharing class RollupLimits {
 
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS {
     get {
-      if (ASYNC_TIMEOUT_INTERVAL_MS == null) {
-        ASYNC_TIMEOUT_INTERVAL_MS = stubAsyncTimeoutInterval == null ? 13000 : stubAsyncTimeoutInterval;
-      }
+      ASYNC_TIMEOUT_INTERVAL_MS = ASYNC_TIMEOUT_INTERVAL_MS ?? stubAsyncTimeoutInterval ?? 13000;
       return ASYNC_TIMEOUT_INTERVAL_MS;
     }
     set;
@@ -23,8 +21,6 @@ public without sharing class RollupLimits {
   private static final Boolean HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT {
     get {
       Integer asyncJobLimit = 250000;
-      // at the moment, packaging orgs run tests synchronously, which produces an error when fetching System.OrgLimits.getMap()
-      // this is a workaround until it's safe to access OrgLimits from a synchronously running test
       if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null) {
         System.OrgLimit asyncOrgLimit = System.OrgLimits.getMap().get('DailyAsyncApexExecutions');
         asyncJobLimit = asyncOrgLimit.getLimit();
@@ -71,10 +67,7 @@ public without sharing class RollupLimits {
 
     public Integer getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows != null ? stubbedQueryRows : Limits.getQueryRows();
-      if (this.control?.MaxQueryRows__c == null) {
-        return LIMIT_QUERY_ROWS - queryRowsUsed;
-      }
-      Integer remainingQueryRows = this.control.MaxQueryRows__c?.intValue() - queryRowsUsed;
+      Integer remainingQueryRows = (this.control.MaxQueryRows__c?.intValue() ?? LIMIT_QUERY_ROWS) - queryRowsUsed;
       return remainingQueryRows > 0 ? remainingQueryRows : 0;
     }
 

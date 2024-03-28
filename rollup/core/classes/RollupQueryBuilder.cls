@@ -7,9 +7,7 @@ public without sharing class RollupQueryBuilder {
   private static final Map<String, String> OG_WHERE_CLAUSE_TO_SANITIZED_VERSION = new Map<String, String>();
   private static final Pattern AGGREGATE_QUERY_REGEX {
     get {
-      if (AGGREGATE_QUERY_REGEX == null) {
-        AGGREGATE_QUERY_REGEX = Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');
-      }
+      AGGREGATE_QUERY_REGEX = AGGREGATE_QUERY_REGEX ?? Pattern.compile('(count(_distinct|)|avg|sum|max|min)\\(');
       return AGGREGATE_QUERY_REGEX;
     }
     set;

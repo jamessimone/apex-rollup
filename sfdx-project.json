@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "More accurate checking of org async limits while testing",
-            "versionNumber": "1.6.19.0",
+            "versionName": "Updating to null coalesce operator when applicable",
+            "versionNumber": "1.6.20.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,6 +102,7 @@
         "Nebula Logger - Core@4.8.0-NEXT-ignore-origin-method": "04t5Y0000015lslQAA",
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.6.18": "04t6g000008Oak1AAC",
-        "apex-rollup@1.6.19": "04t6g000008Oal4AAC"
+        "apex-rollup@1.6.19": "04t6g000008Oal4AAC",
+        "apex-rollup@1.6.20": "04t6g000008OanPAAS"
     }
 }
