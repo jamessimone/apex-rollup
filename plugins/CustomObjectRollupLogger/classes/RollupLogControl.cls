@@ -7,9 +7,11 @@ public class RollupLogControl {
 
   public static Integer Offset {
     get {
-      Offset = Offset ?? DATE_OFFSET != null && PLUGIN.getInstance('CustomObjectRollupLogger')?.Id == DATE_OFFSET?.RollupPlugin__c
-        ? Integer.valueOf(DATE_OFFSET.Value__c)
-        : FALLBACK_DATE_OFFSET;
+      Offset = Offset ??
+        (DATE_OFFSET != null &&
+          PLUGIN.getInstance('CustomObjectRollupLogger')?.Id == DATE_OFFSET?.RollupPlugin__c
+          ? Integer.valueOf(DATE_OFFSET.Value__c)
+          : FALLBACK_DATE_OFFSET);
       return Offset;
     }
     private set;
