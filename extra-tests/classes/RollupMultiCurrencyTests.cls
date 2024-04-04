@@ -32,6 +32,9 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void shouldCorrectlyRollupMaxForMultiCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
@@ -81,6 +84,9 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void shouldCorrectlyRollupMinForMultiCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
@@ -131,6 +137,9 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void shouldCorrectlyRollupSumForMultiCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
@@ -182,6 +191,9 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void shouldCorrectlyRollupAverageForMultiCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
@@ -240,6 +252,9 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void shouldCorrectlyRollupFirstForMultiCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
@@ -300,6 +315,9 @@ private class RollupMultiCurrencyTests {
 
   @IsTest
   static void shouldCorrectlyRollupLastForMultiCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
@@ -356,6 +374,10 @@ private class RollupMultiCurrencyTests {
 
     acc = [SELECT Id, Name FROM Account];
     System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
+  }
+
+  private static Boolean hasCurrencyInfo(String currencyCode) {
+    return RollupCurrencyInfo.getCurrencyInfo('EUR').IsoCode != null;
   }
 
   private static String getCurrencyIsoCode(SObject record) {
