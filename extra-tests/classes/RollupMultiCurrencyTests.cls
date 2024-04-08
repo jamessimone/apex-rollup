@@ -376,8 +376,60 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
   }
 
+  @IsTest
+  static void properlyTracksCurrencyItemsForDifferentParentCurrencies() {
+    if (hasCurrencyInfo('EUR') == false || hasCurrencyInfo('JPY') == false) {
+      return;
+    }
+    delete [SELECT Id FROM Opportunity];
+
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
+    acc.AnnualRevenue = 100;
+    update acc;
+    System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
+
+    Opportunity eurOpp = new Opportunity(Name = 'First Parent', StageName = 'a', CloseDate = System.today(), AccountId = acc.Id);
+    RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
+    Contract contract = new Contract(AccountId = acc.Id, Name = 'Second Parent');
+    RollupCurrencyInfo.setCurrencyIsoCode(contract, 'JPY');
+    insert new List<SObject>{ eurOpp, contract };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup__mdt firstParent = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = 'AnnualRevenue',
+      LookupObject__c = 'Opportunity',
+      LookupFieldOnCalcItem__c = 'Id',
+      LookupFieldOnLookupObject__c = 'AccountId',
+      RollupFieldOnLookupObject__c = 'Amount',
+      RollupOperation__c = 'SUM',
+      CalcItem__c = 'Account'
+    );
+    Rollup__mdt secondParent = new Rollup__mdt(
+      RollupFieldOnCalcItem__c = 'AnnualRevenue',
+      LookupObject__c = 'Contract',
+      LookupFieldOnCalcItem__c = 'Id',
+      LookupFieldOnLookupObject__c = 'AccountId',
+      RollupFieldOnLookupObject__c = 'ContractTerm',
+      RollupOperation__c = 'SUM',
+      CalcItem__c = 'Account'
+    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{ firstParent, secondParent };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+    Rollup.records = new List<Account>{ acc };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    contract = [SELECT ContractTerm FROM Contract WHERE Id = :contract.Id];
+    eurOpp = [SELECT Amount FROM Opportunity WHERE Id = :eurOpp.Id];
+    System.assertNotEquals(null, contract.ContractTerm, 'Rollup should have occurred');
+    System.assertNotEquals(contract.ContractTerm, eurOpp.Amount);
+  }
+
   private static Boolean hasCurrencyInfo(String currencyCode) {
-    return RollupCurrencyInfo.getCurrencyInfo('EUR').IsoCode != null;
+    return RollupCurrencyInfo.getCurrencyInfo(currencyCode).IsoCode != null;
   }
 
   private static String getCurrencyIsoCode(SObject record) {

@@ -399,7 +399,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private SObject getTransformedCalcItem(SObject calcItem) {
-    return this.isMultiCurrencyRollup ? RollupCurrencyInfo.getCalcItem(calcItem) : calcItem;
+    return this.isMultiCurrencyRollup ? RollupCurrencyInfo.getCalcItem(calcItem, this.parentIsoCode) : calcItem;
   }
 
   private void transformForMultiCurrencyOrgs(List<SObject> calcItems) {
