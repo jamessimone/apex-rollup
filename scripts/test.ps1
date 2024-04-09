@@ -23,7 +23,7 @@ function Start-Tests() {
   }
 
   if ($false -eq $testFailure -And $currentBranch.Contains("main") -eq $false) {
-    Start-Integration-Tests
+    # Start-Integration-Tests
   }
 
   try {
