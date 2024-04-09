@@ -110,8 +110,8 @@ public without sharing virtual class RollupCurrencyInfo {
     return IS_MULTICURRENCY;
   }
 
-  public static SObject getCalcItem(SObject calcItem) {
-    SObject potentiallyTransformedItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(getKey(calcItem));
+  public static SObject getCalcItem(SObject calcItem, String parentIsoCode) {
+    SObject potentiallyTransformedItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(getKey(calcItem, parentIsoCode));
     return potentiallyTransformedItem != null ? potentiallyTransformedItem : calcItem;
   }
 
@@ -133,8 +133,8 @@ public without sharing virtual class RollupCurrencyInfo {
     return newParent;
   }
 
-  private static String getKey(SObject calcItem) {
-    return calcItem.Id + ((Object) calcItem).hashCode().format();
+  private static String getKey(SObject calcItem, String parentIsoCode) {
+    return calcItem.Id + ((Object) calcItem).hashCode().format() + parentIsoCode;
   }
 
   private static void loadProperMinMaxDates(List<SObject> calcItems, Schema.SObjectField rollupField) {
@@ -173,7 +173,7 @@ public without sharing virtual class RollupCurrencyInfo {
   ) {
     if (calcItem.getSObjectType().getDescribe().fields.getMap().containsKey(CURRENCY_ISO_CODE_FIELD_NAME)) {
       String calcItemIsoCode = (String) calcItem.get(CURRENCY_ISO_CODE_FIELD_NAME);
-      String transformKey = getKey(calcItem);
+      String transformKey = getKey(calcItem, parentIsoCode);
       SObject clonedCalcItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(transformKey);
       String hashKey = getHashKey(calcItem, opFieldOnCalcItem);
       if (

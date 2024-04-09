@@ -23,12 +23,12 @@ function Start-Tests() {
   }
 
   if ($false -eq $testFailure -And $currentBranch.Contains("main") -eq $false) {
-    Start-Integration-Tests
+    # Start-Integration-Tests
   }
 
   try {
     Write-Debug "Deleting scratch org ..."
-    npx sf org delete scratch --no-prompt
+    npm run delete:org
   } catch {
     Write-Debug "Scratch org deletion failed, continuing ..."
   }

@@ -79,8 +79,15 @@ jobs:
           DEVHUB_SERVER_KEY: ${{ secrets.DEVHUB_SERVER_KEY }}
 
       - name: 'Deploy & Test'
+        id: 'deploy'
         shell: pwsh
         run: '. ./scripts/test.ps1'
+
+      - name: 'Possible Scratch Org Cleanup'
+        if: ${{ failure() && steps.deploy.conclusion == 'failure' }}
+        run: |
+          npm run delete:org
+          exit 1
 
       # Delete temporary test files that Codecov is unable to parse
       - name: 'Delete unparseable test coverage'
