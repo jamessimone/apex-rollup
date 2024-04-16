@@ -674,6 +674,53 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void shouldCountDistinctForGrandparentDeletes() {
+    if (RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG) {
+      return;
+    }
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.shouldFlattenAsyncProcesses = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT_DISTINCT',
+        GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
+          new List<Schema.SObjectField>{ ApplicationLog__c.Application__c, Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.Name }
+        )
+      )
+    };
+
+    Account greatGrandparent = new Account(Name = 'Great-grandparent 1');
+    insert greatGrandparent;
+
+    ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent 1', Account__c = greatGrandparent.Id);
+    ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Grandparent 2', Account__c = greatGrandparent.Id);
+    List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
+    insert parentApps;
+
+    Application__c parent = new Application__c(Name = 'Parent 1', ParentApplication__c = grandParent.Id);
+    Application__c secondParent = new Application__c(Name = 'Parent 2', ParentApplication__c = secondGrandparent.Id);
+    insert new List<Application__c>{ parent, secondParent };
+
+    ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Will Still Exist');
+    ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'To be deleted', Application__c = parent.Id);
+    insert new List<ApplicationLog__c>{ child, secondChild };
+
+    Test.startTest();
+    delete secondChild;
+    Test.stopTest();
+
+    greatGrandparent = [SELECT AnnualRevenue FROM Account WHERE Id = :greatGrandparent.Id];
+    Assert.areEqual(1, greatGrandparent.AnnualRevenue, 'Should still count non-deleted great-grandchild');
+  }
+
+  @IsTest
   static void shouldProperlyFilterPolymorphicWhatFields() {
     Account acc = new Account(Name = 'Matching type');
     Case cas = new Case();

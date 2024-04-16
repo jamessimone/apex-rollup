@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Updating to null coalesce operator when applicable",
-            "versionNumber": "1.6.21.0",
+            "versionName": "Fixes grandparent rollup logic for deletes with COUNT_DISTINCT",
+            "versionNumber": "1.6.22.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -104,6 +104,7 @@
         "apex-rollup@1.6.18": "04t6g000008Oak1AAC",
         "apex-rollup@1.6.19": "04t6g000008Oal4AAC",
         "apex-rollup@1.6.20": "04t6g000008OanPAAS",
-        "apex-rollup@1.6.21": "04t6g000008OatsAAC"
+        "apex-rollup@1.6.21": "04t6g000008OatsAAC",
+        "apex-rollup@1.6.22": "04t6g000008OavAAAS"
     }
 }

@@ -654,6 +654,9 @@ public without sharing class RollupRelationshipFieldFinder {
           .setArg(inclusiveIds)
           .setArg(bindVar, this.records)
           .get();
+        if (this.metadata.RollupOperation__c.contains('DELETE')) {
+          this.records.clear();
+        }
         this.records.addAll(additionalCalcItems);
         return additionalCalcItems;
       } catch (Exception ex) {
