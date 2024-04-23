@@ -65,7 +65,7 @@ public class RollupSObjectUpdaterTests {
     RollupPlugin.parameterMock = new RollupPluginParameter__mdt(Value__c = DispatcherMock.class.getName());
     RollupSObjectUpdater updater = new RollupSObjectUpdater();
 
-    updater.doUpdate(new List<SObjecT>{ new Account() });
+    updater.doUpdate(new List<SObject>{ new Account() });
 
     System.assertEquals(true, dispatcherMockWasCalled);
   }
@@ -139,6 +139,22 @@ public class RollupSObjectUpdaterTests {
     updater.doUpdate(new List<SObject>{ new Account() });
 
     System.assertNotEquals(initial, RollupSettings__c.getInstance());
+  }
+
+  @IsTest
+  static void shouldThrowWhenControlValueEnabledForFailedSaves() {
+    RollupSObjectUpdater updater = new RollupSObjectUpdater();
+    updater.addRollupControl(new RollupControl__mdt(ShouldThrowOnSaveErrors__c = true));
+
+    String message = '';
+    try {
+      updater.doUpdate(new List<SObject>{ new Account() });
+      Assert.fail('Error should be thrown for account without Id');
+    } catch (System.DmlException ex) {
+      message = ex.getMessage();
+    }
+
+    Assert.areEqual('Update failed. First exception on row 0; first error: MISSING_ARGUMENT, Id not specified in an update call: []', message);
   }
 
   public class MockUpdater implements RollupSObjectUpdater.IUpdater {

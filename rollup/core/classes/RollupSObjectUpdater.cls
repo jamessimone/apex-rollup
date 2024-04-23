@@ -64,8 +64,7 @@ global without sharing virtual class RollupSObjectUpdater {
       recordsToUpdate.sort(SORTER);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
-      // TODO - possibly add configuration for this option as per #523
-      dmlOptions.OptAllOrNone = false;
+      dmlOptions.OptAllOrNone = this.rollupControl.ShouldThrowOnSaveErrors__c;
       if (this.rollupControl.ShouldDuplicateRulesBeIgnored__c != false) {
         dmlOptions.DuplicateRuleHeader.AllowSave = true;
       }
