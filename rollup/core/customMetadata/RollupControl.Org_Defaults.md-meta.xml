@@ -31,12 +31,12 @@
         <value xsi:type="xsd:double">50.0</value>
     </values>
     <values>
-        <field>MaxQueryRows__c</field>
-        <value xsi:type="xsd:double">25000.0</value>
-    </values>
-    <values>
         <field>MaxParentRowsUpdatedAtOnce__c</field>
         <value xsi:type="xsd:double">5000.0</value>
+    </values>
+    <values>
+        <field>MaxQueryRows__c</field>
+        <value xsi:type="xsd:double">25000.0</value>
     </values>
     <values>
         <field>MaxRollupRetries__c</field>
@@ -68,6 +68,10 @@
     </values>
     <values>
         <field>ShouldSkipResettingParentFields__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>ShouldThrowOnSaveErrors__c</field>
         <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldThrowOnSaveErrors__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >By default, errors when saving parent records are logged but execution does not halt. Set this to true to throw errors for validations rules and other exceptions.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText
+  >By default, errors when saving parent records are logged but execution does not halt. Set this to true to throw errors for validations rules and other exceptions.</inlineHelpText>
+    <label>Should Throw On Save Errors</label>
+    <type>Checkbox</type>
+</CustomField>
