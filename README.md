@@ -980,6 +980,7 @@ public class RollupLogger {
     void log(String logString, System.LoggingLevel logLevel);
     void log(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
+    ILogger updateRollupControl(RollupControl__mdt control);
   }
 }
 
