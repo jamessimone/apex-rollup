@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OawIAAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OawrAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OawIAAS">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OawrAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -980,6 +980,7 @@ public class RollupLogger {
     void log(String logString, System.LoggingLevel logLevel);
     void log(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
+    ILogger updateRollupControl(RollupControl__mdt control);
   }
 }
 

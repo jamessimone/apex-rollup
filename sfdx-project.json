@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Adds support for exceptions to be thrown when parent-level saves errors occur",
-            "versionNumber": "1.6.23.0",
+            "versionName": "Updates visibility of RollupLogger interfaces",
+            "versionNumber": "1.6.24.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.6.20": "04t6g000008OanPAAS",
         "apex-rollup@1.6.21": "04t6g000008OatsAAC",
         "apex-rollup@1.6.22": "04t6g000008OavAAAS",
-        "apex-rollup@1.6.23": "04t6g000008OawIAAS"
+        "apex-rollup@1.6.23": "04t6g000008OawIAAS",
+        "apex-rollup@1.6.24": "04t6g000008OawrAAC"
     }
 }

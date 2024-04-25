@@ -1,7 +1,7 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.6.23';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.6.24';
   private static final System.LoggingLevel FALLBACK_LOGGING_LEVEL = System.LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -23,10 +23,10 @@ global without sharing virtual class RollupLogger implements ILogger {
     private set;
   }
 
-  public interface ToStringObject {
+  global interface ToStringObject {
   }
 
-  public interface ILogger {
+  global interface ILogger {
     void log(String logString, System.LoggingLevel logLevel);
     void log(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
@@ -37,13 +37,13 @@ global without sharing virtual class RollupLogger implements ILogger {
     this.log(logString, null, logLevel);
   }
 
-  public virtual void log(String logString, Object logObject, System.LoggingLevel logLevel) {
+  global virtual void log(String logString, Object logObject, System.LoggingLevel logLevel) {
     if (logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
     }
   }
 
-  public virtual void save() {
+  global virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
