@@ -1957,13 +1957,13 @@ private class RollupCalculatorTests {
     calc.handleCountDistinct(null);
     calc.handleUpdateCountDistinct(null);
     calc.handleSumOrCount(null);
-    calc.handleUpdateSumOrCount(null, null);
+    calc.handleUpdateSumOrCount(null);
     calc.handleDeleteSumOrCount(null);
     calc.handleMin(null);
     calc.handleMax(null);
-    calc.handleUpdateMinOrMax(null, null);
+    calc.handleUpdateMinOrMax(null);
     calc.handleConcat(null);
-    calc.handleUpdateConcat(null, null);
+    calc.handleUpdateConcat(null);
     calc.handleDeleteConcat(null);
 
     System.assert(true, 'Should make it here');
