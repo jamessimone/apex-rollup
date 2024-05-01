@@ -5,7 +5,7 @@
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
             "versionName": "Fixes an issue where rollups to multiple parents running in an unordered fashion could accidentally reset parents between bulk full recalc batches",
-            "versionNumber": "1.1.16.0",
+            "versionNumber": "1.1.18.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -25,6 +25,6 @@
         "apex-rollup-namespaced@1.1.13": "04t6g000008OaYwAAK",
         "apex-rollup-namespaced@1.1.14": "04t6g000008OaZBAA0",
         "apex-rollup-namespaced@1.1.16": "04t6g000008OaZaAAK",
-        "apex-rollup-namespaced@1.1.17": "04t6g000008OawwAAC"
+        "apex-rollup-namespaced@1.1.18": "04t6g000008Ob1iAAC"
     }
 }
