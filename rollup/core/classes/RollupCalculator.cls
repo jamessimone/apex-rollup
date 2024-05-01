@@ -14,7 +14,7 @@ public without sharing abstract class RollupCalculator {
   protected final Boolean isChangedFieldCalc;
   protected final SObjectType calcItemSObjectType;
 
-  protected Set<Object> distintValues = new Set<Object>();
+  protected Set<Object> distinctValues = new Set<Object>();
   protected List<Id> childrenIds = new List<Id>();
   protected Rollup.Op op;
   protected String lookupKeyQuery;
@@ -134,7 +134,7 @@ public without sharing abstract class RollupCalculator {
       '\'' +
       (String.isBlank(metadata.CalcItemWhereClause__c) ? '' : ' AND (' + metadata.CalcItemWhereClause__c + ')');
     this.childrenIds = new List<Id>();
-    this.distintValues = new Set<Object>();
+    this.distinctValues = new Set<Object>();
   }
 
   public virtual Object getReturnValue() {
@@ -350,10 +350,10 @@ public without sharing abstract class RollupCalculator {
         Object currentVal = this.getTransformedCalcItem(item).get(this.opFieldOnCalcItem);
         result.currentValue = currentVal;
         // TODO set this.isDistinct based on a new Rollup__mdt value
-        if (this.isDistinct && this.distintValues.contains(currentVal)) {
+        if (this.isDistinct && this.distinctValues.contains(currentVal)) {
           continue;
         }
-        this.distintValues.add(currentVal);
+        this.distinctValues.add(currentVal);
         winnowedItems.add(result);
         if (this.op == Rollup.Op.SOME) {
           break;
@@ -464,7 +464,6 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class CountDistinctRollupCalculator extends RollupCalculator {
-    private Set<Object> distinctValues = new Set<Object>();
     private Boolean isIdCount;
     public CountDistinctRollupCalculator(
       Rollup.Op op,
@@ -478,7 +477,6 @@ public without sharing abstract class RollupCalculator {
 
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
-      this.distinctValues = new Set<Object>();
       this.isIdCount = this.opFieldOnCalcItem.getDescribe().getName() == 'Id';
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject);
       if (defaultVal != 0 && this.returnVal != defaultVal && this.isIdCount == false) {
