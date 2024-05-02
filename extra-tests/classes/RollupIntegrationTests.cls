@@ -1293,7 +1293,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.records = new List<ContactPointAddress>{ cpa };
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id) };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id, ParentId = acc.Id) };
     Rollup.runFromTrigger();
 
     updatedAcc = [SELECT AnnualRevenue FROM Account];
@@ -1729,6 +1729,28 @@ private class RollupIntegrationTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
+  }
+
+  @IsTest
+  static void distinctCorrectlyQueriesAdditionalChildren() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'Two');
+    ContactPointAddress three = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 2, Name = 'Three');
+    insert new List<ContactPointAddress>{ one, two, three };
+
+    Rollup.records = new List<ContactPointAddress>{ one };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .modifyMetadata(new Rollup__mdt(IsDistinct__c = true))
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Assert.areEqual(3, acc.AnnualRevenue);
   }
 
   @IsTest

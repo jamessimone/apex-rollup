@@ -146,6 +146,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.groupByFields = meta.GroupByFields__c;
             input.groupByRowEndDelimiter = meta.GroupByRowEndDelimiter__c;
             input.groupByRowStartDelimiter = meta.GroupByRowStartDelimiter__c;
+            input.isDistinct = meta.IsDistinct__c;
             input.isTableFormatted = meta.IsTableFormatted__c;
             input.lookupFieldOnCalcItem = meta.LookupFieldOnCalcItem__c;
             input.lookupFieldOnOpObject = meta.LookupFieldOnLookupObject__c;

@@ -267,17 +267,19 @@ private class RollupMultiCurrencyTests {
     );
 
     Opportunity eurOpp = usdOpp.clone(false, true);
+    eurOpp.StageName = 'A';
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
     eurOpp.Amount = .95;
     Opportunity jpyOpp = eurOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
+    jpyOpp.StageName = 'Z';
     jpyOpp.Amount = 100;
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt meta = Rollup.appendOrderByMetadata(
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Id',
+        RollupFieldOnCalcItem__c = 'StageName',
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
@@ -296,21 +298,8 @@ private class RollupMultiCurrencyTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Decimal firstAmount;
-    Id firstOpportunityId;
-    List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
-      ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
-      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity GROUP BY Id];
-    for (SObject opp : opportunities) {
-      Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
-      if (firstAmount == null || oppConvertedAmount < firstAmount) {
-        firstAmount = oppConvertedAmount;
-        firstOpportunityId = opp.Id;
-      }
-    }
-
     acc = [SELECT Id, Name FROM Account];
-    System.assertEquals(firstOpportunityId, acc.Name, 'Should have taken first based on multi-currency Amount! Records: ' + opportunities);
+    System.assertEquals('A', acc.Name, 'Should have taken first based on multi-currency Amount!');
   }
 
   @IsTest
@@ -332,15 +321,17 @@ private class RollupMultiCurrencyTests {
     Opportunity eurOpp = usdOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
     eurOpp.Amount = .95;
+    eurOpp.StageName = 'A';
     Opportunity jpyOpp = eurOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.Amount = 100;
+    jpyOpp.StageName = 'Z';
     insert new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt meta = Rollup.appendOrderByMetadata(
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = 'Id',
+        RollupFieldOnCalcItem__c = 'StageName',
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
@@ -359,21 +350,8 @@ private class RollupMultiCurrencyTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Decimal lastAmount;
-    Id lastOpportunityId;
-    List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
-      ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
-      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity GROUP BY Id];
-    for (SObject opp : opportunities) {
-      Decimal oppConvertedAmount = (Decimal) opp.get('ConvertedAmount');
-      if (lastAmount == null || oppConvertedAmount > lastAmount) {
-        lastAmount = oppConvertedAmount;
-        lastOpportunityId = opp.Id;
-      }
-    }
-
     acc = [SELECT Id, Name FROM Account];
-    System.assertEquals(lastOpportunityId, acc.Name, 'Should have taken last based on multi-currency Amount! Records: ' + opportunities);
+    System.assertEquals('Z', acc.Name, 'Should have taken last based on multi-currency Amount!');
   }
 
   @IsTest

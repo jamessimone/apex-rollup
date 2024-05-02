@@ -111,12 +111,11 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   public static SObject getCalcItem(SObject calcItem, String parentIsoCode) {
-    SObject potentiallyTransformedItem = TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(getKey(calcItem, parentIsoCode));
-    return potentiallyTransformedItem != null ? potentiallyTransformedItem : calcItem;
+    return TRANSFORMED_MULTICURRENCY_CALC_ITEMS.get(getKey(calcItem, parentIsoCode)) ?? calcItem;
   }
 
   public static RollupCurrencyInfo getCurrencyInfo(String currencyIsoCode) {
-    return CURRENCY_ISO_CODE_TO_CURRENCY.containsKey(currencyIsoCode) ? CURRENCY_ISO_CODE_TO_CURRENCY.get(currencyIsoCode) : FALLBACK_INFO;
+    return CURRENCY_ISO_CODE_TO_CURRENCY.get(currencyIsoCode) ?? FALLBACK_INFO;
   }
 
   public static void setCurrencyIsoCode(SObject record, String isoCode) {
