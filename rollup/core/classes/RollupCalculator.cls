@@ -350,10 +350,12 @@ public without sharing abstract class RollupCalculator {
         result.matchesCurrent = currentItemMatches;
         Object currentVal = this.getTransformedCalcItem(item).get(this.opFieldOnCalcItem);
         result.currentValue = currentVal;
-        if (this.isDistinct && this.distinctValues.contains(currentVal)) {
-          continue;
+        if (this.isDistinct) {
+          if (this.distinctValues.contains(currentVal)) {
+            continue;
+          }
+          this.distinctValues.add(currentVal);
         }
-        this.distinctValues.add(currentVal);
         winnowedItems.add(result);
         if (this.op == Rollup.Op.SOME) {
           break;

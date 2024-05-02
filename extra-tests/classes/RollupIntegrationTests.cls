@@ -1293,7 +1293,7 @@ private class RollupIntegrationTests {
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
     Rollup.records = new List<ContactPointAddress>{ cpa };
-    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id) };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id, ParentId = acc.Id) };
     Rollup.runFromTrigger();
 
     updatedAcc = [SELECT AnnualRevenue FROM Account];
