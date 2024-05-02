@@ -792,6 +792,26 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void sumsDistinctWhenFlagged() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(IsDistinct__c = true),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{ new Opportunity(Id = '0066g00003VDGbF001', Amount = 2), new Opportunity(Id = '0066g00003VDGbF002', Amount = 2) },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(2, calc.getReturnValue());
+  }
+
+  @IsTest
   static void shouldReturnSumIfRollupValueUnchangedButEvalStatusHas() {
     RollupCalculator calc = getCalculator(
       0,
@@ -905,6 +925,30 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldDistinctByFlagForConcat() {
+    String distinct = 'distinct';
+    RollupCalculator calc = getCalculator(
+      '',
+      Rollup.Op.CONCAT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(IsDistinct__c = true),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(Id = '0066g00003VDGbF001', Name = distinct, AccountId = '0016g00003VDGbF001'),
+        new Opportunity(Id = '0066g00003VDGbF002', Name = distinct, AccountId = '0016g00003VDGbF001')
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(distinct, calc.getReturnValue());
+  }
+
+  @IsTest
   static void shouldProperlyRemoveConcatOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
     Opportunity opp = new Opportunity(AccountId = '0011g00003VDGbF002', Id = '0066g00003VDGbF001', Name = 'CDC', Amount = 0);
 
@@ -942,9 +986,7 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
 
     System.assertEquals(
-      distinct +
-      ', ' +
-      nonDistinctOpp.Name,
+      distinct + ', ' + nonDistinctOpp.Name,
       (String) calc.getReturnValue(),
       'Value containing original distinct value should also be concatenated'
     );
@@ -956,9 +998,7 @@ private class RollupCalculatorTests {
     String firstVal = '2011';
     String secondVal = '2021';
     RollupCalculator calc = getCalculator(
-      firstVal +
-      ', ' +
-      secondVal,
+      firstVal + ', ' + secondVal,
       Rollup.Op.UPDATE_CONCAT_DISTINCT,
       Opportunity.Name,
       Account.Name,
@@ -1036,9 +1076,7 @@ private class RollupCalculatorTests {
     String extantString = 'GISS';
     insert new Opportunity(Name = extantString, CloseDate = System.today(), StageName = 'A', AccountId = acc.Id);
     RollupCalculator calc = getCalculator(
-      toRemove +
-      ', ' +
-      extantString,
+      toRemove + ', ' + extantString,
       Rollup.Op.UPDATE_CONCAT_DISTINCT,
       Opportunity.Name,
       Account.Name,

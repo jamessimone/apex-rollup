@@ -1732,6 +1732,28 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
+  static void distinctCorrectlyQueriesAdditionalChildren() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'Two');
+    ContactPointAddress three = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 2, Name = 'Three');
+    insert new List<ContactPointAddress>{ one, two, three };
+
+    Rollup.records = new List<ContactPointAddress>{ one };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .modifyMetadata(new Rollup__mdt(IsDistinct__c = true))
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Assert.areEqual(3, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void allowsMultipleRollupsToOperateOnSameParentField() {
     Account acc = [SELECT Id, Phone, OwnerId FROM Account];
     Assert.areEqual('9999999999', acc.Phone, 'Test has started under the wrong conditions!');

@@ -118,6 +118,7 @@ public without sharing abstract class RollupCalculator {
       (this.opFieldOnCalcItem?.getDescribe().getType() == DisplayType.CURRENCY ||
       this.opFieldOnLookupObject?.getDescribe().getType() == DisplayType.CURRENCY);
     this.isChangedFieldCalc = String.isNotBlank(this.metadata.ChangedFieldsOnCalcItem__c);
+    this.isDistinct = this.metadata.IsDistinct__c == true;
     this.calcItemSObjectType = opFieldOnCalcItem?.getDescribe().getSObjectType();
     this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(this.metadata));
     this.updateAdvancedCurrencyMappings();
@@ -349,7 +350,6 @@ public without sharing abstract class RollupCalculator {
         result.matchesCurrent = currentItemMatches;
         Object currentVal = this.getTransformedCalcItem(item).get(this.opFieldOnCalcItem);
         result.currentValue = currentVal;
-        // TODO set this.isDistinct based on a new Rollup__mdt value
         if (this.isDistinct && this.distinctValues.contains(currentVal)) {
           continue;
         }
@@ -870,10 +870,6 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
-  private static Boolean isConcatDistinct(Rollup.Op op) {
-    return op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
-  }
-
   private without sharing abstract class DelimiterCalculator extends RollupCalculator {
     protected final String concatDelimiter;
 
@@ -908,11 +904,11 @@ public without sharing abstract class RollupCalculator {
       Schema.SObjectField lookupKeyField
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
-      this.isConcatDistinct = isConcatDistinct(this.op);
+      this.isConcatDistinct = this.op.name().contains(Rollup.Op.CONCAT_DISTINCT.name());
     }
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      super.setDefaultValues(lookupRecordKey, isConcatDistinct(this.op) ? '' : priorVal);
+      super.setDefaultValues(lookupRecordKey, this.isConcatDistinct ? '' : priorVal);
       if (this.returnVal instanceof String) {
         this.stringVal = (String) this.returnVal;
       }

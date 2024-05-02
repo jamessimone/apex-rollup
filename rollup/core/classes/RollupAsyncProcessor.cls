@@ -833,7 +833,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (roll.fullRecalcProcessor != null && alwaysFalseForRetrieval.contains(roll.invokePoint)) {
       return false;
     } else {
-      return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true;
+      return roll.isFullRecalc || roll.metadata.IsFullRecordSet__c == true || roll.metadata.IsDistinct__c == true;
     }
   }
 

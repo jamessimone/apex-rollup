@@ -674,6 +674,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
     global String oneToManyGrandparentFields;
     @InvocableVariable(
+      label='Is Distinct'
+      description='If provided, children item values are de-duplicated prior to calculating rollup values'
+    )
+    global Boolean isDistinct = false;
+    @InvocableVariable(
       label='Is Full Record Set'
       description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
     )
@@ -1849,6 +1854,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             GroupByFields__c,
             GroupByRowEndDelimiter__c,
             GroupByRowStartDelimiter__c,
+            IsDistinct__c,
             IsFullRecordSet__c,
             IsRollupStartedFromParent__c,
             IsTableFormatted__c,
@@ -1946,6 +1952,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         GroupByFields__c = flowInput.groupByFields,
         GroupByRowEndDelimiter__c = flowInput.groupByRowEndDelimiter,
         GroupByRowStartDelimiter__c = flowInput.groupByRowStartDelimiter,
+        IsDistinct__c = flowInput.isDistinct,
         IsFullRecordSet__c = flowInput.isFullRecordSet,
         IsRollupStartedFromParent__c = flowInput.isRollupStartedFromParent,
         IsTableFormatted__c = flowInput.isTableFormatted,

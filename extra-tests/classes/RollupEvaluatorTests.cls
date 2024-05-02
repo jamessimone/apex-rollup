@@ -1127,9 +1127,7 @@ private class RollupEvaluatorTests {
     OpportunityLineItem target = new OpportunityLineItem(Opportunity = isClosedFalse);
     System.assertEquals(false, target.Opportunity.IsClosed);
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(
-      'Opportunity.' +
-      poorlyCasedFieldName +
-      ' = false',
+      'Opportunity.' + poorlyCasedFieldName + ' = false',
       target.getSObjectType()
     );
 
