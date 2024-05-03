@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.NcssTypeCount')
 @IsTest
 private class RollupCalculatorTests {
   // use these tests when DML is not required, or only *light* DML is necessary
@@ -793,18 +794,23 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void sumsDistinctWhenFlagged() {
+    Id stubParentId = RollupTestUtils.createId(Schema.Account.SObjectType);
+    Object parentStartingValue = 0;
     RollupCalculator calc = getCalculator(
-      0,
+      parentStartingValue,
       Rollup.Op.SUM,
       Opportunity.Amount,
       Account.AnnualRevenue,
       new Rollup__mdt(IsDistinct__c = true),
-      '0011g00003VDGbF002',
+      stubParentId,
       Opportunity.AccountId
     );
 
     calc.performRollup(
-      new List<Opportunity>{ new Opportunity(Id = '0066g00003VDGbF001', Amount = 2), new Opportunity(Id = '0066g00003VDGbF002', Amount = 2) },
+      new List<Opportunity>{
+        new Opportunity(Id = RollupTestUtils.createId(Schema.Opportunity.SObjectType), Amount = 2, AccountId = stubParentId),
+        new Opportunity(Id = RollupTestUtils.createId(Schema.Opportunity.SObjectType), Amount = 2, AccountId = stubParentId)
+      },
       new Map<Id, SObject>()
     );
 
@@ -927,20 +933,22 @@ private class RollupCalculatorTests {
   @IsTest
   static void shouldDistinctByFlagForConcat() {
     String distinct = 'distinct';
+    Object parentStartingValue = '';
+    Id stubParentId = RollupTestUtils.createId(Schema.Account.SObjectType);
     RollupCalculator calc = getCalculator(
-      '',
+      parentStartingValue,
       Rollup.Op.CONCAT,
       Opportunity.Name,
       Account.Name,
       new Rollup__mdt(IsDistinct__c = true),
-      '0011g00003VDGbF002',
+      stubParentId,
       Opportunity.AccountId
     );
 
     calc.performRollup(
       new List<Opportunity>{
-        new Opportunity(Id = '0066g00003VDGbF001', Name = distinct, AccountId = '0016g00003VDGbF001'),
-        new Opportunity(Id = '0066g00003VDGbF002', Name = distinct, AccountId = '0016g00003VDGbF001')
+        new Opportunity(Id = RollupTestUtils.createId(Schema.Opportunity.SObjectType), Name = distinct, AccountId = stubParentId),
+        new Opportunity(Id = RollupTestUtils.createId(Schema.Opportunity.SObjectType), Name = distinct, AccountId = stubParentId)
       },
       new Map<Id, SObject>()
     );

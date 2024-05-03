@@ -1,4 +1,4 @@
-public without sharing class RollupCalcItemSorter implements System.Comparator<RollupCalculator.WinnowResult> {
+public without sharing class RollupCalcItemSorter implements System.Comparator<SObject> {
   private final List<RollupOrderBy__mdt> orderByOptions;
   private final Map<Schema.DescribeFieldResult, RollupFieldInitializer.PicklistController> fieldToPicklistController;
 
@@ -11,10 +11,10 @@ public without sharing class RollupCalcItemSorter implements System.Comparator<R
     this.orderByOptions = this.initializeOrderByOptions(orderBys);
   }
 
-  public Integer compare(RollupCalculator.WinnowResult objOne, RollupCalculator.WinnowResult objTwo) {
+  public Integer compare(SObject objOne, SObject objTwo) {
     Integer comparisonVal = 0;
 
-    Map<String, SObjectField> fieldTokens = objOne.item.getSObjectType().getDescribe().fields.getMap();
+    Map<String, SObjectField> fieldTokens = objOne.getSObjectType().getDescribe().fields.getMap();
     for (RollupOrderBy__mdt orderByOption : this.orderByOptions) {
       Schema.DescribeFieldResult fieldDescribe = fieldTokens.get(orderByOption.FieldName__c)?.getDescribe();
       RollupFieldInitializer.PicklistController picklistController = this.fieldToPicklistController.get(fieldDescribe);
@@ -22,7 +22,7 @@ public without sharing class RollupCalcItemSorter implements System.Comparator<R
         picklistController = new RollupFieldInitializer.PicklistController(fieldDescribe);
         this.fieldToPicklistController.put(fieldDescribe, picklistController);
       }
-      comparisonVal = this.getSortRanking(objOne.item, objTwo.item, orderByOption, picklistController);
+      comparisonVal = this.getSortRanking(objOne, objTwo, orderByOption, picklistController);
       if (comparisonVal != 0) {
         return comparisonVal;
       }
