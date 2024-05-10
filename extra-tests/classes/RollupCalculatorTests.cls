@@ -2178,9 +2178,6 @@ private class RollupCalculatorTests {
   }
 
   private class RollupCalcEmptyMock extends RollupCalculator {
-    public RollupCalcEmptyMock() {
-      super(Rollup.Op.LAST, null, null, new Rollup__mdt(), null);
-    }
   }
 
   private static RollupCalculator getCalculator(

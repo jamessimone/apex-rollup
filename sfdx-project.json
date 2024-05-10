@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Tidies up newly released Rollup__mdt.IsDistinct__c functionality",
+            "versionName": "Tidies up newly released Rollup__mdt.IsDistinct__c functionality, adds RollupGrouping__mdt functionality to link two or more rollup operations together",
             "versionNumber": "1.6.26.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",

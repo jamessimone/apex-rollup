@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RollupGrouping__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Optional grouping record for rollups to the same parent-level field</inlineHelpText>
+    <label>Rollup Grouping</label>
+    <referenceTo>RollupGrouping__mdt</referenceTo>
+    <relationshipLabel>GroupingRollups</relationshipLabel>
+    <relationshipName>GroupingRollups</relationshipName>
+    <required>false</required>
+    <type>MetadataRelationship</type>
+    <unique>false</unique>
+</CustomField>

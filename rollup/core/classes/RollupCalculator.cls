@@ -5,6 +5,8 @@ public without sharing abstract class RollupCalculator {
   private Boolean isMultiCurrencyRollup;
   private Boolean isRecursiveRecalc = false;
   private final RollupRepository repo;
+  private List<SObject> calcItems;
+  private Map<Id, SObject> oldCalcItems;
 
   protected final Object defaultVal;
   protected final SObjectField opFieldOnCalcItem;
@@ -100,6 +102,9 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
+  protected RollupCalculator() {
+  }
+
   protected RollupCalculator(
     Rollup.Op op,
     SObjectField opFieldOnCalcItem,
@@ -164,10 +169,42 @@ public without sharing abstract class RollupCalculator {
   }
 
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    this.calcItems = calcItems;
+    this.oldCalcItems = oldCalcItems;
     // if we're already in a full recalc, we've got all the items we need already
     this.shouldTriggerFullRecalc = this.isFullRecalc == false;
-    List<WinnowResult> results = this.winnowItems(calcItems, oldCalcItems);
+    this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
+  }
 
+  // all of these are no-ops by default; child classes opt-in to the rollup types applicable
+  public virtual void handleCountDistinct(WinnowResult result) {
+  }
+  public virtual void handleUpdateCountDistinct(WinnowResult result) {
+  }
+  public virtual void handleSumOrCount(WinnowResult result) {
+  }
+  public virtual void handleUpdateSumOrCount(WinnowResult result) {
+  }
+  public virtual void handleDeleteSumOrCount(WinnowResult result) {
+  }
+  public virtual void handleMin(WinnowResult result) {
+  }
+  public virtual void handleMax(WinnowResult result) {
+  }
+  public virtual void handleUpdateMinOrMax(WinnowResult result) {
+  }
+  public virtual void handleConcat(WinnowResult result) {
+  }
+  public virtual void handleUpdateConcat(WinnowResult result) {
+  }
+  public virtual void handleDeleteConcat(WinnowResult result) {
+  }
+  protected virtual void handleShortCircuit(WinnowResult result) {
+  }
+  protected virtual void setReturnValue() {
+  }
+
+  protected virtual void rollupResults(List<WinnowResult> results) {
     for (Integer index = 0; index < results.size(); index++) {
       this.isLastItem = index == results.size() - 1;
       WinnowResult result = results[index];
@@ -233,13 +270,13 @@ public without sharing abstract class RollupCalculator {
          * an example of short circuiting - halfway through the list during a MIN operation,
          * Rollup encounters a calcItem whose previous value equals the current min, but the new value
          * is greater than the min. This triggers a full recalc, since it is at once both possible
-         * for items outside the list of calcItems to contain the new min, as WELL as for an item
-         * WITHIN the existing calcItems to be the new min. This means we have to go back and re-process
+         * for items outside the list of results to contain the new min, as WELL as for an item
+         * WITHIN the existing results to be the new min. This means we have to go back and re-process
          * the records that were already iterated on to ensure that the current operation successfully accounts
          * for everything in-memory and in the database
          */
         this.isFirstTimeThrough = false;
-        if (index != 0 && calcItems.size() > 1) {
+        if (index != 0 && results.size() > 1) {
           index = 0; // resets the for-loop
         }
       }
@@ -258,34 +295,6 @@ public without sharing abstract class RollupCalculator {
     this.setReturnValue();
   }
 
-  // all of these are no-ops by default; child classes opt-in to the rollup types applicable
-  public virtual void handleCountDistinct(WinnowResult result) {
-  }
-  public virtual void handleUpdateCountDistinct(WinnowResult result) {
-  }
-  public virtual void handleSumOrCount(WinnowResult result) {
-  }
-  public virtual void handleUpdateSumOrCount(WinnowResult result) {
-  }
-  public virtual void handleDeleteSumOrCount(WinnowResult result) {
-  }
-  public virtual void handleMin(WinnowResult result) {
-  }
-  public virtual void handleMax(WinnowResult result) {
-  }
-  public virtual void handleUpdateMinOrMax(WinnowResult result) {
-  }
-  public virtual void handleConcat(WinnowResult result) {
-  }
-  public virtual void handleUpdateConcat(WinnowResult result) {
-  }
-  public virtual void handleDeleteConcat(WinnowResult result) {
-  }
-  protected virtual void handleShortCircuit(WinnowResult result) {
-  }
-  protected virtual void setReturnValue() {
-  }
-
   @TestVisible
   private class WinnowResult {
     private Object currentValue;
@@ -296,13 +305,13 @@ public without sharing abstract class RollupCalculator {
     private Boolean isReparented = false;
     private final SObject item;
 
-    public WinnowResult(SObject item) {
+    public WinnowResult(SObject item, Schema.SObjectField token) {
+      this(item.get(token));
       this.item = item;
     }
 
-    public WinnowResult(SObject item, Schema.SObjectField token) {
-      this(item);
-      this.currentValue = item.get(token);
+    public WinnowResult(Object currentValue) {
+      this.currentValue = currentValue;
       this.matchesCurrent = true;
     }
   }
@@ -328,7 +337,7 @@ public without sharing abstract class RollupCalculator {
         this.childrenIds.add(item.Id);
       }
       SObject transformedItem = this.getTransformedCalcItem(item);
-      WinnowResult result = new WinnowResult(transformedItem);
+      WinnowResult result = new WinnowResult(transformedItem, this.opFieldOnCalcItem);
       Boolean shouldAddToResults = this.eval?.matches(transformedItem) != false;
       Boolean currentItemMatches = shouldAddToResults;
       SObject potentialPriorItem = oldCalcItems.get(transformedItem.Id);
@@ -350,7 +359,6 @@ public without sharing abstract class RollupCalculator {
         }
       }
       if (shouldAddToResults) {
-        result.currentValue = transformedItem.get(this.opFieldOnCalcItem);
         if (this.isDistinct) {
           if (this.distinctValues.contains(result.currentValue)) {
             continue;
@@ -364,7 +372,7 @@ public without sharing abstract class RollupCalculator {
         }
       }
     }
-    if (this.metadata?.LimitAmount__c != null) {
+    if (this.metadata.LimitAmount__c != null) {
       // we can only safely remove the items after sorting
       while (winnowedItems.size() > this.metadata.LimitAmount__c && winnowedItems.isEmpty() == false) {
         winnowedItems.remove(winnowedItems.size() - 1);
@@ -497,7 +505,7 @@ public without sharing abstract class RollupCalculator {
         this.distinctValues.add(potentiallyNullValue);
       } else if (this.op == Rollup.Op.DELETE_COUNT_DISTINCT) {
         this.distinctValues = new Set<Object>();
-        this.calculateNewAggregateValue(this.op, new List<Id>{ result.item.Id });
+        this.calculateNewAggregateValue(this.op, this.childrenIds);
       }
       this.shouldShortCircuit = true;
     }
@@ -1145,6 +1153,9 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class AverageRollupCalculator extends RollupCalculator {
+    private Decimal denominator;
+    private Decimal oldSum;
+
     public AverageRollupCalculator(
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
@@ -1157,25 +1168,30 @@ public without sharing abstract class RollupCalculator {
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       List<WinnowResult> results = this.winnowItems(applicableCalcItems, oldCalcItems);
-      Decimal oldSum;
-      Decimal denominator = Decimal.valueOf(results.size());
+      this.denominator = Decimal.valueOf(results.size());
       if (this.isFullRecalc == false || this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
-        denominator += this.repo.setQuery(RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery))
+        this.denominator += this.repo.setQuery(
+            RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery)
+          )
           .setArg(calcItems)
           .getCount();
-        oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems);
+        this.oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems);
       }
+      this.rollupResults(results);
+    }
 
+    protected override void rollupResults(List<WinnowResult> results) {
       Decimal newSum = 0.00;
+      this.denominator = this.denominator ?? results.size();
       for (WinnowResult result : results) {
         newSum += (Decimal) result.currentValue ?? 0.00;
       }
 
       Decimal average = (Decimal) this.defaultVal;
       // We can't do the division if the denominator is 0
-      if (denominator != 0) {
-        Decimal numerator = (oldSum ?? 0.00) + newSum;
-        average = numerator / denominator;
+      if (this.denominator != 0) {
+        Decimal numerator = (this.oldSum ?? 0.00) + newSum;
+        average = numerator / this.denominator;
       }
       this.returnVal = average;
     }
@@ -1220,9 +1236,11 @@ public without sharing abstract class RollupCalculator {
           }
         }
       }
-
       List<WinnowResult> results = this.winnowItems(calcItems, oldCalcItems);
+      this.rollupResults(results);
+    }
 
+    protected override void rollupResults(List<WinnowResult> results) {
       if (results.isEmpty()) {
         this.returnVal = this.defaultVal;
       } else {
@@ -1251,14 +1269,18 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      this.occurrenceToCount = new Map<Object, Integer>();
-
       if (this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
         calcItems.addAll(this.tryQuery(this.calcItemSObjectType, this.getQueryFields(), calcItems));
       }
+
+      List<WinnowResult> results = this.winnowItems(calcItems, oldCalcItems);
+      this.rollupResults(results);
+    }
+
+    protected override void rollupResults(List<WinnowResult> results) {
+      this.occurrenceToCount = new Map<Object, Integer>();
       this.largestCountPointer = -1;
       this.returnVal = this.defaultVal;
-      List<WinnowResult> results = this.winnowItems(calcItems, oldCalcItems);
 
       for (WinnowResult result : results) {
         Object value = result.currentValue;
@@ -1283,17 +1305,16 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
-    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      List<WinnowResult> filteredItems = this.winnowItems(calcItems, oldCalcItems);
+    protected override void rollupResults(List<WinnowResult> filteredItems) {
       Boolean matches = false;
       switch on this.op {
         when ALL {
-          matches = calcItems.size() == filteredItems.size();
+          matches = this.calcItems.size() == filteredItems.size();
         }
         when NONE, SOME {
           Boolean isSome = this.op == Rollup.Op.SOME;
           matches = filteredItems.isEmpty() == (isSome == false);
-          if (isSome && this.isTruthy() && oldCalcItems?.isEmpty() == true) {
+          if (isSome && this.isTruthy() && this.oldCalcItems?.isEmpty() == true) {
             matches = true;
           }
         }
@@ -1485,6 +1506,23 @@ public without sharing abstract class RollupCalculator {
 
     public String getGroupingEnd(String groupByString) {
       return groupByString + '</table>';
+    }
+  }
+
+  public class ValueRollupCalculator extends RollupCalculator {
+    private final RollupCalculator innerCalc;
+
+    public ValueRollupCalculator(RollupCalculator innerCalc, Set<Object> valuesToReduce) {
+      this.innerCalc = innerCalc;
+      List<WinnowResult> results = new List<WinnowResult>();
+      for (Object value : valuesToReduce) {
+        results.add(new WinnowResult(value));
+      }
+      innerCalc.rollupResults(results);
+    }
+
+    public override Object getReturnValue() {
+      return this.innerCalc.getReturnValue();
     }
   }
 
