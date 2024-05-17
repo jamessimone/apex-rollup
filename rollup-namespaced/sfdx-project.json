@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes an issue where rollups to multiple parents running in an unordered fashion could accidentally reset parents between bulk full recalc batches",
-            "versionNumber": "1.1.18.0",
+            "versionName": "Tidies up newly released Rollup__mdt.IsDistinct__c functionality, adds RollupGrouping__mdt functionality to link two or more rollup operations together, fixes batch full recalcs for AVERAGE, MOST, FIRST, LAST",
+            "versionNumber": "1.1.20.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -21,11 +21,8 @@
     "sourceApiVersion": "60.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
-        "apex-rollup-namespaced@1.1.12": "04t6g000008OaUZAA0",
-        "apex-rollup-namespaced@1.1.13": "04t6g000008OaYwAAK",
-        "apex-rollup-namespaced@1.1.14": "04t6g000008OaZBAA0",
-        "apex-rollup-namespaced@1.1.16": "04t6g000008OaZaAAK",
         "apex-rollup-namespaced@1.1.18": "04t6g000008Ob1iAAC",
-        "apex-rollup-namespaced@1.1.19": "04t6g000008ObCsAAK"
+        "apex-rollup-namespaced@1.1.19": "04t6g000008ObCsAAK",
+        "apex-rollup-namespaced@1.1.20": "04t6g000008ObCxAAK"
     }
 }
