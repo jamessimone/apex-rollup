@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
-        <description>Assigns the last phone number to the Account&apos;s BusinessPhone field</description>
+        <description>Assigns the last phone number to the Account&apos;s Phone field</description>
         <name>Add_LAST_Phone</name>
         <label>Add LAST Phone</label>
         <locationX>176</locationX>

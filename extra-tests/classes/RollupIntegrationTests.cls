@@ -1754,11 +1754,12 @@ private class RollupIntegrationTests {
   }
 
   @IsTest
-  static void allowsMultipleRollupsToOperateOnSameParentField() {
+  static void allowsMultipleRollupsToOperateOnSameParentFieldWithRollupGrouping() {
     Account acc = [SELECT Id, Phone, OwnerId FROM Account];
     Assert.areEqual('9999999999', acc.Phone, 'Test has started under the wrong conditions!');
     String winningPhone = '5555555555';
-    insert new Contact(LastName = 'Second child object', Phone = winningPhone, OwnerId = acc.OwnerId);
+    insert new List<Contact>{new Contact(LastName = 'Second child object', Phone = winningPhone, OwnerId = acc.OwnerId), new Contact(LastName = 'Losing child', Phone = '333', OwnerId = acc.OwnerId)};
+    RollupGrouping__mdt parentGrouping = new RollupGrouping__mdt(Id = RollupTestUtils.createId(RollupGrouping__mdt.SObjectType));
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1769,7 +1770,8 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'MAX',
-        CalcItem__c = 'Account'
+        CalcItem__c = 'Account',
+        RollupGrouping__r = parentGrouping
       ),
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Phone',
@@ -1778,7 +1780,8 @@ private class RollupIntegrationTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AboutMe',
         RollupOperation__c = 'MAX',
-        CalcItem__c = 'Contact'
+        CalcItem__c = 'Contact',
+        RollupGrouping__r = parentGrouping
       )
     };
 
@@ -1789,8 +1792,7 @@ private class RollupIntegrationTests {
 
     User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId];
     Assert.isNotNull(updatedUser.AboutMe);
-    // TODO uncomment and finish
-    // Assert.areEqual(winningPhone, updatedUser.AboutMe);
+    Assert.areEqual(winningPhone, updatedUser.AboutMe);
   }
 
   @IsTest

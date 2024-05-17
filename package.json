@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.6.25",
+  "version": "1.6.26",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -38,7 +38,7 @@
     "aura"
   ],
   "scripts": {
-    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30",
+    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30 && sf data import tree --files ./config/data/CurrencyTypes.json",
     "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
     "create:package:namespaced": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; New-Namespaced-Package }\"",
     "create:package:nebula:adapter": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Nebula Logger\"' -ReadmePath \"./plugins/NebulaLogger/README.md\" }\"",

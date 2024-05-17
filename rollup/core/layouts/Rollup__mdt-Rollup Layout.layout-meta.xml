@@ -184,6 +184,10 @@
                 <behavior>Edit</behavior>
                 <field>ShouldRunWithoutCustomSettingEnabled__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>RollupGrouping__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -267,7 +271,7 @@
         <customLabel>true</customLabel>
         <detailHeading>true</detailHeading>
         <editHeading>true</editHeading>
-        <label>Deprecated</label>
+        <label>Deprecated - Use The Rollup Order By child CMDT records instead</label>
         <layoutColumns>
             <layoutItems>
                 <behavior>Readonly</behavior>

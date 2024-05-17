@@ -2823,8 +2823,8 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), 'Records should have been populated SUM AFTER_UPDATE, ' + mock.Records);
-    System.assertEquals(50, acc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
-    System.assertEquals(null, oldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should take the diff between the current amount and the pre-existing one');
+    System.assertEquals(50, acc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should properly attribute the new amount to the new parent');
+    System.assertEquals(null, oldAcc.AnnualRevenue, 'AVERAGE AFTER_UPDATE should properly decrement the old amount from the old parent');
   }
 
   /** Re-queueing */

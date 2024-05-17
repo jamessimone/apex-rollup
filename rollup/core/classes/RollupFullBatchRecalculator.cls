@@ -1,4 +1,6 @@
 public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful, Database.RaisesPlatformEvents {
+  private final RollupState state = new RollupState();
+
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
@@ -8,6 +10,10 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupFullRecalcProcessor postProcessor
   ) {
     super(RollupQueryBuilder.Current.getAllRowSafeQuery(calcItemType, queryString), invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
+  }
+
+  public override RollupState getState() {
+    return this.state;
   }
 
   protected override void performWork() {

@@ -289,6 +289,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     public void add(SObject calcItem) {
       this.idToCalcItem.put(calcItem.Id, calcItem);
     }
+
+    public void removeKey(String key) {
+      this.idToCalcItem.remove(key);
+    }
   }
 
   global interface Evaluator {
@@ -463,6 +467,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   protected void cleanupStaticVars() {
     Rollup.records = null;
     Rollup.oldRecordsMap = null;
+  }
+
+  protected Boolean isEmptyReparentingOp(Op op) {
+    return isFullRecalcOp(getBaseOperationName(op.name()));
   }
 
   /**
@@ -673,10 +681,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global String groupByRowStartDelimiter;
     @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
     global String oneToManyGrandparentFields;
-    @InvocableVariable(
-      label='Is Distinct'
-      description='If provided, children item values are de-duplicated prior to calculating rollup values'
-    )
+    @InvocableVariable(label='Is Distinct' description='If provided, children item values are de-duplicated prior to calculating rollup values')
     global Boolean isDistinct = false;
     @InvocableVariable(
       label='Is Full Record Set'
@@ -721,6 +726,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // internal variables!
     public Id rollupControlId;
     public String developerName;
+    public RollupGrouping__mdt rollupGrouping;
   }
 
   global class FlowOutput {
@@ -1867,7 +1873,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             SharingMode__c,
             ShouldRunWithoutCustomSettingEnabled__c,
             SplitConcatDelimiterOnCalcItem__c,
-            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName)
+            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName),
+            RollupGrouping__r.Id
           FROM Rollup__mdt
           WHERE RollupControl__r.ShouldAbortRun__c = FALSE
           ORDER BY LookupObject__c
@@ -1875,20 +1882,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         // we have to do transforms on the Entity Definition fields because custom objects/custom fields
         // have references that otherwise won't work with the rest of the code
         for (Rollup__mdt meta : cachedMetadata) {
-          meta.CalcItem__c = meta.CalcItem__r != null ? meta.CalcItem__r.QualifiedApiName : meta.CalcItemText__c;
-          meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r != null
-            ? meta.LookupFieldOnCalcItem__r.QualifiedApiName
-            : meta.LookupFieldOnCalcItemText__c;
-          meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r != null
-            ? meta.LookupFieldOnLookupObject__r.QualifiedApiName
-            : meta.LookupFieldOnLookupObjectText__c;
-          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r != null
-            ? meta.RollupFieldOnCalcItem__r.QualifiedApiName
-            : meta.RollupFieldOnCalcItemText__c;
-          meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r != null
-            ? meta.RollupFieldOnLookupObject__r.QualifiedApiName
-            : meta.RollupFieldOnLookupObjectText__c;
-          meta.LookupObject__c = meta.LookupObject__r != null ? meta.LookupObject__r.QualifiedApiName : meta.LookupObjectText__c;
+          meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName ?? meta.CalcItemText__c;
+          meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName ?? meta.LookupFieldOnCalcItemText__c;
+          meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName ?? meta.LookupFieldOnLookupObjectText__c;
+          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName ?? meta.RollupFieldOnCalcItemText__c;
+          meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName ?? meta.RollupFieldOnLookupObjectText__c;
+          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName ?? meta.LookupObjectText__c;
 
           meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
           meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
@@ -1962,6 +1961,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
         OrderByFirstLast__c = flowInput.orderByFirstLast,
         RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
+        RollupGrouping__r = flowInput.rollupGrouping,
         RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
         RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
         RollupOperation__c = rollupContext + flowInput.rollupOperation,
@@ -2663,6 +2663,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
     String sObjectName = '' + sObjectType;
     List<Rollup__mdt> rollupMetadatas = getMetadataFromCache(Rollup__mdt.SObjectType);
+    Set<String> rollupGroupings = new Set<String>();
+    List<Rollup__mdt> runoffMetas = new List<Rollup__mdt>();
     for (Integer index = rollupMetadatas.size() - 1; index >= 0; index--) {
       Rollup__mdt meta = rollupMetadatas[index];
       if (String.isNotBlank(meta.GrandparentRelationshipFieldPath__c)) {
@@ -2674,9 +2676,17 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE && sObjectName == meta.LookupObject__c) {
         continue;
       } else if (Trigger.operationType == TriggerOperation.AFTER_DELETE) {
-        rollupMetadatas.remove(index);
+        runoffMetas.add(rollupMetadatas.remove(index));
       } else if (isNotTriggeredByMatchingObject(meta, sObjectName)) {
-        rollupMetadatas.remove(index);
+        runoffMetas.add(rollupMetadatas.remove(index));
+      } else {
+        rollupGroupings.add(meta.RollupGrouping__r.Id);
+      }
+    }
+    rollupGroupings.remove(null);
+    for (Rollup__mdt meta : runoffMetas) {
+      if (rollupGroupings.contains(meta.RollupGrouping__r.Id)) {
+        rollupMetadatas.add(meta);
       }
     }
     return rollupMetadatas;
@@ -2753,6 +2763,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
+      if (
+        rollupMetadata.RollupGrouping__r.Id != null &&
+        rollupMetadata.CalcItem__c != null &&
+        rollupMetadata.CalcItem__c != sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName()
+      ) {
+        Schema.DescribeSObjectResult childDescribe = init.getDescribeFromName(rollupMetadata.CalcItem__c);
+        sObjectType = childDescribe.getSObjectType();
+        calcItemFields = childDescribe.fields.getMap();
+      }
       SObjectField rollupFieldOnCalcItem = init.getSObjectFieldByName(calcItemFields, rollupMetadata.RollupFieldOnCalcItem__c);
       SObjectField calcLookupField = init.getSObjectFieldByName(calcItemFields, rollupMetadata.LookupFieldOnCalcItem__c);
 
@@ -2765,6 +2784,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         Map<String, String> errorMap = new Map<String, String>{
           'Child rollup field' => '' + rollupFieldOnCalcItem,
           'Child lookup field' => '' + calcLookupField,
+          'Label' => rollupMetadata.MasterLabel,
           'Parent lookup field' => '' + lookupFieldOnOpObject,
           'Parent rollup field' => '' + rollupFieldOnOpObject
         };

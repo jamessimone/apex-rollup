@@ -43,6 +43,10 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     return this.calcItemType;
   }
 
+  public virtual RollupState getState() {
+    return null;
+  }
+
   global override Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
     for (Rollup__mdt rollupMeta : this.rollupMetas) {
       this.addLimitToMetadata(rollupMeta, limitAmount, calcItemRollupField);

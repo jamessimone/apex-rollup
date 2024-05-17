@@ -155,6 +155,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupOperation = meta.RollupOperation__c;
             input.rollupSObjectName = meta.LookupObject__c;
             input.rollupControlId = meta.RollupControl__c;
+            input.rollupGrouping = meta.RollupGrouping__r;
             // everything else is supplied from the invocable
             input.deferProcessing = flowInput.deferProcessing != null ? flowInput.deferProcessing : true;
             input.oldRecordsToRollup = flowInput.oldRecordsToRollup;

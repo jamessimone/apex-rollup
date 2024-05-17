@@ -32,7 +32,6 @@ if [ $scratchOrgAllotment -gt 0 ]; then
   userNameHasBeenSet=1
   {
     npm run create:org
-    sf data import tree --files config/data/CurrencyTypes.json
     # Deploy
     sf project deploy start
     # Run tests
