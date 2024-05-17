@@ -469,6 +469,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Rollup.oldRecordsMap = null;
   }
 
+  protected Boolean isEmptyReparentingOp(Op op) {
+    return isFullRecalcOp(getBaseOperationName(op.name()));
+  }
+
   /**
    * global facing RollupAsyncProcessor calculation section
    * - Trigger operations
@@ -722,6 +726,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // internal variables!
     public Id rollupControlId;
     public String developerName;
+    public RollupGrouping__mdt rollupGrouping;
   }
 
   global class FlowOutput {
@@ -1956,6 +1961,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         OneToManyGrandparentFields__c = flowInput.oneToManyGrandparentFields,
         OrderByFirstLast__c = flowInput.orderByFirstLast,
         RollupControl__r = getSingleControlOrDefault(RollupControl__mdt.Id, flowInput.rollupControlId, defaultControl),
+        RollupGrouping__r = flowInput.rollupGrouping,
         RollupFieldOnCalcItem__c = flowInput.rollupFieldOnCalcItem,
         RollupFieldOnLookupObject__c = flowInput.rollupFieldOnOpObject,
         RollupOperation__c = rollupContext + flowInput.rollupOperation,

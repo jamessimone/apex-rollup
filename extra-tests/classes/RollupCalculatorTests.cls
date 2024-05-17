@@ -240,46 +240,26 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
-  static void regressionShouldExcludeCurrentItemsOnFirstLastDelete() {
+  static void shouldIncludeStateForFirstLast() {
+    String lookupKey = '0011g00003VDGbF002';
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
-    RollupCalculator calc = getCalculator(0, Rollup.Op.DELETE_FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, '0011g00003VDGbF002', Account.Id);
+    RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, lookupKey, Account.Id);
+    RollupState outerState = new RollupState();
+    RollupState.SObjectInfo info = new RollupState.SObjectInfo();
+    info.setItem(new Opportunity(Name = 'a', Amount = 3));
+    outerState.setState(lookupKey, info);
+    calc.setState(outerState);
 
     calc.performRollup(
       new List<Opportunity>{
-        new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, Name = 'b'),
-        new Opportunity(Id = '0066g00003VDGbF002', Amount = 16, Name = 'a'),
+        new Opportunity(Id = '0066g00003VDGbF001', Amount = 2, Name = 'c'),
+        new Opportunity(Id = '0066g00003VDGbF002', Amount = 16, Name = 'b'),
         new Opportunity(Id = '0066g00003VDGbF003', Amount = 1, Name = 'c')
       },
       new Map<Id, SObject>()
     );
 
-    System.assertEquals(null, calc.getReturnValue(), 'Delete should exclude current values :(');
-  }
-
-  @IsTest
-  static void regressionShouldIncludeCalcItemWhereClauseInQueryFieldsFirst() {
-    Account acc = [SELECT Id FROM Account];
-    Rollup__mdt metadata = configureOrderByMetadata(
-      new Rollup__mdt(CalcItem__c = 'ContactPointAddress', CalcItemWhereClause__c = 'PreferenceRank != 0'),
-      'Name'
-    );
-
-    ContactPointAddress first = new ContactPointAddress(Name = 'a', ParentId = acc.Id, PreferenceRank = 1);
-    insert first;
-
-    ContactPointAddress cpa = new ContactPointAddress(
-      Name = 'b',
-      PreferenceRank = 1,
-      ParentId = acc.Id,
-      Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
-    );
-
-    RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, ContactPointAddress.NAME, Account.Description, metadata, acc.Id, ContactPointAddress.ParentId);
-    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator(metadata.CalcItemWhereClause__c, ContactPointAddress.SObjectType));
-
-    calc.performRollup(new List<ContactPointAddress>{ cpa }, new Map<Id, SObject>());
-
-    System.assertEquals(first.Name, calc.getReturnValue(), 'First should properly query');
+    System.assertEquals(3, calc.getReturnValue(), 'Should use state properly');
   }
 
   @IsTest
@@ -371,12 +351,10 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldCorrectlyAverageForTasks() {
-    // Task/Event gets ALL ROWS appended to queries
     Account acc = [SELECT Id FROM Account];
-    Task insertedTask = new Task(WhatId = acc.Id, CallDurationInSeconds = 5, Subject = 'Insert', ActivityDate = System.today());
-    insert insertedTask;
 
-    Task passedIn = new Task(WhatId = acc.Id, Subject = 'Passed In', CallDurationInSeconds = 3, Id = RollupTestUtils.createId(Task.SObjectType));
+    Task one = new Task(WhatId = acc.Id, Subject = 'One', CallDurationInSeconds = 3, Id = RollupTestUtils.createId(Task.SObjectType));
+    Task two = new Task(WhatId = acc.Id, CallDurationInSeconds = 5, Subject = 'Two', Id = RollupTestUtils.createId(Task.SObjectType));
 
     RollupCalculator calc = getCalculator(
       0,
@@ -387,7 +365,7 @@ private class RollupCalculatorTests {
       acc.Id,
       Task.AccountId
     );
-    calc.performRollup(new List<Task>{ passedIn }, new Map<Id, SObject>());
+    calc.performRollup(new List<Task>{ one, two }, new Map<Id, SObject>());
 
     System.assertEquals(4, calc.getReturnValue());
   }
@@ -743,13 +721,14 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
-  static void mostWithFullRecalcRespectsIntermediateValues() {
+  static void mostRespectsStateValues() {
     Account acc = [SELECT Id FROM Account];
     Integer priorVal = 50;
-    insert new List<ContactPointAddress>{
-      new ContactPointAddress(Name = 'A', PreferenceRank = priorVal, ParentId = acc.Id),
-      new ContactPointAddress(Name = 'B', PreferenceRank = priorVal, ParentId = acc.Id)
-    };
+    RollupState.MostInfo info = new RollupState.MostInfo();
+    info.setLargestPointCounter(2);
+    RollupState outerState = new RollupState();
+    outerState.setState(acc.Id, info);
+
     RollupCalculator calc = getCalculator(
       priorVal,
       Rollup.Op.MOST,
@@ -759,7 +738,7 @@ private class RollupCalculatorTests {
       acc.Id,
       ContactPointAddress.ParentId
     );
-    calc.setFullRecalc(true);
+    calc.setState(outerState);
 
     ContactPointAddress target = new ContactPointAddress(
       PreferenceRank = 75,
@@ -2175,6 +2154,39 @@ private class RollupCalculatorTests {
     String firstTableBodyRow = '<tr><td>One</td><td>(blank)</td><td>100.0</td></tr>';
     String secondTableBodyRow = '<tr><td>Two</td><td>Deux</td><td>100.0</td></tr>';
     System.assertEquals('<table>' + tableHeader + firstTableBodyRow + secondTableBodyRow + '</table>', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void averageFactorsInBatchState() {
+    String lookupKey = RollupTestUtils.createId(Account.SObjectType);
+    RollupState.AverageInfo state = new RollupState.AverageInfo();
+    state.denominator = 15;
+    state.numerator = 75;
+    RollupCalculator calc = getCalculator(
+      state.numerator / state.denominator,
+      Rollup.Op.AVERAGE,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(),
+      lookupKey,
+      Account.Id
+    );
+
+    RollupState outerState = new RollupState();
+    outerState.setState(lookupKey, state);
+    calc.setState(outerState);
+    calc.performRollup(
+      new List<SObject>{
+        new Opportunity(Amount = 15),
+        new Opportunity(Amount = 15),
+        new Opportunity(Amount = 15),
+        new Opportunity(Amount = 15),
+        new Opportunity(Amount = 15)
+      },
+      new Map<Id, SObject>()
+    );
+
+    Assert.areEqual(7.5, calc.getReturnValue());
   }
 
   private class RollupCalcEmptyMock extends RollupCalculator {

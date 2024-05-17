@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Ob22AAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ObCdAAK">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008Ob22AAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ObCdAAK">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -133,6 +133,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
   - Both CONCAT and CONCAT_DISTINCT separate values with commas by default in the rollup field itself, but you can use `Concat Delimiter` to change that
   - CONCAT / CONCAT_DISTINCT / FIRST / LAST / MOST operations support the usage of `Rollup Order By` Custom Metadata to stipulate how to sort records, or how to sort the concatenated values. For MOST, using `Rollup Order By` CMDT allows you to dictate how a tiebreaker for rollup values with the most instances can be handled (should a tie occur occur).
 - `Rollup Control` - link to the Org Defaults for controlling rollups, or set a specific Rollup Control CMDT to be used with this rollup. Multiple rollups can be tied to one specific Control record, or simply use the Org Default record (included) for all of your rollups.
+- `Rollup Grouping` (optional) - lookup field to `RollupGrouping__mdt`, a parent-level CMDT record used when rolling values from two different children objects up to the same parent field
 - `Currency Field Mapping (Comma-separated)` (optional) - for organizations using Advanced Currency Management with Dated Exchange Rates, fill out this field if you are rolling up a currency field and you'd like to customize which field (or parent-level field) is used as the Date or Datetime to be matched with its corresponding Dated Exchange Rate. As an example, Opportunity Splits use `Opportunity,CloseDate` here by default - if you are using a parent-level field, the relationship name for it is the first value (thus, `Opportunity,CloseDate` is correct - `OpportunityId,CloseDate` would be incorrect).
 - `Concat Delimiter` (optional) - for `CONCAT` and `CONCAT_DISTINCT` operations, the delimiter used between text defaults to a comma (unless you are rolling up to a multi-select picklist, in which case it defaults to a semi-colon), but you can override the default delimiter here. At this time, only single character delimiters are supported - please file [an issue](/issues) if you are looking to use multi-character delimiters!
 - `Changed Fields On Child Object` (optional) - comma-separated list of field API Names to filter child records - only records where at least one of the fields listed has changed on an update will end up triggering a rollup. If you are using a `Child Object Where Clause`, I would not recommend using this field

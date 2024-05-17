@@ -4,9 +4,11 @@ public without sharing abstract class RollupCalculator {
   private Boolean isFirstTimeThrough = true;
   private Boolean isMultiCurrencyRollup;
   private Boolean isRecursiveRecalc = false;
-  private final RollupRepository repo;
   private List<SObject> calcItems;
   private Map<Id, SObject> oldCalcItems;
+  private RollupState state;
+
+  private final RollupRepository repo;
 
   protected final Object defaultVal;
   protected final SObjectField opFieldOnCalcItem;
@@ -28,7 +30,6 @@ public without sharing abstract class RollupCalculator {
   protected Boolean shouldTriggerFullRecalc;
   protected String parentIsoCode;
   protected Boolean isFullRecalc = false;
-  protected Boolean hasAlreadyRetrievedCalcItems = false;
   protected Boolean isDistinct = false;
 
   @TestVisible
@@ -158,10 +159,6 @@ public without sharing abstract class RollupCalculator {
     this.isFullRecalc = isFullRecalc;
   }
 
-  public void setHasAlreadyRetrievedCalcItems(Boolean hasAlreadyRetrievedCalcItems) {
-    this.hasAlreadyRetrievedCalcItems = hasAlreadyRetrievedCalcItems;
-  }
-
   public void setMultiCurrencyInfo(SObject parentRecord) {
     if (parentRecord.getPopulatedFieldsAsMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)) {
       this.parentIsoCode = (String) parentRecord.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
@@ -174,6 +171,10 @@ public without sharing abstract class RollupCalculator {
     // if we're already in a full recalc, we've got all the items we need already
     this.shouldTriggerFullRecalc = this.isFullRecalc == false;
     this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
+  }
+
+  public void setState(RollupState state) {
+    this.state = state;
   }
 
   // all of these are no-ops by default; child classes opt-in to the rollup types applicable
@@ -441,10 +442,6 @@ public without sharing abstract class RollupCalculator {
       results = this.repo.setQuery(RollupQueryBuilder.Current.getQuery(sObjectType, new List<String>(queryFields), 'Id', '!=')).get();
     }
     return results;
-  }
-
-  protected Boolean hasAlreadyBeenFullRecalcUpdated(Map<Id, SObject> oldCalcItems) {
-    return this.returnVal != null && this.isFullRecalc && this.hasAlreadyRetrievedCalcItems == false && oldCalcItems.isEmpty();
   }
 
   private SObject getTransformedCalcItem(SObject calcItem) {
@@ -1153,8 +1150,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class AverageRollupCalculator extends RollupCalculator {
-    private Decimal denominator;
-    private Decimal oldSum;
+    private RollupState.AverageInfo info;
 
     public AverageRollupCalculator(
       Rollup.Op op,
@@ -1166,38 +1162,38 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
-      List<WinnowResult> results = this.winnowItems(applicableCalcItems, oldCalcItems);
-      this.denominator = Decimal.valueOf(results.size());
-      if (this.isFullRecalc == false || this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
-        this.denominator += this.repo.setQuery(
-            RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(), 'Id', '!=', this.lookupKeyQuery)
-          )
-          .setArg(calcItems)
-          .getCount();
-        this.oldSum = (Decimal) this.calculateNewAggregateValue(Rollup.Op.SUM, calcItems);
+      // List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
+      if (this.state != null) {
+        this.info = (RollupState.AverageInfo) (this.state.getState(this.lookupRecordKey, RollupState.AverageInfo.class) ?? new RollupState.AverageInfo());
+        this.distinctValues.addAll(this.info.distinctNumerators);
+        this.state.setState(this.lookupRecordKey, this.info);
       }
-      this.rollupResults(results);
+      this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
     }
 
     protected override void rollupResults(List<WinnowResult> results) {
-      Decimal newSum = 0.00;
-      this.denominator = this.denominator ?? results.size();
+      Decimal numerator = this.info?.numerator ?? 0.00;
+      Decimal denominator = results.size() + (this.info?.denominator ?? 0.00);
+      RollupState.AverageInfo averageInfo;
+
       for (WinnowResult result : results) {
-        newSum += (Decimal) result.currentValue ?? 0.00;
+        Decimal current = (Decimal) result.currentValue ?? 0.00;
+        numerator += current;
+        this.info?.increment(current);
       }
 
       Decimal average = (Decimal) this.defaultVal;
       // We can't do the division if the denominator is 0
-      if (this.denominator != 0) {
-        Decimal numerator = (this.oldSum ?? 0.00) + newSum;
-        average = numerator / this.denominator;
+      if (denominator != 0) {
+        average = numerator / denominator;
       }
       this.returnVal = average;
     }
   }
 
   private without sharing class FirstLastRollupCalculator extends RollupCalculator {
+    private RollupState.SObjectInfo info;
+
     public FirstLastRollupCalculator(
       Rollup.Op op,
       SObjectField opFieldOnCalcItem,
@@ -1218,26 +1214,16 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      if (this.isFullRecalc == false || this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
-        Set<String> queryFields = this.getQueryFields();
-        // a full-recalc is always necessary because we don't retain the information about the order by field
-        // we have to exclude the current items on delete, otherwise they'll be incorrectly considered
-        List<SObject> additionalItems = this.repo.setQuery(
-            RollupQueryBuilder.Current.getQuery(this.calcItemSObjectType, new List<String>(queryFields), 'Id', '!=', this.lookupKeyQuery)
-          )
-          .setArg(calcItems)
-          .get();
-        switch on this.op {
-          when DELETE_FIRST, DELETE_LAST {
-            calcItems = additionalItems;
-          }
-          when else {
-            calcItems.addAll(additionalItems);
-          }
+      if (this.state != null) {
+        this.info = (RollupState.SObjectInfo) this.state.getState(this.lookupRecordKey, RollupState.SObjectInfo.class);
+        if (this.info == null) {
+          this.info = new RollupState.SObjectInfo();
+          this.state.setState(this.lookupRecordKey, this.info);
+        } else {
+          calcItems.add(this.info.item);
         }
       }
-      List<WinnowResult> results = this.winnowItems(calcItems, oldCalcItems);
-      this.rollupResults(results);
+      this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
     }
 
     protected override void rollupResults(List<WinnowResult> results) {
@@ -1250,12 +1236,15 @@ public without sharing abstract class RollupCalculator {
             retrievalIndex = results.size() - 1;
           }
         }
-        this.returnVal = results[retrievalIndex].currentValue;
+        WinnowResult result = results[retrievalIndex];
+        this.info?.setItem(result.item);
+        this.returnVal = result.currentValue;
       }
     }
   }
 
   private without sharing class MostRollupCalculator extends RollupCalculator {
+    private RollupState.MostInfo info;
     private Map<Object, Integer> occurrenceToCount = new Map<Object, Integer>();
     private Integer largestCountPointer;
     public MostRollupCalculator(
@@ -1268,19 +1257,19 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
 
-    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      if (this.hasAlreadyBeenFullRecalcUpdated(oldCalcItems)) {
-        calcItems.addAll(this.tryQuery(this.calcItemSObjectType, this.getQueryFields(), calcItems));
-      }
-
-      List<WinnowResult> results = this.winnowItems(calcItems, oldCalcItems);
-      this.rollupResults(results);
-    }
-
     protected override void rollupResults(List<WinnowResult> results) {
+      if (this.state != null) {
+        this.info = (RollupState.MostInfo) this.state.getState(this.lookupRecordKey, RollupState.MostInfo.class);
+        if (this.info == null) {
+          this.info = new RollupState.MostInfo();
+          this.state.setState(this.lookupRecordKey, this.info);
+        }
+      }
       this.occurrenceToCount = new Map<Object, Integer>();
-      this.largestCountPointer = -1;
-      this.returnVal = this.defaultVal;
+      this.largestCountPointer = this.info?.largestPointCounter ?? -1;
+      if (this.state == null) {
+        this.returnVal = this.defaultVal;
+      }
 
       for (WinnowResult result : results) {
         Object value = result.currentValue;
@@ -1289,6 +1278,7 @@ public without sharing abstract class RollupCalculator {
         if (this.largestCountPointer < localCount) {
           this.largestCountPointer = localCount;
           this.returnVal = value;
+          this.info?.setLargestPointCounter(localCount);
         }
       }
     }
@@ -1373,7 +1363,6 @@ public without sharing abstract class RollupCalculator {
       this.innerCalculator.setEvaluator(this.eval);
       this.innerCalculator.setFullRecalc(this.isFullRecalc);
       this.innerCalculator.setCDCUpdate(this.isCDCUpdate);
-      this.innerCalculator.setHasAlreadyRetrievedCalcItems(this.hasAlreadyRetrievedCalcItems);
       this.innerCalculator.parentIsoCode = this.parentIsoCode;
       this.innerCalculator.isMultiCurrencyRollup = this.isMultiCurrencyRollup;
 

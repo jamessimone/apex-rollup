@@ -57,9 +57,6 @@ if($scratchOrgAllotment -gt 0) {
   if($scratchOrgCreateMessage -eq 'The signup request failed because this organization has reached its active scratch org limit') {
     throw $1
   }
-  # Multi-currency prep
-  Write-Debug 'Importing multi-currency config data to scratch org ...'
-  npx sf data import tree --files ./config/data/CurrencyTypes.json
   # Run tests
   Start-Tests
 } else {
