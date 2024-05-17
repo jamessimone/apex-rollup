@@ -1174,7 +1174,6 @@ public without sharing abstract class RollupCalculator {
     protected override void rollupResults(List<WinnowResult> results) {
       Decimal numerator = this.info?.numerator ?? 0.00;
       Decimal denominator = results.size() + (this.info?.denominator ?? 0.00);
-      RollupState.AverageInfo averageInfo;
 
       for (WinnowResult result : results) {
         Decimal current = (Decimal) result.currentValue ?? 0.00;

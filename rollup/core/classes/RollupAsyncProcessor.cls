@@ -847,7 +847,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor rollup,
     Map<Schema.SObjectType, Set<String>> localCalcToUniqueFieldNames
   ) {
-    RollupCalculator calc;
     for (RollupAsyncProcessor groupedRollup : rollup.rollups) {
       groupedRollup.metadata.IsFullRecordSet__c = true;
       groupedRollup.groupedLookupToCalcItems = new Map<String, CalcItemBag>();

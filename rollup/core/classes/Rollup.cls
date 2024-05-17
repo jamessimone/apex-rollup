@@ -2766,7 +2766,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (
         rollupMetadata.RollupGrouping__r.Id != null &&
         rollupMetadata.CalcItem__c != null &&
-        rollupMetadata.CalcItem__c != sObjectType.getDescribe().getName()
+        rollupMetadata.CalcItem__c != sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName()
       ) {
         Schema.DescribeSObjectResult childDescribe = init.getDescribeFromName(rollupMetadata.CalcItem__c);
         sObjectType = childDescribe.getSObjectType();
