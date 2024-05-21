@@ -568,6 +568,8 @@ public without sharing abstract class RollupCalculator {
       super.setDefaultValues(lookupRecordKey, priorVal);
       if (this.returnVal instanceof Decimal) {
         this.returnDecimal = (Decimal) this.returnVal;
+      } else if (this.returnVal == null) {
+        this.returnDecimal = (Decimal) this.defaultVal;
       }
     }
 
@@ -608,7 +610,7 @@ public without sharing abstract class RollupCalculator {
         this.returnVal = 0.00;
       }
       if (this.returnVal == 0) {
-        this.returnVal = this.metadata.FullRecalculationDefaultNumberValue__c != null ? this.metadata.FullRecalculationDefaultNumberValue__c : null;
+        this.returnVal = (Decimal) this.defaultVal;
       }
       return this.returnVal;
     }

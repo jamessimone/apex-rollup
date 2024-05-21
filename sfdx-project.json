@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Tidies up newly released Rollup__mdt.IsDistinct__c functionality, adds RollupGrouping__mdt functionality to link two or more rollup operations together, fixes batch full recalcs for AVERAGE, MOST, FIRST, LAST",
-            "versionNumber": "1.6.26.0",
+            "versionName": "Ensure DecimalRollupCalculator has value prior to incrementing",
+            "versionNumber": "1.6.27.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
