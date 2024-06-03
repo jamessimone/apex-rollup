@@ -3036,15 +3036,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   ) {
     FilterResults results = new FilterResults();
     results.eval = RollupEvaluator.getEvaluator(eval, metadata, oldCalcItems, calcItemType);
+    if (shouldFilterCalcItems == false) {
+      results.matchingItemIds.addAll(new Map<Id, SObject>(calcItems).keySet());
+      return results;
+    }
 
     // for custom evaluators / where clauses / child object changed fields, etc ... mutating the initial "calcItems" passed in would
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
-      if (shouldFilterCalcItems == false) {
-        results.matchingItemIds.add(item.Id);
-        continue;
-      }
       if (
         metadata.IsRollupStartedFromParent__c == false &&
         item.get(metadata.LookupFieldOnCalcItem__c) == null &&
