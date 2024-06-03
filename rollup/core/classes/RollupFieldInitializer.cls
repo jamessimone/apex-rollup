@@ -162,13 +162,7 @@ public virtual class RollupFieldInitializer {
 
   public class StringSorter implements System.Comparator<String> {
     public Integer compare(String first, String second) {
-      Integer sortValue = 0;
-      if (first > second) {
-        sortValue = 1;
-      } else if (second > first) {
-        sortValue = -1;
-      }
-      return sortValue;
+      return first.compareTo(second);
     }
   }
 

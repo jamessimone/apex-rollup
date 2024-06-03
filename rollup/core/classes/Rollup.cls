@@ -1822,85 +1822,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @SuppressWarnings('PMD.ApexCRUDViolation')
   public static List<SObject> getMetadataFromCache(SObjectType metadataType) {
     List<SObject> matchingMetadata;
-    // We need to clean up the Entity Definition / Field Definition
-    // particles for custom objects and custom fields
     if (metadataType == Rollup__mdt.SObjectType) {
-      if (cachedMetadata == null && onlyUseMockMetadata == false) {
-        cachedMetadata = [
-          SELECT
-            MasterLabel,
-            DeveloperName,
-            LookupObject__c,
-            LookupObjectText__c,
-            LookupObject__r.QualifiedApiName,
-            CalcItem__c,
-            CalcItemText__c,
-            CalcItem__r.QualifiedApiName,
-            RollupFieldOnCalcItem__c,
-            RollupFieldOnCalcItemText__c,
-            RollupFieldOnCalcItem__r.QualifiedApiName,
-            LookupFieldOnCalcItem__c,
-            LookupFieldOnCalcItemText__c,
-            LookupFieldOnCalcItem__r.QualifiedApiName,
-            LookupFieldOnLookupObject__c,
-            LookupFieldOnLookupObjectText__c,
-            LookupFieldOnLookupObject__r.QualifiedApiName,
-            RollupFieldOnLookupObject__c,
-            RollupFieldOnLookupObjectText__c,
-            RollupFieldOnLookupObject__r.QualifiedApiName,
-            UltimateParentLookup__c,
-            UltimateParentLookup__r.QualifiedApiName,
-            CalcItemWhereClause__c,
-            ChangedFieldsOnCalcItem__c,
-            ConcatDelimiter__c,
-            CurrencyFieldMapping__c,
-            FullRecalculationDefaultNumberValue__c,
-            FullRecalculationDefaultStringValue__c,
-            GrandparentRelationshipFieldPath__c,
-            GroupByFields__c,
-            GroupByRowEndDelimiter__c,
-            GroupByRowStartDelimiter__c,
-            IsDistinct__c,
-            IsFullRecordSet__c,
-            IsRollupStartedFromParent__c,
-            IsTableFormatted__c,
-            LimitAmount__c,
-            OneToManyGrandparentFields__c,
-            OrderByFirstLast__c,
-            RollupControl__c,
-            RollupOperation__c,
-            RollupToUltimateParent__c,
-            SharingMode__c,
-            ShouldRunWithoutCustomSettingEnabled__c,
-            SplitConcatDelimiterOnCalcItem__c,
-            (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName),
-            RollupGrouping__r.Id
-          FROM Rollup__mdt
-          WHERE RollupControl__r.ShouldAbortRun__c = FALSE
-          ORDER BY LookupObject__c
-        ];
-        // we have to do transforms on the Entity Definition fields because custom objects/custom fields
-        // have references that otherwise won't work with the rest of the code
-        for (Rollup__mdt meta : cachedMetadata) {
-          meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName ?? meta.CalcItemText__c;
-          meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName ?? meta.LookupFieldOnCalcItemText__c;
-          meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName ?? meta.LookupFieldOnLookupObjectText__c;
-          meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName ?? meta.RollupFieldOnCalcItemText__c;
-          meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName ?? meta.RollupFieldOnLookupObjectText__c;
-          meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName ?? meta.LookupObjectText__c;
-
-          meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
-          meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
-          meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
-          meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
-        }
-      } else if (onlyUseMockMetadata && cachedMetadata == null) {
-        cachedMetadata = new List<Rollup__mdt>();
-      }
+      cachedMetadata = cachedMetadata ?? (onlyUseMockMetadata ? new List<Rollup__mdt>() : RollupRepository.getRollupMetadata());
       if (rollupMetadata != null) {
         cachedMetadata.addAll(rollupMetadata);
         rollupMetadata = null;
       }
+      // downstream callers can modify this collection - clone prevents the cache from being modified too
       matchingMetadata = cachedMetadata.clone();
     } else if (metadataType == RollupControl__mdt.SObjectType) {
       // CMDT is read-only when returned from the cache
@@ -2402,7 +2330,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static void populateRollupByType(Map<Schema.SObjectType, List<Rollup>> rollups, Schema.SObjectType calcType, Rollup processor) {
-    List<Rollup> processors = rollups.containsKey(calcType) ? rollups.get(calcType) : new List<Rollup>();
+    List<Rollup> processors = rollups.get(calcType) ?? new List<Rollup>();
     processors.add(processor);
     rollups.put(calcType, processors);
   }
@@ -2652,12 +2580,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
   }
 
-  private static void populateCachedApexOperations(SObjectType calcItemSObjectType, TriggerOperation triggerContext) {
-    if (CACHED_APEX_OPERATIONS.containsKey(calcItemSObjectType)) {
-      CACHED_APEX_OPERATIONS.get(calcItemSObjectType).add(triggerContext);
-    } else {
-      CACHED_APEX_OPERATIONS.put(calcItemSObjectType, new Set<TriggerOperation>{ triggerContext });
+  private static void populateCachedApexOperations(Schema.SObjectType calcItemSObjectType, TriggerOperation triggerContext) {
+    Set<TriggerOperation> cachedOperations = CACHED_APEX_OPERATIONS.get(calcItemSObjectType);
+    if (cachedOperations == null) {
+      cachedOperations = new Set<TriggerOperation>();
+      CACHED_APEX_OPERATIONS.put(calcItemSObjectType, cachedOperations);
     }
+    cachedOperations.add(triggerContext);
   }
 
   private static List<Rollup__mdt> getRollupMetadataBySObject(SObjectType sObjectType) {
@@ -3150,11 +3079,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     if (controlId != null) {
       RollupControl__mdt possibleNewControl = getSingleControlOrDefault(RollupControl__mdt.Id, controlId, defaultControl);
-      // without the below guard clause, one test was failing during the namespaced package version creation
-      // but since namespaced test fails don't report which test method failed, I haven't yet pinned down exactly which
-      // one was producing the error. I consider it (most likely) a case of bad test data with Rollup.defaultControl
-      // as opposed to something that could be a production issue
-      if (possibleNewControl != null && getNamespaceInfo().namespace == '') {
+      if (possibleNewControl != null) {
         CACHED_DEFAULT = possibleNewControl;
         RollupLogger.Instance.updateRollupControl(CACHED_DEFAULT);
       }
