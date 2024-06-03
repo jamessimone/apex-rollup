@@ -123,13 +123,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   protected final RollupLogger.ILogger logger {
     get {
-      if (this.logger == null) {
-        this.logger = RollupLogger.Instance;
-      } else if (this.getIsRunningAsync() && this.hasResetLogger == false) {
+      this.logger = this.logger ?? RollupLogger.Instance;
+      if (this.getIsRunningAsync() && this.hasResetLogger == false) {
         this.hasResetLogger = true;
         RollupLogger.setLogger(this.logger);
       }
-      return logger;
+      return this.logger;
     }
     private set;
   }
@@ -1914,7 +1913,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     for (String specificAllowedContext : meta.RollupControl__r.OnlyRunInFlowContexts__c.split(',')) {
       allowedContexts.add(specificAllowedContext.trim());
     }
-    return allowedContexts.isEmpty() ? false : allowedContexts.contains(flowContext) == false;
+    return allowedContexts.contains(flowContext) == false;
   }
 
   private static Rollup operateFromApex(
@@ -2272,26 +2271,23 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       parentResetProcessor = null;
     }
 
-    RollupFullRecalcProcessor fullRecalc;
-    if (shouldQueue) {
-      fullRecalc = new RollupDeferredFullRecalcProcessor(
-        wrappedMeta.metadata,
-        calcItemType,
-        queryString,
-        wrappedMeta.recordIds,
-        invokePoint,
-        parentResetProcessor
-      );
-    } else {
-      fullRecalc = new RollupFullBatchRecalculator(
-        (queryString + getFullRecalcQueryString(wrappedMeta.metadata)),
-        invokePoint,
-        wrappedMeta.metadata,
-        calcItemType,
-        wrappedMeta.recordIds,
-        parentResetProcessor
-      );
-    }
+    RollupFullRecalcProcessor fullRecalc = shouldQueue
+      ? (RollupFullRecalcProcessor) new RollupDeferredFullRecalcProcessor(
+          wrappedMeta.metadata,
+          calcItemType,
+          queryString,
+          wrappedMeta.recordIds,
+          invokePoint,
+          parentResetProcessor
+        )
+      : (RollupFullRecalcProcessor) new RollupFullBatchRecalculator(
+          (queryString + getFullRecalcQueryString(wrappedMeta.metadata)),
+          invokePoint,
+          wrappedMeta.metadata,
+          calcItemType,
+          wrappedMeta.recordIds,
+          parentResetProcessor
+        );
 
     if (wrappedMeta.parentRecordsToReset.isEmpty() == false) {
       fullRecalc.storeParentFieldsToClear(wrappedMeta.parentRecordsToReset);
@@ -3001,7 +2997,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
 
-    return CACHED_DEFAULT != null ? CACHED_DEFAULT : getSensibleControlDefault();
+    return CACHED_DEFAULT ?? getSensibleControlDefault();
   }
 
   private static RollupControl__mdt getSensibleControlDefault() {
