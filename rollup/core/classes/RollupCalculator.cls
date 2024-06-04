@@ -359,18 +359,19 @@ public without sharing abstract class RollupCalculator {
           }
         }
       }
-      if (shouldAddToResults) {
-        if (this.isDistinct) {
-          if (this.distinctValues.contains(result.currentValue)) {
-            continue;
-          }
-          this.distinctValues.add(result.currentValue);
+      if (shouldAddToResults == false) {
+        continue;
+      }
+      if (this.isDistinct) {
+        if (this.distinctValues.contains(result.currentValue)) {
+          continue;
         }
-        result.matchesCurrent = currentItemMatches;
-        winnowedItems.add(result);
-        if (this.op == Rollup.Op.SOME) {
-          break;
-        }
+        this.distinctValues.add(result.currentValue);
+      }
+      result.matchesCurrent = currentItemMatches;
+      winnowedItems.add(result);
+      if (this.op == Rollup.Op.SOME) {
+        break;
       }
     }
     if (this.metadata.LimitAmount__c != null) {

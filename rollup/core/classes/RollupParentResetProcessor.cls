@@ -111,17 +111,17 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     if (matchingMeta.isEmpty() == false) {
       Map<String, SObjectField> fieldTokens = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta[0].LookupObject__c).fields.getMap();
       for (Rollup__mdt meta : matchingMeta) {
-        SObjectField token = RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c);
-        if (token?.getDescribe().isFilterable() == true) {
-          isValidRun = isValidRun || true;
-          Object searchObject = getDefaultValue(meta, invokePoint);
-          String searchValue = String.valueOf(searchObject);
-          if (searchObject instanceof String) {
-            searchValue = '\'' + searchValue + '\'';
-          }
-
-          additionalFilters += meta.RollupFieldOnLookupObject__c + (' != ' + searchValue + orClause);
+        if (RollupFieldInitializer.Current.getSObjectFieldByName(fieldTokens, meta.RollupFieldOnLookupObject__c)?.getDescribe().isFilterable() != true) {
+          continue;
         }
+        isValidRun = isValidRun || true;
+        Object searchObject = getDefaultValue(meta, invokePoint);
+        String searchValue = String.valueOf(searchObject);
+        if (searchObject instanceof String) {
+          searchValue = '\'' + searchValue + '\'';
+        }
+
+        additionalFilters += meta.RollupFieldOnLookupObject__c + (' != ' + searchValue + orClause);
       }
     }
 

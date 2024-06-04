@@ -301,6 +301,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       }
     }
 
+    @SuppressWarnings('PMD.AvoidDeeplyNestedIfStmts')
     private List<WhereCondition> recursivelyCreateConditions(String localWhereClause) {
       if (localWhereClause.startsWith('(') && localWhereClause.endsWith(')')) {
         localWhereClause = localWhereClause.substring(1, localWhereClause.length() - 1);
@@ -475,23 +476,20 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
       if (fieldName.contains('Owner.')) {
         Integer ownerIndex = fieldParts.indexOf('Owner');
-        Schema.SObjectType ownerType;
+        Schema.SObjectType ownerType = this.calcItemType;
         if (ownerIndex > 0) {
           Integer index = 0;
-          while (index < ownerIndex) {
+          Boolean isNamePointing = false;
+          while (index < ownerIndex && isNamePointing == false) {
             String relationshipName = fieldParts[index];
             String fieldRef = getRelationshipNameFromField(relationshipName);
             SObjectField fieldToken = this.fieldNameToField.get(fieldRef);
-            if (fieldToken.getDescribe().isNamePointing()) {
-              return false;
-            }
+            isNamePointing = fieldToken.getDescribe().isNamePointing();
             ownerType = fieldToken.getDescribe().getReferenceTo()[0];
             index++;
           }
-        } else {
-          ownerType = this.calcItemType;
         }
-        return (ownerType == this.calcItemType ? this.fieldNameToField : ownerType.getDescribe().fields.getMap())
+        return (ownerType == this.calcItemType ? this.fieldNameToField : ownerType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap())
             .get('OwnerId')
             .getDescribe()
             .isNamePointing() == false;

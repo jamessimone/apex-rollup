@@ -16,7 +16,6 @@
       <exclude name="PropertyNamingConventions"/>
     </rule>
     <rule ref="category/apex/design.xml">
-      <exclude name="AvoidDeeplyNestedIfStmts"/>
       <exclude name="CognitiveComplexity"/>
       <exclude name="CyclomaticComplexity"/>
       <exclude name="ExcessiveClassLength"/>

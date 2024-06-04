@@ -247,26 +247,27 @@ public without sharing class RollupCalcItemReplacer {
     for (String whereClause : whereEval.getWhereClauses()) {
       Boolean hasTypeField = whereClause.contains(TYPE_FIELD);
       Boolean hasOwnerField = whereClause.contains(OWNER);
-      if (hasTypeField || hasOwnerField) {
-        // "consume" the metadata where clause for downstream evaluators
-        List<String> splitWheres = whereClause.split(' ');
-        if (splitWheres.size() > 0) {
-          Set<String> additionalQueryFields = this.typeToAdditionalQueryFields.get(sObjectType);
-          if (additionalQueryFields == null) {
-            additionalQueryFields = new Set<String>();
-            this.typeToAdditionalQueryFields.put(sObjectType, additionalQueryFields);
-          }
-          additionalQueryFields.add(splitWheres[0]);
+      if (hasTypeField == false && hasOwnerField == false) {
+        continue;
+      }
+      // "consume" the metadata where clause for downstream evaluators
+      List<String> splitWheres = whereClause.split(' ');
+      if (splitWheres.size() > 0) {
+        Set<String> additionalQueryFields = this.typeToAdditionalQueryFields.get(sObjectType);
+        if (additionalQueryFields == null) {
+          additionalQueryFields = new Set<String>();
+          this.typeToAdditionalQueryFields.put(sObjectType, additionalQueryFields);
         }
-        metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c.replace(whereClause, '');
-        if (hasTypeField) {
-          String key = TYPE_FIELD + sObjectType;
-          this.fillField(this.keyToOptionalWhereClauses, key, whereClause);
-        }
-        if (hasOwnerField) {
-          String key = OWNER + sObjectType;
-          this.fillField(this.keyToOptionalWhereClauses, key, whereClause);
-        }
+        additionalQueryFields.add(splitWheres[0]);
+      }
+      metadata.CalcItemWhereClause__c = metadata.CalcItemWhereClause__c.replace(whereClause, '');
+      if (hasTypeField) {
+        String key = TYPE_FIELD + sObjectType;
+        this.fillField(this.keyToOptionalWhereClauses, key, whereClause);
+      }
+      if (hasOwnerField) {
+        String key = OWNER + sObjectType;
+        this.fillField(this.keyToOptionalWhereClauses, key, whereClause);
       }
     }
   }
@@ -341,36 +342,37 @@ public without sharing class RollupCalcItemReplacer {
         continue;
       }
       for (String fieldName : calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().keySet()) {
-        if (fieldNameToFieldToken.containsKey(fieldName)) {
-          DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName).getDescribe();
-          Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
-          if (isAcceptableField && fieldToken.isNamePointing() == false) {
-            try {
-              SObject parent = calcItem.getSObject(fieldToken.getRelationshipName());
-              if (parent == null) {
-                calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
-              } else {
-                parent.put(fieldName, calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().get(fieldName));
-              }
-            } catch (SObjectException ex) {
-              // avoids "System.SObjectException: Relationship { relationship name } is not editable"
-              if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {
-                String relationshipName = fieldToken.getRelationshipName();
-                calcItems.set(index, serializeReplace(calcItem, relationshipName, calcItemWIthUpdatedParentField.getSObject(relationshipName)));
-              }
+        DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName)?.getDescribe();
+        if (fieldToken == null) {
+          continue;
+        }
+        Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
+        if (isAcceptableField && fieldToken.isNamePointing() == false) {
+          try {
+            SObject parent = calcItem.getSObject(fieldToken.getRelationshipName());
+            if (parent == null) {
+              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+            } else {
+              parent.put(fieldName, calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().get(fieldName));
             }
-          } else if (isAcceptableField) {
-            // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,
-            // but can't be appended via .putSObject without reinitializing the parent object to its actual type
-            // this is because they are returned with type "Name", and avoids the dreaded:
-            // "System.SObjectException: Illegal assignment from Name to { the calcItem type }"
-            SObject parentFieldObject = calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName());
-            SObject replacementObject = parentFieldObject.Id.getSObjectType().newSObject();
-            for (String populatedFieldName : parentFieldObject.getPopulatedFieldsAsMap().keySet()) {
-              replacementObject.put(populatedFieldName, parentFieldObject.get(populatedFieldName));
+          } catch (SObjectException ex) {
+            // avoids "System.SObjectException: Relationship { relationship name } is not editable"
+            if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {
+              String relationshipName = fieldToken.getRelationshipName();
+              calcItems.set(index, serializeReplace(calcItem, relationshipName, calcItemWIthUpdatedParentField.getSObject(relationshipName)));
             }
-            calcItem.putSObject(fieldToken.getRelationshipName(), replacementObject);
           }
+        } else if (isAcceptableField) {
+          // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,
+          // but can't be appended via .putSObject without reinitializing the parent object to its actual type
+          // this is because they are returned with type "Name", and avoids the dreaded:
+          // "System.SObjectException: Illegal assignment from Name to { the calcItem type }"
+          SObject parentFieldObject = calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName());
+          SObject replacementObject = parentFieldObject.Id.getSObjectType().newSObject();
+          for (String populatedFieldName : parentFieldObject.getPopulatedFieldsAsMap().keySet()) {
+            replacementObject.put(populatedFieldName, parentFieldObject.get(populatedFieldName));
+          }
+          calcItem.putSObject(fieldToken.getRelationshipName(), replacementObject);
         }
       }
     }

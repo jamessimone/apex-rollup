@@ -437,30 +437,32 @@ public without sharing class RollupRelationshipFieldFinder {
         // each where clause should begin with the field name:
         // "AccountId = 'someId'" - so by splitting on the space,
         // we would get the AccountId, for example
-        List<String> splitWhereClause = whereClause.split(' ');
-        String key;
-        if (splitWhereClause.size() > 1) {
-          String fieldName = splitWhereClause[0];
-          // the filtering has already been done for base fields, so we only need to do relationship ones
-          if (fieldName.contains('.')) {
-            // the relationship name is the string immediately preceeding the last period
-            List<String> relationshipNames = fieldName.split('\\.');
-            Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
-            key = relationshipNames[keyIndex];
-          }
-        }
+        String key = this.getNextRelationshipKey(whereClause.split(' '));
+
         if (key != null) {
           // the +1 is for the period following the key
           String whereClauseForRelation = whereClause.substring(whereClause.indexOf(key) + key.length() + 1);
-          List<String> matchingWhereClauses = this.relationshipNameToWhereClauses.get(key);
-          if (matchingWhereClauses == null) {
-            matchingWhereClauses = new List<String>();
-            this.relationshipNameToWhereClauses.put(key, matchingWhereClauses);
-          }
+          List<String> matchingWhereClauses = this.relationshipNameToWhereClauses.get(key) ?? new List<String>();
+          this.relationshipNameToWhereClauses.put(key, matchingWhereClauses);
           matchingWhereClauses.add(whereClauseForRelation);
         }
       }
     }
+  }
+
+  private String getNextRelationshipKey(List<String> splitWhereClause) {
+    String key;
+    if (splitWhereClause.size() > 1) {
+      String fieldName = splitWhereClause[0];
+      // the filtering has already been done for base fields, so we only need to do relationship ones
+      if (fieldName.contains('.')) {
+        // the relationship name is the string immediately preceeding the last period
+        List<String> relationshipNames = fieldName.split('\\.');
+        Integer keyIndex = relationshipNames.size() >= 2 ? relationshipNames.size() - 2 : relationshipNames.size() - 1;
+        key = relationshipNames[keyIndex];
+      }
+    }
+    return key;
   }
 
   private String appendAdditionalWhereClauses(String query, String relationshipName, Map<String, SObjectField> fieldMap) {
@@ -499,41 +501,37 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void trackTraversalIds(Id recordId, Id lookupId, Schema.SObjectField field, Set<Id> lookupIds) {
-    if (String.isNotBlank(lookupId)) {
-      lookupIds?.add(lookupId);
-      List<Id> traversalIds = this.traversal.lookupIdMap.get(lookupId);
-      if (traversalIds == null) {
-        traversalIds = new List<Id>();
-        this.traversal.lookupIdMap.put(lookupId, traversalIds);
-      }
-      traversalIds.add(recordId);
+    if (String.isBlank(lookupId)) {
+      return;
+    }
+    lookupIds?.add(lookupId);
+    List<Id> traversalIds = this.traversal.lookupIdMap.get(lookupId);
+    if (traversalIds == null) {
+      traversalIds = new List<Id>();
+      this.traversal.lookupIdMap.put(lookupId, traversalIds);
+    }
+    traversalIds.add(recordId);
 
-      if (this.isFirstRun && field != null) {
+    if (this.isFirstRun && field != null) {
+      Id oldLookupId = (Id) this.oldRecords.get(recordId)?.get(field);
+      if (String.isNotBlank(oldLookupId) && oldLookupId != lookupId) {
         // we need to keep track of potentially reparented lookups to aid with the note below
-        if (this.oldRecords.containsKey(recordId)) {
-          Id oldLookupId = (Id) this.oldRecords.get(recordId).get(field);
-          if (String.isNotBlank(oldLookupId) && oldLookupId != lookupId) {
-            lookupIds?.add(oldLookupId);
-            this.traversal.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
-          }
-        }
-        this.traversal.hierarchy.put(lookupId, new List<Id>{ lookupId });
-      } else {
-        // track the hierarchy of objects to help in determining whether or not something
-        // has ultimately been reparented
-        // for example:
-        // * Child 1 -> Parent 1 -> Grandparent 1 could be updated to
-        // * Child 1 -> Parent 2 -> Grandparent 1
-        // this would "traditionally" be a reparenting situation, but if we are skipping
-        // the intermediate objects for a rollup and the end result is the same, we need
-        // to avoid reporting false positives like this one
-        List<Id> matchingLookupIds = this.traversal.hierarchy.get(recordId);
-        if (matchingLookupIds == null) {
-          matchingLookupIds = new List<Id>();
-          this.traversal.hierarchy.put(recordId, matchingLookupIds);
-        }
-        matchingLookupIds.add(lookupId);
+        lookupIds?.add(oldLookupId);
+        this.traversal.hierarchy.put(oldLookupId, new List<Id>{ oldLookupId });
       }
+      this.traversal.hierarchy.put(lookupId, new List<Id>{ lookupId });
+    } else {
+      // track the hierarchy of objects to help in determining whether or not something
+      // has ultimately been reparented
+      // for example:
+      // * Child 1 -> Parent 1 -> Grandparent 1 could be updated to
+      // * Child 1 -> Parent 2 -> Grandparent 1
+      // this would "traditionally" be a reparenting situation, but if we are skipping
+      // the intermediate objects for a rollup and the end result is the same, we need
+      // to avoid reporting false positives like this one
+      List<Id> matchingLookupIds = this.traversal.hierarchy.get(recordId) ?? new List<Id>();
+      this.traversal.hierarchy.put(recordId, matchingLookupIds);
+      matchingLookupIds.add(lookupId);
     }
   }
 
@@ -847,8 +845,10 @@ public without sharing class RollupRelationshipFieldFinder {
           System.Iterator<Id> iterator = otherIds.iterator();
           Schema.SObjectType idType = iterator.hasNext() ? iterator.next().getSObjectType() : null;
           // TODO handle idType == null
-          if (idType == this.ultimateParent) {
-            fullParentPath = splitRelationshipName + this.metadata.GrandparentRelationshipFieldPath__c.substringAfter(splitRelationshipName);
+          if (idType != this.ultimateParent) {
+           continue;
+          }
+           fullParentPath = splitRelationshipName + this.metadata.GrandparentRelationshipFieldPath__c.substringAfter(splitRelationshipName);
             String query = RollupQueryBuilder.Current.getQuery(
               this.ultimateParent,
               new List<String>{ this.metadata.RollupFieldOnLookupObject__c, this.metadata.LookupFieldOnLookupObject__c },
@@ -863,7 +863,6 @@ public without sharing class RollupRelationshipFieldFinder {
                 this.traversal.oldGrandparents.add(otherPossibleGrandparent);
               }
             }
-          }
         }
       }
     }

@@ -101,46 +101,26 @@ global without sharing class RollupFlowBulkProcessor {
             Rollup.FlowInput input = new Rollup.FlowInput();
             validInputs.add(input);
             // pertinent fields from CMDT (can be overridden by optional flow properties)
-            input.calcItemChangedFields = flowInput.calcItemChangedFields != null ? flowInput.calcItemChangedFields : meta.ChangedFieldsOnCalcItem__c;
+            input.calcItemChangedFields = flowInput.calcItemChangedFields ?? meta.ChangedFieldsOnCalcItem__c;
             input.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent;
-            input.calcItemWhereClause = flowInput.calcItemWhereClause != null ? flowInput.calcItemWhereClause : meta.CalcItemWhereClause__c;
-            input.concatDelimiter = flowInput.concatDelimiter != null ? flowInput.concatDelimiter : meta.ConcatDelimiter__c;
-            input.fullRecalculationDefaultNumberValue = flowInput.fullRecalculationDefaultNumberValue != null
-              ? flowInput.fullRecalculationDefaultNumberValue
-              : meta.FullRecalculationDefaultNumberValue__c;
-            input.fullRecalculationDefaultStringValue = flowInput.fullRecalculationDefaultStringValue != null
-              ? flowInput.fullRecalculationDefaultStringValue
-              : meta.FullRecalculationDefaultStringValue__c;
-            input.isFullRecordSet = flowInput.isFullRecordSet != null ? flowInput.isFullRecordSet : meta.IsFullRecordSet__c;
-            input.isRollupStartedFromParent = flowInput.isRollupStartedFromParent != null
-              ? flowInput.isRollupStartedFromParent
-              : meta.IsRollupStartedFromParent__c;
-            input.grandparentRelationshipFieldPath = flowInput.grandparentRelationshipFieldPath != null
-              ? flowInput.grandparentRelationshipFieldPath
-              : meta.GrandparentRelationshipFieldPath__c;
-            input.oneToManyGrandparentFields = flowInput.oneToManyGrandparentFields != null
-              ? flowInput.oneToManyGrandparentFields
-              : meta.OneToManyGrandparentFields__c;
-            input.rollupToUltimateParent = flowInput.rollupToUltimateParent != null ? flowInput.rollupToUltimateParent : meta.RollupToUltimateParent__c;
+            input.calcItemWhereClause = flowInput.calcItemWhereClause ?? meta.CalcItemWhereClause__c;
+            input.concatDelimiter = flowInput.concatDelimiter ?? meta.ConcatDelimiter__c;
+            input.fullRecalculationDefaultNumberValue = flowInput.fullRecalculationDefaultNumberValue ?? meta.FullRecalculationDefaultNumberValue__c;
+            input.fullRecalculationDefaultStringValue = flowInput.fullRecalculationDefaultStringValue ?? meta.FullRecalculationDefaultStringValue__c;
+            input.isFullRecordSet = flowInput.isFullRecordSet ?? meta.IsFullRecordSet__c;
+            input.isRollupStartedFromParent = flowInput.isRollupStartedFromParent ?? meta.IsRollupStartedFromParent__c;
+            input.grandparentRelationshipFieldPath = flowInput.grandparentRelationshipFieldPath ?? meta.GrandparentRelationshipFieldPath__c;
+            input.oneToManyGrandparentFields = flowInput.oneToManyGrandparentFields ?? meta.OneToManyGrandparentFields__c;
+            input.rollupToUltimateParent = flowInput.rollupToUltimateParent ?? meta.RollupToUltimateParent__c;
             input.parentRecordIdForEmptyChildrenCollections = flowInput.parentRecordIdForEmptyChildrenCollections;
-            input.ultimateParentLookup = flowInput.ultimateParentLookup != null ? flowInput.ultimateParentLookup : meta.UltimateParentLookup__c;
-            input.limitAmount = flowInput.limitAmount != null ? flowInput.limitAmount : meta.LimitAmount__c;
-            input.sharingMode = flowInput.sharingMode != null ? flowInput.sharingMode : meta.SharingMode__c;
+            input.ultimateParentLookup = flowInput.ultimateParentLookup ?? meta.UltimateParentLookup__c;
+            input.limitAmount = flowInput.limitAmount ?? meta.LimitAmount__c;
+            input.sharingMode = flowInput.sharingMode ?? meta.SharingMode__c;
             // fixup order by children records
-            input.orderByFirstLast = flowInput.orderByFirstLast != null ? flowInput.orderByFirstLast : '';
+            input.orderByFirstLast = flowInput.orderByFirstLast ?? '';
             if (input.orderByFirstLast == '') {
-              for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
-                input.orderByFirstLast += orderBy.FieldName__c;
-                if (orderBy.NullSortOrder__c != null) {
-                  input.orderByFirstLast += ' ' + orderBy.NullSortOrder__c;
-                }
-                if (orderBy.SortOrder__c != null) {
-                  input.orderByFirstLast += ' ' + orderBy.SortOrder__c;
-                }
-                input.orderByFirstLast += ',';
-              }
+              input.orderByFirstLast = getConcatenatedOrderBys(meta.RollupOrderBys__r);
             }
-            input.orderByFirstLast = input.orderByFirstLast.removeEnd(',');
             // metadata values that don't get overridden
             input.currencyFieldMapping = meta.CurrencyFieldMapping__c;
             input.groupByFields = meta.GroupByFields__c;
@@ -157,11 +137,11 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupControlId = meta.RollupControl__c;
             input.rollupGrouping = meta.RollupGrouping__r;
             // everything else is supplied from the invocable
-            input.deferProcessing = flowInput.deferProcessing != null ? flowInput.deferProcessing : true;
+            input.deferProcessing = flowInput.deferProcessing ?? true;
             input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
             input.recordsToRollup = flowInput.recordsToRollup;
             input.rollupContext = flowInput.rollupContext;
-            input.shouldRunSync = flowInput.shouldRunSync != null ? flowInput.shouldRunSync : false;
+            input.shouldRunSync = flowInput.shouldRunSync ?? false;
             input.developerName = meta.DeveloperName;
           }
         }
@@ -173,5 +153,21 @@ global without sharing class RollupFlowBulkProcessor {
       outputs.remove(0);
     }
     return outputs;
+  }
+
+  private static String getConcatenatedOrderBys(List<RollupOrderBy__mdt> orderBys) {
+    List<String> joinedOrderBys = new List<String>();
+    for (RollupOrderBy__mdt orderBy : orderBys) {
+      String soloOrderBy = '';
+      soloOrderBy += orderBy.FieldName__c;
+      if (orderBy.NullSortOrder__c != null) {
+        soloOrderBy += ' ' + orderBy.NullSortOrder__c;
+      }
+      if (orderBy.SortOrder__c != null) {
+        soloOrderBy += ' ' + orderBy.SortOrder__c;
+      }
+      joinedOrderBys.add(soloOrderBy);
+    }
+    return String.join(joinedOrderBys, ',');
   }
 }

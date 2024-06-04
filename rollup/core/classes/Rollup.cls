@@ -848,7 +848,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         typeToWinnowedRollups = new Map<Schema.SObjectType, List<Rollup>>{ wrapper.sObjectType => new List<Rollup>() };
       }
 
-      Map<Schema.SObjectType, List<Rollup>> typeToLocalRollups = typeToWinnowedRollups != null ? typeToWinnowedRollups : localRollups;
+      Map<Schema.SObjectType, List<Rollup>> typeToLocalRollups = typeToWinnowedRollups ?? localRollups;
       processCustomMetadata(typeToLocalRollups, metas, children, oldFlowRecords, new Set<String>(), wrapper.rollupContext, fromInvocable, typeToWrappedMeta);
 
       if (wrapper.shouldOverrideNoOp) {
@@ -2372,11 +2372,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       errorMessage = 'You must set group by fields when supplying a group by delimiter';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
       if (String.isNotBlank(flowInput.concatDelimiter) && flowInput.groupByFields == null) {
-        errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
+        errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups. ';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
-        errorMessage = errorMessage ?? '';
-        errorMessage += (String.isNotBlank(errorMessage) ? ' ' : '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
+        errorMessage = errorMessage ?? '' + 'Concat options should only be set for CONCAT_DISTINCT operations';
       }
     }
 
@@ -2388,7 +2387,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   private static void enforceFlowSpecificRules(FlowInput flowInput, SObjectType sObjectType) {
     try {
-      if ((flowInput.rollupContext == 'UPDATE' || flowInput.rollupContext == 'UPSERT') && flowInput.oldRecordsToRollup?.isEmpty() == true) {
+      if (flowInput.rollupContext.startsWith('UP') && flowInput.oldRecordsToRollup?.isEmpty() == true) {
         throw new IllegalArgumentException('Prior records to rollup collection required for rollup context: ' + flowInput.rollupContext);
       } else if (String.isBlank(flowInput.grandparentRelationshipFieldPath)) {
         SObject firstRecord = flowInput.recordsToRollup[0];
@@ -2447,25 +2446,25 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     SObject possibleOldItem = sObjectType.newSObject();
     for (SObject calcItem : calcItems) {
       SObject oldCalcItem = isDelete ? possibleOldItem : oldCalcItems.get(calcItem.Id);
-      if (oldCalcItem != null) {
-        String currentLookup = (String) calcItem.get(fieldToken);
-        String oldLookup = (String) oldCalcItem.get(fieldToken);
-        if (currentLookup != oldLookup) {
-          wrapper.addRecordId(currentLookup);
-          if (isDelete) {
-            oldLookup = currentLookup;
-            currentLookup = null;
-          }
-          if (oldLookup != null) {
-            wrapper.addRecordId(oldLookup);
-            Set<Id> oldIntermediateParents = wrapper.typeToOldIntermediateParents.get(calcItem.getSObjectType());
-            if (oldIntermediateParents == null) {
-              oldIntermediateParents = new Set<Id>();
-              wrapper.typeToOldIntermediateParents.put(calcItem.getSObjectType(), oldIntermediateParents);
-            }
-            oldIntermediateParents.add((Id) oldLookup);
-          }
+      String currentLookup = (String) calcItem.get(fieldToken);
+      String oldLookup = (String) oldCalcItem?.get(fieldToken);
+      if (oldCalcItem == null || currentLookup == oldLookup) {
+        continue;
+      }
+
+      wrapper.addRecordId(currentLookup);
+      if (isDelete) {
+        oldLookup = currentLookup;
+        currentLookup = null;
+      }
+      if (oldLookup != null) {
+        wrapper.addRecordId(oldLookup);
+        Set<Id> oldIntermediateParents = wrapper.typeToOldIntermediateParents.get(calcItem.getSObjectType());
+        if (oldIntermediateParents == null) {
+          oldIntermediateParents = new Set<Id>();
+          wrapper.typeToOldIntermediateParents.put(calcItem.getSObjectType(), oldIntermediateParents);
         }
+        oldIntermediateParents.add((Id) oldLookup);
       }
     }
     return wrapper;
@@ -3006,20 +3005,19 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     } else if (cachedOrgDefault == null) {
       // hack for additional code coverage; use one of the TestVisible variables to test getting the below defaults instead
       RollupControl__mdt sensibleDefault = records != null ? null : RollupControl__mdt.getInstance(CONTROL_ORG_DEFAULTS);
-      if (sensibleDefault == null) {
-        // this *should* be impossible, since the record is included on install, but ...
-        sensibleDefault = new RollupControl__mdt(DeveloperName = CONTROL_ORG_DEFAULTS);
-        for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().values()) {
-          if (fieldToken != RollupControl__mdt.DeveloperName && fieldToken != RollupControl__mdt.Id) {
-            sensibleDefault.put(fieldToken, fieldToken.getDescribe().getDefaultValue());
-          }
-        }
-      } else {
-        sensibleDefault = sensibleDefault.clone(true, true);
-      }
-      cachedOrgDefault = sensibleDefault;
+      cachedOrgDefault = sensibleDefault?.clone(true, true) ?? getControlWithDefaultValues();
     }
     return cachedOrgDefault;
+  }
+
+  private static RollupControl__mdt getControlWithDefaultValues() {
+    RollupControl__mdt sensibleDefault = new RollupControl__mdt(DeveloperName = CONTROL_ORG_DEFAULTS);
+    for (Schema.SObjectField fieldToken : RollupControl__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().values()) {
+      if (fieldToken != RollupControl__mdt.DeveloperName && fieldToken != RollupControl__mdt.Id) {
+        sensibleDefault.put(fieldToken, fieldToken.getDescribe().getDefaultValue());
+      }
+    }
+    return sensibleDefault;
   }
 
   private static FilterResults filter(
