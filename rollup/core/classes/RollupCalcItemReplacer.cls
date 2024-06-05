@@ -338,31 +338,30 @@ public without sharing class RollupCalcItemReplacer {
     for (Integer index = 0; index < calcItems.size(); index++) {
       SObject calcItem = calcItems[index];
       SObject calcItemWIthUpdatedParentField = idToCalcItemsWithParentFields.get(calcItem.Id);
-      if (calcItemWIthUpdatedParentField == null) {
-        continue;
-      }
-      for (String fieldName : calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().keySet()) {
-        DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName)?.getDescribe();
-        if (fieldToken == null) {
+      Map<String, Object> updatedParentFields = calcItemWIthUpdatedParentField?.getPopulatedFieldsAsMap() ?? new Map<String, Object>();
+      for (String fieldName : updatedParentFields.keySet()) {
+        Schema.DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName)?.getDescribe();
+        Boolean isSkippableField = fieldToken?.getReferenceTo().isEmpty() != false || fieldToken?.getName() == 'Id';
+        if (isSkippableField) {
           continue;
         }
-        Boolean isAcceptableField = fieldToken.getReferenceTo().isEmpty() == false && fieldToken.getName() != 'Id';
-        if (isAcceptableField && fieldToken.isNamePointing() == false) {
+
+        if (fieldToken.isNamePointing() == false) {
           try {
             SObject parent = calcItem.getSObject(fieldToken.getRelationshipName());
             if (parent == null) {
               calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
             } else {
-              parent.put(fieldName, calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().get(fieldName));
+              parent.put(fieldName, updatedParentFields.get(fieldName));
             }
           } catch (SObjectException ex) {
             // avoids "System.SObjectException: Relationship { relationship name } is not editable"
-            if (calcItemWIthUpdatedParentField.getPopulatedFieldsAsMap().containsKey(fieldToken.getRelationshipName())) {
+            if (updatedParentFields.containsKey(fieldToken.getRelationshipName())) {
               String relationshipName = fieldToken.getRelationshipName();
               calcItems.set(index, serializeReplace(calcItem, relationshipName, calcItemWIthUpdatedParentField.getSObject(relationshipName)));
             }
           }
-        } else if (isAcceptableField) {
+        } else {
           // polymorphic parent fields that are returned from SOQL can get retrieved via .getSObject,
           // but can't be appended via .putSObject without reinitializing the parent object to its actual type
           // this is because they are returned with type "Name", and avoids the dreaded:
