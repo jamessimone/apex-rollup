@@ -474,26 +474,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         return false;
       }
       List<String> fieldParts = fieldName.split(RELATIONSHIP_FIELD_DELIMITER);
-      if (fieldName.contains('Owner.')) {
-        Integer ownerIndex = fieldParts.indexOf('Owner');
-        Schema.SObjectType ownerType = this.calcItemType;
-        if (ownerIndex > 0) {
-          Integer index = 0;
-          Boolean isNamePointing = false;
-          while (index < ownerIndex && isNamePointing == false) {
-            String relationshipName = fieldParts[index];
-            String fieldRef = getRelationshipNameFromField(relationshipName);
-            SObjectField fieldToken = this.fieldNameToField.get(fieldRef);
-            isNamePointing = fieldToken.getDescribe().isNamePointing();
-            ownerType = fieldToken.getDescribe().getReferenceTo()[0];
-            index++;
-          }
-        }
-        return (ownerType == this.calcItemType ? this.fieldNameToField : ownerType.getDescribe(Schema.SObjectDescribeOptions.DEFERRED).fields.getMap())
-            .get('OwnerId')
-            .getDescribe()
-            .isNamePointing() == false;
-      } else {
+      if (fieldName.contains('Owner.') == false) {
         Map<String, Schema.SObjectField> localFieldNameToField = this.fieldNameToField;
         while (fieldParts.size() > 1) {
           String relationshipPart = fieldParts.remove(0);
@@ -509,6 +490,23 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         String endPart = fieldParts[0];
         return localFieldNameToField.containsKey(endPart);
       }
+      Schema.SObjectType ownerType = this.calcItemType;
+      Integer ownerIndex = fieldParts.indexOf('Owner');
+      if (ownerIndex > 0) {
+        Integer index = 0;
+        while (index < ownerIndex) {
+          String relationshipName = fieldParts[index];
+          String fieldRef = getRelationshipNameFromField(relationshipName);
+          SObjectField fieldToken = this.fieldNameToField.get(fieldRef);
+          if (fieldToken.getDescribe().isNamePointing()) {
+            return false;
+          }
+          ownerType = fieldToken.getDescribe().getReferenceTo()[0];
+          index++;
+        }
+      }
+      return (ownerType == this.calcItemType ? this.fieldNameToField : ownerType.getDescribe().fields.getMap()).get('OwnerId').getDescribe().isNamePointing() ==
+        false;
     }
   }
 
