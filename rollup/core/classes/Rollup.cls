@@ -2375,7 +2375,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups. ';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
-        errorMessage = errorMessage ?? '' + 'Concat options should only be set for CONCAT_DISTINCT operations';
+        errorMessage = (errorMessage ?? '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
       }
     }
 

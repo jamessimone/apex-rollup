@@ -55,7 +55,7 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     rollupFieldCalcItem = Rollup__mdt.RollupFieldOnCalcItemText__c;
     rollupFieldParent = Rollup__mdt.RollupFieldOnLookupObjectText__c;
   } else {
-    if (dlrsRule.dlrs__ConcatenateDelimiter__c.equalsIgnoreCase('BR()')) {
+    if (dlrsRule.dlrs__ConcatenateDelimiter__c?.equalsIgnoreCase('BR()') == true) {
       dlrsRule.dlrs__ConcatenateDelimiter__c = '\n';
     }
     // This code uses instances of Metadata.CustomMetadataValue for the deployment - not instances of Rollup__mdt

@@ -58,7 +58,7 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     rollupFieldCalcItem = please__Rollup__mdt.please__RollupFieldOnCalcItemText__c;
     rollupFieldParent = please__Rollup__mdt.please__RollupFieldOnLookupObjectText__c;
   }
-  if (dlrsRule.dlrs__ConcatenateDelimiter__c.equalsIgnoreCase('BR()')) {
+  if (dlrsRule.dlrs__ConcatenateDelimiter__c?.equalsIgnoreCase('BR()') == true) {
     dlrsRule.dlrs__ConcatenateDelimiter__c = '\n';
   }
 
