@@ -58,6 +58,10 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
     rollupFieldCalcItem = please__Rollup__mdt.please__RollupFieldOnCalcItemText__c;
     rollupFieldParent = please__Rollup__mdt.please__RollupFieldOnLookupObjectText__c;
   }
+  if (dlrsRule.dlrs__ConcatenateDelimiter__c.equalsIgnoreCase('BR()')) {
+    dlrsRule.dlrs__ConcatenateDelimiter__c = '\n';
+  }
+
   // This code uses instances of Metadata.CustomMetadataValue for the deployment - not instances of Rollup__mdt
   // So, use a map & field tokens to store the expected values - Salesforce will store the data as Rollup__mdt records when deployed
   Map<String, Object> fieldValuesToCopy = new Map<String, Object>{
@@ -108,4 +112,3 @@ if (shouldDeploy) {
 } else {
   System.debug(LoggingLevel.INFO, 'No DLRS rules to migrate, skipping metadata deploy');
 }
-

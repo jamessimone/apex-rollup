@@ -893,7 +893,7 @@ public without sharing abstract class RollupCalculator {
       if (opFieldOnLookupObject.getDescribe().getType() == Schema.DisplayType.MULTIPICKLIST) {
         this.concatDelimiter = ';';
       } else if (this.metadata.ConcatDelimiter__c != null) {
-        this.concatDelimiter = this.metadata.ConcatDelimiter__c;
+        this.concatDelimiter = this.metadata.ConcatDelimiter__c.unescapeJava();
       } else {
         this.concatDelimiter = ', ';
       }
@@ -924,7 +924,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void setReturnValue() {
-      if (this.op.name().contains(Rollup.Op.CONCAT.name())) {
+      if (this.op.name().contains(Rollup.Op.CONCAT.name()) && this.concatDelimiter != '\n') {
         String trimmedDelimiter = this.concatDelimiter.trim();
         String possibleReturnValue = this.stringVal.normalizeSpace();
         while (possibleReturnValue.endsWith(trimmedDelimiter)) {
@@ -936,6 +936,8 @@ public without sharing abstract class RollupCalculator {
 
         this.stringVal = possibleReturnValue.trim();
         this.sortAndConcat();
+      } else {
+        this.stringVal = this.stringVal.trim();
       }
       this.returnVal = this.stringVal;
     }
