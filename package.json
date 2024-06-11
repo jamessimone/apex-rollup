@@ -15,11 +15,11 @@
     "@ljharb/eslint-config": "21.1.0",
     "@lwc/eslint-plugin-lwc": "1.7.2",
     "@prettier/plugin-xml": "3.4.1",
-    "@salesforce/cli": "2.42.6",
+    "@salesforce/cli": "2.35.6",
     "@salesforce/eslint-config-lwc": "3.5.3",
     "@salesforce/eslint-plugin-lightning": "1.0.0",
     "@salesforce/sfdx-lwc-jest": "4.0.1",
-    "@salesforce/sfdx-scanner": "^4.2.0",
+    "@salesforce/sfdx-scanner": "^4.1.0",
     "eslint": "8.8.0",
     "eslint-config-prettier": "9.1.0",
     "husky": "9.0.11",
@@ -57,8 +57,5 @@
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"
-  },
-  "engines": {
-    "node": ">=20.14.0"
   }
 }
