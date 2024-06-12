@@ -136,17 +136,18 @@ public without sharing class RollupQueryBuilder {
   }
 
   private void addMultiCurrencyFields(List<String> fieldNames, Set<String> uniqueLowercaseFields, Schema.DescribeSObjectResult objectToken) {
-    if (RollupCurrencyInfo.isMultiCurrency() && objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)) {
-      Boolean hasAggregateFunction = AGGREGATE_QUERY_REGEX.matcher(String.join(fieldNames, ',')).find();
-      if (hasAggregateFunction == false) {
-        List<String> multiCurrencyFields = RollupCurrencyInfo.getMultiCurrencyFields(objectToken);
-        for (String multiCurrencyField : multiCurrencyFields) {
-          if (String.isNotBlank(multiCurrencyField) && uniqueLowercaseFields.contains(multiCurrencyField.toLowerCase()) == false) {
-            fieldNames.add(multiCurrencyField);
-          }
+    if (
+      RollupCurrencyInfo.isMultiCurrency() &&
+      objectToken.fields.getMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME) &&
+      AGGREGATE_QUERY_REGEX.matcher(String.join(fieldNames, ',')).find() == false
+    ) {
+      List<String> multiCurrencyFields = RollupCurrencyInfo.getMultiCurrencyFields(objectToken);
+      for (String multiCurrencyField : multiCurrencyFields) {
+        if (String.isNotBlank(multiCurrencyField) && uniqueLowercaseFields.contains(multiCurrencyField.toLowerCase()) == false) {
+          fieldNames.add(multiCurrencyField);
         }
-        uniqueLowercaseFields.addAll(multiCurrencyFields);
       }
+      uniqueLowercaseFields.addAll(multiCurrencyFields);
     }
   }
 

@@ -191,30 +191,32 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   public Integer compareTo(Object otherRollup) {
     Integer numberToReturn = 0;
-    if (otherRollup instanceof RollupAsyncProcessor) {
-      RollupAsyncProcessor that = (RollupAsyncProcessor) otherRollup;
-      if (this.shouldSortToFront == false && that.shouldSortToFront) {
-        numberToReturn = 1;
-      } else if (that.shouldSortToFront == false && this.shouldSortToFront) {
-        numberToReturn = -1;
-      } else if (this.op != null && that.op != null && this.op != that.op) {
-        Boolean thisDelete = this.op.name().contains('DELETE');
-        Boolean thatDelete = that.op.name().contains('DELETE');
-        Boolean thisUpdate = this.op.name().contains('UPDATE');
-        Boolean thatUpdate = that.op.name().contains('UPDATE');
-        Boolean thisInsert = thisDelete == false && thisUpdate == false;
-        Boolean thatInsert = thatDelete == false && thatUpdate == false;
+    if ((otherRollup instanceof RollupAsyncProcessor) == false) {
+      return numberToReturn;
+    }
 
-        // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
-        if (thisInsert && (thatUpdate || thatDelete)) {
-          numberToReturn = -1;
-        } else if ((thisUpdate || thisDelete) && thatInsert) {
-          numberToReturn = 1;
-        } else if (thatUpdate && thisDelete) {
-          numberToReturn = 1;
-        } else if (thisUpdate && thatDelete) {
-          numberToReturn = -1;
-        }
+    RollupAsyncProcessor that = (RollupAsyncProcessor) otherRollup;
+    if (this.shouldSortToFront == false && that.shouldSortToFront) {
+      numberToReturn = 1;
+    } else if (that.shouldSortToFront == false && this.shouldSortToFront) {
+      numberToReturn = -1;
+    } else if (this.op != null && that.op != null && this.op != that.op) {
+      Boolean thisDelete = this.op.name().contains('DELETE');
+      Boolean thatDelete = that.op.name().contains('DELETE');
+      Boolean thisUpdate = this.op.name().contains('UPDATE');
+      Boolean thatUpdate = that.op.name().contains('UPDATE');
+      Boolean thisInsert = thisDelete == false && thisUpdate == false;
+      Boolean thatInsert = thatDelete == false && thatUpdate == false;
+
+      // INSERT operations always come first, then UPDATEs, then DELETEs (UNDELETEs are transformed to INSERT)
+      if (thisInsert && (thatUpdate || thatDelete)) {
+        numberToReturn = -1;
+      } else if ((thisUpdate || thisDelete) && thatInsert) {
+        numberToReturn = 1;
+      } else if (thatUpdate && thisDelete) {
+        numberToReturn = 1;
+      } else if (thisUpdate && thatDelete) {
+        numberToReturn = -1;
       }
     }
 

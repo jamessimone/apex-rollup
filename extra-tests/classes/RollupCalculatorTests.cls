@@ -1021,6 +1021,25 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldProperlyAccountForPreExistingValueWitNewLineDelimiter() {
+    String distinct = 'distinct';
+    RollupCalculator calc = getCalculator(
+      distinct,
+      Rollup.Op.CONCAT_DISTINCT,
+      Opportunity.Name,
+      Account.Name,
+      new Rollup__mdt(ConcatDelimiter__c = '\\n'),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+    Opportunity opp = new Opportunity(Id = '0066g00003VDGbF001', Name = distinct, AccountId = '0016g00003VDGbF001');
+    Opportunity nonDistinctOpp = new Opportunity(Id = '0066g00003VDGbF001', Name = 'non' + distinct, AccountId = '0016g00003VDGbF001');
+    calc.performRollup(new List<Opportunity>{ opp, nonDistinctOpp }, new Map<Id, SObject>());
+
+    System.assertEquals(distinct + '\n' + nonDistinctOpp.Name, String.valueOf(calc.getReturnValue()).trim());
+  }
+
+  @IsTest
   static void shouldSplitCalcItemsOnConcatDelimiterWhenSupplied() {
     RollupCalculator calc = getCalculator(
       '',

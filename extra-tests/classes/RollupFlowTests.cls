@@ -599,7 +599,7 @@ private class RollupFlowTests {
       ex = e;
     }
 
-    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups.', ex?.getMessage());
+    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups.', ex?.getMessage().trim());
   }
 
   @IsTest
