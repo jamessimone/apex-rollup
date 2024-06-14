@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 . .\scripts\string-utils.ps1
 
 function Get-SFDX-Project-JSON {
-  Get-Content -Path ./sfdx-project.json | ConvertFrom-Json | Select-Object -Property * -ExcludeProperty target-dev-hub
+  Get-Content -Path $sfdxProjectJsonPath | ConvertFrom-Json | Select-Object -Property * -ExcludeProperty target-dev-hub
 }
 
 $sfdxProjectJsonPath = "./sfdx-project.json"
@@ -75,7 +75,13 @@ function Update-Logger-Class {
 
 function Update-SFDX-Project-JSON {
   Write-Host "Re-writing sfdx-project.json  ..."
-  Get-SFDX-Project-JSON | ConvertTo-Json -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
+  $content = Get-SFDX-Project-JSON
+  Update-SFDX-Project-JSON-With-Content $content
+}
+
+function Update-SFDX-Project-JSON-With-Content {
+  param ($content)
+  ConvertTo-Json -InputObject $content -Depth 4 | Set-Content -Path $sfdxProjectJsonPath -NoNewline
   # sfdx-project.json is ignored by default; use another file as the --ignore-path to force prettier
   # to run on it
   npx prettier --write $sfdxProjectJsonPath --tab-width 4 --ignore-path ..\.forceignore
@@ -94,7 +100,7 @@ function Get-Next-Package-Version() {
     $currentPackageVersion = $currentPackageVersion.Substring(0, $patchVersionIndex + 1) + $currentVersionNumber.ToString() + ".0"
     $currentPackage.versionNumber = $currentPackageVersion
 
-    Update-SFDX-Project-JSON
+    Update-SFDX-Project-JSON-With-Content $sfdxProjectJson
   }
   if ("apex-rollup" -eq $packageName) {
     $versionNumberToWrite = $currentPackageVersion.Remove($currentPackageVersion.LastIndexOf(".0"))
@@ -188,8 +194,7 @@ function New-Namespaced-Package {
   $namespacedPackageDirectory = Get-Package-Directory $namespacedPackageName
   $namespacedPackageDirectory.versionName = $versionName
   $sfdxProjectJson.packageDirectories[0].versionName = $versionName
-
-  Update-SFDX-Project-JSON
+  Update-SFDX-Project-JSON-With-Content $sfdxProjectJson
 
   # now that the version name's been copied over, we're good to generate
   try {
