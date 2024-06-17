@@ -917,7 +917,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      super.setDefaultValues(lookupRecordKey, isConcatDistinct(this.op) ? '' : priorVal);
+      super.setDefaultValues(lookupRecordKey, this.isConcatDistinct ? '' : priorVal);
       if (this.returnVal instanceof String) {
         this.stringVal = (String) this.returnVal;
       }
