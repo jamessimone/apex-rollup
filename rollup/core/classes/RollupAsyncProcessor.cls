@@ -950,7 +950,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return new Map<String, CalcItemBag>();
     }
 
-    String cacheKey = '' + roll.lookupObj + roll.lookupFieldOnCalcItem + roll.metadata;
+    String cacheKey = '' + roll.lookupObj + roll.lookupFieldOnCalcItem;
     switch on this.invokePoint {
       when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
         Map<String, CalcItemBag> possiblyCachedItems = CACHED_CALC_ITEM_BAGS.get(cacheKey);
