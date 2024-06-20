@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes issue with concat delimiter not properly evaluating new line characters",
+            "versionName": "Summer 24 release",
             "versionNumber": "1.1.22.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -24,6 +24,7 @@
         "apex-rollup-namespaced@1.1.18": "04t6g000008Ob1iAAC",
         "apex-rollup-namespaced@1.1.19": "04t6g000008ObCsAAK",
         "apex-rollup-namespaced@1.1.20": "04t6g000008ObCxAAK",
-        "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0"
+        "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0",
+        "apex-rollup-namespaced@1.1.22": "04t6g000008ObN3AAK"
     }
 }
