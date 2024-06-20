@@ -1758,8 +1758,11 @@ private class RollupIntegrationTests {
     Account acc = [SELECT Id, Phone, OwnerId FROM Account];
     Assert.areEqual('9999999999', acc.Phone, 'Test has started under the wrong conditions!');
     String winningPhone = '5555555555';
-    insert new List<Contact>{new Contact(LastName = 'Second child object', Phone = winningPhone, OwnerId = acc.OwnerId), new Contact(LastName = 'Losing child', Phone = '333', OwnerId = acc.OwnerId)};
-    RollupGrouping__mdt parentGrouping = new RollupGrouping__mdt(Id = RollupTestUtils.createId(RollupGrouping__mdt.SObjectType));
+    insert new List<Contact>{
+      new Contact(LastName = 'Second child object', Phone = winningPhone, OwnerId = acc.OwnerId),
+      new Contact(LastName = 'Losing child', Phone = '333', OwnerId = acc.OwnerId)
+    };
+    RollupGrouping__mdt parentGrouping = new RollupGrouping__mdt(Id = RollupTestUtils.createId(RollupGrouping__mdt.SObjectType), RollupOperation__c = 'MAX');
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{

@@ -849,7 +849,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor rollup,
     Map<Schema.SObjectType, Set<String>> localCalcToUniqueFieldNames
   ) {
+    rollup.isFullRecalc = true;
     for (RollupAsyncProcessor groupedRollup : rollup.rollups) {
+      groupedRollup.isFullRecalc = true;
       groupedRollup.metadata.IsFullRecordSet__c = true;
       groupedRollup.groupedLookupToCalcItems = new Map<String, CalcItemBag>();
       this.retrieveAdditionalCalcItems(lookupToCalcItems, groupedRollup);
@@ -1533,7 +1535,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
     if (priorVal != newVal) {
-      this.logger.log('Updating parent!!', System.LoggingLevel.DEBUG);
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     recordsToUpdate.put(key, lookupRecord);
@@ -1546,8 +1547,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     Object priorCalcValue = calc.getReturnValue();
-    Set<Object> values = new Set<Object>{ priorCalcValue };
+    List<Object> values = new List<Object>{ priorCalcValue };
+    Op groupedOp = op;
     for (RollupAsyncProcessor groupedRollup : this.rollups) {
+      groupedOp = this.getOpMap().get(groupedRollup.metadata.RollupGrouping__r.RollupOperation__c) ?? op;
       this.logger.log('starting grouped rollup for:', groupedRollup.metadata, System.LoggingLevel.DEBUG);
       groupedRollup.isProcessed = true;
       CalcItemBag bag = groupedRollup.groupedLookupToCalcItems.get(key);
@@ -1562,7 +1565,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     this.conditionallyPerformUpdate(
       priorCalcValue,
-      new RollupCalculator.ValueRollupCalculator(calc, values),
+      new RollupCalculator.ValueRollupCalculator(calc, values).setOperation(groupedOp),
       lookupRecord,
       this,
       recordsToUpdate,

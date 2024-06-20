@@ -2208,6 +2208,24 @@ private class RollupCalculatorTests {
     Assert.areEqual(7.5, calc.getReturnValue());
   }
 
+  @IsTest
+  static void valuesCalculatorUpdatesOperationCorrectly() {
+    RollupCalculator calc = getCalculator(
+      0,
+      Rollup.Op.SUM,
+      Opportunity.Amount,
+      Account.AnnualRevenue,
+      new Rollup__mdt(),
+      '0011g00003VDGbF002',
+      Opportunity.AccountId
+    );
+
+    RollupCalculator.ValueRollupCalculator outerCalc = new RollupCalculator.ValueRollupCalculator(calc, new List<Object>{ 2, 3 });
+    outerCalc.setOperation(Rollup.Op.MAX);
+
+    Assert.areEqual(3, outerCalc.getReturnValue());
+  }
+
   private class RollupCalcEmptyMock extends RollupCalculator {
   }
 

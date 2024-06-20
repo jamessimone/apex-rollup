@@ -129,7 +129,8 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
           ShouldRunWithoutCustomSettingEnabled__c,
           SplitConcatDelimiterOnCalcItem__c,
           (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r ORDER BY Ranking__c, DeveloperName),
-          RollupGrouping__r.Id
+          RollupGrouping__r.Id,
+          RollupGrouping__r.RollupOperation__c
         FROM Rollup__mdt
         WHERE RollupControl__r.ShouldAbortRun__c = FALSE
         ORDER BY LookupObject__c
