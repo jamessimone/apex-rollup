@@ -206,6 +206,7 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected virtual void rollupResults(List<WinnowResult> results) {
+    this.shouldTriggerFullRecalc = this.shouldTriggerFullRecalc ?? false;
     for (Integer index = 0; index < results.size(); index++) {
       this.isLastItem = index == results.size() - 1;
       WinnowResult result = results[index];
@@ -917,7 +918,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     public virtual override void setDefaultValues(String lookupRecordKey, Object priorVal) {
-      super.setDefaultValues(lookupRecordKey, isConcatDistinct(this.op) ? '' : priorVal);
+      super.setDefaultValues(lookupRecordKey, this.isConcatDistinct ? '' : priorVal);
       if (this.returnVal instanceof String) {
         this.stringVal = (String) this.returnVal;
       }
@@ -1504,18 +1505,27 @@ public without sharing abstract class RollupCalculator {
 
   public class ValueRollupCalculator extends RollupCalculator {
     private final RollupCalculator innerCalc;
+    private final List<WinnowResult> results = new List<WinnowResult>();
 
-    public ValueRollupCalculator(RollupCalculator innerCalc, Set<Object> valuesToReduce) {
+    public ValueRollupCalculator(RollupCalculator innerCalc, Iterable<Object> valuesToReduce) {
       this.innerCalc = innerCalc;
-      List<WinnowResult> results = new List<WinnowResult>();
       for (Object value : valuesToReduce) {
-        results.add(new WinnowResult(value));
+        this.results.add(new WinnowResult(value));
       }
-      innerCalc.rollupResults(results);
     }
 
     public override Object getReturnValue() {
+      this.innerCalc.rollupResults(this.results);
       return this.innerCalc.getReturnValue();
+    }
+
+    public Rollup.Op getOp() {
+      return this.innerCalc.op;
+    }
+
+    public ValueRollupCalculator setOperation(Rollup.Op op) {
+      this.innerCalc.op = op;
+      return this;
     }
   }
 

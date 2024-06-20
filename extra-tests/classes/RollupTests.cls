@@ -3086,4 +3086,50 @@ private class RollupTests {
 
     Assert.areEqual('no-op', rollupResponse);
   }
+
+  @IsTest
+  static void rollupGroupingOperationOccursIndependentlyOfDownstreamRollups() {
+    Account acc = [SELECT Id, Phone FROM Account];
+    acc.AnnualRevenue = 2; // should match count of contacts, below, to begin with
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    Opportunity opp = new Opportunity(CloseDate = System.today(), Amount = 3, AccountId = acc.Id, StageName = '1', Name = 'Winning Record');
+    insert opp;
+    insert new List<SObject>{ new Contact(LastName = '1', AccountId = acc.Id), new Contact(LastName = '2', AccountId = acc.Id) };
+    Rollup.onlyUseMockMetadata = true;
+    RollupGrouping__mdt parentGrouping = new RollupGrouping__mdt(Id = RollupTestUtils.createId(RollupGrouping__mdt.SObjectType), RollupOperation__c = 'MAX');
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Contact',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        RollupGrouping__r = parentGrouping
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        RollupGrouping__r = parentGrouping
+      )
+    };
+
+    Test.startTest();
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+    Rollup.records = new List<Opportunity>{ opp };
+    Rollup.oldRecordsMap = new Map<Id, Opportunity>{ opp.Id => new Opportunity(Id = opp.Id, Amount = 1, AccountId = acc.Id) };
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Assert.areEqual(opp.Amount, acc.AnnualRevenue);
+  }
 }

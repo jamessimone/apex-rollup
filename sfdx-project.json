@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes issue with concat delimiter not properly evaluating new line characters",
-            "versionNumber": "1.6.27.0",
+            "versionName": "Summer 24 release",
+            "versionNumber": "1.6.28.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -85,7 +85,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "60.0",
+    "sourceApiVersion": "61.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
@@ -105,6 +105,7 @@
         "apex-rollup@1.6.24": "04t6g000008OawrAAC",
         "apex-rollup@1.6.25": "04t6g000008Ob22AAC",
         "apex-rollup@1.6.26": "04t6g000008ObCnAAK",
-        "apex-rollup@1.6.27": "04t6g000008ObL7AAK"
+        "apex-rollup@1.6.27": "04t6g000008ObL7AAK",
+        "apex-rollup@1.6.28": "04t6g000008ObN8AAK"
     }
 }

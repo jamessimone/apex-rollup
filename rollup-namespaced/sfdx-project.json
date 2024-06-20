@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Tidies up newly released Rollup__mdt.IsDistinct__c functionality, adds RollupGrouping__mdt functionality to link two or more rollup operations together, fixes batch full recalcs for AVERAGE, MOST, FIRST, LAST",
-            "versionNumber": "1.1.20.0",
+            "versionName": "Summer 24 release",
+            "versionNumber": "1.1.22.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -24,6 +24,7 @@
         "apex-rollup-namespaced@1.1.18": "04t6g000008Ob1iAAC",
         "apex-rollup-namespaced@1.1.19": "04t6g000008ObCsAAK",
         "apex-rollup-namespaced@1.1.20": "04t6g000008ObCxAAK",
-        "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0"
+        "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0",
+        "apex-rollup-namespaced@1.1.22": "04t6g000008ObNDAA0"
     }
 }
