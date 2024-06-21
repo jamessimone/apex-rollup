@@ -19,3 +19,4 @@ sfge-*.log.gz
 #OSX
 .DS_Store
 .config
+.vscode
