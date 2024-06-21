@@ -305,7 +305,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupRepository repo = new RollupRepository(this.runAsMode);
     if (this.rollups.isEmpty() == false) {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
-      repo.setArg(this.getCalcItemsByLookupField(firstRollup).keySet());
+      repo.setArg(this.getCalcItemsByLookupField(firstRollup, null).keySet());
       query = RollupQueryBuilder.Current.getQuery(
         firstRollup.lookupObj,
         new List<String>(this.lookupObjectToUniqueFieldNames.get(firstRollup.lookupObj)),
@@ -713,12 +713,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         continue;
       }
 
-      String grandparentKey = '' + roll.lookupObj + roll.calcItemType + (roll.metadata.CalcItemWhereClause__c ?? '');
-      if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) && grandparentRollups.containsKey(grandparentKey)) {
+      String grandparentKey = '' + roll.lookupObj + roll.calcItemType + (roll.metadata.CalcItemWhereClause__c?.trim() ?? '');
+      if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) && grandparentRollups.containsKey(grandparentKey) && roll.traversal == null) {
         roll.traversal = grandparentRollups.get(grandparentKey);
       }
 
-      Map<String, CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(roll);
+      Map<String, CalcItemBag> calcItemsByLookupField = this.getCalcItemsByLookupField(roll, grandparentKey);
       // some rollups may not finish retrieving all parent rows the first time around - and that's ok! we can keep
       // trying until all necessary records have been retrieved
       if (roll.traversal?.getIsFinished() == false) {
@@ -945,12 +945,12 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     rolls.sort();
   }
 
-  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll) {
+  private Map<String, CalcItemBag> getCalcItemsByLookupField(RollupAsyncProcessor roll, String cacheKey) {
+    Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (roll.calcItems == null) {
-      return new Map<String, CalcItemBag>();
+      return lookupFieldToCalcItems;
     }
 
-    String cacheKey = '' + roll.lookupObj + roll.lookupFieldOnCalcItem;
     switch on this.invokePoint {
       when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
         Map<String, CalcItemBag> possiblyCachedItems = CACHED_CALC_ITEM_BAGS.get(cacheKey);
@@ -960,10 +960,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    Map<String, CalcItemBag> lookupFieldToCalcItems = new Map<String, CalcItemBag>();
     if (String.isNotBlank(roll.metadata.GrandparentRelationshipFieldPath__c) || roll.metadata.RollupToUltimateParent__c) {
-      if (roll.traversal == null) {
-        roll.traversal = new RollupRelationshipFieldFinder(
+      roll.traversal = roll.traversal ??
+        new RollupRelationshipFieldFinder(
             roll.rollupControl,
             roll.metadata,
             this.calcObjectToUniqueFieldNames.get(roll.calcItemType),
@@ -974,11 +973,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           .setIsFullRecalc(this.isFullRecalc)
           .setOldIntermediateGrandparents(this.fullRecalcProcessor?.getOldIntermediateGrandparents())
           .getParents(roll.calcItems);
-      } else if (roll.traversal?.getIsFinished() == false) {
-        roll.traversal.recommence();
-      }
+
       if (roll.traversal.getIsFinished()) {
         lookupFieldToCalcItems = roll.traversal.getParentLookupToRecords();
+      } else {
+        roll.traversal.recommence();
       }
     } else {
       for (SObject calcItem : roll.calcItems) {
