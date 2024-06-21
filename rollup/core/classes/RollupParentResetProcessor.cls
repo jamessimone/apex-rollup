@@ -98,6 +98,13 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     return this.rollupControl.ShouldSkipResettingParentFields__c ? this.getNoProcessId() : System.enqueueJob(new QueueableResetProcessor(this));
   }
 
+  protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+    props = super.customizeToStringEntries(props);
+    props.remove('Rollup Control');
+    props.remove('Rollup Metadata');
+    return props;
+  }
+
   private void runSync() {
     List<SObject> parentItems = this.preStart().get();
     this.execute(null, parentItems);

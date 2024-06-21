@@ -787,6 +787,16 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void getFullRecalcParents(List<SObject> children) {
+    try {
+      this.safelyRetrieveFullRecalcParents(children);
+    } catch (Exception ex) {
+      RollupLogger.Instance.log('Error retrieving parents all in one go: ' + ex.getMessage() + ' falling back to standard approach', System.LoggingLevel.DEBUG);
+      this.isFullRecalc = false;
+      this.getParents(children);
+    }
+  }
+
+  private void safelyRetrieveFullRecalcParents(List<SObject> children) {
     this.setFirstRunFlags(children);
     Set<String> parentFieldNames = new Set<String>{ this.metadata.GrandparentRelationshipFieldPath__c };
     String baseGrandparentPath = this.metadata.GrandparentRelationshipFieldPath__c.substringBeforeLast('.');
@@ -829,6 +839,10 @@ public without sharing class RollupRelationshipFieldFinder {
       }
       this.prepFinishedObject(finalParents);
     }
+    this.handleIntermediateGrandparents(splitRelationshipNames);
+  }
+
+  private void handleIntermediateGrandparents(List<String> splitRelationshipNames) {
     for (Schema.SObjectType intermediateGrandparent : this.typeToOldIntermediateGrandparents.keySet()) {
       List<Schema.SObjectField> fields = intermediateGrandparent.getDescribe().fields.getMap().values();
       Boolean hasFoundMatch = false;
@@ -846,23 +860,23 @@ public without sharing class RollupRelationshipFieldFinder {
           Schema.SObjectType idType = iterator.hasNext() ? iterator.next().getSObjectType() : null;
           // TODO handle idType == null
           if (idType != this.ultimateParent) {
-           continue;
+            continue;
           }
-           fullParentPath = splitRelationshipName + this.metadata.GrandparentRelationshipFieldPath__c.substringAfter(splitRelationshipName);
-            String query = RollupQueryBuilder.Current.getQuery(
-              this.ultimateParent,
-              new List<String>{ this.metadata.RollupFieldOnLookupObject__c, this.metadata.LookupFieldOnLookupObject__c },
-              'Id',
-              '=',
-              this.metadata.CalcItemWhereClause__c
-            );
+          fullParentPath = splitRelationshipName + this.metadata.GrandparentRelationshipFieldPath__c.substringAfter(splitRelationshipName);
+          String query = RollupQueryBuilder.Current.getQuery(
+            this.ultimateParent,
+            new List<String>{ this.metadata.RollupFieldOnLookupObject__c, this.metadata.LookupFieldOnLookupObject__c },
+            'Id',
+            '=',
+            this.metadata.CalcItemWhereClause__c
+          );
 
-            List<SObject> otherPossibleGrandparents = this.repo.setQuery(query).setArg(otherIds).get();
-            for (SObject otherPossibleGrandparent : otherPossibleGrandparents) {
-              if (this.traversal.finalParentIdToRecords.containsKey(otherPossibleGrandparent.Id) == false) {
-                this.traversal.oldGrandparents.add(otherPossibleGrandparent);
-              }
+          List<SObject> otherPossibleGrandparents = this.repo.setQuery(query).setArg(otherIds).get();
+          for (SObject otherPossibleGrandparent : otherPossibleGrandparents) {
+            if (this.traversal.finalParentIdToRecords.containsKey(otherPossibleGrandparent.Id) == false) {
+              this.traversal.oldGrandparents.add(otherPossibleGrandparent);
             }
+          }
         }
       }
     }

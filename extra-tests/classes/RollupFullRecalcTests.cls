@@ -525,6 +525,51 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldMapChildrenWithDifferentGrandparentWhereClauses() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    List<Event> events = new List<Event>{
+      new Event(WhatId = acc.Id, Subject = 'Two', ActivityDatetime = System.now(), DurationInMinutes = 30),
+      new Event(WhatId = acc.Id, Subject = 'One', ActivityDatetime = System.now(), DurationInMinutes = 60)
+    };
+    insert events;
+
+    Rollup.defaultControl = Rollup.getDefaultControl();
+    Rollup.defaultControl.ShouldSkipResettingParentFields__c = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AboutMe',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'What.Owner.AboutMe',
+        CalcItemWhereClause__c = 'DurationInMinutes <= 30'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Event',
+        RollupFieldOnCalcItem__c = 'Subject',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'User',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'CompanyName',
+        RollupOperation__c = 'CONCAT',
+        GrandparentRelationshipFieldPath__c = 'What.Owner.CompanyName',
+        CalcItemWhereClause__c = 'DurationInMinutes > 30'
+      )
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(Rollup.rollupMetadata, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
+    Test.stopTest();
+
+    User updatedUser = [SELECT AboutMe, CompanyName FROM User WHERE Id = :acc.OwnerId];
+    System.assertEquals(events[0].Subject, updatedUser.AboutMe);
+    System.assertEquals(events[1].Subject, updatedUser.CompanyName);
+  }
+
+  @IsTest
   static void shouldAllowGrandparentRollupFromParentWithPolymorphicFields() {
     // technically shouldAllowGrandparentRollupsFromParent also tests polymorphic fields
     // this test does that in conjunction with a more complicated where clause

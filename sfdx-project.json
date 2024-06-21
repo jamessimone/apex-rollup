@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Summer 24 release",
-            "versionNumber": "1.6.28.0",
+            "versionName": "Grandparent full recalc bugfixes",
+            "versionNumber": "1.6.29.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.6.25": "04t6g000008Ob22AAC",
         "apex-rollup@1.6.26": "04t6g000008ObCnAAK",
         "apex-rollup@1.6.27": "04t6g000008ObL7AAK",
-        "apex-rollup@1.6.28": "04t6g000008ObN8AAK"
+        "apex-rollup@1.6.28": "04t6g000008ObN8AAK",
+        "apex-rollup@1.6.29": "04t6g000008ObNNAA0"
     }
 }

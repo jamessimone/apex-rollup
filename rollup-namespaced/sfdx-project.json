@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Summer 24 release",
-            "versionNumber": "1.1.22.0",
+            "versionName": "Grandparent full recalc bugfixes",
+            "versionNumber": "1.1.23.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -25,6 +25,7 @@
         "apex-rollup-namespaced@1.1.19": "04t6g000008ObCsAAK",
         "apex-rollup-namespaced@1.1.20": "04t6g000008ObCxAAK",
         "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0",
-        "apex-rollup-namespaced@1.1.22": "04t6g000008ObNDAA0"
+        "apex-rollup-namespaced@1.1.22": "04t6g000008ObNDAA0",
+        "apex-rollup-namespaced@1.1.23": "04t6g000008ObNSAA0"
     }
 }
