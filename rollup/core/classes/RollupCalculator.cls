@@ -1168,7 +1168,6 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      // List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       if (this.state != null) {
         this.info = (RollupState.AverageInfo) (this.state.getState(this.lookupRecordKey, RollupState.AverageInfo.class) ?? new RollupState.AverageInfo());
         this.distinctValues.addAll(this.info.distinctNumerators);
@@ -1368,6 +1367,7 @@ public without sharing abstract class RollupCalculator {
       this.innerCalculator.setEvaluator(this.eval);
       this.innerCalculator.setFullRecalc(this.isFullRecalc);
       this.innerCalculator.setCDCUpdate(this.isCDCUpdate);
+      this.innerCalculator.setState(this.state);
       this.innerCalculator.parentIsoCode = this.parentIsoCode;
       this.innerCalculator.isMultiCurrencyRollup = this.isMultiCurrencyRollup;
 
