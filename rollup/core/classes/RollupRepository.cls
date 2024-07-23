@@ -147,7 +147,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
 
       meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
       meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
-      meta.SharingMode__c = meta.SharingMode__c != null ? meta.SharingMode__c : RollupMetaPicklists.SharingMode.SystemLevel;
+      meta.SharingMode__c = meta.SharingMode__c ?? RollupMetaPicklists.SharingMode.SystemLevel;
       meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
     }
 

@@ -637,7 +637,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global String rollupContext;
 
     // optional fields shared with RollupFlowBulkProcessor.FlowInput
-    @InvocableVariable(label='Defer processing')
+    @InvocableVariable(label='Defer processing' defaultValue='false')
     global Boolean deferProcessing = false;
     @InvocableVariable(label='Child Object Type When Rollup Started From Parent')
     global String calcItemTypeWhenRollupStartedFromParent;
@@ -680,16 +680,29 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global String groupByRowStartDelimiter;
     @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
     global String oneToManyGrandparentFields;
-    @InvocableVariable(label='Is Distinct' description='If provided, children item values are de-duplicated prior to calculating rollup values')
+    @InvocableVariable(
+      label='Is Distinct'
+      defaultValue='false'
+      description='If provided, children item values are de-duplicated prior to calculating rollup values'
+    )
     global Boolean isDistinct = false;
     @InvocableVariable(
       label='Is Full Record Set'
-      description='If provided, does not try to abort rollup calculation early if no records match, and instead resets the rollup field value'
+      defaultValue='false'
+      description='If true, SUM and COUNT-based rollups retrieve other related children records prior to performing rollup'
     )
-    global Boolean isFullRecordSet;
-    @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
+    global Boolean isFullRecordSet = false;
+    @InvocableVariable(
+      label='Is Rollup Started From Parent'
+      defaultValue='false'
+      description='If the provided records are the parent records, set this to true'
+    )
     global Boolean isRollupStartedFromParent = false;
-    @InvocableVariable(label='Is Table Formatted' description='If rolling up to a group by text field and you want a table, set this to true')
+    @InvocableVariable(
+      label='Is Table Formatted'
+      defaultValue='false'
+      description='If rolling up to a group by text field and you want a table, set this to true'
+    )
     global Boolean isTableFormatted = false;
     @InvocableVariable(label='Order By (First/Last)')
     global String orderByFirstLast;
@@ -710,12 +723,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global Id parentRecordIdForEmptyChildrenCollections;
     @InvocableVariable(
       label='Should rollup to ultimate hierarchy parent'
+      defaultValue='false'
       description='Used in conjunction with Ultimate Parent Field to drive hierarchical parent rollups'
     )
     global Boolean rollupToUltimateParent = false;
-    @InvocableVariable(label='Sharing Mode' description='Defaults to System, set to User to run with sharing')
+    @InvocableVariable(label='Sharing Mode' defaultValue='System' description='Defaults to System, set to User to run with sharing')
     global String sharingMode;
-    @InvocableVariable(label='Should run sync?' description='Runs rollup calculations synchronously when set to true')
+    @InvocableVariable(label='Should run sync?' defaultValue='false' description='Runs rollup calculations synchronously when set to true')
     global Boolean shouldRunSync = false;
     @InvocableVariable(label='SOQL Where Clause To Exclude Calc Items' description='If provided, excludes records based on a valid SOQL where clause')
     global String calcItemWhereClause;

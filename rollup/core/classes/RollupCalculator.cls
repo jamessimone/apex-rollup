@@ -893,10 +893,8 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       if (opFieldOnLookupObject.getDescribe().getType() == Schema.DisplayType.MULTIPICKLIST) {
         this.concatDelimiter = ';';
-      } else if (this.metadata.ConcatDelimiter__c != null) {
-        this.concatDelimiter = this.metadata.ConcatDelimiter__c.unescapeJava();
       } else {
-        this.concatDelimiter = ', ';
+        this.concatDelimiter = this.metadata.ConcatDelimiter__c?.unescapeJava() ?? ', ';
       }
     }
   }
