@@ -24,7 +24,7 @@ public without sharing class RollupLimits {
       if (HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT == null) {
         System.OrgLimit asyncOrgLimit = System.OrgLimits.getMap().get('DailyAsyncApexExecutions');
         asyncJobLimit = asyncOrgLimit.getLimit();
-        Integer countOfJobsUsed = currentAsyncJobsUsed != null ? currentAsyncJobsUsed : asyncOrgLimit.getValue();
+        Integer countOfJobsUsed = currentAsyncJobsUsed ?? asyncOrgLimit.getValue();
         HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT = countOfJobsUsed - asyncJobLimit > 0;
       }
       return HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT;
@@ -66,7 +66,7 @@ public without sharing class RollupLimits {
     }
 
     public Integer getRemainingQueryRows() {
-      Integer queryRowsUsed = stubbedQueryRows != null ? stubbedQueryRows : Limits.getQueryRows();
+      Integer queryRowsUsed = stubbedQueryRows ?? Limits.getQueryRows();
       Integer remainingQueryRows = (this.control.MaxQueryRows__c?.intValue() ?? LIMIT_QUERY_ROWS) - queryRowsUsed;
       return remainingQueryRows > 0 ? remainingQueryRows : 0;
     }

@@ -584,9 +584,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
-    if (currentJobId != null) {
-      jobId = currentJobId;
-    }
+    jobId = currentJobId ?? jobId;
     return [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
   }
 
@@ -736,10 +734,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     @InvocableVariable(label='Ultimate Parent Field' description='The lookup field in hierarchy rollups')
     global String ultimateParentLookup;
 
-    // internal variables!
+    // internal state
     public Id rollupControlId;
     public String developerName;
     public RollupGrouping__mdt rollupGrouping;
+
+    public Boolean shouldOverrideNoOp() {
+      return this.parentRecordIdForEmptyChildrenCollections != null && calcItemTypeWhenRollupStartedFromParent != null;
+    }
   }
 
   global class FlowOutput {
@@ -766,9 +768,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       this.flowInput = flowInput;
       this.rollupContext = rollupContext;
       this.sObjectType = sObjectType;
-      this.shouldOverrideNoOp =
-        this.flowInput.parentRecordIdForEmptyChildrenCollections != null &&
-        this.flowInput.calcItemTypeWhenRollupStartedFromParent != null;
+      this.shouldOverrideNoOp = this.flowInput.shouldOverrideNoOp();
     }
   }
 
@@ -795,11 +795,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
       RollupLogger.Instance.log('processing invocable data:', flowInput, System.LoggingLevel.INFO);
 
-      if (
-        flowInput.parentRecordIdForEmptyChildrenCollections != null &&
-        flowInput.calcItemTypeWhenRollupStartedFromParent != null &&
-        flowInput.recordsToRollup?.isEmpty() != false
-      ) {
+      if (flowInput.shouldOverrideNoOp() && flowInput.recordsToRollup?.isEmpty() != false) {
         flowInput.recordsToRollup = new List<SObject>();
         Schema.DescribeSObjectResult childDescribe = RollupFieldInitializer.Current.getDescribeFromName(flowInput.calcItemTypeWhenRollupStartedFromParent);
         SObject stubChild = childDescribe.getSObjectType().newSObject(childDescribe.getKeyPrefix() + '0'.repeat(12));
@@ -866,20 +862,16 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       processCustomMetadata(typeToLocalRollups, metas, children, oldFlowRecords, new Set<String>(), wrapper.rollupContext, fromInvocable, typeToWrappedMeta);
 
       if (wrapper.shouldOverrideNoOp) {
-        List<Rollup> rollups = typeToLocalRollups.get(wrapper.sObjectType);
-        if (rollups != null) {
-          for (Rollup roll : rollups) {
-            roll.isNoOp = false;
-            roll.isNoOpOverridden = true;
-            roll.calcItems = children;
-          }
+        List<Rollup> rollups = typeToLocalRollups.get(wrapper.sObjectType) ?? new List<Rollup>();
+        for (Rollup roll : rollups) {
+          roll.isNoOp = false;
+          roll.isNoOpOverridden = true;
+          roll.calcItems = children;
         }
       }
 
-      if (typeToWinnowedRollups != null) {
-        for (Schema.SObjectType typeKey : typeToWinnowedRollups.keyset()) {
-          CACHED_ROLLUPS.addAll(typeToWinnowedRollups.get(typeKey));
-        }
+      for (Schema.SObjectType typeKey : (typeToWinnowedRollups?.keyset() ?? new Set<Schema.SObjectType>())) {
+        CACHED_ROLLUPS.addAll(typeToWinnowedRollups.get(typeKey));
       }
 
       if (metas.isEmpty() == false) {
@@ -1630,7 +1622,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   global static void runFromCDCTrigger() {
     isCDC = true;
     // CDC always uses Trigger.new
-    List<SObject> cdcRecords = records != null ? records : Trigger.new;
+    List<SObject> cdcRecords = records ?? Trigger.new;
     if (cdcRecords.isEmpty()) {
       return;
     }
@@ -2138,11 +2130,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     if (eval != null) {
       queryFields.addAll(eval.getQueryFields());
     }
-    if (meta.GroupByFields__c != null) {
-      List<String> groupByFields = meta.GroupByFields__c.split(',');
-      for (String groupByField : groupByFields) {
-        queryFields.add(groupByField.trim());
-      }
+    List<String> groupByFields = meta.GroupByFields__c?.split(',') ?? new List<String>();
+    for (String groupByField : groupByFields) {
+      queryFields.add(groupByField.trim());
     }
     for (RollupOrderBy__mdt orderByInfo : meta.RollupOrderBys__r) {
       queryFields.add(orderByInfo.FieldName__c.trim());
@@ -2857,21 +2847,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static List<SObject> getTriggerRecords() {
-    if (records != null) {
-      return records;
-    }
-
-    return (Trigger.isDelete ? Trigger.old : Trigger.new).deepClone(true, true, true);
+    return records ?? (Trigger.isDelete ? Trigger.old : Trigger.new).deepClone(true, true, true);
   }
 
   private static Map<Id, SObject> getOldTriggerRecordsMap() {
-    if (oldRecordsMap != null) {
-      return oldRecordsMap;
-    } else if (Trigger.oldMap != null) {
-      return Trigger.oldMap.deepClone();
-    }
-
-    return new Map<Id, SObject>();
+    return oldRecordsMap ?? Trigger.oldMap?.deepClone() ?? new Map<Id, SObject>();
   }
 
   @SuppressWarnings('PMD.OperationWithLimitsInLoop')

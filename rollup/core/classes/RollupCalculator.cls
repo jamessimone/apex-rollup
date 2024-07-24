@@ -1530,7 +1530,7 @@ public without sharing abstract class RollupCalculator {
   private static Object getDefaultRecalculationValue(Rollup__mdt meta) {
     // some operations could possibly use either default value
     // we also have to cast to Object to avoid the compilation error:
-    // "Incompatible types in null coalesce operator: Decimal, String"
+    // "Incompatible types in null coalescing operator: Decimal, String"
     return (Object) meta.FullRecalculationDefaultNumberValue__c ?? (Object) meta.FullRecalculationDefaultStringValue__c;
   }
 }

@@ -21,12 +21,11 @@ public without sharing class RollupPlugin {
   }
 
   public RollupPluginParameter__mdt getParameterInstance(String developerNameOrId) {
-    return parameterMock != null ? parameterMock : RollupPluginParameter__mdt.getInstance(developerNameOrId);
+    return parameterMock ?? RollupPluginParameter__mdt.getInstance(developerNameOrId);
   }
 
   public List<RollupPluginParameter__mdt> getMatchingParameters(Id pluginId) {
-    List<RollupPluginParameter__mdt> pluginParameters = new List<RollupPluginParameter__mdt>();
-    pluginParameters.addAll(RollupPluginParameter__mdt.getAll().values());
+    List<RollupPluginParameter__mdt> pluginParameters = new List<RollupPluginParameter__mdt>(RollupPluginParameter__mdt.getAll().values());
     if (parameterMock != null) {
       pluginParameters.add(parameterMock);
     }
