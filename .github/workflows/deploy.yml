@@ -55,6 +55,7 @@ jobs:
 
       - name: 'Upload code coverage for LWC to Codecov.io'
         uses: codecov/codecov-action@v3
+        if: ${{ !github.event.act }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: LWC
@@ -62,6 +63,13 @@ jobs:
       - name: 'Delete LWC test files after codecov upload'
         run: |
           rm coverage/ -rf
+
+      - name: 'Optionally setup java'
+        uses: actions/setup-java@v4
+        if: ${{ github.event.act }}
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: Install & run SFDX Scanner
         run: npm run scan
@@ -96,6 +104,7 @@ jobs:
       # Upload Apex code coverage data
       - name: 'Upload Apex code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v3
+        if: ${{ !github.event.act }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: Apex

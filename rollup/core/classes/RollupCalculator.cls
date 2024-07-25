@@ -893,10 +893,8 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
       if (opFieldOnLookupObject.getDescribe().getType() == Schema.DisplayType.MULTIPICKLIST) {
         this.concatDelimiter = ';';
-      } else if (this.metadata.ConcatDelimiter__c != null) {
-        this.concatDelimiter = this.metadata.ConcatDelimiter__c.unescapeJava();
       } else {
-        this.concatDelimiter = ', ';
+        this.concatDelimiter = this.metadata.ConcatDelimiter__c?.unescapeJava() ?? ', ';
       }
     }
   }
@@ -1168,7 +1166,6 @@ public without sharing abstract class RollupCalculator {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      // List<SObject> applicableCalcItems = this.op == Rollup.Op.DELETE_AVERAGE ? new List<SObject>() : calcItems;
       if (this.state != null) {
         this.info = (RollupState.AverageInfo) (this.state.getState(this.lookupRecordKey, RollupState.AverageInfo.class) ?? new RollupState.AverageInfo());
         this.distinctValues.addAll(this.info.distinctNumerators);
@@ -1368,6 +1365,7 @@ public without sharing abstract class RollupCalculator {
       this.innerCalculator.setEvaluator(this.eval);
       this.innerCalculator.setFullRecalc(this.isFullRecalc);
       this.innerCalculator.setCDCUpdate(this.isCDCUpdate);
+      this.innerCalculator.setState(this.state);
       this.innerCalculator.parentIsoCode = this.parentIsoCode;
       this.innerCalculator.isMultiCurrencyRollup = this.isMultiCurrencyRollup;
 
@@ -1532,7 +1530,7 @@ public without sharing abstract class RollupCalculator {
   private static Object getDefaultRecalculationValue(Rollup__mdt meta) {
     // some operations could possibly use either default value
     // we also have to cast to Object to avoid the compilation error:
-    // "Incompatible types in null coalesce operator: Decimal, String"
+    // "Incompatible types in null coalescing operator: Decimal, String"
     return (Object) meta.FullRecalculationDefaultNumberValue__c ?? (Object) meta.FullRecalculationDefaultStringValue__c;
   }
 }

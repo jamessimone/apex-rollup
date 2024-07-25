@@ -871,7 +871,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   }
 
   private static String getCurrentTransactionId() {
-    return stubRequestId != null ? stubRequestId : Request.getCurrent().getRequestId();
+    return stubRequestId ?? Request.getCurrent().getRequestId();
   }
 
   private static String getDateFunctionField(String field) {

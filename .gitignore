@@ -20,3 +20,4 @@ sfge-*.log.gz
 .DS_Store
 .config
 .vscode
+config/data/act-pr-event.json

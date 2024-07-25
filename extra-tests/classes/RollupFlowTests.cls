@@ -591,6 +591,7 @@ private class RollupFlowTests {
     );
 
     flowInputs[0].concatDelimiter = ';';
+    flowInputs[0].splitConcatDelimiterOnCalcItem = true;
 
     Exception ex;
     try {
@@ -599,7 +600,10 @@ private class RollupFlowTests {
       ex = e;
     }
 
-    System.assertEquals('Concat delimiter should only be supplied for CONCAT-based rollups.', ex?.getMessage().trim());
+    System.assertEquals(
+      'Concat delimiter should only be supplied for CONCAT-based rollups. Concat options should only be set for CONCAT_DISTINCT operations',
+      ex?.getMessage()
+    );
   }
 
   @IsTest

@@ -540,19 +540,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // lookup items are retrieved en masse in the "start" method for standard (not full recalc) Batch rollups, and are cached in the "execute" method
       lookupItemsToAssign = this.lookupItems;
     } else {
-      lookupItemsToAssign = roll.traversal != null
-        ? roll.traversal.getAllParents()
-        : new RollupRepository(roll.runAsMode)
-            .setQuery(
-              RollupQueryBuilder.Current.getQuery(
-                roll.lookupObj,
-                new List<String>(uniqueQueryFieldNames),
-                String.valueOf(roll.lookupFieldOnLookupObject),
-                '='
-              ) + (this.isSingleRecordSyncUpdate(roll) ? '\nFOR UPDATE' : '')
-            )
-            .setArg(lookupKeys)
-            .get();
+      lookupItemsToAssign = roll.traversal?.getAllParents() ??
+        new RollupRepository(roll.runAsMode)
+          .setQuery(
+            RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(roll.lookupFieldOnLookupObject), '=') +
+            (this.isSingleRecordSyncUpdate(roll) ? '\nFOR UPDATE' : '')
+          )
+          .setArg(lookupKeys)
+          .get();
 
       List<SObject> recordsToReset = new List<SObject>();
       for (SObject lookupItem : lookupItemsToAssign) {
@@ -1278,11 +1273,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupRepository.RunAsMode localRunAsMode = this.runAsMode;
     for (RollupAsyncProcessor roll : processors) {
       runAsMode = roll.runAsMode;
-      if (roll.queryCount != null) {
-        totalCountOfRecords += roll.queryCount;
-        continue;
-      } else if (stubParentRecords != null) {
-        totalCountOfRecords += stubParentRecords.size();
+      Integer possibleCountOfRecords = roll.queryCount ?? stubParentRecords?.size();
+      if (possibleCountOfRecords != null) {
+        totalCountOfRecords += possibleCountOfRecords;
         continue;
       }
 

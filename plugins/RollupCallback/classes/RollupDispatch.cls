@@ -6,10 +6,9 @@ public class RollupDispatch implements RollupSObjectUpdater.IDispatcher {
 
   private static String PLATFORM_EVENT_BOOLEAN_STRING {
     get {
-      if (PLATFORM_EVENT_BOOLEAN_STRING == null && platformEventOverride != null) {
-        PLATFORM_EVENT_BOOLEAN_STRING = platformEventOverride;
-      } else if (PLATFORM_EVENT_BOOLEAN_STRING == null) {
-        PLATFORM_EVENT_BOOLEAN_STRING = RollupPluginParameter__mdt.getInstance('ShouldFirePlatformEvent')?.Value__c ?? String.valueOf(false);
+      if (PLATFORM_EVENT_BOOLEAN_STRING == null) {
+        PLATFORM_EVENT_BOOLEAN_STRING = platformEventOverride ?? RollupPluginParameter__mdt.getInstance('ShouldFirePlatformEvent')?.Value__c ??
+          String.valueOf(false);
       }
       return PLATFORM_EVENT_BOOLEAN_STRING;
     }

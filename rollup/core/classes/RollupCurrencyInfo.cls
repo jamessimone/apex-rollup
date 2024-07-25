@@ -271,7 +271,7 @@ public without sharing virtual class RollupCurrencyInfo {
       }
       when 2 {
         SObject parentObject = calcItem.getSObject(itemToDateFieldMapping[0]);
-        return parentObject != null ? (Datetime) parentObject.get(itemToDateFieldMapping[1]) : null;
+        return (Datetime) parentObject?.get(itemToDateFieldMapping[1]);
       }
       when else {
         return null;
