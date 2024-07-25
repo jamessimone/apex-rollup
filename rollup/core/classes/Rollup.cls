@@ -2372,7 +2372,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       errorMessage = 'You must set group by fields when supplying a group by delimiter';
     } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
       if (String.isNotBlank(flowInput.concatDelimiter) && flowInput.groupByFields == null) {
-        errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups. ';
+        errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups.';
       }
       if (flowInput.splitConcatDelimiterOnCalcItem == true) {
         errorMessage = (errorMessage ?? '') + 'Concat options should only be set for CONCAT_DISTINCT operations';
