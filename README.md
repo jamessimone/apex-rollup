@@ -24,12 +24,12 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ObblAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ObbvAAC">
   <img alt="Deploy to Salesforce"
        src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ObblAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008ObbvAAC">
   <img alt="Deploy to Salesforce Sandbox"
        src="./media/deploy-package-to-sandbox.png">
 </a>
@@ -453,12 +453,15 @@ global static void runFromCDCTrigger()
 
 // imperatively from Apex, relying on CMDT for additional rollup info
 // if you are actually using this from WITHIN a trigger, the second argument should
-// ALWAYS be the "Trigger.operationType" static variable
-global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext)
+// ALWAYS be the "Trigger.operationType" static variable (unless you're unit testing)
+global static void runFromApex(List<SObject> children, TriggerOperation rollupContext)
+
+// overload of the above, with support for the Trigger.oldMap variable (or your unit-tested approximation thereof)
+global static void runFromApex(List<SObject> children, Map<Id, SObject> oldChildrenMap, TriggerOperation rollupContext)
 
 // for more info on how this method differs from the one above it, check out the "Parent Level Merges" section!
 // for anything OTHER than merge situations use of this method is an anti-pattern
-global static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems)
+global static Rollup runFromApex(List<Rollup__mdt> rollupMetadata, Evaluator eval, List<SObject> children, Map<Id, SObject> oldChildrenMap)
 
 // imperatively from Apex with arguments taking the place of values previously supplied by CMDT
 // can be used in conjunction with "batch" to group rollup operations (as seen in the example preceding this section)

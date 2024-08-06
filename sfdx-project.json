@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes issue where sync rollups with lowercase field names in where clauses would not start up properly",
-            "versionNumber": "1.6.31.0",
+            "versionName": "Adds imperative Apex method Rollup.runFromApex for new and old record code paths",
+            "versionNumber": "1.6.32.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -101,10 +101,10 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.8.0-NEXT-ignore-origin-method": "04t5Y0000015lslQAA",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.6.27": "04t6g000008ObL7AAK",
         "apex-rollup@1.6.28": "04t6g000008ObN8AAK",
         "apex-rollup@1.6.29": "04t6g000008ObNNAA0",
         "apex-rollup@1.6.30": "04t6g000008ObVhAAK",
-        "apex-rollup@1.6.31": "04t6g000008ObblAAC"
+        "apex-rollup@1.6.31": "04t6g000008ObblAAC",
+        "apex-rollup@1.6.32": "04t6g000008ObbvAAC"
     }
 }

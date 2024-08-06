@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes issue where sync rollups with lowercase field names in where clauses would not start up properly",
-            "versionNumber": "1.1.24.0",
+            "versionName": "Adds imperative Apex method Rollup.runFromApex for new and old record code paths",
+            "versionNumber": "1.1.25.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -27,6 +27,7 @@
         "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0",
         "apex-rollup-namespaced@1.1.22": "04t6g000008ObNDAA0",
         "apex-rollup-namespaced@1.1.23": "04t6g000008ObNSAA0",
-        "apex-rollup-namespaced@1.1.24": "04t6g000008ObbqAAC"
+        "apex-rollup-namespaced@1.1.24": "04t6g000008ObbqAAC",
+        "apex-rollup-namespaced@1.1.25": "04t6g000008Obc0AAC"
     }
 }
