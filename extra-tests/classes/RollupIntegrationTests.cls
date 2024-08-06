@@ -1625,7 +1625,6 @@ private class RollupIntegrationTests {
       new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 10)
     };
 
-    Rollup.records = cpas;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'PreferenceRank',
@@ -1640,6 +1639,42 @@ private class RollupIntegrationTests {
 
     Test.startTest();
     Rollup.runFromApex(cpas, TriggerOperation.AFTER_INSERT);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account];
+    System.assertEquals(15, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void shouldRunWithOldRecordsDirectlyFromApex() {
+    Account acc = [SELECT Id FROM Account];
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 5),
+      new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 10)
+    };
+
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromApex(
+      cpas,
+      new Map<Id, SObject>{
+        cpas[0].Id => new ContactPointAddress(Id = cpas[0].Id, ParentId = acc.Id, PreferenceRank = 0),
+        cpas[1].Id => new ContactPointAddress(Id = cpas[1].Id, ParentId = acc.Id, PreferenceRank = 0)
+      },
+      TriggerOperation.AFTER_UPDATE
+    );
     Test.stopTest();
 
     acc = [SELECT AnnualRevenue FROM Account];

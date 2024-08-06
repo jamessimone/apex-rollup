@@ -5,7 +5,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
    * but this keeps things much simpler
    */
   @TestVisible
-  private static Boolean shouldRun = false;
+  private static Boolean shouldRun;
   @TestVisible
   private static TriggerOperation apexContext;
   @TestVisible
@@ -1699,12 +1699,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
    * - TriggerOperation.BEFORE_DELETE
    * - TriggerOperation.AFTER_UNDELETE
    *
-   * Note that while it's an anti-pattern to call this from directly within a Trigger,
-   * because `runFromTrigger()` coupled with CMDT is the better option,
-   * you should pass: `Trigger.operationType` for the second argument if you do.
    */
-  global static void runFromApex(List<SObject> calcItems, TriggerOperation rollupContext) {
-    shouldRun = true;
+  global static void runFromApex(List<SObject> calcItems, System.TriggerOperation rollupContext) {
+    shouldRun = shouldRun ?? true;
     records = calcItems;
     apexContext = rollupContext;
 
@@ -1713,6 +1710,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     records = null;
     shouldRun = false;
     apexContext = null;
+  }
+
+  global static void runFromApex(List<SObject> children, Map<Id, SObject> oldChildrenMap, System.TriggerOperation rollupContext) {
+    oldChildrenMap = oldChildrenMap;
+    runFromApex(children, rollupContext);
+    oldChildrenMap = null;
   }
 
   global static Rollup runFromApex(List<Rollup__mdt> localMetas, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -2828,7 +2831,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
    * because the underlying SObject can't be modified till afterwards
    */
   private static Boolean shouldRunFromTrigger() {
-    shouldRun = shouldRun || Trigger.isExecuting;
+    shouldRun = Trigger.isExecuting || (shouldRun ?? false);
     if (Trigger.operationType != null && isCDC == false) {
       apexContext = Trigger.operationType;
     }
