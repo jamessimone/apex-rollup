@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Regenerates Extra Code Coverage plugin and updates RollupFlowTests.shouldReportErrorWhenConcatDelimiterSetAndNotConcat to comprehensively test all outcomes",
-            "versionNumber": "1.6.30.0",
+            "versionName": "Update pipeline so that dependabot only runs SF scanner",
+            "versionNumber": "1.6.31.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
