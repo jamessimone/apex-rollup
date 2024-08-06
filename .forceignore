@@ -5,3 +5,6 @@
 **/__mockData__
 **/README.md
 **/main
+**/tsconfig.json
+
+**/*.ts

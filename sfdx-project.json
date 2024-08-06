@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Regenerates Extra Code Coverage plugin and updates RollupFlowTests.shouldReportErrorWhenConcatDelimiterSetAndNotConcat to comprehensively test all outcomes",
-            "versionNumber": "1.6.30.0",
+            "versionName": "Fixes issue where sync rollups with lowercase field names in where clauses would not start up properly",
+            "versionNumber": "1.6.31.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -104,6 +104,7 @@
         "apex-rollup@1.6.27": "04t6g000008ObL7AAK",
         "apex-rollup@1.6.28": "04t6g000008ObN8AAK",
         "apex-rollup@1.6.29": "04t6g000008ObNNAA0",
-        "apex-rollup@1.6.30": "04t6g000008ObVhAAK"
+        "apex-rollup@1.6.30": "04t6g000008ObVhAAK",
+        "apex-rollup@1.6.31": "04t6g000008ObblAAC"
     }
 }

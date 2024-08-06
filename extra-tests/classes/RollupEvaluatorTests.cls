@@ -1023,6 +1023,14 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void returnsLowercaseParentLevelFields() {
+    String whereClause = 'opportunity.account.name = \'some account\'';
+    List<String> queryFields = new RollupEvaluator.WhereFieldEvaluator(whereClause, OpportunityLineItem.SObjectType).getQueryFields();
+    System.assertEquals(1, queryFields.size(), queryFields);
+    System.assertEquals('opportunity.account.name', queryFields[0]);
+  }
+
+  @IsTest
   static void supportsNonPolymorphicTypeFields() {
     String whereClause = 'Campaign.Type <> \'Something Else\'';
     RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Opportunity.SObjectType);

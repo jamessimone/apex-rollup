@@ -283,7 +283,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           (field.getDescribe().getReferenceTo().size() < 2 ||
           POLYMORPHIC_FIELDS.contains(relationshipName) == false))
         ) {
-          localRelationshipNames.add(relationshipName);
+          localRelationshipNames.add(relationshipName.toLowerCase());
         }
       }
       return localRelationshipNames;
@@ -436,7 +436,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
       if (
         hasRelationshipField &&
         condition.fieldName.contains('__c.') == false &&
-        this.validRelationshipNames.contains(condition.fieldName.substringBefore('.')) &&
+        this.validRelationshipNames.contains(condition.fieldName.substringBefore('.').toLowerCase()) &&
         this.isValidRelationshipField(condition.fieldName)
       ) {
         this.queryFields.add(condition.fieldName);

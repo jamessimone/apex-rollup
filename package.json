@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.6.30",
+  "version": "1.6.31",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -49,7 +49,7 @@
     "get:project:json": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Update-SFDX-Project-JSON }\"",
     "husky:pre-commit": "lint-staged",
     "lint:verify": "sf scanner run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
-    "prepare": "husky init && sf plugins link ./node_modules/@salesforce/sfdx-scanner && sf plugins link ./node_modules/@jongpie/sfdx-bummer-plugin",
+    "prepare": "husky",
     "prettier": "prettier",
     "scan": "npm run lint:verify && npm run scan:pmd",
     "scan:pmd": "sf scanner run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",
