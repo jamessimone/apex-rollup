@@ -55,7 +55,7 @@ jobs:
 
       - name: 'Upload code coverage for LWC to Codecov.io'
         uses: codecov/codecov-action@v3
-        if: ${{ !github.event.act && !github.actor == 'dependabot[bot]' }}
+        if: ${{ !github.event.act && github.actor != 'dependabot[bot]' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: LWC
@@ -77,7 +77,7 @@ jobs:
       # Authenticate using JWT flow
       - name: 'Auth to dev hub'
         shell: bash
-        if: ${{ !github.actor == 'dependabot[bot]' }}
+        if: ${{ github.actor != 'dependabot[bot]' }}
         run: |
           echo "${{ env.DEVHUB_SERVER_KEY }}" > ./jwt-server.key
           npx sf org login jwt --client-id ${{ env.DEVHUB_CONSUMER_KEY }} --username ${{ env.DEVHUB_USERNAME }} --jwt-key-file ./jwt-server.key --set-default-dev-hub
@@ -88,13 +88,13 @@ jobs:
           DEVHUB_SERVER_KEY: ${{ secrets.DEVHUB_SERVER_KEY }}
 
       - name: 'Deploy & Test'
-        if: ${{ !github.actor == 'dependabot[bot]' }}
+        if: ${{ github.actor != 'dependabot[bot]' }}
         id: 'deploy'
         shell: pwsh
         run: '. ./scripts/test.ps1'
 
       - name: 'Possible Scratch Org Cleanup'
-        if: ${{ failure() && steps.deploy.conclusion == 'failure' && !github.actor == 'dependabot[bot]' }}
+        if: ${{ failure() && steps.deploy.conclusion == 'failure' && github.actor != 'dependabot[bot]' }}
         run: |
           npm run delete:org
           exit 1
@@ -102,12 +102,12 @@ jobs:
       # Delete temporary test files that Codecov is unable to parse
       - name: 'Delete unparseable test coverage'
         run: rm ./tests/apex/test-result-707*-codecoverage.json -f
-        if: ${{ !github.actor == 'dependabot[bot]' }}
+        if: ${{ github.actor != 'dependabot[bot]' }}
 
       # Upload Apex code coverage data
       - name: 'Upload Apex code coverage for Apex to Codecov.io'
         uses: codecov/codecov-action@v3
-        if: ${{ !github.event.act && !github.actor == 'dependabot[bot]' }}
+        if: ${{ !github.event.act && github.actor != 'dependabot[bot]' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: Apex
@@ -124,7 +124,7 @@ jobs:
       # Package versions are only created automatically within PRs that are pointed to main
       # so those are the only times we need to update the README /sfdx-project.json and package.json
       - name: 'Re-commit updated package version (if necessary)'
-        if: ${{ github.ref != 'refs/heads/main' && env.SHOULD_CREATE_AND_PROMOTE == '1' && github.actor == github.event.repository.owner.login && github.base_ref == 'main' && !github.actor == 'dependabot[bot]' }}
+        if: ${{ github.ref != 'refs/heads/main' && env.SHOULD_CREATE_AND_PROMOTE == '1' && github.actor == github.event.repository.owner.login && github.base_ref == 'main' && github.actor != 'dependabot[bot]' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
