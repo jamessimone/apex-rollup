@@ -1,6 +1,6 @@
 git config --local user.email "action@github.com"
 git config --local user.name "GitHub Action Bot"
-git commit -m "Bumping package version from Github Action"
+git commit -m "Bumping package version from Github Action" --no-verify
 git push
 
 # Once the commit has been uploaded to Github, we need to callout
