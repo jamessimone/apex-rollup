@@ -840,7 +840,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private class DayInWeekFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
-      Date startOfWeek = getRelativeDatetime(val.dateGmt(), START_TIME).dateGmt().toStartOfWeek();
+      Date startOfWeek = val.dateGmt().toStartOfWeek();
       Integer daysBetween = startOfWeek.daysBetween(val.dateGmt());
       return daysBetween + 1;
     }
