@@ -1738,8 +1738,8 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void limitsFullBatchRecalcCachedItemsProperly() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
-    Account parentA = [SELECT Id FROM Account];
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
+    Account parentA = [SELECT Id, OwnerId FROM Account];
     Account parentB = new Account(Name = 'Parent B');
     Account parentC = new Account(Name = 'Parent C');
     insert new List<SObject>{ parentB, parentC };
@@ -1768,7 +1768,22 @@ private class RollupFullRecalcTests {
           LookupObject__c = 'Account',
           LookupFieldOnLookupObject__c = 'Id',
           RollupFieldOnLookupObject__c = 'AnnualRevenue',
-          RollupOperation__c = 'SUM'
+          RollupOperation__c = 'SUM',
+          FullRecalculationDefaultNumberValue__c = 0,
+          IsFullRecordSet__c = true
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          LookupObject__c = 'User',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'JigsawImportLimitOverride',
+          GrandparentRelationshipFieldPath__c = 'Parent.Owner.JigsawImportLimitOverride',
+          RollupOperation__c = 'SUM',
+          CalcItemWhereClause__c = 'ParentId = \'' + parentA.Id + '\'',
+          FullRecalculationDefaultNumberValue__c = 0,
+          IsFullRecordSet__c = true
         ),
         new Rollup__mdt(
           CalcItem__c = 'ContactPointAddress',
@@ -1817,6 +1832,8 @@ private class RollupFullRecalcTests {
       System.assertEquals(String.valueOf(true), parent.Sic, parent);
     }
     System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
+    User parentAOwner = [SELECT Id, JigsawImportLimitOverride FROM User WHERE Id = :parentA.OwnerId];
+    System.assertEquals(6, parentAOwner.JigsawImportLimitOverride);
   }
 
   @IsTest

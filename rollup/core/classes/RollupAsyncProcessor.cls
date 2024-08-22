@@ -728,6 +728,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       List<SObject> localLookupItems = this.getLookupItems(calcItemsByLookupField, updatedLookupRecords, roll);
       this.logger.log('starting rollup for:', roll, System.LoggingLevel.INFO);
       updatedLookupRecords.putAll(this.getUpdatedLookupItemsByRollup(roll, calcItemsByLookupField, localLookupItems));
+      roll.traversal = null;
     }
 
     // full batch recalc housekeeping - allow next batch chunk to reference previously reset parents
