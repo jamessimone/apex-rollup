@@ -32,6 +32,18 @@ private class RollupDateLiteralTests {
       )
     );
     insert cpcs;
+
+    insert new User(
+      LastName = 'Australia User',
+      Username = '' + System.now().getTime() + '@RollupDateLiteralTests.org',
+      Email = 'australiauser@rollup.org',
+      EmailEncodingKey = 'ISO-8859-1',
+      Alias = 'aususer',
+      TimeZoneSidKey = 'Australia/Sydney',
+      LocaleSidKey = 'en_US',
+      LanguageLocaleKey = 'en_US',
+      ProfileId = UserInfo.getProfileId()
+    );
   }
 
   @IsTest
@@ -175,7 +187,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(
       true,
       literal.matches(possibleDate, equality),
-      'Literal defined as ' + literal + ' should have matched ' + possibleDate + ' for ' + equality + '\n'
+      'Literal defined as ' + literal + ' should have matched ' + possibleDate + ' for ' + equality + ' for timezone ' + UserInfo.getTimeZone() + '\n'
     );
   }
 
@@ -217,6 +229,11 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisMonth() {
     runTestForLiteral('THIS_MONTH');
+    // TODO extend this more generally throughout this test class
+    User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
+    System.runAs(australiaUser) {
+      runTestForLiteral('THIS_MONTH');
+    }
   }
 
   @IsTest

@@ -20,29 +20,22 @@ public without sharing abstract class RollupDateLiteral {
     set;
   }
 
-  private static final Time START_TIME {
+  private static Time START_TIME {
     get {
-      START_TIME = START_TIME ?? Time.newInstance(0, 0, 0, 0);
-      return START_TIME;
+      return Time.newInstance(0, 0, 0, 0);
     }
-    set;
   }
 
-  private static final Time END_TIME {
+  private static Time END_TIME {
     get {
-      END_TIME = END_TIME ?? Time.newInstance(23, 59, 59, 59);
-      return END_TIME;
+      return Time.newInstance(23, 59, 59, 59);
     }
-    set;
   }
 
-  private static final Datetime START_OF_TODAY {
+  private static Datetime START_OF_TODAY {
     get {
-      START_OF_TODAY = START_OF_TODAY ?? getRelativeDatetime(System.today(), START_TIME);
-
-      return START_OF_TODAY;
+      return getRelativeDatetime(System.today(), START_TIME);
     }
-    set;
   }
 
   private static final FiscalInfo FISCAL_INFO {
@@ -56,10 +49,10 @@ public without sharing abstract class RollupDateLiteral {
   protected Datetime ref;
   protected Datetime bound;
 
-  private static final Map<String, Object> KEY_TO_DATE_LITERAL {
+  private static final Map<String, Type> KEY_TO_DATE_LITERAL {
     get {
       KEY_TO_DATE_LITERAL = KEY_TO_DATE_LITERAL ??
-        new Map<String, Object>{
+        new Map<String, Type>{
           'YESTERDAY' => YesterdayLiteral.class,
           'TODAY' => TodayLiteral.class,
           'TOMORROW' => TomorrowLiteral.class,
@@ -143,21 +136,10 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey, String possibleDynamicValue) {
-    /**
-     * neatly solves a thorny issue - we want to cache the RollupDateLiteral instances,
-     * but if we key them directly in the map, the memory overhead is MUCH larger
-     * since everything will be initialized when the map is first accessed.
-     * Instead, each map entry is keyed to the Type of its corresponding literal,
-     * and only the Types that we need end up getting initialized
-     */
-    Object literal = KEY_TO_DATE_LITERAL.get(dictionaryKey);
-    if (literal instanceof Type) {
-      Type literalType = (Type) literal;
-      literal = (RollupDateLiteral) literalType.newInstance();
-      KEY_TO_DATE_LITERAL.put(dictionaryKey, literal);
-    }
-    ((RollupDateLiteral) literal).setDynamicValue(possibleDynamicValue);
-    return (RollupDateLiteral) literal;
+    Type literalType = KEY_TO_DATE_LITERAL.get(dictionaryKey);
+    RollupDateLiteral literal = (RollupDateLiteral) literalType.newInstance();
+    literal.setDynamicValue(possibleDynamicValue);
+    return literal;
   }
 
   private static Datetime getRelativeDatetime(Date relativeDate, Time relativeTime) {
@@ -205,7 +187,7 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   private static Integer getCurrentQuarter() {
-    return getQuarter(System.today().month());
+    return getQuarter(START_OF_TODAY.month());
   }
 
   private static Integer getCurrentQuarterStartMonth() {
@@ -372,7 +354,7 @@ public without sharing abstract class RollupDateLiteral {
   private class LastMonthLiteral extends RollupDateLiteral {
     public LastMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt().toStartOfMonth(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt(), END_TIME));
     }
   }
 
@@ -382,7 +364,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt().toStartOfMonth(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt(), END_TIME));
     }
   }
 
@@ -392,7 +374,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextMonthLiteral extends RollupDateLiteral {
     public NextMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt().toStartOfMonth(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt(), END_TIME));
     }
   }
 
