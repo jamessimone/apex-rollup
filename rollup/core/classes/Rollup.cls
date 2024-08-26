@@ -1648,10 +1648,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     // it would have been nice if this was an enum!
     switch on header.changeType {
-      when 'CREATE', 'GAP_CREATE', 'UNDELETE' {
+      when 'CREATE', 'UNDELETE' {
         apexContext = TriggerOperation.AFTER_INSERT;
       }
-      when 'UPDATE', 'GAP_UPDATE' {
+      when 'UPDATE' {
         apexContext = TriggerOperation.AFTER_UPDATE;
       }
       when 'DELETE' {
