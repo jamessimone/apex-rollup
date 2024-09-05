@@ -740,7 +740,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     public RollupGrouping__mdt rollupGrouping;
 
     public Boolean shouldOverrideNoOp() {
-      return this.parentRecordIdForEmptyChildrenCollections != null && calcItemTypeWhenRollupStartedFromParent != null;
+      return this.parentRecordIdForEmptyChildrenCollections != null && this.calcItemTypeWhenRollupStartedFromParent != null;
     }
   }
 

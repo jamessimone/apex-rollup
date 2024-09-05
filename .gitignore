@@ -21,3 +21,4 @@ sfge-*.log.gz
 .config
 .vscode
 config/data/act-pr-event.json
+.sflogsub

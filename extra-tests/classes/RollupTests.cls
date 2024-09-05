@@ -1362,6 +1362,7 @@ private class RollupTests {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ somethingElseName });
     Rollup.oldRecordsMap = new Map<Id, SObject>{ somethingElseName.Id => somethingElseName };
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
+    Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'ContactPointAddress',
