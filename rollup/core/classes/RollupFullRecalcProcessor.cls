@@ -6,6 +6,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
   private final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
+  private final Set<String> jobIds = new Set<String>();
   private Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents;
   private Boolean hasProcessedParentRecords = false;
 
@@ -68,8 +69,10 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public void finish() {
+    this.jobIds.add(this.jobId);
     if (this.cabooses.isEmpty() == false) {
       RollupFullRecalcProcessor conductor = this.cabooses.remove(0);
+      conductor.jobIds.add(this.jobId);
       for (Rollup__mdt meta : conductor.rollupMetas) {
         conductor.storeUniqueParentFields(meta);
       }
@@ -77,12 +80,15 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         conductor.addCaboose(caboose);
       }
       this.setCurrentJobId(conductor.startAsyncWork());
-    } else if (this.postProcessor != null) {
-      this.logger.log('Starting post-full recalc processor', this.postProcessor, System.LoggingLevel.INFO);
-      // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
-      // job continuity is established between the full recalc and then any downstream job that runs
-      // (as the postProcessor)
-      this.setCurrentJobId(this.postProcessor.runCalc());
+    } else {
+      if (this.postProcessor != null) {
+        this.logger.log('Starting post-full recalc processor', this.postProcessor, System.LoggingLevel.INFO);
+        // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
+        // job continuity is established between the full recalc and then any downstream job that runs
+        // (as the postProcessor)
+        this.setCurrentJobId(this.postProcessor.runCalc());
+      }
+      this.getState()?.cleanup(this.jobIds);
     }
     if (this.hasProcessedParentRecords == false) {
       List<SObject> parentRecords = new List<SObject>();

@@ -25,6 +25,7 @@
     <testClassName>RollupRelationshipFieldFinderTests</testClassName>
     <testClassName>RollupRepositoryTests</testClassName>
     <testClassName>RollupSObjectUpdaterTests</testClassName>
+    <testClassName>RollupStateTests</testClassName>
     <testClassName>RollupTests</testClassName>
     <testClassName>RollupTestUtils</testClassName>
 </ApexTestSuite>
