@@ -10,10 +10,14 @@ private class RollupStateTests {
 
     RollupState.AverageInfo averageInfo = new RollupState.AverageInfo();
     averageInfo.increment(10);
+    RollupState.SObjectInfo sObjectInfo = new RollupState.SObjectInfo();
+    sObjectInfo.setItem(new Account(AnnualRevenue = 1000));
+    RollupState.MostInfo mostInfo = new RollupState.MostInfo();
+    mostInfo.setValues(5, 'some string');
     state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), info);
     state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'CONCAT'), averageInfo);
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'FIRST'), new RollupState.SObjectInfo());
-    state.setState(secondStubId, new Rollup__mdt(RollupOperation__c = 'MOST'), new RollupState.MostInfo());
+    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'FIRST'), sObjectInfo);
+    state.setState(secondStubId, new Rollup__mdt(RollupOperation__c = 'MOST'), mostInfo);
 
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
 
@@ -26,7 +30,7 @@ private class RollupStateTests {
     state.commitState(stubJobId);
     Test.stopTest();
 
-    RollupState__c insertedState = [SELECT Id, Body0__c FROM RollupState__c WHERE RelatedRecordKeys__c LIKE :relatedRecordKeys];
+    RollupState__c insertedState = [SELECT Id, Body0__c FROM RollupState__c WHERE RelatedRecordKeysIndex__c LIKE :relatedRecordKeys];
     Assert.isNotNull(insertedState.Body0__c, 'Serialized representation of generic state should be present');
 
     state.loadState(stubJobId, new Set<String>{ stubAccountId, secondStubId });
@@ -52,11 +56,11 @@ private class RollupStateTests {
     RollupState__c existingAverageState = new RollupState__c(
       RelatedJobId__c = stubJobId,
       RelatedRecordKeys__c = stubAccountId,
-      Body0__c = averageInfo.toString()
+      Body0__c = JSON.serialize(averageInfo.getUntypedState())
     );
     insert new List<RollupState__c>{
       existingAverageState,
-      new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys__c = stubAccountId, Body0__c = info.toString())
+      new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys__c = stubAccountId, Body0__c = JSON.serialize(info.getUntypedState()))
     };
 
     state = new RollupState();
@@ -72,8 +76,8 @@ private class RollupStateTests {
     Boolean hasCorrectAverageInfo = false;
     Boolean hasCorrectGenericInfo = false;
     for (RollupState__c createdState : [SELECT Body0__c FROM RollupState__c]) {
-      hasCorrectAverageInfo = hasCorrectAverageInfo || createdState.Body0__c.contains(averageInfo.toString());
-      hasCorrectGenericInfo = hasCorrectGenericInfo || createdState.Body0__c.contains(info.toString());
+      hasCorrectAverageInfo = hasCorrectAverageInfo || createdState.Body0__c.contains(JSON.serialize(averageInfo.getUntypedState()));
+      hasCorrectGenericInfo = hasCorrectGenericInfo || createdState.Body0__c.contains(JSON.serialize(info.getUntypedState()));
     }
     Assert.isTrue(hasCorrectAverageInfo, 'new average state should have been updated');
     Assert.isTrue(hasCorrectGenericInfo, 'Generic info should not be wiped out');
@@ -83,18 +87,12 @@ private class RollupStateTests {
   static void splitsReallyLongStatesForTheSameRecord() {
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
-    Rollup__mdt template = new Rollup__mdt(
-      RollupOperation__c = Rollup.Op.CONCAT_DISTINCT.name(),
-      LookupFieldOnCalcItem__c = 'Some_Long_Value__c',
-      LookupFieldOnLookupObject__c = 'Another_Longer_Value__c',
-      RollupFieldOnCalcItem__c = 'Long_Value_Again__c',
-      RollupFieldOnLookupObject__c = 'Long_Rollup_Value_With_Lots_Of_Spaces__c'
-    );
+    Rollup__mdt template = new Rollup__mdt(DeveloperName = 'exampleUnique40CharacterLimit');
     RollupState state = new RollupState();
 
-    for (Integer index = 0; index < 7000; index++) {
+    for (Integer index = 0; index < 12000; index++) {
       Rollup__mdt clonedMeta = template.clone();
-      clonedMeta.LookupFieldOnCalcItem__c += '' + index;
+      clonedMeta.DeveloperName += '' + index;
       RollupState.GenericInfo info = new RollupState.GenericInfo();
       info.value = index;
       state.setState(stubAccountId, clonedMeta, info);
@@ -139,6 +137,67 @@ private class RollupStateTests {
     Assert.isTrue(body7Filled);
     Assert.isTrue(body8Filled);
     Assert.isTrue(body9Filled);
+  }
+
+  @IsTest
+  static void splitsRelatedRecordKeysIntoDifferentTextFields() {
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    Rollup__mdt template = new Rollup__mdt(DeveloperName = 'one rollup');
+    RollupState state = new RollupState();
+
+    List<String> fieldKeys0 = new List<String>();
+    List<String> fieldKeys1 = new List<String>();
+    List<String> fieldKeys2 = new List<String>();
+    List<String> fieldKeys3 = new List<String>();
+    List<String> fieldKeys4 = new List<String>();
+    List<String> fieldKeys5 = new List<String>();
+    List<String> fieldKeys6 = new List<String>();
+    // 255 / 15 characters = 17
+    for (Integer index = 0; index < 17 * 6; index++) {
+      String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
+      RollupState.GenericInfo info = new RollupState.GenericInfo();
+      info.value = index;
+      state.setState(stubAccountId, template, info);
+      List<String> keys;
+      if (index < 15) {
+        keys = fieldKeys0;
+      } else if (index < 30) {
+        keys = fieldKeys1;
+      } else if (index < 45) {
+        keys = fieldKeys2;
+      } else if (index < 60) {
+        keys = fieldKeys3;
+      } else if (index < 75) {
+        keys = fieldKeys4;
+      } else if (index < 90) {
+        keys = fieldKeys5;
+      } else if (index < 105) {
+        keys = fieldKeys6;
+      }
+      keys.add(stubAccountId);
+    }
+
+    state.commitState(stubJobId);
+
+    List<RollupState__c> committedStates = [
+      SELECT
+        RelatedRecordKeys__c,
+        RelatedRecordKeys1__c,
+        RelatedRecordKeys2__c,
+        RelatedRecordKeys3__c,
+        RelatedRecordKeys4__c,
+        RelatedRecordKeys5__c,
+        RelatedRecordKeys6__c
+      FROM RollupState__c
+    ];
+    Assert.areEqual(1, committedStates.size(), JSON.serialize(committedStates));
+    Assert.areEqual(String.join(fieldKeys0, ','), committedStates.get(0).RelatedRecordKeys__c);
+    Assert.areEqual(String.join(fieldKeys1, ','), committedStates.get(0).RelatedRecordKeys1__c);
+    Assert.areEqual(String.join(fieldKeys2, ','), committedStates.get(0).RelatedRecordKeys2__c);
+    Assert.areEqual(String.join(fieldKeys3, ','), committedStates.get(0).RelatedRecordKeys3__c);
+    Assert.areEqual(String.join(fieldKeys4, ','), committedStates.get(0).RelatedRecordKeys4__c);
+    Assert.areEqual(String.join(fieldKeys5, ','), committedStates.get(0).RelatedRecordKeys5__c);
+    Assert.areEqual(String.join(fieldKeys6, ','), committedStates.get(0).RelatedRecordKeys6__c);
   }
 
   @IsTest
