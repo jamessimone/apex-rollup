@@ -90,41 +90,45 @@ private class RollupStateTests {
     Rollup__mdt template = new Rollup__mdt(DeveloperName = 'exampleUnique40CharacterLimit');
     RollupState state = new RollupState();
 
-    for (Integer index = 0; index < 12000; index++) {
+    List<Map<String, Object>> statesToSample = new List<Map<String, Object>>();
+    for (Integer index = 0; index < 6000; index++) {
       Rollup__mdt clonedMeta = template.clone();
       clonedMeta.DeveloperName += '' + index;
       RollupState.GenericInfo info = new RollupState.GenericInfo();
       info.value = index;
       state.setState(stubAccountId, clonedMeta, info);
+      if (index < 20) {
+        statesToSample.add(info.getUntypedState());
+      }
     }
     state.commitState(stubJobId);
 
     List<RollupState__c> committedStates = [
-      SELECT Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, Body5__c, Body6__c, Body7__c, Body8__c, Body9__c
+      SELECT Body0__c, Body1__c, Body2__c, Body3__c, Body4__c
       FROM RollupState__c
     ];
+
     Assert.areEqual(2, committedStates.size());
     Boolean body0Filled = false;
     Boolean body1Filled = false;
     Boolean body2Filled = false;
     Boolean body3Filled = false;
     Boolean body4Filled = false;
-    Boolean body5Filled = false;
-    Boolean body6Filled = false;
-    Boolean body7Filled = false;
-    Boolean body8Filled = false;
-    Boolean body9Filled = false;
+    Boolean sampleStatesFilled = false;
     for (RollupState__c committedState : committedStates) {
       body0Filled = body0Filled || committedState.Body0__c != null;
       body1Filled = body1Filled || committedState.Body1__c != null;
       body2Filled = body2Filled || committedState.Body2__c != null;
       body3Filled = body3Filled || committedState.Body3__c != null;
       body4Filled = body4Filled || committedState.Body4__c != null;
-      body5Filled = body5Filled || committedState.Body5__c != null;
-      body6Filled = body6Filled || committedState.Body6__c != null;
-      body7Filled = body7Filled || committedState.Body7__c != null;
-      body8Filled = body8Filled || committedState.Body8__c != null;
-      body9Filled = body9Filled || committedState.Body9__c != null;
+      if (sampleStatesFilled) {
+        Boolean isDuplicate = committedState.Body0__c.contains(JSON.serialize(statesToSample).removeStart('[').removeEnd(']'));
+        if (isDuplicate) {
+          throw new IllegalArgumentException('Body0__c should not match for both states');
+        }
+      } else {
+        sampleStatesFilled = committedState.Body0__c.contains(JSON.serialize(statesToSample).removeStart('[').removeEnd(']'));
+      }
     }
 
     Assert.isTrue(body0Filled);
@@ -132,18 +136,22 @@ private class RollupStateTests {
     Assert.isTrue(body2Filled);
     Assert.isTrue(body3Filled);
     Assert.isTrue(body4Filled);
-    Assert.isTrue(body5Filled);
-    Assert.isTrue(body6Filled);
-    Assert.isTrue(body7Filled);
-    Assert.isTrue(body8Filled);
-    Assert.isTrue(body9Filled);
+    Assert.isTrue(sampleStatesFilled);
+    /**
+     * ensure that we don't exceed the DataWeave heap:
+     * System.DataWeaveScriptException: turtles.api.SandboxedLimitException - Heap limit exceeded 6004410 > 6000000
+       turtles.api.SandboxedLimitException: Heap limit exceeded 6004410 > 6000000
+       at isolates.java.SfdcHost.limitsExceeded(SfdcHost.java:78)
+       at turtles.limits.SandboxLimitTracker.doSuspend(SandboxLimitTracker.java:586)
+     */
+    state.loadState(stubJobId, new Set<String>{ stubAccountId });
   }
 
   @IsTest
   static void splitsRelatedRecordKeysIntoDifferentTextFields() {
-    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     Rollup__mdt template = new Rollup__mdt(DeveloperName = 'one rollup');
     RollupState state = new RollupState();
+    Set<String> fullKeys = new Set<String>();
 
     List<String> fieldKeys0 = new List<String>();
     List<String> fieldKeys1 = new List<String>();
@@ -152,8 +160,12 @@ private class RollupStateTests {
     List<String> fieldKeys4 = new List<String>();
     List<String> fieldKeys5 = new List<String>();
     List<String> fieldKeys6 = new List<String>();
+    List<String> fieldKeys7 = new List<String>();
+    List<String> fieldKeys8 = new List<String>();
+    List<String> fieldKeys9 = new List<String>();
+    List<String> fieldKeys10 = new List<String>();
     // 255 / 15 characters = 17
-    for (Integer index = 0; index < 17 * 6; index++) {
+    for (Integer index = 0; index < 17 * 15; index++) {
       String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
       RollupState.GenericInfo info = new RollupState.GenericInfo();
       info.value = index;
@@ -173,10 +185,20 @@ private class RollupStateTests {
         keys = fieldKeys5;
       } else if (index < 105) {
         keys = fieldKeys6;
+      } else if (index < 120) {
+        keys = fieldKeys7;
+      } else if (index < 135) {
+        keys = fieldKeys8;
+      } else if (index < 150) {
+        keys = fieldKeys9;
+      } else if (index < 165) {
+        keys = fieldKeys10;
       }
-      keys.add(stubAccountId);
+      keys?.add(stubAccountId);
+      fullKeys.add(stubAccountId);
     }
 
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     state.commitState(stubJobId);
 
     List<RollupState__c> committedStates = [
@@ -187,17 +209,46 @@ private class RollupStateTests {
         RelatedRecordKeys3__c,
         RelatedRecordKeys4__c,
         RelatedRecordKeys5__c,
-        RelatedRecordKeys6__c
+        RelatedRecordKeys6__c,
+        RelatedRecordKeys7__c,
+        RelatedRecordKeys8__c,
+        RelatedRecordKeys9__c,
+        RelatedRecordKeys10__c
       FROM RollupState__c
     ];
-    Assert.areEqual(1, committedStates.size(), JSON.serialize(committedStates));
-    Assert.areEqual(String.join(fieldKeys0, ','), committedStates.get(0).RelatedRecordKeys__c);
-    Assert.areEqual(String.join(fieldKeys1, ','), committedStates.get(0).RelatedRecordKeys1__c);
-    Assert.areEqual(String.join(fieldKeys2, ','), committedStates.get(0).RelatedRecordKeys2__c);
-    Assert.areEqual(String.join(fieldKeys3, ','), committedStates.get(0).RelatedRecordKeys3__c);
-    Assert.areEqual(String.join(fieldKeys4, ','), committedStates.get(0).RelatedRecordKeys4__c);
-    Assert.areEqual(String.join(fieldKeys5, ','), committedStates.get(0).RelatedRecordKeys5__c);
-    Assert.areEqual(String.join(fieldKeys6, ','), committedStates.get(0).RelatedRecordKeys6__c);
+    // ensure that loadState can be called with the full spread of keys
+    state.loadState(stubJobId, fullKeys);
+
+    Assert.areEqual(2, committedStates.size());
+    RollupState__c firstState = committedStates.get(0);
+    // swap out for the correct "first" state - since they're inserted at the same time
+    // there's no deterministic way to order them
+    if (firstState.RelatedRecordKeys__c.startsWith('001000000000001') == false) {
+      firstState = committedStates.get(1);
+    }
+    Assert.isNotNull(firstState.RelatedRecordKeys__c, 'RelatedRecordKeys__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys1__c, 'RelatedRecordKeys1__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys2__c, 'RelatedRecordKeys2__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys3__c, 'RelatedRecordKeys3__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys4__c, 'RelatedRecordKeys4__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys5__c, 'RelatedRecordKeys5__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys6__c, 'RelatedRecordKeys6__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys7__c, 'RelatedRecordKeys7__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys8__c, 'RelatedRecordKeys8__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys9__c, 'RelatedRecordKeys9__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys10__c, 'RelatedRecordKeys10__c should have been filled out');
+
+    Assert.areEqual(String.join(fieldKeys0, ','), firstState.RelatedRecordKeys__c);
+    Assert.areEqual(String.join(fieldKeys1, ','), firstState.RelatedRecordKeys1__c);
+    Assert.areEqual(String.join(fieldKeys2, ','), firstState.RelatedRecordKeys2__c);
+    Assert.areEqual(String.join(fieldKeys3, ','), firstState.RelatedRecordKeys3__c);
+    Assert.areEqual(String.join(fieldKeys4, ','), firstState.RelatedRecordKeys4__c);
+    Assert.areEqual(String.join(fieldKeys5, ','), firstState.RelatedRecordKeys5__c);
+    Assert.areEqual(String.join(fieldKeys6, ','), firstState.RelatedRecordKeys6__c);
+    Assert.areEqual(String.join(fieldKeys7, ','), firstState.RelatedRecordKeys7__c);
+    Assert.areEqual(String.join(fieldKeys8, ','), firstState.RelatedRecordKeys8__c);
+    Assert.areEqual(String.join(fieldKeys9, ','), firstState.RelatedRecordKeys9__c);
+    Assert.areEqual(String.join(fieldKeys10, ','), firstState.RelatedRecordKeys10__c);
   }
 
   @IsTest

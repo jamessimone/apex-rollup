@@ -34,6 +34,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     throw new SerializationException('Should not make it here');
   }
 
+  public virtual Boolean isEmpty() {
+    throw new IllegalArgumentException('Should not make it here');
+  }
+
   public class AverageInfo extends RollupState {
     public Decimal denominator = 0;
     public Decimal numerator = 0;
@@ -45,8 +49,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       this.distinctNumerators.add(value);
     }
 
-    public override Type getType() {
-      return AverageInfo.class;
+    public override Boolean isEmpty() {
+      return this.denominator == 0;
     }
 
     public override Map<String, Object> getUntypedState() {
@@ -56,15 +60,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'key' => this.key,
         'keyLength' => this.keyLength,
         'numerator' => this.numerator,
-        'typeName' => this.getType().getName()
+        'typeName' => AverageInfo.class.getName()
       };
-    }
-
-    public override RollupState parse(Map<String, Object> values) {
-      this.denominator = (Decimal) values.get('denominator');
-      this.numerator = (Decimal) values.get('numerator');
-      this.distinctNumerators.addAll((List<Object>) values.get('distinctNumerators'));
-      return this;
     }
   }
 
@@ -76,8 +73,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       this.value = val;
     }
 
-    public override Type getType() {
-      return MostInfo.class;
+    public override Boolean isEmpty() {
+      return this.largestPointCounter == -1;
     }
 
     public override Map<String, Object> getUntypedState() {
@@ -85,15 +82,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'largestPointCounter' => this.largestPointCounter,
         'key' => this.key,
         'keyLength' => this.keyLength,
-        'typeName' => this.getType().getName(),
+        'typeName' => MostInfo.class.getName(),
         'value' => this.value
       };
-    }
-
-    public override RollupState parse(Map<String, Object> values) {
-      super.parse(values);
-      this.largestPointCounter = (Integer) values.get('largestPointCounter');
-      return this;
     }
   }
 
@@ -104,8 +95,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       this.item = item;
     }
 
-    public override Type getType() {
-      return SObjectInfo.class;
+    public override Boolean isEmpty() {
+      return this.item == null;
     }
 
     public override Map<String, Object> getUntypedState() {
@@ -113,14 +104,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'item' => this.item,
         'key' => this.key,
         'keyLength' => this.keyLength,
-        'typeName' => this.getType().getName(),
+        'typeName' => SObjectInfo.class.getName(),
         'itemType' => '' + this.item.getSObjectType()
       };
-    }
-
-    public override RollupState parse(Map<String, Object> values) {
-      this.item = (SObject) values.get('item');
-      return this;
     }
   }
 
@@ -131,17 +117,12 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       this.value = newValue;
     }
 
-    public virtual override Type getType() {
-      return GenericInfo.class;
+    public virtual override Boolean isEmpty() {
+      return this.value == null;
     }
 
     public virtual override Map<String, Object> getUntypedState() {
-      return new Map<String, Object>{ 'key' => this.key, 'keyLength' => this.keyLength, 'typeName' => this.getType().getName(), 'value' => this.value };
-    }
-
-    public virtual override RollupState parse(Map<String, Object> values) {
-      this.value = values.get('value');
-      return this;
+      return new Map<String, Object>{ 'key' => this.key, 'keyLength' => this.keyLength, 'typeName' => GenericInfo.class.getName(), 'value' => this.value };
     }
   }
 
@@ -169,30 +150,12 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         if (state.Body4__c != null) {
           json += ',' + state.Body4__c;
         }
-        if (state.Body5__c != null) {
-          json += ',' + state.Body5__c;
-        }
-        if (state.Body6__c != null) {
-          json += ',' + state.Body6__c;
-        }
-        if (state.Body7__c != null) {
-          json += ',' + state.Body7__c;
-        }
-        if (state.Body8__c != null) {
-          json += ',' + state.Body8__c;
-        }
-        if (state.Body9__c != null) {
-          json += ',' + state.Body9__c;
-        }
       }
     }
-    List<Object> uncastStates = new List<Object>();
     if (json != '[') {
-      uncastStates.addAll(
-        (List<Object>) new DataWeaveScriptResource.jsonToRollupState().execute(new Map<String, Object>{ 'records' => json + ']' }).getValue()
-      );
-      // for (Object uncastStateList : uncastStates) {
-      //   List<Object> uncastStates = (List<Object>) uncastStateList;
+      List<Object> uncastStates = (List<Object>) new DataWeaveScriptResource.jsonToRollupState()
+        .execute(new Map<String, Object>{ 'records' => json + ']' })
+        .getValue();
       for (Object uncastState : uncastStates) {
         RollupState castState = (RollupState) uncastState;
         this.keyToState.put(castState.key, castState);
@@ -226,14 +189,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  protected virtual Type getType() {
-    return RollupState.class;
-  }
-
-  protected virtual RollupState parse(Map<String, Object> values) {
-    throw new TypeException('Not implemented');
-  }
-
   @SuppressWarnings('PMD.ApexCrudViolation')
   private List<RollupState__c> loadOrRetrieveCachedState(String jobId, Set<String> relatedRecordKeys) {
     if (relatedRecordKeys.isEmpty()) {
@@ -247,7 +202,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         quotedRecordKeys.add('%' + recordKey + '%');
       }
       states = [
-        SELECT Id, Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, Body5__c, Body6__c, Body7__c, Body8__c, Body9__c, IsCached__c
+        SELECT Id, Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, IsCached__c
         FROM RollupState__c
         WHERE RelatedRecordKeysIndex__c LIKE :quotedRecordKeys AND RelatedJobId__c = :jobId
       ];
@@ -261,6 +216,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   private void populateRelatedRecordStates(String jobId) {
     RollupState__c currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
     List<RollupState__c> statesToInsert = new List<RollupState__c>{ currentStateToInsert };
+    Set<String> allRelatedRecordKeys = new Set<String>();
     Set<String> relatedRecordKeys = new Set<String>();
     Integer relatedRecordKeyLength = 0;
     Integer currentRelatedRecordFieldIndex = 0;
@@ -275,13 +231,18 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Boolean hasSetRelatedRecords = false;
     for (String key : this.keyToState.keySet()) {
       RollupState state = this.keyToState.get(key);
+      if (state.isEmpty()) {
+        continue;
+      }
 
       if (relatedRecordKeyLength + state.keyLength + 1 > 255) {
         TokenSentinel sentinel = getRelatedRecordKeySentinel(currentRelatedRecordFieldIndex);
         relatedKeysFieldToken = sentinel.token;
         hasSetRelatedRecords = true;
         relatedRecordKeyLength = 0;
-        currentStateToInsert.put(sentinel.token, getJoinedKeys(relatedRecordKeys));
+        if (sentinel.shouldReset == false) {
+          currentStateToInsert.put(sentinel.token, getJoinedKeys(relatedRecordKeys));
+        }
         relatedRecordKeys = new Set<String>();
         if (sentinel.shouldReset) {
           currentStateToInsert.put(relatedBodyFieldToken, getJoinedBody(untypedStates));
@@ -300,8 +261,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         }
       }
       String recordKey = key.substring(0, state.keyLength);
-      if (relatedRecordKeys.contains(recordKey) == false) {
+      if (allRelatedRecordKeys.contains(recordKey) == false) {
         relatedRecordKeyLength += state.keyLength + 1;
+        allRelatedRecordKeys.add(recordKey);
         relatedRecordKeys.add(recordKey);
       }
       Map<String, Object> untypedState = state.getUntypedState();
@@ -316,8 +278,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         relatedBodyFieldToken = sentinel.token;
         hasSetBody = true;
         currentLength = 0;
-
-        currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
+        if (sentinel.shouldReset == false) {
+          currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
+        }
         if (sentinel.shouldReset) {
           currentStateToInsert.put(relatedKeysFieldToken, getJoinedKeys(relatedRecordKeys));
           relatedRecordKeys = new Set<String>();
@@ -341,10 +304,11 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     if (hasSetBody == false) {
       TokenSentinel sentinel = getBodySentinel(currentBodyFieldIndex);
       if (sentinel.shouldReset) {
+        hasSetRelatedRecords = true;
         currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId, RelatedRecordKeys__c = getJoinedKeys(relatedRecordKeys));
         statesToInsert.add(currentStateToInsert);
       }
-      currentStateToInsert.put(relatedBodyFieldToken, getJoinedBody(untypedStates));
+      currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
     }
     if (hasSetRelatedRecords == false) {
       TokenSentinel sentinel = getRelatedRecordKeySentinel(currentRelatedRecordFieldIndex);
@@ -360,10 +324,15 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   private class TokenSentinel {
     public Boolean shouldReset = false;
     public Schema.SObjectField token;
+    public Integer currentTokenIndex;
+
+    public TokenSentinel(Integer currentTokenIndex) {
+      this.currentTokenIndex = currentTokenIndex;
+    }
   }
 
   private static TokenSentinel getRelatedRecordKeySentinel(Integer currentIndex) {
-    TokenSentinel sentinel = new TokenSentinel();
+    TokenSentinel sentinel = new TokenSentinel(currentIndex);
 
     switch on currentIndex {
       when 0 {
@@ -387,6 +356,18 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       when 6 {
         sentinel.token = RollupState__c.RelatedRecordKeys6__c;
       }
+      when 7 {
+        sentinel.token = RollupState__c.RelatedRecordKeys7__c;
+      }
+      when 8 {
+        sentinel.token = RollupState__c.RelatedRecordKeys8__c;
+      }
+      when 9 {
+        sentinel.token = RollupState__c.RelatedRecordKeys9__c;
+      }
+      when 10 {
+        sentinel.token = RollupState__c.RelatedRecordKeys10__c;
+      }
       when else {
         sentinel.token = RollupState__c.RelatedRecordKeys__c;
         sentinel.shouldReset = true;
@@ -396,7 +377,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   private static TokenSentinel getBodySentinel(Integer currentIndex) {
-    TokenSentinel sentinel = new TokenSentinel();
+    TokenSentinel sentinel = new TokenSentinel(currentIndex);
 
     switch on currentIndex {
       when 0 {
@@ -413,21 +394,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
       when 4 {
         sentinel.token = RollupState__c.Body4__c;
-      }
-      when 5 {
-        sentinel.token = RollupState__c.Body5__c;
-      }
-      when 6 {
-        sentinel.token = RollupState__c.Body6__c;
-      }
-      when 7 {
-        sentinel.token = RollupState__c.Body7__c;
-      }
-      when 8 {
-        sentinel.token = RollupState__c.Body8__c;
-      }
-      when 9 {
-        sentinel.token = RollupState__c.Body9__c;
       }
       when else {
         sentinel.token = RollupState__c.Body0__c;
