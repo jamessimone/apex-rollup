@@ -61,10 +61,9 @@ public without sharing class RollupLimits {
       return this.hasExceededOverallLimits;
     }
 
-    public Integer getRemainingQueryRows() {
+    public Decimal getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows ?? Limits.getQueryRows();
-      Integer remainingQueryRows = (this.control.MaxQueryRows__c?.intValue() ?? LIMIT_QUERY_ROWS) - queryRowsUsed;
-      return remainingQueryRows > 0 ? remainingQueryRows : 0;
+      return (this.control.MaxQueryRows__c ?? LIMIT_QUERY_ROWS) - queryRowsUsed;
     }
 
     public Boolean hasExceededOrgAsyncLimit() {

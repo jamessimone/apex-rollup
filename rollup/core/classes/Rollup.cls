@@ -1850,7 +1850,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
     Boolean hasExceededLimits = limitTester.hasExceededLimits() && isDeferralAllowed;
     if (limitTester.hasExceededLimits() && isDeferralAllowed) {
-      Boolean isLoggingCurrentlyDisabled = control.IsRollupLoggingEnabled__c == false;
+      Boolean isLoggingCurrentlyDisabled = control?.IsRollupLoggingEnabled__c == false;
       if (isLoggingCurrentlyDisabled) {
         control.IsRollupLoggingEnabled__c = true;
         RollupLogger.Instance.updateRollupControl(control);
