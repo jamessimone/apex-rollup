@@ -1258,6 +1258,15 @@ private class RollupEvaluatorTests {
     System.assertEquals(false, eval.matches(nonMatch3));
   }
 
+  @IsTest
+  static void stripsExtraParantheticalStructures() {
+    String whereClause = '(Name IN (\'0-Current\', \'1-30 Days\', \'31-60 Days\')) AND Name IN (\'0-Current\', \'1-30 Days\', \'31-60 Days\')';
+
+    RollupEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, ContactPointConsent.SObjectType);
+
+    System.assertEquals(true, eval.matches(new ContactPointConsent(Name = '0-Current')));
+  }
+
   private static String getSoqlCompliantDatetime(Datetime dt) {
     return dt.format('yyyy-MM-dd\'T\'HH:mm:ssZ');
   }
