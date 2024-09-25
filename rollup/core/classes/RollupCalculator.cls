@@ -146,12 +146,8 @@ public without sharing abstract class RollupCalculator {
 
   public virtual Object getReturnValue() {
     if (this.state != null && this.hasCustomStateCalculation == false) {
-      RollupState.GenericInfo possibleInfo = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata);
-      if (possibleInfo == null) {
-        possibleInfo = new RollupState.GenericInfo();
-        this.state.setState(this.lookupRecordKey, this.metadata, possibleInfo);
-      }
-      possibleInfo.value = this.returnVal;
+      RollupState.GenericInfo possibleInfo = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.GenericInfo.class);
+      possibleInfo.value = this.returnVal != this.defaultVal ? this.returnVal : possibleInfo.value;
     }
     return this.returnVal;
   }
@@ -395,7 +391,7 @@ public without sharing abstract class RollupCalculator {
       }
     }
     if (this.state != null && this.hasCustomStateCalculation == false) {
-      RollupState.GenericInfo info = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata);
+      RollupState.GenericInfo info = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.GenericInfo.class);
       if (info != null) {
         winnowedItems.add(new WinnowResult(info.value));
       }
@@ -1187,9 +1183,8 @@ public without sharing abstract class RollupCalculator {
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.state != null) {
-        this.info = (RollupState.AverageInfo) (this.state.getState(this.lookupRecordKey, this.metadata) ?? new RollupState.AverageInfo());
+        this.info = (RollupState.AverageInfo) (this.state.getState(this.lookupRecordKey, this.metadata, RollupState.AverageInfo.class));
         this.distinctValues.addAll(this.info.distinctNumerators);
-        this.state.setState(this.lookupRecordKey, this.metadata, this.info);
       }
       this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
     }
@@ -1238,11 +1233,8 @@ public without sharing abstract class RollupCalculator {
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       if (this.state != null) {
-        this.info = (RollupState.SObjectInfo) this.state.getState(this.lookupRecordKey, this.metadata);
-        if (this.info == null) {
-          this.info = new RollupState.SObjectInfo();
-          this.state.setState(this.lookupRecordKey, this.metadata, this.info);
-        } else if (this.info.item != null) {
+        this.info = (RollupState.SObjectInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.SObjectInfo.class);
+        if (this.info.item != null) {
           calcItems.add(this.info.item);
         }
       }
@@ -1283,11 +1275,7 @@ public without sharing abstract class RollupCalculator {
     protected override void rollupResults(List<WinnowResult> results) {
       RollupState.MostInfo info;
       if (this.state != null) {
-        info = (RollupState.MostInfo) this.state.getState(this.lookupRecordKey, this.metadata);
-        if (info == null) {
-          info = new RollupState.MostInfo();
-          this.state.setState(this.lookupRecordKey, this.metadata, info);
-        }
+        info = (RollupState.MostInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.MostInfo.class);
       }
       this.occurrenceToCount = new Map<Object, Integer>();
       this.largestCountPointer = info?.largestPointCounter ?? -1;
