@@ -3,8 +3,7 @@ private class InvocableDrivenTests {
   @TestSetup
   static void setup() {
     upsert new RollupSettings__c(IsEnabled__c = true);
-    Account acc = new Account(Name = InvocableDrivenTests.class.getName());
-    insert acc;
+    insert new Account(Name = InvocableDrivenTests.class.getName());
   }
 
   @IsTest
@@ -181,5 +180,23 @@ private class InvocableDrivenTests {
 
     parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
     System.assertEquals(null, parent.AnnualRevenue);
+  }
+
+  @IsTest
+  static void refreshWorksWithEmptyCollectionsWhenParentIdIsProvided() {
+    Account acc = [SELECT Id FROM Account];
+    ContactPointAddress child = new ContactPointAddress(Name = 'RollupIntegrationRefresh', PreferenceRank = 99, ParentId = acc.Id);
+    insert child;
+
+    Flow.Interview flowInterview = new Flow.Interview.Rollup_Integration_Refresh_With_Empty_Collections(
+      new Map<String, Object>{ 'parentRecordIdForEmptyChildrenCollections' => acc.Id }
+    );
+
+    Test.startTest();
+    flowInterview.start();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    System.assertEquals(child.PreferenceRank, acc.AnnualRevenue);
   }
 }

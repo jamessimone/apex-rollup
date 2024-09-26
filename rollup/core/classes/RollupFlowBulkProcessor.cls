@@ -77,27 +77,23 @@ global without sharing class RollupFlowBulkProcessor {
     List<Rollup.FlowInput> validInputs = new List<Rollup.FlowInput>();
     for (FlowInput flowInput : flowInputs) {
       Rollup.FlowOutput output = new Rollup.FlowOutput();
-      if (flowInput.recordsToRollup?.isEmpty() != false) {
+      if (flowInput.recordsToRollup?.isEmpty() != false && flowInput.parentRecordIdForEmptyChildrenCollections == null) {
         output.message = 'No records';
         outputs.add(output);
       } else {
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
         Schema.SObjectType sObjectType = flowInput.recordsToRollup?.get(0).getSObjectType();
+        String childName = sObjectType?.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
         for (Rollup__mdt meta : rollupMetadata) {
           if (
             meta.IsRollupStartedFromParent__c ||
             sObjectType != null && String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && Rollup.getPartOfGrandparentChain(meta, sObjectType) != null
           ) {
-            flowInput.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent != null
-              ? flowInput.calcItemTypeWhenRollupStartedFromParent
-              : meta.CalcItem__c;
+            flowInput.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent ?? meta.CalcItem__c;
           }
-          if (
-            flowInput.recordsToRollup == null ||
-            meta.CalcItem__c == sObjectType?.getDescribe(SObjectDescribeOptions.DEFERRED).getName() ||
-            flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c
-          ) {
+          Boolean isMatchingParentSide = flowInput.calcItemTypeWhenRollupStartedFromParent == meta.CalcItem__c;
+          if ((flowInput.recordsToRollup?.isEmpty() != false && isMatchingParentSide) || meta.CalcItem__c == childName || isMatchingParentSide) {
             Rollup.FlowInput input = new Rollup.FlowInput();
             validInputs.add(input);
             // pertinent fields from CMDT (can be overridden by optional flow properties)

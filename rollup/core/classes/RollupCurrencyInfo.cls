@@ -234,12 +234,11 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static String getHashKey(SObject calcItem, Schema.SObjectField opFieldOnCalcItem) {
-    return '' + calcItem.Id + opFieldOnCalcItem.getDescribe().getName();
+    return '' + calcItem.Id + opFieldOnCalcItem.getDescribe().getName() + calcItem.hashCode();
   }
 
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {
     List<RollupCurrencyInfo> currencyInfos = new List<RollupCurrencyInfo>();
-    Map<String, RollupCurrencyInfo> currencyInfoMap = new Map<String, RollupCurrencyInfo>();
     if (mockCurrencyData != null) {
       currencyInfos.addAll(mockCurrencyData);
     } else {
@@ -248,6 +247,7 @@ public without sharing virtual class RollupCurrencyInfo {
         currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(REPOSITORY.setQuery(query).get()), List<RollupCurrencyInfo>.class));
       }
     }
+    Map<String, RollupCurrencyInfo> currencyInfoMap = new Map<String, RollupCurrencyInfo>();
     mapCurrencies(currencyInfoMap, currencyInfos);
     return currencyInfoMap;
   }

@@ -740,7 +740,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     public RollupGrouping__mdt rollupGrouping;
 
     public Boolean shouldOverrideNoOp() {
-      return this.parentRecordIdForEmptyChildrenCollections != null && calcItemTypeWhenRollupStartedFromParent != null;
+      return this.parentRecordIdForEmptyChildrenCollections != null && this.calcItemTypeWhenRollupStartedFromParent != null;
     }
   }
 
@@ -1648,10 +1648,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     // it would have been nice if this was an enum!
     switch on header.changeType {
-      when 'CREATE', 'GAP_CREATE', 'UNDELETE' {
+      when 'CREATE', 'UNDELETE' {
         apexContext = TriggerOperation.AFTER_INSERT;
       }
-      when 'UPDATE', 'GAP_UPDATE' {
+      when 'UPDATE' {
         apexContext = TriggerOperation.AFTER_UPDATE;
       }
       when 'DELETE' {
@@ -1850,7 +1850,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
     Boolean hasExceededLimits = limitTester.hasExceededLimits() && isDeferralAllowed;
     if (limitTester.hasExceededLimits() && isDeferralAllowed) {
-      Boolean isLoggingCurrentlyDisabled = control.IsRollupLoggingEnabled__c == false;
+      Boolean isLoggingCurrentlyDisabled = control?.IsRollupLoggingEnabled__c == false;
       if (isLoggingCurrentlyDisabled) {
         control.IsRollupLoggingEnabled__c = true;
         RollupLogger.Instance.updateRollupControl(control);
@@ -1871,7 +1871,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   private static Rollup__mdt transformFlowInputToRollupMetadata(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
-    return getFirstLastMetadata(
+    Rollup__mdt transformedMeta = getMetadataWithOrderBys(
       new Rollup__mdt(
         CalcItem__c = flowInput.isRollupStartedFromParent || String.isNotBlank(flowInput.calcItemTypeWhenRollupStartedFromParent)
           ? flowInput.calcItemTypeWhenRollupStartedFromParent
@@ -1908,6 +1908,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       ),
       flowInput.rollupOperation
     );
+    transformedMeta.RollupControl__c = transformedMeta.RollupControl__r.Id;
+    return transformedMeta;
   }
 
   private static Boolean isContextAsync() {
@@ -2727,7 +2729,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       if (isFullRecalcOp(getBaseOperationName(rollupMetadata.RollupOperation__c)) || rollupMetadata.GroupByFields__c != null) {
         rollupMetadata.IsFullRecordSet__c = true;
       }
-      rollupMetadata = getFirstLastMetadata(rollupMetadata, rollupOp.name());
+      rollupMetadata = getMetadataWithOrderBys(rollupMetadata, rollupOp.name());
 
       RollupControl__mdt localControl;
       if (rollupMetadata.RollupControl__c != null) {
@@ -2764,7 +2766,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return rollupConductor;
   }
 
-  private static Rollup__mdt getFirstLastMetadata(Rollup__mdt meta, String rollupOpName) {
+  private static Rollup__mdt getMetadataWithOrderBys(Rollup__mdt meta, String rollupOpName) {
     List<RollupOrderBy__mdt> replacementOrderBys;
     if (meta.RollupOrderBys__r.isEmpty() && String.isNotBlank(meta.OrderByFirstLast__c)) {
       List<String> unparsedOrderBys = meta.OrderByFirstLast__c.split(',');

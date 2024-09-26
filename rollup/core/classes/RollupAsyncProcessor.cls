@@ -616,7 +616,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     Boolean hasAlreadyBeenQueried = this.cachedQueryToAdditionalCalcItems.containsKey(query);
     Boolean shouldLimitCalcItemQuery = false;
-    Integer remainingQueryRowsLeft = 0;
+    Decimal remainingQueryRowsLeft = 0;
     Integer outstandingItemCount = 0;
     List<SObject> additionalCalcItems = new List<SObject>();
 

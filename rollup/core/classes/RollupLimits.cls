@@ -7,7 +7,6 @@ public without sharing class RollupLimits {
   private static Integer stubAsyncTimeoutInterval;
 
   private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 1500;
-  private static final Integer LIMIT_HEAP_SIZE = Limits.getLimitHeapSize();
   private static final Integer LIMIT_QUERY_ROWS = 50000;
 
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS {
@@ -39,7 +38,6 @@ public without sharing class RollupLimits {
 
     public final Boolean hasExceededQueryNumberLimit;
     public final Boolean hasExceededQueryRowLimit;
-    public final Boolean hasExceededHeapSizeLimit;
     public final Boolean hasExceededDMLRowLimit;
     public final Boolean hasExceededCPUTimeLimit;
 
@@ -48,7 +46,6 @@ public without sharing class RollupLimits {
       this.isRunningAsync = isRunningAsync;
       this.hasExceededQueryNumberLimit = this.control?.MaxNumberOfQueries__c < Limits.getQueries();
       this.hasExceededQueryRowLimit = this.getRemainingQueryRows() < 0;
-      this.hasExceededHeapSizeLimit = (LIMIT_HEAP_SIZE - 2000000) < Limits.getHeapSize();
       this.hasExceededDMLRowLimit = this.control?.MaxParentRowsUpdatedAtOnce__c < Limits.getDmlRows();
 
       Integer intervalTillTimeout = this.isRunningAsync ? ASYNC_TIMEOUT_INTERVAL_MS : SYNC_TIMEOUT_INTERVAL_MS;
@@ -56,7 +53,6 @@ public without sharing class RollupLimits {
       this.hasExceededOverallLimits =
         this.hasExceededQueryNumberLimit ||
         this.hasExceededQueryRowLimit ||
-        this.hasExceededHeapSizeLimit ||
         this.hasExceededDMLRowLimit ||
         this.hasExceededCPUTimeLimit;
     }
@@ -65,10 +61,10 @@ public without sharing class RollupLimits {
       return this.hasExceededOverallLimits;
     }
 
-    public Integer getRemainingQueryRows() {
+    public Decimal getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows ?? Limits.getQueryRows();
-      Integer remainingQueryRows = (this.control.MaxQueryRows__c?.intValue() ?? LIMIT_QUERY_ROWS) - queryRowsUsed;
-      return remainingQueryRows > 0 ? remainingQueryRows : 0;
+      Decimal maxQueryRows = this.control.MaxQueryRows__c != null && this.control.MaxQueryRows__c <= LIMIT_QUERY_ROWS ? this.control.MaxQueryRows__c : LIMIT_QUERY_ROWS;
+      return maxQueryRows - queryRowsUsed;
     }
 
     public Boolean hasExceededOrgAsyncLimit() {

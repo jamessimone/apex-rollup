@@ -83,6 +83,14 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(new List<SObject>{ camp }, Campaign.ActualCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
     updatedCamp = (Campaign) RollupCurrencyInfo.getCalcItem(camp, mockEurInfo.IsoCode);
     System.assertEquals((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.ActualCost)).doubleValue(), updatedCamp.ActualCost);
+    // sanity check that updates on previously transformed fields still calculate correctly
+    camp.BudgetedCost = 6;
+    RollupCurrencyInfo.transform(new List<SObject>{ camp }, Campaign.BudgetedCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
+    Campaign again = (Campaign) RollupCurrencyInfo.getCalcItem(camp, mockEurInfo.IsoCode);
+    System.assertEquals(
+      (mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.BudgetedCost)).setScale(mockEurInfo.DecimalPlaces),
+      again.BudgetedCost
+    );
   }
 
   @IsTest
