@@ -234,7 +234,7 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static String getHashKey(SObject calcItem, Schema.SObjectField opFieldOnCalcItem) {
-    return '' + calcItem.Id + opFieldOnCalcItem.getDescribe().getName() + calcItem.get(opFieldOnCalcItem);
+    return '' + calcItem.Id + opFieldOnCalcItem.getDescribe().getName() + calcItem.hashCode();
   }
 
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {
