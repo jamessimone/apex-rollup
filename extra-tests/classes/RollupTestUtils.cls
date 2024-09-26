@@ -35,7 +35,7 @@ public class RollupTestUtils {
   }
 
   public static DMLMock loadAccountIdMock(List<SObject> records) {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account LIMIT 1];
     for (SObject record : records) {
       record.put('ParentId', acc.Id);
     }
