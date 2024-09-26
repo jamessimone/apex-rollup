@@ -394,7 +394,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         if (criteria.endsWithIgnoreCase('in')) {
           while (value.endsWith(')') == false) {
             String nextWord = words[++index];
-            value += ' ' + nextWord.removeEnd(')');
+            value += ' ' + nextWord;
             if (index + 1 == words.size()) {
               break;
             }
