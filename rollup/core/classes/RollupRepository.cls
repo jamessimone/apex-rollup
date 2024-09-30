@@ -128,7 +128,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
         SharingMode__c,
         ShouldRunWithoutCustomSettingEnabled__c,
         SplitConcatDelimiterOnCalcItem__c,
-        (SELECT Id, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r),
+        (SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r),
         RollupGrouping__r.Id,
         RollupGrouping__r.RollupOperation__c
       FROM Rollup__mdt
@@ -149,7 +149,6 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
       meta.SharingMode__c = meta.SharingMode__c ?? RollupMetaPicklists.SharingMode.SystemLevel;
       meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
-      meta.RollupOrderBys__r.sort(new OrderBySorter());
     }
 
     return matchingMetadata;

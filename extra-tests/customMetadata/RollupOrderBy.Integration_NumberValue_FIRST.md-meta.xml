@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+>
+    <label>Integration NumberValue FIRST</label>
+    <protected>false</protected>
+    <values>
+        <field>FieldName__c</field>
+        <value xsi:type="xsd:string">NumberField__c</value>
+    </values>
+    <values>
+        <field>NullSortOrder__c</field>
+        <value xsi:type="xsd:string">NULLS FIRST</value>
+    </values>
+    <values>
+        <field>Ranking__c</field>
+        <value xsi:type="xsd:double">1.0</value>
+    </values>
+    <values>
+        <field>Rollup__c</field>
+        <value xsi:type="xsd:string">RollupIntegrationChildRollupText</value>
+    </values>
+    <values>
+        <field>SortOrder__c</field>
+        <value xsi:type="xsd:string">Ascending</value>
+    </values>
+</CustomMetadata>

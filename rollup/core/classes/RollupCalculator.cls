@@ -321,8 +321,9 @@ public without sharing abstract class RollupCalculator {
   protected List<WinnowResult> winnowItems(List<SObject> items, Map<Id, SObject> oldCalcItems) {
     List<RollupOrderBy__mdt> orderBys = this.metadata?.LimitAmount__c != null && this.metadata.RollupOrderBys__r.isEmpty()
       ? new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'Id', Ranking__c = 0) }
-      : this.metadata.RollupOrderBys__r;
+      : new List<RollupOrderBy__mdt>(this.metadata.RollupOrderBys__r);
     if (orderBys.isEmpty() == false) {
+      orderBys.sort(new RollupRepository.OrderBySorter());
       items.sort(new RollupCalcItemSorter(orderBys));
     }
     List<WinnowResult> winnowedItems = new List<WinnowResult>();
