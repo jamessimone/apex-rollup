@@ -354,7 +354,11 @@ public without sharing abstract class RollupDateLiteral {
   private class LastMonthLiteral extends RollupDateLiteral {
     public LastMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt(), END_TIME));
+      Date relativeDate = this.ref.addMonths(1).date();
+      if (relativeDate.day() == 1) {
+        relativeDate = relativeDate.addDays(-1);
+      }
+      this.bound = offsetToFirstDay(getRelativeDatetime(relativeDate, END_TIME));
     }
   }
 
@@ -364,7 +368,11 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt(), END_TIME));
+      Date relativeDate = this.ref.addMonths(1).date();
+      if (relativeDate.day() == 1) {
+        relativeDate = relativeDate.addDays(-1);
+      }
+      this.bound = offsetToFirstDay(getRelativeDatetime(relativeDate, END_TIME));
     }
   }
 
@@ -374,7 +382,11 @@ public without sharing abstract class RollupDateLiteral {
   private class NextMonthLiteral extends RollupDateLiteral {
     public NextMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(1).dateGmt(), END_TIME));
+      Date relativeDate = this.ref.addMonths(1).date();
+      if (relativeDate.day() == 1) {
+        relativeDate = relativeDate.addDays(-1);
+      }
+      this.bound = offsetToFirstDay(getRelativeDatetime(relativeDate, END_TIME));
     }
   }
 
