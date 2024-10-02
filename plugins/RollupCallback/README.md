@@ -109,7 +109,7 @@ public class SubflowRollupDispatcher implements RollupSObjectUpdater.IDispatcher
       decorator.FieldNames = new List<String>(record.getPopulatedFieldsAsMap().keySet());
       wrappedRecords.add(decorator);
     }
-    Flow.Interview rollupSubflow = Flow.Interview.RollupSubflow(
+    Flow.Interview rollupSubflow = new Flow.Interview.RollupSubflow(
       new Map<String, Object>{
         'records' => wrappedRecords
       }

@@ -224,12 +224,15 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLastMonth() {
     runTestForLiteral('LAST_MONTH');
+    User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
+    System.runAs(australiaUser) {
+      runTestForLiteral('LAST_MONTH');
+    }
   }
 
   @IsTest
   static void shouldWorkForThisMonth() {
     runTestForLiteral('THIS_MONTH');
-    // TODO extend this more generally throughout this test class
     User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
     System.runAs(australiaUser) {
       runTestForLiteral('THIS_MONTH');
@@ -239,6 +242,10 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextMonth() {
     runTestForLiteral('NEXT_MONTH');
+    User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
+    System.runAs(australiaUser) {
+      runTestForLiteral('NEXT_MONTH');
+    }
   }
 
   @IsTest
