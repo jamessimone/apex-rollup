@@ -120,6 +120,81 @@ private class RollupFlowFullRecalcDispatcherTests {
     System.assertEquals(5, user.Latitude);
   }
 
+  @IsTest
+  static void supportsTextTemplateInputVariables() {
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'cmdt2',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = getFlowInputs(Rollup.rollupMetadata);
+    String exampleTextTemplate = '<p><span style="background-color: rgb(255, 255, 255); font-size: 11.36px; font-family: Arial, Helvetica, sans-serif; color: rgb(0, 0, 0);">{0}</span></p>';
+    flowInputs[0].rollupDeveloperNames = String.format(exampleTextTemplate, new List<String>{ flowInputs[0].rollupDeveloperNames });
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+    System.assertEquals(6, acc.NumberOfEmployees);
+  }
+
+  @IsTest
+  static void integrationSupportsTextTemplateVariables() {
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'cmdt2',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+
+    Test.startTest();
+    new Flow.Interview.Rollup_Integration_Comma_Separated_Full_Recalc(new Map<String, Object>{ 'rollupNames' => 'cmdt1, cmdt2' }).start();
+    Test.stopTest();
+
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+    System.assertEquals(6, acc.NumberOfEmployees);
+  }
+
   private static List<RollupFlowFullRecalcDispatcher.FlowInput> getFlowInputs(List<Rollup__mdt> metas) {
     List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
     RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();

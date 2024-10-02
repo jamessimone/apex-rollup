@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Recalc_Rollups</name>
+        <label>Recalc Rollups</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <actionName>RollupFlowFullRecalcDispatcher</actionName>
+        <actionType>apex</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>rollupDeveloperNames</name>
+            <value>
+                <elementReference>Rollups_Comma_Separated</elementReference>
+            </value>
+        </inputParameters>
+        <nameSegment>RollupFlowFullRecalcDispatcher</nameSegment>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+        <versionSegment>1</versionSegment>
+    </actionCalls>
+    <apiVersion>61.0</apiVersion>
+    <environments>Default</environments>
+    <interviewLabel>Rollup Integration: Comma-Separated Full Recalc {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Rollup Integration: Comma-Separated Full Recalc</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Recalc_Rollups</targetReference>
+        </connector>
+    </start>
+    <status>Draft</status>
+    <textTemplates>
+        <name>Rollups_Comma_Separated</name>
+        <isViewedAsPlainText>false</isViewedAsPlainText>
+        <text
+    >&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255); font-size: 11.36px; font-family: Arial, Helvetica, sans-serif; color: rgb(0, 0, 0);&quot;&gt;All_Item_D,Paid_and_Item_D,Unpaid_Items_Like_A,Child_to_Parent_D_Unpaid,Child_to_Parent_Not_DAG_Unpaid,Child_to_Parent_Unpaid,Child_to_C_Paid_Amount,Child_to_B_Paid_Amount&lt;/span&gt;&lt;/p&gt;</text>
+    </textTemplates>
+</Flow>

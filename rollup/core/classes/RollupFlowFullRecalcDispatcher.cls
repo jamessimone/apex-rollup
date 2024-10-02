@@ -15,7 +15,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
       if (String.isBlank(input.rollupDeveloperNames)) {
         throw new IllegalArgumentException('Comma-separated list of Rollup__mdt DeveloperName(s) was not provided');
       }
-      List<String> splitListOfApiNames = input.rollupDeveloperNames.split(',');
+      List<String> splitListOfApiNames = input.rollupDeveloperNames.stripHtmlTags().split(',');
       for (String apiName : splitListOfApiNames) {
         rollupDeveloperNames.add(apiName.trim());
       }
