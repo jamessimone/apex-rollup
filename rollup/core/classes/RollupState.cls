@@ -136,6 +136,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
+  // TODO - even though GenericInfo was the most widely-used state object
+  // that I was testing with, in theory it isn't needed at all - that's because
+  // each parent record getting retrieved SHOULD already have the last rolled up value
+  // on it already, and no parallel-processing occurs in any of these full recalculation jobs
   public virtual class GenericInfo extends RollupState {
     public Object value;
 
@@ -278,6 +282,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       SELECT Id, Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, IsCached__c, CreatedDate, IsDeleted
       FROM RollupState__c
       WHERE
+        // TODO - check to see if RelatedRecordKeysIndex__c was actually working
+        // and the ongoing issues with Ids being present in this.statefulPreviouslyRetrievedStateIds
+        // yet still being retrieved here is more an artifact of Database.Stateful/Database.Batchable
+        // as evinced by the crazy debug statements above in this.loadState
         (RelatedRecordKeys__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys1__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys2__c LIKE :quotedRecordKeys
