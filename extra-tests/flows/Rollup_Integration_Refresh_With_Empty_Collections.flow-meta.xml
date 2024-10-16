@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Rollup_ContactPointConsent_Record</name>
@@ -44,7 +44,7 @@
         <storeOutputAutomatically>true</storeOutputAutomatically>
         <versionSegment>1</versionSegment>
     </actionCalls>
-    <apiVersion>61.0</apiVersion>
+    <apiVersion>62.0</apiVersion>
     <environments>Default</environments>
     <interviewLabel>Rollup Integration - Refresh With Empty Collections {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Rollup Integration - Refresh With Empty Collections</label>
