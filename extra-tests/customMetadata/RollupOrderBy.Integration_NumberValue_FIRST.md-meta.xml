@@ -16,7 +16,7 @@
     </values>
     <values>
         <field>Ranking__c</field>
-        <value xsi:type="xsd:double">1.0</value>
+        <value xsi:type="xsd:double">0.0</value>
     </values>
     <values>
         <field>Rollup__c</field>
