@@ -115,7 +115,7 @@ global without sharing class RollupFlowBulkProcessor {
             // fixup order by children records
             input.orderByFirstLast = flowInput.orderByFirstLast ?? '';
             if (input.orderByFirstLast == '') {
-              input.orderByFirstLast = getConcatenatedOrderBys(meta.RollupOrderBys__r);
+              input.orderByFirstLast = getConcatenatedOrderBys(new List<RollupOrderBy__mdt>(meta.RollupOrderBys__r));
             }
             // metadata values that don't get overridden
             input.currencyFieldMapping = meta.CurrencyFieldMapping__c;
@@ -152,6 +152,7 @@ global without sharing class RollupFlowBulkProcessor {
   }
 
   private static String getConcatenatedOrderBys(List<RollupOrderBy__mdt> orderBys) {
+    orderBys.sort(new RollupRepository.OrderBySorter());
     List<String> joinedOrderBys = new List<String>();
     for (RollupOrderBy__mdt orderBy : orderBys) {
       String soloOrderBy = '';

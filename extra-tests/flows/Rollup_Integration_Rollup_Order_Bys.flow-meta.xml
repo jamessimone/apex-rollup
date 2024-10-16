@@ -1,27 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
-        <name>Rollup_ContactPointConsent_Record</name>
-        <label>Rollup ContactPointConsent Record</label>
+        <name>Call_CMDT_action</name>
+        <label>Call CMDT action</label>
         <locationX>176</locationX>
         <locationY>134</locationY>
         <actionName>RollupFlowBulkProcessor</actionName>
         <actionType>apex</actionType>
         <dataTypeMappings>
             <typeName>T__oldRecordsToRollup</typeName>
-            <typeValue>ContactPointAddress</typeValue>
+            <typeValue>RollupChild__c</typeValue>
         </dataTypeMappings>
         <dataTypeMappings>
             <typeName>T__recordsToRollup</typeName>
-            <typeValue>ContactPointAddress</typeValue>
+            <typeValue>RollupChild__c</typeValue>
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
-        <inputParameters>
-            <name>calcItemTypeWhenRollupStartedFromParent</name>
-            <value>
-                <stringValue>ContactPointAddress</stringValue>
-            </value>
-        </inputParameters>
         <inputParameters>
             <name>deferProcessing</name>
             <value>
@@ -29,15 +23,15 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>parentRecordIdForEmptyChildrenCollections</name>
+            <name>recordsToRollup</name>
             <value>
-                <elementReference>parentRecordIdForEmptyChildrenCollections</elementReference>
+                <elementReference>rollupChildren</elementReference>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
-                <stringValue>REFRESH</stringValue>
+                <stringValue>INSERT</stringValue>
             </value>
         </inputParameters>
         <nameSegment>RollupFlowBulkProcessor</nameSegment>
@@ -46,8 +40,8 @@
     </actionCalls>
     <apiVersion>62.0</apiVersion>
     <environments>Default</environments>
-    <interviewLabel>Rollup Integration - Refresh With Empty Collections {!$Flow.CurrentDateTime}</interviewLabel>
-    <label>Rollup Integration - Refresh With Empty Collections</label>
+    <interviewLabel>Rollup Integration - Rollup Order Bys {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Rollup Integration - Rollup Order Bys</label>
     <processMetadataValues>
         <name>BuilderType</name>
         <value>
@@ -71,15 +65,16 @@
         <locationX>50</locationX>
         <locationY>0</locationY>
         <connector>
-            <targetReference>Rollup_ContactPointConsent_Record</targetReference>
+            <targetReference>Call_CMDT_action</targetReference>
         </connector>
     </start>
-    <status>Obsolete</status>
+    <status>Draft</status>
     <variables>
-        <name>parentRecordIdForEmptyChildrenCollections</name>
-        <dataType>String</dataType>
-        <isCollection>false</isCollection>
+        <name>rollupChildren</name>
+        <dataType>SObject</dataType>
+        <isCollection>true</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
+        <objectType>RollupChild__c</objectType>
     </variables>
 </Flow>

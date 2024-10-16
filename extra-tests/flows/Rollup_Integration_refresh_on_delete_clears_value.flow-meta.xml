@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Perform_Rollup</name>
@@ -68,7 +68,7 @@
         <storeOutputAutomatically>true</storeOutputAutomatically>
         <versionSegment>1</versionSegment>
     </actionCalls>
-    <apiVersion>61.0</apiVersion>
+    <apiVersion>62.0</apiVersion>
     <assignments>
         <name>Add_deleted_record_to_collection</name>
         <label>Add deleted record to collection</label>

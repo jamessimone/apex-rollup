@@ -199,4 +199,34 @@ private class InvocableDrivenTests {
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(child.PreferenceRank, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void orderBysRetainRanking() {
+    RollupParent__c parent = new RollupParent__c(Name = 'Parent');
+    insert parent;
+
+    RollupChild__c childOne = new RollupChild__c(
+      RollupParent__c = parent.Id,
+      NumberField__c = 1,
+      TextField__c = 'b',
+      Id = RollupTestUtils.createId(RollupChild__c.SObjectType)
+    );
+    RollupChild__c childTwo = new RollupChild__c(
+      RollupParent__c = parent.Id,
+      NumberField__c = 1,
+      TextField__c = 'a',
+      Id = RollupTestUtils.createId(RollupChild__c.SObjectType)
+    );
+
+    Flow.Interview flowInterview = new Flow.Interview.Rollup_Integration_Rollup_Order_Bys(
+      new Map<String, Object>{ 'rollupChildren' => new List<RollupChild__c>{ childOne, childTwo } }
+    );
+
+    Test.startTest();
+    flowInterview.start();
+    Test.stopTest();
+
+    parent = [SELECT TextField__c FROM RollupParent__c WHERE Id = :parent.Id];
+    System.assertEquals(childTwo.TextField__c, parent.TextField__c);
+  }
 }

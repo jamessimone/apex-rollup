@@ -14,7 +14,7 @@ private class CustomMetadataDrivenTests {
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
-    RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 3);
+    RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 2);
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parent.Id, NumberField__c = 2);
 
     Test.startTest();
@@ -34,8 +34,8 @@ private class CustomMetadataDrivenTests {
     }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
-    // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
-    RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 3);
+    // uses FIRST (with NumberField__c, TextField__c as the Order By fields), MAX for the NumberField__c
+    RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 1);
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parent.Id, NumberField__c = 2);
     insert new List<RollupChild__c>{ childOne, childTwo };
 
@@ -55,7 +55,7 @@ private class CustomMetadataDrivenTests {
     // re-assert on both fields being correct now, just to be sure
     parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
     System.assertEquals(childTwo.NumberField__c, parent.NumberField__c);
-    System.assertEquals(childTwo.TextField__c, parent.TextField__c);
+    System.assertEquals(childOne.TextField__c, parent.TextField__c);
   }
 
   @IsTest
@@ -177,12 +177,12 @@ private class CustomMetadataDrivenTests {
     RollupParent__c parent = [SELECT Id FROM RollupParent__c];
 
     Test.startTest();
-    insertRollupChildrenAsync(parent.Id, 'a', 3);
+    insertRollupChildrenAsync(parent.Id, 'a', 1);
     Test.stopTest();
 
     parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
     System.assertEquals('a', parent.TextField__c);
-    System.assertEquals(3, parent.NumberField__c);
+    System.assertEquals(2, parent.NumberField__c);
   }
 
   @Future
