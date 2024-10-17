@@ -3,22 +3,34 @@ private class RollupStateTests {
   @IsTest
   static void commitsAndLoadsStateProperly() {
     RollupState state = new RollupState();
-    RollupState.GenericInfo info = new RollupState.GenericInfo();
-    info.value = 5;
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
-    String secondStubId = RollupTestUtils.createId(Contact.SObjectType);
+    RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'SUM'),
+      RollupState.GenericInfo.class
+    );
+    info.value = 5;
 
-    RollupState.AverageInfo averageInfo = new RollupState.AverageInfo();
+    RollupState.AverageInfo averageInfo = (RollupState.AverageInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'CONCAT'),
+      RollupState.AverageInfo.class
+    );
     averageInfo.increment(10);
-    RollupState.SObjectInfo sObjectInfo = new RollupState.SObjectInfo();
+    RollupState.SObjectInfo sObjectInfo = (RollupState.SObjectInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
     sObjectInfo.setItem(new Account(AnnualRevenue = 1000));
-    RollupState.MostInfo mostInfo = new RollupState.MostInfo();
+    String secondStubId = RollupTestUtils.createId(Contact.SObjectType);
+    RollupState.MostInfo mostInfo = (RollupState.MostInfo) state.getState(
+      secondStubId,
+      new Rollup__mdt(RollupOperation__c = 'MOST'),
+      RollupState.MostInfo.class
+    );
     mostInfo.setValues(5, 'some string');
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), info);
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'CONCAT'), averageInfo);
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'FIRST'), sObjectInfo);
-    state.setState(secondStubId, new Rollup__mdt(RollupOperation__c = 'MOST'), mostInfo);
-    state.setState(secondStubId, new Rollup__mdt(RollupOperation__c = 'LAST'), new RollupState.GenericInfo());
+    state.getState(secondStubId, new Rollup__mdt(RollupOperation__c = 'LAST'), RollupState.GenericInfo.class);
 
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
 
@@ -26,7 +38,7 @@ private class RollupStateTests {
     Test.startTest();
     state.commitState(stubJobId);
     state.loadState(stubJobId, new Set<String>{ stubAccountId, secondStubId });
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), info);
+    info = (RollupState.GenericInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), RollupState.GenericInfo.class);
     info.value = 6;
     state.commitState(stubJobId);
     Test.stopTest();
@@ -60,27 +72,39 @@ private class RollupStateTests {
   static void handlesMultipleExistingStateValues() {
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
-    RollupState.AverageInfo averageInfo = new RollupState.AverageInfo();
-    averageInfo.increment(10);
-    RollupState.GenericInfo info = new RollupState.GenericInfo();
-    info.value = 5;
     RollupState state = new RollupState();
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'AVERAGE'), averageInfo);
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), info);
+    RollupState.AverageInfo averageInfo = (RollupState.AverageInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'AVERAGE'),
+      RollupState.AverageInfo.class
+    );
+    averageInfo.increment(10);
+    RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'SUM'),
+      RollupState.GenericInfo.class
+    );
+
     RollupState__c existingAverageState = new RollupState__c(
       RelatedJobId__c = stubJobId,
-      RelatedRecordKeys__c = stubAccountId,
+      RelatedRecordKeys0__c = stubAccountId,
       Body0__c = JSON.serialize(averageInfo.getUntypedState())
     );
     insert new List<RollupState__c>{
       existingAverageState,
-      new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys__c = stubAccountId, Body0__c = JSON.serialize(info.getUntypedState()))
+      new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys0__c = stubAccountId, Body0__c = JSON.serialize(info.getUntypedState()))
     };
 
     state = new RollupState();
-    averageInfo.increment(20);
     state.loadState(stubJobId, new Set<String>{ stubAccountId });
-    state.setState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'AVERAGE'), averageInfo);
+    info = (RollupState.GenericInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'SUM'),
+      RollupState.GenericInfo.class
+    );
+    info.value = 5;
+    averageInfo = (RollupState.AverageInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'AVERAGE'), RollupState.AverageInfo.class);
+    averageInfo.increment(20);
 
     Test.startTest();
     state.commitState(stubJobId);
@@ -105,12 +129,11 @@ private class RollupStateTests {
     RollupState state = new RollupState();
 
     List<Map<String, Object>> statesToSample = new List<Map<String, Object>>();
-    for (Integer index = 0; index < 6000; index++) {
+    for (Integer index = 0; index < 7999; index++) {
       Rollup__mdt clonedMeta = template.clone();
       clonedMeta.DeveloperName += '' + index;
-      RollupState.GenericInfo info = new RollupState.GenericInfo();
+      RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(stubAccountId, clonedMeta, RollupState.GenericInfo.class);
       info.value = index;
-      state.setState(stubAccountId, clonedMeta, info);
       if (index < 20) {
         statesToSample.add(info.getUntypedState());
       }
@@ -118,11 +141,11 @@ private class RollupStateTests {
     state.commitState(stubJobId);
 
     List<RollupState__c> committedStates = [
-      SELECT Body0__c, Body1__c, Body2__c, Body3__c, Body4__c
+      SELECT Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, RelatedRecordKeys0__c
       FROM RollupState__c
     ];
 
-    Assert.areEqual(2, committedStates.size());
+    Assert.areEqual(3, committedStates.size());
     Boolean body0Filled = false;
     Boolean body1Filled = false;
     Boolean body2Filled = false;
@@ -135,6 +158,7 @@ private class RollupStateTests {
       body2Filled = body2Filled || committedState.Body2__c != null;
       body3Filled = body3Filled || committedState.Body3__c != null;
       body4Filled = body4Filled || committedState.Body4__c != null;
+      Assert.areEqual(stubAccountId, committedState.RelatedRecordKeys0__c);
       if (sampleStatesFilled) {
         Boolean isDuplicate = committedState.Body0__c.contains(JSON.serialize(statesToSample).removeStart('[').removeEnd(']'));
         if (isDuplicate) {
@@ -179,9 +203,8 @@ private class RollupStateTests {
     // 255 / 18 characters ~= 13 records per field (accounting for commas)
     for (Integer index = 0; index < 17 * 15; index++) {
       String stubAccountId = RollupTestUtils.createId(Account.SObjectType) + 'aaa';
-      RollupState.GenericInfo info = new RollupState.GenericInfo();
+      RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(stubAccountId, template, RollupState.GenericInfo.class);
       info.value = index;
-      state.setState(stubAccountId, template, info);
       List<String> keys;
       if (index < 13) {
         keys = fieldKeys0;
@@ -217,7 +240,7 @@ private class RollupStateTests {
 
     List<RollupState__c> committedStates = [
       SELECT
-        RelatedRecordKeys__c,
+        RelatedRecordKeys0__c,
         RelatedRecordKeys1__c,
         RelatedRecordKeys2__c,
         RelatedRecordKeys3__c,
@@ -238,11 +261,11 @@ private class RollupStateTests {
     RollupState__c secondState = committedStates.get(1);
     // swap out for the correct "first" state - since they're inserted at the same time
     // there's no deterministic way to order them
-    if (firstState.RelatedRecordKeys__c.startsWith('001000000000001') == false) {
+    if (firstState.RelatedRecordKeys0__c.startsWith('001000000000001') == false) {
       secondState = firstState;
       firstState = committedStates.get(1);
     }
-    Assert.isNotNull(firstState.RelatedRecordKeys__c, 'RelatedRecordKeys__c should have been filled out');
+    Assert.isNotNull(firstState.RelatedRecordKeys0__c, 'RelatedRecordKeys0__c should have been filled out');
     Assert.isNotNull(firstState.RelatedRecordKeys1__c, 'RelatedRecordKeys1__c should have been filled out');
     Assert.isNotNull(firstState.RelatedRecordKeys2__c, 'RelatedRecordKeys2__c should have been filled out');
     Assert.isNotNull(firstState.RelatedRecordKeys3__c, 'RelatedRecordKeys3__c should have been filled out');
@@ -254,7 +277,7 @@ private class RollupStateTests {
     Assert.isNotNull(firstState.RelatedRecordKeys9__c, 'RelatedRecordKeys9__c should have been filled out');
     Assert.isNotNull(firstState.RelatedRecordKeys10__c, 'RelatedRecordKeys10__c should have been filled out');
 
-    Assert.areEqual(String.join(fieldKeys0, ','), firstState.RelatedRecordKeys__c, 'fieldKeys0');
+    Assert.areEqual(String.join(fieldKeys0, ','), firstState.RelatedRecordKeys0__c, 'fieldKeys0');
     Assert.areEqual(String.join(fieldKeys1, ','), firstState.RelatedRecordKeys1__c, 'fieldKeys1');
     Assert.areEqual(String.join(fieldKeys2, ','), firstState.RelatedRecordKeys2__c, 'fieldKeys2');
     Assert.areEqual(String.join(fieldKeys3, ','), firstState.RelatedRecordKeys3__c, 'fieldKeys3');
@@ -265,7 +288,7 @@ private class RollupStateTests {
     Assert.areEqual(String.join(fieldKeys8, ','), firstState.RelatedRecordKeys8__c, 'fieldKeys8');
     Assert.areEqual(String.join(fieldKeys9, ','), firstState.RelatedRecordKeys9__c, 'fieldKeys9');
     Assert.areEqual(String.join(fieldKeys10, ','), firstState.RelatedRecordKeys10__c, 'fieldKeys10');
-    Assert.areEqual(String.join(fieldKeys0_1, ','), secondState.RelatedRecordKeys__c, 'fieldKeys0_1');
+    Assert.areEqual(String.join(fieldKeys0_1, ','), secondState.RelatedRecordKeys0__c, 'fieldKeys0_1');
   }
 
   @IsTest
@@ -286,7 +309,7 @@ private class RollupStateTests {
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
     insert new List<RollupState__c>{
       new RollupState__c(RelatedJobId__c = stubJobId),
-      new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys__c = stubAccountId)
+      new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys0__c = stubAccountId)
     };
 
     RollupState state = new RollupState();

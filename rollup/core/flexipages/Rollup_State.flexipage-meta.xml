@@ -27,8 +27,8 @@
                     <name>uiBehavior</name>
                     <value>none</value>
                 </fieldInstanceProperties>
-                <fieldItem>Record.RelatedRecordKeys__c</fieldItem>
-                <identifier>RecordRelatedRecordKeys_cField</identifier>
+                <fieldItem>Record.RelatedRecordKeys0__c</fieldItem>
+                <identifier>RecordRelatedRecordKeys0_cField</identifier>
             </fieldInstance>
         </itemInstances>
         <itemInstances>
