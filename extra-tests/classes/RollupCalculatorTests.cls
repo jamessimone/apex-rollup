@@ -245,9 +245,8 @@ private class RollupCalculatorTests {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, lookupKey, Account.Id);
     RollupState outerState = new RollupState();
-    RollupState.SObjectInfo info = new RollupState.SObjectInfo();
+    RollupState.SObjectInfo info = (RollupState.SObjectInfo) outerState.getState(lookupKey, metadata, RollupState.SObjectInfo.class);
     info.setItem(new Opportunity(Name = 'a', Amount = 3));
-    outerState.setState(lookupKey, metadata, info);
     calc.setState(outerState);
 
     calc.performRollup(
@@ -724,11 +723,10 @@ private class RollupCalculatorTests {
   static void mostRespectsStateValues() {
     Account acc = [SELECT Id FROM Account];
     Integer priorVal = 50;
-    RollupState.MostInfo info = new RollupState.MostInfo();
-    info.setValues(2, priorVal);
     RollupState outerState = new RollupState();
     Rollup__mdt metaKey = new Rollup__mdt();
-    outerState.setState(acc.Id, metaKey, info);
+    RollupState.MostInfo info = (RollupState.MostInfo) outerState.getState(acc.Id, metaKey, RollupState.MostInfo.class);
+    info.setValues(2, priorVal);
 
     RollupCalculator calc = getCalculator(
       priorVal,
@@ -893,10 +891,9 @@ private class RollupCalculatorTests {
     String accountKey = '0011g00003VDGbF002';
     Integer value = 1;
     RollupCalculator calc = getCalculator(null, Rollup.Op.SUM, Opportunity.Amount, Account.AnnualRevenue, metaKey, accountKey, Opportunity.AccountId);
-    RollupState.GenericInfo info = new RollupState.GenericInfo();
-    info.value = value;
     RollupState outerState = new RollupState();
-    outerState.setState(accountKey, metaKey, info);
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = value;
     calc.setState(outerState);
 
     Opportunity one = new Opportunity(Id = '0066g00003VDGbF001', Amount = 5, AccountId = accountKey);
@@ -914,10 +911,10 @@ private class RollupCalculatorTests {
     String accountKey = '0011g00003VDGbF002';
     Integer value = 1;
     RollupCalculator calc = getCalculator(null, Rollup.Op.SUM, Opportunity.Amount, Account.AnnualRevenue, metaKey, accountKey, Opportunity.AccountId);
-    RollupState.GenericInfo info = new RollupState.GenericInfo();
-    info.value = value;
     RollupState outerState = new RollupState();
-    outerState.setState(accountKey, metaKey, info);
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = value;
+
     calc.setState(outerState);
     calc.setFullRecalc(true);
     calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount = 0', Opportunity.SObjectType));
@@ -2224,7 +2221,8 @@ private class RollupCalculatorTests {
   static void averageFactorsInBatchState() {
     Rollup__mdt meta = new Rollup__mdt();
     String lookupKey = RollupTestUtils.createId(Account.SObjectType);
-    RollupState.AverageInfo state = new RollupState.AverageInfo();
+    RollupState outerState = new RollupState();
+    RollupState.AverageInfo state = (RollupState.AverageInfo) outerState.getState(lookupKey, meta, RollupState.AverageInfo.class);
     state.denominator = 15;
     state.numerator = 75;
     RollupCalculator calc = getCalculator(
@@ -2236,10 +2234,8 @@ private class RollupCalculatorTests {
       lookupKey,
       Account.Id
     );
-
-    RollupState outerState = new RollupState();
-    outerState.setState(lookupKey, meta, state);
     calc.setState(outerState);
+
     calc.performRollup(
       new List<SObject>{
         new Opportunity(Amount = 15),

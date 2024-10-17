@@ -452,14 +452,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (System.isQueueable()) {
         hasAlreadyAsyncEnqueued = true;
       }
-      return System.enqueueJob(this);
+      String newJobId = System.enqueueJob(this);
+      this.setCurrentJobId(newJobId);
+      return newJobId;
     }
 
     public void execute(System.QueueableContext qc) {
       this.logger.log('Starting queueable', this, System.LoggingLevel.INFO);
       AdditionalContext context = new AdditionalContext(qc);
       this.setCurrentJobId(context.getJobId());
-      System.attachFinalizer(new RollupFinalizer());
+      this.jobId = this.jobId ?? context.getJobId();
+      System.attachFinalizer(this.getFinalizer());
 
       this.performWork();
 
@@ -469,6 +472,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.executeFinish();
       }
     }
+  }
+
+  protected virtual System.Finalizer getFinalizer() {
+    return new RollupFinalizer();
   }
 
   private class AdditionalContext implements Database.BatchableContext {

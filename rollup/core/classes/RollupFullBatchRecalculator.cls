@@ -1,5 +1,7 @@
-public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor implements Database.Stateful, Database.RaisesPlatformEvents {
+public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor {
   private final RollupState state = new RollupState();
+  private Database.Cursor cursor;
+  private Integer currentPosition = 0;
 
   public RollupFullBatchRecalculator(
     String queryString,
@@ -14,6 +16,15 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
   public override RollupState getState() {
     return this.state;
+  }
+
+  public override void finish(Database.BatchableContext bc) {
+    // TODO
+    // if (this.currentPosition < this.cursor.getNumRecords()) {
+    //   this.startAsyncWork();
+    // } else {
+    //   // super.finish(bc);
+    // }
   }
 
   protected override void performWork() {
@@ -36,6 +47,32 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   protected virtual override String startAsyncWork() {
-    return this.startBatchProcessor();
+    this.cursor = this.cursor ?? this.preStart().getCursor();
+
+    Integer countOfRecordsToReturn = this.rollupControl.BatchChunkSize__c.intValue();
+    this.calcItems = this.cursor.fetch(this.currentPosition, countOfRecordsToReturn);
+    this.currentPosition += countOfRecordsToReturn;
+    return super.startAsyncWork();
+  }
+
+  protected override System.Finalizer getFinalizer() {
+    return new MyAWESOMEFinalizer(this);
+  }
+
+  private class MyAWESOMEFinalizer implements System.Finalizer {
+    private final RollupFullBatchRecalculator conductor;
+    public MyAWESOMEFinalizer(RollupFullBatchRecalculator conductor) {
+      this.conductor = conductor;
+    }
+
+    public void execute(System.FinalizerContext fc) {
+      switch on fc.getResult() {
+        when SUCCESS {
+          if (this.conductor.currentPosition < this.conductor.cursor.getNumRecords()) {
+            this.conductor.startAsyncWork();
+          }
+        }
+      }
+    }
   }
 }

@@ -2,8 +2,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   protected transient String key;
   protected transient Integer keyLength;
   protected transient String typeName;
-  protected transient Long lastModified;
-  protected transient Long timestamp;
   protected transient Id recordId;
   protected final Set<String> jobIds = new Set<String>();
 
@@ -31,6 +29,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     RollupState possibleState = KEY_TO_STATE.get(trueKey);
     if (possibleState == null) {
       possibleState = (RollupState) initializingType.newInstance();
+      possibleState.recordId = key;
       this.setState(trueKey, key.length(), possibleState);
     }
     return possibleState;
@@ -79,7 +78,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'keyLength' => this.keyLength,
         'numerator' => this.numerator,
         'recordId' => this.recordId,
-        'timestamp' => this.timestamp ?? System.now().getTime(),
+
         'typeName' => AverageInfo.class.getName()
       };
     }
@@ -104,7 +103,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'key' => this.key,
         'keyLength' => this.keyLength,
         'recordId' => this.recordId,
-        'timestamp' => this.timestamp ?? System.now().getTime(),
+
         'typeName' => MostInfo.class.getName(),
         'value' => this.value
       };
@@ -130,7 +129,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'key' => this.key,
         'keyLength' => this.keyLength,
         'recordId' => this.recordId,
-        'timestamp' => this.timestamp ?? System.now().getTime(),
+
         'typeName' => SObjectInfo.class.getName()
       };
     }
@@ -156,9 +155,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'commitCount' => this.commitCount,
         'key' => this.key,
         'keyLength' => this.keyLength,
-        'lastModified' => System.now().getTime(),
+
         'recordId' => this.recordId,
-        'timestamp' => this.timestamp ?? System.now().getTime(),
+
         'typeName' => GenericInfo.class.getName(),
         'value' => this.value
       };
@@ -204,36 +203,15 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
             Integer currentSize = stateIdToCreatedDate.size();
             stateIdToCreatedDate.put(state.Id, state.CreatedDate);
             if (currentSize == 1 && stateIdToCreatedDate.size() > 1) {
-              System.debug('-------------------------- current commit count: ' + this.commitCount);
-              System.debug('Related key shows up across multiple states: ' + stateIdToCreatedDate);
-              for (Id id : stateIdToCreatedDate.keySet()) {
-                System.debug('Id (' + id + ') already exists in statefulPreviouslyRetrievedStateIds? ' + this.statefulPreviouslyRetrievedStateIds.contains(id));
-              }
+              // System.debug('-------------------------- current commit count: ' + this.commitCount);
+              // System.debug('Related key shows up across multiple states: ' + stateIdToCreatedDate);
+              // for (Id id : stateIdToCreatedDate.keySet()) {
+              //   System.debug('Id (' + id + ') already exists in statefulPreviouslyRetrievedStateIds? ' + this.statefulPreviouslyRetrievedStateIds.contains(id));
+              // }
             }
             RollupState currentStateInMap = (RollupState) KEY_TO_STATE.get(castState.key);
-            if (currentStateInMap != null && currentStateInMap.timestamp != castState.timestamp) {
-              System.debug('!!!!!!!!!!!!!!!!!! - would have accidentally used an out-of-date state');
-              System.debug(
-                'Created: ' +
-                  Datetime.newInstance(currentStateInMap.timestamp) +
-                  ' modified: ' +
-                  Datetime.newInstance(currentStateInMap.lastModified) +
-                  ' for state in map: ' +
-                  currentStateInMap
-              );
-              System.debug(
-                'Created: ' +
-                  Datetime.newInstance(castState.timestamp) +
-                  ' modified: ' +
-                  Datetime.newInstance(currentStateInMap.lastModified) +
-                  ' for state out of map: ' +
-                  castState
-              );
-              System.debug('Cast state db record delete? ' + idToState.get(castState.recordId).IsDeleted);
-              System.debug('current map state db record delete? ' + idToState.get(currentStateInMap.recordId).IsDeleted);
-            } else {
-              KEY_TO_STATE.put(castState.key, castState);
-            }
+
+            KEY_TO_STATE.put(castState.key, castState);
           }
         }
       }
@@ -286,7 +264,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         // and the ongoing issues with Ids being present in this.statefulPreviouslyRetrievedStateIds
         // yet still being retrieved here is more an artifact of Database.Stateful/Database.Batchable
         // as evinced by the crazy debug statements above in this.loadState
-        (RelatedRecordKeys__c LIKE :quotedRecordKeys
+        (RelatedRecordKeys0__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys1__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys2__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys3__c LIKE :quotedRecordKeys
@@ -325,7 +303,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Integer currentLength = 0;
     Integer stateCounter = 0;
     List<Map<String, Object>> untypedStates = new List<Map<String, Object>>();
-    Schema.SObjectField relatedKeysFieldToken = RollupState__c.RelatedRecordKeys__c;
+    Schema.SObjectField relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
     Schema.SObjectField relatedBodyFieldToken = RollupState__c.Body0__c;
     for (String key : KEY_TO_STATE.keySet()) {
       RollupState state = KEY_TO_STATE.get(key);
@@ -368,6 +346,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
           currentStateToInsert.put(sentinel.token, getJoinedKeys(relatedRecordKeys));
         }
         relatedRecordKeyLength = 0;
+        // TODO
+        // if (currentRelatedRecordFieldIndex > 10 && currentStateToInsert.get(relatedBodyFieldToken) == null) {
+        //   relatedRecordKeyLength = maxRelatedKeysLength;
+        // }
       }
       // There's some undocumented soft limit to the amount of data that can be stored in a long text area
       // so we use another slight buffer to avoid running into the actual limit
@@ -381,7 +363,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
           currentRelatedRecordFieldIndex = 0;
           currentBodyFieldIndex = 1;
           relatedRecordKeyLength = 0;
-          relatedKeysFieldToken = RollupState__c.RelatedRecordKeys__c;
+          relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
           currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
           statesToInsert.add(currentStateToInsert);
           relatedRecordKeys.add(recordKey);
@@ -389,6 +371,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
           currentBodyFieldIndex++;
         }
         currentLength = 0;
+        if (currentBodyFieldIndex > 4 && currentStateToInsert.get(relatedKeysFieldToken) == null) {
+          currentLength = maxBodyLength;
+        }
         currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
       }
     }
@@ -418,9 +403,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
     System.debug('Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')');
-    for (RollupState__c created : statesToInsert) {
-      System.debug(created.Id);
-    }
     this.commitCount++;
   }
 
@@ -439,7 +421,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     switch on currentIndex {
       when 0 {
-        sentinel.token = RollupState__c.RelatedRecordKeys__c;
+        sentinel.token = RollupState__c.RelatedRecordKeys0__c;
       }
       when 1 {
         sentinel.token = RollupState__c.RelatedRecordKeys1__c;
@@ -472,7 +454,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         sentinel.token = RollupState__c.RelatedRecordKeys10__c;
       }
       when else {
-        sentinel.token = RollupState__c.RelatedRecordKeys__c;
+        sentinel.token = RollupState__c.RelatedRecordKeys0__c;
         sentinel.shouldReset = true;
       }
     }
