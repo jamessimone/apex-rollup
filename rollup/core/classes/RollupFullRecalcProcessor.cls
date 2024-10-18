@@ -163,10 +163,11 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     super.customizeToStringEntries(props);
-    this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
+    Integer numberOfRollups = this.rollupMetas?.size();
+    this.addToMap(props, 'Rollup Metadata',  numberOfRollups > 5 ? (Object) numberOfRollups : (Object) this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
     this.addToMap(props, 'Caboose Count', this.cabooses.size());
-    this.addToMap(props, 'Inner rollups', this.rollupMetas?.size());
+    this.addToMap(props, 'Inner rollups', numberOfRollups);
     return props;
   }
 
