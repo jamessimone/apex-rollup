@@ -452,9 +452,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (System.isQueueable()) {
         hasAlreadyAsyncEnqueued = true;
       }
-      String newJobId = System.enqueueJob(this);
-      this.setCurrentJobId(newJobId);
-      return newJobId;
+      return System.enqueueJob(this);
     }
 
     public void execute(System.QueueableContext qc) {

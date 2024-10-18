@@ -1,12 +1,15 @@
 public without sharing virtual class RollupState implements System.Queueable, System.Finalizer, RollupLogger.ToStringObject {
   protected transient String key;
   protected transient Integer keyLength;
+  protected transient String recordId;
   protected transient String typeName;
-  protected transient Id recordId;
   protected final Set<String> jobIds = new Set<String>();
 
   private Long commitCount = 1;
   private Set<Id> statefulPreviouslyRetrievedStateIds = new Set<Id>();
+
+  @TestVisible
+  private static Integer maxBodyLength = 131072;
 
   private static final Map<String, RollupState> KEY_TO_STATE {
     get {
@@ -71,14 +74,11 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'commitCount' => this.commitCount,
         'denominator' => this.denominator,
         'distinctNumerators' => this.distinctNumerators,
         'key' => this.key,
         'keyLength' => this.keyLength,
         'numerator' => this.numerator,
-        'recordId' => this.recordId,
-
         'typeName' => AverageInfo.class.getName()
       };
     }
@@ -98,12 +98,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'commitCount' => this.commitCount,
         'largestPointCounter' => this.largestPointCounter,
         'key' => this.key,
         'keyLength' => this.keyLength,
-        'recordId' => this.recordId,
-
         'typeName' => MostInfo.class.getName(),
         'value' => this.value
       };
@@ -123,13 +120,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'commitCount' => this.commitCount,
         'item' => this.item,
         'itemType' => '' + this.item.getSObjectType(),
         'key' => this.key,
         'keyLength' => this.keyLength,
-        'recordId' => this.recordId,
-
         'typeName' => SObjectInfo.class.getName()
       };
     }
@@ -152,12 +146,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public virtual override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'commitCount' => this.commitCount,
         'key' => this.key,
         'keyLength' => this.keyLength,
-
-        'recordId' => this.recordId,
-
         'typeName' => GenericInfo.class.getName(),
         'value' => this.value
       };
@@ -165,10 +155,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public void loadState(String jobId, Set<String> relatedRecordKeys) {
-    Map<String, Map<Id, Datetime>> keyToDbStateInfo = new Map<String, Map<Id, Datetime>>();
+    RollupLogger.Instance.log('Loading state for jobId: ' + jobId, System.LoggingLevel.DEBUG);
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
-    Map<Id, RollupState__c> idToState = new Map<Id, RollupState__c>(matchingState);
-    List<Object> uncastStates = new List<Object>();
     for (RollupState__c state : matchingState) {
       if (state.IsCached__c == false) {
         state.IsCached__c = true;
@@ -194,22 +182,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
             .getValue();
           for (Object uncastState : localUncastStates) {
             RollupState castState = (RollupState) uncastState;
-            castState.recordId = state.Id;
-            Map<Id, Datetime> stateIdToCreatedDate = keyToDbStateInfo.get(castState.key);
-            if (stateIdToCreatedDate == null) {
-              stateIdToCreatedDate = new Map<Id, Datetime>{ state.Id => state.CreatedDate };
-              keyToDbStateInfo.put(castState.key, stateIdToCreatedDate);
-            }
-            Integer currentSize = stateIdToCreatedDate.size();
-            stateIdToCreatedDate.put(state.Id, state.CreatedDate);
-            if (currentSize == 1 && stateIdToCreatedDate.size() > 1) {
-              // System.debug('-------------------------- current commit count: ' + this.commitCount);
-              // System.debug('Related key shows up across multiple states: ' + stateIdToCreatedDate);
-              // for (Id id : stateIdToCreatedDate.keySet()) {
-              //   System.debug('Id (' + id + ') already exists in statefulPreviouslyRetrievedStateIds? ' + this.statefulPreviouslyRetrievedStateIds.contains(id));
-              // }
-            }
-            RollupState currentStateInMap = (RollupState) KEY_TO_STATE.get(castState.key);
 
             KEY_TO_STATE.put(castState.key, castState);
           }
@@ -217,6 +189,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
       this.statefulPreviouslyRetrievedStateIds.add(state.Id);
     }
+    RollupLogger.Instance.log('Stateful previously retrieved state Ids size: ' + this.statefulPreviouslyRetrievedStateIds.size(), System.LoggingLevel.DEBUG);
   }
 
   public void commitState(String jobId) {
@@ -250,6 +223,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     String cacheKey = String.join(relatedRecordKeys, '');
     List<RollupState__c> states = CACHED_STATES.get(cacheKey);
     if (relatedRecordKeys.isEmpty() || states != null) {
+      RollupLogger.Instance.log('Returning state from cache for record size: ' + states.size(), System.LoggingLevel.DEBUG);
       return new List<RollupState__c>();
     }
     List<String> quotedRecordKeys = new List<String>();
@@ -257,13 +231,29 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       quotedRecordKeys.add('%' + recordKey + '%');
     }
     states = [
-      SELECT Id, Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, IsCached__c, CreatedDate, IsDeleted
+      SELECT
+        Id,
+        Body0__c,
+        Body1__c,
+        Body2__c,
+        Body3__c,
+        Body4__c,
+        IsCached__c,
+        CreatedDate,
+        IsDeleted,
+        RelatedRecordKeys0__c,
+        RelatedRecordKeys1__c,
+        RelatedRecordKeys2__c,
+        RelatedRecordKeys3__c,
+        RelatedRecordKeys4__c,
+        RelatedRecordKeys5__c,
+        RelatedRecordKeys6__c,
+        RelatedRecordKeys7__c,
+        RelatedRecordKeys8__c,
+        RelatedRecordKeys9__c,
+        RelatedRecordKeys10__c
       FROM RollupState__c
       WHERE
-        // TODO - check to see if RelatedRecordKeysIndex__c was actually working
-        // and the ongoing issues with Ids being present in this.statefulPreviouslyRetrievedStateIds
-        // yet still being retrieved here is more an artifact of Database.Stateful/Database.Batchable
-        // as evinced by the crazy debug statements above in this.loadState
         (RelatedRecordKeys0__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys1__c LIKE :quotedRecordKeys
         OR RelatedRecordKeys2__c LIKE :quotedRecordKeys
@@ -285,12 +275,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     return states;
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCrudViolation, PMD.AvoidDeeplyNestedIfStmts')
   private void populateRelatedRecordStates(String jobId) {
     RollupState__c currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
     List<RollupState__c> statesToInsert = new List<RollupState__c>{ currentStateToInsert };
-    // all of the Body fields share the same length
-    Integer maxBodyLength = 131072;
     Integer maxRelatedKeysLength = 255;
     Integer numberOfStates = KEY_TO_STATE.size();
 
@@ -360,8 +348,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         if (sentinel.shouldReset) {
           allRecordKeys = new Set<String>();
           currentStateToInsert.put(relatedKeysFieldToken, getJoinedKeys(relatedRecordKeys));
+          currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
+
           currentRelatedRecordFieldIndex = 0;
-          currentBodyFieldIndex = 1;
+          currentBodyFieldIndex = 0;
           relatedRecordKeyLength = 0;
           relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
           currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
@@ -371,10 +361,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
           currentBodyFieldIndex++;
         }
         currentLength = 0;
-        if (currentBodyFieldIndex > 4 && currentStateToInsert.get(relatedKeysFieldToken) == null) {
-          currentLength = maxBodyLength;
-        }
-        currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
+        // if (currentBodyFieldIndex > 4 && currentStateToInsert.get(relatedKeysFieldToken) == null) {
+        //   currentLength = maxBodyLength;
+        // }
+        // currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
       }
     }
     if (stateCounter == numberOfStates) {
@@ -396,13 +386,13 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     for (Integer reverseIndex = statesToInsert.size() - 1; reverseIndex >= 0; reverseIndex--) {
       RollupState__c state = statesToInsert[reverseIndex];
       if (state.Body0__c == null && state.Body1__c == null && state.Body2__c == null && state.Body3__c == null && state.Body4__c == null) {
-        System.debug('Removing null body');
+        RollupLogger.Instance.log('Removing null body', System.LoggingLevel.DEBUG);
         statesToInsert.remove(reverseIndex);
       }
     }
 
     Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
-    System.debug('Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')');
+    RollupLogger.Instance.log('Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')', System.LoggingLevel.DEBUG);
     this.commitCount++;
   }
 
@@ -468,18 +458,18 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       when 0 {
         sentinel.token = RollupState__c.Body0__c;
       }
-      when 1 {
-        sentinel.token = RollupState__c.Body1__c;
-      }
-      when 2 {
-        sentinel.token = RollupState__c.Body2__c;
-      }
-      when 3 {
-        sentinel.token = RollupState__c.Body3__c;
-      }
-      when 4 {
-        sentinel.token = RollupState__c.Body4__c;
-      }
+      // when 1 {
+      //   sentinel.token = RollupState__c.Body1__c;
+      // }
+      // when 2 {
+      //   sentinel.token = RollupState__c.Body2__c;
+      // }
+      // when 3 {
+      //   sentinel.token = RollupState__c.Body3__c;
+      // }
+      // when 4 {
+      //   sentinel.token = RollupState__c.Body4__c;
+      // }
       when else {
         sentinel.token = RollupState__c.Body0__c;
         sentinel.shouldReset = true;
