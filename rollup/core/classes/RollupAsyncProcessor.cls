@@ -1305,7 +1305,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (roll.isFullRecalc && roll.op.name().contains('DELETE')) {
       rollupOp = this.getOpMap().get(roll.op.name().substringAfter('_'));
     }
-    Object fallbackValue = this.getDefaultValue(roll.metadata);
+    Object defaultVal = this.getDefaultValue(roll.metadata);
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
@@ -1333,19 +1333,19 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // has already been setup to adjust the lookup item's rollup field
         if (localCalcItems.isEmpty() == false || (localCalcItems.isEmpty() && oldLookupItems.isEmpty())) {
           Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset('' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false
-            ? fallbackValue
+            ? defaultVal
             : priorVal;
           calc = this.getCalculator(rollupOp, calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
-          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
+          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems, defaultVal);
         }
       } else {
         this.logger.log('About to reset parent field for', lookupRecord, System.LoggingLevel.DEBUG);
-        this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, fallbackValue);
+        this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, defaultVal);
       }
       roll.performGroupedRollup(calc, rollupOp, lookupRecord, key, recordsToUpdate);
     }
 
-    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll);
+    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll, defaultVal);
     this.handleFullRecalculators(roll);
 
     return recordsToUpdate.values();
@@ -1426,7 +1426,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<SObject> lookupItems,
     Map<String, List<SObject>> oldLookupItems,
     Map<String, SObject> recordsToUpdate,
-    RollupAsyncProcessor roll
+    RollupAsyncProcessor roll,
+    Object defaultVal
   ) {
     if (oldLookupItems.isEmpty() || this.isEmptyReparentingOp(roll.op)) {
       return;
@@ -1470,7 +1471,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = new CalcItemBag(reparentedCalcItems);
         bag.hasQueriedForAdditionalItems = true;
         calc = this.getCalculator(deleteOp, calc, oldLookupsRollup, bag, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
-        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.REPARENTED, reparentedCalcItems);
+        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.REPARENTED, reparentedCalcItems, defaultVal);
       }
     }
   }
@@ -1482,7 +1483,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll,
     Map<String, SObject> recordsToUpdate,
     ParentUpdateType parentUpdateType,
-    List<SObject> localCalcItems
+    List<SObject> localCalcItems,
+    Object defaultVal
   ) {
     String logKey = parentUpdateType.name().toLowerCase();
     this.logger.log(logKey + ' record prior to rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
@@ -1494,7 +1496,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       newVal = priorVal;
     }
     String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-    if (priorVal != newVal) {
+    if (priorVal != newVal && (priorVal == defaultVal || newVal != defaultVal || this.fullRecalcProcessor == null)) {
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     this.storeParentResetField(key, lookupRecord);
@@ -1521,7 +1523,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    calc.setDefaultValues(key, this.getDefaultValue(this.metadata));
+    Object defaultVal = this.getDefaultValue(this.metadata);
+    calc.setDefaultValues(key, defaultVal);
     calc.setMultiCurrencyInfo(lookupRecord);
 
     this.conditionallyPerformUpdate(
@@ -1531,7 +1534,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this,
       recordsToUpdate,
       ParentUpdateType.GROUPING,
-      null
+      null,
+      defaultVal
     );
   }
 

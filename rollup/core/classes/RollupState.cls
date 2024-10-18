@@ -72,6 +72,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       return this.denominator == 0;
     }
 
+    // TODO - experiment to see if the deserialization in Dataweave will
+    // support the same map for each class such that the "value" key becomes
+    // the only thing that differs between all of these "getUntypedState" declarations
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
         'denominator' => this.denominator,
@@ -129,10 +132,13 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  // TODO - even though GenericInfo was the most widely-used state object
-  // that I was testing with, in theory it isn't needed at all - that's because
-  // each parent record getting retrieved SHOULD already have the last rolled up value
-  // on it already, and no parallel-processing occurs in any of these full recalculation jobs
+  /**
+   * In theory, GenericInfo is overkill for what it does - any rollup operation that can be reduced to a single value
+   * COULD simply take whatever the current value on the parent record is as the source of truth. That being said, the
+   * prior implementation with `Database.Stateful` shamefully split the logic between `RollupAsyncProcessor` and `RollupState`
+   * when managing prior values, and duplicating _some_ data here (as far as what eventually gets persisted to the database as `RollupState__c` records)
+   * seems vastly preferable as opposed to the logic living in two different places
+   */
   public virtual class GenericInfo extends RollupState {
     public Object value;
 
@@ -145,12 +151,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
 
     public virtual override Map<String, Object> getUntypedState() {
-      return new Map<String, Object>{
-        'key' => this.key,
-        'keyLength' => this.keyLength,
-        'typeName' => GenericInfo.class.getName(),
-        'value' => this.value
-      };
+      return new Map<String, Object>{ 'key' => this.key, 'keyLength' => this.keyLength, 'typeName' => GenericInfo.class.getName(), 'value' => this.value };
     }
   }
 
@@ -164,6 +165,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         if (state.Body0__c != null) {
           jsonParts.add(state.Body0__c);
         }
+        // TODO - decide if it's worth the hassle of re-implementing the correct sentinel detection necessary
+        // to populate the remaining Body{n}__c fields. At the moment, for "batch" sizes of 500 children, only
+        // ~12 state records were being inserted per transaction, which is an absolute pittance for the amount of data
+        // each one holds, and the extra complexity of compressing the data further might be more trouble than it's worth
         if (state.Body1__c != null) {
           jsonParts.add(state.Body1__c);
         }
@@ -189,7 +194,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
       this.statefulPreviouslyRetrievedStateIds.add(state.Id);
     }
-    RollupLogger.Instance.log('Stateful previously retrieved state Ids size: ' + this.statefulPreviouslyRetrievedStateIds.size(), System.LoggingLevel.DEBUG);
   }
 
   public void commitState(String jobId) {
@@ -238,20 +242,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         Body2__c,
         Body3__c,
         Body4__c,
-        IsCached__c,
-        CreatedDate,
-        IsDeleted,
-        RelatedRecordKeys0__c,
-        RelatedRecordKeys1__c,
-        RelatedRecordKeys2__c,
-        RelatedRecordKeys3__c,
-        RelatedRecordKeys4__c,
-        RelatedRecordKeys5__c,
-        RelatedRecordKeys6__c,
-        RelatedRecordKeys7__c,
-        RelatedRecordKeys8__c,
-        RelatedRecordKeys9__c,
-        RelatedRecordKeys10__c
+        IsCached__c
       FROM RollupState__c
       WHERE
         (RelatedRecordKeys0__c LIKE :quotedRecordKeys
@@ -288,7 +279,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Integer relatedRecordKeyLength = 0;
     Integer currentRelatedRecordFieldIndex = 0;
     Integer currentBodyFieldIndex = 0;
-    Integer currentLength = 0;
+    Double currentLength = 0;
     Integer stateCounter = 0;
     List<Map<String, Object>> untypedStates = new List<Map<String, Object>>();
     Schema.SObjectField relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
@@ -308,7 +299,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
       Map<String, Object> untypedState = state.getUntypedState();
       // 1.1 is enough of a buffer for the serialized version with quoted characters and the + 1 accounts for commas as the delimiter between state objects
-      currentLength += (untypedState.toString().length() * 1.1).intValue() + 1;
+      currentLength += (untypedState.toString().length() * 1.1) + 1;
       untypedStates.add(untypedState);
 
       // if the next key would overflow the current related keys field, either step to the new field
@@ -334,10 +325,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
           currentStateToInsert.put(sentinel.token, getJoinedKeys(relatedRecordKeys));
         }
         relatedRecordKeyLength = 0;
-        // TODO
-        // if (currentRelatedRecordFieldIndex > 10 && currentStateToInsert.get(relatedBodyFieldToken) == null) {
-        //   relatedRecordKeyLength = maxRelatedKeysLength;
-        // }
       }
       // There's some undocumented soft limit to the amount of data that can be stored in a long text area
       // so we use another slight buffer to avoid running into the actual limit
@@ -361,10 +348,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
           currentBodyFieldIndex++;
         }
         currentLength = 0;
-        // if (currentBodyFieldIndex > 4 && currentStateToInsert.get(relatedKeysFieldToken) == null) {
-        //   currentLength = maxBodyLength;
-        // }
-        // currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
       }
     }
     if (stateCounter == numberOfStates) {
@@ -386,13 +369,20 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     for (Integer reverseIndex = statesToInsert.size() - 1; reverseIndex >= 0; reverseIndex--) {
       RollupState__c state = statesToInsert[reverseIndex];
       if (state.Body0__c == null && state.Body1__c == null && state.Body2__c == null && state.Body3__c == null && state.Body4__c == null) {
+        // TODO: at the moment there's still some tracking bug with the related record keys, above, that causes currentStateToInsert to end up
+        // without any corresponding body. It doesn't seem to cause any harm with the actual calculations since there's no associated data, and the keys
+        // also seem to end up with the correct records without issue. While it would be nice to fix the underlying "off by one" error, this guard clause
+        // suffices for the present day
         RollupLogger.Instance.log('Removing null body', System.LoggingLevel.DEBUG);
         statesToInsert.remove(reverseIndex);
       }
     }
 
     Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
-    RollupLogger.Instance.log('Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')', System.LoggingLevel.DEBUG);
+    RollupLogger.Instance.log(
+      'Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')',
+      System.LoggingLevel.DEBUG
+    );
     this.commitCount++;
   }
 
