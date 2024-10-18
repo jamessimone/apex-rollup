@@ -10,11 +10,9 @@ records map (record) -> "" ++ record.typeName match {
     case "RollupState.GenericInfo" -> record as Object { class: $ }
     case "RollupState.AverageInfo" -> record as Object { class: $ }
     case "RollupState.SObjectInfo" -> {
-            commitCount: record.commitCount,
             key: record.key,
             keyLength: record.keyLength,
             item: getCompliantSObject(record.item) as Object { class: "" ++ record.itemType },
-            recordId: record.recordId,
         } as Object { class: $ }
     case "RollupState.MostInfo" -> record as Object { class: $ }
 }

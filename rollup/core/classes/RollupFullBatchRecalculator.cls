@@ -18,15 +18,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     return this.state;
   }
 
-  public override void finish(Database.BatchableContext bc) {
-    // TODO
-    // if (this.currentPosition < this.cursor.getNumRecords()) {
-    //   this.startAsyncWork();
-    // } else {
-    //   // super.finish(bc);
-    // }
-  }
-
   protected override void performWork() {
     this.process(this.getDelegatedFullRecalcRollups(this.calcItems));
   }
@@ -50,27 +41,35 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     this.cursor = this.cursor ?? this.preStart().getCursor();
 
     Integer countOfRecordsToReturn = this.rollupControl.BatchChunkSize__c.intValue();
-    this.calcItems = this.cursor.fetch(this.currentPosition, countOfRecordsToReturn);
+    this.calcItems = this.cursor.fetch(
+      this.currentPosition,
+      this.currentPosition + countOfRecordsToReturn > this.cursor.getNumRecords() ? this.cursor.getNumRecords() - this.currentPosition : countOfRecordsToReturn
+    );
     this.currentPosition += countOfRecordsToReturn;
     return super.startAsyncWork();
   }
 
   protected override System.Finalizer getFinalizer() {
-    return new MyAWESOMEFinalizer(this);
+    return new FullRecalcFinalizer(this);
   }
 
-  private class MyAWESOMEFinalizer implements System.Finalizer {
+  private class FullRecalcFinalizer extends RollupFinalizer {
     private final RollupFullBatchRecalculator conductor;
-    public MyAWESOMEFinalizer(RollupFullBatchRecalculator conductor) {
+    public FullRecalcFinalizer(RollupFullBatchRecalculator conductor) {
       this.conductor = conductor;
     }
 
-    public void execute(System.FinalizerContext fc) {
+    public override void execute(System.FinalizerContext fc) {
       switch on fc.getResult() {
         when SUCCESS {
           if (this.conductor.currentPosition < this.conductor.cursor.getNumRecords()) {
             this.conductor.startAsyncWork();
+          } else {
+            this.conductor.finish();
           }
+        }
+        when UNHANDLED_EXCEPTION {
+          this.logUnhandledException(fc);
         }
       }
     }

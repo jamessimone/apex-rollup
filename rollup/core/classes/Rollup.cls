@@ -414,7 +414,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     isDeferralAllowed = value;
   }
 
-  protected void setCurrentJobId(String jobId) {
+  public void setCurrentJobId(String jobId) {
     currentJobId = jobId;
   }
 
@@ -584,8 +584,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
-    jobId = currentJobId ?? jobId;
-    return [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
+    String jobStatus = [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
+    if ([SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId] > 0) {
+      jobStatus = 'Processing';
+    }
+    return jobStatus;
   }
 
   /**
@@ -2152,6 +2155,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         orderByFields.add(meta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.Id');
       }
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
+      orderByFields.add('Id');
     }
     return '\nORDER BY ' + String.join(orderByFields, ',');
   }
