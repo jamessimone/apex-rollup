@@ -72,9 +72,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       return this.denominator == 0;
     }
 
-    // TODO - experiment to see if the deserialization in Dataweave will
-    // support the same map for each class such that the "value" key becomes
-    // the only thing that differs between all of these "getUntypedState" declarations
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
         'denominator' => this.denominator,
@@ -159,15 +156,13 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     RollupLogger.Instance.log('Loading state for jobId: ' + jobId, relatedRecordKeys, System.LoggingLevel.DEBUG);
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
     for (RollupState__c state : matchingState) {
-      if (this.statefulPreviouslyRetrievedStateIds.contains(state.Id) == false) {
-        if (state.Body0__c != null) {
-          List<Object> localUncastStates = (List<Object>) new DataWeaveScriptResource.jsonToRollupState()
-            .execute(new Map<String, Object>{ 'records' => '[' + state.Body0__c + ']' })
-            .getValue();
-          for (Object uncastState : localUncastStates) {
-            RollupState castState = (RollupState) uncastState;
-            KEY_TO_STATE.put(castState.key, castState);
-          }
+      if (this.statefulPreviouslyRetrievedStateIds.contains(state.Id) == false && state.Body0__c != null) {
+        List<Object> localUncastStates = (List<Object>) new DataWeaveScriptResource.jsonToRollupState()
+          .execute(new Map<String, Object>{ 'records' => '[' + state.Body0__c + ']' })
+          .getValue();
+        for (Object uncastState : localUncastStates) {
+          RollupState castState = (RollupState) uncastState;
+          KEY_TO_STATE.put(castState.key, castState);
         }
       }
       this.statefulPreviouslyRetrievedStateIds.add(state.Id);
@@ -185,6 +180,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
   @SuppressWarnings('PMD.ApexCrudViolation')
   public void execute(System.QueueableContext qc) {
+    System.attachFinalizer(this);
     List<RollupState__c> matchingState = [
       SELECT Id
       FROM RollupState__c
@@ -336,6 +332,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
     RollupLogger.Instance.log(
       'Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')',
+      statesToInsert,
       System.LoggingLevel.DEBUG
     );
     KEY_TO_STATE.clear();

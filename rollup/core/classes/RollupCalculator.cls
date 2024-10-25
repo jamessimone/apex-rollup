@@ -147,6 +147,7 @@ public without sharing abstract class RollupCalculator {
   public virtual Object getReturnValue() {
     if (this.state != null && this.hasCustomStateCalculation == false) {
       RollupState.GenericInfo possibleInfo = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.GenericInfo.class);
+      RollupLogger.Instance.log('Return val: ' + this.returnVal + ', defaultVal ' + this.defaultVal, possibleInfo, System.LoggingLevel.DEBUG);
       possibleInfo.value = this.returnVal != this.defaultVal ? this.returnVal : possibleInfo.value;
     }
     return this.returnVal;

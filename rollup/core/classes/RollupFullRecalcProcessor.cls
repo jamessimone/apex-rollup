@@ -97,17 +97,15 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         // this.setCurrentJobId(this.postProcessor.runCalc());
         this.finalizer.addCaboose(this.postProcessor);
       }
-      RollupState possibleState = this.getState();
-      if (possibleState != null && this.finalizer != null) {
-        // this.finalizer.addCaboose(new DelayedStateDeleter(this.invokePoint, possibleState, this.jobIds));
-      } else if (possibleState != null) {
-        possibleState.cleanup(this.jobIds);
-      }
     }
     if (this.hasProcessedParentRecords == false) {
       List<SObject> parentRecords = new List<SObject>();
       this.processParentFieldsToReset(parentRecords);
       this.getDML().doUpdate(parentRecords);
+    }
+    RollupState possibleState = this.getState();
+    if (possibleState != null) {
+      possibleState.cleanup(this.jobIds);
     }
   }
 

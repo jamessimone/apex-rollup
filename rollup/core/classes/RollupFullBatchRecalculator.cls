@@ -47,7 +47,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     this.cursor = this.cursor ?? this.preStart().getCursor();
 
     Integer countOfRecordsToReturn = this.rollupControl.BatchChunkSize__c.intValue();
-    if (countOfRecordsToReturn > this.cursor.getNumRecords()) {
+    if (countOfRecordsToReturn + this.currentPosition > this.cursor.getNumRecords()) {
       countOfRecordsToReturn = this.cursor.getNumRecords() - this.currentPosition;
     }
     this.calcItems = this.cursor.fetch(this.currentPosition, countOfRecordsToReturn);

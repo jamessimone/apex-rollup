@@ -1524,7 +1524,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
     if (priorVal != newVal) {
-      // if (priorVal != newVal && (priorVal == defaultVal || newVal != defaultVal || this.fullRecalcProcessor == null)) {
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     this.storeParentResetField(key, lookupRecord);
