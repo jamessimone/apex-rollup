@@ -2362,6 +2362,7 @@ private class RollupFullRecalcTests {
     Assert.areEqual(null, parentTwo.AnnualRevenue);
     Assert.areEqual('Concat, Two', parentTwo.Description);
     Assert.areEqual(10, parentTwo.NumberOfEmployees);
+    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c], '' + [SELECT COUNT(Id), RelatedJobId__c FROM RollupState__c GROUP BY RelatedJobId__c]);
   }
 
   @IsTest
@@ -2440,6 +2441,7 @@ private class RollupFullRecalcTests {
     Assert.areEqual(null, parentTwo.AnnualRevenue);
     Assert.areEqual('Concat, Two', parentTwo.Description);
     Assert.areEqual(10, parentTwo.NumberOfEmployees);
+    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c]);
   }
 
   @IsTest
@@ -2447,7 +2449,7 @@ private class RollupFullRecalcTests {
     // an interesting one because it's again an implementation detail - this time,
     // of the batch "caboose" process. if the full recalc is BELOW the batch limit,
     // the queueable will already correctly handle everything since the shared parent field will only be reset once.
-    // batch processes, on the other hand, would otherwise simply see the existing value on the parent as something
+    // batch queueables, on the other hand, would otherwise simply see the existing value on the parent as something
     // that needs to be cleared out
     Rollup.defaultControl = new RollupControl__mdt(
       MaxRollupRetries__c = 100,
@@ -2507,6 +2509,7 @@ private class RollupFullRecalcTests {
     parent = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id];
     Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in batch recalc');
     Assert.areEqual(25, parent.NumberOfEmployees, 'Additional field on parent should have been queried successfully in second rollup');
+    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c]);
   }
 
   @IsTest

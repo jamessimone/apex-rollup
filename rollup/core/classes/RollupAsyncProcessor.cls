@@ -482,10 +482,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  public void setFinalizer(RollupFinalizer finalizer) {
-    this.finalizer = finalizer;
-  }
-
   protected virtual RollupFinalizer getFinalizer() {
     return new RollupFinalizer();
   }
@@ -517,7 +513,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual String startAsyncWork() {
-    this.logger.log('base start async work as batch processor for ' + this.getTypeName(), System.LoggingLevel.INFO);
     return this.startBatchProcessor();
   }
 
@@ -1083,7 +1078,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         ? this.rollups[0]
         : this.getAsyncRollup();
       if (conductor != null && this.finalizer != null) {
-        conductor.finalizer = this.finalizer;
         this.finalizer.addCaboose(conductor);
       } else if (conductor != null) {
         conductor.startAsyncWork();

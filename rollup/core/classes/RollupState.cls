@@ -153,6 +153,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public void loadState(String jobId, Set<String> relatedRecordKeys) {
+    this.jobIds.add(jobId);
     RollupLogger.Instance.log('Loading state for jobId: ' + jobId, relatedRecordKeys, System.LoggingLevel.DEBUG);
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
     for (RollupState__c state : matchingState) {
@@ -170,11 +171,13 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public void commitState(String jobId) {
+    this.jobIds.add(jobId);
     this.populateRelatedRecordStates(jobId);
   }
 
   public String cleanup(Set<String> jobIds) {
     this.jobIds.addAll(jobIds);
+    RollupLogger.Instance.log('about to clean up rollup state', this.jobIds, System.LoggingLevel.INFO);
     return System.enqueueJob(this);
   }
 

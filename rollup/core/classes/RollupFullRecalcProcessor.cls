@@ -84,6 +84,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         conductor.finalizer.addCaboose(caboose);
       }
       if (this.isBatch()) {
+        // conductor.jobId = this.jobId;
         conductor.startAsyncWork();
       } else {
         this.finalizer.addCaboose(conductor);
@@ -94,18 +95,14 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
         // job continuity is established between the full recalc and then any downstream job that runs
         // (as the postProcessor)
-        // this.setCurrentJobId(this.postProcessor.runCalc());
         this.finalizer.addCaboose(this.postProcessor);
       }
+      this.getState()?.cleanup(this.jobIds);
     }
     if (this.hasProcessedParentRecords == false) {
       List<SObject> parentRecords = new List<SObject>();
       this.processParentFieldsToReset(parentRecords);
       this.getDML().doUpdate(parentRecords);
-    }
-    RollupState possibleState = this.getState();
-    if (possibleState != null) {
-      possibleState.cleanup(this.jobIds);
     }
   }
 
@@ -127,18 +124,20 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     }
     this.hasProcessedParentRecords = true;
     Map<Id, SObject> relatedParentRecordsMap = new Map<Id, SObject>(relatedParentRecords);
-    for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
-      SObject relatedParentRecord = relatedParentRecordsMap.containsKey(parentRecordToReset.Id)
-        ? relatedParentRecordsMap.get(parentRecordToReset.Id)
-        : RollupCurrencyInfo.createNewRecord(parentRecordToReset);
-
-      for (Rollup__mdt meta : this.rollupMetas) {
-        if (relatedParentRecord.getSObjectType().getDescribe().getName() == meta.LookupObject__c) {
-          relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
+    for (Rollup__mdt meta : this.rollupMetas) {
+      Object defaultVal = this.getDefaultValue(meta);
+      for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
+        if (parentRecordToReset.getSObjectType().getDescribe().getName() != meta.LookupObject__c) {
+          continue;
         }
+        SObject relatedParentRecord = relatedParentRecordsMap.get(parentRecordToReset.Id);
+        if (relatedParentRecord == null) {
+          relatedParentRecord = RollupCurrencyInfo.createNewRecord(parentRecordToReset);
+          relatedParentRecordsMap.put(parentRecordToReset.Id, relatedParentRecord);
+        }
+        relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
+        relatedParentRecordsMap.put(relatedParentRecord.Id, relatedParentRecord);
       }
-
-      relatedParentRecordsMap.put(relatedParentRecord.Id, relatedParentRecord);
     }
     relatedParentRecords.clear();
     relatedParentRecords.addAll(relatedParentRecordsMap.values());
@@ -173,10 +172,10 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
       innerRoll.fullRecalcProcessor = this;
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = calcItems;
-      innerRoll.finalizer = this.finalizer;
+      // innerRoll.finalizer = this.finalizer;
     }
     for (RollupFullRecalcProcessor caboose : this.cabooses) {
-      caboose.finalizer = this.finalizer;
+      // caboose.finalizer = this.finalizer;
     }
     this.fullRecalcProcessor = this;
     return processor.rollups;

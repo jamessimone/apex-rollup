@@ -8,9 +8,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   private Boolean isRecursive = false;
 
   public virtual void execute(FinalizerContext fc) {
-    if (this.isRecursive == false) {
-      RollupLogger.Instance.log('Beginning finalizer with cabooses: ' +  this.cabooses.size(), fc, System.LoggingLevel.INFO);
-    }
+    RollupLogger.Instance.log('Beginning finalizer with cabooses: ' + this.cabooses.size(), fc, System.LoggingLevel.INFO);
     ParentJobResult res = this.getParentJobResult(fc);
     switch on res {
       when UNHANDLED_EXCEPTION {
@@ -18,17 +16,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
       }
       when else {
         this.handleSuccess();
-        if (this.cabooses.isEmpty() == false) {
-          RollupAsyncProcessor conductor = this.cabooses.remove(0);
-          conductor.setFinalizer(this);
-          RollupLogger.Instance.log('Starting up new conductor', conductor, System.LoggingLevel.INFO);
-          String potentialProcessId = conductor.runCalc();
-          if (potentialProcessId == conductor.getNoProcessId() && this.cabooses.isEmpty() == false) {
-            this.isRecursive = true;
-            this.execute(fc);
-            this.isRecursive = false;
-          }
-        }
+        this.recurseThroughConductors();
       }
     }
     wasCalled = true;
@@ -53,5 +41,16 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
     ParentJobResult res = testResult ?? fc?.getResult();
     testResult = null;
     return res;
+  }
+
+  private void recurseThroughConductors() {
+    if (this.cabooses.isEmpty() == false) {
+      RollupAsyncProcessor conductor = this.cabooses.remove(0);
+      RollupLogger.Instance.log('Starting up new conductor', conductor, System.LoggingLevel.INFO);
+      String potentialProcessId = conductor.runCalc();
+      if (potentialProcessId == conductor.getNoProcessId() && this.cabooses.isEmpty() == false) {
+        this.recurseThroughConductors();
+      }
+    }
   }
 }
