@@ -392,7 +392,7 @@ public without sharing abstract class RollupCalculator {
     }
     if (this.state != null && this.hasCustomStateCalculation == false) {
       RollupState.GenericInfo info = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.GenericInfo.class);
-      if (info != null) {
+      if (info?.value != null) {
         winnowedItems.add(new WinnowResult(info.value));
       }
     }

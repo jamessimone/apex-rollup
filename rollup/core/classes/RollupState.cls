@@ -28,7 +28,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public RollupState getState(String key, Rollup__mdt meta, Type initializingType) {
-    String trueKey = (key + getMetadataKey(meta)).toLowerCase();
+    String trueKey = (key + getMetadataKey(meta));
     RollupState possibleState = KEY_TO_STATE.get(trueKey);
     if (possibleState == null) {
       possibleState = (RollupState) initializingType.newInstance();
@@ -156,38 +156,16 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public void loadState(String jobId, Set<String> relatedRecordKeys) {
-    RollupLogger.Instance.log('Loading state for jobId: ' + jobId, System.LoggingLevel.DEBUG);
+    RollupLogger.Instance.log('Loading state for jobId: ' + jobId, relatedRecordKeys, System.LoggingLevel.DEBUG);
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
     for (RollupState__c state : matchingState) {
-      if (state.IsCached__c == false) {
-        state.IsCached__c = true;
-        List<String> jsonParts = new List<String>();
+      if (this.statefulPreviouslyRetrievedStateIds.contains(state.Id) == false) {
         if (state.Body0__c != null) {
-          jsonParts.add(state.Body0__c);
-        }
-        // TODO - decide if it's worth the hassle of re-implementing the correct sentinel detection necessary
-        // to populate the remaining Body{n}__c fields. At the moment, for "batch" sizes of 500 children, only
-        // ~12 state records were being inserted per transaction, which is an absolute pittance for the amount of data
-        // each one holds, and the extra complexity of compressing the data further might be more trouble than it's worth
-        if (state.Body1__c != null) {
-          jsonParts.add(state.Body1__c);
-        }
-        if (state.Body2__c != null) {
-          jsonParts.add(state.Body2__c);
-        }
-        if (state.Body3__c != null) {
-          jsonParts.add(state.Body3__c);
-        }
-        if (state.Body4__c != null) {
-          jsonParts.add(state.Body4__c);
-        }
-        for (String json : jsonParts) {
           List<Object> localUncastStates = (List<Object>) new DataWeaveScriptResource.jsonToRollupState()
-            .execute(new Map<String, Object>{ 'records' => '[' + json + ']' })
+            .execute(new Map<String, Object>{ 'records' => '[' + state.Body0__c + ']' })
             .getValue();
           for (Object uncastState : localUncastStates) {
             RollupState castState = (RollupState) uncastState;
-
             KEY_TO_STATE.put(castState.key, castState);
           }
         }
@@ -200,9 +178,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     this.populateRelatedRecordStates(jobId);
   }
 
-  public void cleanup(Set<String> jobIds) {
+  public String cleanup(Set<String> jobIds) {
     this.jobIds.addAll(jobIds);
-    System.enqueueJob(this);
+    return System.enqueueJob(this);
   }
 
   @SuppressWarnings('PMD.ApexCrudViolation')
@@ -227,7 +205,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     String cacheKey = String.join(relatedRecordKeys, '');
     List<RollupState__c> states = CACHED_STATES.get(cacheKey);
     if (relatedRecordKeys.isEmpty() || states != null) {
-      RollupLogger.Instance.log('Returning state from cache for record size: ' + states.size(), System.LoggingLevel.DEBUG);
+      RollupLogger.Instance.log('Returning state from cache for record size: ' + (states?.size() ?? 0), System.LoggingLevel.DEBUG);
       return new List<RollupState__c>();
     }
     List<String> quotedRecordKeys = new List<String>();
@@ -235,14 +213,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       quotedRecordKeys.add('%' + recordKey + '%');
     }
     states = [
-      SELECT
-        Id,
-        Body0__c,
-        Body1__c,
-        Body2__c,
-        Body3__c,
-        Body4__c,
-        IsCached__c
+      SELECT Id, Body0__c
       FROM RollupState__c
       WHERE
         (RelatedRecordKeys0__c LIKE :quotedRecordKeys
@@ -278,7 +249,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Set<String> allRecordKeys = new Set<String>();
     Integer relatedRecordKeyLength = 0;
     Integer currentRelatedRecordFieldIndex = 0;
-    Integer currentBodyFieldIndex = 0;
     Double currentLength = 0;
     Integer stateCounter = 0;
     List<Map<String, Object>> untypedStates = new List<Map<String, Object>>();
@@ -314,7 +284,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
             currentStateToInsert.put(relatedBodyFieldToken, getJoinedBody(untypedStates));
           }
           currentRelatedRecordFieldIndex = 1;
-          currentBodyFieldIndex = 0;
           currentLength = 0;
           relatedBodyFieldToken = RollupState__c.Body0__c;
           currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
@@ -329,32 +298,23 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       // There's some undocumented soft limit to the amount of data that can be stored in a long text area
       // so we use another slight buffer to avoid running into the actual limit
       else if ((currentLength + 1100) >= maxBodyLength) {
-        TokenSentinel sentinel = getBodySentinel(currentBodyFieldIndex);
-        relatedBodyFieldToken = sentinel.token;
+        allRecordKeys = new Set<String>();
+        currentStateToInsert.put(relatedKeysFieldToken, getJoinedKeys(relatedRecordKeys));
+        currentStateToInsert.Body0__c = getJoinedBody(untypedStates);
 
-        if (sentinel.shouldReset) {
-          allRecordKeys = new Set<String>();
-          currentStateToInsert.put(relatedKeysFieldToken, getJoinedKeys(relatedRecordKeys));
-          currentStateToInsert.put(sentinel.token, getJoinedBody(untypedStates));
+        currentRelatedRecordFieldIndex = 0;
+        relatedRecordKeyLength = 0;
+        relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
+        currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
+        statesToInsert.add(currentStateToInsert);
+        relatedRecordKeys.add(recordKey);
 
-          currentRelatedRecordFieldIndex = 0;
-          currentBodyFieldIndex = 0;
-          relatedRecordKeyLength = 0;
-          relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
-          currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
-          statesToInsert.add(currentStateToInsert);
-          relatedRecordKeys.add(recordKey);
-        } else {
-          currentBodyFieldIndex++;
-        }
         currentLength = 0;
       }
     }
     if (stateCounter == numberOfStates) {
-      TokenSentinel bodySentinel = getBodySentinel(currentBodyFieldIndex);
       TokenSentinel relatedKeySentinel = getRelatedRecordKeySentinel(currentRelatedRecordFieldIndex);
-
-      if ((bodySentinel.shouldReset || relatedKeySentinel.shouldReset) && untypedStates.isEmpty() == false) {
+      if (relatedKeySentinel.shouldReset && untypedStates.isEmpty() == false) {
         currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
         statesToInsert.add(currentStateToInsert);
       }
@@ -362,18 +322,13 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         currentStateToInsert.put(relatedKeySentinel.token, getJoinedKeys(relatedRecordKeys));
       }
       if (untypedStates.isEmpty() == false) {
-        currentStateToInsert.put(bodySentinel.token, getJoinedBody(untypedStates));
+        currentStateToInsert.Body0__c = getJoinedBody(untypedStates);
       }
     }
 
     for (Integer reverseIndex = statesToInsert.size() - 1; reverseIndex >= 0; reverseIndex--) {
       RollupState__c state = statesToInsert[reverseIndex];
-      if (state.Body0__c == null && state.Body1__c == null && state.Body2__c == null && state.Body3__c == null && state.Body4__c == null) {
-        // TODO: at the moment there's still some tracking bug with the related record keys, above, that causes currentStateToInsert to end up
-        // without any corresponding body. It doesn't seem to cause any harm with the actual calculations since there's no associated data, and the keys
-        // also seem to end up with the correct records without issue. While it would be nice to fix the underlying "off by one" error, this guard clause
-        // suffices for the present day
-        RollupLogger.Instance.log('Removing null body', System.LoggingLevel.DEBUG);
+      if (state.Body0__c == null) {
         statesToInsert.remove(reverseIndex);
       }
     }
@@ -383,6 +338,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       'Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')',
       System.LoggingLevel.DEBUG
     );
+    KEY_TO_STATE.clear();
+    CACHED_STATES.clear();
     this.commitCount++;
   }
 
@@ -435,33 +392,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
       when else {
         sentinel.token = RollupState__c.RelatedRecordKeys0__c;
-        sentinel.shouldReset = true;
-      }
-    }
-    return sentinel;
-  }
-
-  private static TokenSentinel getBodySentinel(Integer currentIndex) {
-    TokenSentinel sentinel = new TokenSentinel(currentIndex);
-
-    switch on currentIndex {
-      when 0 {
-        sentinel.token = RollupState__c.Body0__c;
-      }
-      // when 1 {
-      //   sentinel.token = RollupState__c.Body1__c;
-      // }
-      // when 2 {
-      //   sentinel.token = RollupState__c.Body2__c;
-      // }
-      // when 3 {
-      //   sentinel.token = RollupState__c.Body3__c;
-      // }
-      // when 4 {
-      //   sentinel.token = RollupState__c.Body4__c;
-      // }
-      when else {
-        sentinel.token = RollupState__c.Body0__c;
         sentinel.shouldReset = true;
       }
     }

@@ -577,8 +577,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       appendQueryCount(wrappedMeta, matchingMeta, matchingMeta.CalcItemWhereClause__c, childType);
     }
 
-    List<Rollup> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
+    List<RollupFullRecalcProcessor> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
     isFullRecalcApp = false;
+    if (processors.size() > 1 && processors[0].rollupControl.ShouldRunAs__c != RollupMetaPicklists.ShouldRunAs.Synchronous) {
+      RollupFullRecalcProcessor conductor = processors[0];
+      while (processors.size() > 1) {
+        conductor.rollups.add(processors.remove(1));
+      }
+      return conductor.runCalc();
+    }
     return batch(processors, localInvokePoint);
   }
 

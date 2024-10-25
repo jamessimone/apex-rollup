@@ -1690,7 +1690,7 @@ private class RollupIntegrationTests {
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0);
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -1886,8 +1886,7 @@ private class RollupIntegrationTests {
   static void shouldFilterNonMatchingRollupsOutOfBatch() {
     Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
     insert con;
-    RollupControl__mdt control = RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS).clone();
-    control.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable;
+
     Rollup.FilterResults results = new Rollup.FilterResults();
     results.matchingItemIds.add(con.Id);
     RollupAsyncProcessor batchProcessor = new RollupAsyncProcessor(
@@ -1900,7 +1899,7 @@ private class RollupIntegrationTests {
       Contact.SObjectType,
       Rollup.Op.CONCAT,
       Rollup.InvocationPoint.FROM_APEX,
-      control,
+      RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS).clone(),
       new Rollup__mdt(
         CalcItem__c = 'Contact',
         RollupFieldOnCalcItem__c = 'FirstName',

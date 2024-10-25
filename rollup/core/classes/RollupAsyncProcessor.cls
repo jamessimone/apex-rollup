@@ -26,6 +26,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   protected RollupFullRecalcProcessor fullRecalcProcessor;
   protected final SObjectType calcItemType;
   protected final Set<String> recordIds;
+  protected RollupFinalizer finalizer;
 
   private static Set<String> hashedRollups = new Set<String>();
   @TestVisible
@@ -126,6 +127,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
    * Conductor constructors - "outer" rollups that orchestrate the proceedings for inner rollups.
    * These rollups tend to be the ones using the lazy-loaded properties above
    */
+  protected RollupAsyncProcessor() {
+    super();
+  }
+
   public RollupAsyncProcessor(InvocationPoint invokePoint) {
     super(invokePoint);
   }
@@ -295,7 +300,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       equality = '=';
     }
     this.populateObjectFields(this.rollups);
-    String query = 'SELECT Id FROM Organization WHERE Name ' + equality + '\'' + UserInfo.getOrganizationName() + '\'';
+    String query = 'SELECT Id FROM Organization WHERE Name ' + equality + ' \'' + UserInfo.getOrganizationName() + '\'';
     RollupRepository repo = new RollupRepository(this.runAsMode);
     if (this.rollups.isEmpty() == false) {
       RollupAsyncProcessor firstRollup = this.rollups.get(0);
@@ -322,7 +327,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return props;
   }
 
-  protected String getNoProcessId() {
+  public String getNoProcessId() {
     return 'No process Id';
   }
 
@@ -355,14 +360,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     // swap off on which async process is running to achieve infinite scaling
     Boolean canEnqueue = this.getCanEnqueue();
     RollupAsyncProcessor roll;
-    if (
-      this.rollups.size() == 1 &&
-      this.rollups[0] instanceof RollupFullRecalcProcessor &&
-      (System.isBatch() == false || this.isBatch() == false && this.rollups[0].isBatch() == false)
-    ) {
-      roll = this.rollups[0];
-    } else if (this instanceof RollupFullRecalcProcessor && this.isBatch() == false) {
+    if (this instanceof RollupFullRecalcProcessor) {
       roll = this;
+    } else if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
+      roll = this.rollups[0];
     } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
@@ -400,6 +401,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+    protected QueueableProcessor() {
+      super();
+    }
+
     protected QueueableProcessor(InvocationPoint rollupInvokePoint) {
       super(rollupInvokePoint);
     }
@@ -449,18 +454,23 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected virtual override String startAsyncWork() {
-      if (System.isQueueable()) {
-        hasAlreadyAsyncEnqueued = true;
+      if (System.isQueueable() && (System.Limits.getQueueableJobs() == 1 || hasAlreadyAsyncEnqueued)) {
+        if (this.finalizer != null) {
+          this.finalizer.addCaboose(this);
+          return this.getNoProcessId();
+        }
       }
+      hasAlreadyAsyncEnqueued = hasAlreadyAsyncEnqueued || System.isBatch() || System.isQueueable() || System.isFuture();
       return System.enqueueJob(this);
     }
 
     public void execute(System.QueueableContext qc) {
-      this.logger.log('Starting queueable', this, System.LoggingLevel.INFO);
+      this.logger.log('Starting ' + this.getTypeName() + ' queueable', this, System.LoggingLevel.INFO);
       AdditionalContext context = new AdditionalContext(qc);
       this.setCurrentJobId(context.getJobId());
       this.jobId = this.jobId ?? context.getJobId();
-      System.attachFinalizer(this.getFinalizer());
+      this.finalizer = this.finalizer ?? this.getFinalizer();
+      System.attachFinalizer(this.finalizer);
 
       this.performWork();
 
@@ -472,7 +482,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  protected virtual System.Finalizer getFinalizer() {
+  public void setFinalizer(RollupFinalizer finalizer) {
+    this.finalizer = finalizer;
+  }
+
+  protected virtual RollupFinalizer getFinalizer() {
     return new RollupFinalizer();
   }
 
@@ -503,6 +517,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected virtual String startAsyncWork() {
+    this.logger.log('base start async work as batch processor for ' + this.getTypeName(), System.LoggingLevel.INFO);
     return this.startBatchProcessor();
   }
 
@@ -715,7 +730,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.getDML().forceSyncUpdate();
     }
     this.cleanup();
-    this.getDML().updateRecords();
+    this.getDML().setFinalizer(this.finalizer).updateRecords();
     this.populateOtherDeferredRollups();
     this.processDeferredRollups();
   }
@@ -863,7 +878,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollupsToProcess.addAll(additionalRollups);
       } else if (rollup.overridesRunCalc) {
         rollupsToProcess.remove(index);
-        rollup.runCalc();
+        if (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false) {
+          rollup.runCalc();
+        } else {
+          this.finalizer.addCaboose(rollup);
+        }
       } else if (rollup.getTypeName() == RollupFullBatchRecalculator.class.getName()) {
         rollupsToProcess.remove(index);
         RollupFullBatchRecalculator fullRecalc = (RollupFullBatchRecalculator) rollup;
@@ -1060,7 +1079,15 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.rollups.addAll(this.deferredRollups);
       this.deferredRollups.clear();
       this.logger.log('deferred rollups remaining:', this.rollups, System.LoggingLevel.WARN);
-      this.getAsyncRollup()?.beginAsyncRollup();
+      RollupAsyncProcessor conductor = this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor
+        ? this.rollups[0]
+        : this.getAsyncRollup();
+      if (conductor != null && this.finalizer != null) {
+        conductor.finalizer = this.finalizer;
+        this.finalizer.addCaboose(conductor);
+      } else if (conductor != null) {
+        conductor.startAsyncWork();
+      }
       // for synchronous runs with a timeout, we need to ensure this.rollups is re-cleared here
       // to prevent re-running through the same logic in runCalc()
       this.rollups.clear();
@@ -1496,7 +1523,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       newVal = priorVal;
     }
     String key = (String) lookupRecord.get(roll.lookupFieldOnLookupObject);
-    if (priorVal != newVal && (priorVal == defaultVal || newVal != defaultVal || this.fullRecalcProcessor == null)) {
+    if (priorVal != newVal) {
+      // if (priorVal != newVal && (priorVal == defaultVal || newVal != defaultVal || this.fullRecalcProcessor == null)) {
       this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, newVal);
     }
     this.storeParentResetField(key, lookupRecord);

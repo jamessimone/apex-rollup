@@ -2,6 +2,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   @TestVisible
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
   private static Boolean isValidRun = false;
+  private static Boolean isRecursiveRun = false;
 
   private Integer countOfItems {
     get {
@@ -16,9 +17,19 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     private QueueableResetProcessor(RollupParentResetProcessor processor) {
       super(processor.invokePoint);
       this.processor = processor;
+      this.finalizer = processor.finalizer;
+    }
+
+    public override String getTypeName() {
+      return QueueableResetProcessor.class.getName();
     }
 
     protected override void performWork() {
+      for (RollupAsyncProcessor roll : this.processor.rollups) {
+        if (roll instanceof RollupFullRecalcProcessor) {
+          this.finalizer.addCaboose((RollupFullRecalcProcessor) roll);
+        }
+      }
       if (this.processor.countOfItems > maxQueryRows) {
         Database.executeBatch(this.processor, this.processor.rollupControl.BatchChunkSize__c.intValue());
       } else {
@@ -46,7 +57,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     getRefinedQueryString(this.queryString, this.rollupMetas, this.invokePoint);
     this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
-    if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true) {
+    if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true || this.countOfItems == 0) {
       this.logger.log('Parent reset processor no-op', System.LoggingLevel.INFO);
       return processId;
     }
@@ -59,6 +70,11 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       // down the rabbit hole we go again
       processId = this.startAsyncWork();
     } else if (this.countOfItems > 0) {
+      for (RollupAsyncProcessor proc : this.rollups) {
+        isRecursiveRun = true;
+        proc.runCalc();
+        isRecursiveRun = false;
+      }
       this.runSync();
     }
 
@@ -71,18 +87,23 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     }
     this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', System.LoggingLevel.INFO);
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
-    for (SObject parentItem : parentItems) {
-      for (Rollup__mdt rollupMeta : this.rollupMetas) {
-        if (
-          rollupMeta.LookupObject__c == this.calcItemType.getDescribe().getName() &&
-          this.parentRollupFieldHasBeenReset(rollupMeta.LookupObject__c, rollupMeta.RollupFieldOnLookupObject__c) == false &&
-          parentFields.containsKey(rollupMeta.RollupFieldOnLookupObject__c)
-        ) {
-          parentItem.put(rollupMeta.RollupFieldOnLookupObject__c, this.getDefaultValue(rollupMeta));
-        }
+    for (Rollup__mdt rollupMeta : this.rollupMetas) {
+      Object defaultVal = this.getDefaultValue(rollupMeta);
+      Schema.SObjectField parentFieldToken = parentFields.get(rollupMeta.RollupFieldOnLookupObject__c);
+      if (
+        rollupMeta.LookupObject__c != this.calcItemType.getDescribe().getName() ||
+        this.parentRollupFieldHasBeenReset(rollupMeta.LookupObject__c, rollupMeta.RollupFieldOnLookupObject__c) ||
+        parentFieldToken == null
+      ) {
+        continue;
+      }
+      for (SObject parentItem : parentItems) {
+        this.getDML().updateField(parentFieldToken, parentItem, defaultVal);
       }
     }
-    this.getDML().doUpdate(parentItems);
+    if (isRecursiveRun == false) {
+      this.getDML().updateRecords();
+    }
   }
 
   protected override String getTypeName() {
@@ -90,7 +111,10 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   }
 
   protected override String startAsyncWork() {
-    return this.rollupControl.ShouldSkipResettingParentFields__c ? this.getNoProcessId() : System.enqueueJob(new QueueableResetProcessor(this));
+    if (this.rollupControl.ShouldSkipResettingParentFields__c) {
+      return this.getNoProcessId();
+    }
+    return System.enqueueJob(new QueueableResetProcessor(this));
   }
 
   protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {

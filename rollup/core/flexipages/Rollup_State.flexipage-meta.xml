@@ -141,52 +141,6 @@
                 <identifier>RecordBody0_cField</identifier>
             </fieldInstance>
         </itemInstances>
-        <itemInstances>
-            <fieldInstance>
-                <fieldInstanceProperties>
-                    <name>uiBehavior</name>
-                    <value>none</value>
-                </fieldInstanceProperties>
-                <fieldItem>Record.Body1__c</fieldItem>
-                <identifier>RecordBody1_cField</identifier>
-            </fieldInstance>
-        </itemInstances>
-        <itemInstances>
-            <fieldInstance>
-                <fieldInstanceProperties>
-                    <name>uiBehavior</name>
-                    <value>none</value>
-                </fieldInstanceProperties>
-                <fieldItem>Record.Body2__c</fieldItem>
-                <identifier>RecordBody2_cField</identifier>
-            </fieldInstance>
-        </itemInstances>
-        <itemInstances>
-            <fieldInstance>
-                <fieldInstanceProperties>
-                    <name>uiBehavior</name>
-                    <value>none</value>
-                </fieldInstanceProperties>
-                <fieldItem>Record.Body3__c</fieldItem>
-                <identifier>RecordBody3_cField</identifier>
-            </fieldInstance>
-        </itemInstances>
-        <itemInstances>
-            <fieldInstance>
-                <fieldInstanceProperties>
-                    <name>uiBehavior</name>
-                    <value>none</value>
-                </fieldInstanceProperties>
-                <fieldItem>Record.Body4__c</fieldItem>
-                <identifier>RecordBody4_cField</identifier>
-            </fieldInstance>
-        </itemInstances>
-        <itemInstances>
-            <fieldInstance>
-                <fieldItem>Record.RelatedRecordKeysIndex__c</fieldItem>
-                <identifier>RecordRelatedRecordKeysIndex__cField</identifier>
-            </fieldInstance>
-        </itemInstances>
         <name>Facet-fd8f2d5f-4dbc-4758-85d1-0d980062cc8d</name>
         <type>Facet</type>
     </flexiPageRegions>

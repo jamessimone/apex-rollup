@@ -5,10 +5,14 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
-  private final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
+  protected final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
   private final Set<String> jobIds = new Set<String>();
   private Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents;
   private Boolean hasProcessedParentRecords = false;
+
+  private RollupFullRecalcProcessor(InvocationPoint invokePoint) {
+    super(invokePoint);
+  }
 
   protected RollupFullRecalcProcessor(
     String queryString,
@@ -77,18 +81,28 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         conductor.storeUniqueParentFields(meta);
       }
       for (RollupFullRecalcProcessor caboose : this.cabooses) {
-        conductor.addCaboose(caboose);
+        conductor.finalizer.addCaboose(caboose);
       }
-      this.setCurrentJobId(conductor.startAsyncWork());
+      if (this.isBatch()) {
+        conductor.startAsyncWork();
+      } else {
+        this.finalizer.addCaboose(conductor);
+      }
     } else {
       if (this.postProcessor != null) {
         this.logger.log('Starting post-full recalc processor', this.postProcessor, System.LoggingLevel.INFO);
         // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
         // job continuity is established between the full recalc and then any downstream job that runs
         // (as the postProcessor)
-        this.setCurrentJobId(this.postProcessor.runCalc());
+        // this.setCurrentJobId(this.postProcessor.runCalc());
+        this.finalizer.addCaboose(this.postProcessor);
       }
-      this.getState()?.cleanup(this.jobIds);
+      RollupState possibleState = this.getState();
+      if (possibleState != null && this.finalizer != null) {
+        // this.finalizer.addCaboose(new DelayedStateDeleter(this.invokePoint, possibleState, this.jobIds));
+      } else if (possibleState != null) {
+        possibleState.cleanup(this.jobIds);
+      }
     }
     if (this.hasProcessedParentRecords == false) {
       List<SObject> parentRecords = new List<SObject>();
@@ -152,10 +166,19 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
       }
     }
     RollupAsyncProcessor processor = this.getAsyncRollup(this.rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
+    for (Rollup innerRoll : this.rollups) {
+      if (innerRoll.getTypeName() == this.getTypeName()) {
+        this.cabooses.add((RollupFullRecalcProcessor) innerRoll);
+      }
+    }
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = this;
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = calcItems;
+      innerRoll.finalizer = this.finalizer;
+    }
+    for (RollupFullRecalcProcessor caboose : this.cabooses) {
+      caboose.finalizer = this.finalizer;
     }
     this.fullRecalcProcessor = this;
     return processor.rollups;
@@ -164,7 +187,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     super.customizeToStringEntries(props);
     Integer numberOfRollups = this.rollupMetas?.size();
-    this.addToMap(props, 'Rollup Metadata',  numberOfRollups > 5 ? (Object) numberOfRollups : (Object) this.rollupMetas);
+    this.addToMap(props, 'Rollup Metadata', numberOfRollups > 5 ? (Object) numberOfRollups : (Object) this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
     this.addToMap(props, 'Caboose Count', this.cabooses.size());
     this.addToMap(props, 'Inner rollups', numberOfRollups);
@@ -194,6 +217,25 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         this.overrideParentRollupControlValues(specificControl);
       }
       this.runAsMode = RollupMetaPicklists.getAccessLevel(meta);
+    }
+  }
+
+  private class DelayedStateDeleter extends RollupFullRecalcProcessor {
+    private final RollupState state;
+    private final Set<String> jobIds;
+
+    public DelayedStateDeleter(InvocationPoint invokePoint, RollupState state, Set<String> jobIds) {
+      super(invokePoint);
+      this.jobIds = jobIds;
+      this.state = state;
+    }
+
+    public override String runCalc() {
+      return this.state.cleanup(this.jobIds);
+    }
+
+    public override String getTypeName() {
+      return DelayedStateDeleter.class.getName();
     }
   }
 }

@@ -44,9 +44,9 @@ private class RollupStateTests {
     Test.stopTest();
 
     RollupState__c insertedState = [
-      SELECT Id, Body0__c, Body1__c, Body2__c, Body3__c, Body4__c
+      SELECT Id, Body0__c
       FROM RollupState__c
-      WHERE RelatedRecordKeysIndex__c LIKE :relatedRecordKeys
+      WHERE RelatedRecordKeys0__c LIKE :relatedRecordKeys
     ];
     Assert.isNotNull(insertedState.Body0__c, 'Serialized representation of generic state should be present');
 
@@ -97,11 +97,7 @@ private class RollupStateTests {
 
     state = new RollupState();
     state.loadState(stubJobId, new Set<String>{ stubAccountId });
-    info = (RollupState.GenericInfo) state.getState(
-      stubAccountId,
-      new Rollup__mdt(RollupOperation__c = 'SUM'),
-      RollupState.GenericInfo.class
-    );
+    info = (RollupState.GenericInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), RollupState.GenericInfo.class);
     info.value = 5;
     averageInfo = (RollupState.AverageInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'AVERAGE'), RollupState.AverageInfo.class);
     averageInfo.increment(20);
@@ -123,7 +119,7 @@ private class RollupStateTests {
 
   @IsTest
   static void splitsReallyLongStatesForTheSameRecord() {
-    RollupState.maxBodyLength = 10000;
+    RollupState.maxBodyLength = 18000;
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
     Rollup__mdt template = new Rollup__mdt(DeveloperName = 'exampleUnique40CharacterLimit');
@@ -142,24 +138,16 @@ private class RollupStateTests {
     state.commitState(stubJobId);
 
     List<RollupState__c> committedStates = [
-      SELECT Body0__c, Body1__c, Body2__c, Body3__c, Body4__c, RelatedRecordKeys0__c
+      SELECT Body0__c, RelatedRecordKeys0__c
       FROM RollupState__c
     ];
 
     Assert.areEqual(3, committedStates.size());
     Boolean body0Filled = false;
-    // Boolean body1Filled = false;
-    // Boolean body2Filled = false;
-    // Boolean body3Filled = false;
-    // Boolean body4Filled = false;
     Boolean sampleStatesFilled = false;
     for (Integer index = 0; index < committedStates.size(); index++) {
       RollupState__c committedState = committedStates[index];
       body0Filled = body0Filled || committedState.Body0__c != null;
-      // body1Filled = body1Filled || committedState.Body1__c != null;
-      // body2Filled = body2Filled || committedState.Body2__c != null;
-      // body3Filled = body3Filled || committedState.Body3__c != null;
-      // body4Filled = body4Filled || committedState.Body4__c != null;
       Assert.areEqual(stubAccountId, committedState.RelatedRecordKeys0__c, 'State was missing key at index: ' + index);
       if (sampleStatesFilled) {
         Boolean isDuplicate = committedState.Body0__c.contains(JSON.serialize(statesToSample).removeStart('[').removeEnd(']'));
@@ -172,10 +160,6 @@ private class RollupStateTests {
     }
 
     Assert.isTrue(body0Filled);
-    // Assert.isTrue(body1Filled);
-    // Assert.isTrue(body2Filled);
-    // Assert.isTrue(body3Filled);
-    // Assert.isTrue(body4Filled);
     Assert.isTrue(sampleStatesFilled, committedStates[0].Body0__c?.substring(0, 50));
     /**
      * ensure that we don't exceed the DataWeave heap:

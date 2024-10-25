@@ -12,6 +12,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupFullRecalcProcessor postProcessor
   ) {
     super(RollupQueryBuilder.Current.getAllRowSafeQuery(calcItemType, queryString), invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
+    this.rollupControl.BatchChunkSize__c = this.rollupControl.BatchChunkSize__c ?? 500;
   }
 
   public override RollupState getState() {
@@ -38,18 +39,23 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   protected virtual override String startAsyncWork() {
+    if (this.finalizer != null) {
+      while (this.cabooses.isEmpty() == false) {
+        this.finalizer.addCaboose(this.cabooses.remove(0));
+      }
+    }
     this.cursor = this.cursor ?? this.preStart().getCursor();
 
     Integer countOfRecordsToReturn = this.rollupControl.BatchChunkSize__c.intValue();
-    this.calcItems = this.cursor.fetch(
-      this.currentPosition,
-      this.currentPosition + countOfRecordsToReturn > this.cursor.getNumRecords() ? this.cursor.getNumRecords() - this.currentPosition : countOfRecordsToReturn
-    );
+    if (countOfRecordsToReturn > this.cursor.getNumRecords()) {
+      countOfRecordsToReturn = this.cursor.getNumRecords() - this.currentPosition;
+    }
+    this.calcItems = this.cursor.fetch(this.currentPosition, countOfRecordsToReturn);
     this.currentPosition += countOfRecordsToReturn;
     return super.startAsyncWork();
   }
 
-  protected override System.Finalizer getFinalizer() {
+  protected override RollupFinalizer getFinalizer() {
     return new FullRecalcFinalizer(this);
   }
 
@@ -59,18 +65,11 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
       this.conductor = conductor;
     }
 
-    public override void execute(System.FinalizerContext fc) {
-      switch on fc.getResult() {
-        when SUCCESS {
-          if (this.conductor.currentPosition < this.conductor.cursor.getNumRecords()) {
-            this.conductor.startAsyncWork();
-          } else {
-            this.conductor.finish();
-          }
-        }
-        when UNHANDLED_EXCEPTION {
-          this.logUnhandledException(fc);
-        }
+    public override void handleSuccess() {
+      if (this.conductor.currentPosition < this.conductor.cursor.getNumRecords()) {
+        this.conductor.startAsyncWork();
+      } else {
+        this.conductor.finish();
       }
     }
   }

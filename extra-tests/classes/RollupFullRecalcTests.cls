@@ -10,11 +10,7 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void correctlyOrdersGrandparentRollupQueryString() {
-    Rollup.defaultControl = new RollupControl__mdt(
-      IsRollupLoggingEnabled__c = true,
-      MaxLookupRowsBeforeBatching__c = 0,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable
-    );
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, MaxLookupRowsBeforeBatching__c = 0);
     insert new Contact(LastName = 'grandparent rollup query string');
 
     Rollup.performBulkFullRecalc(
@@ -35,7 +31,7 @@ private class RollupFullRecalcTests {
 
     System.assertEquals(1, Rollup.CACHED_FULL_RECALCS.size());
     List<String> queryParts = Rollup.CACHED_FULL_RECALCS.get(0).start(null).getQuery().split('\n');
-    System.assertEquals('ORDER BY ReportsTo.Account.Id,ReportsToId', queryParts.get(queryParts.size() - 1));
+    System.assertEquals('ORDER BY ReportsTo.Account.Id,ReportsToId,Id', queryParts.get(queryParts.size() - 1));
   }
 
   @IsTest
@@ -915,8 +911,11 @@ private class RollupFullRecalcTests {
     insert cpas;
 
     Rollup.defaultControl = new RollupControl__mdt(
+      // prove that it works with multiple chunks
+      BatchChunkSize__c = 2,
       MaxLookupRowsBeforeBatching__c = 1,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
+      // validate that it still batches
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
       IsRollupLoggingEnabled__c = true
     );
 
@@ -937,7 +936,10 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
+    System.assertEquals(
+      'Completed',
+      [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupFullBatchRecalculator.class.getName() LIMIT 1].Status
+    );
   }
 
   @IsTest
@@ -959,7 +961,8 @@ private class RollupFullRecalcTests {
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 1,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable, // validate that it still batches
+      // validate that it still batches
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
       IsRollupLoggingEnabled__c = true
     );
     Rollup.specificControl = new RollupControl__mdt(BatchChunkSize__c = 1);
@@ -979,11 +982,14 @@ private class RollupFullRecalcTests {
     Rollup.performFullRecalculation(meta);
     Test.stopTest();
 
-    List<AsyncApexJob> jobs = [SELECT Status, JobItemsProcessed FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'];
+    List<AsyncApexJob> jobs = [
+      SELECT Status
+      FROM AsyncApexJob
+      WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupFullBatchRecalculator.class.getName()
+    ];
     System.assertEquals(false, jobs.isEmpty());
     for (AsyncApexJob job : jobs) {
       System.assertEquals('Completed', job.Status);
-      System.assertEquals(1, job.JobItemsProcessed);
     }
   }
 
@@ -1223,7 +1229,8 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldNotBlowUpOnMassiveQuery() {
-    String endOfWhereClause = '2'.repeat(100001);
+    Integer maxLength = ContactPointAddress.PreferenceRank.getDescribe().getDigits();
+    String endOfWhereClause = '2'.repeat(maxLength);
     Rollup__mdt meta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',
       RollupFieldOnCalcItem__c = 'PreferenceRank',
@@ -1232,7 +1239,7 @@ private class RollupFullRecalcTests {
       RollupFieldOnLookupObject__c = 'AnnualRevenue',
       LookupObject__c = 'Account',
       RollupOperation__c = 'SUM',
-      CalcItemWhereClause__c = 'PreferenceRank = ' + endOfWhereClause
+      CalcItemWhereClause__c = ('PreferenceRank = ' + endOfWhereClause + ' AND ').repeat(200).removeEnd(' AND ')
     );
 
     Test.startTest();
@@ -1490,7 +1497,7 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
-  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteUnderQueryLimit() {
+  static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteUnderQueryLimitSync() {
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -1522,9 +1529,7 @@ private class RollupFullRecalcTests {
       )
     };
 
-    Test.startTest();
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
-    Test.stopTest();
 
     List<Account> accounts = [SELECT AccountNumber, AnnualRevenue, Name FROM Account];
     for (Account updatedAcc : accounts) {
@@ -1610,7 +1615,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverLimitWithBatching() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
@@ -1646,12 +1650,9 @@ private class RollupFullRecalcTests {
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
-    List<Account> accounts = [SELECT AnnualRevenue, Name FROM Account];
+    List<Account> accounts = [SELECT AnnualRevenue, Name, AccountNumber FROM Account];
     for (Account updatedAcc : accounts) {
-      // for this set of tests, since we can't add more than one queueable job to the stack in a test context
-      // and because each full reset is processed separately, we can only validate that the first Rollup__mdt record
-      // had the parents associated with it reset. It's possible that this will be revisited in the future to consolidate full
-      // resets into singular jobs
+      System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
       System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
     }
   }
@@ -1925,7 +1926,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldFullRecalcWithInWhereClauses() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
     Account acc = [SELECT Id FROM Account];
 
     insert new List<Opportunity>{
@@ -2350,14 +2350,9 @@ private class RollupFullRecalcTests {
     Test.stopTest();
 
     Assert.areEqual(
-      1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupAsyncProcessor.class)],
-      'Conductor should begin async as queueable'
-    );
-    Assert.areEqual(
       2,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
-      'Only two batch classes should have run'
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
+      'Exactly two batch full recalcs should have run'
     );
     parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
     Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
@@ -2434,8 +2429,8 @@ private class RollupFullRecalcTests {
 
     Assert.areEqual(
       2,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
-      'Only two batch classes should have run'
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
+      'Exactly two batch full recalcs should have run'
     );
     parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id];
     Assert.areEqual(childOne.PreferenceRank, parentOne.AnnualRevenue);
@@ -2454,7 +2449,12 @@ private class RollupFullRecalcTests {
     // the queueable will already correctly handle everything since the shared parent field will only be reset once.
     // batch processes, on the other hand, would otherwise simply see the existing value on the parent as something
     // that needs to be cleared out
-    Rollup.defaultControl = new RollupControl__mdt(MaxRollupRetries__c = 100, MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true);
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxRollupRetries__c = 100,
+      MaxLookupRowsBeforeBatching__c = 1,
+      IsRollupLoggingEnabled__c = true,
+      BatchChunkSize__c = 3
+    );
     Rollup.onlyUseMockMetadata = true;
     Account parent = [SELECT Id FROM Account];
 
@@ -2501,8 +2501,8 @@ private class RollupFullRecalcTests {
 
     Assert.areEqual(
       2,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
-      'Test requires batch apex to have been the full recalc mechanism'
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)],
+      'Test requires RollupFullBatchRecalculator to have been used'
     );
     parent = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id];
     Assert.areEqual(40, parent.AnnualRevenue, 'Both children types should have correctly summed to one field in batch recalc');
@@ -2551,7 +2551,7 @@ private class RollupFullRecalcTests {
 
     Assert.areEqual(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupAsyncProcessor.class)],
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)],
       JSON.serializePretty([SELECT JobType, ApexClass.Name FROM AsyncApexJob])
     );
     parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id];
