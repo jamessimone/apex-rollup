@@ -174,6 +174,9 @@ public without sharing class RollupCalcItemReplacer {
       Map<String, Schema.SObjectField> fieldMap = calcItems[0].getSObjectType().getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap();
       for (Rollup__mdt meta : this.metaToEval.keySet()) {
         calcItems = this.replaceCalcItemsWithPolymorphicWhereClauses(calcItems, meta, fieldMap);
+        if (calcItems.isEmpty()) {
+          break;
+        }
       }
     }
     return calcItems;

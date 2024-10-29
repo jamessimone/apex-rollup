@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes Rollup Order By issue when called from RollupFlowBulkProcessor",
-            "versionNumber": "1.6.36.0",
+            "versionName": "Fixes mutually exclusive polymorphic where clauses replacing children in RollupCalcItemReplacer",
+            "versionNumber": "1.6.37.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.6.33": "04t6g000008ObeQAAS",
         "apex-rollup@1.6.34": "04t6g000008OfJfAAK",
         "apex-rollup@1.6.35": "04t6g000008OfKiAAK",
-        "apex-rollup@1.6.36": "04t6g000008OfMeAAK"
+        "apex-rollup@1.6.36": "04t6g000008OfMeAAK",
+        "apex-rollup@1.6.37": "04t6g000008OfSEAA0"
     }
 }

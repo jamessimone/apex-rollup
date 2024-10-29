@@ -177,4 +177,22 @@ private class RollupCalcItemReplacerTests {
 
     System.assertEquals(ACC_ANNUAL_REVENUE, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void exclusiveWhereClauseWithMultipleMetadataRecordsDoesNotBlowUpList() {
+    Account acc = [SELECT Id FROM Account];
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
+    );
+
+    List<SObject> records = replacer.replace(
+      new List<Account>{ acc, acc },
+      new List<Rollup__mdt>{
+        new Rollup__mdt(CalcItemWhereClause__c = 'Id != \'' + acc.Id + '\' AND Owner.Name = null', CalcItem__c = 'Account'),
+        new Rollup__mdt(CalcItemWhereClause__c = 'AnnualRevenue = null', CalcItem__c = 'Account')
+      }
+    );
+
+    Assert.areEqual(0, records.size());
+  }
 }
