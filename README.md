@@ -31,7 +31,6 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfSEAA0">
   <img alt="Deploy to Salesforce Sandbox" src="./media/deploy-package-to-sandbox.png">
 </a>
-  
 <br/>
 <br/>
 

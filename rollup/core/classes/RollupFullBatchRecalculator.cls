@@ -3,6 +3,8 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   private Database.Cursor cursor;
   private Integer currentPosition = 0;
 
+  private static final Integer DEFAULT_CHUNK_SIZE = 500;
+
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,
@@ -12,7 +14,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     RollupFullRecalcProcessor postProcessor
   ) {
     super(RollupQueryBuilder.Current.getAllRowSafeQuery(calcItemType, queryString), invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
-    this.rollupControl.BatchChunkSize__c = this.rollupControl.BatchChunkSize__c ?? 500;
+    this.rollupControl.BatchChunkSize__c = this.rollupControl.BatchChunkSize__c ?? DEFAULT_CHUNK_SIZE;
   }
 
   public override RollupState getState() {

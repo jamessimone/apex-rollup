@@ -1316,6 +1316,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       rollupOp = this.getOpMap().get(roll.op.name().substringAfter('_'));
     }
     Object defaultVal = this.getDefaultValue(roll.metadata);
+    Boolean hasNotAlreadyBeenReset = this.parentRollupFieldHasBeenReset('' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false;
     for (Integer index = lookupItems.size() - 1; index >= 0; index--) {
       SObject lookupRecord = lookupItems[index];
       if (lookupRecord.getSObjectType() != roll.lookupObj) {
@@ -1342,9 +1343,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // this guard clause prevents a full recalculation from taking place unnecessarily if a reparenting operation
         // has already been setup to adjust the lookup item's rollup field
         if (localCalcItems.isEmpty() == false || (localCalcItems.isEmpty() && oldLookupItems.isEmpty())) {
-          Object priorValToUse = roll.isFullRecalc && this.parentRollupFieldHasBeenReset('' + roll.lookupObj, '' + roll.opFieldOnLookupObject) == false
-            ? defaultVal
-            : priorVal;
+          Object priorValToUse = roll.isFullRecalc && hasNotAlreadyBeenReset ? defaultVal : priorVal;
           calc = this.getCalculator(rollupOp, calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }

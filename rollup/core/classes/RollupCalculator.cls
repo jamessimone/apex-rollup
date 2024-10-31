@@ -1182,8 +1182,8 @@ public without sharing abstract class RollupCalculator {
       this.hasCustomStateCalculation = true;
     }
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      if (this.state != null) {
-        this.info = (RollupState.AverageInfo) (this.state.getState(this.lookupRecordKey, this.metadata, RollupState.AverageInfo.class));
+      this.info = (RollupState.AverageInfo) (this.state?.getState(this.lookupRecordKey, this.metadata, RollupState.AverageInfo.class));
+      if (this.info != null) {
         this.distinctValues.addAll(this.info.distinctNumerators);
       }
       this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
@@ -1232,11 +1232,9 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
-      if (this.state != null) {
-        this.info = (RollupState.SObjectInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.SObjectInfo.class);
-        if (this.info.item != null) {
-          calcItems.add(this.info.item);
-        }
+      this.info = (RollupState.SObjectInfo) this.state?.getState(this.lookupRecordKey, this.metadata, RollupState.SObjectInfo.class);
+      if (this.info?.item != null) {
+        calcItems.add(this.info.item);
       }
       this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
     }
@@ -1273,10 +1271,7 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override void rollupResults(List<WinnowResult> results) {
-      RollupState.MostInfo info;
-      if (this.state != null) {
-        info = (RollupState.MostInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.MostInfo.class);
-      }
+      RollupState.MostInfo info = (RollupState.MostInfo) this.state?.getState(this.lookupRecordKey, this.metadata, RollupState.MostInfo.class);
       this.occurrenceToCount = new Map<Object, Integer>();
       this.largestCountPointer = info?.largestPointCounter ?? -1;
       this.returnVal = info?.value ?? this.defaultVal;
