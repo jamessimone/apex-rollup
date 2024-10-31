@@ -938,8 +938,12 @@ private class RollupFullRecalcTests {
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(
       'Completed',
-      // Namespaces are omitted from the ApexClass Name field so using a strongly typed reference here will fail while packaging otherwise
-      [SELECT Status, ApexClass.Name FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = 'RollupFullBatchRecalculator' LIMIT 1]
+      [
+        SELECT Status, ApexClass.Name
+        FROM AsyncApexJob
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
+        LIMIT 1
+      ]
       ?.Status
     );
   }
@@ -987,8 +991,7 @@ private class RollupFullRecalcTests {
     List<AsyncApexJob> jobs = [
       SELECT Status
       FROM AsyncApexJob
-      // Namespaces are omitted from the ApexClass Name field so using a strongly typed reference here will fail while packaging otherwise
-      WHERE JobType = 'Queueable' AND ApexClass.Name = 'RollupFullBatchRecalculator'
+      WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
     ];
     System.assertEquals(false, jobs.isEmpty());
     for (AsyncApexJob job : jobs) {
