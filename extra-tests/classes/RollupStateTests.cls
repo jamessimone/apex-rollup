@@ -120,7 +120,8 @@ private class RollupStateTests {
 
   @IsTest
   static void splitsReallyLongStatesForTheSameRecord() {
-    RollupState.maxBodyLength = 18000;
+    // the type names take up a bit more space during namespaced packaging
+    RollupState.maxBodyLength = RollupTestUtils.IS_NAMESPACED_PACKAGE_ORG ? 20000 : 18000;
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
     Rollup__mdt template = new Rollup__mdt(DeveloperName = 'exampleUnique40CharacterLimit');

@@ -7,12 +7,10 @@ var getCompliantSObject = (item) -> item filterObject (value, key) -> (("" ++ ke
 // String coercion used to avoid errors like:
 // Invalid type: "org.mule.weave.v2.model.values.MaterializedAttributeDelegateValue"
 records map (record) -> "" ++ record.typeName match {
-    case "RollupState.GenericInfo" -> record as Object { class: $ }
-    case "RollupState.AverageInfo" -> record as Object { class: $ }
-    case "RollupState.SObjectInfo" -> {
-            key: record.key,
-            keyLength: record.keyLength,
-            item: getCompliantSObject(record.item) as Object { class: "" ++ record.itemType },
-        } as Object { class: $ }
-    case "RollupState.MostInfo" -> record as Object { class: $ }
-}
+                case matches /(.*\.|)RollupState\.SObjectInfo/ -> {
+                        key: record.key,
+                        keyLength: record.keyLength,
+                        item: getCompliantSObject(record.item) as Object { class: "" ++ record.itemType },
+                    } as Object { class: $[0] }
+                else -> record as Object { class: $ }
+            }

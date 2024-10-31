@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes mutually exclusive polymorphic where clauses replacing children in RollupCalcItemReplacer",
-            "versionNumber": "1.6.37.0",
+            "versionName": "New RollupState implementation to stop running out of memory on large full recalcs",
+            "versionNumber": "1.7.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -69,12 +69,12 @@
             "package": "Apex Rollup - Extra Code Coverage",
             "versionDescription": "This plugin adds code coverage for Apex Rollup if you need additional code coverage for the base package",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.24.0",
+            "versionNumber": "0.0.25.0",
             "default": false,
             "scopeProfiles": true,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.6.34"
+                    "package": "apex-rollup@1.7.0"
                 }
             ]
         },
@@ -93,6 +93,7 @@
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.23": "04t6g000008ObVmAAK",
         "Apex Rollup - Extra Code Coverage@0.0.24": "04t6g000008ObgCAAS",
+        "Apex Rollup - Extra Code Coverage@0.0.25": "04t6g000008OfSiAAK",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.7-0": "04t6g000008b0O7AAI",
         "Apex Rollup - Nebula Logger@0.0.8-0": "04t6g000007zM6tAAE",
@@ -101,12 +102,10 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.6.31": "04t6g000008ObblAAC",
-        "apex-rollup@1.6.32": "04t6g000008ObbvAAC",
-        "apex-rollup@1.6.33": "04t6g000008ObeQAAS",
         "apex-rollup@1.6.34": "04t6g000008OfJfAAK",
         "apex-rollup@1.6.35": "04t6g000008OfKiAAK",
         "apex-rollup@1.6.36": "04t6g000008OfMeAAK",
-        "apex-rollup@1.6.37": "04t6g000008OfSEAA0"
+        "apex-rollup@1.6.37": "04t6g000008OfSEAA0",
+        "apex-rollup@1.7.0": "04t6g000008OfSYAA0"
     }
 }
