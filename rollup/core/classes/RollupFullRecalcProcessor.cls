@@ -84,7 +84,6 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         conductor.finalizer.addCaboose(caboose);
       }
       if (this.isBatch()) {
-        // conductor.jobId = this.jobId;
         conductor.startAsyncWork();
       } else {
         this.finalizer.addCaboose(conductor);

@@ -591,7 +591,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
     String jobStatus = [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
-    if ([SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId] > 0) {
+    if ([SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId LIMIT 1] > 0) {
       jobStatus = 'Processing';
     }
     return jobStatus;
