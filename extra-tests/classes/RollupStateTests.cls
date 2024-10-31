@@ -30,6 +30,7 @@ private class RollupStateTests {
       RollupState.MostInfo.class
     );
     mostInfo.setValues(5, 'some string');
+    // populate a null state value to be sure if the last iteration is "empty" the body is still properly committed
     state.getState(secondStubId, new Rollup__mdt(RollupOperation__c = 'LAST'), RollupState.GenericInfo.class);
 
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
@@ -168,7 +169,6 @@ private class RollupStateTests {
     state.loadState(stubJobId, new Set<String>{ stubAccountId });
   }
 
-  @SuppressWarnings('PMD.AvoidHardcodingId')
   @IsTest
   static void splitsRelatedRecordKeysIntoDifferentTextFields() {
     Rollup__mdt template = new Rollup__mdt(DeveloperName = 'one rollup');
@@ -188,8 +188,9 @@ private class RollupStateTests {
     List<String> fieldKeys10 = new List<String>();
     List<String> secondFieldKeys0 = new List<String>();
     // 255 / 18 characters ~= 13 records per field (accounting for commas)
+    String firstAccountId = RollupTestUtils.createId(Account.SObjectType) + 'aaa';
     for (Integer index = 0; index < 17 * 15; index++) {
-      String stubAccountId = RollupTestUtils.createId(Account.SObjectType) + 'aaa';
+      String stubAccountId = index == 0 ? firstAccountId : RollupTestUtils.createId(Account.SObjectType) + 'aaa';
       RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(stubAccountId, template, RollupState.GenericInfo.class);
       info.value = index;
       List<String> keys;
@@ -248,7 +249,7 @@ private class RollupStateTests {
     RollupState__c secondState = committedStates.get(1);
     // swap out for the correct "first" state - since they're inserted at the same time
     // there's no deterministic way to order them
-    if (firstState.RelatedRecordKeys0__c.startsWith('001000000000001') == false) {
+    if (firstState.RelatedRecordKeys0__c.startsWith(firstAccountId) == false) {
       secondState = firstState;
       firstState = committedStates.get(1);
     }
@@ -305,5 +306,65 @@ private class RollupStateTests {
 
     Assert.areEqual(1, Limits.getQueryRows());
     Assert.areEqual(1, Limits.getQueries());
+  }
+
+  @IsTest
+  static void alwaysTracksRelatedRecordKeys() {
+    String firstId = RollupTestUtils.createId(Account.SObjectType) + 'aaa';
+    RollupState.maxRelatedKeysLength = firstId.length();
+    Rollup__mdt template = new Rollup__mdt(DeveloperName = 'unique');
+    RollupState state = new RollupState();
+    List<String> range = new String[14];
+    String serializedLastState;
+    String thirdToLastKey;
+    String secondToLastKey;
+    String lastKey;
+    for (Integer index = 0; index <= range.size(); index++) {
+      String stubAccountId = index == 0 || index == 12 ? firstId : RollupTestUtils.createId(Account.SObjectType) + 'bbb';
+      RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(stubAccountId, template, RollupState.GenericInfo.class);
+      info.value = index;
+      switch on index {
+        when 11 {
+          thirdToLastKey = stubAccountId;
+        }
+        when 13 {
+          secondToLastKey = stubAccountId;
+        }
+        when 14 {
+          lastKey = stubAccountId;
+          serializedLastState = JSON.serialize(info.getUntypedState());
+        }
+      }
+    }
+
+    state.commitState(RollupTestUtils.createId(AsyncApexJob.SObjectType));
+
+    List<RollupState__c> committedStates = [
+      SELECT
+        Body0__c,
+        RelatedRecordKeys0__c,
+        RelatedRecordKeys1__c,
+        RelatedRecordKeys2__c,
+        RelatedRecordKeys3__c,
+        RelatedRecordKeys4__c,
+        RelatedRecordKeys5__c,
+        RelatedRecordKeys6__c,
+        RelatedRecordKeys7__c,
+        RelatedRecordKeys8__c,
+        RelatedRecordKeys9__c,
+        RelatedRecordKeys10__c
+      FROM RollupState__c
+    ];
+    Assert.areEqual(2, committedStates.size());
+    for (RollupState__c committedState : committedStates) {
+      if (committedState.RelatedRecordKeys3__c == null) {
+        Assert.isTrue(committedState.Body0__c.contains(serializedLastState));
+        Assert.areEqual(thirdToLastKey, committedState.RelatedRecordKeys0__c);
+        Assert.areEqual(secondToLastKey, committedState.RelatedRecordKeys1__c);
+        Assert.areEqual(lastKey, committedState.RelatedRecordKeys2__c);
+      } else {
+        Assert.areEqual(firstId, committedState.RelatedRecordKeys0__c);
+      }
+    }
   }
 }

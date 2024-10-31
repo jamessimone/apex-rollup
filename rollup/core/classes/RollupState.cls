@@ -10,6 +10,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
   @TestVisible
   private static Integer maxBodyLength = 131072;
+  @TestVisible
+  private static Integer maxRelatedKeysLength = 255;
 
   private static final Map<String, RollupState> KEY_TO_STATE {
     get {
@@ -154,7 +156,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
   public void loadState(String jobId, Set<String> relatedRecordKeys) {
     this.jobIds.add(jobId);
-    RollupLogger.Instance.log('Loading state for jobId: ' + jobId, relatedRecordKeys, System.LoggingLevel.DEBUG);
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
     for (RollupState__c state : matchingState) {
       if (this.statefulPreviouslyRetrievedStateIds.contains(state.Id) == false && state.Body0__c != null) {
@@ -240,11 +241,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   private void populateRelatedRecordStates(String jobId) {
     RollupState__c currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
     List<RollupState__c> statesToInsert = new List<RollupState__c>{ currentStateToInsert };
-    Integer maxRelatedKeysLength = 255;
     Integer numberOfStates = KEY_TO_STATE.size();
 
     // mutable tracking fields
-    Set<String> relatedRecordKeys = new Set<String>();
     Set<String> allRecordKeys = new Set<String>();
     Integer relatedRecordKeyLength = 0;
     Integer currentRelatedRecordFieldIndex = 0;
@@ -252,7 +251,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Integer stateCounter = 0;
     List<Map<String, Object>> untypedStates = new List<Map<String, Object>>();
     Schema.SObjectField relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
-    Schema.SObjectField relatedBodyFieldToken = RollupState__c.Body0__c;
     for (String key : KEY_TO_STATE.keySet()) {
       RollupState state = KEY_TO_STATE.get(key);
       stateCounter++;
@@ -261,10 +259,13 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
 
       String recordKey = key.substring(0, state.keyLength);
+      String currentRelatedKeys = (String) currentStateToInsert.get(relatedKeysFieldToken);
+
       if (allRecordKeys.contains(recordKey) == false) {
-        relatedRecordKeyLength += state.keyLength + 1;
-        relatedRecordKeys.add(recordKey);
         allRecordKeys.add(recordKey);
+        String newKeys = currentRelatedKeys != null ? currentRelatedKeys + ',' + recordKey : recordKey;
+        currentStateToInsert.put(relatedKeysFieldToken, newKeys);
+        relatedRecordKeyLength = newKeys.length();
       }
       Map<String, Object> untypedState = state.getUntypedState();
       // 1.1 is enough of a buffer for the serialized version with quoted characters and the + 1 accounts for commas as the delimiter between state objects
@@ -274,55 +275,46 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       // if the next key would overflow the current related keys field, either step to the new field
       // or add a new state record to the list if we're out of key fields
       if (relatedRecordKeyLength + state.keyLength + 1 > maxRelatedKeysLength) {
+        currentRelatedRecordFieldIndex++;
         TokenSentinel sentinel = getRelatedRecordKeySentinel(currentRelatedRecordFieldIndex);
-        relatedKeysFieldToken = sentinel.token;
-
-        if (sentinel.shouldReset) {
-          allRecordKeys = new Set<String>();
-          if (untypedStates.isEmpty() == false) {
-            currentStateToInsert.put(relatedBodyFieldToken, getJoinedBody(untypedStates));
+        Boolean isMissingCurrentKey = allRecordKeys.contains(recordKey) == false;
+        if (relatedKeysFieldToken == RollupState__c.RelatedRecordKeys10__c) {
+          if (isMissingCurrentKey) {
+            untypedStates.remove(untypedStates.size() - 1);
           }
-          currentRelatedRecordFieldIndex = 1;
+          allRecordKeys = new Set<String>();
+          currentStateToInsert.Body0__c = getJoinedBody(untypedStates);
+          relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
+          currentRelatedRecordFieldIndex = 0;
           currentLength = 0;
-          relatedBodyFieldToken = RollupState__c.Body0__c;
           currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
           statesToInsert.add(currentStateToInsert);
-          currentStateToInsert.put(sentinel.token, getJoinedKeys(relatedRecordKeys));
+          if (isMissingCurrentKey) {
+            untypedStates.add(untypedState);
+            currentStateToInsert.RelatedRecordKeys0__c = recordKey;
+            allRecordKeys.add(recordKey);
+            relatedRecordKeyLength = state.keyLength;
+          }
         } else {
-          currentRelatedRecordFieldIndex++;
-          currentStateToInsert.put(sentinel.token, getJoinedKeys(relatedRecordKeys));
+          relatedKeysFieldToken = sentinel.token;
+          relatedRecordKeyLength = 0;
         }
-        relatedRecordKeyLength = 0;
       }
       // There's some undocumented soft limit to the amount of data that can be stored in a long text area
       // so we use another slight buffer to avoid running into the actual limit
       else if ((currentLength + 1100) >= maxBodyLength) {
         allRecordKeys = new Set<String>();
-        currentStateToInsert.put(relatedKeysFieldToken, getJoinedKeys(relatedRecordKeys));
         currentStateToInsert.Body0__c = getJoinedBody(untypedStates);
-
         currentRelatedRecordFieldIndex = 0;
         relatedRecordKeyLength = 0;
         relatedKeysFieldToken = RollupState__c.RelatedRecordKeys0__c;
         currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
         statesToInsert.add(currentStateToInsert);
-        relatedRecordKeys.add(recordKey);
-
         currentLength = 0;
       }
     }
-    if (stateCounter == numberOfStates) {
-      TokenSentinel relatedKeySentinel = getRelatedRecordKeySentinel(currentRelatedRecordFieldIndex);
-      if (relatedKeySentinel.shouldReset && untypedStates.isEmpty() == false) {
-        currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
-        statesToInsert.add(currentStateToInsert);
-      }
-      if (relatedRecordKeys.isEmpty() == false) {
-        currentStateToInsert.put(relatedKeySentinel.token, getJoinedKeys(relatedRecordKeys));
-      }
-      if (untypedStates.isEmpty() == false) {
-        currentStateToInsert.Body0__c = getJoinedBody(untypedStates);
-      }
+    if (stateCounter == numberOfStates && untypedStates.isEmpty() == false) {
+      currentStateToInsert.Body0__c = getJoinedBody(untypedStates);
     }
 
     for (Integer reverseIndex = statesToInsert.size() - 1; reverseIndex >= 0; reverseIndex--) {
@@ -335,7 +327,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
     RollupLogger.Instance.log(
       'Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')',
-      statesToInsert,
       System.LoggingLevel.DEBUG
     );
     KEY_TO_STATE.clear();
@@ -343,7 +334,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     this.commitCount++;
   }
 
-  private class TokenSentinel {
+  private class TokenSentinel implements RollupLogger.ToStringObject {
     public Boolean shouldReset = false;
     public Schema.SObjectField token;
     public Integer currentTokenIndex;
@@ -402,12 +393,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     String joinedBody = JSON.serialize(untypedStates).removeStart('[').removeEnd(']');
     untypedStates.clear();
     return joinedBody;
-  }
-
-  private static String getJoinedKeys(Set<String> values) {
-    String joinedKeys = String.join(values, ',');
-    values.clear();
-    return joinedKeys;
   }
 
   private static String getMetadataKey(Rollup__mdt meta) {
