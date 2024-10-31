@@ -234,13 +234,10 @@ global without sharing virtual class RollupSObjectUpdater {
   private without sharing class RollupAsyncSaver extends RollupAsyncProcessor.QueueableProcessor {
     private final RollupSObjectUpdater saver;
     private RollupAsyncSaver(RollupSObjectUpdater saver, List<SObject> itemsToUpdate) {
-      super();
-      this.calcItems = itemsToUpdate;
+      super(null, itemsToUpdate, null);
       this.finalizer = saver.finalizer;
       this.isNoOp = itemsToUpdate.isEmpty();
-      this.isFullRecalc = true;
-      this.rollupControl = saver.rollupControl;
-      this.rollupControl.MaxParentRowsUpdatedAtOnce__c = 500;
+      saver.rollupControl.MaxParentRowsUpdatedAtOnce__c = 500;
       this.saver = saver;
     }
 

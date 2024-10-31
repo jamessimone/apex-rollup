@@ -135,8 +135,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
           relatedParentRecord = RollupCurrencyInfo.createNewRecord(parentRecordToReset);
           relatedParentRecordsMap.put(parentRecordToReset.Id, relatedParentRecord);
         }
-        relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
-        relatedParentRecordsMap.put(relatedParentRecord.Id, relatedParentRecord);
+        relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, defaultVal);
       }
     }
     relatedParentRecords.clear();
@@ -172,10 +171,6 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
       innerRoll.fullRecalcProcessor = this;
       innerRoll.isFullRecalc = true;
       innerRoll.calcItems = calcItems;
-      // innerRoll.finalizer = this.finalizer;
-    }
-    for (RollupFullRecalcProcessor caboose : this.cabooses) {
-      // caboose.finalizer = this.finalizer;
     }
     this.fullRecalcProcessor = this;
     return processor.rollups;
@@ -214,25 +209,6 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         this.overrideParentRollupControlValues(specificControl);
       }
       this.runAsMode = RollupMetaPicklists.getAccessLevel(meta);
-    }
-  }
-
-  private class DelayedStateDeleter extends RollupFullRecalcProcessor {
-    private final RollupState state;
-    private final Set<String> jobIds;
-
-    public DelayedStateDeleter(InvocationPoint invokePoint, RollupState state, Set<String> jobIds) {
-      super(invokePoint);
-      this.jobIds = jobIds;
-      this.state = state;
-    }
-
-    public override String runCalc() {
-      return this.state.cleanup(this.jobIds);
-    }
-
-    public override String getTypeName() {
-      return DelayedStateDeleter.class.getName();
     }
   }
 }

@@ -298,7 +298,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Boolean matches(Object calcItem);
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,
@@ -414,7 +413,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     isDeferralAllowed = value;
   }
 
-  public void setCurrentJobId(String jobId) {
+  protected void setCurrentJobId(String jobId) {
     currentJobId = jobId;
   }
 

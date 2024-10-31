@@ -16,7 +16,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean wasConvertedToFullRecalculation = false;
   private Boolean isFromBatchExecute = false;
   private Map<String, CalcItemBag> groupedLookupToCalcItems;
-  private Boolean isRecursivePopulation = false;
 
   protected Id jobId;
   protected Boolean isTimingOut = false;
@@ -127,10 +126,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
    * Conductor constructors - "outer" rollups that orchestrate the proceedings for inner rollups.
    * These rollups tend to be the ones using the lazy-loaded properties above
    */
-  protected RollupAsyncProcessor() {
-    super();
-  }
-
   public RollupAsyncProcessor(InvocationPoint invokePoint) {
     super(invokePoint);
   }
@@ -299,7 +294,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.childToUnexpectedFullRecalc.isEmpty() == false) {
       equality = '=';
     }
-    this.populateObjectFields(this.rollups);
+    this.populateObjectFields(this.rollups, false);
     String query = 'SELECT Id FROM Organization WHERE Name ' + equality + ' \'' + UserInfo.getOrganizationName() + '\'';
     RollupRepository repo = new RollupRepository(this.runAsMode);
     if (this.rollups.isEmpty() == false) {
@@ -401,15 +396,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   public without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
-    protected QueueableProcessor() {
-      super();
-    }
-
     protected QueueableProcessor(InvocationPoint rollupInvokePoint) {
       super(rollupInvokePoint);
     }
 
-    private QueueableProcessor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+    protected QueueableProcessor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
       super(invokePoint, calcItems, oldCalcItems);
     }
 
@@ -686,7 +677,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isProcessed = true;
     this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
     this.preProcessRollups(rollups);
-    this.populateObjectFields(rollups);
+    this.populateObjectFields(rollups, false);
 
     Map<String, SObject> updatedLookupRecords = new Map<String, SObject>();
     Map<String, RollupRelationshipFieldFinder.Traversal> grandparentRollups = new Map<String, RollupRelationshipFieldFinder.Traversal>();
@@ -1098,7 +1089,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private void populateObjectFields(List<RollupAsyncProcessor> rollups) {
+  private void populateObjectFields(List<RollupAsyncProcessor> rollups, Boolean isRecursivePopulation) {
     this.lookupObjectToUniqueFieldNames = this.lookupObjectToUniqueFieldNames ?? new Map<SObjectType, Set<String>>();
     this.calcObjectToUniqueFieldNames = this.calcObjectToUniqueFieldNames ?? new Map<SObjectType, Set<String>>();
     List<Rollup__mdt> combinedMeta = new List<Rollup__mdt>();
@@ -1122,13 +1113,11 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       this.mapFields(this.calcObjectToUniqueFieldNames, roll.calcItemType, childFieldsToAdd);
       if (roll.isGrouped()) {
-        this.isRecursivePopulation = true;
-        this.populateObjectFields(roll.rollups);
-        this.isRecursivePopulation = false;
+        this.populateObjectFields(roll.rollups, true);
       }
     }
 
-    if (this.isRecursivePopulation) {
+    if (isRecursivePopulation) {
       return;
     }
 
@@ -1357,16 +1346,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
             ? defaultVal
             : priorVal;
           calc = this.getCalculator(rollupOp, calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
-          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems, defaultVal);
+          this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }
       } else {
         this.logger.log('About to reset parent field for', lookupRecord, System.LoggingLevel.DEBUG);
         this.getDML().updateField(roll.opFieldOnLookupObject, lookupRecord, defaultVal);
       }
-      roll.performGroupedRollup(calc, rollupOp, lookupRecord, key, recordsToUpdate);
+      roll.performGroupedRollup(calc, rollupOp, lookupRecord, key, recordsToUpdate, defaultVal);
     }
 
-    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll, defaultVal);
+    this.removeRolledUpValuesFromReparentedRecords(lookupItems, oldLookupItems, recordsToUpdate, roll);
     this.handleFullRecalculators(roll);
 
     return recordsToUpdate.values();
@@ -1447,8 +1436,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     List<SObject> lookupItems,
     Map<String, List<SObject>> oldLookupItems,
     Map<String, SObject> recordsToUpdate,
-    RollupAsyncProcessor roll,
-    Object defaultVal
+    RollupAsyncProcessor roll
   ) {
     if (oldLookupItems.isEmpty() || this.isEmptyReparentingOp(roll.op)) {
       return;
@@ -1492,7 +1480,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         CalcItemBag bag = new CalcItemBag(reparentedCalcItems);
         bag.hasQueriedForAdditionalItems = true;
         calc = this.getCalculator(deleteOp, calc, oldLookupsRollup, bag, lookupRecord, priorVal, key, roll.lookupFieldOnCalcItem);
-        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.REPARENTED, reparentedCalcItems, defaultVal);
+        this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.REPARENTED, reparentedCalcItems);
       }
     }
   }
@@ -1504,8 +1492,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     RollupAsyncProcessor roll,
     Map<String, SObject> recordsToUpdate,
     ParentUpdateType parentUpdateType,
-    List<SObject> localCalcItems,
-    Object defaultVal
+    List<SObject> localCalcItems
   ) {
     String logKey = parentUpdateType.name().toLowerCase();
     this.logger.log(logKey + ' record prior to rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
@@ -1525,7 +1512,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.logger.log(logKey + ' record after rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
   }
 
-  private void performGroupedRollup(RollupCalculator calc, Op op, SObject lookupRecord, String key, Map<String, SObject> recordsToUpdate) {
+  private void performGroupedRollup(RollupCalculator calc, Op op, SObject lookupRecord, String key, Map<String, SObject> recordsToUpdate, Object defaultVal) {
     if (this.isGrouped() == false) {
       return;
     }
@@ -1544,7 +1531,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
     }
 
-    Object defaultVal = this.getDefaultValue(this.metadata);
     calc.setDefaultValues(key, defaultVal);
     calc.setMultiCurrencyInfo(lookupRecord);
 
@@ -1555,8 +1541,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this,
       recordsToUpdate,
       ParentUpdateType.GROUPING,
-      null,
-      defaultVal
+      null
     );
   }
 

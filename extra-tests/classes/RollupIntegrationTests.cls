@@ -1690,7 +1690,7 @@ private class RollupIntegrationTests {
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.shouldRun = true;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0);
+    Rollup.defaultControl = new RollupControl__mdt(MaxParentRowsUpdatedAtOnce__c = 0, IsRollupLoggingEnabled__c = true);
 
     Test.startTest();
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();

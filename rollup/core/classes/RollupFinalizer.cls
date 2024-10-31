@@ -5,8 +5,6 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   private static ParentJobResult testResult;
   protected final List<RollupAsyncProcessor> cabooses = new List<RollupAsyncProcessor>();
 
-  private Boolean isRecursive = false;
-
   public virtual void execute(FinalizerContext fc) {
     RollupLogger.Instance.log('Beginning finalizer with cabooses: ' + this.cabooses.size(), fc, System.LoggingLevel.INFO);
     ParentJobResult res = this.getParentJobResult(fc);
