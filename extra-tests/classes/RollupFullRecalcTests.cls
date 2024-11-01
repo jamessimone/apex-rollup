@@ -124,14 +124,14 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = Application__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        CalcItem__c = Application__c.SObjectType.toString(),
         LookupObject__c = 'Account',
         RollupToUltimateParent__c = true,
-        LookupFieldOnCalcItem__c = Application__c.ParentApplication__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = Application__c.ParentApplication__c.toString(),
         UltimateParentLookup__c = 'ParentId',
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
-        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.toString(),
         LookupFieldOnLookupObject__c = 'Id',
         GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
           new List<Schema.SObjectField>{ Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.AnnualRevenue }
@@ -168,12 +168,12 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = Application__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        CalcItem__c = Application__c.SObjectType.toString(),
         LookupObject__c = 'Individual',
-        LookupFieldOnCalcItem__c = Application__c.ParentApplication__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = Application__c.ParentApplication__c.toString(),
         RollupOperation__c = 'SUM',
         RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
-        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = Application__c.Engagement_Score__c.toString(),
         LookupFieldOnLookupObject__c = 'Id',
         GrandparentRelationshipFieldPath__c = String.valueOf(Application__c.ParentApplication__c).replace('__r', '__c') +
           '.' +
@@ -939,7 +939,7 @@ private class RollupFullRecalcTests {
     System.assertEquals(
       'Completed',
       [
-        SELECT Status, ApexClass.Name
+        SELECT Status
         FROM AsyncApexJob
         WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
         LIMIT 1
@@ -1207,12 +1207,12 @@ private class RollupFullRecalcTests {
 
     List<Rollup__mdt> metas = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = RollupChild__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
-        RollupFieldOnCalcItem__c = RollupChild__c.NumberField__c.getDescribe().getName(),
-        LookupFieldOnCalcItem__c = RollupChild__c.RollupParent__c.getDescribe().getName(),
-        LookupObject__c = RollupGrandparent__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
-        LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.getDescribe().getName(),
-        RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.getDescribe().getName(),
+        CalcItem__c = RollupChild__c.SObjectType.toString(),
+        RollupFieldOnCalcItem__c = RollupChild__c.NumberField__c.toString(),
+        LookupFieldOnCalcItem__c = RollupChild__c.RollupParent__c.toString(),
+        LookupObject__c = RollupGrandparent__c.SObjectType.toString(),
+        LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.toString(),
+        RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.toString(),
         RollupOperation__c = 'SUM',
         CalcItemWhereClause__c = ' ||| ' +
           RollupTestUtils.getRelationshipPath(

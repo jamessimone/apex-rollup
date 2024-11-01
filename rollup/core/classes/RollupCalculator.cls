@@ -492,7 +492,7 @@ public without sharing abstract class RollupCalculator {
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
       super.setDefaultValues(lookupRecordKey, priorVal);
       this.distinctValues = new Set<Object>();
-      this.isIdCount = this.opFieldOnCalcItem.getDescribe().getName() == 'Id';
+      this.isIdCount = this.opFieldOnCalcItem.toString() == 'Id';
       Object defaultVal = RollupFieldInitializer.Current.getDefaultValue(opFieldOnLookupObject);
       if (defaultVal != 0 && this.returnVal != defaultVal && this.isIdCount == false) {
         this.distinctValues.add(this.returnVal);
@@ -554,7 +554,7 @@ public without sharing abstract class RollupCalculator {
         }
       } else {
         List<SObject> results = this.repo.get();
-        String calcItemOpField = this.opFieldOnCalcItem.getDescribe().getName();
+        String calcItemOpField = this.opFieldOnCalcItem.toString();
         for (SObject res : results) {
           // have to use the String representation of the this.opFieldOnCalcItem to avoid:
           // System.SObjectException: SObject.FieldName does not belong to SObject type AggregateResult
@@ -1098,7 +1098,7 @@ public without sharing abstract class RollupCalculator {
           .setQuery(
             RollupQueryBuilder.Current.getQuery(
               this.calcItemSObjectType,
-              new List<String>{ this.opFieldOnCalcItem.getDescribe().getName() },
+              new List<String>{ this.opFieldOnCalcItem.toString() },
               'Id',
               '!=',
               this.lookupKeyQuery
@@ -1482,7 +1482,7 @@ public without sharing abstract class RollupCalculator {
       String suffix = isLast ? this.trClose : '';
       this.columnHeaders.add(prefix + this.thOpen + this.fieldNameToToken.get(fieldName).getDescribe().getLabel() + this.thClose);
       if (isLast) {
-        this.columnHeaders.add(this.thOpen + this.targetField.getDescribe().getName() + this.thClose + suffix);
+        this.columnHeaders.add(this.thOpen + this.targetField.toString() + this.thClose + suffix);
       }
       return prefix + this.tdOpen + String.valueOf(groupingValue) + this.tdClose + suffix;
     }

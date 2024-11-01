@@ -14,12 +14,12 @@ public class RollupTestUtils {
 
     Rollup.FlowInput flowInput = new Rollup.FlowInput();
     flowInput.recordsToRollup = records;
-    flowInput.lookupFieldOnCalcItem = ContactPointAddress.ParentId.getDescribe().getName();
-    flowInput.lookupFieldOnOpObject = Account.Id.getDescribe().getName();
+    flowInput.lookupFieldOnCalcItem = ContactPointAddress.ParentId.toString();
+    flowInput.lookupFieldOnOpObject = Account.Id.toString();
     flowInput.rollupContext = rollupContext;
-    flowInput.rollupFieldOnCalcItem = ContactPointAddress.PreferenceRank.getDescribe().getName();
-    flowInput.rollupFieldOnOpObject = Account.AnnualRevenue.getDescribe().getName();
-    flowInput.rollupSObjectName = Account.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
+    flowInput.rollupFieldOnCalcItem = ContactPointAddress.PreferenceRank.toString();
+    flowInput.rollupFieldOnOpObject = Account.AnnualRevenue.toString();
+    flowInput.rollupSObjectName = Account.SObjectType.toString();
     flowInput.rollupOperation = rollupOperation;
     flowInput.splitConcatDelimiterOnCalcItem = false;
 
@@ -93,7 +93,7 @@ public class RollupTestUtils {
     String currencyIscoCodeFieldName = RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME;
     Set<String> fieldNames = new Set<String>();
     for (Schema.SObjectField fieldToken : fieldTokens) {
-      fieldNames.add(fieldToken.getDescribe().getName());
+      fieldNames.add(fieldToken.toString());
     }
 
     if (fieldNames.contains('Name') == false) {

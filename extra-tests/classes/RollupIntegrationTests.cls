@@ -36,8 +36,8 @@ private class RollupIntegrationTests {
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
         LookupObject__c = 'Account',
-        LookupFieldOnCalcItem__c = Opportunity.AccountIdText__c.getDescribe().getName(),
-        LookupFieldOnLookupObject__c = Account.AccountIdText__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = Opportunity.AccountIdText__c.toString(),
+        LookupFieldOnLookupObject__c = Account.AccountIdText__c.toString(),
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'MAX',
         CalcItem__c = 'Opportunity'
@@ -68,7 +68,7 @@ private class RollupIntegrationTests {
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnCalcItem__c = 'AccountId',
         LookupFieldOnLookupObject__c = 'Id',
@@ -150,19 +150,15 @@ private class RollupIntegrationTests {
     Rollup.records = applications;
 
     Rollup.FlowInput input = new Rollup.FlowInput();
-    input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
+    input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.toString();
     input.lookupFieldOnOpObject = 'Id';
     input.recordsToRollup = applications;
     input.rollupContext = 'INSERT';
-    input.rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
-    input.rollupFieldOnOpObject = ParentApplication__c.Engagement_Rollup__c.getDescribe().getName();
+    input.rollupFieldOnCalcItem = Application__c.Engagement_Score__c.toString();
+    input.rollupFieldOnOpObject = ParentApplication__c.Engagement_Rollup__c.toString();
     input.rollupOperation = 'AVERAGE';
-    input.rollupSObjectName = ParentApplication__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
-    input.calcItemWhereClause =
-      Application__c.Something_With_Underscores__c.getDescribe().getName() +
-      ' != \'' +
-      applications[0].Something_With_Underscores__c +
-      '\'';
+    input.rollupSObjectName = ParentApplication__c.SObjectType.toString();
+    input.calcItemWhereClause = Application__c.Something_With_Underscores__c.toString() + ' != \'' + applications[0].Something_With_Underscores__c + '\'';
 
     Test.startTest();
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
@@ -188,16 +184,16 @@ private class RollupIntegrationTests {
     insert apps;
 
     Rollup.FlowInput input = new Rollup.FlowInput();
-    input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
+    input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.toString();
     input.lookupFieldOnOpObject = 'Id';
     input.recordsToRollup = new List<ParentApplication__c>{ parentApp };
     input.rollupContext = 'INSERT';
-    input.rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
-    input.rollupFieldOnOpObject = ParentApplication__c.Engagement_Rollup__c.getDescribe().getName();
+    input.rollupFieldOnCalcItem = Application__c.Engagement_Score__c.toString();
+    input.rollupFieldOnOpObject = ParentApplication__c.Engagement_Rollup__c.toString();
     input.rollupOperation = 'SUM';
-    input.rollupSObjectName = ParentApplication__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
+    input.rollupSObjectName = ParentApplication__c.SObjectType.toString();
     input.isRollupStartedFromParent = true;
-    input.calcItemTypeWhenRollupStartedFromParent = Application__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
+    input.calcItemTypeWhenRollupStartedFromParent = Application__c.SObjectType.toString();
 
     Test.startTest();
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
@@ -283,9 +279,9 @@ private class RollupIntegrationTests {
     Rollup.records = appLogs;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
-        RollupFieldOnCalcItem__c = ApplicationLog__c.Object__c.getDescribe().getName(),
-        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        CalcItem__c = ApplicationLog__c.SObjectType.toString(),
+        RollupFieldOnCalcItem__c = ApplicationLog__c.Object__c.toString(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
@@ -411,9 +407,9 @@ private class RollupIntegrationTests {
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        CalcItem__c = ApplicationLog__c.SObjectType.toString(),
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
@@ -464,9 +460,9 @@ private class RollupIntegrationTests {
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        CalcItem__c = ApplicationLog__c.SObjectType.toString(),
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
@@ -534,9 +530,9 @@ private class RollupIntegrationTests {
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        CalcItem__c = ApplicationLog__c.SObjectType.toString(),
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
@@ -584,9 +580,9 @@ private class RollupIntegrationTests {
     Rollup.shouldRun = true;
     Rollup.FlowInput input = new Rollup.FlowInput();
     input.recordsToRollup = parentApps;
-    input.calcItemTypeWhenRollupStartedFromParent = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
-    input.rollupFieldOnCalcItem = ApplicationLog__c.Name.getDescribe().getName();
-    input.lookupFieldOnCalcItem = ApplicationLog__c.Application__c.getDescribe().getName();
+    input.calcItemTypeWhenRollupStartedFromParent = ApplicationLog__c.SObjectType.toString();
+    input.rollupFieldOnCalcItem = ApplicationLog__c.Name.toString();
+    input.lookupFieldOnCalcItem = ApplicationLog__c.Application__c.toString();
     input.rollupSObjectName = 'Account';
     input.lookupFieldOnOpObject = 'Id';
     input.rollupFieldOnOpObject = 'Name';
@@ -638,9 +634,9 @@ private class RollupIntegrationTests {
     Rollup.records = appLogs;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = ApplicationLog__c.getSObjectType().getDescribe().getName(),
-        RollupFieldOnCalcItem__c = ApplicationLog__c.Name.getDescribe().getName(),
-        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        CalcItem__c = ApplicationLog__c.getSObjectType().toString(),
+        RollupFieldOnCalcItem__c = ApplicationLog__c.Name.toString(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'Name',
@@ -683,9 +679,9 @@ private class RollupIntegrationTests {
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
-        CalcItem__c = ApplicationLog__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName(),
+        CalcItem__c = ApplicationLog__c.SObjectType.toString(),
         RollupFieldOnCalcItem__c = 'Name',
-        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.getDescribe().getName(),
+        LookupFieldOnCalcItem__c = ApplicationLog__c.Application__c.toString(),
         LookupObject__c = 'Account',
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
@@ -925,7 +921,7 @@ private class RollupIntegrationTests {
       null,
       new Rollup__mdt(
         RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
-        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.toString(),
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
       new Map<Id, SObject>(),
@@ -940,7 +936,7 @@ private class RollupIntegrationTests {
       null,
       new Rollup__mdt(
         RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
-        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.getDescribe().getName(),
+        RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.toString(),
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
       new Map<Id, SObject>(),

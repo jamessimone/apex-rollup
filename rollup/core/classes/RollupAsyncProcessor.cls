@@ -303,7 +303,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       query = RollupQueryBuilder.Current.getQuery(
         firstRollup.lookupObj,
         new List<String>(this.lookupObjectToUniqueFieldNames.get(firstRollup.lookupObj)),
-        firstRollup.lookupFieldOnLookupObject.getDescribe().getName(),
+        firstRollup.lookupFieldOnLookupObject.toString(),
         '='
       );
     }
@@ -881,7 +881,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (
         rollup.metadata?.RollupGrouping__r.Id != null &&
         rollup.calcItems.isEmpty() == false &&
-        rollup.calcItems[0].getSObjectType().getDescribe().getName() != rollup.metadata.CalcItem__c
+        rollup.calcItems[0].getSObjectType().toString() != rollup.metadata.CalcItem__c
       ) {
         List<RollupAsyncProcessor> groupedProcessors = groupingToRollups.get(rollup.metadata?.RollupGrouping__r.Id) ?? new List<RollupAsyncProcessor>();
         groupedProcessors.add(rollup);
@@ -1101,10 +1101,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       this.mapFields(
         this.lookupObjectToUniqueFieldNames,
         roll.lookupObj,
-        new Set<String>{ roll.opFieldOnLookupObject.getDescribe().getName(), roll.lookupFieldOnLookupObject.getDescribe().getName() }
+        new Set<String>{ roll.opFieldOnLookupObject.toString(), roll.lookupFieldOnLookupObject.toString() }
       );
 
-      Set<String> childFieldsToAdd = new Set<String>{ roll.opFieldOnCalcItem.getDescribe().getName(), roll.lookupFieldOnCalcItem.getDescribe().getName() };
+      Set<String> childFieldsToAdd = new Set<String>{ roll.opFieldOnCalcItem.toString(), roll.lookupFieldOnCalcItem.toString() };
       if (String.isNotBlank(roll.metadata.CalcItemWhereClause__c)) {
         childFieldsToAdd.addAll(RollupEvaluator.getWhereEval(roll.metadata.CalcItemWhereClause__c, roll.calcItemType).getQueryFields());
       }
@@ -1166,7 +1166,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     for (Integer index = potentialRollups.size() - 1; index >= 0; index--) {
       RollupAsyncProcessor processor = potentialRollups[index];
       Map<String, SObjectField> fieldMap = processor.lookupObj?.getDescribe().fields.getMap();
-      if (fieldMap?.containsKey(processor.opFieldOnLookupObject.getDescribe().getName()) == false) {
+      if (fieldMap?.containsKey(processor.opFieldOnLookupObject.toString()) == false) {
         potentialRollups.remove(index);
       }
     }
@@ -1274,7 +1274,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       for (SObject calcItem : roll.calcItems) {
         if (calcItem.getSObjectType() == roll.calcItemType) {
-          String lookupKey = (String) calcItem.get(roll.lookupFieldOnCalcItem.getDescribe().getName());
+          String lookupKey = (String) calcItem.get(roll.lookupFieldOnCalcItem.toString());
           if (String.isNotBlank(lookupKey)) {
             uniqueIds.add(lookupKey);
           }
@@ -1378,8 +1378,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       if (priorLookup != calcItem.get(roll.lookupFieldOnCalcItem) && roll.traversal == null) {
         this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
-      } else if (roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName()) == true) {
-        Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.getDescribe().getName());
+      } else if (roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.toString()) == true) {
+        Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.toString());
         if (oldLookupId != null) {
           this.populateOldLookupItems(oldLookupId, oldCalcItem, oldLookupItems);
         }

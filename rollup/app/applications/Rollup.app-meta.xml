@@ -16,5 +16,6 @@
     <label>Apex Rollup</label>
     <navType>Standard</navType>
     <tabs>Recalculate_Rollup</tabs>
+    <tabs>RollupState__c</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>

@@ -2,7 +2,7 @@
 // This assumes that the records in dlrs__LookupRollupSummary2__mdt and please__Rollup__mdt have the same DeveloperName
 
 Set<String> rollupRecordDeveloperNames = please__Rollup__mdt.getAll().keySet();
-String dlrsCustomMetadataTypePrefix = Schema.dlrs__LookupRollupSummary2__mdt.SObjectType.getDescribe().getName().replace('__mdt', '');
+String dlrsCustomMetadataTypePrefix = Schema.dlrs__LookupRollupSummary2__mdt.SObjectType.toString().replace('__mdt', '');
 Metadata.DeployContainer deployment = new Metadata.DeployContainer();
 
 for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.getAll().values()) {
@@ -12,7 +12,7 @@ for (dlrs__LookupRollupSummary2__mdt dlrsRule : dlrs__LookupRollupSummary2__mdt.
   }
 
   Metadata.CustomMetadataValue dlrsIsActiveField = new Metadata.CustomMetadataValue();
-  dlrsIsActiveField.field = Schema.dlrs__LookupRollupSummary2__mdt.dlrs__Active__c.getDescribe().getName();
+  dlrsIsActiveField.field = Schema.dlrs__LookupRollupSummary2__mdt.dlrs__Active__c.toString();
   dlrsIsActiveField.value = false;
 
   Metadata.CustomMetadata dlrsCustomMetadataRecord = new Metadata.CustomMetadata();

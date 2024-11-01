@@ -10,7 +10,6 @@ private class RollupStateTests {
       RollupState.GenericInfo.class
     );
     info.value = 5;
-
     RollupState.AverageInfo averageInfo = (RollupState.AverageInfo) state.getState(
       stubAccountId,
       new Rollup__mdt(RollupOperation__c = 'CONCAT'),
@@ -32,17 +31,14 @@ private class RollupStateTests {
     mostInfo.setValues(5, 'some string');
     // populate a null state value to be sure if the last iteration is "empty" the body is still properly committed
     state.getState(secondStubId, new Rollup__mdt(RollupOperation__c = 'LAST'), RollupState.GenericInfo.class);
-
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
-
     Set<String> relatedRecordKeys = new Set<String>{ '%' + stubAccountId + '%', '%' + secondStubId + '%' };
-    Test.startTest();
+
     state.commitState(stubJobId);
     state.loadState(stubJobId, new Set<String>{ stubAccountId, secondStubId });
     info = (RollupState.GenericInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), RollupState.GenericInfo.class);
     info.value = 6;
     state.commitState(stubJobId);
-    Test.stopTest();
 
     RollupState__c insertedState = [
       SELECT Id, Body0__c
@@ -188,9 +184,10 @@ private class RollupStateTests {
     List<String> fieldKeys9 = new List<String>();
     List<String> fieldKeys10 = new List<String>();
     List<String> secondFieldKeys0 = new List<String>();
-    // 255 / 18 characters ~= 13 records per field (accounting for commas)
     String firstAccountId = RollupTestUtils.createId(Account.SObjectType) + 'aaa';
-    for (Integer index = 0; index < 17 * 15; index++) {
+    // 255 / 18 characters ~= 13 records per field (accounting for commas)
+    // 12 because with 11 fields, we want to "overflow" to the second RelatedRecordKeys0__c
+    for (Integer index = 0; index < 13 * 12; index++) {
       String stubAccountId = index == 0 ? firstAccountId : RollupTestUtils.createId(Account.SObjectType) + 'aaa';
       RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(stubAccountId, template, RollupState.GenericInfo.class);
       info.value = index;
@@ -241,6 +238,7 @@ private class RollupStateTests {
         RelatedRecordKeys9__c,
         RelatedRecordKeys10__c
       FROM RollupState__c
+      WHERE RelatedJobId__c = :stubJobId
     ];
     // ensure that loadState can be called with the full spread of keys
     state.loadState(stubJobId, fullKeys);
@@ -265,6 +263,7 @@ private class RollupStateTests {
     Assert.isNotNull(firstState.RelatedRecordKeys8__c, 'RelatedRecordKeys8__c should have been filled out');
     Assert.isNotNull(firstState.RelatedRecordKeys9__c, 'RelatedRecordKeys9__c should have been filled out');
     Assert.isNotNull(firstState.RelatedRecordKeys10__c, 'RelatedRecordKeys10__c should have been filled out');
+    Assert.isNotNull(secondState.RelatedRecordKeys0__c, 'Second RelatedRecordKeys0__c should have been filled out');
 
     Assert.areEqual(String.join(fieldKeys0, ','), firstState.RelatedRecordKeys0__c, 'fieldKeys0');
     Assert.areEqual(String.join(fieldKeys1, ','), firstState.RelatedRecordKeys1__c, 'fieldKeys1');

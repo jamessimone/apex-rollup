@@ -57,24 +57,24 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     getRefinedQueryString(this.queryString, this.rollupMetas, this.invokePoint);
     this.objIds.addAll(this.recordIds);
     String processId = this.getNoProcessId();
-    if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true || this.countOfItems == 0) {
+    if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true || this.countOfItems <= 0) {
       this.logger.log('Parent reset processor no-op', System.LoggingLevel.INFO);
       return processId;
     }
     Boolean isOverLimit = this.countOfItems > maxQueryRows;
-    if (isOverLimit && this.isBatch() == false) {
-      // avoids: System.AsyncException: Database.executeBatch cannot be called from a batch start, batch execute, or future method
-      processId = super.startAsyncWork();
-    } else if (isOverLimit && Limits.getLimitQueueableJobs() > Limits.getQueueableJobs()) {
+    Integer previouslyQueuedJobs = Limits.getQueueableJobs();
+    if (isOverLimit && System.isQueueable() && previouslyQueuedJobs == 1) {
+      this.finalizer.addCaboose(this);
+    } else if (isOverLimit && Limits.getLimitQueueableJobs() > previouslyQueuedJobs) {
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
       processId = this.startAsyncWork();
     } else if (this.countOfItems > 0) {
+      isRecursiveRun = true;
       for (RollupAsyncProcessor proc : this.rollups) {
-        isRecursiveRun = true;
         proc.runCalc();
-        isRecursiveRun = false;
       }
+      isRecursiveRun = false;
       this.runSync();
     }
 
@@ -85,18 +85,18 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     if (parentItems.isEmpty()) {
       return;
     }
-    this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', System.LoggingLevel.INFO);
+    this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', System.LoggingLevel.DEBUG);
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
     for (Rollup__mdt rollupMeta : this.rollupMetas) {
-      Object defaultVal = this.getDefaultValue(rollupMeta);
       Schema.SObjectField parentFieldToken = parentFields.get(rollupMeta.RollupFieldOnLookupObject__c);
       if (
-        rollupMeta.LookupObject__c != this.calcItemType.getDescribe().getName() ||
+        rollupMeta.LookupObject__c != this.calcItemType.toString() ||
         this.parentRollupFieldHasBeenReset(rollupMeta.LookupObject__c, rollupMeta.RollupFieldOnLookupObject__c) ||
         parentFieldToken == null
       ) {
         continue;
       }
+      Object defaultVal = this.getDefaultValue(rollupMeta);
       for (SObject parentItem : parentItems) {
         this.getDML().updateField(parentFieldToken, parentItem, defaultVal);
       }

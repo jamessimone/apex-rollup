@@ -35,6 +35,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     if (possibleState == null) {
       possibleState = (RollupState) initializingType.newInstance();
       possibleState.recordId = key;
+      // we only pass the original key's length because even though state is keyed by the trueKey
+      // the original key's length gives us access to the record key when committing state values to the
+      // various RelatedRecordKey{n}__c fields
       this.setState(trueKey, key.length(), possibleState);
     }
     return possibleState;
@@ -189,14 +192,14 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       SELECT Id
       FROM RollupState__c
       WHERE RelatedJobId__c = :this.jobIds
-      LIMIT :(Limits.getLimitDmlRows() - (Limits.getDmlRows() + 1))
+      LIMIT :Limits.getLimitDmlRows() - Limits.getDmlRows()
     ];
     Database.delete(matchingState, false, System.AccessLevel.SYSTEM_MODE);
   }
 
   public void execute(System.FinalizerContext fc) {
     if ([SELECT COUNT() FROM RollupState__c WHERE Id = :this.jobIds LIMIT 1] > 0) {
-      new RollupState().cleanup(new Set<String>(this.jobIds));
+      new RollupState().cleanup(this.jobIds);
     }
   }
 

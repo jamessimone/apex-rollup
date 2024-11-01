@@ -141,7 +141,7 @@ public without sharing virtual class RollupCurrencyInfo {
       return;
     }
     for (SObject calcItem : calcItems) {
-      if (DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(calcItem.getSObjectType().getDescribe().getName()) == false) {
+      if (DATED_MULTICURRENCY_SUPPORTED_OBJECTS.containsKey(calcItem.getSObjectType().toString()) == false) {
         return;
       }
       Datetime currencyDate = getCurrencyDate(calcItem);
@@ -234,7 +234,7 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static String getHashKey(SObject calcItem, Schema.SObjectField opFieldOnCalcItem) {
-    return '' + calcItem.Id + opFieldOnCalcItem.getDescribe().getName() + calcItem.hashCode();
+    return '' + calcItem.Id + opFieldOnCalcItem.toString() + calcItem.hashCode();
   }
 
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {
@@ -264,7 +264,7 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static Datetime getCurrencyDate(SObject calcItem) {
-    List<String> itemToDateFieldMapping = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().getDescribe().getName());
+    List<String> itemToDateFieldMapping = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().toString());
     switch on itemToDateFieldMapping?.size() {
       when 1 {
         return calcItem.isSet(itemToDateFieldMapping[0]) ? (Datetime) calcItem.get(itemToDateFieldMapping[0]) : null;

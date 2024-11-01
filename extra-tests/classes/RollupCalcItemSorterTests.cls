@@ -162,7 +162,7 @@ private class RollupCalcItemSorterTests {
       new Opportunity(StageName = 'One')
     };
 
-    itemsToSort.sort(new RollupCalcItemSorter(new List<String>{ Opportunity.Name.getDescribe().getName(), Opportunity.StageName.getDescribe().getName() }));
+    itemsToSort.sort(new RollupCalcItemSorter(new List<String>{ Opportunity.Name.toString(), Opportunity.StageName.toString() }));
 
     System.assertEquals(null, itemsToSort.get(0).StageName);
     System.assertEquals('One', itemsToSort.get(1).StageName);

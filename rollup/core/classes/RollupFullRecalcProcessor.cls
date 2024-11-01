@@ -123,7 +123,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     for (Rollup__mdt meta : this.rollupMetas) {
       Object defaultVal = this.getDefaultValue(meta);
       for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
-        if (parentRecordToReset.getSObjectType().getDescribe().getName() != meta.LookupObject__c) {
+        if (parentRecordToReset.getSObjectType().toString() != meta.LookupObject__c) {
           continue;
         }
         SObject relatedParentRecord = relatedParentRecordsMap.get(parentRecordToReset.Id);
