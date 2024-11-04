@@ -1616,6 +1616,16 @@ private class RollupFullRecalcTests {
       System.assertEquals(null, updatedAcc.AnnualRevenue, 'AnnualRevenue should have been reset: ' + updatedAcc);
       System.assertEquals(null, updatedAcc.AccountNumber, 'AccountNumber should have been reset: ' + updatedAcc);
     }
+    System.assertEquals(
+      'Completed',
+      [
+        SELECT Status
+        FROM AsyncApexJob
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupParentResetProcessor.class)
+        LIMIT 1
+      ]
+      ?.Status
+    );
   }
 
   @IsTest

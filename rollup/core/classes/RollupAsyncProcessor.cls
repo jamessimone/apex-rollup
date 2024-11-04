@@ -864,7 +864,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         rollupsToProcess.addAll(additionalRollups);
       } else if (rollup.overridesRunCalc) {
         rollupsToProcess.remove(index);
-        if (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false) {
+        if (System.isQueueable() == false || hasAlreadyAsyncEnqueued == false || this.finalizer == null) {
           rollup.runCalc();
         } else {
           this.finalizer.addCaboose(rollup);

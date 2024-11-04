@@ -1,14 +1,34 @@
 public without sharing virtual class RollupFinalizer implements Finalizer {
   @TestVisible
-  private static Boolean wasCalled = false;
-  @TestVisible
-  private static ParentJobResult testResult;
+  private static Boolean wasExceptionLogged = false;
   protected final List<RollupAsyncProcessor> cabooses = new List<RollupAsyncProcessor>();
 
+  // Avoids issues with serializing Exceptions in Apex by flattening the finalizer context data structure
+  private class FinalizerContextLoggable implements RollupLogger.ToStringObject {
+    public final String exceptionMessage;
+    public final String exceptionStacktrace;
+    public final String exceptionType;
+    public final String jobId;
+    public final String requestId;
+    public final String resultName;
+
+    public FinalizerContextLoggable(System.FinalizerContext fc) {
+      this.jobId = fc.getAsyncApexJobId();
+      this.requestId = fc.getRequestId();
+      this.resultName = fc.getResult().name();
+      this.exceptionMessage = fc.getException()?.getMessage();
+      this.exceptionStacktrace = fc.getException()?.getStackTraceString();
+      this.exceptionType = fc.getException()?.getTypeName();
+    }
+
+    public override String toString() {
+      return 'FinalizerContext:[ ' + JSON.serializePretty(this, true).removeStart('{').removeEnd('}') + ']';
+    }
+  }
+
   public virtual void execute(FinalizerContext fc) {
-    RollupLogger.Instance.log('Beginning finalizer with cabooses: ' + this.cabooses.size(), fc, System.LoggingLevel.INFO);
-    ParentJobResult res = this.getParentJobResult(fc);
-    switch on res {
+    RollupLogger.Instance.log('Beginning finalizer with cabooses: ' + this.cabooses.size(), System.LoggingLevel.INFO);
+    switch on fc?.getResult() {
       when UNHANDLED_EXCEPTION {
         this.logUnhandledException(fc);
       }
@@ -17,7 +37,6 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
         this.recurseThroughConductors();
       }
     }
-    wasCalled = true;
   }
 
   public void addCaboose(RollupAsyncProcessor caboose) {
@@ -28,17 +47,12 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   }
 
   protected void logUnhandledException(FinalizerContext fc) {
-    if (wasCalled == false) {
+    if (wasExceptionLogged == false) {
+      wasExceptionLogged = true;
       // a finalizer can be re-queued up to five times, but we view this as a one-time "get out of jail free" logger
-      RollupLogger.Instance.log('finalizer logging failure from:', fc?.getException(), System.LoggingLevel.ERROR);
+      RollupLogger.Instance.log('Unhandled exception, stopping execution:', new FinalizerContextLoggable(fc), System.LoggingLevel.ERROR);
       RollupLogger.Instance.save();
     }
-  }
-
-  private ParentJobResult getParentJobResult(FinalizerContext fc) {
-    ParentJobResult res = testResult ?? fc?.getResult();
-    testResult = null;
-    return res;
   }
 
   private void recurseThroughConductors() {

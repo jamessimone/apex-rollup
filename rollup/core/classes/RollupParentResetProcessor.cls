@@ -63,8 +63,8 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     }
     Boolean isOverLimit = this.countOfItems > maxQueryRows;
     Integer previouslyQueuedJobs = Limits.getQueueableJobs();
-    if (isOverLimit && System.isQueueable() && previouslyQueuedJobs == 1) {
-      this.finalizer.addCaboose(this);
+    if (isOverLimit && System.isQueueable() && previouslyQueuedJobs == 1 && this.finalizer != null) {
+      this.finalizer.addCaboose(new QueueableResetProcessor(this));
     } else if (isOverLimit && Limits.getLimitQueueableJobs() > previouslyQueuedJobs) {
       // avoids System.LimitException: Too many queueable jobs added to the queue: { output of Limits.getQueueableJobs() }
       // down the rabbit hole we go again
