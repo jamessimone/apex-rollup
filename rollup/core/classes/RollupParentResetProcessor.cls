@@ -85,7 +85,6 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     if (parentItems.isEmpty()) {
       return;
     }
-    this.logger.log('resetting parent fields for: ' + parentItems.size() + ' items', System.LoggingLevel.DEBUG);
     Map<String, Schema.SObjectField> parentFields = parentItems.get(0).getSObjectType().getDescribe().fields.getMap();
     for (Rollup__mdt rollupMeta : this.rollupMetas) {
       Schema.SObjectField parentFieldToken = parentFields.get(rollupMeta.RollupFieldOnLookupObject__c);
@@ -97,6 +96,10 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
         continue;
       }
       Object defaultVal = this.getDefaultValue(rollupMeta);
+      this.logger.log(
+        'resetting parent fields to: ' + defaultVal + ' for field: ' + parentFieldToken + ' for ' + parentItems.size() + ' items',
+        System.LoggingLevel.DEBUG
+      );
       for (SObject parentItem : parentItems) {
         this.getDML().updateField(parentFieldToken, parentItem, defaultVal);
       }
@@ -111,10 +114,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   }
 
   protected override String startAsyncWork() {
-    if (this.rollupControl.ShouldSkipResettingParentFields__c) {
-      return this.getNoProcessId();
-    }
-    return System.enqueueJob(new QueueableResetProcessor(this));
+    return this.rollupControl.ShouldSkipResettingParentFields__c ? this.getNoProcessId() : System.enqueueJob(new QueueableResetProcessor(this));
   }
 
   protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {

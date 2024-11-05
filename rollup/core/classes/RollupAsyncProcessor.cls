@@ -445,11 +445,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected virtual override String startAsyncWork() {
-      if (System.isQueueable() && (System.Limits.getQueueableJobs() == 1 || hasAlreadyAsyncEnqueued)) {
-        if (this.finalizer != null) {
-          this.finalizer.addCaboose(this);
-          return this.getNoProcessId();
-        }
+      if (this.finalizer != null && System.isQueueable() && (System.Limits.getQueueableJobs() == 1 || hasAlreadyAsyncEnqueued)) {
+        this.finalizer.addCaboose(this);
+        return this.getNoProcessId();
       }
       hasAlreadyAsyncEnqueued = hasAlreadyAsyncEnqueued || System.isBatch() || System.isQueueable() || System.isFuture();
       return System.enqueueJob(this);
