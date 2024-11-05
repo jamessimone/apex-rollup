@@ -28,8 +28,8 @@ private class RollupFlowFullRecalcTests {
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(apps, 'REFRESH', 'SUM');
     flowInputs[0].ultimateParentLookup = 'ParentId';
     flowInputs[0].rollupToUltimateParent = true;
-    flowInputs[0].lookupFieldOnCalcItem = Application__c.ParentApplication__c.getDescribe().getName();
-    flowInputs[0].rollupFieldOnCalcItem = Application__c.Engagement_Score__c.getDescribe().getName();
+    flowInputs[0].lookupFieldOnCalcItem = Application__c.ParentApplication__c.toString();
+    flowInputs[0].rollupFieldOnCalcItem = Application__c.Engagement_Score__c.toString();
     flowInputs[0].grandparentRelationshipFieldPath = RollupTestUtils.getRelationshipPath(
       new List<Schema.SObjectField>{ Application__c.ParentApplication__c, ParentApplication__c.Account__c, Account.AnnualRevenue }
     );

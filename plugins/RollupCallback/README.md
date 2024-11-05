@@ -104,7 +104,7 @@ public class SubflowRollupDispatcher implements RollupSObjectUpdater.IDispatcher
     List<SObjectDecorator> wrappedRecords = new List<SObjectDecorator>();
     for (SObject record : records) {
       SObjectDecorator decorator = new SObjectDecorator();
-      decorator.SObjectName = record.getSObjectType().getDescribe().getName();
+      decorator.SObjectName = record.getSObjectType().toString();
       decorator.RecordId = record.Id;
       decorator.FieldNames = new List<String>(record.getPopulatedFieldsAsMap().keySet());
       wrappedRecords.add(decorator);

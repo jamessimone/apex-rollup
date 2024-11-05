@@ -27,7 +27,7 @@ public without sharing class RollupCalcItemReplacer {
     if (fieldToken?.getDescribe().isCalculated() == false && fieldToken?.getDescribe().isUpdateable() == true) {
       target.put(fieldToken, value);
     } else {
-      target = serializeReplace(target, fieldToken.getDescribe().getName(), value);
+      target = serializeReplace(target, fieldToken.toString(), value);
     }
     return target;
   }
@@ -76,7 +76,7 @@ public without sharing class RollupCalcItemReplacer {
     this.repo = this.repo ?? new RollupRepository(RollupMetaPicklists.getAccessLevel(metadata[0]));
     SObjectType calcType = calcItems[0].getSObjectType();
     for (Rollup__mdt meta : metadata) {
-      if (meta.CalcItem__c != calcType.getDescribe().getName()) {
+      if (meta.CalcItem__c != calcType.toString()) {
         continue;
       }
 

@@ -34,7 +34,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private static Datetime START_OF_TODAY {
     get {
-      return getRelativeDatetime(System.today(), START_TIME);
+      return Datetime.newInstance(System.today().year(), System.today().month(), System.today().day());
     }
   }
 
@@ -296,7 +296,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private class YesterdayLiteral extends RollupDateLiteral {
     public YesterdayLiteral() {
-      this.ref = START_OF_TODAY.addDays(-1);
+      this.ref = getRelativeDatetime(System.today().addDays(-1), START_TIME);
       this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
     }
   }

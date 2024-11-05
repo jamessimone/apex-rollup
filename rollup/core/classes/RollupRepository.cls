@@ -46,6 +46,11 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     return this;
   }
 
+  public Database.Cursor getCursor() {
+    this.createQueryLog('Getting cursor');
+    return Database.getCursorWithBinds(this.args.query, this.args.bindVars, this.accessLevel);
+  }
+
   public Database.QueryLocator getLocator() {
     this.createQueryLog('Getting query locator');
     return Database.getQueryLocatorWithBinds(this.args.query, this.args.bindVars, this.accessLevel);

@@ -1129,7 +1129,7 @@ private class RollupEvaluatorTests {
 
   @IsTest
   static void pascalCaseForFieldNamesIsNotRequired() {
-    String poorlyCasedFieldName = Opportunity.IsClosed.getDescribe().getName().toLowerCase();
+    String poorlyCasedFieldName = Opportunity.IsClosed.toString().toLowerCase();
 
     Opportunity isClosedFalse = (Opportunity) JSON.deserialize('{ "IsClosed": false }', Opportunity.class);
     OpportunityLineItem target = new OpportunityLineItem(Opportunity = isClosedFalse);

@@ -5,9 +5,14 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   private final RollupFullRecalcProcessor postProcessor;
   private final Map<Id, SObject> parentRecordsToClear = new Map<Id, SObject>();
-  private final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
+  protected final List<RollupFullRecalcProcessor> cabooses = new List<RollupFullRecalcProcessor>();
+  private final Set<String> jobIds = new Set<String>();
   private Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateGrandparents;
   private Boolean hasProcessedParentRecords = false;
+
+  private RollupFullRecalcProcessor(InvocationPoint invokePoint) {
+    super(invokePoint);
+  }
 
   protected RollupFullRecalcProcessor(
     String queryString,
@@ -68,21 +73,27 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
   }
 
   public void finish() {
+    this.jobIds.add(this.jobId);
     if (this.cabooses.isEmpty() == false) {
       RollupFullRecalcProcessor conductor = this.cabooses.remove(0);
+      conductor.jobIds.add(this.jobId);
       for (Rollup__mdt meta : conductor.rollupMetas) {
         conductor.storeUniqueParentFields(meta);
       }
       for (RollupFullRecalcProcessor caboose : this.cabooses) {
-        conductor.addCaboose(caboose);
+        conductor.finalizer.addCaboose(caboose);
       }
-      this.setCurrentJobId(conductor.startAsyncWork());
-    } else if (this.postProcessor != null) {
-      this.logger.log('Starting post-full recalc processor', this.postProcessor, System.LoggingLevel.INFO);
-      // chain jobs together so that if recalc job is being tracked within the Recalc Rollups app,
-      // job continuity is established between the full recalc and then any downstream job that runs
-      // (as the postProcessor)
-      this.setCurrentJobId(this.postProcessor.runCalc());
+      if (this.isBatch()) {
+        conductor.startAsyncWork();
+      } else {
+        this.finalizer.addCaboose(conductor);
+      }
+    } else {
+      if (this.postProcessor != null) {
+        this.logger.log('Post processor added as caboose', this.postProcessor, System.LoggingLevel.INFO);
+        this.finalizer.addCaboose(this.postProcessor);
+      }
+      this.getState()?.cleanup(this.jobIds);
     }
     if (this.hasProcessedParentRecords == false) {
       List<SObject> parentRecords = new List<SObject>();
@@ -109,18 +120,19 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     }
     this.hasProcessedParentRecords = true;
     Map<Id, SObject> relatedParentRecordsMap = new Map<Id, SObject>(relatedParentRecords);
-    for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
-      SObject relatedParentRecord = relatedParentRecordsMap.containsKey(parentRecordToReset.Id)
-        ? relatedParentRecordsMap.get(parentRecordToReset.Id)
-        : RollupCurrencyInfo.createNewRecord(parentRecordToReset);
-
-      for (Rollup__mdt meta : this.rollupMetas) {
-        if (relatedParentRecord.getSObjectType().getDescribe().getName() == meta.LookupObject__c) {
-          relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, null);
+    for (Rollup__mdt meta : this.rollupMetas) {
+      Object defaultVal = this.getDefaultValue(meta);
+      for (SObject parentRecordToReset : this.parentRecordsToClear.values()) {
+        if (parentRecordToReset.getSObjectType().toString() != meta.LookupObject__c) {
+          continue;
         }
+        SObject relatedParentRecord = relatedParentRecordsMap.get(parentRecordToReset.Id);
+        if (relatedParentRecord == null) {
+          relatedParentRecord = RollupCurrencyInfo.createNewRecord(parentRecordToReset);
+          relatedParentRecordsMap.put(parentRecordToReset.Id, relatedParentRecord);
+        }
+        relatedParentRecord.put(meta.RollupFieldOnLookupObject__c, defaultVal);
       }
-
-      relatedParentRecordsMap.put(relatedParentRecord.Id, relatedParentRecord);
     }
     relatedParentRecords.clear();
     relatedParentRecords.addAll(relatedParentRecordsMap.values());
@@ -146,6 +158,11 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
       }
     }
     RollupAsyncProcessor processor = this.getAsyncRollup(this.rollupMetas, this.calcItemType, calcItems, new Map<Id, SObject>(), null, this.invokePoint);
+    for (Rollup innerRoll : this.rollups) {
+      if (innerRoll.getTypeName() == this.getTypeName()) {
+        this.cabooses.add((RollupFullRecalcProcessor) innerRoll);
+      }
+    }
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = this;
       innerRoll.isFullRecalc = true;
@@ -157,10 +174,11 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
 
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {
     super.customizeToStringEntries(props);
-    this.addToMap(props, 'Rollup Metadata', this.rollupMetas);
+    Integer numberOfRollups = this.rollupMetas?.size();
+    this.addToMap(props, 'Rollup Metadata', numberOfRollups > 5 ? (Object) numberOfRollups : (Object) this.rollupMetas);
     this.addToMap(props, 'Query String', this.queryString);
     this.addToMap(props, 'Caboose Count', this.cabooses.size());
-    this.addToMap(props, 'Inner rollups', this.rollupMetas?.size());
+    this.addToMap(props, 'Inner rollups', numberOfRollups);
     return props;
   }
 

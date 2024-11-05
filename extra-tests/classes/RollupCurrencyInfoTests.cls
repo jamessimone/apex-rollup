@@ -206,7 +206,7 @@ private class RollupCurrencyInfoTests {
     );
     List<OpportunityLineItem> olis = new List<OpportunityLineItem>{ oliToUpdate };
 
-    RollupCurrencyInfo.overrideDatedMultiCurrency(olis.getSObjectType().getDescribe().getName(), new List<String>{ 'Opportunity', 'CloseDate' });
+    RollupCurrencyInfo.overrideDatedMultiCurrency(olis.getSObjectType().toString(), new List<String>{ 'Opportunity', 'CloseDate' });
     RollupCurrencyInfo.transform(olis, OpportunityLineItem.TotalPrice, eurPeriodOne.IsoCode, new List<RollupOrderBy__mdt>());
 
     OpportunityLineItem oli = (OpportunityLineItem) RollupCurrencyInfo.getCalcItem(oliToUpdate, eurPeriodOne.IsoCode);

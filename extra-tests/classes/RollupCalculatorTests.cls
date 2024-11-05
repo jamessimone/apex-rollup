@@ -245,9 +245,8 @@ private class RollupCalculatorTests {
     Rollup__mdt metadata = configureOrderByMetadata(new Rollup__mdt(), 'Name');
     RollupCalculator calc = getCalculator(0, Rollup.Op.FIRST, Opportunity.Amount, Account.AnnualRevenue, metadata, lookupKey, Account.Id);
     RollupState outerState = new RollupState();
-    RollupState.SObjectInfo info = new RollupState.SObjectInfo();
+    RollupState.SObjectInfo info = (RollupState.SObjectInfo) outerState.getState(lookupKey, metadata, RollupState.SObjectInfo.class);
     info.setItem(new Opportunity(Name = 'a', Amount = 3));
-    outerState.setState(lookupKey, info);
     calc.setState(outerState);
 
     calc.performRollup(
@@ -724,17 +723,17 @@ private class RollupCalculatorTests {
   static void mostRespectsStateValues() {
     Account acc = [SELECT Id FROM Account];
     Integer priorVal = 50;
-    RollupState.MostInfo info = new RollupState.MostInfo();
-    info.setLargestPointCounter(2);
     RollupState outerState = new RollupState();
-    outerState.setState(acc.Id, info);
+    Rollup__mdt metaKey = new Rollup__mdt();
+    RollupState.MostInfo info = (RollupState.MostInfo) outerState.getState(acc.Id, metaKey, RollupState.MostInfo.class);
+    info.setValues(2, priorVal);
 
     RollupCalculator calc = getCalculator(
       priorVal,
       Rollup.Op.MOST,
       ContactPointAddress.PreferenceRank,
       Account.AnnualRevenue,
-      new Rollup__mdt(),
+      metaKey,
       acc.Id,
       ContactPointAddress.ParentId
     );
@@ -884,6 +883,49 @@ private class RollupCalculatorTests {
     calc.performRollup(new List<Opportunity>{ opp }, oldOppMap);
 
     System.assertEquals(null, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void correctlyAppliesStatefulSums() {
+    Rollup__mdt metaKey = new Rollup__mdt();
+    String accountKey = '0011g00003VDGbF002';
+    Integer value = 1;
+    RollupCalculator calc = getCalculator(null, Rollup.Op.SUM, Opportunity.Amount, Account.AnnualRevenue, metaKey, accountKey, Opportunity.AccountId);
+    RollupState outerState = new RollupState();
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = value;
+    calc.setState(outerState);
+
+    Opportunity one = new Opportunity(Id = '0066g00003VDGbF001', Amount = 5, AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = '0066g00003VDGbF002', Amount = 5, AccountId = accountKey);
+
+    calc.performRollup(new List<Opportunity>{ one, two }, new Map<Id, SObject>());
+
+    System.assertEquals(one.Amount + two.Amount + value, calc.getReturnValue());
+    System.assertEquals(one.Amount + two.Amount + value, info.value);
+  }
+
+  @IsTest
+  static void doesNotResetParentValueWhenOnlyStatefulSumMatches() {
+    Rollup__mdt metaKey = new Rollup__mdt();
+    String accountKey = '0011g00003VDGbF002';
+    Integer value = 1;
+    RollupCalculator calc = getCalculator(null, Rollup.Op.SUM, Opportunity.Amount, Account.AnnualRevenue, metaKey, accountKey, Opportunity.AccountId);
+    RollupState outerState = new RollupState();
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = value;
+
+    calc.setState(outerState);
+    calc.setFullRecalc(true);
+    calc.setEvaluator(new RollupEvaluator.WhereFieldEvaluator('Amount = 0', Opportunity.SObjectType));
+
+    Opportunity one = new Opportunity(Id = '0066g00003VDGbF001', Amount = 5, AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = '0066g00003VDGbF002', Amount = 5, AccountId = accountKey);
+
+    calc.performRollup(new List<Opportunity>{ one, two }, new Map<Id, SObject>());
+
+    System.assertEquals(value, calc.getReturnValue());
+    System.assertEquals(value, info.value);
   }
 
   // CONCAT tests
@@ -2177,8 +2219,10 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void averageFactorsInBatchState() {
+    Rollup__mdt meta = new Rollup__mdt();
     String lookupKey = RollupTestUtils.createId(Account.SObjectType);
-    RollupState.AverageInfo state = new RollupState.AverageInfo();
+    RollupState outerState = new RollupState();
+    RollupState.AverageInfo state = (RollupState.AverageInfo) outerState.getState(lookupKey, meta, RollupState.AverageInfo.class);
     state.denominator = 15;
     state.numerator = 75;
     RollupCalculator calc = getCalculator(
@@ -2186,14 +2230,12 @@ private class RollupCalculatorTests {
       Rollup.Op.AVERAGE,
       Opportunity.Amount,
       Account.Description,
-      new Rollup__mdt(),
+      meta,
       lookupKey,
       Account.Id
     );
-
-    RollupState outerState = new RollupState();
-    outerState.setState(lookupKey, state);
     calc.setState(outerState);
+
     calc.performRollup(
       new List<SObject>{
         new Opportunity(Amount = 15),

@@ -57,7 +57,7 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(
       Event.SObjectType,
       new List<String>{ 'Subject', 'WhatId' },
-      Event.WhatId.getDescribe().getName(),
+      Event.WhatId.toString(),
       '!=',
       '(((What.Type = \'Account\') AND What.Owner.Id = :recordIds))'
     );
@@ -81,7 +81,7 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(
       Event.SObjectType,
       new List<String>{ 'Subject', 'WhatId' },
-      Event.WhatId.getDescribe().getName(),
+      Event.WhatId.toString(),
       '!=',
       '(((What.Type = \'Account\') OR What.Owner.Id = :recordIds))'
     );
@@ -98,7 +98,7 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(
       Opportunity.SObjectType,
       new List<String>{ 'Amount' },
-      Opportunity.AccountId.getDescribe().getName(),
+      Opportunity.AccountId.toString(),
       '=',
       'Amount > 0 OR CloseDate = YESTERDAY'
     );
@@ -108,7 +108,7 @@ private class RollupQueryBuilderTests {
   @IsTest
   static void correctlyPutsAllRowsAtEnd() {
     String queryString =
-      RollupQueryBuilder.Current.getQuery(Event.SObjectType, new List<String>{ 'Subject', 'WhatId' }, Event.WhatId.getDescribe().getName(), '!=') + '\nLIMIT 1';
+      RollupQueryBuilder.Current.getQuery(Event.SObjectType, new List<String>{ 'Subject', 'WhatId' }, Event.WhatId.toString(), '!=') + '\nLIMIT 1';
     System.assertEquals(true, queryString.contains(RollupQueryBuilder.ALL_ROWS), 'Needs to have all rows in order to be valid');
 
     queryString = RollupQueryBuilder.Current.getAllRowSafeQuery(Event.SObjectType, queryString);

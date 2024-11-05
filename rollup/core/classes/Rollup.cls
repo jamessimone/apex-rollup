@@ -298,7 +298,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Boolean matches(Object calcItem);
   }
 
-  @SuppressWarnings('PMD.UnusedLocalVariable')
   global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,
@@ -377,14 +376,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   protected Rollup__mdt addOrderBys(Rollup__mdt localMeta, List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
-    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.getDescribe().getName()) {
+    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.toString()) {
       localMeta = appendOrderByMetadata(localMeta, orderBys);
     }
     return localMeta;
   }
 
   protected void addLimitToMetadata(Rollup__mdt localMeta, Integer limitAmount, Schema.SObjectField calcItemRollupField) {
-    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.getDescribe().getName()) {
+    if (localMeta.RollupFieldOnCalcItem__c == calcItemRollupField.toString()) {
       localMeta.LimitAmount__c = limitAmount;
       localMeta.IsFullRecordSet__c = true;
     }
@@ -483,9 +482,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   public class NamespaceInfo {
     @AuraEnabled
-    public final String safeObjectName = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
+    public final String safeObjectName = Rollup__mdt.SObjectType.toString();
     @AuraEnabled
-    public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName();
+    public final String safeRollupOperationField = this.safeObjectName + '.' + Rollup__mdt.RollupOperation__c.toString();
     @AuraEnabled
     public final String namespace = Rollup.class.getName() == 'Rollup' ? '' : Rollup.class.getName().substringBefore('.Rollup') + '__';
   }
@@ -577,15 +576,25 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       appendQueryCount(wrappedMeta, matchingMeta, matchingMeta.CalcItemWhereClause__c, childType);
     }
 
-    List<Rollup> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
+    List<RollupFullRecalcProcessor> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
     isFullRecalcApp = false;
+    if (processors.size() > 1 && processors[0].rollupControl.ShouldRunAs__c != RollupMetaPicklists.ShouldRunAs.Synchronous) {
+      RollupFullRecalcProcessor conductor = processors[0];
+      while (processors.size() > 1) {
+        conductor.rollups.add(processors.remove(1));
+      }
+      return conductor.runCalc();
+    }
     return batch(processors, localInvokePoint);
   }
 
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
-    jobId = currentJobId ?? jobId;
-    return [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
+    String jobStatus = [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
+    if ([SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId LIMIT 1] > 0) {
+      jobStatus = 'Processing';
+    }
+    return jobStatus;
   }
 
   /**
@@ -1964,12 +1973,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     List<SObject> triggerRecords = getTriggerRecords();
     Rollup__mdt meta = appendOrderByMetadata(
       new Rollup__mdt(
-        CalcItem__c = triggerRecords.getSObjectType()?.getDescribe().getName(),
-        LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.getDescribe().getName(),
-        LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.getDescribe().getName(),
-        LookupObject__c = lookupSObjectType.getDescribe().getName(),
-        RollupFieldOnCalcItem__c = operationFieldOnCalcItem.getDescribe().getName(),
-        RollupFieldOnLookupObject__c = operationFieldOnOperationObject.getDescribe().getName(),
+        CalcItem__c = triggerRecords.getSObjectType()?.toString(),
+        LookupFieldOnCalcItem__c = lookupFieldOnCalcItem.toString(),
+        LookupFieldOnLookupObject__c = lookupFieldOnOperationObject.toString(),
+        LookupObject__c = lookupSObjectType.toString(),
+        RollupFieldOnCalcItem__c = operationFieldOnCalcItem.toString(),
+        RollupFieldOnLookupObject__c = operationFieldOnOperationObject.toString(),
         RollupOperation__c = rollupOperation.name()
       ),
       orderByMetas
@@ -2152,6 +2161,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         orderByFields.add(meta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.Id');
       }
       orderByFields.add(meta.LookupFieldOnCalcItem__c);
+      orderByFields.add('Id');
     }
     return '\nORDER BY ' + String.join(orderByFields, ',');
   }
@@ -2441,10 +2451,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     String relationshipName = fieldToken.getDescribe().getRelationshipName();
     Integer relationshipIndex = meta.GrandparentRelationshipFieldPath__c.indexOf(relationshipName) + relationshipName.length();
     String priorFieldPath = meta.GrandparentRelationshipFieldPath__c.substring(0, relationshipIndex) + '.Id';
-    if (meta.OneToManyGrandparentFields__c != null && meta.OneToManyGrandparentFields__c.contains(fieldToken.getDescribe().getName())) {
+    if (meta.OneToManyGrandparentFields__c != null && meta.OneToManyGrandparentFields__c.contains(fieldToken.toString())) {
       List<String> fieldPathTuples = meta.OneToManyGrandparentFields__c.split(',');
       for (String fieldPathTuple : fieldPathTuples) {
-        if (fieldToken.getDescribe().getName().equalsIgnoreCase(fieldPathTuple.substringAfter('.'))) {
+        if (fieldToken.toString().equalsIgnoreCase(fieldPathTuple.substringAfter('.'))) {
           priorFieldPath = 'Id';
           break;
         }
@@ -2696,11 +2706,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
-      if (
-        rollupMetadata.RollupGrouping__r.Id != null &&
-        rollupMetadata.CalcItem__c != null &&
-        rollupMetadata.CalcItem__c != sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName()
-      ) {
+      if (rollupMetadata.RollupGrouping__r.Id != null && rollupMetadata.CalcItem__c != null && rollupMetadata.CalcItem__c != sObjectType.toString()) {
         Schema.DescribeSObjectResult childDescribe = init.getDescribeFromName(rollupMetadata.CalcItem__c);
         sObjectType = childDescribe.getSObjectType();
         calcItemFields = childDescribe.fields.getMap();

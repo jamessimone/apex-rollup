@@ -2443,7 +2443,7 @@ private class RollupTests {
   static void shouldRunSuccessfullyAsBatch() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable, MaxLookupRowsBeforeBatching__c = 1);
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2488,7 +2488,7 @@ private class RollupTests {
   static void shouldRunAsBatchableWhenSpecificRollupIsBatchable() {
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
-    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable);
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1);
 
     Test.startTest();
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
@@ -2934,12 +2934,7 @@ private class RollupTests {
     insert cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
-    Rollup.defaultControl = new RollupControl__mdt(
-      MaxLookupRowsBeforeBatching__c = 0,
-      MaxNumberOfQueries__c = 2,
-      MaxRollupRetries__c = 100,
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Batchable
-    );
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 0, MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 100);
     // start as synchronous rollup to allow for one deferral
     Rollup.specificControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxNumberOfQueries__c = 4);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -3001,8 +2996,8 @@ private class RollupTests {
   static void encapsulatesNamespaceInfoProperly() {
     Rollup.NamespaceInfo namespaceInfo = Rollup.getNamespaceInfo();
 
-    String rollupObjectName = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getName();
-    System.assertEquals(rollupObjectName + '.' + Rollup__mdt.RollupOperation__c.getDescribe().getName(), nameSpaceInfo.safeRollupOperationField);
+    String rollupObjectName = Rollup__mdt.SObjectType.toString();
+    System.assertEquals(rollupObjectName + '.' + Rollup__mdt.RollupOperation__c.toString(), nameSpaceInfo.safeRollupOperationField);
     System.assertEquals(rollupObjectName, nameSpaceInfo.safeObjectName);
     System.assertEquals(Rollup.class.getName() == 'Rollup' ? '' : Rollup.class.getName().substringBefore('.Rollup') + '__', nameSpaceInfo.namespace);
   }

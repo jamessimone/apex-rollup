@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes mutually exclusive polymorphic where clauses replacing children in RollupCalcItemReplacer",
-            "versionNumber": "1.1.30.0",
+            "versionName": "New RollupState implementation to stop running out of memory on large full recalcs",
+            "versionNumber": "1.2.0.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -18,21 +18,13 @@
     ],
     "namespace": "please",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "60.0",
+    "sourceApiVersion": "62.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
-        "apex-rollup-namespaced@1.1.18": "04t6g000008Ob1iAAC",
-        "apex-rollup-namespaced@1.1.19": "04t6g000008ObCsAAK",
-        "apex-rollup-namespaced@1.1.20": "04t6g000008ObCxAAK",
-        "apex-rollup-namespaced@1.1.21": "04t6g000008ObLCAA0",
-        "apex-rollup-namespaced@1.1.22": "04t6g000008ObNDAA0",
-        "apex-rollup-namespaced@1.1.23": "04t6g000008ObNSAA0",
-        "apex-rollup-namespaced@1.1.24": "04t6g000008ObbqAAC",
-        "apex-rollup-namespaced@1.1.25": "04t6g000008Obc0AAC",
-        "apex-rollup-namespaced@1.1.26": "04t6g000008ObeVAAS",
         "apex-rollup-namespaced@1.1.27": "04t6g000008OfJkAAK",
         "apex-rollup-namespaced@1.1.28": "04t6g000008OfKnAAK",
         "apex-rollup-namespaced@1.1.29": "04t6g000008OfMjAAK",
-        "apex-rollup-namespaced@1.1.30": "04t6g000008OfSJAA0"
+        "apex-rollup-namespaced@1.1.30": "04t6g000008OfSJAA0",
+        "apex-rollup-namespaced@1.2.0": "04t6g000008OfU0AAK"
     }
 }

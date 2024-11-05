@@ -221,8 +221,8 @@ public without sharing class RollupRelationshipFieldFinder {
     // if we're only going one relationship up, we need to validate that the
     // parent's relationship name doesn't differ from its SObject name
     if (this.relationshipParts.size() == 1 && this.isFirstRun) {
-      SObjectField parentField = this.getField(baseSObjectType.getDescribe().fields.getMap(), this.ultimateParent.getDescribe().getName());
-      this.relationshipParts.add(0, parentField.getDescribe().getName());
+      SObjectField parentField = this.getField(baseSObjectType.getDescribe().fields.getMap(), this.ultimateParent.toString());
+      this.relationshipParts.add(0, parentField.toString());
     }
 
     if (baseSObjectType == this.ultimateParent && this.isFinishedWithHierarchyTraversal(records)) {
@@ -259,11 +259,11 @@ public without sharing class RollupRelationshipFieldFinder {
       SObjectField field = fieldMap.get(key);
       if (field.getDescribe().getRelationshipName() == relationshipPart) {
         return field;
-      } else if (field.getDescribe().getName() == relationshipPart) {
+      } else if (field.toString() == relationshipPart) {
         return field;
       } else if (field.getDescribe().isNamePointing()) {
         for (SObjectType potentialMatch : field.getDescribe().getReferenceTo()) {
-          if (potentialMatch.getDescribe().getName() == relationshipPart) {
+          if (potentialMatch.toString() == relationshipPart) {
             return field;
           }
         }
@@ -392,7 +392,7 @@ public without sharing class RollupRelationshipFieldFinder {
         this.populateHierarchicalLookupFields(fieldNames, this.getField(fieldMap, this.metadata.UltimateParentLookup__c));
       }
     } else {
-      fieldNames.add(field.getDescribe().getName());
+      fieldNames.add(field.toString());
     }
 
     // NB - we only support one route through polymorphic fields such as Task.WhoId and Task.WhatId for this sort of thing
@@ -542,8 +542,8 @@ public without sharing class RollupRelationshipFieldFinder {
     }
     List<String> copiedFieldNamesPerRelationship = new List<String>(queryFieldNames);
     String relationshipName = hierarchyToken.getDescribe().getRelationshipName();
-    String hierarchyName = hierarchyToken.getDescribe().getName();
-    queryFieldNames.add(hierarchyToken.getDescribe().getName());
+    String hierarchyName = hierarchyToken.toString();
+    queryFieldNames.add(hierarchyToken.toString());
     for (Integer index = 0; index < MAX_FOREIGN_KEY_RELATIONSHIP_HOPS; index++) {
       String baseOfHierarchy = relationshipName.repeat(index).replace(relationshipName, relationshipName + '.');
       String repeatedHierarchy = baseOfHierarchy + hierarchyName;
@@ -780,7 +780,7 @@ public without sharing class RollupRelationshipFieldFinder {
   private String getChildRelationshipFromType(Schema.SObjectType sObjectType, String relationshipName) {
     for (Schema.ChildRelationship child : sObjectType.getDescribe(SObjectDescribeOptions.FULL).getChildRelationships()) {
       if (child.getRelationshipName() == relationshipName) {
-        return child.getChildSObject().getDescribe().getName();
+        return child.getChildSObject().toString();
       }
     }
     return null;

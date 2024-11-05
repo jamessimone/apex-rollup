@@ -15,6 +15,7 @@ global without sharing virtual class RollupSObjectUpdater {
 
   private Boolean forceSyncUpdate = false;
   private RollupControl__mdt rollupControl;
+  private RollupFinalizer finalizer;
 
   global interface IDispatcher {
     void dispatch(List<SObject> records);
@@ -40,6 +41,11 @@ global without sharing virtual class RollupSObjectUpdater {
 
   public void forceSyncUpdate() {
     this.forceSyncUpdate = true;
+  }
+
+  public RollupSObjectUpdater setFinalizer(RollupFinalizer finalizer) {
+    this.finalizer = finalizer;
+    return this;
   }
 
   public void updateRecords() {
@@ -167,7 +173,12 @@ global without sharing virtual class RollupSObjectUpdater {
 
   private void performAsyncUpdate(List<SObject> recordsToUpdate) {
     if (Limits.getLimitQueueableJobs() > Limits.getQueueableJobs() && recordsToUpdate.isEmpty() == false) {
-      System.enqueueJob(new RollupAsyncSaver(recordsToUpdate, this.rollupControl));
+      RollupAsyncSaver saver = new RollupAsyncSaver(this, recordsToUpdate);
+      if (this.finalizer == null) {
+        saver.runCalc();
+      } else {
+        this.finalizer.addCaboose(saver);
+      }
     }
   }
 
@@ -220,20 +231,36 @@ global without sharing virtual class RollupSObjectUpdater {
     }
   }
 
-  private class RollupAsyncSaver implements System.Queueable {
-    private final List<SObject> records;
-    private final RollupControl__mdt control;
-    public RollupAsyncSaver(List<SObject> records, RollupControl__mdt control) {
-      this.records = records;
-      this.control = control;
+  private without sharing class RollupAsyncSaver extends RollupAsyncProcessor.QueueableProcessor {
+    private final RollupSObjectUpdater saver;
+    private RollupAsyncSaver(RollupSObjectUpdater saver, List<SObject> itemsToUpdate) {
+      super(null, itemsToUpdate, null);
+      this.finalizer = saver.finalizer;
+      this.isNoOp = itemsToUpdate.isEmpty();
+      saver.rollupControl.MaxParentRowsUpdatedAtOnce__c = 500;
+      this.saver = saver;
     }
 
-    public void execute(System.QueueableContext qc) {
-      System.attachFinalizer(new RollupFinalizer());
-      RollupLogger.Instance.log('Deferred async saving starting for parent records', new Map<Id, SObject>(this.records).keySet(), System.LoggingLevel.INFO);
-      RollupSObjectUpdater updater = new RollupSObjectUpdater();
-      updater.addRollupControl(this.control);
-      new RollupSObjectUpdater().doUpdate(this.records);
+    public override String getTypeName() {
+      return RollupAsyncSaver.class.getName();
+    }
+
+    public override String runCalc() {
+      return System.enqueueJob(this);
+    }
+
+    public override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+      props.remove('Invocation Point');
+      props.remove('Is Full Recalc');
+      props.remove('Is Conductor');
+      props.remove('Inner rollups');
+      props.put('Async update size', '' + this.calcItems.size());
+      return props;
+    }
+
+    protected override void performWork() {
+      RollupLogger.Instance.log('Deferred async saving starting for parent records', new Map<Id, SObject>(this.calcItems).keySet(), System.LoggingLevel.INFO);
+      this.saver.doUpdate(this.calcItems);
       RollupLogger.Instance.log('Saving finished', System.LoggingLevel.INFO);
       RollupLogger.Instance.save();
     }
