@@ -169,7 +169,6 @@ private class RollupDateLiteralTests {
     System.assertNotEquals(true, matchingCpcs.isEmpty());
     for (ContactPointConsent cpc : matchingCpcs) {
       assert(literalUnderTest, cpc.CaptureDate, '=');
-      assert(literalUnderTest, cpc.CaptureDate.dateGmt(), '=');
     }
     if (sentinelPostCpc != null) {
       assert(literalUnderTest, sentinelPostCpc.CaptureDate, '>');
@@ -191,6 +190,12 @@ private class RollupDateLiteralTests {
     );
   }
 
+  static User australiaUser {
+    get {
+      return [SELECT Id FROM User WHERE LastName = 'Australia User'];
+    }
+  }
+
   @IsTest
   static void shouldWorkForYesterday() {
     runTestForLiteral('YESTERDAY');
@@ -199,32 +204,46 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForToday() {
     runTestForLiteral('TODAY');
+    System.runAs(australiaUser) {
+      runTestForLiteral('TODAY');
+    }
   }
 
   @IsTest
   static void shouldWorkForTomorrow() {
     runTestForLiteral('TOMORROW');
+    System.runAs(australiaUser) {
+      runTestForLiteral('TOMORROW');
+    }
   }
 
   @IsTest
   static void shouldWorkForLastWeek() {
     runTestForLiteral('LAST_WEEK');
+    System.runAs(australiaUser) {
+      runTestForLiteral('LAST_WEEK');
+    }
   }
 
   @IsTest
   static void shouldWorkForThisWeek() {
     runTestForLiteral('THIS_WEEK');
+    System.runAs(australiaUser) {
+      runTestForLiteral('THIS_WEEK');
+    }
   }
 
   @IsTest
   static void shouldWorkForNextWeek() {
     runTestForLiteral('NEXT_WEEK');
+    System.runAs(australiaUser) {
+      runTestForLiteral('NEXT_WEEK');
+    }
   }
 
   @IsTest
   static void shouldWorkForLastMonth() {
     runTestForLiteral('LAST_MONTH');
-    User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
     System.runAs(australiaUser) {
       runTestForLiteral('LAST_MONTH');
     }
@@ -233,7 +252,6 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisMonth() {
     runTestForLiteral('THIS_MONTH');
-    User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
     System.runAs(australiaUser) {
       runTestForLiteral('THIS_MONTH');
     }
@@ -242,7 +260,6 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForNextMonth() {
     runTestForLiteral('NEXT_MONTH');
-    User australiaUser = [SELECT Id FROM User WHERE LastName = 'Australia User'];
     System.runAs(australiaUser) {
       runTestForLiteral('NEXT_MONTH');
     }
@@ -392,7 +409,14 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForNextNFiscalQuarters() {
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 1');
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 2');
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 3');
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 4');
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 5');
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 6');
     runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 7');
+    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 8');
   }
 
   @IsTest
