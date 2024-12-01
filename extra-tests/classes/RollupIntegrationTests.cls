@@ -1956,7 +1956,7 @@ private class RollupIntegrationTests {
       Rollup.schedule('Test bad query', '0 0 0 0 0', veryBadQuery, 'Account', null);
       Assert.fail('Exception should be thrown above');
     } catch (Exception ex) {
-      Assert.isTrue(ex.getMessage().contains('field ActivityDate does not support aggregate operator MAX'));
+      Assert.isTrue(ex.getMessage().containsIgnoreCase('field ActivityDate does not support aggregate operator MAX'), ex.getMessage());
     }
   }
 
@@ -1967,5 +1967,75 @@ private class RollupIntegrationTests {
     String jobId = Rollup.schedule('Test good query' + System.now(), '0 0 0 * * ?', goodQuery, 'ContactPointAddress', null);
 
     System.assertNotEquals(null, jobId);
+  }
+
+  @IsTest
+  static void usesFullBatchRecalculatorForLargerQueries() {
+    List<Account> accounts = [SELECT Id FROM Account];
+    RollupAsyncProcessor.stubParentRecords = accounts;
+    Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 0);
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Contact'
+      )
+    };
+    insert new Contact(AccountId = accounts[0].Id, LastName = 'Does Not Reset');
+
+    String jobId = Rollup.schedule('Does not Reset ' + System.now(), '0 0 0 * * ?', 'SELECT Id, AccountId FROM Contact', 'Account', null);
+
+    CronTrigger job = [SELECT CronJobDetail.Name FROM CronTrigger WHERE Id = :jobId];
+    Assert.isTrue(job.CronJobDetail.Name.contains(RollupFullBatchRecalculator.class.getName()));
+  }
+
+  @IsTest
+  static void doesNotResetParentRecordValuesForLargeScheduledQueries() {
+    Account acc = [SELECT Id FROM Account];
+    acc.AnnualRevenue = 1;
+    update acc;
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Contact'
+      )
+    };
+    insert new Contact(AccountId = acc.Id, LastName = 'Does Not Reset');
+
+    Test.startTest();
+    new RollupFullBatchRecalculator.NonResettingBulkFullRecalc(
+        'SELECT Id, AccountId\nFROM Contact',
+        Rollup.InvocationPoint.FROM_SCHEDULED,
+        new List<Rollup__mdt>{
+          new Rollup__mdt(
+            RollupFieldOnCalcItem__c = 'Id',
+            LookupObject__c = 'Account',
+            LookupFieldOnCalcItem__c = 'AccountId',
+            LookupFieldOnLookupObject__c = 'Id',
+            RollupFieldOnLookupObject__c = 'AnnualRevenue',
+            RollupOperation__c = 'COUNT',
+            CalcItem__c = 'Contact',
+            CalcItemWhereClause__c = RollupCurrencyInfo.isMultiCurrency() ? RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME + ' != null' : null
+          )
+        },
+        Contact.SObjectType
+      )
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id LIMIT 1];
+    Assert.areEqual(2, acc.AnnualRevenue);
   }
 }

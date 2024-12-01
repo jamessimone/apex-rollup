@@ -16,6 +16,10 @@
     {
       "files": "*.{cls, apex}",
       "options": { "parser": "apex" }
+    },
+    {
+      "files": "**/*.xml",
+      "options": { "parser": "xml" }
     }
   ],
   "plugins": ["prettier-plugin-apex", "@prettier/plugin-xml"],
