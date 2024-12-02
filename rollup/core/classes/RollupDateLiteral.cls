@@ -143,9 +143,6 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   private static Datetime getRelativeDatetime(Date relativeDate, Time relativeTime) {
-    if (relativeTime.hour() == 23 && relativeDate.month() == 11 && relativeDate.day() == 1) {
-      return Datetime.newInstance(relativeDate.year(), relativeDate.month(), relativeDate.day());
-    }
     return Datetime.newInstance(relativeDate, relativeTime);
   }
 
