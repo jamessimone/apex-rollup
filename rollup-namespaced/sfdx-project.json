@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "New RollupState implementation to stop running out of memory on large full recalcs",
-            "versionNumber": "1.2.0.0",
+            "versionName": "Scheduled Rollup updates, RollupDateLiteral updates",
+            "versionNumber": "1.2.1.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -25,6 +25,7 @@
         "apex-rollup-namespaced@1.1.28": "04t6g000008OfKnAAK",
         "apex-rollup-namespaced@1.1.29": "04t6g000008OfMjAAK",
         "apex-rollup-namespaced@1.1.30": "04t6g000008OfSJAA0",
-        "apex-rollup-namespaced@1.2.0": "04t6g000008OfU0AAK"
+        "apex-rollup-namespaced@1.2.0": "04t6g000008OfU0AAK",
+        "apex-rollup-namespaced@1.2.1": "04t6g000008OfWVAA0"
     }
 }
