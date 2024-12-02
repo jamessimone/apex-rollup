@@ -358,7 +358,7 @@ Rollup.schedule(
   'My example job name',
   'my cron expression, like 0 0 0 * * ?',
   'my SOQL query, like SELECT Id, Amount FROM Opportunity WHERE CreatedDate > YESTERDAY',
-  'The API name of the SObject associated with Rollup__mdt records configuring the rollup operation',
+  'The API name of the Child SObject associated with Rollup__mdt records for this schedule',
   null
 );
 ```

@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "RollupDateLiteral comparisons now ensure comparisons are properly done in local time",
+            "versionName": "Scheduled Rollup updates, RollupDateLiteral updates",
             "versionNumber": "1.7.1.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
