@@ -258,7 +258,7 @@ public without sharing abstract class RollupDateLiteral {
   protected virtual Boolean isEqualTo(Object val) {
     if (val instanceof Date) {
       Date dateVal = (Date) val;
-      return this.ref.dateGmt() <= dateVal && dateVal <= this.bound.dateGmt();
+      return this.ref.date() <= dateVal && dateVal <= this.bound.date();
     }
     Datetime datetimeVal = (Datetime) val;
     return this.ref <= datetimeVal && datetimeVal <= this.bound;
@@ -266,7 +266,7 @@ public without sharing abstract class RollupDateLiteral {
   protected virtual Boolean isGreaterThan(Object val) {
     if (val instanceof Date) {
       Date dateVal = (Date) val;
-      return dateVal > this.bound.dateGmt() && dateVal > this.ref.dateGmt();
+      return dateVal > this.bound.date() && dateVal > this.ref.date();
     }
     Datetime datetimeVal = (Datetime) val;
     return datetimeVal > this.bound && datetimeVal > this.ref;
@@ -274,7 +274,7 @@ public without sharing abstract class RollupDateLiteral {
   protected virtual Boolean isLessThan(Object val) {
     if (val instanceof Date) {
       Date dateVal = (Date) val;
-      return dateVal < this.bound.dateGmt() && dateVal < this.ref.dateGmt();
+      return dateVal < this.bound.date() && dateVal < this.ref.date();
     }
     Datetime datetimeVal = (Datetime) val;
     return datetimeVal < this.bound && datetimeVal < this.ref;
@@ -333,7 +333,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisWeekLiteral extends RollupDateLiteral {
     public ThisWeekLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfWeek(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addDays(6).dateGmt(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addDays(6).date(), END_TIME);
     }
   }
 
@@ -344,7 +344,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextWeekLiteral extends RollupDateLiteral {
     public NextWeekLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addDays(6).dateGmt(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addDays(6).date(), END_TIME);
     }
   }
 
@@ -397,7 +397,7 @@ public without sharing abstract class RollupDateLiteral {
   private class Last90DaysLiteral extends RollupDateLiteral {
     public Last90DaysLiteral() {
       this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME);
-      this.ref = getRelativeDatetime(this.bound.addDays(-91).dateGmt(), START_TIME);
+      this.ref = getRelativeDatetime(this.bound.addDays(-91).date(), START_TIME);
     }
   }
 

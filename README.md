@@ -24,11 +24,11 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfTvAAK">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfWQAA0">
   <img alt="Deploy to Salesforce" src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfTvAAK">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfWQAA0">
   <img alt="Deploy to Salesforce Sandbox" src="./media/deploy-package-to-sandbox.png">
 </a>
 <br/>
@@ -358,7 +358,7 @@ Rollup.schedule(
   'My example job name',
   'my cron expression, like 0 0 0 * * ?',
   'my SOQL query, like SELECT Id, Amount FROM Opportunity WHERE CreatedDate > YESTERDAY',
-  'The API name of the SObject associated with Rollup__mdt records configuring the rollup operation',
+  'The API name of the Child SObject associated with Rollup__mdt records for this schedule',
   null
 );
 ```

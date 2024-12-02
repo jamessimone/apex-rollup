@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "New RollupState implementation to stop running out of memory on large full recalcs",
-            "versionNumber": "1.7.0.0",
+            "versionName": "Scheduled Rollup updates, RollupDateLiteral updates",
+            "versionNumber": "1.7.1.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.6.35": "04t6g000008OfKiAAK",
         "apex-rollup@1.6.36": "04t6g000008OfMeAAK",
         "apex-rollup@1.6.37": "04t6g000008OfSEAA0",
-        "apex-rollup@1.7.0": "04t6g000008OfTvAAK"
+        "apex-rollup@1.7.0": "04t6g000008OfTvAAK",
+        "apex-rollup@1.7.1": "04t6g000008OfWQAA0"
     }
 }

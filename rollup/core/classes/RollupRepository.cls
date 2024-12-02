@@ -62,10 +62,12 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   }
 
   public Integer getCount() {
+    String originalQuery = this.args.query;
     if (this.args.query.contains(RollupQueryBuilder.ALL_ROWS)) {
       this.args.query = this.args.query.replace(RollupQueryBuilder.ALL_ROWS, '');
     }
     this.args.query = this.args.query.replaceFirst('SELECT.+\n', 'SELECT Count()\n');
+    this.createQueryLog('Getting count');
 
     Integer countAmount;
     try {
@@ -77,6 +79,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       countAmount = SENTINEL_COUNT_VALUE;
     }
     this.createQueryLog('Returned amount: ' + countAmount);
+    this.args.query = originalQuery;
     return countAmount;
   }
 

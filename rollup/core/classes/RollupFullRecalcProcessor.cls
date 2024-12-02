@@ -165,11 +165,15 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     }
     for (RollupAsyncProcessor innerRoll : processor.rollups) {
       innerRoll.fullRecalcProcessor = this;
-      innerRoll.isFullRecalc = true;
+      innerRoll.isFullRecalc = this.getShouldResetParentRecordsDuringRecalculation();
       innerRoll.calcItems = calcItems;
     }
     this.fullRecalcProcessor = this;
     return processor.rollups;
+  }
+
+  protected virtual Boolean getShouldResetParentRecordsDuringRecalculation() {
+    return true;
   }
 
   protected virtual override Map<String, String> customizeToStringEntries(Map<String, String> props) {

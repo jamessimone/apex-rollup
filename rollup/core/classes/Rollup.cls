@@ -917,23 +917,38 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
-    List<SObject> localCalcItems;
+    Rollup rollToSchedule;
+    query = query.toUpperCase();
+    if (query.contains('\nFROM ') == false) {
+      query = query.substringBeforeLast(' FROM ') + '\nFROM ' + query.substringAfterLast(' FROM ');
+    }
     try {
-      localCalcItems = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL).setQuery(query).get();
+      RollupRepository repo = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL).setQuery(query);
+      Integer queryCount = repo.getCount();
+      if (queryCount < CACHED_DEFAULT.MaxQueryRows__c) {
+        List<SObject> localCalcItems = repo.get();
+        rollToSchedule = getRollup(
+          getRollupMetadataBySObject(localCalcItems.getSObjectType()),
+          localCalcItems.getSObjectType(),
+          localCalcItems,
+          new Map<Id, SObject>(),
+          eval,
+          InvocationPoint.FROM_SCHEDULED
+        );
+      } else {
+        Schema.SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(rollupObjectName).getSObjectType();
+        rollToSchedule = new RollupFullBatchRecalculator.NonResettingBulkFullRecalc(
+          query,
+          InvocationPoint.FROM_SCHEDULED,
+          getRollupMetadataBySObject(childType),
+          childType
+        );
+      }
     } catch (QueryException ex) {
       throw new QueryException('There\'s a problem with your query: ' + ex.getMessage() + '\n' + ex.getStackTraceString());
     }
-    SObjectType calcItemType = localCalcItems.getSObjectType();
-    Rollup roll = getRollup(
-      getRollupMetadataBySObject(calcItemType),
-      calcItemType,
-      localCalcItems,
-      new Map<Id, SObject>(),
-      eval,
-      InvocationPoint.FROM_SCHEDULED
-    );
-    RollupSchedulable scheduledRollup = new RollupSchedulable(roll);
-    return System.schedule(jobName, cronExp, scheduledRollup);
+    RollupSchedulable scheduledRollup = new RollupSchedulable(rollToSchedule);
+    return System.schedule(jobName + ' for ' + rollToSchedule.getTypeName(), cronExp, scheduledRollup);
   }
 
   global static void batch(Rollup rollup, Rollup secondRollup) {
