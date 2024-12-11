@@ -2850,7 +2850,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   /**
    * - in order to accomodate CDC, we set the apexContext manually there
    * since technically all CDC is done from an AFTER_INSERT context
-   * - an undelete behaviors _strictly_ the same as an insert
+   * - an undelete behaves _strictly_ the same as an insert
    * because the underlying SObject can't be modified till afterwards
    */
   private static Boolean shouldRunFromTrigger() {

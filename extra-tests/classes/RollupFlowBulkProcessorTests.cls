@@ -639,4 +639,62 @@ private class RollupFlowBulkProcessorTests {
     Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
     System.assertEquals(secondChild.AnnualRevenue, updatedIndy.ConsumerCreditScore);
   }
+
+  @IsTest
+  static void doesNotNoOpForSomeAllNoneRollups() {
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SOME',
+        CalcItem__c = 'Contact',
+        CalcItemWhereClause__c = 'FirstName != \'One\''
+      ),
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupOperation__c = 'ALL',
+        CalcItem__c = 'Contact',
+        CalcItemWhereClause__c = 'FirstName != \'One\''
+      ),
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'NONE',
+        CalcItem__c = 'Contact',
+        CalcItemWhereClause__c = 'FirstName != \'One\''
+      )
+    };
+    Rollup.onlyUseMockMetadata = true;
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>());
+    acc.Description = 'true';
+    acc.AnnualRevenue = 1;
+    acc.NumberOfEmployees = 0;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    Rollup.records = new List<Contact>{ new Contact(FirstName = 'One', AccountId = acc.Id) };
+
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<Contact>{ new Contact(FirstName = 'One', AccountId = acc.Id, Id = RollupTestUtils.createId(Contact.SObjectType)) };
+    input.oldRecordsToRollup = new List<SObject>{ new Contact(Id = input.recordsToRollup[0].Id, FirstName = 'One', AccountId = acc.Id) };
+    input.rollupContext = 'UPDATE';
+    input.deferProcessing = false;
+
+    Test.startTest();
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    Assert.areEqual('false', acc.Description);
+    Assert.areEqual(0, acc.AnnualRevenue);
+    Assert.areEqual(1, acc.NumberOfEmployees);
+  }
 }
