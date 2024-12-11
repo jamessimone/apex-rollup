@@ -248,7 +248,7 @@ public without sharing class RollupCalcItemReplacer {
 
   private void processWhereClauseForDownstreamEvals(Schema.SObjectType sObjectType, Rollup__mdt metadata, RollupEvaluator.WhereFieldEvaluator whereEval) {
     for (String whereClause : whereEval.getWhereClauses()) {
-      Boolean hasTypeField = whereClause.contains(TYPE_FIELD);
+      Boolean hasTypeField = whereClause.split(TYPE_FIELD + '(?!__r)').size() > 1;
       Boolean hasOwnerField = whereClause.contains(OWNER);
       if (hasTypeField == false && hasOwnerField == false) {
         continue;
@@ -340,8 +340,8 @@ public without sharing class RollupCalcItemReplacer {
     Map<String, SObjectField> fieldNameToFieldToken = calcItems[0].getSObjectType().getDescribe().fields.getMap();
     for (Integer index = 0; index < calcItems.size(); index++) {
       SObject calcItem = calcItems[index];
-      SObject calcItemWIthUpdatedParentField = idToCalcItemsWithParentFields.get(calcItem.Id);
-      Map<String, Object> updatedParentFields = calcItemWIthUpdatedParentField?.getPopulatedFieldsAsMap() ?? new Map<String, Object>();
+      SObject calcItemWithUpdatedParentField = idToCalcItemsWithParentFields.get(calcItem.Id);
+      Map<String, Object> updatedParentFields = calcItemWithUpdatedParentField?.getPopulatedFieldsAsMap() ?? new Map<String, Object>();
       for (String fieldName : updatedParentFields.keySet()) {
         Schema.DescribeFieldResult fieldToken = fieldNameToFieldToken.get(fieldName)?.getDescribe();
         Boolean isSkippableField = fieldToken?.getReferenceTo().isEmpty() != false || fieldToken?.getName() == 'Id';
@@ -353,7 +353,7 @@ public without sharing class RollupCalcItemReplacer {
           try {
             SObject parent = calcItem.getSObject(fieldToken.getRelationshipName());
             if (parent == null) {
-              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
+              calcItem.putSObject(fieldToken.getRelationshipName(), calcItemWithUpdatedParentField.getSObject(fieldToken.getRelationshipName()));
             } else {
               parent.put(fieldName, updatedParentFields.get(fieldName));
             }
@@ -361,7 +361,7 @@ public without sharing class RollupCalcItemReplacer {
             // avoids "System.SObjectException: Relationship { relationship name } is not editable"
             if (updatedParentFields.containsKey(fieldToken.getRelationshipName())) {
               String relationshipName = fieldToken.getRelationshipName();
-              calcItems.set(index, serializeReplace(calcItem, relationshipName, calcItemWIthUpdatedParentField.getSObject(relationshipName)));
+              calcItems.set(index, serializeReplace(calcItem, relationshipName, calcItemWithUpdatedParentField.getSObject(relationshipName)));
             }
           }
         } else {
@@ -369,7 +369,7 @@ public without sharing class RollupCalcItemReplacer {
           // but can't be appended via .putSObject without reinitializing the parent object to its actual type
           // this is because they are returned with type "Name", and avoids the dreaded:
           // "System.SObjectException: Illegal assignment from Name to { the calcItem type }"
-          SObject parentFieldObject = calcItemWIthUpdatedParentField.getSObject(fieldToken.getRelationshipName());
+          SObject parentFieldObject = calcItemWithUpdatedParentField.getSObject(fieldToken.getRelationshipName());
           SObject replacementObject = parentFieldObject.Id.getSObjectType().newSObject();
           for (String populatedFieldName : parentFieldObject.getPopulatedFieldsAsMap().keySet()) {
             replacementObject.put(populatedFieldName, parentFieldObject.get(populatedFieldName));

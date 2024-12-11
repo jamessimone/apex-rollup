@@ -195,4 +195,18 @@ private class RollupCalcItemReplacerTests {
 
     Assert.areEqual(0, records.size());
   }
+
+  @IsTest
+  static void doesNotReplaceForCustomTypeFields() {
+    List<Account> accounts = [SELECT Id FROM Account];
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
+    );
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'Parent.Type__r = \'hello\'', CalcItem__c = 'Account') };
+
+    List<SObject> records = replacer.replace(accounts, metas);
+
+    Assert.areEqual(1, records.size());
+    Assert.isTrue(replacer.hasProcessedMetadata(metas, accounts));
+  }
 }
