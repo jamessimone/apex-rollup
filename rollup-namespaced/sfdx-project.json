@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes issue in RollupCalcItemReplacer where custom Type fields were incorrectly flagged as polymorphic",
-            "versionNumber": "1.2.2.0",
+            "versionName": "Fixes namespace shadowing issue in RollupFieldInitializer",
+            "versionNumber": "1.2.3.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
