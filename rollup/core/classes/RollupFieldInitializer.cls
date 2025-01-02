@@ -15,7 +15,7 @@ public virtual class RollupFieldInitializer {
     return Datetime.newInstanceGmt(dt.yearGmt(), dt.monthGmt(), dt.dayGmt(), dt.hourGmt(), dt.minuteGmt(), dt.secondGmt());
   }
 
-  public virtual Object getDefaultValue(SObjectField field) {
+  public virtual Object getDefaultValue(Schema.SObjectField field) {
     DescribeFieldResult fieldDescribe = field.getDescribe();
     if (fieldDescribe.isDefaultedOnCreate() && fieldDescribe.getDefaultValue() != null) {
       return fieldDescribe.getDefaultValue();
@@ -55,7 +55,7 @@ public virtual class RollupFieldInitializer {
     return initializedDefault;
   }
 
-  public SObjectField getSObjectFieldByName(Map<String, SObjectField> fieldNameToField, String desiredField) {
+  public SObjectField getSObjectFieldByName(Map<String, Schema.SObjectField> fieldNameToField, String desiredField) {
     if (fieldNameToField.containsKey(desiredField)) {
       return fieldNameToField.get(desiredField);
     } else if (fieldNameToField.containsKey(desiredField + 'Id')) {
@@ -83,9 +83,9 @@ public virtual class RollupFieldInitializer {
     private List<String> activeVals;
     private Map<String, Integer> picklistToRank;
 
-    public PicklistController(DescribeFieldResult fieldDescribe) {
+    public PicklistController(Schema.DescribeFieldResult fieldDescribe) {
       super();
-      DisplayType fieldType = fieldDescribe?.getType();
+      Schema.DisplayType fieldType = fieldDescribe?.getType();
       this.isPicklist = fieldType == DisplayType.MULTIPICKLIST || fieldType == DisplayType.PICKLIST;
       this.isMultiSelectPicklist = fieldType == DisplayType.MULTIPICKLIST;
 
@@ -102,7 +102,7 @@ public virtual class RollupFieldInitializer {
         List<Schema.PicklistEntry> picklistVals = fieldDescribe.getPicklistValues();
 
         for (Integer index = 0; index < picklistVals.size(); index++) {
-          PicklistEntry picklist = picklistVals[index];
+          Schema.PicklistEntry picklist = picklistVals[index];
           this.doBookkeepingOnPicklist(picklist);
           // all inactive values will use -1 as a sentinel value
           picklistToRank.put(picklist.getValue(), picklist.isActive() ? index : -1);
@@ -110,7 +110,7 @@ public virtual class RollupFieldInitializer {
       }
     }
 
-    private void doBookkeepingOnPicklist(PicklistEntry picklist) {
+    private void doBookkeepingOnPicklist(Schema.PicklistEntry picklist) {
       if (picklist.isDefaultValue() && this.activeVals.isEmpty()) {
         this.activeVals.add(picklist.getValue());
       } else if (picklist.isActive()) {
@@ -118,7 +118,7 @@ public virtual class RollupFieldInitializer {
       }
     }
 
-    public override Object getDefaultValue(SObjectField field) {
+    public override Object getDefaultValue(Schema.SObjectField field) {
       return this.isPicklist == false ? super.getDefaultValue(field) : this.activeVals[0];
     }
 
