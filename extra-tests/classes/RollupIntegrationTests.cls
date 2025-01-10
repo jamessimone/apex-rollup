@@ -1,5 +1,5 @@
 @IsTest
-private class RollupIntegrationTests {
+private class RollupIntegrationTests implements Database.Batchable<SObject> {
   @TestSetup
   static void setup() {
     Rollup.onlyUseMockMetadata = true;
@@ -2037,5 +2037,48 @@ private class RollupIntegrationTests {
 
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id LIMIT 1];
     Assert.areEqual(2, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void startingFromBatchDoesNotBlowUpCursorBasedFullRecalc() {
+    Test.startTest();
+    Database.executeBatch(new RollupIntegrationTests());
+    Test.stopTest();
+
+    Assert.areEqual(1, [SELECT AnnualRevenue FROM Account].AnnualRevenue);
+  }
+
+  public List<SObject> start(Database.BatchableContext bc) {
+    return [SELECT Id FROM Organization LIMIT 1];
+  }
+
+  public void execute(Database.BatchableContext bc, List<SObject> records) {
+    Rollup.defaultControl = new RollupControl__mdt(
+      BatchChunkSize__c = 1,
+      MaxLookupRowsBeforeBatching__c = 0,
+      IsRollupLoggingEnabled__c = true,
+      MaxRollupRetries__c = 1
+    );
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'REFRESH_COUNT',
+        CalcItem__c = 'ContactPointAddress'
+      )
+    };
+    ContactPointAddress con = new ContactPointAddress(ParentId = [SELECT Id FROM Account LIMIT 1].Id, Name = 'Child');
+    insert con;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    rollup.records = new List<ContactPointAddress>{ con };
+    rollup.shouldRun = true;
+    Rollup.runFromTrigger();
+  }
+
+  public void finish(Database.BatchableContext bc) {
   }
 }

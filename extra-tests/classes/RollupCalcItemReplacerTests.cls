@@ -197,6 +197,25 @@ private class RollupCalcItemReplacerTests {
   }
 
   @IsTest
+  static void doesNotUseAndForMultipleParentWhereClauses() {
+    Account acc = [SELECT Id FROM Account];
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
+    );
+
+    List<SObject> records = replacer.replace(
+      new List<Account>{ acc, acc },
+      new List<Rollup__mdt>{
+        new Rollup__mdt(CalcItemWhereClause__c = 'Id != \'' + acc.Id + '\' AND Owner.Name = null', CalcItem__c = 'Account'),
+        new Rollup__mdt(CalcItemWhereClause__c = 'Owner.Name != null AND Type != null', CalcItem__c = 'Account')
+      }
+    );
+
+    Assert.areEqual(1, records.size());
+    Assert.areEqual(acc.Id, records[0].Id);
+  }
+
+  @IsTest
   static void doesNotReplaceForCustomTypeFields() {
     List<Account> accounts = [SELECT Id FROM Account];
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(

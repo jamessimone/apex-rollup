@@ -1,7 +1,6 @@
 public without sharing virtual class RollupFullBatchRecalculator extends RollupFullRecalcProcessor {
   private final RollupState state = new RollupState();
-  private Database.Cursor cursor;
-  private Integer currentPosition = 0;
+  private CalcItemRetriever retriever;
 
   private static final Integer DEFAULT_CHUNK_SIZE = 500;
 
@@ -56,19 +55,66 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
         this.finalizer.addCaboose(this.cabooses.remove(0));
       }
     }
-    this.cursor = this.cursor ?? this.preStart().getCursor();
-
-    Integer countOfRecordsToReturn = this.rollupControl.BatchChunkSize__c.intValue();
-    if (countOfRecordsToReturn + this.currentPosition > this.cursor.getNumRecords()) {
-      countOfRecordsToReturn = this.cursor.getNumRecords() - this.currentPosition;
+    if (this.retriever == null) {
+      try {
+        this.retriever = new CursorBasedRetriever(this.preStart(), this.rollupControl);
+      } catch (Exception ex) {
+        this.logger.log('cursor use disallowed', ex, System.LoggingLevel.WARN);
+        return System.enqueueJob(new FullBatchQueueableFailsafe(this));
+      }
     }
-    this.calcItems = this.cursor.fetch(this.currentPosition, countOfRecordsToReturn);
-    this.currentPosition += countOfRecordsToReturn;
+
+    this.calcItems = this.retriever.fetch();
     return super.startAsyncWork();
+  }
+
+  private String runBatch() {
+    return this.startBatchProcessor();
   }
 
   protected override RollupFinalizer getFinalizer() {
     return new FullRecalcFinalizer(this);
+  }
+
+  private interface CalcItemRetriever {
+    List<SObject> fetch();
+    Boolean shouldContinue();
+  }
+
+  private class CursorBasedRetriever implements CalcItemRetriever {
+    private final Database.Cursor cursor;
+    private Integer countOfRecordsToReturn;
+    private Integer currentPosition = 0;
+
+    public CursorBasedRetriever(RollupRepository repo, RollupControl__mdt control) {
+      this.cursor = repo.getCursor();
+      this.countOfRecordsToReturn = control.BatchChunkSize__c.intValue();
+    }
+
+    public List<SObject> fetch() {
+      if (this.countOfRecordsToReturn + this.currentPosition > this.cursor.getNumRecords()) {
+        this.countOfRecordsToReturn = this.cursor.getNumRecords() - this.currentPosition;
+      }
+      List<SObject> fetchedRecords = this.cursor.fetch(this.currentPosition, this.countOfRecordsToReturn);
+      this.currentPosition += this.countOfRecordsToReturn;
+      return fetchedRecords;
+    }
+
+    public Boolean shouldContinue() {
+      return this.currentPosition < this.cursor.getNumRecords();
+    }
+  }
+
+  private class FullBatchQueueableFailsafe implements System.Queueable {
+    private final RollupFullBatchRecalculator roll;
+
+    public FullBatchQueueableFailsafe(RollupFullBatchRecalculator roll) {
+      this.roll = roll;
+    }
+
+    public void execute(QueueableContext qc) {
+      this.roll.runBatch();
+    }
   }
 
   private class FullRecalcFinalizer extends RollupFinalizer {
@@ -78,7 +124,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     }
 
     public override void handleSuccess() {
-      if (this.conductor.currentPosition < this.conductor.cursor.getNumRecords()) {
+      if (this.conductor.retriever?.shouldContinue() ?? false) {
         this.conductor.startAsyncWork();
       } else {
         this.conductor.finish();

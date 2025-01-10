@@ -266,9 +266,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     if (this.isNoOp) {
       logMessage = 'no-op, exiting early to avoid burning async job';
     } else if (this.rollupControl.ShouldAbortRun__c) {
-      logMessage = String.valueOf(RollupControl__mdt.SObjectType) + '.' + String.valueOf(RollupControl__mdt.ShouldAbortRun__c) + ' set to true, exiting early';
+      logMessage = RollupControl__mdt.SObjectType.toString() + '.' + RollupControl__mdt.ShouldAbortRun__c + ' set to true, exiting early';
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
-      logMessage = String.valueOf(RollupSettings__c.SObjectType) + '.' + String.valueOf(RollupSettings__c.IsEnabled__c) + ' is false, exiting early';
+      logMessage = RollupSettings__c.SObjectType.toString() + '.' + RollupSettings__c.IsEnabled__c + ' is false, exiting early';
     } else {
       if (syncRollups.isEmpty() == false) {
         rollupProcessId = this.getNoProcessId();
@@ -506,10 +506,18 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   protected String startBatchProcessor() {
+    String processId;
     if (this.isFromBatchExecute) {
-      return new QueueableProcessor(this).startAsyncWork();
+      processId = new QueueableProcessor(this).startAsyncWork();
+    } else {
+      try {
+        processId = Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
+      } catch (Exception ex) {
+        this.logger.log('Could not start batch, trying again as Queueable', ex, System.LoggingLevel.WARN);
+        processId = new QueueableProcessor(this).startAsyncWork();
+      }
     }
-    return Database.executeBatch(this, this.rollupControl.BatchChunkSize__c.intValue());
+    return processId;
   }
 
   protected List<SObject> getExistingLookupItems(Set<String> lookupKeys, RollupAsyncProcessor roll, Set<String> uniqueQueryFieldNames) {
