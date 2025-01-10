@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes namespace shadowing issue in RollupFieldInitializer",
+            "versionName": "Fixes RollupCalcItemReplacer usage with mutually exclusive where clauses, and enables Cursor usage from batch apex jobs",
             "versionNumber": "1.2.3.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -27,6 +27,7 @@
         "apex-rollup-namespaced@1.1.30": "04t6g000008OfSJAA0",
         "apex-rollup-namespaced@1.2.0": "04t6g000008OfU0AAK",
         "apex-rollup-namespaced@1.2.1": "04t6g000008OfWVAA0",
-        "apex-rollup-namespaced@1.2.2": "04t6g000008OfXYAA0"
+        "apex-rollup-namespaced@1.2.2": "04t6g000008OfXYAA0",
+        "apex-rollup-namespaced@1.2.3": "04t6g000008Off4AAC"
     }
 }
