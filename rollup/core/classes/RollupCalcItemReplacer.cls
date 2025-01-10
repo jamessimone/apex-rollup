@@ -239,7 +239,7 @@ public without sharing class RollupCalcItemReplacer {
       new List<String>(additionalQueryFields),
       'Id',
       '=',
-      String.join(optionalWhereClauses, ' AND ')
+      String.join(optionalWhereClauses, ' OR ')
     );
 
     calcItems = this.repo.setQuery(queryString).setArg(calcItems).get();
