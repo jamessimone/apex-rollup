@@ -2049,7 +2049,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   }
 
   public List<SObject> start(Database.BatchableContext bc) {
-    return [SELECT Id FROM Organization];
+    return [SELECT Id FROM Organization LIMIT 1];
   }
 
   public void execute(Database.BatchableContext bc, List<SObject> records) {
@@ -2071,7 +2071,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
         CalcItem__c = 'ContactPointAddress'
       )
     };
-    ContactPointAddress con = new ContactPointAddress(ParentId = [SELECT Id FROM Account].Id, Name = 'Child');
+    ContactPointAddress con = new ContactPointAddress(ParentId = [SELECT Id FROM Account LIMIT 1].Id, Name = 'Child');
     insert con;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     rollup.records = new List<ContactPointAddress>{ con };
