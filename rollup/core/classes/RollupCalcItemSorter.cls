@@ -39,6 +39,7 @@ public without sharing class RollupCalcItemSorter implements System.Comparator<S
     return orderByOptions;
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   private Integer getSortRanking(
     SObject objOne,
     SObject objTwo,

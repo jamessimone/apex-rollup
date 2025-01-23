@@ -182,7 +182,7 @@ public class RollupSObjectUpdaterTests {
     }
   }
 
-  @SuppressWarnings('PMD.EmptyWhileStmt')
+  @SuppressWarnings('PMD.EmptyStatementBlock,PMD.EmptyWhileStmt')
   private static void waitSeconds(Integer secondAmount) {
     Datetime nowish = System.now();
     while (System.now() < nowish.addSeconds(secondAmount)) {

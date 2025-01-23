@@ -4,6 +4,7 @@ public class RollupDispatch implements RollupSObjectUpdater.IDispatcher {
   @TestVisible
   private static String platformEventOverride;
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static String PLATFORM_EVENT_BOOLEAN_STRING {
     get {
       if (PLATFORM_EVENT_BOOLEAN_STRING == null) {

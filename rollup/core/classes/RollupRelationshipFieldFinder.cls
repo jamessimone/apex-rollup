@@ -4,7 +4,7 @@
  * are likely niche, anyway, and that people looking to make use of a grandchild -> grandparent (or greater!)
  * rollup are likely operating using lookups
  */
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings('PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
 public without sharing class RollupRelationshipFieldFinder {
   private final Rollup__mdt metadata;
   private final List<String> originalParts;

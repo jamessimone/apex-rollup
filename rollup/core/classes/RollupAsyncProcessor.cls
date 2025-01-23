@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings(
+  'PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields'
+)
 global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, Database.RaisesPlatformEvents, System.Comparable {
   private final Evaluator eval;
   private final Op op;
@@ -82,6 +84,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static Map<String, Map<String, CalcItemBag>> CACHED_CALC_ITEM_BAGS {
     get {
       CACHED_CALC_ITEM_BAGS = CACHED_CALC_ITEM_BAGS ?? new Map<String, Map<String, CalcItemBag>>();

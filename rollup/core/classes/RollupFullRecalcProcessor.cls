@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global abstract without sharing class RollupFullRecalcProcessor extends RollupAsyncProcessor.QueueableProcessor {
   protected final List<Rollup__mdt> rollupMetas;
   protected final Set<String> objIds = new Set<String>();
@@ -14,6 +15,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
     super(invokePoint);
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   protected RollupFullRecalcProcessor(
     String queryString,
     InvocationPoint invokePoint,

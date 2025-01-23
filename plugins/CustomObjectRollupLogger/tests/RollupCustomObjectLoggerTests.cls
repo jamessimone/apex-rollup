@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ApexAssertionsShouldIncludeMessage')
 @IsTest
 private class RollupCustomObjectLoggerTests {
   @IsTest

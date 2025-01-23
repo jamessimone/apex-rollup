@@ -5,6 +5,7 @@
  * - a polymorphic child object where clause field
  * - parent-level fields
  */
+@SuppressWarnings('PMD.CognitiveComplexity,PMD.ExcessiveParameterList')
 public without sharing class RollupCalcItemReplacer {
   private final RollupControl__mdt control;
   private final Set<Rollup__mdt> processedMetadata = new Set<Rollup__mdt>();

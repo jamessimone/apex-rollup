@@ -2271,6 +2271,7 @@ private class RollupCalculatorTests {
   private class RollupCalcEmptyMock extends RollupCalculator {
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   private static RollupCalculator getCalculator(
     Object priorVal,
     Rollup.Op operation,

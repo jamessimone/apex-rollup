@@ -1,6 +1,8 @@
 @IsTest
 private class RollupRelationshipFieldFinderTests {
+  @SuppressWarnings('PMD.FieldNamingConventions')
   static final RollupControl__mdt control = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 10000);
+  @SuppressWarnings('PMD.FieldNamingConventions')
   static final Set<String> uniqueFieldNames = new Set<String>{ 'Id', 'Name' };
 
   @TestSetup

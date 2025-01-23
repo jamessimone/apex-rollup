@@ -1,8 +1,5 @@
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global without sharing class RollupFlowFullRecalcDispatcher {
-  private RollupFlowFullRecalcDispatcher() {
-    // Only used for invocable
-  }
-
   global class FlowInput {
     @InvocableVariable(label='Comma-separated list of API Names of the Rollup__mdt Records you want to run')
     global String rollupDeveloperNames;

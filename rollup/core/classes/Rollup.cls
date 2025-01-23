@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings(
+  'PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.PropertyNamingConventions,PMD.TooManyFields'
+)
 global without sharing virtual class Rollup implements RollupLogger.ToStringObject {
   /**
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
@@ -308,6 +310,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     FROM_SINGULAR_PARENT_RECALC_LWC
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   protected Rollup() {
   }
 
@@ -2511,6 +2514,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private final Set<String> recordIds = new Set<String>();
     private final Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<Id>>();
 
+    @SuppressWarnings('PMD.EmptyStatementBlock')
     private QueryWrapper() {
     }
 

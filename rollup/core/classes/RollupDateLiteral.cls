@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
+@SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart,PMD.PropertyNamingConventions')
 public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN {
     get {
@@ -280,6 +280,7 @@ public without sharing abstract class RollupDateLiteral {
     return datetimeVal < this.bound && datetimeVal < this.ref;
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   protected virtual void setDynamicValue(String num) {
   }
 

@@ -27,9 +27,10 @@ const findClasses = paths => {
 
 // recurses through each directory, finding any test classes along the way
 const existingClasses = findClasses(['./rollup', './extra-tests'])
-  .map(classPath => classPath.match(/([^\/]+)(Test|Tests)\.cls$/))
+  .map(classPath => classPath.match(/([^/]+)(Test|Tests)\.cls$/))
   .map(matchResult => (matchResult ? matchResult[0].replace('.cls', '') : ''))
-  .filter(string => !!string);
+  .filter(string => Boolean(string));
 
 // by logging here, we allow the output to be captured by any caller
+// eslint-disable-next-line no-console
 console.log(existingClasses.join(','));

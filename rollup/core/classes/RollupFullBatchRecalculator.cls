@@ -5,6 +5,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   private static final Integer DEFAULT_CHUNK_SIZE = 500;
 
   public class NonResettingBulkFullRecalc extends RollupFullBatchRecalculator {
+    @SuppressWarnings('PMD.ExcessiveParameterList')
     public NonResettingBulkFullRecalc(String queryString, InvocationPoint invokePoint, List<Rollup__mdt> rollupMetas, SObjectType calcItemType) {
       super(queryString, invokePoint, rollupMetas, calcItemType, new Set<String>(), null);
     }
@@ -14,6 +15,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     }
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   public RollupFullBatchRecalculator(
     String queryString,
     InvocationPoint invokePoint,

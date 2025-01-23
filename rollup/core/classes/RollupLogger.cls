@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
@@ -15,6 +16,7 @@ global without sharing virtual class RollupLogger implements ILogger {
     Instance = logger;
   }
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   public static ILogger Instance {
     get {
       Instance = Instance ?? getRollupLogger();
@@ -43,6 +45,7 @@ global without sharing virtual class RollupLogger implements ILogger {
     }
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   global virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }

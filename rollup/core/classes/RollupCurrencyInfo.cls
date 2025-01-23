@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.ExcessiveParameterList,PMD.PropertyNamingConventions')
 public without sharing virtual class RollupCurrencyInfo {
   public static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
 
@@ -12,6 +13,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private static final RollupRepository REPOSITORY = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL);
 
+  @SuppressWarnings('PMD.FieldNamingConventions')
   @TestVisible
   private static Boolean IS_DATED_MULTICURRENCY = false;
 
@@ -69,6 +71,7 @@ public without sharing virtual class RollupCurrencyInfo {
     return this;
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   protected virtual void addInfo(RollupCurrencyInfo info) {
   }
 

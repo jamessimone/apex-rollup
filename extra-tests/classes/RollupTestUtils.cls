@@ -27,6 +27,7 @@ public class RollupTestUtils {
   }
 
   public class DMLMock extends RollupSObjectUpdater {
+    @SuppressWarnings('PMD.FieldNamingConventions')
     public List<SObject> Records = new List<SObject>();
     public override void doUpdate(List<SObject> recordsToUpdate) {
       RollupLogger.Instance.log('mock received the following for update:', recordsToUpdate, System.LoggingLevel.DEBUG);

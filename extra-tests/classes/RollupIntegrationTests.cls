@@ -2079,6 +2079,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   public void finish(Database.BatchableContext bc) {
   }
 }

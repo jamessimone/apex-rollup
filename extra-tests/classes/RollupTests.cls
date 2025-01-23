@@ -20,6 +20,7 @@ private class RollupTests {
     upsert new RollupSettings__c(IsEnabled__c = true);
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
       Rollup.Op op,

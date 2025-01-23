@@ -1,4 +1,5 @@
 public without sharing class RollupRecursionItem {
+  @SuppressWarnings('PMD.FieldNamingConventions')
   private final Id Id;
   private final Integer stackCount;
   private final String lookupKey;
