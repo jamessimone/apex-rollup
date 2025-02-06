@@ -6,13 +6,49 @@ public without sharing virtual class RollupCurrencyInfo {
   private static final Set<String> HASHED_ITEM_VALUES = new Set<String>();
 
   @TestVisible
-  private static List<RollupCurrencyInfo> mockCurrencyData;
-  private static Date minDatedCurrencyLookup = Date.newInstance(System.today().year(), 1, 1).addYears(-1);
-  private static Date maxDatedCurrencyLookup = System.today().addYears(1);
+  private static List<RollupCurrencyInfo> mockBasicCurrencies;
+  @TestVisible
+  private static List<RollupCurrencyInfo> mockDatedCurrencies;
+
   @TestVisible
   private static Boolean hasLoadedDatedCurrencyInfo = false;
   @TestVisible
   private static Boolean isDatedMultiCurrency = false;
+
+  private static Date minDatedCurrencyLookup {
+    get {
+      minDatedCurrencyLookup = minDatedCurrencyLookup ?? Date.newInstance(System.today().year(), 1, 1).addYears(-1);
+      return minDatedCurrencyLookup;
+    }
+    set;
+  }
+
+  private static Date maxDatedCurrencyLookup {
+    get {
+      maxDatedCurrencyLookup = maxDatedCurrencyLookup ?? System.today().addYears(1);
+      return maxDatedCurrencyLookup;
+    }
+    set;
+  }
+
+  private static Date maxStartDate {
+    get {
+      maxStartDate = maxStartDate ?? Date.newInstance(9999, 12, 31);
+      return minStartDate;
+    }
+    set;
+  }
+
+  private static Date minStartDate {
+    get {
+      // this is a sad one - the actual date for the FIRST dated currency record is recorded as 0000-12-30
+      // but this ACTUALLY instantiates a Date with the value 0001-12-30, so we have to use <= when
+      // doing the initial comparison because there's no other way to actually "reach" that date comparitively (that I know of)
+      minStartDate = minStartDate ?? Date.newInstance(0, 12, 30);
+      return minStartDate;
+    }
+    set;
+  }
 
   // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
   // technically there's a hierarchy for OpportunityLineItem that goes Opportunity.CloseDate > ServiceDate > (ProductDate || ScheduleDate)
@@ -176,7 +212,8 @@ public without sharing virtual class RollupCurrencyInfo {
       }
     }
     hasLoadedDatedCurrencyInfo = true;
-    String datedCurrencyQuery = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate FROM DatedConversionRate WHERE StartDate >= :minDatedCurrencyLookup AND NextStartDate <= :maxDatedCurrencyLookup';
+
+    String datedCurrencyQuery = 'SELECT IsoCode, ConversionRate, StartDate, NextStartDate FROM DatedConversionRate WHERE (NextStartDate <= :maxDatedCurrencyLookup OR NextStartDate = :maxStartDate) AND (StartDate < :minStartDate OR StartDate >= :minDatedCurrencyLookup)';
     String hashedCurrencyQuery = datedCurrencyQuery + minDatedCurrencyLookup + maxDatedCurrencyLookup;
 
     if (DATED_CURRENCY_QUERIES.contains(hashedCurrencyQuery)) {
@@ -185,12 +222,30 @@ public without sharing virtual class RollupCurrencyInfo {
       DATED_CURRENCY_QUERIES.add(hashedCurrencyQuery);
     }
 
-    REPOSITORY.setArg('minDatedCurrencyLookup', minDatedCurrencyLookup).setArg('maxDatedCurrencyLookup', maxDatedCurrencyLookup);
+    REPOSITORY.setArg('minDatedCurrencyLookup', minDatedCurrencyLookup)
+      .setArg('maxDatedCurrencyLookup', maxDatedCurrencyLookup)
+      .setArg('minStartDate', minStartDate)
+      .setArg('maxStartDate', maxStartDate);
     List<RollupCurrencyInfo> datedCurrencyInfos = getCurrencies(datedCurrencyQuery);
 
-    isDatedMultiCurrency = datedCurrencyInfos.isEmpty() == false;
-    mapCurrencies(CURRENCY_ISO_CODE_TO_CURRENCY, datedCurrencyInfos);
-    isDatedMultiCurrency = false;
+    // first loop - transform any existing matches into CurrencyFinder instances
+    for (RollupCurrencyInfo datedInfo : datedCurrencyInfos) {
+      RollupCurrencyInfo possiblyMatchingInfo = CURRENCY_ISO_CODE_TO_CURRENCY.get(datedInfo.IsoCode);
+      if (possiblyMatchingInfo != null) {
+        possiblyMatchingInfo = new CurrencyFinder(possiblyMatchingInfo);
+        CURRENCY_ISO_CODE_TO_CURRENCY.put(datedInfo.IsoCode, possiblyMatchingInfo);
+      }
+    }
+    // second loop - populate the rest
+    for (RollupCurrencyInfo datedInfo : datedCurrencyInfos) {
+      RollupCurrencyInfo possiblyMatchingInfo = CURRENCY_ISO_CODE_TO_CURRENCY.get(datedInfo.IsoCode);
+      if (possiblyMatchingInfo == null) {
+        possiblyMatchingInfo = new CurrencyFinder(datedInfo);
+        CURRENCY_ISO_CODE_TO_CURRENCY.put(datedInfo.IsoCode, possiblyMatchingInfo);
+      } else {
+        possiblyMatchingInfo.addInfo(datedInfo);
+      }
+    }
   }
 
   private static void actuallyTransformCurrency(
@@ -274,8 +329,12 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private static List<RollupCurrencyInfo> getCurrencies(String query) {
     List<RollupCurrencyInfo> currencyInfos = new List<RollupCurrencyInfo>();
-    if (mockCurrencyData != null) {
-      currencyInfos.addAll(mockCurrencyData);
+    if (mockBasicCurrencies != null && isDatedMultiCurrency == false) {
+      currencyInfos.addAll(mockBasicCurrencies);
+      mockBasicCurrencies = null;
+    } else if (mockDatedCurrencies != null) {
+      currencyInfos.addAll(mockDatedCurrencies);
+      mockDatedCurrencies = null;
     } else if (IS_MULTICURRENCY) {
       currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(REPOSITORY.setQuery(query).get()), List<RollupCurrencyInfo>.class));
     }
