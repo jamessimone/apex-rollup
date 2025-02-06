@@ -10,17 +10,17 @@
   "license": "MIT",
   "devDependencies": {
     "@jongpie/sfdx-bummer-plugin": "^0.0.20",
-    "@lwc/eslint-plugin-lwc": "2.0.1",
+    "@lwc/eslint-plugin-lwc": "2.1.0",
     "@prettier/plugin-xml": "3.4.1",
-    "@salesforce/cli": "2.73.9",
+    "@salesforce/cli": "2.75.5",
     "@salesforce/eslint-config-lwc": "3.7.1",
     "@salesforce/eslint-plugin-lightning": "1.0.1",
     "@salesforce/sfdx-lwc-jest": "7.0.1",
-    "@salesforce/sfdx-scanner": "^4.8.0",
-    "husky": "9.0.11",
-    "lint-staged": "15.2.2",
+    "@salesforce/sfdx-scanner": "^4.9.0",
+    "husky": "9.1.7",
+    "lint-staged": "15.4.3",
     "prettier": "3.4.2",
-    "prettier-plugin-apex": "2.2.2"
+    "prettier-plugin-apex": "2.2.4"
   },
   "keywords": [
     "salesforce",
