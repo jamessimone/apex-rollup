@@ -548,6 +548,19 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void shouldCorrectlyIdentifyIncludesForMultiSelectPicklistsWithSpaces() {
+    // QuickText.Channel is the only multi-select picklist in a vanilla Salesforce org
+    QuickText one = new QuickText(Channel = 'AAA;BBB;CCC');
+    QuickText two = new QuickText(Channel = 'AAA');
+    String whereClause = 'Channel INCLUDES (\'In-Person Meeting\')';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, QuickText.SObjectType);
+
+    System.assertEquals(false, eval.matches(one));
+    System.assertEquals(false, eval.matches(two));
+  }
+
+  @IsTest
   static void shouldReturnDualEvaluatorWhenCalcItemChangedFieldsAndWhereClauseFilledOut() {
     Opportunity opp = new Opportunity(Id = '0066g000000000000X', Amount = 50, StageName = 'Updated Name');
     Opportunity oldOpp = opp.clone(true, true);
