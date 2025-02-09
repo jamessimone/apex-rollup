@@ -655,7 +655,12 @@ public without sharing class RollupRelationshipFieldFinder {
         if (this.metadata.RollupOperation__c.contains('DELETE')) {
           this.records.clear();
         }
-        this.records.addAll(additionalCalcItems);
+        if (additionalCalcItems.isEmpty() == false) {
+          // avoids "System.UnexpectedException: Cannot add() on a class java.util.Arrays$ArrayList"
+          List<SObject> modifiableRecords = new List<SObject>(this.records);
+          modifiableRecords.addAll(additionalCalcItems);
+          this.records = modifiableRecords;
+        }
         return additionalCalcItems;
       } catch (Exception ex) {
         RollupLogger.Instance.log('error retrieving additional grandparent records', ex, System.LoggingLevel.WARN);
