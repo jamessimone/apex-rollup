@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart')
+@SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart,PMD.PropertyNamingConventions')
 public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN {
     get {
@@ -263,6 +263,7 @@ public without sharing abstract class RollupDateLiteral {
     Datetime datetimeVal = (Datetime) val;
     return this.ref <= datetimeVal && datetimeVal <= this.bound;
   }
+
   protected virtual Boolean isGreaterThan(Object val) {
     if (val instanceof Date) {
       Date dateVal = (Date) val;
@@ -271,6 +272,7 @@ public without sharing abstract class RollupDateLiteral {
     Datetime datetimeVal = (Datetime) val;
     return datetimeVal > this.bound && datetimeVal > this.ref;
   }
+
   protected virtual Boolean isLessThan(Object val) {
     if (val instanceof Date) {
       Date dateVal = (Date) val;
@@ -280,11 +282,25 @@ public without sharing abstract class RollupDateLiteral {
     return datetimeVal < this.bound && datetimeVal < this.ref;
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   protected virtual void setDynamicValue(String num) {
   }
 
   private Boolean getEquals(String comparison, Boolean val) {
     return comparison == '=' ? val : !val;
+  }
+
+  private Date getTimezoneSafeEndOfMonth(Datetime startOfMonthRef) {
+    // Not every timezone returns the last day of the month when adding a month initially
+    // so we walk the date forward till the month changes, then walk it back one day
+    Date possibleEndOfMonth = startOfMonthRef.addMonths(1).date();
+    while (possibleEndOfMonth.day() != 1 && possibleEndOfMonth.month() == startOfMonthRef.month()) {
+      possibleEndOfMonth = possibleEndOfMonth.addDays(1);
+    }
+    if (possibleEndOfMonth.day() == 1) {
+      possibleEndOfMonth = possibleEndOfMonth.addDays(-1);
+    }
+    return possibleEndOfMonth;
   }
 
   private class FiscalInfo {
@@ -354,11 +370,7 @@ public without sharing abstract class RollupDateLiteral {
   private class LastMonthLiteral extends RollupDateLiteral {
     public LastMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().addMonths(-1).toStartOfMonth(), START_TIME);
-      Date relativeDate = this.ref.addMonths(1).date();
-      if (relativeDate.day() == 1) {
-        relativeDate = relativeDate.addDays(-1);
-      }
-      this.bound = offsetToFirstDay(getRelativeDatetime(relativeDate, END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.getTimezoneSafeEndOfMonth(this.ref), END_TIME));
     }
   }
 
@@ -368,11 +380,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisMonthLiteral extends RollupDateLiteral {
     public ThisMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth(), START_TIME);
-      Date relativeDate = this.ref.addMonths(1).date();
-      if (relativeDate.day() == 1) {
-        relativeDate = relativeDate.addDays(-1);
-      }
-      this.bound = offsetToFirstDay(getRelativeDatetime(relativeDate, END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.getTimezoneSafeEndOfMonth(this.ref), END_TIME));
     }
   }
 
@@ -382,11 +390,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextMonthLiteral extends RollupDateLiteral {
     public NextMonthLiteral() {
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      Date relativeDate = this.ref.addMonths(1).date();
-      if (relativeDate.day() == 1) {
-        relativeDate = relativeDate.addDays(-1);
-      }
-      this.bound = offsetToFirstDay(getRelativeDatetime(relativeDate, END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.getTimezoneSafeEndOfMonth(this.ref), END_TIME));
     }
   }
 
@@ -396,8 +400,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class Last90DaysLiteral extends RollupDateLiteral {
     public Last90DaysLiteral() {
-      this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME);
-      this.ref = getRelativeDatetime(this.bound.addDays(-91).date(), START_TIME);
+      this.bound = getRelativeDatetime(START_OF_TODAY.dateGmt(), END_TIME);
+      this.ref = getRelativeDatetime(this.bound.addDays(-91).dateGmt(), START_TIME);
     }
   }
 

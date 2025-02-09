@@ -74,12 +74,7 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MaxAmountRollupSummary__c });
-    RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
-    System.assertEquals(
-      acc.MaxAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
-      acc.AnnualRevenue.setScale(currencyInfo.DecimalPlaces),
-      'Multi-currency MAX rollup not calculated correctly!'
-    );
+    System.assertEquals(acc.MaxAmountRollupSummary__c.setScale(2), acc.AnnualRevenue.setScale(2), 'Multi-currency MAX rollup not calculated correctly!');
   }
 
   @IsTest
@@ -127,12 +122,7 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MinAmountRollupSummary__c });
-    RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
-    System.assertEquals(
-      acc.MinAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
-      acc.AnnualRevenue.setScale(currencyInfo.DecimalPlaces),
-      'Multi-currency MIN rollup not calculated correctly!'
-    );
+    System.assertEquals(acc.MinAmountRollupSummary__c.setScale(2), acc.AnnualRevenue.setScale(2), 'Multi-currency MIN rollup not calculated correctly!');
   }
 
   @IsTest
@@ -181,12 +171,7 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.SumAmountRollupSummary__c });
-    RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
-    System.assertEquals(
-      acc.SumAmountRollupSummary__c.setScale(currencyInfo.DecimalPlaces),
-      acc.AnnualRevenue.setScale(currencyInfo.DecimalPlaces),
-      'Multi-currency SUM rollup not calculated correctly!'
-    );
+    System.assertEquals(acc.SumAmountRollupSummary__c.setScale(2), acc.AnnualRevenue.setScale(2), 'Multi-currency SUM rollup not calculated correctly!');
   }
 
   @IsTest
@@ -244,8 +229,8 @@ private class RollupMultiCurrencyTests {
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     System.assertEquals(
-      expectedAverage.setScale(currencyInfo.DecimalPlaces),
-      acc.AnnualRevenue.setScale(currencyInfo.DecimalPlaces),
+      expectedAverage.setScale(2),
+      acc.AnnualRevenue.setScale(2),
       'Multi-currency AVERAGE rollup not calculated correctly! Records: ' + opportunities
     );
   }

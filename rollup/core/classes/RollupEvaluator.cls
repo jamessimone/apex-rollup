@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings('PMD.ExcessiveParameterList,PMD.NcssTypeCount')
 public without sharing abstract class RollupEvaluator implements Rollup.Evaluator, RollupLogger.ToStringObject {
   private static final String RELATIONSHIP_FIELD_DELIMITER = '\\.';
   private static final String TRUE_VAL = 'true';
@@ -9,8 +9,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static String stubRequestId;
 
   private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
+  @SuppressWarnings('PMd.FieldNamingConventions')
   private static Map<String, Boolean> CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static Map<String, RecursiveTracker> OPERATION_TO_RECURSION_TRACKER {
     get {
       OPERATION_TO_RECURSION_TRACKER = OPERATION_TO_RECURSION_TRACKER ?? new Map<String, RecursiveTracker>();
@@ -391,7 +393,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
         }
         String value = words[++index];
-        if (criteria.endsWithIgnoreCase('in')) {
+        if (criteria.endsWithIgnoreCase('in') || criteria.endsWithIgnoreCase('includes')) {
           while (value.endsWith(')') == false) {
             String nextWord = words[++index];
             value += ' ' + nextWord;

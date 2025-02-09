@@ -1,8 +1,6 @@
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global without sharing class RollupFlowBulkProcessor {
-  private RollupFlowBulkProcessor() {
-    // only used for invocable
-  }
-
+  @SuppressWarnings('PMD.TooManyFields')
   global class FlowInput {
     @InvocableVariable(label='Records to rollup')
     global List<SObject> recordsToRollup;

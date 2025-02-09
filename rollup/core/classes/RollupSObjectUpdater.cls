@@ -1,6 +1,9 @@
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global without sharing virtual class RollupSObjectUpdater {
+  @SuppressWarnings('PMD.FieldNamingConventions')
   @TestVisible
   private static String UPDATER_NAME = 'RollupCustomUpdater';
+  @SuppressWarnings('PMD.FieldNamingConventions')
   @TestVisible
   private static String PRE_AND_POST_UPDATER_NAME = 'RollupPreAndPostUpdater';
   @TestVisible

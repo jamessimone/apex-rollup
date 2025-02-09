@@ -1,6 +1,7 @@
 @SuppressWarnings('PMD.UnusedLocalVariable')
 @IsTest
 private class RollupQueryBuilderTests {
+  @SuppressWarnings('PMD.FieldNamingConventions')
   private static final Set<String> objIds = new Set<String>();
   @IsTest
   static void shouldQueryAllTasks() {

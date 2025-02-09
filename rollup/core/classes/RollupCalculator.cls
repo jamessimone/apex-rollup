@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings('PMD.EmptyStatementBlock,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
 public without sharing abstract class RollupCalculator {
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;
@@ -37,6 +37,7 @@ public without sharing abstract class RollupCalculator {
   private static Factory testFactory;
   private static Boolean isGroupByRollup = false;
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   public static Factory Factory {
     get {
       Factory = Factory ?? testFactory ?? new RollupCalculator.Factory();

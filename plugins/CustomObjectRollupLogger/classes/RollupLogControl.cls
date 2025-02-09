@@ -5,6 +5,7 @@ public class RollupLogControl {
   private static final RollupPlugin PLUGIN = new RollupPlugin();
   private static final RollupPluginParameter__mdt DATE_OFFSET = PLUGIN.getParameterInstance('DaysRollupLogsRetained');
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   public static Integer Offset {
     get {
       Offset = Offset ??
@@ -17,6 +18,7 @@ public class RollupLogControl {
     private set;
   }
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   public static Integer BatchSize {
     get {
       BatchSize = BatchSize ?? ORG_DEFAULT?.BatchChunkSize__c?.intValue() ?? FALLBACK_BATCH_CHUNK_SIZE;

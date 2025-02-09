@@ -1,4 +1,6 @@
+@SuppressWarnings('PMD.ExcessiveParameterList,PMD.PropertyNamingConventions')
 public without sharing class RollupQueryBuilder {
+  @SuppressWarnings('PMD.FieldNamingConventions')
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
   public static final String ALL_ROWS = 'ALL ROWS';
   public static final String BIND_VAR = 'objIds';
@@ -13,6 +15,7 @@ public without sharing class RollupQueryBuilder {
     set;
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   private RollupQueryBuilder() {
   }
 

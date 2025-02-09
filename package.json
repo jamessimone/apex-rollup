@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -9,23 +9,18 @@
   "author": "james.simone",
   "license": "MIT",
   "devDependencies": {
-    "@babel/core": "7.24.4",
-    "@babel/eslint-parser": "7.24.1",
     "@jongpie/sfdx-bummer-plugin": "^0.0.20",
-    "@ljharb/eslint-config": "21.1.0",
-    "@lwc/eslint-plugin-lwc": "1.7.2",
+    "@lwc/eslint-plugin-lwc": "2.1.0",
     "@prettier/plugin-xml": "3.4.1",
-    "@salesforce/cli": "2.48.6",
-    "@salesforce/eslint-config-lwc": "3.5.3",
-    "@salesforce/eslint-plugin-lightning": "1.0.0",
-    "@salesforce/sfdx-lwc-jest": "4.0.1",
+    "@salesforce/cli": "2.75.5",
+    "@salesforce/eslint-config-lwc": "3.7.1",
+    "@salesforce/eslint-plugin-lightning": "1.0.1",
+    "@salesforce/sfdx-lwc-jest": "7.0.1",
     "@salesforce/sfdx-scanner": "^4.9.0",
-    "eslint": "8.8.0",
-    "eslint-config-prettier": "9.1.0",
-    "husky": "9.0.11",
-    "lint-staged": "15.2.2",
-    "prettier": "3.3.3",
-    "prettier-plugin-apex": "2.1.4"
+    "husky": "9.1.7",
+    "lint-staged": "15.4.3",
+    "prettier": "3.4.2",
+    "prettier-plugin-apex": "2.2.4"
   },
   "keywords": [
     "salesforce",
@@ -38,6 +33,7 @@
     "aura"
   ],
   "scripts": {
+    "assign:perms": "sf org assign permset -n See_Rollup_App",
     "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30 && sf data import tree --files ./config/data/CurrencyTypes.json",
     "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
     "create:package:namespaced": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; New-Namespaced-Package }\"",
@@ -48,12 +44,13 @@
     "delete:org": "sf org delete scratch --no-prompt --target-org apex-rollup-scratch-org",
     "get:project:json": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Update-SFDX-Project-JSON }\"",
     "husky:pre-commit": "lint-staged",
-    "lint:verify": "sf scanner run --target **/lwc/**/*.js,!node_modules/** --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
+    "lint:verify": "sf scanner run --target rollup --engine eslint-lwc --severity-threshold 3 --eslintconfig .eslintrc.json",
+    "lint:verify:new": "sf code-analyzer run --rule-selector eslint",
     "prepare": "husky",
     "prettier": "prettier",
     "scan": "npm run lint:verify && npm run scan:pmd",
-    "scan:pmd": "sf scanner run --pmdconfig config/pmd-ruleset.xml --target .,!plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",
-    "scan:graph": "sf scanner run -e sfge -p . --target 'rollup'",
+    "scan:pmd": "sf scanner run --pmdconfig config/pmd-ruleset.xml --target . --target !plugins/ExtraCodeCoverage/** --engine pmd --severity-threshold 3",
+    "scan:pmd:new": "sf code-analyzer run -r pmd:1 -r pmd:2 -r pmd:3 --workspace rollup/core/**/*.cls --workspace plugins --workspace extra-tests",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"

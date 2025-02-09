@@ -854,13 +854,11 @@ private class RollupCalculatorTests {
 
     RollupCurrencyInfo mockUsdInfo = new RollupCurrencyInfo();
     mockUsdInfo.ConversionRate = 1;
-    mockUsdInfo.DecimalPlaces = 2;
     mockUsdInfo.IsoCode = 'USD';
     RollupCurrencyInfo mockEurInfo = new RollupCurrencyInfo();
     mockEurInfo.ConversionRate = .64;
-    mockEurInfo.DecimalPlaces = 2;
     mockEurInfo.IsoCode = 'EUR';
-    RollupCurrencyInfo.mockCurrencyData = new List<RollupCurrencyInfo>{ mockUsdInfo, mockEurInfo };
+    RollupCurrencyInfo.mockBasicCurrencies = new List<RollupCurrencyInfo>{ mockUsdInfo, mockEurInfo };
 
     RollupCalculator calc = getCalculator(
       1.5625,
@@ -2271,6 +2269,7 @@ private class RollupCalculatorTests {
   private class RollupCalcEmptyMock extends RollupCalculator {
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   private static RollupCalculator getCalculator(
     Object priorVal,
     Rollup.Op operation,

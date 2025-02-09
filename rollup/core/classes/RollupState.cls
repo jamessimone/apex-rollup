@@ -13,6 +13,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   @TestVisible
   private static Integer maxRelatedKeysLength = 255;
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static final Map<String, RollupState> KEY_TO_STATE {
     get {
       KEY_TO_STATE = KEY_TO_STATE ?? new Map<String, RollupState>();
@@ -21,6 +22,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     set;
   }
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static final Map<String, List<RollupState__c>> CACHED_STATES {
     get {
       CACHED_STATES = CACHED_STATES ?? new Map<String, List<RollupState__c>>();

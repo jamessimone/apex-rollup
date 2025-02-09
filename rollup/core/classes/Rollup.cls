@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings(
+  'PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.PropertyNamingConventions,PMD.TooManyFields'
+)
 global without sharing virtual class Rollup implements RollupLogger.ToStringObject {
   /**
    * Test override / bookkeeping section. Normally I would do this through dependency injection,
@@ -308,6 +310,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     FROM_SINGULAR_PARENT_RECALC_LWC
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   protected Rollup() {
   }
 
@@ -2511,6 +2514,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     private final Set<String> recordIds = new Set<String>();
     private final Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<Id>>();
 
+    @SuppressWarnings('PMD.EmptyStatementBlock')
     private QueryWrapper() {
     }
 
@@ -3059,15 +3063,18 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     // mean inadvertently filtering the items for other rollups on the same child SObject type. Instead, we track the matching Ids
     // to avoid unintended side-effects
     for (SObject item : calcItems) {
+      SObject possibleOldCalcItem = oldCalcItems?.get(item.Id);
       if (
         metadata.IsRollupStartedFromParent__c == false &&
-        item.get(metadata.LookupFieldOnCalcItem__c) == null &&
-        oldCalcItems?.get(item.Id)?.get(metadata.LookupFieldOnCalcItem__c) == null
+        (item.isSet(metadata.LookupFieldOnCalcItem__c) == false ||
+        item.get(metadata.LookupFieldOnCalcItem__c) == null) &&
+        (possibleOldCalcItem?.isSet(metadata.LookupFieldOnCalcItem__c) != true ||
+        possibleOldCalcItem?.get(metadata.LookupFieldOnCalcItem__c) == null)
       ) {
         continue;
       } else if (results.eval.matches(item)) {
         results.matchingItemIds.add(item.Id);
-      } else if (oldCalcItems?.containsKey(item.Id) == true && results.eval.matches(oldCalcItems.get(item.Id))) {
+      } else if (possibleOldCalcItem != null && results.eval.matches(possibleOldCalcItem)) {
         // if the where clause would exclude something, but we're in an update
         // and the old value wouldn't have been excluded, pass it on through
         // to be handled further downstream

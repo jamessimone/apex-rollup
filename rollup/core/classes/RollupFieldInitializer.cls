@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.CognitiveComplexity')
 public virtual class RollupFieldInitializer {
   public final Datetime defaultDateTime = Datetime.newInstanceGmt(1970, 1, 1);
   public final Long maximumLongValue = (Math.pow(2, 63) - 1).longValue();
@@ -5,9 +6,13 @@ public virtual class RollupFieldInitializer {
   public final Integer maximumIntegerValue = 2147483647;
   public final Integer minimumIntegerValue = -2147483647 - 1;
 
-  public static final RollupFieldInitializer Current = new RollupFieldInitializer();
-
-  private RollupFieldInitializer() {
+  @SuppressWarnings('PMD.PropertyNamingConventions')
+  public static final RollupFieldInitializer Current {
+    get {
+      Current = Current ?? new RollupFieldInitializer();
+      return Current;
+    }
+    private set;
   }
 
   public Datetime getApexCompliantDatetime(Datetime dt) {

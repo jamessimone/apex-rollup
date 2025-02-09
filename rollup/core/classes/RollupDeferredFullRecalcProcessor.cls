@@ -1,6 +1,7 @@
 public without sharing virtual class RollupDeferredFullRecalcProcessor extends RollupFullRecalcProcessor {
   private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS = new Map<String, List<SObject>>();
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   public RollupDeferredFullRecalcProcessor(
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,

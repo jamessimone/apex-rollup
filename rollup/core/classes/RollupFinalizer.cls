@@ -43,6 +43,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
     this.cabooses.add(caboose);
   }
 
+  @SuppressWarnings('PMD.EmptyStatementBlock')
   protected virtual void handleSuccess() {
   }
 

@@ -4,7 +4,7 @@
  * are likely niche, anyway, and that people looking to make use of a grandchild -> grandparent (or greater!)
  * rollup are likely operating using lookups
  */
-@SuppressWarnings('PMD.NcssTypeCount')
+@SuppressWarnings('PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
 public without sharing class RollupRelationshipFieldFinder {
   private final Rollup__mdt metadata;
   private final List<String> originalParts;
@@ -655,7 +655,12 @@ public without sharing class RollupRelationshipFieldFinder {
         if (this.metadata.RollupOperation__c.contains('DELETE')) {
           this.records.clear();
         }
-        this.records.addAll(additionalCalcItems);
+        if (additionalCalcItems.isEmpty() == false) {
+          // avoids "System.UnexpectedException: Cannot add() on a class java.util.Arrays$ArrayList"
+          List<SObject> modifiableRecords = new List<SObject>(this.records);
+          modifiableRecords.addAll(additionalCalcItems);
+          this.records = modifiableRecords;
+        }
         return additionalCalcItems;
       } catch (Exception ex) {
         RollupLogger.Instance.log('error retrieving additional grandparent records', ex, System.LoggingLevel.WARN);

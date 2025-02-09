@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes RollupCalcItemReplacer usage with mutually exclusive where clauses, and enables Cursor usage from batch apex jobs",
-            "versionNumber": "1.7.4.0",
+            "versionName": "TODO",
+            "versionNumber": "1.7.5.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -110,6 +110,7 @@
         "apex-rollup@1.7.1": "04t6g000008OfWQAA0",
         "apex-rollup@1.7.2": "04t6g000008OfXTAA0",
         "apex-rollup@1.7.3": "04t6g000008OfdwAAC",
-        "apex-rollup@1.7.4": "04t6g000008OfezAAC"
+        "apex-rollup@1.7.4": "04t6g000008OfezAAC",
+        "apex-rollup@1.7.5": "04t6g000008OfqTAAS"
     }
 }

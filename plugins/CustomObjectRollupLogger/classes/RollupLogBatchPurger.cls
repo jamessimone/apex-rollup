@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.AvoidGlobalModifier')
 global without sharing class RollupLogBatchPurger implements Database.Batchable<SObject>, Database.Stateful {
   private Integer recordCount = 0;
   private Boolean hasDeletedOrphanedLogs = false;

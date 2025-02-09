@@ -9,6 +9,7 @@ public without sharing class RollupLimits {
   private static final Integer SYNC_TIMEOUT_INTERVAL_MS = 1500;
   private static final Integer LIMIT_QUERY_ROWS = 50000;
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static final Integer ASYNC_TIMEOUT_INTERVAL_MS {
     get {
       ASYNC_TIMEOUT_INTERVAL_MS = ASYNC_TIMEOUT_INTERVAL_MS ?? stubAsyncTimeoutInterval ?? 13000;
@@ -17,6 +18,7 @@ public without sharing class RollupLimits {
     set;
   }
 
+  @SuppressWarnings('PMD.PropertyNamingConventions')
   private static final Boolean HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT {
     get {
       Integer asyncJobLimit = 250000;
@@ -63,7 +65,10 @@ public without sharing class RollupLimits {
 
     public Decimal getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows ?? Limits.getQueryRows();
-      Decimal maxQueryRows = this.control.MaxQueryRows__c != null && this.control.MaxQueryRows__c <= LIMIT_QUERY_ROWS ? this.control.MaxQueryRows__c : LIMIT_QUERY_ROWS;
+      Decimal maxQueryRows = this.control.MaxQueryRows__c != null &&
+        this.control.MaxQueryRows__c <= LIMIT_QUERY_ROWS
+        ? this.control.MaxQueryRows__c
+        : LIMIT_QUERY_ROWS;
       return maxQueryRows - queryRowsUsed;
     }
 

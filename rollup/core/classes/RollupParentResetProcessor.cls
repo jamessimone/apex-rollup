@@ -1,3 +1,4 @@
+@SuppressWarnings('PMD.CognitiveComplexity')
 public without sharing class RollupParentResetProcessor extends RollupFullBatchRecalculator {
   @TestVisible
   private static Integer maxQueryRows = Limits.getLimitQueryRows() / 2;
@@ -38,6 +39,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     }
   }
 
+  @SuppressWarnings('PMD.ExcessiveParameterList')
   public RollupParentResetProcessor(
     List<Rollup__mdt> matchingMeta,
     SObjectType calcItemType,

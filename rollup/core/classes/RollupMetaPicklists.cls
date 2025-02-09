@@ -1,7 +1,15 @@
+@SuppressWarnings('PMD.PropertyNamingConventions')
 public virtual without sharing class RollupMetaPicklists {
   private final Set<String> validValues;
 
-  public static final ShouldRunAs ShouldRunAs = new ShouldRunAs();
+  public static final ShouldRunAs ShouldRunAs {
+    get {
+      ShouldRunAs = ShouldRunAs ?? new ShouldRunAs();
+      return ShouldRunAs;
+    }
+    private set;
+  }
+
   public static final SortOrder SortOrder {
     get {
       SortOrder = SortOrder ?? new SortOrder();
