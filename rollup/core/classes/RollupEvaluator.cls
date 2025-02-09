@@ -384,9 +384,6 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
         }
 
         String fieldName = word;
-        System.debug(fieldName);
-        System.debug(words);
-        System.debug(index);
         String criteria = words[++index];
         if (criteria.equalsIgnoreCase('not') && words.size() - 1 > index) {
           String potentialNextToken = words[index + 1];

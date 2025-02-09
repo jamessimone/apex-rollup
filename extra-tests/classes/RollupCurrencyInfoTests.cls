@@ -113,7 +113,6 @@ private class RollupCurrencyInfoTests {
     if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
-    RollupCurrencyInfo.isDatedMultiCurrency = true;
 
     RollupCurrencyInfo usdInfo = new RollupCurrencyInfo();
     usdInfo.ConversionRate = 1;
@@ -134,11 +133,12 @@ private class RollupCurrencyInfoTests {
     eurPeriodTwo.StartDate = eurPeriodOne.NextStartDate;
     eurPeriodTwo.NextStartDate = System.today().addDays(1);
 
+    RollupCurrencyInfo.mockBasicCurrencies = new List<RollupCurrencyInfo>();
     RollupCurrencyInfo.mockDatedCurrencies = new List<RollupCurrencyInfo>{ usdInfo, eurPeriodOne, eurPeriodTwo };
 
     List<Opportunity> opps = new List<Opportunity>{
-      new Opportunity(Amount = 100, StageName = 'dated currency', CloseDate = System.today().addDays(-7), Name = 'One'),
-      new Opportunity(Amount = 100, StageName = 'dated currency', CloseDate = System.today(), Name = 'Two')
+      new Opportunity(Amount = 100, StageName = 'dated currency', CloseDate = eurPeriodOne.StartDate.addDays(2), Name = 'One'),
+      new Opportunity(Amount = 100, StageName = 'dated currency', CloseDate = eurPeriodTwo.StartDate.addDays(2), Name = 'Two')
     };
     insert opps;
     List<Schema.SObjectField> queryFields = new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate };
@@ -162,7 +162,6 @@ private class RollupCurrencyInfoTests {
     if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
-    RollupCurrencyInfo.isDatedMultiCurrency = true;
 
     RollupCurrencyInfo usdInfo = new RollupCurrencyInfo();
     usdInfo.ConversionRate = 1;
@@ -191,10 +190,10 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.mockDatedCurrencies = new List<RollupCurrencyInfo>{ usdInfo, eurPeriodOne, eurPeriodTwo };
 
     // somewhere within eurPeriodOne
-    Opportunity firstOpp = new Opportunity(StageName = 'dated currency', CloseDate = System.today().addDays(-7), Name = 'One');
+    Opportunity firstOpp = new Opportunity(StageName = 'dated currency', CloseDate = eurPeriodOne.StartDate.addDays(1), Name = 'One');
     OpportunityLineItem oliToUpdate = (OpportunityLineItem) RollupCalcItemReplacer.replaceField(
       //                                                            within eurPeriodTwo 👇
-      new OpportunityLineItem(Opportunity = firstOpp, Quantity = 1, ServiceDate = System.today(), TotalPrice = 5),
+      new OpportunityLineItem(Opportunity = firstOpp, Quantity = 1, ServiceDate = eurPeriodTwo.StartDate.addDays(1), TotalPrice = 5),
       OpportunityLineItem.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME),
       usdInfo.IsoCode
     );
@@ -212,7 +211,6 @@ private class RollupCurrencyInfoTests {
     if (RollupCurrencyInfo.isMultiCurrency() == false) {
       return;
     }
-    RollupCurrencyInfo.isDatedMultiCurrency = true;
 
     RollupCurrencyInfo usdInfo = new RollupCurrencyInfo();
     usdInfo.ConversionRate = 1;

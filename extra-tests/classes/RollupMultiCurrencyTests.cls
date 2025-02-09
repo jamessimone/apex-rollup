@@ -74,7 +74,6 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MaxAmountRollupSummary__c });
-    RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(acc.MaxAmountRollupSummary__c.setScale(2), acc.AnnualRevenue.setScale(2), 'Multi-currency MAX rollup not calculated correctly!');
   }
 
@@ -123,7 +122,6 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MinAmountRollupSummary__c });
-    RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(acc.MinAmountRollupSummary__c.setScale(2), acc.AnnualRevenue.setScale(2), 'Multi-currency MIN rollup not calculated correctly!');
   }
 
@@ -173,7 +171,6 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.SumAmountRollupSummary__c });
-    RollupCurrencyInfo currencyInfo = RollupCurrencyInfo.getCurrencyInfo(getCurrencyIsoCode(acc));
     System.assertEquals(acc.SumAmountRollupSummary__c.setScale(2), acc.AnnualRevenue.setScale(2), 'Multi-currency SUM rollup not calculated correctly!');
   }
 

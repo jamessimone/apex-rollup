@@ -12,8 +12,6 @@ public without sharing virtual class RollupCurrencyInfo {
 
   @TestVisible
   private static Boolean hasLoadedDatedCurrencyInfo = false;
-  @TestVisible
-  private static Boolean isDatedMultiCurrency = false;
 
   private static Date minDatedCurrencyLookup {
     get {
@@ -336,7 +334,7 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private static List<RollupCurrencyInfo> getCurrencies(String query) {
     List<RollupCurrencyInfo> currencyInfos = new List<RollupCurrencyInfo>();
-    if (mockBasicCurrencies != null && isDatedMultiCurrency == false) {
+    if (mockBasicCurrencies != null) {
       currencyInfos.addAll(mockBasicCurrencies);
       mockBasicCurrencies = null;
     } else if (mockDatedCurrencies != null) {
