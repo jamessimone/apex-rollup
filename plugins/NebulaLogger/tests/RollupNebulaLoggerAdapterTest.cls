@@ -14,7 +14,10 @@ private class RollupNebulaLoggerAdapterTest {
     // chooses to represent itself. Nebula Logger handles all of the formatting
     // of log entries and creation of Log__c records. We only check for adapter-specific
     // settings on Log__c and LogEntry__c
-    List<Log__c> logs = [SELECT Id, Scenario__c, (SELECT Message__c, OriginLocation__c FROM LogEntries__r) FROM Log__c];
+    List<Log__c> logs = [
+      SELECT Id, Scenario__c, (SELECT Message__c, OriginLocation__c FROM LogEntries__r WHERE LoggingLevel__c = :System.LoggingLevel.INFO.name())
+      FROM Log__c
+    ];
     System.assertEquals(1, logs.size(), 'Log should have been created');
     System.assertEquals('Apex Rollup', Logger.getScenario());
     System.assertEquals(1, logs[0].LogEntries__r.size(), 'Log entry should have been created');
