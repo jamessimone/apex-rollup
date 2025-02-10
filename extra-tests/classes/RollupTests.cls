@@ -3126,4 +3126,75 @@ private class RollupTests {
     acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
     Assert.areEqual(opp.Amount, acc.AnnualRevenue);
   }
+
+  @IsTest
+  static void includesWhereClausesWorkOnUpdateMultipleChildren() {
+    Account acc = [SELECT Id, Phone FROM Account];
+    acc.AnnualRevenue = 2;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'QuickText',
+        LookupFieldOnCalcItem__c = 'Name',
+        RollupFieldOnCalcItem__c = 'Channel',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItemWhereClause__c = 'Channel INCLUDES (\'A\')',
+        IsFullRecordSet__c = true
+      )
+    };
+    List<QuickText> quickTexts = new List<QuickText>{
+      new QuickText(Channel = 'A', Name = acc.Id, Id = RollupTestUtils.createId(QuickText.SObjectType)),
+      new QuickText(Name = acc.Id, Id = RollupTestUtils.createId(QuickText.SObjectType))
+    };
+
+    Test.startTest();
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+    Rollup.records = quickTexts;
+    Rollup.oldRecordsMap = new Map<Id, QuickText>{
+      quickTexts[0].Id => quickTexts[0],
+      quickTexts[1].Id => new QuickText(Channel = 'A', Id = quickTexts[1].Id, Name = acc.Id)
+    };
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Assert.areEqual(1, acc.AnnualRevenue);
+  }
+
+  @IsTest
+  static void includesWhereClausesWorkOnUpdateWithOnlyOneMatch() {
+    Account acc = [SELECT Id, Phone FROM Account];
+    acc.AnnualRevenue = 1;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'QuickText',
+        LookupFieldOnCalcItem__c = 'Name',
+        RollupFieldOnCalcItem__c = 'Channel',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItemWhereClause__c = 'Channel INCLUDES (\'A\')'
+      )
+    };
+    List<QuickText> quickTexts = new List<QuickText>{ new QuickText(Name = acc.Id, Id = RollupTestUtils.createId(QuickText.SObjectType)) };
+
+    Test.startTest();
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+    Rollup.records = quickTexts;
+    Rollup.oldRecordsMap = new Map<Id, QuickText>{ quickTexts[0].Id => new QuickText(Channel = 'A', Id = quickTexts[0].Id, Name = acc.Id) };
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    Assert.areEqual(null, acc.AnnualRevenue);
+  }
 }

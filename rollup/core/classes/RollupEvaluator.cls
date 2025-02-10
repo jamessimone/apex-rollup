@@ -667,9 +667,9 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           when 'includes', '!includes' {
             isEqual = false;
             for (String value : this.values) {
-              List<String> splitValues = value.split(';');
+              List<String> splitValues = value?.split(';') ?? new List<String>();
               for (String splitValue : splitValues) {
-                isEqual = storedValue.containsIgnoreCase(splitValue);
+                isEqual = storedValue?.containsIgnoreCase(splitValue) == true;
                 if (isEqual == false) {
                   break;
                 }
