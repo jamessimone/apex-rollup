@@ -240,7 +240,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     CACHED_STATES.put(cacheKey, states);
     Database.delete(states, false, System.AccessLevel.SYSTEM_MODE);
     try {
-      Database.emptyRecycleBin(states);
+      if (states.isEmpty() == false) {
+        Database.emptyRecycleBin(states);
+      }
     } catch (Exception ex) {
       RollupLogger.Instance.log('Error hard deleting state, continuing execution', ex, System.LoggingLevel.WARN);
     }
