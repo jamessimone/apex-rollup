@@ -292,15 +292,8 @@ public without sharing abstract class RollupDateLiteral {
 
   private Date getTimezoneSafeEndOfMonth(Datetime startOfMonthRef) {
     // Not every timezone returns the last day of the month when adding a month initially
-    // so we walk the date forward till the month changes, then walk it back one day
-    Date possibleEndOfMonth = startOfMonthRef.addMonths(1).date();
-    while (possibleEndOfMonth.day() != 1 && possibleEndOfMonth.month() == startOfMonthRef.month()) {
-      possibleEndOfMonth = possibleEndOfMonth.addDays(1);
-    }
-    if (possibleEndOfMonth.day() == 1) {
-      possibleEndOfMonth = possibleEndOfMonth.addDays(-1);
-    }
-    return possibleEndOfMonth;
+
+    return Date.newinstance(startOfMonthRef.year(), startOfMonthRef.month() + 1, 1).addDays(-1);
   }
 
   private class FiscalInfo {

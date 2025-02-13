@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "TODO",
-            "versionNumber": "1.7.5.0",
+            "versionName": "Better support for INCLUDES in where clauses",
+            "versionNumber": "1.7.6.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -111,6 +111,7 @@
         "apex-rollup@1.7.2": "04t6g000008OfXTAA0",
         "apex-rollup@1.7.3": "04t6g000008OfdwAAC",
         "apex-rollup@1.7.4": "04t6g000008OfezAAC",
-        "apex-rollup@1.7.5": "04t6g000008OfqTAAS"
+        "apex-rollup@1.7.5": "04t6g000008OfqTAAS",
+        "apex-rollup@1.7.6": "04t6g000008Ofr7AAC"
     }
 }

@@ -548,6 +548,16 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void shouldReturnFalseForEmptyIncludesList() {
+    QuickText qt = new QuickText();
+
+    String whereClause = 'Channel INCLUDES (\'1\')';
+
+    Rollup.Evaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, QuickText.SObjectType);
+    System.assertEquals(false, eval.matches(qt));
+  }
+
+  @IsTest
   static void shouldCorrectlyIdentifyIncludesForMultiSelectPicklistsWithSpaces() {
     // QuickText.Channel is the only multi-select picklist in a vanilla Salesforce org
     QuickText one = new QuickText(Channel = 'AAA;BBB;CCC');
