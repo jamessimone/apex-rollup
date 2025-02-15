@@ -115,13 +115,14 @@ public without sharing virtual class RollupCurrencyInfo {
   public virtual override String toString() {
     return this.getTypeName() +
       ':[' +
-      JSON.serialize(
+      JSON.serializePretty(
         new Map<String, Object>{
           'IsoCode' => this.IsoCode,
           'ConversionRate' => this.ConversionRate,
           'StartDate' => this.StartDate,
           'NextStartDate' => this.NextStartDate
-        }
+        },
+        true
       ) +
       ']';
   }
@@ -328,7 +329,9 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {
     List<RollupCurrencyInfo> currencyInfos = getCurrencies('SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE');
     Map<String, RollupCurrencyInfo> currencyInfoMap = new Map<String, RollupCurrencyInfo>();
-    mapCurrencies(currencyInfoMap, currencyInfos);
+    for (RollupCurrencyInfo currencyInfo : currencyInfos) {
+      currencyInfoMap.put(currencyInfo.IsoCode, currencyInfo);
+    }
     return currencyInfoMap;
   }
 
@@ -344,12 +347,6 @@ public without sharing virtual class RollupCurrencyInfo {
       currencyInfos.addAll((List<RollupCurrencyInfo>) JSON.deserialize(JSON.serialize(REPOSITORY.setQuery(query).get()), List<RollupCurrencyInfo>.class));
     }
     return currencyInfos;
-  }
-
-  private static void mapCurrencies(Map<String, RollupCurrencyInfo> currencyInfoMap, List<RollupCurrencyInfo> currencyInfos) {
-    for (RollupCurrencyInfo currencyInfo : currencyInfos) {
-      currencyInfoMap.put(currencyInfo.IsoCode, currencyInfo);
-    }
   }
 
   private static Datetime getCurrencyDate(SObject calcItem) {
@@ -370,7 +367,6 @@ public without sharing virtual class RollupCurrencyInfo {
 
   private class CurrencyFinder extends RollupCurrencyInfo {
     private final List<RollupCurrencyInfo> currencyInfos = new List<RollupCurrencyInfo>();
-    private final Map<Id, RollupCurrencyInfo> cachedItemToInfo = new Map<Id, RollupCurrencyInfo>();
     private RollupCurrencyInfo baseInfo;
 
     public CurrencyFinder(RollupCurrencyInfo info) {
@@ -386,19 +382,14 @@ public without sharing virtual class RollupCurrencyInfo {
     }
 
     protected override RollupCurrencyInfo getInfo(SObject calcItem, String isoCode) {
-      if (cachedItemToInfo.containsKey(calcItem.Id)) {
-        return cachedItemToInfo.get(calcItem.Id);
-      }
       Datetime currencyDate = getCurrencyDate(calcItem);
       if (this.currencyInfos.isEmpty() == false && currencyDate != null) {
         for (RollupCurrencyInfo info : this.currencyInfos) {
           if (info.IsoCode == isoCode && info.NextStartDate > currencyDate && currencyDate >= info.StartDate) {
-            cachedItemToInfo.put(calcItem.Id, info);
             return info;
           }
         }
       }
-      cachedItemToInfo.put(calcItem.Id, this.baseInfo);
       return this.baseInfo;
     }
 
