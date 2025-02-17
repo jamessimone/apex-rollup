@@ -218,6 +218,7 @@ private class RollupCalcItemReplacerTests {
   @IsTest
   static void doesNotReplaceForCustomTypeFields() {
     List<Account> accounts = [SELECT Id FROM Account];
+    Integer currentQueryCount = Limits.getQueries();
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
     );
@@ -227,5 +228,22 @@ private class RollupCalcItemReplacerTests {
 
     Assert.areEqual(1, records.size());
     Assert.isTrue(replacer.hasProcessedMetadata(metas, accounts));
+    Assert.areEqual(currentQueryCount, Limits.getQueries());
+  }
+
+  @IsTest
+  static void doesNotReplaceForCustomTypeFieldsWithPrecedingCharacters() {
+    List<Account> accounts = [SELECT Id, AType__c FROM Account];
+    Integer currentQueryCount = Limits.getQueries();
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
+    );
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = 'AType__c = \'hello\'', CalcItem__c = 'Account') };
+
+    List<SObject> records = replacer.replace(accounts, metas);
+
+    Assert.areEqual(1, records.size());
+    Assert.isTrue(replacer.hasProcessedMetadata(metas, accounts));
+    Assert.areEqual(currentQueryCount, Limits.getQueries());
   }
 }
