@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Better support for INCLUDES in where clauses",
-            "versionNumber": "1.2.5.0",
+            "versionName": "More multi-currency bugfixes",
+            "versionNumber": "1.2.6.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -30,6 +30,7 @@
         "apex-rollup-namespaced@1.2.2": "04t6g000008OfXYAA0",
         "apex-rollup-namespaced@1.2.3": "04t6g000008Off4AAC",
         "apex-rollup-namespaced@1.2.4": "04t6g000008OfqYAAS",
-        "apex-rollup-namespaced@1.2.5": "04t6g000008OfrCAAS"
+        "apex-rollup-namespaced@1.2.5": "04t6g000008OfrCAAS",
+        "apex-rollup-namespaced@1.2.6": "04t6g000008OfrqAAC"
     }
 }

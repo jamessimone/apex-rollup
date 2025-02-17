@@ -1,6 +1,7 @@
 @SuppressWarnings('PMD.ExcessiveParameterList,PMD.PropertyNamingConventions')
-public without sharing virtual class RollupCurrencyInfo {
+public without sharing virtual class RollupCurrencyInfo implements RollupLogger.ToStringObject {
   public static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
+  @TestVisible
   private static final RollupRepository REPOSITORY = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL);
   private static final Map<String, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<String, SObject>();
   private static final Set<String> HASHED_ITEM_VALUES = new Set<String>();
@@ -32,7 +33,7 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Date maxStartDate {
     get {
       maxStartDate = maxStartDate ?? Date.newInstance(9999, 12, 31);
-      return minStartDate;
+      return maxStartDate;
     }
     set;
   }
@@ -115,13 +116,14 @@ public without sharing virtual class RollupCurrencyInfo {
   public virtual override String toString() {
     return this.getTypeName() +
       ':[' +
-      JSON.serialize(
+      JSON.serializePretty(
         new Map<String, Object>{
           'IsoCode' => this.IsoCode,
           'ConversionRate' => this.ConversionRate,
           'StartDate' => this.StartDate,
           'NextStartDate' => this.NextStartDate
-        }
+        },
+        true
       ) +
       ']';
   }
@@ -328,7 +330,9 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Map<String, RollupCurrencyInfo> getCurrencyMap() {
     List<RollupCurrencyInfo> currencyInfos = getCurrencies('SELECT IsoCode, ConversionRate, DecimalPlaces FROM CurrencyType WHERE IsActive = TRUE');
     Map<String, RollupCurrencyInfo> currencyInfoMap = new Map<String, RollupCurrencyInfo>();
-    mapCurrencies(currencyInfoMap, currencyInfos);
+    for (RollupCurrencyInfo currencyInfo : currencyInfos) {
+      currencyInfoMap.put(currencyInfo.IsoCode, currencyInfo);
+    }
     return currencyInfoMap;
   }
 
@@ -346,31 +350,16 @@ public without sharing virtual class RollupCurrencyInfo {
     return currencyInfos;
   }
 
-  private static void mapCurrencies(Map<String, RollupCurrencyInfo> currencyInfoMap, List<RollupCurrencyInfo> currencyInfos) {
-    for (RollupCurrencyInfo currencyInfo : currencyInfos) {
-      currencyInfoMap.put(currencyInfo.IsoCode, currencyInfo);
-    }
-  }
-
   private static Datetime getCurrencyDate(SObject calcItem) {
-    List<String> itemToDateFieldMapping = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().toString());
-    switch on itemToDateFieldMapping?.size() {
-      when 1 {
-        return calcItem.isSet(itemToDateFieldMapping[0]) ? (Datetime) calcItem.get(itemToDateFieldMapping[0]) : null;
-      }
-      when 2 {
-        SObject parentObject = calcItem.getSObject(itemToDateFieldMapping[0]);
-        return (Datetime) parentObject?.get(itemToDateFieldMapping[1]);
-      }
-      when else {
-        return null;
-      }
+    List<String> itemToDateFieldMapping = new List<String>(DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().toString()));
+    while (itemToDateFieldMapping.size() > 1) {
+      calcItem = calcItem.getSObject(itemToDateFieldMapping.remove(0));
     }
+    return calcItem.isSet(itemToDateFieldMapping[0]) ? (Datetime) calcItem.get(itemToDateFieldMapping[0]) : null;
   }
 
   private class CurrencyFinder extends RollupCurrencyInfo {
     private final List<RollupCurrencyInfo> currencyInfos = new List<RollupCurrencyInfo>();
-    private final Map<Id, RollupCurrencyInfo> cachedItemToInfo = new Map<Id, RollupCurrencyInfo>();
     private RollupCurrencyInfo baseInfo;
 
     public CurrencyFinder(RollupCurrencyInfo info) {
@@ -386,19 +375,14 @@ public without sharing virtual class RollupCurrencyInfo {
     }
 
     protected override RollupCurrencyInfo getInfo(SObject calcItem, String isoCode) {
-      if (cachedItemToInfo.containsKey(calcItem.Id)) {
-        return cachedItemToInfo.get(calcItem.Id);
-      }
       Datetime currencyDate = getCurrencyDate(calcItem);
       if (this.currencyInfos.isEmpty() == false && currencyDate != null) {
         for (RollupCurrencyInfo info : this.currencyInfos) {
           if (info.IsoCode == isoCode && info.NextStartDate > currencyDate && currencyDate >= info.StartDate) {
-            cachedItemToInfo.put(calcItem.Id, info);
             return info;
           }
         }
       }
-      cachedItemToInfo.put(calcItem.Id, this.baseInfo);
       return this.baseInfo;
     }
 
