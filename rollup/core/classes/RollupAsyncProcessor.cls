@@ -1,6 +1,4 @@
-@SuppressWarnings(
-  'PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields'
-)
+@SuppressWarnings('PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
 global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, Database.RaisesPlatformEvents, System.Comparable {
   private final Evaluator eval;
   private final Op op;
@@ -903,6 +901,13 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       List<RollupAsyncProcessor> groupedProcessors = groupingToRollups.get(processor.metadata?.RollupGrouping__r.Id);
       if (groupedProcessors != null) {
         processor.rollups.addAll(groupedProcessors);
+      }
+      if (processor.metadata?.CurrencyFieldMapping__c != null) {
+        List<String> fieldMappings = processor.metadata.CurrencyFieldMapping__c.split(',');
+        for (Integer index = 0; index < fieldMappings.size(); index++) {
+          fieldMappings[index] = fieldMappings[index].trim();
+        }
+        RollupCurrencyInfo.overrideDatedMultiCurrency(processor.metadata.CalcItem__c, fieldMappings);
       }
     }
   }

@@ -1,6 +1,7 @@
 @SuppressWarnings('PMD.ExcessiveParameterList,PMD.PropertyNamingConventions')
-public without sharing virtual class RollupCurrencyInfo {
+public without sharing virtual class RollupCurrencyInfo implements RollupLogger.ToStringObject {
   public static final String CURRENCY_ISO_CODE_FIELD_NAME = 'CurrencyIsoCode';
+  @TestVisible
   private static final RollupRepository REPOSITORY = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL);
   private static final Map<String, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS = new Map<String, SObject>();
   private static final Set<String> HASHED_ITEM_VALUES = new Set<String>();
@@ -32,7 +33,7 @@ public without sharing virtual class RollupCurrencyInfo {
   private static Date maxStartDate {
     get {
       maxStartDate = maxStartDate ?? Date.newInstance(9999, 12, 31);
-      return minStartDate;
+      return maxStartDate;
     }
     set;
   }
@@ -350,19 +351,11 @@ public without sharing virtual class RollupCurrencyInfo {
   }
 
   private static Datetime getCurrencyDate(SObject calcItem) {
-    List<String> itemToDateFieldMapping = DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().toString());
-    switch on itemToDateFieldMapping?.size() {
-      when 1 {
-        return calcItem.isSet(itemToDateFieldMapping[0]) ? (Datetime) calcItem.get(itemToDateFieldMapping[0]) : null;
-      }
-      when 2 {
-        SObject parentObject = calcItem.getSObject(itemToDateFieldMapping[0]);
-        return (Datetime) parentObject?.get(itemToDateFieldMapping[1]);
-      }
-      when else {
-        return null;
-      }
+    List<String> itemToDateFieldMapping = new List<String>(DATED_MULTICURRENCY_SUPPORTED_OBJECTS.get(calcItem.getSObjectType().toString()));
+    while (itemToDateFieldMapping.size() > 1) {
+      calcItem = calcItem.getSObject(itemToDateFieldMapping.remove(0));
     }
+    return calcItem.isSet(itemToDateFieldMapping[0]) ? (Datetime) calcItem.get(itemToDateFieldMapping[0]) : null;
   }
 
   private class CurrencyFinder extends RollupCurrencyInfo {

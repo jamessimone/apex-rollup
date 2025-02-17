@@ -17,7 +17,7 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(new List<SObject>{ opp }, Opportunity.Amount, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
 
     opp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp, mockEurInfo.IsoCode);
-    System.assertEquals(0, opp.Amount, 'Should make it here without divide by zero error!');
+    Assert.areEqual(0, opp.Amount, 'Should make it here without divide by zero error!');
   }
 
   @IsTest
@@ -38,7 +38,7 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(new List<SObject>{ opp }, Opportunity.Amount, 'EUR', new List<RollupOrderBy__mdt>());
 
     opp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp, 'EUR');
-    System.assertEquals(null, opp.Amount, 'Should make it here without NPE!');
+    Assert.areEqual(null, opp.Amount, 'Should make it here without NPE!');
   }
 
   @IsTest
@@ -71,17 +71,17 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(new List<SObject>{ camp }, Campaign.BudgetedCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
 
     Campaign updatedCamp = (Campaign) RollupCurrencyInfo.getCalcItem(camp, mockEurInfo.IsoCode);
-    System.assertEquals(mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.BudgetedCost), updatedCamp.BudgetedCost);
+    Assert.areEqual(mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.BudgetedCost), updatedCamp.BudgetedCost);
 
     // now for the second field update
     RollupCurrencyInfo.transform(new List<SObject>{ camp }, Campaign.ActualCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
     updatedCamp = (Campaign) RollupCurrencyInfo.getCalcItem(camp, mockEurInfo.IsoCode);
-    System.assertEquals((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.ActualCost)).doubleValue(), updatedCamp.ActualCost);
+    Assert.areEqual((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.ActualCost)).doubleValue(), updatedCamp.ActualCost);
     // sanity check that updates on previously transformed fields still calculate correctly
     camp.BudgetedCost = 6;
     RollupCurrencyInfo.transform(new List<SObject>{ camp }, Campaign.BudgetedCost, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
     Campaign again = (Campaign) RollupCurrencyInfo.getCalcItem(camp, mockEurInfo.IsoCode);
-    System.assertEquals((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.BudgetedCost)).doubleValue(), again.BudgetedCost);
+    Assert.areEqual((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / camp.BudgetedCost)).doubleValue(), again.BudgetedCost);
   }
 
   @IsTest
@@ -105,7 +105,7 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(new List<SObject>{ opp }, currencyFormulaToken, mockEurInfo.IsoCode, new List<RollupOrderBy__mdt>());
 
     Opportunity updatedOpp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp, mockEurInfo.IsoCode);
-    System.assertEquals((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / opp.AmountFormula__c)).doubleValue(), updatedOpp.AmountFormula__c);
+    Assert.areEqual((mockEurInfo.ConversionRate / (mockUsdInfo.ConversionRate / opp.AmountFormula__c)).doubleValue(), updatedOpp.AmountFormula__c);
   }
 
   @IsTest
@@ -153,8 +153,11 @@ private class RollupCurrencyInfoTests {
 
     firstOpp = (Opportunity) RollupCurrencyInfo.getCalcItem(opps.get(0), eurPeriodOne.IsoCode);
     secondOpp = (Opportunity) RollupCurrencyInfo.getCalcItem(opps.get(1), eurPeriodOne.IsoCode);
-    System.assertEquals(eurPeriodOne.ConversionRate / (usdInfo.ConversionRate / opps[0].Amount), firstOpp.Amount);
-    System.assertEquals(eurPeriodTwo.ConversionRate / (usdInfo.ConversionRate / opps[1].Amount), secondOpp.Amount);
+    Assert.areEqual(eurPeriodOne.ConversionRate / (usdInfo.ConversionRate / opps[0].Amount), firstOpp.Amount);
+    Assert.areEqual(eurPeriodTwo.ConversionRate / (usdInfo.ConversionRate / opps[1].Amount), secondOpp.Amount);
+
+    Assert.areEqual(Date.newInstance(9999, 12, 31), RollupCurrencyInfo.REPOSITORY.args.bindVars.get('maxStartDate'));
+    Assert.areEqual(Date.newInstance(0, 12, 30), RollupCurrencyInfo.REPOSITORY.args.bindVars.get('minStartDate'));
   }
 
   @IsTest
@@ -203,7 +206,7 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(olis, OpportunityLineItem.TotalPrice, eurPeriodOne.IsoCode, new List<RollupOrderBy__mdt>());
 
     OpportunityLineItem oli = (OpportunityLineItem) RollupCurrencyInfo.getCalcItem(oliToUpdate, eurPeriodOne.IsoCode);
-    System.assertEquals(eurPeriodOne.ConversionRate / (usdInfo.ConversionRate / oliToUpdate.TotalPrice), oli.TotalPrice);
+    Assert.areEqual(eurPeriodOne.ConversionRate / (usdInfo.ConversionRate / oliToUpdate.TotalPrice), oli.TotalPrice);
   }
 
   @IsTest
@@ -239,12 +242,12 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.transform(new List<Opportunity>{ opp }, Opportunity.Amount, eurPeriodOne.IsoCode, new List<RollupOrderBy__mdt>());
 
     opp = (Opportunity) RollupCurrencyInfo.getCalcItem(opp, eurPeriodOne.IsoCode);
-    System.assertEquals(20, opp.Amount);
+    Assert.areEqual(20, opp.Amount);
 
     RollupCurrencyInfo.mockDatedCurrencies = new List<RollupCurrencyInfo>{ eurPeriodOne, eurPeriodTwo };
     RollupCurrencyInfo.transform(new List<Opportunity>{ secondOpp }, Opportunity.Amount, eurPeriodOne.IsoCode, new List<RollupOrderBy__mdt>());
     secondOpp = (Opportunity) RollupCurrencyInfo.getCalcItem(secondOpp, eurPeriodOne.IsoCode);
-    System.assertEquals(10, secondOpp.Amount);
+    Assert.areEqual(10, secondOpp.Amount);
   }
 
   @IsTest

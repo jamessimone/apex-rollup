@@ -1,6 +1,7 @@
 public without sharing class RollupRepository implements RollupLogger.ToStringObject {
   public static final Integer SENTINEL_COUNT_VALUE = -1;
 
+  @TestVisible
   private final Args args = new Args();
   private final RunAsMode localRunAsMode;
   private transient System.AccessLevel accessLevel {
