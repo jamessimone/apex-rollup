@@ -150,20 +150,21 @@ public without sharing class RollupCalcItemReplacer {
     if (calcItems.isEmpty()) {
       return calcItems;
     }
-    Map<Id, SObject> idToCalcItem = RollupFieldInitializer.Current.createSafeMap(calcItems);
     Set<String> baseFields = this.baseQueryFields.get('' + calcItems[0].getSObjectType());
-    if (baseFields?.isEmpty() == false) {
-      SObject firstItem = calcItems[0];
-      String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
-      List<SObject> calcItemsWithReplacement = this.repo.setQuery(queryString).setArg(calcItems).get();
-      Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
-      for (SObject calcItemWithReplacement : calcItemsWithReplacement) {
-        if (idToCalcItem.containsKey(calcItemWithReplacement.Id)) {
-          SObject calcItem = idToCalcItem.get(calcItemWithReplacement.Id);
-          for (String baseField : baseFields) {
-            Schema.SObjectfield baseFieldToken = fieldNameToDescribe.get(baseField);
-            idToCalcItem.put(calcItem.Id, replaceField(calcItem, baseFieldToken, calcItemWithReplacement.get(baseField)));
-          }
+    if (baseFields?.isEmpty() != false) {
+      return calcItems;
+    }
+    Map<Id, SObject> idToCalcItem = RollupFieldInitializer.Current.createSafeMap(calcItems);
+    SObject firstItem = calcItems[0];
+    String queryString = RollupQueryBuilder.Current.getQuery(firstItem.getSObjectType(), new List<String>(baseFields), 'Id', '=');
+    List<SObject> calcItemsWithReplacement = this.repo.setQuery(queryString).setArg(calcItems).get();
+    Map<String, Schema.SObjectField> fieldNameToDescribe = firstItem.getSObjectType().getDescribe().fields.getMap();
+    for (SObject calcItemWithReplacement : calcItemsWithReplacement) {
+      if (idToCalcItem.containsKey(calcItemWithReplacement.Id)) {
+        SObject calcItem = idToCalcItem.get(calcItemWithReplacement.Id);
+        for (String baseField : baseFields) {
+          Schema.SObjectfield baseFieldToken = fieldNameToDescribe.get(baseField);
+          idToCalcItem.put(calcItem.Id, replaceField(calcItem, baseFieldToken, calcItemWithReplacement.get(baseField)));
         }
       }
     }
@@ -249,7 +250,8 @@ public without sharing class RollupCalcItemReplacer {
 
   private void processWhereClauseForDownstreamEvals(Schema.SObjectType sObjectType, Rollup__mdt metadata, RollupEvaluator.WhereFieldEvaluator whereEval) {
     for (String whereClause : whereEval.getWhereClauses()) {
-      Boolean hasTypeField = whereClause.split(TYPE_FIELD + '(?!__r)').size() > 1;
+      // the period needs to be escaped when splitting, otherwise this can match namespaced fields accidentally
+      Boolean hasTypeField = whereClause.split('\\' + TYPE_FIELD + '(?!__r)').size() > 1;
       Boolean hasOwnerField = whereClause.contains(OWNER);
       if (hasTypeField == false && hasOwnerField == false) {
         continue;
