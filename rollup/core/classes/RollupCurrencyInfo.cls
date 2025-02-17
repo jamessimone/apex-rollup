@@ -10,21 +10,21 @@ public without sharing virtual class RollupCurrencyInfo implements RollupLogger.
   private static List<RollupCurrencyInfo> mockDatedCurrencies;
 
   @TestVisible
-  private RollupRepository REPOSITORY {
+  private static RollupRepository REPOSITORY {
     get {
       REPOSITORY = REPOSITORY ?? new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL);
       return REPOSITORY;
     }
     set;
   }
-  private Map<String, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS {
+  private static Map<String, SObject> TRANSFORMED_MULTICURRENCY_CALC_ITEMS {
     get {
       TRANSFORMED_MULTICURRENCY_CALC_ITEMS = TRANSFORMED_MULTICURRENCY_CALC_ITEMS ?? new Map<String, SObject>();
       return TRANSFORMED_MULTICURRENCY_CALC_ITEMS;
     }
     set;
   }
-  private Set<String> HASHED_ITEM_VALUES {
+  private static Set<String> HASHED_ITEM_VALUES {
     get {
       HASHED_ITEM_VALUES = HASHED_ITEM_VALUES ?? new Set<String>();
       return HASHED_ITEM_VALUES;
@@ -70,7 +70,7 @@ public without sharing virtual class RollupCurrencyInfo implements RollupLogger.
   // Can't be Schema.SObjectType => Schema.SObjectField because not all orgs have OppLineItems/Splits
   // technically there's a hierarchy for OpportunityLineItem that goes Opportunity.CloseDate > ServiceDate > (ProductDate || ScheduleDate)
   // but because this can be configured on a per-rollup basis, it's fine to leave Opportunity.CloseDate as the default since it can be overridden
-  private Map<String, List<String>> DATED_MULTICURRENCY_SUPPORTED_OBJECTS {
+  private static Map<String, List<String>> DATED_MULTICURRENCY_SUPPORTED_OBJECTS {
     get {
       DATED_MULTICURRENCY_SUPPORTED_OBJECTS = DATED_MULTICURRENCY_SUPPORTED_OBJECTS ??
         new Map<String, List<String>>{
@@ -84,7 +84,7 @@ public without sharing virtual class RollupCurrencyInfo implements RollupLogger.
     set;
   }
 
-  private Set<String> DATED_CURRENCY_QUERIES {
+  private static Set<String> DATED_CURRENCY_QUERIES {
     get {
       DATED_CURRENCY_QUERIES = DATED_CURRENCY_QUERIES ?? new Set<String>();
       return DATED_CURRENCY_QUERIES;
@@ -101,7 +101,7 @@ public without sharing virtual class RollupCurrencyInfo implements RollupLogger.
     set;
   }
 
-  private RollupCurrencyInfo FALLBACK_INFO {
+  private static RollupCurrencyInfo FALLBACK_INFO {
     get {
       FALLBACK_INFO = FALLBACK_INFO ?? new RollupCurrencyInfo().setDefaults(1);
       return FALLBACK_INFO;
@@ -109,7 +109,7 @@ public without sharing virtual class RollupCurrencyInfo implements RollupLogger.
     set;
   }
 
-  private Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY {
+  private static Map<String, RollupCurrencyInfo> CURRENCY_ISO_CODE_TO_CURRENCY {
     get {
       CURRENCY_ISO_CODE_TO_CURRENCY = CURRENCY_ISO_CODE_TO_CURRENCY ?? getCurrencyMap();
       return CURRENCY_ISO_CODE_TO_CURRENCY;
@@ -117,7 +117,7 @@ public without sharing virtual class RollupCurrencyInfo implements RollupLogger.
     set;
   }
 
-  private Map<Schema.SObjectType, Map<String, Schema.SObjectField>> TYPE_TO_FIELDS {
+  private static Map<Schema.SObjectType, Map<String, Schema.SObjectField>> TYPE_TO_FIELDS {
     get {
       TYPE_TO_FIELDS = TYPE_TO_FIELDS ?? new Map<Schema.SObjectType, Map<String, Schema.SObjectField>>();
       return TYPE_TO_FIELDS;
