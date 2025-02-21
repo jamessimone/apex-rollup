@@ -124,6 +124,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
         GroupByFields__c,
         GroupByRowEndDelimiter__c,
         GroupByRowStartDelimiter__c,
+        IsDisabled__c,
         IsDistinct__c,
         IsFullRecordSet__c,
         IsRollupStartedFromParent__c,
@@ -141,7 +142,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
         RollupGrouping__r.Id,
         RollupGrouping__r.RollupOperation__c
       FROM Rollup__mdt
-      WHERE RollupControl__r.ShouldAbortRun__c = FALSE
+      WHERE RollupControl__r.ShouldAbortRun__c = FALSE AND IsDisabled__c = FALSE
       ORDER BY LookupObject__c
     ];
     // we have to do transforms on the Entity Definition fields because custom objects/custom fields

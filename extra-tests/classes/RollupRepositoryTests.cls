@@ -1,6 +1,20 @@
 @IsTest
 private class RollupRepositoryTests {
   @IsTest
+  static void omitsDisabledRollups() {
+    List<Rollup__mdt> metas = RollupRepository.getRollupMetadata();
+
+    Boolean foundDisabled = false;
+    for (Rollup__mdt actualMeta : metas) {
+      if (actualMeta.IsDisabled__c) {
+        foundDisabled = true;
+        throw new IllegalArgumentException('Found disabled metadata: ' + JSON.serialize(actualMeta));
+      }
+    }
+    Assert.isFalse(foundDisabled);
+  }
+
+  @IsTest
   static void transformsCountQueriesProperly() {
     String queryString = 'SELECT Id, AnnualRevenue, Name\nFROM Account';
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsDisabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When checked, this rollup will not run</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>When checked, this rollup will not run</inlineHelpText>
+    <label>Is Disabled</label>
+    <type>Checkbox</type>
+</CustomField>

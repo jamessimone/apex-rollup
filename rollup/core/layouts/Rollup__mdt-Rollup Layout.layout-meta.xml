@@ -264,6 +264,10 @@
                 <behavior>Edit</behavior>
                 <field>IsProtected</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>IsDisabled__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>
