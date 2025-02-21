@@ -24,11 +24,11 @@ As well, don't miss [the Wiki](../../wiki), which includes even more info for co
 
 ## Deployment & Setup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfrvAAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfsPAAS">
   <img alt="Deploy to Salesforce" src="./media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfrvAAC">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t6g000008OfsPAAS">
   <img alt="Deploy to Salesforce Sandbox" src="./media/deploy-package-to-sandbox.png">
 </a>
 <br/>
@@ -146,6 +146,7 @@ Within the `Rollup__mdt` custom metadata type, add a new record with fields:
 - `Group By Row Start Delimiter` (optional) - if set, this is the delimiter which prefaces each row in the group by rollup to delimit results. Defaults to `•` if not supplied
 - `Group By Row End Delimiter` (optional) - if set, this is the delimiter which is appended to each row in the group by rollup to delimit results. Defaults to a new line character if not supplied. Please also note that different new line characters are required depending on what type of field you're rolling up to - `<br>` will work for Rich Text fields, for example, while `\n` is the way to enter new lines for long text areas
 - `Is Distinct` (optional, defaults to `false`) - de-duplicates the children item values for any parent prior to rolling them up
+- `Is Disabled` (optional, defaults to `false`) - toggle this to omit a rollup from being run without having to associate it with another Rollup Control record
 - `Is Full Record Set` (optional, defaults to `false`) - converts any rollup into a full recalculation (e.g. all _other_ child records associated with the parent(s) of the child records being passed in will be fetched and used in the rollup calculation)
 - `Is Rollup Started From Parent` (optional, defaults to `false`) - if the the records being passed in are the parent records, check this field off. Apex Rollup will then go and retrieve the assorted children records before rolling the values up to the parents. If you are using `Is Rollup Started From Parent` and grandparent rollups with Tasks/Events (or anything with a polymorphic relationship field like `Who` or `What` on Task/Event; the `Parent` field on `Contact Point Address` is another example of such a field), you **must** also include a filter for `What.Type` or `Who.Type` in your `Child Object Where Clause` in order to proceed, e.g. `What.Type = 'Account'`.
 - `Is Table Formatted` (optional, defaults to `false`) - set this to true _instead of_ using the `Group By Row Start Delimiter` and `Group By Row End Delimiter` if you are rolling up to a rich text field and you want the output to be a table.

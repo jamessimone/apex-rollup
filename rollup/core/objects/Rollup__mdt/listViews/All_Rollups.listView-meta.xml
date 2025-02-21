@@ -7,10 +7,11 @@
     <columns>CalcItem__c</columns>
     <columns>RollupFieldOnCalcItem__c</columns>
     <columns>LookupFieldOnCalcItem__c</columns>
+    <columns>LookupObject__c</columns>
     <columns>LookupFieldOnLookupObject__c</columns>
     <columns>RollupFieldOnLookupObject__c</columns>
     <columns>RollupControl__c</columns>
-    <columns>LookupObject__c</columns>
+    <columns>IsDisabled__c</columns>
     <columns>CalcItemWhereClause__c</columns>
     <filterScope>Everything</filterScope>
     <label>All Rollups</label>

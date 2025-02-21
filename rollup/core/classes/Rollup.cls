@@ -502,11 +502,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Map<String, List<Rollup__mdt>> calcItemToMetadata = new Map<String, List<Rollup__mdt>>();
     List<Rollup__mdt> localMetadata = getMetadataFromCache(Rollup__mdt.SObjectType);
     for (Rollup__mdt localMeta : localMetadata) {
-      if (calcItemToMetadata.containsKey(localMeta.CalcItem__c)) {
-        calcItemToMetadata.get(localMeta.CalcItem__c).add(localMeta);
-      } else {
-        calcItemToMetadata.put(localMeta.CalcItem__c, new List<Rollup__mdt>{ localMeta });
+      List<Rollup__mdt> childrenMetadata = calcItemToMetadata.get(localMeta.CalcItem__c);
+      if (childrenMetadata == null) {
+        childrenMetadata = new List<Rollup__mdt>();
+        calcItemToMetadata.put(localMeta.CalcItem__c, childrenMetadata);
       }
+      childrenMetadata.add(localMeta);
     }
     return calcItemToMetadata;
   }

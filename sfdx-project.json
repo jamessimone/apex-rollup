@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Properly handle namespaced and other Type__c fields in RollupCalcItemReplacer",
-            "versionNumber": "1.7.8.0",
+            "versionName": "Allows individual rollup records to be disabled on Rollup Metadata records",
+            "versionNumber": "1.7.9.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -85,7 +85,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "62.0",
+    "sourceApiVersion": "63.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
@@ -105,6 +105,7 @@
         "apex-rollup@1.7.5": "04t6g000008OfqTAAS",
         "apex-rollup@1.7.6": "04t6g000008Ofr7AAC",
         "apex-rollup@1.7.7": "04t6g000008OfrlAAC",
-        "apex-rollup@1.7.8": "04t6g000008OfrvAAC"
+        "apex-rollup@1.7.8": "04t6g000008OfrvAAC",
+        "apex-rollup@1.7.9": "04t6g000008OfsPAAS"
     }
 }
