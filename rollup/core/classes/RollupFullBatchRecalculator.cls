@@ -67,7 +67,9 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     }
 
     this.calcItems = this.retriever.fetch();
-    return super.startAsyncWork();
+    String jobId = super.startAsyncWork();
+    insert new RollupState__c(RelatedJobId__c = jobId);
+    return jobId;
   }
 
   private String runBatch() {
