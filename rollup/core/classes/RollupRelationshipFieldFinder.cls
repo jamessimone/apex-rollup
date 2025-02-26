@@ -603,7 +603,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void retrieveGrandparentAdjacentChildren() {
-    if (this.records?.isEmpty() != false) {
+    if (this.records?.isEmpty() != false || this.metadata.OneToManyGrandParentFields__c != null) {
       return;
     }
 
@@ -691,8 +691,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
-    String oneToManyFieldName = this.oneToManyParts.get(junctionObjectName);
-    this.oneToManyParts.remove(junctionObjectName);
+    String oneToManyFieldName = this.oneToManyParts.remove(junctionObjectName);
     Schema.SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(junctionObjectName).getSObjectType();
     this.currentRelationshipName = this.getCurrentRelationshipName(sObjectType);
     Set<Id> junctionRecordIds = new Set<Id>();

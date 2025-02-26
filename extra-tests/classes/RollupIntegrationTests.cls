@@ -378,6 +378,17 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
         LookupFieldOnLookupObject__c = 'Id',
         GrandparentRelationshipFieldPath__c = 'Contacts.Individual.ConsumerCreditScore',
         OneToManyGrandparentFields__c = 'Contact.AccountId'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        LookupObject__c = 'Individual',
+        LookupFieldOnCalcItem__c = 'Id',
+        RollupOperation__c = 'COUNT',
+        RollupFieldOnLookupObject__c = 'InfluencerRating',
+        RollupFieldOnCalcItem__c = 'CleanStatus',
+        LookupFieldOnLookupObject__c = 'Id',
+        GrandparentRelationshipFieldPath__c = 'Contacts.Individual.ConsumerCreditScore',
+        OneToManyGrandparentFields__c = 'Contact.AccountId'
       )
     };
     Rollup.shouldRun = true;
@@ -389,12 +400,13 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore, InfluencerRating FROM Individual WHERE Id = :indy.Id];
     System.assertEquals(
       acc.AnnualRevenue,
       updatedIndy.ConsumerCreditScore,
       'Apex grandparent rollup should run with reparenting change to intermediate records'
     );
+    System.assertEquals(1, updatedIndy.InfluencerRating);
   }
 
   @IsTest
