@@ -73,6 +73,46 @@ private class RollupFlowFullRecalcDispatcherTests {
   }
 
   @IsTest
+  static void shouldPerformParentAPINameFullRecalcFromFlowInput() {
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'Dummy_Account_Revenue_Rollup',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'Dummy_Account_Number_Of_Employees_Rollup',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT',
+        CalcItemWhereClause__c = 'Name = \'oneCMDT\''
+      )
+    };
+    RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
+    input.rollupDeveloperNames = 'Account';
+
+    Test.startTest();
+    RollupFlowRecalculator.performFullRecalcRollups(new List<RollupFlowFullRecalcDispatcher.FlowInput>{ input });
+    Test.stopTest();
+
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    System.assertEquals(6, acc.AnnualRevenue);
+    System.assertEquals(1, acc.NumberOfEmployees);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+  }
+
+  @IsTest
   static void supportsMultipleChildrenGrandparentTypesAtOnce() {
     Account acc = [SELECT Id, OwnerId FROM Account];
 

@@ -1971,6 +1971,37 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldAddStateRecordAtStartOfFullRecalc() {
+    Account acc = [SELECT Id FROM Account];
+    insert new List<Opportunity>{ new Opportunity(StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Name = 'fullRecalc', Amount = 1) };
+
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 0,
+      BatchChunkSize__c = 2,
+      IsRollupLoggingEnabled__c = true,
+      Id = RollupTestUtils.createId(RollupControl__mdt.SObjectType)
+    );
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        RollupFieldOnCalcItem__c = 'Amount',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        RollupControl__c = Rollup.defaultControl.Id
+      )
+    };
+
+    // purposefully do not use start/stopTest to ensure job does not finish running
+    String jobId = Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
+
+    Assert.areEqual(1, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupFullBatchRecalculator.class.getName()]);
+    Assert.areEqual(1, [SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId], 'Must populate rollup state');
+  }
+
+  @IsTest
   static void shouldNotBlowUpWithDateFunctionInWhereClause() {
     Account acc = [SELECT Id FROM Account];
 

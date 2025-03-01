@@ -603,7 +603,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private void retrieveGrandparentAdjacentChildren() {
-    if (this.records?.isEmpty() != false) {
+    if (this.records?.isEmpty() != false || this.metadata.OneToManyGrandParentFields__c != null) {
       return;
     }
 
@@ -691,8 +691,7 @@ public without sharing class RollupRelationshipFieldFinder {
   }
 
   private List<SObject> getJunctionRecords(List<SObject> records, String junctionObjectName, String priorLookup) {
-    String oneToManyFieldName = this.oneToManyParts.get(junctionObjectName);
-    this.oneToManyParts.remove(junctionObjectName);
+    String oneToManyFieldName = this.oneToManyParts.remove(junctionObjectName);
     Schema.SObjectType sObjectType = RollupFieldInitializer.Current.getDescribeFromName(junctionObjectName).getSObjectType();
     this.currentRelationshipName = this.getCurrentRelationshipName(sObjectType);
     Set<Id> junctionRecordIds = new Set<Id>();
@@ -761,14 +760,10 @@ public without sharing class RollupRelationshipFieldFinder {
           this.trackTraversalIds(oneToManyLookup, otherJunctionRecord.Id, field, null);
           oneToManyLookups.add(String.valueOf(oneToManyLookup));
         }
+        Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c };
+        queryFields.addAll(this.uniqueChildrenFieldNames);
         List<SObject> otherChildrenRecords = this.repo.setQuery(
-            RollupQueryBuilder.Current.getQuery(
-              records.get(0).getSObjectType(),
-              new List<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c },
-              'Id',
-              '=',
-              'Id != :records'
-            )
+            RollupQueryBuilder.Current.getQuery(records.get(0).getSObjectType(), new List<String>(queryFields), 'Id', '=', 'Id != :records')
           )
           .setArg(oneToManyLookups)
           .setArg('records', records)
