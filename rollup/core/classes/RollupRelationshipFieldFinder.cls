@@ -760,14 +760,10 @@ public without sharing class RollupRelationshipFieldFinder {
           this.trackTraversalIds(oneToManyLookup, otherJunctionRecord.Id, field, null);
           oneToManyLookups.add(String.valueOf(oneToManyLookup));
         }
+        Set<String> queryFields = new Set<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c };
+        queryFields.addAll(this.uniqueChildrenFieldNames);
         List<SObject> otherChildrenRecords = this.repo.setQuery(
-            RollupQueryBuilder.Current.getQuery(
-              records.get(0).getSObjectType(),
-              new List<String>{ this.metadata.LookupFieldOnCalcItem__c, this.metadata.RollupFieldOnCalcItem__c },
-              'Id',
-              '=',
-              'Id != :records'
-            )
+            RollupQueryBuilder.Current.getQuery(records.get(0).getSObjectType(), new List<String>(queryFields), 'Id', '=', 'Id != :records')
           )
           .setArg(oneToManyLookups)
           .setArg('records', records)
