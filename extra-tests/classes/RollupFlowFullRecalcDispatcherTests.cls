@@ -200,6 +200,36 @@ private class RollupFlowFullRecalcDispatcherTests {
   }
 
   @IsTest
+  static void supportsIndividualParentFullRecalc() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account excluded = new Account(Name = 'Individual That Should Not Be Reset', AnnualRevenue = 5);
+    insert excluded;
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      )
+    };
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = getFlowInputs(Rollup.rollupMetadata);
+    flowInputs[0].optionalParentId = acc.Id;
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
+    Assert.areEqual(5, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id].AnnualRevenue);
+  }
+
+  @IsTest
   static void integrationSupportsTextTemplateVariables() {
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{

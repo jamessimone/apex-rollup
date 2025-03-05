@@ -539,6 +539,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     String possibleParentId;
 
     Map<SObjectType, RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
+    Set<InvocationPoint> singularParentInvokes = new Set<InvocationPoint>{
+      InvocationPoint.FROM_FULL_RECALC_FLOW,
+      InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC
+    };
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       FlowInput validationRuleWrapper = new FlowInput();
       validationRuleWrapper.rollupOperation = matchingMeta.RollupOperation__c.toUpperCase();
@@ -547,7 +551,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       validationRuleWrapper.fullRecalculationDefaultNumberValue = matchingMeta.FullRecalculationDefaultNumberValue__c;
       enforceValidationRules(validationRuleWrapper);
 
-      if (localInvokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC && possibleParentId == null) {
+      Boolean couldHaveSingularRecalcDelimiter = singularParentInvokes.contains(localInvokePoint) && possibleParentId == null;
+      if (couldHaveSingularRecalcDelimiter) {
         Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter) ?? -1;
         if (delimiterIndex > -1) {
           possibleParentId = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length())
@@ -2284,7 +2289,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     RollupControl__mdt control = getSingleControlOrDefault(RollupControl__mdt.Id, rollupControlId, defaultControl);
     Schema.SObjectType parentType = RollupFieldInitializer.Current.getDescribeFromName(wrappedMeta.metadata[0].LookupObject__c).getSObjectType();
-    String equality = invokePoint == InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC ? '=' : '!=';
+    String equality = wrappedMeta.recordIds.isEmpty() == false ? '=' : '!=';
     lookupFields.retainAll(parentType.getDescribe().fields.getMap().keyset());
     String parentQuery = RollupQueryBuilder.Current.getQuery(parentType, new List<String>(lookupFields), keyField, equality);
 
@@ -2303,8 +2308,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp && control.ShouldSkipResettingParentFields__c == false) {
       return parentResetProcessor;
     } else if (
-      (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC && invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) ||
-      control.ShouldSkipResettingParentFields__c
+      (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC &&
+      invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) ||
+      control.ShouldSkipResettingParentFields__c ||
+      wrappedMeta.recordIds.isEmpty() == false
     ) {
       parentResetProcessor = null;
     }

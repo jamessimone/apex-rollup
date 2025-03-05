@@ -1,8 +1,11 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global without sharing class RollupFlowFullRecalcDispatcher {
   global class FlowInput {
-    @InvocableVariable(label='Comma-separated list of API Names you want to run')
+    @InvocableVariable(label='Comma-separated list of API Names you want to run' required=true)
     global String rollupDeveloperNames;
+
+    @InvocableVariable(label='Optional parent Id')
+    global String optionalParentId;
   }
 
   public interface FlowFullRecalcPreprocessor {
@@ -17,21 +20,28 @@ global without sharing class RollupFlowFullRecalcDispatcher {
 
   public List<Rollup.FlowOutput> process(List<FlowInput> inputs, FlowFullRecalcPreprocessor preprocessor) {
     Set<String> targetNames = new Set<String>();
+    Set<String> potentialParentIds = new Set<String>();
     for (FlowInput input : inputs) {
       if (String.isBlank(input.rollupDeveloperNames)) {
         throw new IllegalArgumentException(preprocessor.getExceptionMessage());
       }
+      potentialParentIds.add(input.optionalParentId);
       List<String> splitListOfApiNames = input.rollupDeveloperNames.stripHtmlTags().split(',');
       for (String apiName : splitListOfApiNames) {
         targetNames.add(apiName.trim());
       }
     }
+    potentialParentIds.remove(null);
+    List<String> uniqueParentIds = new List<String>(potentialParentIds);
 
     List<Rollup__mdt> localRollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
     List<Rollup__mdt> selectedRollupMetadata = new List<Rollup__mdt>();
     for (Rollup__mdt rollup : localRollupMetadata) {
       if (targetNames.contains('' + rollup.get(preprocessor.getTarget().toString()))) {
         selectedRollupMetadata.add(rollup);
+        if (uniqueParentIds.isEmpty() == false) {
+          rollup.CalcItemWhereClause__c = (rollup.CalcItemWhereClause__c ?? '') + ' ||| ' + rollup.LookupFieldOnCalcItem__c + ' = \'' + uniqueParentIds.remove(0) + '\'';
+        }
       }
     }
 
