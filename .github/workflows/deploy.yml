@@ -73,7 +73,7 @@ jobs:
 
       - name: Install & run SFDX Scanner
         run: |
-          sf plugins install code-analyzer
+          npx sf plugins install code-analyzer
           npm run scan
 
       # Authenticate using JWT flow
