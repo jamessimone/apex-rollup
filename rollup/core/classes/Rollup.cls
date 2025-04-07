@@ -73,9 +73,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
-  private static Set<String> CACHED_COUNT_QUERIES {
+  private static Map<String, Integer> CACHED_COUNT_QUERIES {
     get {
-      CACHED_COUNT_QUERIES = CACHED_COUNT_QUERIES ?? new Set<String>();
+      CACHED_COUNT_QUERIES = CACHED_COUNT_QUERIES ?? new Map<String, Integer>();
       return CACHED_COUNT_QUERIES;
     }
     set;
@@ -2255,18 +2255,16 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     if (metaWrapper.recordCount != RollupRepository.SENTINEL_COUNT_VALUE) {
       String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause);
       String hashedQuery = query + meta.LookupObject__c + metaWrapper.recordIds;
-      Integer currentCount;
-      if (CACHED_COUNT_QUERIES.contains(hashedQuery)) {
-        currentCount = 0;
-      } else {
+      Integer currentCount = CACHED_COUNT_QUERIES.get(hashedQuery);
+      if (currentCount == null) {
         currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
           .setQuery(query)
           .setArg(new Set<String>())
           .setArg('recordIds', metaWrapper.recordIds)
           .getCount();
-        CACHED_COUNT_QUERIES.add(hashedQuery);
+        CACHED_COUNT_QUERIES.put(hashedQuery, currentCount);
+        metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
       }
-      metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
   }
 

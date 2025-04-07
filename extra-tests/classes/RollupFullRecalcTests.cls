@@ -713,7 +713,10 @@ private class RollupFullRecalcTests {
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)]
+    );
   }
 
   @IsTest
@@ -891,7 +894,10 @@ private class RollupFullRecalcTests {
     for (Account account : accounts) {
       System.assertEquals(account.Id == acc.Id ? 6 : 1, account.AnnualRevenue);
     }
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)]
+    );
   }
 
   @IsTest
@@ -937,14 +943,13 @@ private class RollupFullRecalcTests {
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(
-      'Completed',
+      1,
       [
-        SELECT Status
+        SELECT COUNT()
         FROM AsyncApexJob
         WHERE JobType = 'Queueable' AND ApexClass.Name = :getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
         LIMIT 1
       ]
-      ?.Status
     );
   }
 
@@ -1791,15 +1796,15 @@ private class RollupFullRecalcTests {
         ),
         new Rollup__mdt(
           CalcItem__c = 'ContactPointAddress',
-          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupFieldOnCalcItem__c = 'Name',
           LookupFieldOnCalcItem__c = 'ParentId',
           LookupObject__c = 'User',
           LookupFieldOnLookupObject__c = 'Id',
-          RollupFieldOnLookupObject__c = 'JigsawImportLimitOverride',
-          GrandparentRelationshipFieldPath__c = 'Parent.Owner.JigsawImportLimitOverride',
-          RollupOperation__c = 'SUM',
+          RollupFieldOnLookupObject__c = 'Alias',
+          GrandparentRelationshipFieldPath__c = 'Parent.Owner.Alias',
+          RollupOperation__c = 'MIN',
           CalcItemWhereClause__c = 'ParentId = \'' + parentA.Id + '\'',
-          FullRecalculationDefaultNumberValue__c = 0,
+          FullRecalculationDefaultStringValue__c = '',
           IsFullRecordSet__c = true
         ),
         new Rollup__mdt(
@@ -1849,8 +1854,8 @@ private class RollupFullRecalcTests {
       System.assertEquals(String.valueOf(true), parent.Sic, parent);
     }
     System.assertEquals(true, Rollup.CACHED_ROLLUPS.isEmpty(), 'all deferrals should have been run');
-    User parentAOwner = [SELECT Id, JigsawImportLimitOverride FROM User WHERE Id = :parentA.OwnerId];
-    System.assertEquals(6, parentAOwner.JigsawImportLimitOverride);
+    User parentAOwner = [SELECT Id, Alias FROM User WHERE Id = :parentA.OwnerId];
+    System.assertEquals('One A', parentAOwner.Alias);
   }
 
   @IsTest

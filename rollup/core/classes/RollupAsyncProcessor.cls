@@ -1356,7 +1356,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // local calculations and reparenting can step on one another (due to full recalculations happening)
         // this guard clause prevents a full recalculation from taking place unnecessarily if a reparenting operation
         // has already been setup to adjust the lookup item's rollup field
-        if (localCalcItems.isEmpty() == false || (localCalcItems.isEmpty() && oldLookupItems.isEmpty())) {
+        if (oldLookupItems.containsKey(key) == false) {
           Object priorValToUse = roll.isFullRecalc && hasNotAlreadyBeenReset ? defaultVal : priorVal;
           calc = this.getCalculator(rollupOp, calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
@@ -1380,10 +1380,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     for (Integer index = localCalcItems.size() - 1; index >= 0; index--) {
       SObject calcItem = localCalcItems[index];
-      if (roll.oldCalcItems?.containsKey(calcItem.Id) != true) {
+      SObject oldCalcItem = roll.oldCalcItems.get(calcItem.Id);
+      if (oldCalcItem == null) {
         continue;
       }
-      SObject oldCalcItem = roll.oldCalcItems.get(calcItem.Id);
       String priorLookup = (String) oldCalcItem.get(roll.lookupFieldOnCalcItem);
       // if the lookup wasn't previously populated, there's nothing to update
       if (String.isBlank(priorLookup)) {
@@ -1392,26 +1392,24 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
       if (priorLookup != calcItem.get(roll.lookupFieldOnCalcItem) && roll.traversal == null) {
         this.populateOldLookupItems(priorLookup, oldCalcItem, oldLookupItems);
+        localCalcItems.remove(index);
       } else if (roll.traversal?.isUltimatelyReparented(calcItem, roll.lookupFieldOnCalcItem.toString()) == true) {
         Id oldLookupId = roll.traversal.getOldLookupId(calcItem, roll.lookupFieldOnCalcItem.toString());
         if (oldLookupId != null) {
           this.populateOldLookupItems(oldLookupId, oldCalcItem, oldLookupItems);
+          localCalcItems.remove(index);
         }
-      }
-
-      // once the reparenting logic has been done, if the lookup field isn't set on the current child object, remove it
-      if (String.isBlank((String) calcItem.get(roll.lookupFieldOnCalcItem))) {
-        localCalcItems.remove(index);
       }
     }
   }
 
   private void populateOldLookupItems(String priorLookup, SObject oldCalcItem, Map<String, List<SObject>> oldLookupItems) {
-    if (oldLookupItems.containsKey(priorLookup) == false) {
-      oldLookupItems.put(priorLookup, new List<SObject>{ oldCalcItem });
-    } else {
-      oldLookupItems.get(priorLookup).add(oldCalcItem);
+    List<SObject> calcItemsForOldParent = oldLookupItems.get(priorLookup);
+    if (calcItemsForOldParent == null) {
+      calcItemsForOldParent = new List<SObject>();
+      oldLookupItems.put(priorLookup, calcItemsForOldParent);
     }
+    calcItemsForOldParent.add(oldCalcItem);
   }
 
   private void handleFullRecalculators(RollupAsyncProcessor roll) {

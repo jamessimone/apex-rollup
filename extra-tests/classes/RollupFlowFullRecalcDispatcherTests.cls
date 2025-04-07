@@ -69,7 +69,10 @@ private class RollupFlowFullRecalcDispatcherTests {
     Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupDeferredFullRecalcProcessor.class.getName()]
+    );
   }
 
   @IsTest
@@ -109,7 +112,10 @@ private class RollupFlowFullRecalcDispatcherTests {
     Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupDeferredFullRecalcProcessor.class.getName()]
+    );
   }
 
   @IsTest

@@ -292,7 +292,6 @@ public without sharing abstract class RollupDateLiteral {
 
   private Date getTimezoneSafeEndOfMonth(Datetime startOfMonthRef) {
     // Not every timezone returns the last day of the month when adding a month initially
-
     return Date.newinstance(startOfMonthRef.year(), startOfMonthRef.month() + 1, 1).addDays(-1);
   }
 
