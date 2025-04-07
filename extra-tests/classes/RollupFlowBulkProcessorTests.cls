@@ -106,7 +106,7 @@ private class RollupFlowBulkProcessorTests {
   @IsTest
   static void shouldClearOldParentForIntermediateReparenting() {
     Account oldGrandparent = [SELECT Id, Name FROM Account];
-    oldGrandparent.NaicsDesc = oldGrandparent.Name;
+    oldGrandparent.Site = oldGrandparent.Name;
     update oldGrandparent;
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -117,12 +117,12 @@ private class RollupFlowBulkProcessorTests {
         RollupFieldOnCalcItem__c = 'Name',
         LookupFieldOnCalcItem__c = 'ContactPointPhoneId',
         LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'NaicsDesc',
+        RollupFieldOnLookupObject__c = 'Site',
         GrandparentRelationshipFieldPath__c = 'ContactPointPhone.Parent.Name'
       )
     };
     Account newGrandparent = new Account(Name = 'New Grandparent Again');
-    newGrandparent.NaicsDesc = newGrandparent.Name;
+    newGrandparent.Site = newGrandparent.Name;
     ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent Again', ParentId = oldGrandparent.Id);
     insert new List<SObject>{ parent, newGrandparent };
     ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello Again', ContactPointPhoneId = parent.Id);
@@ -141,16 +141,16 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    newGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :newGrandparent.Id];
-    System.assertEquals(grandchild.Name, newGrandparent.NaicsDesc);
-    oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
-    System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
+    newGrandparent = [SELECT Site FROM Account WHERE Id = :newGrandparent.Id];
+    System.assertEquals(grandchild.Name, newGrandparent.Site);
+    oldGrandparent = [SELECT Site FROM Account WHERE Id = :oldGrandparent.Id];
+    System.assertEquals(null, oldGrandparent.Site, 'Old grandparent value should have been cleared');
   }
 
   @IsTest
   static void shouldClearGrandparentForIntermediateParentDeletion() {
     Account oldGrandparent = [SELECT Id, Name FROM Account];
-    oldGrandparent.NaicsDesc = oldGrandparent.Name;
+    oldGrandparent.Site = oldGrandparent.Name;
     update oldGrandparent;
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -161,7 +161,7 @@ private class RollupFlowBulkProcessorTests {
         RollupFieldOnCalcItem__c = 'Name',
         LookupFieldOnCalcItem__c = 'ContactPointPhoneId',
         LookupFieldOnLookupObject__c = 'Id',
-        RollupFieldOnLookupObject__c = 'NaicsDesc',
+        RollupFieldOnLookupObject__c = 'Site',
         GrandparentRelationshipFieldPath__c = 'ContactPointPhone.Parent.Name'
       )
     };
@@ -181,8 +181,8 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    oldGrandparent = [SELECT NaicsDesc FROM Account WHERE Id = :oldGrandparent.Id];
-    System.assertEquals(null, oldGrandparent.NaicsDesc, 'Old grandparent value should have been cleared');
+    oldGrandparent = [SELECT Site FROM Account WHERE Id = :oldGrandparent.Id];
+    System.assertEquals(null, oldGrandparent.Site, 'Old grandparent value should have been cleared');
   }
 
   @IsTest

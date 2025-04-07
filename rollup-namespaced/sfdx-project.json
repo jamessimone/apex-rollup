@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Allow singular parent records to be recalculated through flow full recalc invocables",
+            "versionName": "Removes Data.com test dependencies, update to sf code-analyzer",
             "versionNumber": "1.2.9.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -21,18 +21,11 @@
     "sourceApiVersion": "62.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
-        "apex-rollup-namespaced@1.1.27": "04t6g000008OfJkAAK",
-        "apex-rollup-namespaced@1.1.28": "04t6g000008OfKnAAK",
-        "apex-rollup-namespaced@1.1.29": "04t6g000008OfMjAAK",
-        "apex-rollup-namespaced@1.1.30": "04t6g000008OfSJAA0",
-        "apex-rollup-namespaced@1.2.0": "04t6g000008OfU0AAK",
-        "apex-rollup-namespaced@1.2.1": "04t6g000008OfWVAA0",
-        "apex-rollup-namespaced@1.2.2": "04t6g000008OfXYAA0",
-        "apex-rollup-namespaced@1.2.3": "04t6g000008Off4AAC",
         "apex-rollup-namespaced@1.2.4": "04t6g000008OfqYAAS",
         "apex-rollup-namespaced@1.2.5": "04t6g000008OfrCAAS",
         "apex-rollup-namespaced@1.2.6": "04t6g000008OfrqAAC",
         "apex-rollup-namespaced@1.2.7": "04t6g000008Ofs0AAC",
-        "apex-rollup-namespaced@1.2.8": "04t6g000008OfsUAAS"
+        "apex-rollup-namespaced@1.2.8": "04t6g000008OfsUAAS",
+        "apex-rollup-namespaced@1.2.9": "04tKf000000sxubIAA"
     }
 }

@@ -78,7 +78,7 @@
         </inputParameters>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>62.0</apiVersion>
+    <apiVersion>63.0</apiVersion>
     <assignments>
         <name>Add_Records_To_Collections</name>
         <label>Add Records To Collections</label>

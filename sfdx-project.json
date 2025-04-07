@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Allow singular parent records to be recalculated through flow full recalc invocables",
-            "versionNumber": "1.7.11.0",
+            "versionName": "Removes Data.com test dependencies, update to sf code-analyzer",
+            "versionNumber": "1.7.12.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -108,6 +108,7 @@
         "apex-rollup@1.7.8": "04t6g000008OfrvAAC",
         "apex-rollup@1.7.9": "04t6g000008OfsPAAS",
         "apex-rollup@1.7.10": "04t6g000008OftNAAS",
-        "apex-rollup@1.7.11": "04t6g000008OfuLAAS"
+        "apex-rollup@1.7.11": "04t6g000008OfuLAAS",
+        "apex-rollup@1.7.12": "04tKf000000sxuWIAQ"
     }
 }

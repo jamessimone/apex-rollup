@@ -107,4 +107,12 @@ public class RollupTestUtils {
     String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + fromObject + whereClause;
     return Database.query(recordQuery);
   }
+
+  public static String getNamespaceSafeClassName(Type intendedClass) {
+    List<String> classNameParts = intendedClass.getName().split('\\.');
+    if (classNameParts.size() > 1) {
+      classNameParts.remove(0);
+    }
+    return classNameParts[0];
+  }
 }

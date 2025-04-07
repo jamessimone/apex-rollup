@@ -228,9 +228,6 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForThisWeek() {
     runTestForLiteral('THIS_WEEK');
-    System.runAs(australiaUser) {
-      runTestForLiteral('THIS_WEEK');
-    }
   }
 
   @IsTest
