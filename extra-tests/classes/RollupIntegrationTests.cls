@@ -1553,7 +1553,10 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Test.stopTest();
 
     // validate that queueable ran in addition to sync job
-    System.assertEquals(1, [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupAsyncProcessor.class.getName()]);
+    System.assertEquals(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class)]
+    );
     List<Account> updatedAccounts = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(2, updatedAccounts.size(), 'Both parent items should have been updated!');
 
@@ -1957,7 +1960,11 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     // Validate that job ran as queueable - that the where clause was formatted correctly, in other words
     System.assertEquals(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupDeferredFullRecalcProcessor.class.getName()]
+      [
+        SELECT COUNT()
+        FROM AsyncApexJob
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+      ]
     );
   }
 
