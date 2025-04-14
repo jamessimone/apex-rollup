@@ -530,7 +530,6 @@ private class RollupFullRecalcTests {
     insert events;
 
     Rollup.defaultControl = Rollup.getDefaultControl();
-    Rollup.defaultControl.ShouldSkipResettingParentFields__c = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Event',
@@ -2650,5 +2649,52 @@ private class RollupFullRecalcTests {
       this.isNoOp = false;
       this.queryCount = 1;
     }
+  }
+
+  @IsTest
+  static void shouldNotResetNonMatchingParentsWhenMultipleParentTypesArePresent() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldSkipResettingParentFields__c = true);
+    Rollup.onlyUseMockMetadata = true;
+    Account parent = [SELECT Id FROM Account];
+    Individual indy = new Individual(FirstName = 'Test', LastName = 'User', ConsumerCreditScore = 25);
+    insert indy;
+
+    insert new List<SObject>{
+      new ContactPointAddress(ParentId = parent.Id, Name = 'child 1 first object', PreferenceRank = 25),
+      new ContactPointAddress(ParentId = indy.Id, Name = indy.Id, PreferenceRank = 25)
+    };
+
+    Test.startTest();
+    Rollup.performBulkFullRecalc(
+      new List<Rollup__mdt>{
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'Name',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Individual',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'ConsumerCreditScore',
+          CalcItemWhereClause__c = 'PreferenceRank != 25',
+          FullRecalculationDefaultNumberValue__c = 0
+        ),
+        new Rollup__mdt(
+          CalcItem__c = 'ContactPointAddress',
+          LookupFieldOnCalcItem__c = 'ParentId',
+          RollupFieldOnCalcItem__c = 'PreferenceRank',
+          RollupOperation__c = 'SUM',
+          LookupObject__c = 'Account',
+          LookupFieldOnLookupObject__c = 'Id',
+          RollupFieldOnLookupObject__c = 'AnnualRevenue',
+          CalcItemWhereClause__c = 'PreferenceRank = 25',
+          FullRecalculationDefaultNumberValue__c = 0
+        )
+      },
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name()
+    );
+    Test.stopTest();
+
+    Assert.areEqual(25, [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id].AnnualRevenue);
+    Assert.areEqual(25, [SELECT ConsumerCreditScore FROM Individual WHERE Id = :indy.Id].ConsumerCreditScore);
   }
 }
