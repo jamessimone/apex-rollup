@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Removes Data.com test dependencies, update to sf code-analyzer",
-            "versionNumber": "1.2.9.0",
+            "versionName": "Should skip resetting parent fields applies to default values on full recalc",
+            "versionNumber": "1.2.10.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -26,6 +26,7 @@
         "apex-rollup-namespaced@1.2.6": "04t6g000008OfrqAAC",
         "apex-rollup-namespaced@1.2.7": "04t6g000008Ofs0AAC",
         "apex-rollup-namespaced@1.2.8": "04t6g000008OfsUAAS",
-        "apex-rollup-namespaced@1.2.9": "04tKf000000sxubIAA"
+        "apex-rollup-namespaced@1.2.9": "04tKf000000sxubIAA",
+        "apex-rollup-namespaced@1.2.10": "04tKf000000sxvKIAQ"
     }
 }
