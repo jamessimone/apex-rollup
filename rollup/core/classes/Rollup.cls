@@ -588,9 +588,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     List<RollupFullRecalcProcessor> processors = transformWrappedMetadataToFullRecalcRollups(childToMetaWrapper, localInvokePoint);
     isFullRecalcApp = false;
     if (processors.size() > 1 && processors[0].rollupControl.ShouldRunAs__c != RollupMetaPicklists.ShouldRunAs.Synchronous) {
-      RollupFullRecalcProcessor conductor = processors[0];
-      while (processors.size() > 1) {
-        conductor.rollups.add(processors.remove(1));
+      RollupFullRecalcProcessor conductor = processors.remove(0);
+      while (processors.size() > 0) {
+        conductor.rollups.add(processors.remove(0));
       }
       return conductor.runCalc();
     }
