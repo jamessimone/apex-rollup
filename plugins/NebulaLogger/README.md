@@ -1,11 +1,11 @@
 # Nebula Logger Plugin for Apex Rollup
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tKf000000sxvjIAA">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tKf000000sxw3IAA">
   <img alt="Deploy to Salesforce"
        src="../../media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tKf000000sxvjIAA">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tKf000000sxw3IAA">
   <img alt="Deploy to Salesforce Sandbox"
        src="../../media/deploy-package-to-sandbox.png">
 </a>
