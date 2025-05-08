@@ -61,7 +61,8 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     String processId = this.getNoProcessId();
     if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true || this.countOfItems <= 0) {
       this.logger.log('Parent reset processor no-op', System.LoggingLevel.INFO);
-      return processId;
+      String possibleProcessId = this.arrangeCabooses();
+      return possibleProcessId ?? processId;
     }
     Boolean isOverLimit = this.countOfItems > maxQueryRows;
     Integer previouslyQueuedJobs = Limits.getQueueableJobs();
@@ -158,5 +159,16 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
 
   private static Object getDefaultValue(Rollup__mdt meta, InvocationPoint invokePoint) {
     return new RollupAsyncProcessor.NoOpProcessor(invokePoint).getDefaultValue(meta);
+  }
+
+  private String arrangeCabooses() {
+    RollupAsyncProcessor possibleNewConductor;
+
+    if (this.rollups.isEmpty() == false) {
+      possibleNewConductor = this.rollups.remove(0);
+      possibleNewConductor.rollups.addAll(this.rollups);
+    }
+
+    return possibleNewConductor?.runCalc();
   }
 }

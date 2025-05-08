@@ -533,6 +533,7 @@ private class RollupTests {
     };
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<Opportunity>{ opp });
+    Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         RollupFieldOnCalcItem__c = 'Amount',
