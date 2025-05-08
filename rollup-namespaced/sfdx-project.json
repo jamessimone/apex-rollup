@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Should skip resetting parent fields applies to default values on full recalc",
-            "versionNumber": "1.2.10.0",
+            "versionName": "Fixes an issue where parent reset processors were not arranging full recalc cabooses correctly",
+            "versionNumber": "1.2.11.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -27,6 +27,7 @@
         "apex-rollup-namespaced@1.2.7": "04t6g000008Ofs0AAC",
         "apex-rollup-namespaced@1.2.8": "04t6g000008OfsUAAS",
         "apex-rollup-namespaced@1.2.9": "04tKf000000sxubIAA",
-        "apex-rollup-namespaced@1.2.10": "04tKf000000sxvKIAQ"
+        "apex-rollup-namespaced@1.2.10": "04tKf000000sxvKIAQ",
+        "apex-rollup-namespaced@1.2.11": "04tKf000000sxy4IAA"
     }
 }
