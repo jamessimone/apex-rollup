@@ -244,6 +244,57 @@ private class RollupFlowFullRecalcDispatcherTests {
   }
 
   @IsTest
+  static void supportsIndividualParentFullRecalcWithNoOpParentResetProcessor() {
+    Account acc = [SELECT Id, OwnerId FROM Account];
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      // intentionally include a no-op parent reset processor first
+      // to ensure that cabooses still work with RollupParentResetProcessor
+      new Rollup__mdt(
+        DeveloperName = 'cmdt0',
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'CallDurationInSeconds',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'SUM'
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'cmdt2',
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'MIN'
+      )
+    };
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = getFlowInputs(Rollup.rollupMetadata);
+    flowInputs[0].optionalParentId = acc.Id;
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id];
+    Assert.areEqual(6, acc.AnnualRevenue);
+    Assert.areEqual(1, acc.NumberOfEmployees);
+  }
+
+  @IsTest
   static void integrationSupportsTextTemplateVariables() {
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
