@@ -10,7 +10,7 @@ jest.mock(
   'lightning/refresh',
   () => ({
     // eslint-disable-next-line
-    RefreshEvent: new Event("RefreshEventMock")
+    RefreshEvent: CustomEvent
   }),
   { virtual: true }
 );
@@ -69,17 +69,19 @@ describe('recalc parent rollup from flexipage tests', () => {
   });
 
   it('should handle error on load gracefully', async () => {
-    getRollupMetadataByCalcItem.mockRejectedValue('error!');
+    const messageToLog = 'error!';
+    getRollupMetadataByCalcItem.mockRejectedValue(messageToLog);
 
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
     parentRecalcEl.objectApiName = metadata[Object.keys(metadata)[0]][0].LookupObject__c;
     document.body.appendChild(parentRecalcEl);
+    const consoleErrorSpy = jest.spyOn(console, 'error');
 
-    return flushPromises().then(() => {
-      expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeFalsy();
-    });
+    await flushPromises();
+    expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeFalsy();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(messageToLog);
   });
 
   it('should not render anything if object api name has no match for parent in retrieved metadata', async () => {
@@ -92,9 +94,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     parentRecalcEl.objectApiName = fakeObjectName;
     document.body.appendChild(parentRecalcEl);
 
-    return flushPromises().then(() => {
-      expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeFalsy();
-    });
+    expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeFalsy();
   });
 
   it('should render if object api name matches parent in retrieved metadata', async () => {
@@ -105,16 +105,17 @@ describe('recalc parent rollup from flexipage tests', () => {
     parentRecalcEl.objectApiName = metadata[Object.keys(metadata)[0]][0].LookupObject__c;
     document.body.appendChild(parentRecalcEl);
 
-    return flushPromises().then(() => {
-      expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeTruthy();
-    });
+    await flushPromises();
+    expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeTruthy();
   });
 
   it('should fail gracefully if server fails to process', async () => {
-    performSerializedBulkFullRecalc.mockRejectedValue('ERROR!!');
+    const messageToLog = 'ERROR!!';
+    performSerializedBulkFullRecalc.mockRejectedValue(messageToLog);
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
+    const consoleErrorSpy = jest.spyOn(console, 'error');
 
     const FAKE_RECORD_ID = '00100000000001';
     const matchingMetadata = metadata[Object.keys(metadata)[0]];
@@ -127,6 +128,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
     await flushPromises();
     expect(parentRecalcEl.shadowRoot.querySelector('div')).toBeTruthy();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(messageToLog);
   });
 
   it('should send CMDT to apex with parent record id when clicked', async () => {
