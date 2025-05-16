@@ -39,6 +39,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     }
   }
 
+  @api
   async handleClick() {
     this.isRecalculating = true;
 
@@ -47,8 +48,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
         await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(this._matchingMetas), invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
         this.dispatchEvent(new RefreshEvent());
       } catch (err) {
-        // eslint-disable-next-line
-        console.error(err);
+        this.logErrorToConsole(err);
       }
     }
 
@@ -57,13 +57,14 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
 
   async _setup() {
     try {
-      if (!this._namespaceInfo.namespace) {
+      if (!this._namespaceInfo?.namespace) {
         this._namespaceInfo = await getNamespaceInfo();
       }
       const metas = await getRollupMetadata();
       this._fillValidMetadata(metas);
     } catch (err) {
       this.isValid = false;
+      this.logErrorToConsole(err);
     }
   }
 
@@ -80,6 +81,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     });
 
     this.isValid = this._matchingMetas.length > 0;
+    this.dispatchEvent(new CustomEvent('loadingfinished', { detail: { isValid: this.isValid } }));
   }
 
   _addMatchingMetadata(metadata) {
@@ -103,5 +105,10 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     this._matchingMetas.push(metadata);
   }
 
-  _getNamespaceSafeFieldName = fieldName => `${this._namespaceInfo.namespace + fieldName}`;
+  logErrorToConsole(err) {
+    // eslint-disable-next-line
+    console.error(err);
+  }
+
+  _getNamespaceSafeFieldName = fieldName => `${(this._namespaceInfo?.namespace ?? '') + fieldName}`;
 }

@@ -1072,10 +1072,11 @@ public without sharing abstract class RollupCalculator {
     }
 
     private String replaceWithDelimiter(String existingVal, String matchingVal, String replacementVal) {
+      String actualReplacement = replacementVal ?? '';
       if (String.isNotBlank(matchingVal) && existingVal.contains(matchingVal)) {
-        return existingVal.replace(matchingVal, replacementVal) + this.concatDelimiter;
+        return existingVal.replace(matchingVal, actualReplacement) + this.concatDelimiter;
       }
-      return existingVal += this.concatDelimiter + replacementVal;
+      return existingVal += this.concatDelimiter + actualReplacement;
     }
 
     private void handleConcatDistinctDelete(WinnowResult result) {

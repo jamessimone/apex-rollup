@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes an issue where parent reset processors were not arranging full recalc cabooses correctly",
-            "versionNumber": "1.7.14.0",
+            "versionName": "Recalc parent quick action & allowance for order bys to override picklist rankings & CONCAT bugfix for null values",
+            "versionNumber": "1.7.15.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -108,6 +108,7 @@
         "apex-rollup@1.7.11": "04t6g000008OfuLAAS",
         "apex-rollup@1.7.12": "04tKf000000sxuWIAQ",
         "apex-rollup@1.7.13": "04tKf000000sxvFIAQ",
-        "apex-rollup@1.7.14": "04tKf000000sxxzIAA"
+        "apex-rollup@1.7.14": "04tKf000000sxxzIAA",
+        "apex-rollup@1.7.15": "04tKf000000sy3ZIAQ"
     }
 }

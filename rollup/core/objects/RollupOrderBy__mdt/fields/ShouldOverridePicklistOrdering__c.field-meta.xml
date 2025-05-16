@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldOverridePicklistOrdering__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>If checked, Rollup will sort the picklist values alphabetically instead of using the order defined in the picklist</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>If checked, Rollup will sort the picklist values alphabetically instead of using the order defined in the picklist</inlineHelpText>
+    <label>Should Override Picklist Ordering?</label>
+    <type>Checkbox</type>
+</CustomField>

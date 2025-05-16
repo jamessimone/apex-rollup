@@ -1210,6 +1210,29 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldRemoveValuesOnMspProperly() {
+    RollupCalculator calc = getCalculator(
+      'Hello;World',
+      Rollup.Op.UPDATE_CONCAT,
+      Opportunity.StageName,
+      QuickText.Channel,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(QuickText.SObjectType),
+      Opportunity.Name
+    );
+
+    String firstStubId = RollupTestUtils.createId(Opportunity.SObjectType);
+    String secondStubId = RollupTestUtils.createId(Opportunity.SObjectType);
+
+    calc.performRollup(
+      new List<Opportunity>{ new Opportunity(StageName = 'Hello', Id = firstStubId), new Opportunity(Id = secondStubId) },
+      new Map<Id, SObject>{ firstStubId => new Opportunity(StageName = 'Hello'), secondStubId => new Opportunity(StageName = 'World') }
+    );
+
+    System.assertEquals('Hello', calc.getReturnValue(), 'Multi-select should properly remove values on update');
+  }
+
+  @IsTest
   static void shouldMinOnMultiSelectPicklist() {
     Rollup__mdt metadata = new Rollup__mdt();
     RollupCalculator calc = getCalculator(
@@ -1357,6 +1380,50 @@ private class RollupCalculatorTests {
     );
 
     Assert.isNotNull(calc);
+  }
+
+  @IsTest
+  static void supportsAlphabeticalSortingFromPicklistsAscending() {
+    RollupCalculator calc = getCalculator(
+      '',
+      Rollup.Op.CONCAT_DISTINCT,
+      Account.Industry,
+      Schema.User.Department,
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(),
+        new List<RollupOrderBy__mdt>{
+          new RollupOrderBy__mdt(FieldName__c = 'Industry', SortOrder__c = 'Ascending', Ranking__c = 0, ShouldOverridePicklistOrdering__c = true)
+        }
+      ),
+      RollupTestUtils.createId(User.SObjectType),
+      User.Id
+    );
+
+    calc.performRollup(new List<Account>{ new Account(Industry = 'b'), new Account(Industry = 'a') }, new Map<Id, SObject>());
+
+    System.assertEquals('a, b', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void supportsAlphabeticalSortingFromPicklistsDescending() {
+    RollupCalculator calc = getCalculator(
+      '',
+      Rollup.Op.CONCAT_DISTINCT,
+      Account.Industry,
+      Schema.User.Department,
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(),
+        new List<RollupOrderBy__mdt>{
+          new RollupOrderBy__mdt(FieldName__c = 'Industry', SortOrder__c = 'Descending', Ranking__c = 0, ShouldOverridePicklistOrdering__c = true)
+        }
+      ),
+      RollupTestUtils.createId(User.SObjectType),
+      User.Id
+    );
+
+    calc.performRollup(new List<Account>{ new Account(Industry = 'b'), new Account(Industry = 'a') }, new Map<Id, SObject>());
+
+    System.assertEquals('b, a', calc.getReturnValue());
   }
 
   @IsTest
