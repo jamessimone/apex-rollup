@@ -1,7 +1,7 @@
 $DebugPreference = 'Continue'
 $ErrorActionPreference = 'Stop'
 # This is also the same script that runs on Github via the Github Action configured in .github/workflows
-$testInvocation = 'npx sf apex run test --suite-names ApexRollupTestSuite --result-format human --wait 20 --code-coverage --output-dir ./tests/apex'
+$testInvocation = 'npx sf apex run test --suite-names ApexRollupTestSuite --result-format human --wait 20 --code-coverage --output-dir ./tests/apex --concise'
 $currentUserAlias = 'apex-rollup-scratch-org'
 
 . .\scripts\string-utils.ps1
