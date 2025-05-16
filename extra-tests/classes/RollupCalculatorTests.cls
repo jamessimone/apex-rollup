@@ -1210,6 +1210,29 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void shouldRemoveValuesOnMspProperly() {
+    RollupCalculator calc = getCalculator(
+      'Hello;World',
+      Rollup.Op.UPDATE_CONCAT,
+      Opportunity.StageName,
+      QuickText.Channel,
+      new Rollup__mdt(),
+      RollupTestUtils.createId(QuickText.SObjectType),
+      Opportunity.Name
+    );
+
+    String firstStubId = RollupTestUtils.createId(Opportunity.SObjectType);
+    String secondStubId = RollupTestUtils.createId(Opportunity.SObjectType);
+
+    calc.performRollup(
+      new List<Opportunity>{ new Opportunity(StageName = 'Hello', Id = firstStubId), new Opportunity(Id = secondStubId) },
+      new Map<Id, SObject>{ firstStubId => new Opportunity(StageName = 'Hello'), secondStubId => new Opportunity(StageName = 'World') }
+    );
+
+    System.assertEquals('Hello', calc.getReturnValue(), 'Multi-select should properly remove values on update');
+  }
+
+  @IsTest
   static void shouldMinOnMultiSelectPicklist() {
     Rollup__mdt metadata = new Rollup__mdt();
     RollupCalculator calc = getCalculator(
