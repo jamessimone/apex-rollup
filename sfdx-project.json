@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Recalc parent quick action",
+            "versionName": "Recalc parent quick action & allowance for order bys to override picklist rankings & CONCAT bugfix for null values",
             "versionNumber": "1.7.15.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
