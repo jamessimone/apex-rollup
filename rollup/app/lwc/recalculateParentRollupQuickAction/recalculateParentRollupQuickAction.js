@@ -3,7 +3,7 @@ import { CurrentPageReference } from 'lightning/navigation';
 
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
-export default class RecalculateParentQuickAction extends LightningElement {
+export default class RecalculateParentRollupQuickAction extends LightningElement {
   fetchedRecordId;
   computedObjectApiName;
 
@@ -18,14 +18,13 @@ export default class RecalculateParentQuickAction extends LightningElement {
 
   @api
   async invoke() {
+    const toastEventParams = {
+      title: 'Waiting on rollup metadata...',
+      message: 'Try clicking the button again in a few seconds.',
+      variant: 'warning'
+    };
     if (!this.canBeClicked) {
-      this.dispatchEvent(
-        new ShowToastEvent({
-          title: 'Waiting on rollup metadata...',
-          message: 'Try clicking the button again in a few seconds.',
-          variant: 'warning'
-        })
-      );
+      this.dispatchEvent(new ShowToastEvent(toastEventParams));
       return;
     } else if (this.isExecuting) {
       return;
@@ -35,23 +34,16 @@ export default class RecalculateParentQuickAction extends LightningElement {
 
     if (this.isValid) {
       await this.template.querySelector('c-recalculate-parent-rollup-flexipage')?.handleClick();
-
-      this.dispatchEvent(
-        new ShowToastEvent({
-          title: 'Success',
-          message: 'Rollup recalculation finished! You may need to refresh the page to see updated values.',
-          variant: 'success'
-        })
-      );
+      toastEventParams.title = 'Success';
+      toastEventParams.message = 'Rollup recalculation finished! You may need to refresh the page to see updated values.';
+      toastEventParams.variant = 'success';
     } else {
-      this.dispatchEvent(
-        new ShowToastEvent({
-          title: 'Rollup recalculation is not possible due to missing metadata.',
-          message: 'No rollup metadata found for the selected object. Check with your administrator to ensure that the object has valid rollups configured.',
-          variant: 'error'
-        })
-      );
+      toastEventParams.title = 'Rollup recalculation is not possible due to missing metadata.';
+      toastEventParams.message =
+        'No rollup metadata found for the selected object. Check with your administrator to ensure that the object has valid rollups configured.';
+      toastEventParams.variant = 'error';
     }
+    this.dispatchEvent(new ShowToastEvent(toastEventParams));
 
     this.isExecuting = false;
   }

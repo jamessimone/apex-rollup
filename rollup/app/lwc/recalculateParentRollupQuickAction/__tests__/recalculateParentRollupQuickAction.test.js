@@ -1,7 +1,7 @@
 import { createElement } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
 
-import RecalculateParentQuickAction from 'c/recalculateParentQuickAction';
+import RecalculateParentRollupQuickAction from 'c/recalculateParentRollupQuickAction';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 import { mockNamespaceInfo, mockMetadata } from '../../__mockData__';
@@ -37,7 +37,7 @@ jest.mock(
 
 const SHOW_TOAST_NAME = 'lightning__showtoast';
 
-describe('c-recalculate-parent-quick-action', () => {
+describe('c-recalculate-parent-rollup-quick-action', () => {
   beforeEach(() => {
     getRollupMetadataByCalcItem.mockResolvedValue({ ...mockMetadata });
     getNamespaceInfo.mockResolvedValue({ ...mockNamespaceInfo });
@@ -53,7 +53,7 @@ describe('c-recalculate-parent-quick-action', () => {
 
   it('calls handleClick on the child component when loadingfinished event is dispatched happy path', async () => {
     const element = createElement('c-recalculate-parent-quick-action', {
-      is: RecalculateParentQuickAction
+      is: RecalculateParentRollupQuickAction
     });
     document.body.appendChild(element);
     const toastHandler = jest.fn();
@@ -91,7 +91,7 @@ describe('c-recalculate-parent-quick-action', () => {
 
   it('calls toast handler no valid rollups', async () => {
     const element = createElement('c-recalculate-parent-quick-action', {
-      is: RecalculateParentQuickAction
+      is: RecalculateParentRollupQuickAction
     });
     document.body.appendChild(element);
     const toastHandler = jest.fn();
