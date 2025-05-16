@@ -1360,6 +1360,50 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void supportsAlphabeticalSortingFromPicklistsAscending() {
+    RollupCalculator calc = getCalculator(
+      '',
+      Rollup.Op.CONCAT_DISTINCT,
+      Account.Industry,
+      Schema.User.Department,
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(),
+        new List<RollupOrderBy__mdt>{
+          new RollupOrderBy__mdt(FieldName__c = 'Industry', SortOrder__c = 'Ascending', Ranking__c = 0, ShouldOverridePicklistOrdering__c = true)
+        }
+      ),
+      RollupTestUtils.createId(User.SObjectType),
+      User.Id
+    );
+
+    calc.performRollup(new List<Account>{ new Account(Industry = 'b'), new Account(Industry = 'a') }, new Map<Id, SObject>());
+
+    System.assertEquals('a, b', calc.getReturnValue());
+  }
+
+  @IsTest
+  static void supportsAlphabeticalSortingFromPicklistsDescending() {
+    RollupCalculator calc = getCalculator(
+      '',
+      Rollup.Op.CONCAT_DISTINCT,
+      Account.Industry,
+      Schema.User.Department,
+      Rollup.appendOrderByMetadata(
+        new Rollup__mdt(),
+        new List<RollupOrderBy__mdt>{
+          new RollupOrderBy__mdt(FieldName__c = 'Industry', SortOrder__c = 'Descending', Ranking__c = 0, ShouldOverridePicklistOrdering__c = true)
+        }
+      ),
+      RollupTestUtils.createId(User.SObjectType),
+      User.Id
+    );
+
+    calc.performRollup(new List<Account>{ new Account(Industry = 'b'), new Account(Industry = 'a') }, new Map<Id, SObject>());
+
+    System.assertEquals('b, a', calc.getReturnValue());
+  }
+
+  @IsTest
   static void shouldDefaultToNullIfCurrentItemExcludedAndNoOtherMatchingItemsTime() {
     Time max = Time.newInstance(11, 11, 11, 11);
     Rollup__mdt metadata = new Rollup__mdt(CalcItem__c = 'ContactPointAddress', CalcItemWhereClause__c = 'BestTimeToContactEndTime != ' + String.valueOf(max));

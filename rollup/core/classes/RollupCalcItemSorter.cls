@@ -73,7 +73,7 @@ public without sharing class RollupCalcItemSorter implements System.Comparator<S
       String firstVal = (String) potentialFirstVal;
       String secondVal = (String) potentialSecondVal;
 
-      if (picklistController.isPicklist() || picklistController.isMultiSelectPicklist()) {
+      if ((picklistController.isPicklist() || picklistController.isMultiSelectPicklist()) && orderByOption.ShouldOverridePicklistOrdering__c != true) {
         sortRanking = picklistController.isTrueFor(firstVal, secondVal, Rollup.Op.MIN) ? -1 : 1;
       } else {
         sortRanking = this.getSortOrder(firstVal > secondVal, orderByOption);
