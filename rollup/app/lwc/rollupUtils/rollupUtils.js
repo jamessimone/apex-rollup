@@ -1,5 +1,7 @@
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
+const isValidAsyncJob = val => val?.slice(0, 3) === '707';
+
 /**
  *
  * @param {object} record
@@ -38,4 +40,4 @@ const transformToSerializableChildren = (record, key, children) => {
   }
 };
 
-export { getRollupMetadata, transformToSerializableChildren };
+export { isValidAsyncJob, getRollupMetadata, transformToSerializableChildren };

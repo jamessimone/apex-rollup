@@ -1,4 +1,4 @@
-import { getRollupMetadata } from 'c/rollupUtils';
+import { isValidAsyncJob, getRollupMetadata } from 'c/rollupUtils';
 import { mockMetadata } from '../../__mockData__';
 
 jest.mock(
@@ -17,5 +17,10 @@ describe('utils tests', () => {
 
     delete mockMetadata.Contact[0].CalcItem__r;
     expect(returnedMetadata).toEqual(mockMetadata);
+  });
+
+  it('knows a valid async job id from an invalid one using key prefix', () => {
+    expect(isValidAsyncJob('707...')).toBeTruthy();
+    expect(isValidAsyncJob('No process Id')).toBeFalsy();
   });
 });

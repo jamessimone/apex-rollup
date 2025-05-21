@@ -1,7 +1,7 @@
 <template>
   <template lwc:if={isExecuting}>
-    <div class="slds-is-relative">
-      <lightning-spinner style="top: -32px" size="small" variant="neutral"></lightning-spinner>
+    <div class="slds-backdrop slds-backdrop_open">
+      <lightning-spinner alternative-text="Recalculating rollup..." size="medium" variant="neutral"></lightning-spinner>
     </div>
   </template>
   <c-recalculate-parent-rollup-flexipage
