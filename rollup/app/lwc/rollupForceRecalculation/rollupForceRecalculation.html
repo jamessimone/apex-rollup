@@ -193,9 +193,7 @@
         <lightning-spinner alternative-text="Please wait while rollup is processed" title="Rolling up ...."></lightning-spinner>
       </template>
     </section>
-    <template if:true={rollupStatus}>
-      <div class="slds-m-top_small">Rollup job status: <b>{rollupStatus}{jobIdToDisplay}</b></div>
-    </template>
+    <c-rollup-job-poller></c-rollup-job-poller>
     <template if:true={error}>
       <div class="slds-m-top_small" data-id="rollupError">An error occurred: {error}</div>
     </template>

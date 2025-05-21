@@ -1,6 +1,5 @@
 import { api, LightningElement, wire } from 'lwc';
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
-import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
@@ -42,12 +41,10 @@ export default class RollupForceRecalculation extends LightningElement {
   error = '';
   isOrderByRollup = false;
   isRollingUp = false;
-  jobIdToDisplay;
   maxRowSelection = MAX_ROW_SELECTION;
   namespace = '';
   rollupMetadataOptions = [];
   rollupOperationValues = [];
-  rollupStatus;
   safeObjectName = '';
   safeRollupOperationField = '';
   selectedMetadata;
@@ -126,8 +123,6 @@ export default class RollupForceRecalculation extends LightningElement {
   }
 
   handleToggle() {
-    this.jobIdToDisplay = null;
-    this.rollupStatus = null;
     this.rollupOperation = null;
     this.isCMDTRecalc = !this.isCMDTRecalc;
     this.error = '';
@@ -184,41 +179,17 @@ export default class RollupForceRecalculation extends LightningElement {
           metadata: JSON.stringify(this._metadata)
         });
       }
-      await this._getBatchJobStatus(jobId);
+
+      if (jobId) {
+        await this.template.querySelector('c-rollup-job-poller').runJobPoller(jobId);
+        this.isRollingUp = false;
+      }
     } catch (e) {
       const errorMessage = Boolean(e.body) && e.body.message ? e.body.message : e.message;
       this._displayErrorToast('An error occurred while rolling up', errorMessage);
       // eslint-disable-next-line
       console.error(e); // in the event you dismiss the toast but still want to see the error
     }
-  }
-
-  async _getBatchJobStatus(jobId) {
-    if (!jobId) {
-      this.rollupStatus = 'Job failed to enqueue, check logs for more info';
-      return Promise.resolve();
-    }
-
-    this.jobIdToDisplay = jobId;
-    if (this.jobIdToDisplay) {
-      this.jobIdToDisplay = ' for job: ' + this.jobIdToDisplay;
-    }
-    this.rollupStatus = await getBatchRollupStatus({ jobId });
-
-    const statusPromise = new Promise(resolve => {
-      let timeoutId;
-      if (this._resolvedBatchStatuses.includes(this.rollupStatus) === false && this._validateAsyncJob(jobId)) {
-        // some arbitrary wait time - for a huge batch job, it could take ages to resolve
-        const waitTimeMs = 10000;
-        /* eslint-disable-next-line */
-        timeoutId = setTimeout(() => this._getBatchJobStatus(jobId), waitTimeMs);
-      } else {
-        this.isRollingUp = false;
-        clearTimeout(timeoutId);
-        resolve();
-      }
-    });
-    return statusPromise;
   }
 
   _displayErrorToast(title, message) {
@@ -245,15 +216,6 @@ export default class RollupForceRecalculation extends LightningElement {
       }
       transformToSerializableChildren(_metadata, rollupOrderByFieldName, children);
     }
-  }
-
-  _validateAsyncJob(val) {
-    const isValidAsyncJob = val?.slice(0, 3) === '707';
-    if (!isValidAsyncJob) {
-      this.jobIdToDisplay = '';
-      this.rollupStatus = val;
-    }
-    return isValidAsyncJob;
   }
 
   _getNamespaceSafeFieldValue(fieldName) {

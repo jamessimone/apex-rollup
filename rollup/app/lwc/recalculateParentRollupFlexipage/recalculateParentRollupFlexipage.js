@@ -45,7 +45,11 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
 
     if (this._matchingMetas.length > 0) {
       try {
-        await performSerializedBulkFullRecalc({ serializedMetadata: JSON.stringify(this._matchingMetas), invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC' });
+        const serverResponse = await performSerializedBulkFullRecalc({
+          serializedMetadata: JSON.stringify(this._matchingMetas),
+          invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+        });
+        await this.template.querySelector('c-rollup-job-poller').runJobPoller(serverResponse);
         this.dispatchEvent(new RefreshEvent());
       } catch (err) {
         this.logErrorToConsole(err);

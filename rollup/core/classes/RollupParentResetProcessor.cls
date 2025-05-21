@@ -75,7 +75,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     } else if (this.countOfItems > 0) {
       isRecursiveRun = true;
       for (RollupAsyncProcessor proc : this.rollups) {
-        proc.runCalc();
+        processId = proc.runCalc();
       }
       isRecursiveRun = false;
       this.runSync();
