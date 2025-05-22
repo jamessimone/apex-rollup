@@ -251,7 +251,16 @@ public without sharing class RollupCalcItemReplacer {
   private void processWhereClauseForDownstreamEvals(Schema.SObjectType sObjectType, Rollup__mdt metadata, RollupEvaluator.WhereFieldEvaluator whereEval) {
     for (String whereClause : whereEval.getWhereClauses()) {
       // the period needs to be escaped when splitting, otherwise this can match namespaced fields accidentally
-      Boolean hasTypeField = whereClause.split('\\' + TYPE_FIELD + '(?!__r)').size() > 1;
+      Boolean hasTypeField = false;
+      List<String> typeParts = whereClause.split('\\' + TYPE_FIELD + '(?!__r)');
+      if (typeParts.size() > 1) {
+        String typeField = typeParts.remove(0);
+        typeField = typeField.endsWith('__r') ? typeField.removeEnd('__r') + '__c' : typeField + 'Id';
+        Schema.SObjectField fieldToken = sObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).fields.getMap().get(typeField);
+        if (fieldToken?.getDescribe().isNamePointing() == true) {
+          hasTypeField = true;
+        }
+      }
       Boolean hasOwnerField = whereClause.contains(OWNER);
       if (hasTypeField == false && hasOwnerField == false) {
         continue;

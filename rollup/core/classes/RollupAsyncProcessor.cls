@@ -554,6 +554,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         }
       }
     }
+    this.queryCount = (this.queryCount ?? 0) + lookupItemsToAssign.size();
     return lookupItemsToAssign;
   }
 
