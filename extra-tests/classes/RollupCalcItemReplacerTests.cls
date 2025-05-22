@@ -246,4 +246,23 @@ private class RollupCalcItemReplacerTests {
     Assert.isTrue(replacer.hasProcessedMetadata(metas, accounts));
     Assert.areEqual(currentQueryCount, Limits.getQueries());
   }
+
+  @IsTest
+  static void shouldNotFailWhenParentClauseHasNonPolymorphicType() {
+    Opportunity opp = new Opportunity(Type = 'hi', Name = 'someName', CloseDate = System.today(), StageName = 'Closed Won');
+    insert opp;
+    Contact con = new Contact(LastName = 'someName');
+    insert con;
+    OpportunityContactRole oppConRole = new OpportunityContactRole(OpportunityId = opp.Id, ContactId = con.Id);
+    insert oppConRole;
+
+    String whereClause = 'Opportunity.Type != \'someName\' AND Opportunity.Name = \'someName\'';
+    RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
+      new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
+    );
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{ new Rollup__mdt(CalcItemWhereClause__c = whereClause, CalcItem__c = 'OpportunityContactRole') };
+    List<SObject> records = replacer.replace(new List<OpportunityContactRole>{ new OpportunityContactRole(Id = oppConRole.Id) }, metas);
+    Assert.areEqual(opp.Type, ((OpportunityContactRole) records[0]).Opportunity.Type);
+    Assert.areEqual(whereClause, metas[0].CalcItemWhereClause__c);
+  }
 }
