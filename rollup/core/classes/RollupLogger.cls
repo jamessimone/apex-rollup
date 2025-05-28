@@ -2,7 +2,7 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.7.17';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.7.18';
   private static final System.LoggingLevel FALLBACK_LOGGING_LEVEL = System.LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -180,7 +180,7 @@ global without sharing virtual class RollupLogger implements ILogger {
       if (this.control.IsRollupLoggingEnabled__c == false && this.hasDisabledMessageBeenLogged == false) {
         this.hasDisabledMessageBeenLogged = true;
         this.control.IsRollupLoggingEnabled__c = true;
-        this.log('logging isn\'t enabled, no further output', System.LoggingLevel.WARN);
+        this.log('logging isn\'t enabled, further log messages paused unless otherwise re-activated', System.LoggingLevel.INFO);
         this.control.IsRollupLoggingEnabled__c = false;
       } else if (this.control.IsRollupLoggingEnabled__c) {
         for (ILogger logger : this.loggers) {
@@ -198,8 +198,12 @@ global without sharing virtual class RollupLogger implements ILogger {
     }
 
     public CombinedLogger updateRollupControl(RollupControl__mdt control) {
+      String updateMessage = 'updating control record';
+      if (control.IsRollupLoggingEnabled__c == true && this.control.IsRollupLoggingEnabled__c != true) {
+        updateMessage = 'logging is now re-enabled, ' + updateMessage;
+      }
       this.control = control;
-      this.log('updating control record', control, System.LoggingLevel.INFO);
+      this.log(updateMessage, control, System.LoggingLevel.INFO);
       return this;
     }
   }

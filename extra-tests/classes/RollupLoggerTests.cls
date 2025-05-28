@@ -62,7 +62,7 @@ private class RollupLoggerTests {
     RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ControlUpdatingLogger.class.getName()) };
 
     RollupLogger.Instance.log('Should not be logged', System.LoggingLevel.DEBUG);
-    System.assertEquals('logging isn\'t enabled, no further output', localLogString);
+    System.assertEquals('logging isn\'t enabled, further log messages paused unless otherwise re-activated', localLogString);
 
     RollupLogger.Instance.updateRollupControl(new RollupControl__mdt(IsRollupLoggingEnabled__c = true));
     String expectedLogMessage = 'hi';
