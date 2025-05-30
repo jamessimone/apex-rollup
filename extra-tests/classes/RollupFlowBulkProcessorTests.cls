@@ -697,4 +697,56 @@ private class RollupFlowBulkProcessorTests {
     Assert.areEqual(0, acc.AnnualRevenue);
     Assert.areEqual(1, acc.NumberOfEmployees);
   }
+
+  @IsTest
+  static void worksWithMixOfParentAndChildRollups() {
+    Account acc = [SELECT Id FROM Account];
+    Account secondAccount = new Account(Name = 'Second');
+    insert secondAccount;
+    Opportunity opp = new Opportunity(AccountId = acc.Id, Amount = 1, CloseDate = System.today(), Name = 'Test Opportunity', StageName = 'a');
+    insert opp;
+    insert new List<Task>{ new Task(WhatId = opp.Id, Subject = 'Test Task') };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM'
+      ),
+      new Rollup__mdt(
+        ChangedFieldsOnCalcItem__c = 'Subject',
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Opportunity',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Amount',
+        RollupOperation__c = 'COUNT',
+        IsRollupStartedFromParent__c = true
+      )
+    };
+
+    List<ContactPointAddress> cpas = new List<ContactPointAddress>{
+      new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
+    };
+
+    Test.startTest();
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = cpas;
+    input.rollupContext = 'UPSERT';
+    input.oldRecordsToRollup = new List<ContactPointAddress>{ new ContactPointAddress(ParentId = secondAccount.Id, PreferenceRank = 0, Id = cpas[0].Id) };
+    input.deferProcessing = false;
+    RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Assert.areEqual(1, acc.AnnualRevenue);
+  }
 }

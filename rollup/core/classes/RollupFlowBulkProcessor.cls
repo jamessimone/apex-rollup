@@ -85,7 +85,7 @@ global without sharing class RollupFlowBulkProcessor {
         String childName = sObjectType?.toString();
         for (Rollup__mdt meta : rollupMetadata) {
           if (
-            meta.IsRollupStartedFromParent__c ||
+            meta.IsRollupStartedFromParent__c && childName == meta.LookupObject__c ||
             sObjectType != null && String.isNotBlank(meta.GrandparentRelationshipFieldPath__c) && Rollup.getPartOfGrandparentChain(meta, sObjectType) != null
           ) {
             flowInput.calcItemTypeWhenRollupStartedFromParent = flowInput.calcItemTypeWhenRollupStartedFromParent ?? meta.CalcItem__c;
