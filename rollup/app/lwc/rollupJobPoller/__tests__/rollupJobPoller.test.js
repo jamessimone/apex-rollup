@@ -1,4 +1,4 @@
-import { createElement } from 'lwc';
+import { createElement } from '@lwc/engine-dom';
 
 import getBatchRollupStatus from '@salesforce/apex/Rollup.getBatchRollupStatus';
 import RollupJobPoller from 'c/rollupJobPoller';

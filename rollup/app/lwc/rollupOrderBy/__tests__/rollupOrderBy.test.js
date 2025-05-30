@@ -1,4 +1,4 @@
-import { createElement } from 'lwc';
+import { createElement } from '@lwc/engine-dom';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
