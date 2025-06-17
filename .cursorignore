@@ -1,0 +1,13 @@
+.cursorignore
+.env
+.git
+.gitignore
+.husky
+.sf
+.sfdx
+.vscode
+node_modules
+
+# directories that feature duplicated files
+rollup-namespaced
+plugins/ExtraCodeCoverage
