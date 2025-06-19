@@ -90,78 +90,156 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
 
   @SuppressWarnings('PMD.ApexCRUDViolation')
   public static List<Rollup__mdt> getRollupMetadata() {
-    List<Rollup__mdt> matchingMetadata = [
-      SELECT
-        MasterLabel,
-        DeveloperName,
-        LookupObject__c,
-        LookupObjectText__c,
-        LookupObject__r.QualifiedApiName,
-        CalcItem__c,
-        CalcItemText__c,
-        CalcItem__r.QualifiedApiName,
-        RollupFieldOnCalcItem__c,
-        RollupFieldOnCalcItemText__c,
-        RollupFieldOnCalcItem__r.QualifiedApiName,
-        LookupFieldOnCalcItem__c,
-        LookupFieldOnCalcItemText__c,
-        LookupFieldOnCalcItem__r.QualifiedApiName,
-        LookupFieldOnLookupObject__c,
-        LookupFieldOnLookupObjectText__c,
-        LookupFieldOnLookupObject__r.QualifiedApiName,
-        RollupFieldOnLookupObject__c,
-        RollupFieldOnLookupObjectText__c,
-        RollupFieldOnLookupObject__r.QualifiedApiName,
-        UltimateParentLookup__c,
-        UltimateParentLookup__r.QualifiedApiName,
-        CalcItemWhereClause__c,
-        ChangedFieldsOnCalcItem__c,
-        ConcatDelimiter__c,
-        CurrencyFieldMapping__c,
-        FullRecalculationDefaultNumberValue__c,
-        FullRecalculationDefaultStringValue__c,
-        GrandparentRelationshipFieldPath__c,
-        GroupByFields__c,
-        GroupByRowEndDelimiter__c,
-        GroupByRowStartDelimiter__c,
-        IsDisabled__c,
-        IsDistinct__c,
-        IsFullRecordSet__c,
-        IsRollupStartedFromParent__c,
-        IsTableFormatted__c,
-        LimitAmount__c,
-        OneToManyGrandparentFields__c,
-        OrderByFirstLast__c,
-        RollupControl__c,
-        RollupOperation__c,
-        RollupToUltimateParent__c,
-        SharingMode__c,
-        ShouldRunWithoutCustomSettingEnabled__c,
-        SplitConcatDelimiterOnCalcItem__c,
-        (SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r),
-        RollupGrouping__r.Id,
-        RollupGrouping__r.RollupOperation__c
-      FROM Rollup__mdt
-      WHERE RollupControl__r.ShouldAbortRun__c = FALSE AND IsDisabled__c = FALSE
-      ORDER BY LookupObject__c
-    ];
-    // we have to do transforms on the Entity Definition fields because custom objects/custom fields
-    // have references that otherwise won't work with the rest of the code
-    for (Rollup__mdt meta : matchingMetadata) {
-      meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName ?? meta.CalcItemText__c;
-      meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName ?? meta.LookupFieldOnCalcItemText__c;
-      meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName ?? meta.LookupFieldOnLookupObjectText__c;
-      meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName ?? meta.RollupFieldOnCalcItemText__c;
-      meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName ?? meta.RollupFieldOnLookupObjectText__c;
-      meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName ?? meta.LookupObjectText__c;
+    // Check if CMDT query optimization is enabled
+    Boolean shouldOptimizeCMDTQueries = getShouldOptimizeCMDTQueries();
+    
+    List<Rollup__mdt> matchingMetadata;
+    
+    if (shouldOptimizeCMDTQueries) {
+      // Optimized query using text fields instead of FieldDefinition relationships
+      matchingMetadata = [
+        SELECT
+          MasterLabel,
+          DeveloperName,
+          // Use text fields for better performance
+          LookupObjectText__c,
+          CalcItemText__c,
+          RollupFieldOnCalcItemText__c,
+          LookupFieldOnCalcItemText__c,
+          LookupFieldOnLookupObjectText__c,
+          RollupFieldOnLookupObjectText__c,
+          UltimateParentLookupText__c,
+          // rest of the fields
+          CalcItemWhereClause__c,
+          ChangedFieldsOnCalcItem__c,
+          ConcatDelimiter__c,
+          CurrencyFieldMapping__c,
+          FullRecalculationDefaultNumberValue__c,
+          FullRecalculationDefaultStringValue__c,
+          GrandparentRelationshipFieldPath__c,
+          GroupByFields__c,
+          GroupByRowEndDelimiter__c,
+          GroupByRowStartDelimiter__c,
+          IsDisabled__c,
+          IsDistinct__c,
+          IsFullRecordSet__c,
+          IsRollupStartedFromParent__c,
+          IsTableFormatted__c,
+          LimitAmount__c,
+          OneToManyGrandparentFields__c,
+          OrderByFirstLast__c,
+          RollupControl__c,
+          RollupOperation__c,
+          RollupToUltimateParent__c,
+          SharingMode__c,
+          ShouldRunWithoutCustomSettingEnabled__c,
+          SplitConcatDelimiterOnCalcItem__c,
+          (SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r),
+          RollupGrouping__r.Id,
+          RollupGrouping__r.RollupOperation__c
+        FROM Rollup__mdt
+        WHERE RollupControl__r.ShouldAbortRun__c = FALSE AND IsDisabled__c = FALSE
+        ORDER BY LookupObject__c
+      ];
+      // do the transforms for optimized query
+      for (Rollup__mdt meta : matchingMetadata) {
+        meta.CalcItem__c = meta.CalcItemText__c;
+        meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItemText__c;
+        meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObjectText__c;
+        meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItemText__c;
+        meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObjectText__c;
+        meta.LookupObject__c = meta.LookupObjectText__c;
+        meta.UltimateParentLookup__c = meta.UltimateParentLookupText__c;
+        
+        meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
+        meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
+        meta.SharingMode__c = meta.SharingMode__c ?? RollupMetaPicklists.SharingMode.SystemLevel;
+      }
+    } else {
+      // Standard query with FieldDefinition relationships (existing behavior)
+      matchingMetadata = [
+        SELECT
+          MasterLabel,
+          DeveloperName,
+          LookupObject__c,
+          LookupObjectText__c,
+          LookupObject__r.QualifiedApiName,
+          CalcItem__c,
+          CalcItemText__c,
+          CalcItem__r.QualifiedApiName,
+          RollupFieldOnCalcItem__c,
+          RollupFieldOnCalcItemText__c,
+          RollupFieldOnCalcItem__r.QualifiedApiName,
+          LookupFieldOnCalcItem__c,
+          LookupFieldOnCalcItemText__c,
+          LookupFieldOnCalcItem__r.QualifiedApiName,
+          LookupFieldOnLookupObject__c,
+          LookupFieldOnLookupObjectText__c,
+          LookupFieldOnLookupObject__r.QualifiedApiName,
+          RollupFieldOnLookupObject__c,
+          RollupFieldOnLookupObjectText__c,
+          RollupFieldOnLookupObject__r.QualifiedApiName,
+          UltimateParentLookup__c,
+          UltimateParentLookup__r.QualifiedApiName,
+          CalcItemWhereClause__c,
+          ChangedFieldsOnCalcItem__c,
+          ConcatDelimiter__c,
+          CurrencyFieldMapping__c,
+          FullRecalculationDefaultNumberValue__c,
+          FullRecalculationDefaultStringValue__c,
+          GrandparentRelationshipFieldPath__c,
+          GroupByFields__c,
+          GroupByRowEndDelimiter__c,
+          GroupByRowStartDelimiter__c,
+          IsDisabled__c,
+          IsDistinct__c,
+          IsFullRecordSet__c,
+          IsRollupStartedFromParent__c,
+          IsTableFormatted__c,
+          LimitAmount__c,
+          OneToManyGrandparentFields__c,
+          OrderByFirstLast__c,
+          RollupControl__c,
+          RollupOperation__c,
+          RollupToUltimateParent__c,
+          SharingMode__c,
+          ShouldRunWithoutCustomSettingEnabled__c,
+          SplitConcatDelimiterOnCalcItem__c,
+          (SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r),
+          RollupGrouping__r.Id,
+          RollupGrouping__r.RollupOperation__c
+        FROM Rollup__mdt
+        WHERE RollupControl__r.ShouldAbortRun__c = FALSE AND IsDisabled__c = FALSE
+        ORDER BY LookupObject__c
+      ];
+      // do the transforms for standard query
+      for (Rollup__mdt meta : matchingMetadata) {
+        meta.CalcItem__c = meta.CalcItem__r.QualifiedApiName ?? meta.CalcItemText__c;
+        meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItem__r.QualifiedApiName ?? meta.LookupFieldOnCalcItemText__c;
+        meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObject__r.QualifiedApiName ?? meta.LookupFieldOnLookupObjectText__c;
+        meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName ?? meta.RollupFieldOnCalcItemText__c;
+        meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName ?? meta.RollupFieldOnLookupObjectText__c;
+        meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName ?? meta.LookupObjectText__c;
+        meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
 
-      meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
-      meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
-      meta.SharingMode__c = meta.SharingMode__c ?? RollupMetaPicklists.SharingMode.SystemLevel;
-      meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
+        meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
+        meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
+        meta.SharingMode__c = meta.SharingMode__c ?? RollupMetaPicklists.SharingMode.SystemLevel;
+      }
     }
 
     return matchingMetadata;
+  }
+
+  private static Boolean getShouldOptimizeCMDTQueries() {
+    try {
+      // Get default RollupControl for optimization setting
+      RollupControl__mdt orgDefault = RollupControl__mdt.getInstance('Org_Defaults');
+      return orgDefault?.ShouldOptimizeCMDTQueries__c == true;
+    } catch (Exception e) {
+      // If there's any issue accessing the setting, default to false (existing behavior)
+      return false;
+    }
   }
 
   private void createQueryLog(String message) {
