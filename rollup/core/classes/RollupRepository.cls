@@ -90,12 +90,9 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
 
   @SuppressWarnings('PMD.ApexCRUDViolation')
   public static List<Rollup__mdt> getRollupMetadata() {
-    // Check if CMDT query optimization is enabled
-    Boolean shouldOptimizeCMDTQueries = getShouldOptimizeCMDTQueries();
-    
     List<Rollup__mdt> matchingMetadata;
     
-    if (shouldOptimizeCMDTQueries) {
+    if (Rollup.getDefaultControl()?.ShouldOptimizeCMDTQueries__c == true) {
       // Optimized query using text fields instead of FieldDefinition relationships
       matchingMetadata = [
         SELECT
@@ -231,16 +228,6 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     return matchingMetadata;
   }
 
-  private static Boolean getShouldOptimizeCMDTQueries() {
-    try {
-      // Get default RollupControl for optimization setting
-      RollupControl__mdt orgDefault = RollupControl__mdt.getInstance('Org_Defaults');
-      return orgDefault?.ShouldOptimizeCMDTQueries__c == true;
-    } catch (Exception e) {
-      // If there's any issue accessing the setting, default to false (existing behavior)
-      return false;
-    }
-  }
 
   private void createQueryLog(String message) {
     RollupLogger.Instance.Log(message, this, System.LoggingLevel.DEBUG);
