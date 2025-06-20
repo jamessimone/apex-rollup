@@ -228,7 +228,6 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     return matchingMetadata;
   }
 
-
   private void createQueryLog(String message) {
     RollupLogger.Instance.Log(message, this, System.LoggingLevel.DEBUG);
   }

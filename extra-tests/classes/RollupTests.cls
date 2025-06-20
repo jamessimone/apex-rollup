@@ -3201,5 +3201,4 @@ private class RollupTests {
 
     Assert.areEqual(null, acc.AnnualRevenue);
   }
-
 }
