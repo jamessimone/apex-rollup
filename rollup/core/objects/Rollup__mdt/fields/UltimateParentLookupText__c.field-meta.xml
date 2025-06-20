@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>UltimateParentLookupText__c</fullName>
+    <description>Text alternative for Ultimate Parent Lookup field for optimized CMDT queries</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Text alternative for Ultimate Parent Lookup field for optimized CMDT queries</inlineHelpText>
+    <label>Ultimate Parent Lookup (Text)</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
