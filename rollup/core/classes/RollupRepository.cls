@@ -217,7 +217,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
         meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItem__r.QualifiedApiName ?? meta.RollupFieldOnCalcItemText__c;
         meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObject__r.QualifiedApiName ?? meta.RollupFieldOnLookupObjectText__c;
         meta.LookupObject__c = meta.LookupObject__r.QualifiedApiName ?? meta.LookupObjectText__c;
-        meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName;
+        meta.UltimateParentLookup__c = meta.UltimateParentLookup__r.QualifiedApiName ?? meta.UltimateParentLookupText__c;
 
         meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
         meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
