@@ -91,7 +91,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   @SuppressWarnings('PMD.ApexCRUDViolation')
   public static List<Rollup__mdt> getRollupMetadata() {
     List<Rollup__mdt> matchingMetadata;
-    
+
     if (Rollup.getDefaultControl()?.ShouldOptimizeCMDTQueries__c == true) {
       // Optimized query using text fields instead of FieldDefinition relationships
       matchingMetadata = [
@@ -147,7 +147,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
         meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObjectText__c;
         meta.LookupObject__c = meta.LookupObjectText__c;
         meta.UltimateParentLookup__c = meta.UltimateParentLookupText__c;
-        
+
         meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
         meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();
         meta.SharingMode__c = meta.SharingMode__c ?? RollupMetaPicklists.SharingMode.SystemLevel;
