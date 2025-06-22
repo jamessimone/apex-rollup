@@ -93,6 +93,10 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>ShouldOptimizeCMDTQueries__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>ShouldSkipResettingParentFields__c</field>
             </layoutItems>
         </layoutColumns>

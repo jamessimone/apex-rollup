@@ -1,4 +1,4 @@
-import { createElement } from 'lwc';
+import { createElement } from '@lwc/engine-dom';
 import { CurrentPageReference } from 'lightning/navigation';
 
 import RecalculateParentRollupQuickAction from 'c/recalculateParentRollupQuickAction';
