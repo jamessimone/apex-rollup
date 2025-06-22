@@ -1,83 +1,116 @@
 import { api, LightningElement, wire } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
+import type { 
+  RollupOrderByRecord, 
+  NamespaceInfo, 
+  ObjectInfo, 
+  DataTableColumn,
+  PicklistValue 
+} from '../../../../types/rollup-types';
+
+interface OrderBySchema {
+  [fieldName: string]: any;
+}
+
+interface FieldDescribe {
+  label: string;
+  dataType: string;
+  apiName: string;
+}
+
 // the @salesforce/schema info for CMDT records doesn't work too well ...
-let ORDER_BY_SCHEMA = {
+let ORDER_BY_SCHEMA: OrderBySchema = {
   FieldName__c: {},
   Ranking__c: {},
   SortOrder__c: {},
   NullSortOrder__c: {}
 };
+
 export default class RollupOrderBy extends LightningElement {
   @api
-  orderBys = [];
-  columns = [];
-  dataHasLoaded = false;
-  records = [];
-  showModal = false;
-  _orderByInfo;
-  _currentRecord = this.getDefaultOrderByObject;
-  _namespaceName = '';
-  _objectApiName = 'RollupOrderBy__mdt';
-  sortOrderOptions = [
+  orderBys: RollupOrderByRecord[] = [];
+
+  columns: DataTableColumn[] = [];
+  dataHasLoaded: boolean = false;
+  records: RollupOrderByRecord[] = [];
+  showModal: boolean = false;
+
+  private _orderByInfo: ObjectInfo | undefined;
+  private _currentRecord: Partial<RollupOrderByRecord> = this.getDefaultOrderByObject;
+  private _namespaceName: string = '';
+  private _objectApiName: string = 'RollupOrderBy__mdt';
+
+  sortOrderOptions: PicklistValue[] = [
     { label: 'Ascending', value: 'Ascending' },
     { label: 'Descending', value: 'Descending' }
   ];
-  nullSortOrderOptions = [
+
+  nullSortOrderOptions: PicklistValue[] = [
     { label: 'Nulls First', value: 'NULLS FIRST' },
     { label: 'Nulls Last', value: 'NULLS LAST' }
   ];
-  async connectedCallback() {
+
+  async connectedCallback(): Promise<void> {
     await this._getNamespaceRollupInfo();
   }
-  async _getNamespaceRollupInfo() {
-    const namespaceInfo = await getNamespaceInfo();
+
+  private async _getNamespaceRollupInfo(): Promise<void> {
+    const namespaceInfo: NamespaceInfo = await getNamespaceInfo();
     if (namespaceInfo.namespace) {
       this._namespaceName = namespaceInfo.namespace;
       this._objectApiName = namespaceInfo.safeObjectName;
       ORDER_BY_SCHEMA = Object.assign({}, ...Object.keys(ORDER_BY_SCHEMA).map(key => ({ [this._namespaceName + key]: ORDER_BY_SCHEMA[key] })));
     }
   }
+
   @wire(getObjectInfo, { objectApiName: '$_objectApiName' })
-  getRollupOrderBySchemaData({ data }) {
+  getRollupOrderBySchemaData({ data }: { data?: ObjectInfo }): void {
     if (data) {
       this.dataHasLoaded = true;
       this._orderByInfo = data;
       this.columns = this._getDatatableColumns();
     }
   }
-  createNewRecord() {
+
+  createNewRecord(): void {
     this.showModal = true;
   }
-  handleRecordChange(event) {
-    const target = event.target;
-    const input = event.target;
-    const detail = event.detail;
+
+  handleRecordChange(event: Event): void {
+    const target = event.target as HTMLElement;
+    const input = event.target as HTMLInputElement;
+    const detail = (event as any).detail;
+    
     if (target.dataset.id) {
       this._currentRecord[target.dataset.id] = detail ? detail.value : input.value;
     }
   }
-  closeModal() {
+
+  closeModal(): void {
     this.showModal = false;
   }
-  handleKeyDown(event) {
+
+  handleKeyDown(event: KeyboardEvent): void {
     if (event.code === 'Escape') {
       this.closeModal();
     } else if (event.ctrlKey === true && event.code === 'KeyS') {
       this.handleCreate();
     }
   }
-  handleCreate() {
+
+  handleCreate(): void {
     const rankingField = this.ranking;
     if (!this._currentRecord[rankingField.apiName]) {
       this._currentRecord[rankingField.apiName] = this.currentOrderBySize;
     }
-    const flattenedRankings = this.orderBys.map(ordering => ordering[rankingField.apiName]);
-    const hasRankingAlreadyBeenUsed = flattenedRankings.includes(Number(this._currentRecord[rankingField.apiName]));
+    const flattenedRankings: number[] = this.orderBys.map(ordering => ordering[rankingField.apiName]);
+    const hasRankingAlreadyBeenUsed: boolean = flattenedRankings.includes(Number(this._currentRecord[rankingField.apiName]));
     if (hasRankingAlreadyBeenUsed) {
       this._currentRecord[rankingField.apiName] = flattenedRankings.includes(this.currentOrderBySize) ? this.currentOrderBySize + 1 : this.currentOrderBySize;
     }
-    this.orderBys = [...this.orderBys, this._currentRecord].sort((first, second) => {
+    this.orderBys = [...this.orderBys, this._currentRecord as RollupOrderByRecord].sort((first, second) => {
       let sortIndex = 0;
       if (first[rankingField.apiName] < second[rankingField.apiName]) {
         sortIndex = -1;
@@ -89,33 +122,40 @@ export default class RollupOrderBy extends LightningElement {
     this._currentRecord = this.getDefaultOrderByObject;
     this.closeModal();
   }
-  get ranking() {
+
+  get ranking(): FieldDescribe {
     return ORDER_BY_SCHEMA[this._namespaceName + 'Ranking__c'];
   }
-  get fieldName() {
+
+  get fieldName(): FieldDescribe {
     return ORDER_BY_SCHEMA[this._namespaceName + 'FieldName__c'];
   }
-  get sortOrder() {
+
+  get sortOrder(): FieldDescribe {
     return ORDER_BY_SCHEMA[this._namespaceName + 'SortOrder__c'];
   }
-  get nullSortOrder() {
+
+  get nullSortOrder(): FieldDescribe {
     return ORDER_BY_SCHEMA[this._namespaceName + 'NullSortOrder__c'];
   }
-  get currentOrderBySize() {
+
+  get currentOrderBySize(): number {
     return this.orderBys.length;
   }
-  get getDefaultOrderByObject() {
+
+  get getDefaultOrderByObject(): Partial<RollupOrderByRecord> {
     return {};
   }
-  _getDatatableColumns() {
-    return Object.keys(ORDER_BY_SCHEMA).map(fieldKey => {
-      const fieldDescribe = this._orderByInfo.fields[fieldKey];
+
+  private _getDatatableColumns(): DataTableColumn[] {
+    return Object.keys(ORDER_BY_SCHEMA).map((fieldKey: string) => {
+      const fieldDescribe = this._orderByInfo!.fields[fieldKey];
       ORDER_BY_SCHEMA[fieldKey] = fieldDescribe;
-      const column = {
-        fieldName: fieldKey,
-        label: fieldDescribe.label,
+      const column: DataTableColumn = { 
+        fieldName: fieldKey, 
+        label: fieldDescribe.label, 
         sortable: true,
-        type: fieldDescribe.dataType?.toLowerCase()
+        type: fieldDescribe.dataType?.toLowerCase() 
       };
       if (column.type === 'string') {
         column.type = 'text';

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:developer.salesforce.com)",
+      "Bash(npm install:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run test:lwc:*)",
+      "Bash(npm run create:org:*)",
+      "Bash(grep:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(sf org list:*)",
+      "Bash(npm run:*)",
+      "Bash(sf project deploy:*)",
+      "Bash(find:*)",
+      "Bash(sf project retrieve:*)",
+      "Bash(git checkout:*)",
+      "WebFetch(domain:salesforce.stackexchange.com)",
+      "WebFetch(domain:blogs.perficient.com)",
+      "Bash(sf org display:*)",
+      "Bash(cp:*)"
+    ],
+    "deny": []
+  }
+}

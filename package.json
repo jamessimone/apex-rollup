@@ -15,12 +15,14 @@
     "@salesforce/cli": "2.75.5",
     "@salesforce/eslint-config-lwc": "3.7.1",
     "@salesforce/eslint-plugin-lightning": "1.0.1",
+    "@salesforce/lightning-types": "^0.9.0",
     "@salesforce/sfdx-lwc-jest": "7.0.1",
     "@salesforce/sfdx-scanner": "^4.12.0",
     "husky": "9.1.7",
     "lint-staged": "15.4.3",
     "prettier": "3.4.2",
-    "prettier-plugin-apex": "2.2.4"
+    "prettier-plugin-apex": "2.2.4",
+    "typescript": "^5.8.3"
   },
   "keywords": [
     "salesforce",
@@ -51,6 +53,9 @@
     "scan:pmd": "sf code-analyzer run -r pmd:1 -r pmd:2 -r pmd:3 --workspace rollup/core/**/*.cls --workspace plugins --workspace extra-tests",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
-    "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"
+    "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck",
+    "typecheck": "npx tsc --noEmit --project rollup/app/lwc/tsconfig.json",
+    "build:ts": "cd rollup/app/lwc && npx tsc",
+    "build": "npm run build:ts"
   }
 }

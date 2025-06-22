@@ -1,17 +1,11 @@
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
-
 const isValidAsyncJob = val => val?.slice(0, 3) === '707';
-
 /**
- *
- * @param {object} record
- * @param {string} key
  * We have to transform the data slightly to conform to what the Apex deserializer expects
  * by removing relationship fields - this allows the Rollup__mdt records to be passed back
  * to Apex without issue
  */
 const isSafeToSerialize = (record, key) => key.indexOf('__r') === -1 || Array.isArray(record[key]);
-
 const getRollupMetadata = async () => {
   const metadataByCalcItem = await getRollupMetadataByCalcItem();
   const cleanedMetaByCalcItem = {};
@@ -30,14 +24,16 @@ const getRollupMetadata = async () => {
       });
       cleanedMetaByCalcItem[objectName] = metaPerObject;
     });
-
   return cleanedMetaByCalcItem;
 };
-
 const transformToSerializableChildren = (record, key, children) => {
   if (children && !children.totalSize) {
-    record[key] = { totalSize: children?.length ?? 0, done: true, records: children ?? [] };
+    const serializableChildren = {
+      totalSize: children?.length ?? 0,
+      done: true,
+      records: children ?? []
+    };
+    record[key] = serializableChildren;
   }
 };
-
 export { isValidAsyncJob, getRollupMetadata, transformToSerializableChildren };

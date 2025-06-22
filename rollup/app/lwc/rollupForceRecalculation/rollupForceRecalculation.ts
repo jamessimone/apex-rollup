@@ -4,12 +4,27 @@ import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSeri
 import performSerializedFullRecalculation from '@salesforce/apex/Rollup.performSerializedFullRecalculation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getObjectInfo, getPicklistValues } from 'lightning/uiObjectInfoApi';
+
 import { getRollupMetadata, transformToSerializableChildren } from 'c/rollupUtils';
-const MAX_ROW_SELECTION = 200;
+import type { 
+  RollupMetadata, 
+  NamespaceInfo, 
+  ObjectInfo, 
+  PicklistValue,
+  WireError,
+  DataTableColumn,
+  ComboboxChangeEvent,
+  DataTableSortEvent,
+  DataTableRowSelectionEvent,
+  RollupMetadataByCalcItem
+} from '../../../../types/rollup-types';
+
+const MAX_ROW_SELECTION: number = 200;
+
 export default class RollupForceRecalculation extends LightningElement {
-  _resolvedBatchStatuses = ['Completed', 'Failed', 'Aborted'];
-  _localMetadata = {};
-  _metadata = {
+  private _resolvedBatchStatuses: string[] = ['Completed', 'Failed', 'Aborted'];
+  private _localMetadata: RollupMetadataByCalcItem = {};
+  private _metadata: Partial<RollupMetadata> = {
     RollupFieldOnCalcItem__c: '',
     LookupFieldOnCalcItem__c: '',
     LookupFieldOnLookupObject__c: '',
@@ -22,7 +37,7 @@ export default class RollupForceRecalculation extends LightningElement {
     SplitConcatDelimiterOnCalcItem__c: false,
     LimitAmount__c: null
   };
-  _cmdtFieldNames = [
+  private _cmdtFieldNames: string[] = [
     'MasterLabel',
     'DeveloperName',
     'RollupFieldOnCalcItem__c',
@@ -31,43 +46,48 @@ export default class RollupForceRecalculation extends LightningElement {
     'RollupFieldOnLookupObject__c',
     'LookupObject__c'
   ];
-  canDisplayCmdtToggle = false;
-  cmdtColumns = [];
-  defaultSortDirection = 'asc';
-  error = '';
-  isOrderByRollup = false;
-  isRollingUp = false;
-  maxRowSelection = MAX_ROW_SELECTION;
-  namespace = '';
-  rollupMetadataOptions = [];
-  rollupOperationValues = [];
-  safeObjectName = '';
-  safeRollupOperationField = '';
-  selectedMetadata;
-  selectedMetadataCMDTRecords;
-  selectedRows = [];
-  sortDirection = 'asc';
+
+  canDisplayCmdtToggle: boolean = false;
+  cmdtColumns: DataTableColumn[] = [];
+  defaultSortDirection: string = 'asc';
+  error: string = '';
+  isOrderByRollup: boolean = false;
+  isRollingUp: boolean = false;
+  maxRowSelection: number = MAX_ROW_SELECTION;
+  namespace: string = '';
+  rollupMetadataOptions: PicklistValue[] = [];
+  rollupOperationValues: PicklistValue[] = [];
+  safeObjectName: string = '';
+  safeRollupOperationField: string = '';
+  selectedMetadata: string | undefined;
+  selectedMetadataCMDTRecords: RollupMetadata[] | undefined;
+  selectedRows: RollupMetadata[] = [];
+  sortDirection: string = 'asc';
+
   @api
-  isCMDTRecalc = false;
-  get rollupOperation() {
+  isCMDTRecalc: boolean = false;
+
+  get rollupOperation(): string {
     return this._metadata[this._getNamespacedFieldName(this.safeRollupOperationField)] || '';
   }
-  set rollupOperation(value) {
+  set rollupOperation(value: string) {
     this._setNamespaceSafeMetadata(this.safeRollupOperationField, value);
   }
-  async connectedCallback() {
+
+  async connectedCallback(): Promise<void> {
     document.title = 'Recalculate Rollup';
     await Promise.all([this._getNamespaceRollupInfo(), this._fetchAvailableCMDT()]);
   }
+
   @wire(getObjectInfo, { objectApiName: '$safeObjectName' })
-  getCMDTObjectInfo({ error, data }) {
+  getCMDTObjectInfo({ error, data }: { error?: WireError; data?: ObjectInfo }): void {
     if (data) {
-      this._cmdtFieldNames.forEach(fieldName => {
+      this._cmdtFieldNames.forEach((fieldName: string) => {
         if (data.fields[fieldName]) {
-          this.cmdtColumns.push({
-            label: data.fields[fieldName].label,
-            fieldName: fieldName,
-            sortable: true
+          this.cmdtColumns.push({ 
+            label: data.fields[fieldName].label, 
+            fieldName: fieldName, 
+            sortable: true 
           });
         }
       });
@@ -75,21 +95,24 @@ export default class RollupForceRecalculation extends LightningElement {
       this.error = this._formatWireErrors(error);
     }
   }
+
   @wire(getPicklistValues, { recordTypeId: '012000000000000AAA', fieldApiName: '$safeRollupOperationField' })
-  getRollupOperationValues({ error, data }) {
+  getRollupOperationValues({ error, data }: { error?: WireError; data?: { values: PicklistValue[] } }): void {
     if (data) {
       this.rollupOperationValues = data.values;
     } else if (error) {
       this.error = this._formatWireErrors(error);
     }
   }
-  handleComboChange(event) {
+
+  handleComboChange(event: ComboboxChangeEvent): void {
     this.selectedMetadata = event.detail.value;
     this.selectedMetadataCMDTRecords = this._localMetadata[event.detail.value];
   }
-  handleChange(event) {
-    const target = event.target;
-    const detail = event.detail;
+
+  handleChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const detail = (event as any).detail;
     const value = detail ? detail.value : target.value;
     const limitAmountWithoutNamespace = 'LimitAmount__c';
     this._setNamespaceSafeMetadata(target.name, target.name === limitAmountWithoutNamespace ? Number(value) : value);
@@ -99,10 +122,12 @@ export default class RollupForceRecalculation extends LightningElement {
       this._getNamespaceSafeFieldValue(limitAmountWithoutNamespace) ||
       this.rollupOperation.indexOf('MOST') !== -1;
   }
-  handleSort(event) {
+
+  handleSort(event: DataTableSortEvent): void {
     const { fieldName, sortDirection } = event.detail;
+
     if (this.selectedMetadataCMDTRecords) {
-      this.selectedMetadataCMDTRecords.sort((a, b) => {
+      this.selectedMetadataCMDTRecords.sort((a: RollupMetadata, b: RollupMetadata) => {
         let sort = 0;
         if (a[fieldName] > b[fieldName]) {
           sort = 1;
@@ -114,77 +139,86 @@ export default class RollupForceRecalculation extends LightningElement {
       this.selectedMetadataCMDTRecords = [...this.selectedMetadataCMDTRecords];
     }
     this.sortDirection = sortDirection;
-    this.sortedBy = fieldName;
+    (this as any).sortedBy = fieldName;
   }
-  handleToggle() {
+
+  handleToggle(): void {
     this.rollupOperation = '';
     this.isCMDTRecalc = !this.isCMDTRecalc;
     this.error = '';
   }
-  handleRowSelect(event) {
+
+  handleRowSelect(event: DataTableRowSelectionEvent): void {
     this.selectedRows = event.detail.selectedRows;
   }
-  async _fetchAvailableCMDT() {
-    this.isLoadingCustomMetadata = true;
+
+  private async _fetchAvailableCMDT(): Promise<void> {
+    (this as any).isLoadingCustomMetadata = true;
     this._localMetadata = await getRollupMetadata();
-    this.isLoadingCustomMetadata = false;
-    Object.keys(this._localMetadata).forEach(localMeta => {
+    (this as any).isLoadingCustomMetadata = false;
+
+    Object.keys(this._localMetadata).forEach((localMeta: string) => {
       if (!this.canDisplayCmdtToggle) {
         this.canDisplayCmdtToggle = true;
       }
       this.rollupMetadataOptions.push({ label: localMeta, value: localMeta });
     });
   }
-  async _getNamespaceRollupInfo() {
-    const namespaceInfo = await getNamespaceInfo();
-    if (!this._cmdtFieldNames.find(fieldName => this.safeRollupOperationField === fieldName)) {
+
+  private async _getNamespaceRollupInfo(): Promise<void> {
+    const namespaceInfo: NamespaceInfo = await getNamespaceInfo();
+    if (!this._cmdtFieldNames.find((fieldName: string) => this.safeRollupOperationField === fieldName)) {
       this._cmdtFieldNames.push(this.safeRollupOperationField);
     }
-    Object.keys(namespaceInfo).forEach(key => (this[key] = namespaceInfo[key]));
+    Object.keys(namespaceInfo).forEach((key: string) => ((this as any)[key] = (namespaceInfo as any)[key]));
     if (this.namespace) {
-      this._metadata = Object.assign({}, ...Object.keys(this._metadata).map(key => ({ [this.namespace + key]: this._metadata[key] })));
-      this._cmdtFieldNames = this._cmdtFieldNames.map(fieldName => (fieldName.endsWith('__c') ? this._getNamespacedFieldName(fieldName) : fieldName));
+      this._metadata = Object.assign({}, ...Object.keys(this._metadata).map((key: string) => ({ [this.namespace + key]: this._metadata[key] })));
+      this._cmdtFieldNames = this._cmdtFieldNames.map((fieldName: string) => (fieldName.endsWith('__c') ? this._getNamespacedFieldName(fieldName) : fieldName));
     }
   }
-  async handleSubmit(event) {
+
+  async handleSubmit(event: Event): Promise<void> {
     this.error = '';
     event.preventDefault();
+
     try {
-      let jobId;
+      let jobId: string;
       if (this.isCMDTRecalc) {
         if (!this.selectedMetadata || this.selectedRows.length === 0) {
           this._displayErrorToast('Select a valid option', 'Child Object(s) must be selected!');
           return;
         }
         this.isRollingUp = true;
-        const localMetas = [...this.selectedRows];
+        const localMetas: RollupMetadata[] = [...this.selectedRows];
         this._getMetadataWithChildrenRecords(localMetas);
-        jobId = await performSerializedBulkFullRecalc({
-          serializedMetadata: JSON.stringify(localMetas),
-          invokePointName: 'FROM_FULL_RECALC_LWC'
+        jobId = await performSerializedBulkFullRecalc({ 
+          serializedMetadata: JSON.stringify(localMetas), 
+          invokePointName: 'FROM_FULL_RECALC_LWC' 
         });
       } else {
         this.isRollingUp = true;
-        this._getMetadataWithChildrenRecords([this._metadata]);
+        this._getMetadataWithChildrenRecords([this._metadata as RollupMetadata]);
         jobId = await performSerializedFullRecalculation({
           metadata: JSON.stringify(this._metadata)
         });
       }
+
       if (jobId) {
-        const jobPoller = this.template?.querySelector('c-rollup-job-poller');
+        const jobPoller = this.template?.querySelector('c-rollup-job-poller') as any;
         if (jobPoller) {
           await jobPoller.runJobPoller(jobId);
         }
         this.isRollingUp = false;
       }
-    } catch (e) {
-      const errorMessage = Boolean(e.body) && e.body.message ? e.body.message : e.message;
+    } catch (e: any) {
+      const errorMessage: string = Boolean(e.body) && e.body.message ? e.body.message : e.message;
       this._displayErrorToast('An error occurred while rolling up', errorMessage);
       // eslint-disable-next-line
       console.error(e); // in the event you dismiss the toast but still want to see the error
     }
   }
-  _displayErrorToast(title, message) {
+
+  private _displayErrorToast(title: string, message: string): void {
     const event = new ShowToastEvent({
       title,
       message,
@@ -193,14 +227,15 @@ export default class RollupForceRecalculation extends LightningElement {
     this.dispatchEvent(event);
     this.error = message;
   }
-  _getMetadataWithChildrenRecords(metadatas) {
-    const rollupOrderByFieldName = this._getNamespacedFieldName(`RollupOrderBys__r`);
+
+  private _getMetadataWithChildrenRecords(metadatas: RollupMetadata[]): void {
+    const rollupOrderByFieldName: string = this._getNamespacedFieldName(`RollupOrderBys__r`);
     for (const _metadata of metadatas) {
       let children;
       if (this.isCMDTRecalc) {
         children = _metadata[rollupOrderByFieldName] != null ? _metadata[rollupOrderByFieldName] : children;
       } else {
-        const possibleOrderByComponent = this.template?.querySelector('c-rollup-order-by');
+        const possibleOrderByComponent = this.template?.querySelector('c-rollup-order-by') as any;
         if (possibleOrderByComponent) {
           children = possibleOrderByComponent.orderBys;
         }
@@ -208,14 +243,18 @@ export default class RollupForceRecalculation extends LightningElement {
       transformToSerializableChildren(_metadata, rollupOrderByFieldName, children);
     }
   }
-  _getNamespaceSafeFieldValue(fieldName) {
+
+  private _getNamespaceSafeFieldValue(fieldName: string): any {
     return this._metadata[this._getNamespacedFieldName(fieldName)];
   }
-  _setNamespaceSafeMetadata(fieldName, value) {
+
+  private _setNamespaceSafeMetadata(fieldName: string, value: any): void {
     this._metadata[this._getNamespacedFieldName(fieldName)] = value;
   }
-  _getNamespacedFieldName(fieldName) {
+
+  private _getNamespacedFieldName(fieldName: string): string {
     return this.namespace + fieldName;
   }
-  _formatWireErrors = error => error.body.message;
+
+  private _formatWireErrors = (error: WireError): string => error.body.message;
 }

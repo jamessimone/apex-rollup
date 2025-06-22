@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "allowJs": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "experimentalDecorators": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "noEmit": false,
+    "declaration": false,
+    "removeComments": false,
+    "outDir": "./",
+    "paths": {
+      "c/*": ["*"],
+      "@salesforce/*": ["node_modules/@salesforce/lightning-types/salesforce/*"]
+    },
+    "typeRoots": ["../../../types", "node_modules/@types", "node_modules/@salesforce/lightning-types"]
+  },
+  "include": ["**/*.ts", "../../../types/**/*.d.ts"],
+  "exclude": ["**/__tests__/**"]
+}
