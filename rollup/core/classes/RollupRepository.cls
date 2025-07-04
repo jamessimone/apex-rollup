@@ -4,6 +4,8 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
   @TestVisible
   private final Args args = new Args();
   private final RunAsMode localRunAsMode;
+  private Boolean shouldLog = true;
+
   private transient System.AccessLevel accessLevel {
     get {
       this.accessLevel = this.accessLevel ?? this.transformPermissionLevel(this.localRunAsMode);
@@ -11,8 +13,6 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     }
     set;
   }
-
-  private Boolean shouldLog = true;
 
   private class Args {
     public final Map<String, Object> bindVars = new Map<String, Object>();
