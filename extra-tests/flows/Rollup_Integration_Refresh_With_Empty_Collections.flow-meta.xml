@@ -44,7 +44,7 @@
         <storeOutputAutomatically>true</storeOutputAutomatically>
         <versionSegment>1</versionSegment>
     </actionCalls>
-    <apiVersion>63.0</apiVersion>
+    <apiVersion>64.0</apiVersion>
     <environments>Default</environments>
     <interviewLabel>Rollup Integration - Refresh With Empty Collections {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Rollup Integration - Refresh With Empty Collections</label>
