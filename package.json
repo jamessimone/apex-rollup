@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.7.19",
+  "version": "1.7.20",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
