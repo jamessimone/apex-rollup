@@ -40,7 +40,13 @@ global without sharing class RollupFlowFullRecalcDispatcher {
       if (targetNames.contains('' + rollup.get(preprocessor.getTarget().toString()))) {
         selectedRollupMetadata.add(rollup);
         if (uniqueParentIds.isEmpty() == false) {
-          rollup.CalcItemWhereClause__c = (rollup.CalcItemWhereClause__c ?? '') + ' ||| ' + rollup.LookupFieldOnCalcItem__c + ' = \'' + uniqueParentIds.remove(0) + '\'';
+          rollup.CalcItemWhereClause__c =
+            (rollup.CalcItemWhereClause__c ?? '') +
+            ' ||| ' +
+            rollup.LookupFieldOnCalcItem__c +
+            ' = \'' +
+            uniqueParentIds.remove(0) +
+            '\'';
         }
       }
     }
@@ -52,6 +58,9 @@ global without sharing class RollupFlowFullRecalcDispatcher {
     if (selectedRollupMetadata.isEmpty() == false) {
       String enqueuedJobId = Rollup.performBulkFullRecalc(selectedRollupMetadata, Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name());
       flowOutput.message = 'Job enqueued with Id: ' + enqueuedJobId;
+    }
+    while (flowOutputs.size() > inputs.size()) {
+      flowOutputs.remove(0);
     }
     return flowOutputs;
   }
