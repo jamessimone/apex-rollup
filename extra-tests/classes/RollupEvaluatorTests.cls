@@ -192,6 +192,15 @@ private class RollupEvaluatorTests {
   }
 
   @IsTest
+  static void shouldProperlyHandleWildcardsAtTheBeginningAndEnd() {
+    String likeClauseEndingWithPercentage = 'Name LIKE \'|-2CYTD%\'';
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(likeClauseEndingWithPercentage, ContactPointConsent.SObjectType);
+    System.assertEquals(true, eval.matches(new ContactPointConsent(Name = '|-2CYTD-1|-2FYTD')));
+    System.assertEquals(true, eval.matches(new ContactPointConsent(Name = '|-2CYTD-2')));
+    System.assertEquals(false, eval.matches(new ContactPointConsent(Name = '|-1CYTD-3')));
+  }
+
+  @IsTest
   static void shouldFilterCalcItemsThatContainAndOrStringsThatAreNotFilterConditions() {
     Opportunity oppOne = new Opportunity(Name = 'A or B');
     Opportunity oppTwo = new Opportunity(Name = 'A and B');
