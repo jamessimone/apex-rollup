@@ -909,6 +909,15 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldBatchForFullRecalcWhenOverLimits() {
+    Rollup.defaultControl = new RollupControl__mdt(
+      // prove that it works with multiple chunks
+      BatchChunkSize__c = 2,
+      MaxLookupRowsBeforeBatching__c = 1,
+      // validate that it still batches
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
+      IsRollupLoggingEnabled__c = true
+    );
+
     Account acc = [SELECT Id FROM Account];
     acc.AnnualRevenue = 5; // validate that the pre-existing value is cleared
     update acc;
@@ -922,15 +931,6 @@ private class RollupFullRecalcTests {
       new ContactPointAddress(Name = 'sixBatch', ParentId = acc.Id, PreferenceRank = 1)
     };
     insert cpas;
-
-    Rollup.defaultControl = new RollupControl__mdt(
-      // prove that it works with multiple chunks
-      BatchChunkSize__c = 2,
-      MaxLookupRowsBeforeBatching__c = 1,
-      // validate that it still batches
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
-      IsRollupLoggingEnabled__c = true
-    );
 
     Rollup__mdt meta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',
@@ -962,6 +962,13 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void shouldUseSmallerBatchSizeWhenSpecificRollupControlLowerThanOrgDefaults() {
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 1,
+      // validate that it still batches
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
+      IsRollupLoggingEnabled__c = true
+    );
+    Rollup.specificControl = new RollupControl__mdt(BatchChunkSize__c = 1);
     Account acc = [SELECT Id FROM Account];
     Account secondAccount = new Account(Name = 'Second');
     insert secondAccount;
@@ -976,14 +983,6 @@ private class RollupFullRecalcTests {
       new ContactPointAddress(Name = 'secondAccount', ParentId = secondAccount.Id, PreferenceRank = 1)
     };
     insert cpas;
-
-    Rollup.defaultControl = new RollupControl__mdt(
-      MaxLookupRowsBeforeBatching__c = 1,
-      // validate that it still batches
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
-      IsRollupLoggingEnabled__c = true
-    );
-    Rollup.specificControl = new RollupControl__mdt(BatchChunkSize__c = 1);
 
     Rollup__mdt meta = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',
@@ -1056,6 +1055,14 @@ private class RollupFullRecalcTests {
 
   @IsTest
   static void doesNotClearParentFieldsWhenFullRecalcIsDeferred() {
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 50,
+      MaxNumberOfQueries__c = 2, // set to explicitly be too low for rollup to proceed
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      IsRollupLoggingEnabled__c = true,
+      MaxParentRowsUpdatedAtOnce__c = 10,
+      MaxRollupRetries__c = -1 // don't actually allow the deferral
+    );
     Account acc = [SELECT Id FROM Account]; // 1 query
     acc.AnnualRevenue = acc.NumberOfEmployees = 5;
     update acc;
@@ -1070,14 +1077,6 @@ private class RollupFullRecalcTests {
     };
     insert cpas;
 
-    Rollup.defaultControl = new RollupControl__mdt(
-      MaxLookupRowsBeforeBatching__c = 50,
-      MaxNumberOfQueries__c = 2, // set to explicitly be too low for rollup to proceed
-      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
-      IsRollupLoggingEnabled__c = true,
-      MaxParentRowsUpdatedAtOnce__c = 10,
-      MaxRollupRetries__c = -1 // don't actually allow the deferral
-    );
     // rollups are processed in reverse order
     Rollup__mdt countRollup = new Rollup__mdt(
       CalcItem__c = 'ContactPointAddress',

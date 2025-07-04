@@ -2300,12 +2300,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       new Set<String>(wrappedMeta.recordIds),
       invokePoint
     );
-    Boolean shouldQueue =
-      wrappedMeta.recordCount != RollupRepository.SENTINEL_COUNT_VALUE &&
-      wrappedMeta.recordCount < parentResetProcessor.rollupControl.MaxLookupRowsBeforeBatching__c;
+    Boolean shouldQueue = wrappedMeta.recordCount != RollupRepository.SENTINEL_COUNT_VALUE && wrappedMeta.recordCount < control.MaxLookupRowsBeforeBatching__c;
     if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp && control.ShouldSkipResettingParentFields__c == false) {
       return parentResetProcessor;
-    } else if ((isFullRecalcApp) || control.ShouldSkipResettingParentFields__c || wrappedMeta.recordIds.isEmpty() == false) {
+    } else if (
+      (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC &&
+      invokePoint != InvocationPoint.FROM_FULL_RECALC_FLOW) ||
+      control.ShouldSkipResettingParentFields__c ||
+      wrappedMeta.recordIds.isEmpty() == false
+    ) {
       parentResetProcessor = null;
     }
 
