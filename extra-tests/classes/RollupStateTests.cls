@@ -367,4 +367,58 @@ private class RollupStateTests {
       }
     }
   }
+
+  @IsTest
+  static void properlyHandlesDatetimeSubclasses() {
+    RollupState state = new RollupState();
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    String stubTaskId = RollupTestUtils.createId(Task.SObjectType);
+    String stubEventId = RollupTestUtils.createId(Event.SObjectType);
+    String stubOppId = RollupTestUtils.createId(Opportunity.SObjectType);
+    String stubContactPointAddressId = RollupTestUtils.createId(ContactPointAddress.SObjectType);
+    RollupState.SObjectInfo contactPointInfo = (RollupState.SObjectInfo) state.getState(
+      stubContactPointAddressId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
+    ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(11, 11, 11, 11));
+    contactPointInfo.setItem(cpa);
+    RollupState.SObjectInfo sObjectInfo = (RollupState.SObjectInfo) state.getState(
+      stubTaskId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
+    RollupState.SObjectInfo eventInfo = (RollupState.SObjectInfo) state.getState(
+      stubEventId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
+    Event ev = new Event(ActivityDatetime = System.now());
+    eventInfo.setItem(ev);
+    Task task = new Task(ActivityDate = System.today());
+    sObjectInfo.setItem(task);
+    Opportunity opp = new Opportunity(CloseDate = System.today());
+    RollupState.SObjectInfo oppInfo = (RollupState.SObjectInfo) state.getState(
+      stubOppId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
+    oppInfo.setItem(opp);
+
+    state.commitState(stubJobId);
+    state.loadState(stubJobId, new Set<String>{ stubOppId });
+
+    contactPointInfo = (RollupState.SObjectInfo) state.getState(
+      stubContactPointAddressId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
+    Assert.areEqual(cpa.BestTimeToContactEndTime, contactPointInfo.item.get('BestTimeToContactEndTime'));
+    sObjectInfo = (RollupState.SObjectInfo) state.getState(stubTaskId, new Rollup__mdt(RollupOperation__c = 'FIRST'), RollupState.SObjectInfo.class);
+    Assert.areEqual(task.ActivityDate, sObjectInfo.item.get('ActivityDate'));
+    oppInfo = (RollupState.SObjectInfo) state.getState(stubOppId, new Rollup__mdt(RollupOperation__c = 'FIRST'), RollupState.SObjectInfo.class);
+    Assert.areEqual(opp.CloseDate, oppInfo.item.get('CloseDate'));
+    eventInfo = (RollupState.SObjectInfo) state.getState(stubEventId, new Rollup__mdt(RollupOperation__c = 'FIRST'), RollupState.SObjectInfo.class);
+    Assert.areEqual(ev.ActivityDatetime, eventInfo.item.get('ActivityDatetime'));
+  }
 }

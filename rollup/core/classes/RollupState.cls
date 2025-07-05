@@ -127,7 +127,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'item' => this.item,
+        'item' => this.item.getPopulatedFieldsAsMap(),
         'itemType' => '' + this.item.getSObjectType(),
         'key' => this.key,
         'keyLength' => this.keyLength,
