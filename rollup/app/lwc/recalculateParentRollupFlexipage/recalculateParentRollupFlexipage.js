@@ -60,6 +60,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
   }
 
   async _setup() {
+    this._matchingMetas = [];
     try {
       if (!this._namespaceInfo?.namespace) {
         this._namespaceInfo = await getNamespaceInfo();
@@ -105,7 +106,6 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
     const orderByFieldName = this._getNamespaceSafeFieldName('RollupOrderBys__r');
     const children = metadata[orderByFieldName];
     transformToSerializableChildren(metadata, orderByFieldName, children);
-
     this._matchingMetas.push(metadata);
   }
 

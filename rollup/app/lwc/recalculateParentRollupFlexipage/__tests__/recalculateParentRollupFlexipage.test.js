@@ -1,4 +1,6 @@
 import { createElement } from '@lwc/engine-dom';
+import { getRecord } from 'lightning/uiRecordApi';
+
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
 import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
@@ -225,5 +227,33 @@ describe('recalc parent rollup from flexipage tests', () => {
       serializedMetadata: JSON.stringify(matchingMetadata),
       invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
     });
+  });
+
+  it('should handle alternative parent field name', async () => {
+    const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
+      is: RecalculateParentRollupFlexipage
+    });
+    const FAKE_RECORD_ID = '00100000000001';
+    const matchingMetadata = metadata[Object.keys(metadata)[0]];
+    parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
+    parentRecalcEl.recordId = FAKE_RECORD_ID;
+    parentRecalcEl.alternativeParentFieldName = 'SomeOtherField';
+    document.body.appendChild(parentRecalcEl);
+
+    await flushPromises();
+
+    getRecord.emit({
+      fields: {
+        SomeOtherField: {
+          value: 'fakeId2'
+        }
+      }
+    });
+    await flushPromises();
+    parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
+    await flushPromises('wait for click event to call controller');
+
+    const parsedMetadata = JSON.parse(performSerializedBulkFullRecalc.mock.calls[0][0].serializedMetadata);
+    expect(parsedMetadata[0].CalcItemWhereClause__c.indexOf('fakeId2')).toBeGreaterThan(-1);
   });
 });
