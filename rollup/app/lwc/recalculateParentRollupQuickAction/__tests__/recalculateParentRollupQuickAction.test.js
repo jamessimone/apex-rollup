@@ -1,4 +1,4 @@
-import { createElement } from 'lwc';
+import { createElement } from '@lwc/engine-dom';
 import { CurrentPageReference } from 'lightning/navigation';
 
 import RecalculateParentRollupQuickAction from 'c/recalculateParentRollupQuickAction';
@@ -85,6 +85,31 @@ describe('c-recalculate-parent-rollup-quick-action', () => {
       title: 'Success',
       message: 'Rollup recalculation finished! You may need to refresh the page to see updated values.',
       variant: 'success'
+    });
+    expect(showToastEvent.type).toBe(SHOW_TOAST_NAME);
+  });
+
+  it('calls handleClick on child component with invalid data', async () => {
+    const element = createElement('c-recalculate-parent-quick-action', {
+      is: RecalculateParentRollupQuickAction
+    });
+    document.body.appendChild(element);
+    const toastHandler = jest.fn();
+    element.addEventListener(SHOW_TOAST_NAME, toastHandler);
+
+    const childComponent = element.shadowRoot.querySelector('c-recalculate-parent-rollup-flexipage');
+    const loadingFinishedEvent = new CustomEvent('loadingfinished', {
+      detail: { isValid: false }
+    });
+    childComponent.dispatchEvent(loadingFinishedEvent);
+    element.invoke();
+
+    await Promise.resolve();
+    const showToastEvent = toastHandler.mock.calls[0][0];
+    expect(showToastEvent.detail).toMatchObject({
+      title: 'Rollup recalculation is not possible due to missing metadata.',
+      message: 'No rollup metadata found for the selected object. Check with your administrator to ensure that the object has valid rollups configured.',
+      variant: 'error'
     });
     expect(showToastEvent.type).toBe(SHOW_TOAST_NAME);
   });

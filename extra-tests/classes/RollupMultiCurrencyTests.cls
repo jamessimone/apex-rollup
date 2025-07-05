@@ -391,6 +391,69 @@ private class RollupMultiCurrencyTests {
     System.assertNotEquals(contract.ContractTerm, eurOpp.Amount);
   }
 
+  @IsTest
+  static void addingNonMatchingChildRecordDoesNotImproperlyModifyParentAmount() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
+    RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
+    update acc;
+
+    Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
+      Opportunity.SObjectType,
+      new List<Schema.SObjectField>{ Opportunity.StageName, Opportunity.CloseDate, Opportunity.Amount, Opportunity.AccountId }
+    );
+    Opportunity two = usdOpp.clone(false, true);
+    RollupCurrencyInfo.setCurrencyIsoCode(two, 'JPY');
+    two.AccountId = acc.Id;
+    two.Amount = 95;
+    two.StageName = 'A';
+    Opportunity three = two.clone(false, true);
+    three.AccountId = null;
+    three.Amount = 100;
+    three.StageName = 'Z';
+    RollupCurrencyInfo.setCurrencyIsoCode(three, 'JPY');
+    List<Opportunity> opps = new List<Opportunity>{ two, three };
+    insert opps;
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup__mdt sumRollup = new Rollup__mdt(
+      CalcItem__c = 'Opportunity',
+      CalcItemWhereClause__c = 'StageName != \'Z\'',
+      FullRecalculationDefaultNumberValue__c = 0,
+      LookupFieldOnCalcItem__c = 'AccountId',
+      LookupFieldOnLookupObject__c = 'Id',
+      LookupObject__c = 'Account',
+      RollupFieldOnCalcItem__c = 'Amount',
+      RollupFieldOnLookupObject__c = 'AnnualRevenue',
+      RollupOperation__c = 'SUM'
+    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{ sumRollup };
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.shouldRun = true;
+    Rollup.records = new List<Opportunity>{ two, usdOpp };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.SumAmountRollupSummary__c });
+    Assert.isNotNull(acc.SumAmountRollupSummary__c, 'Rollup field should have calculated');
+    System.assertEquals(acc.SumAmountRollupSummary__c.setScale(2), acc.AnnualRevenue?.setScale(2), 'Multi-currency SUM rollup not calculated correctly!');
+
+    Rollup.shouldRefreshCachedControl = true;
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
+    Rollup.records = new List<Opportunity>{ three };
+    three.AccountId = acc.Id;
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.runFromTrigger();
+
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.SumAmountRollupSummary__c });
+    Assert.isNotNull(acc.SumAmountRollupSummary__c, 'Rollup field should have calculated');
+    System.assertEquals(acc.SumAmountRollupSummary__c.setScale(2), acc.AnnualRevenue?.setScale(2), 'Multi-currency SUM rollup not calculated correctly!');
+  }
+
   private static Boolean hasCurrencyInfo(String currencyCode) {
     return RollupCurrencyInfo.getCurrencyInfo(currencyCode).IsoCode != null;
   }

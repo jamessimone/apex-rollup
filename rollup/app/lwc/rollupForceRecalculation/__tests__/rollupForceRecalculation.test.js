@@ -234,6 +234,9 @@ describe('Rollup force recalc tests', () => {
       })
     );
     await flushPromises('change handler');
+    const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
+    datatable.dispatchEvent(new CustomEvent('sort', { detail: { fieldName: 'RollupFieldOnCalcItem__c', sortDirection: 'asc' } }));
+    await flushPromises('sort handler');
 
     const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
     submitButton.click();
@@ -360,12 +363,12 @@ describe('Rollup force recalc tests', () => {
     await flushPromises('flush to get the datatable to render post selection');
     // flush to get the datatable to render post selection
     const datatable = fullRecalc.shadowRoot.querySelector('lightning-datatable[data-id="datatable"]');
-    datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: mockMetadata.Contact } }));
+    datatable.dispatchEvent(new CustomEvent('rowselection', { detail: { selectedRows: [mockMetadata.Contact[0]] } }));
     const submitButton = fullRecalc.shadowRoot.querySelector('lightning-button');
     submitButton.click();
     await flushPromises('apex controller call');
 
-    const expectedList = mockMetadata.Contact;
+    const expectedList = [mockMetadata.Contact[0]];
     delete expectedList[0]['CalcItem__r.QualifiedApiName'];
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(expectedList),

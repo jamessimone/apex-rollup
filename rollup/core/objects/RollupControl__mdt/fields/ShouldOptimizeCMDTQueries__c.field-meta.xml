@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldOptimizeCMDTQueries__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When enabled, uses fast text fields instead of slower FieldDefinition relationships for CMDT queries (up to 20x performance improvement)</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Should Optimize CMDT Queries</label>
+    <type>Checkbox</type>
+</CustomField>

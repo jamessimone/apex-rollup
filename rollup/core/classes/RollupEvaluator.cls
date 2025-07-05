@@ -595,7 +595,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
 
       String fieldNameToUse = isDateFunction ? getDateFunctionField(this.fieldName) : this.fieldName;
       Object originalValue = this.getFieldValue(item, fieldNameToUse, this.fieldNameToTokens);
-      String storedValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
+      String recordValue = originalValue == null ? (String) originalValue : String.valueOf(originalValue);
 
       if (hasOnlyOneValue && isDateFunction) {
         isEqual = RollupDateLiteral.getFunction(this.fieldName, this.originalValues[0]).matches(originalValue, this.criteria);
@@ -610,7 +610,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
               Decimal decimalVal = Decimal.valueOf(stringVal);
               if (decimalVal == originalValue) {
                 originalValue = decimalVal;
-                storedValue = stringVal;
+                recordValue = stringVal;
                 break;
               }
             } catch (Exception ex) {
@@ -628,10 +628,10 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
               criteria = '!=';
             }
             if (this.hasValues == false) {
-              isEqual = String.isBlank(storedValue);
+              isEqual = String.isBlank(recordValue);
             } else {
               for (String value : this.values) {
-                isEqual = value?.equalsIgnoreCase(storedValue) == true || value == null && storedValue == null;
+                isEqual = value?.equalsIgnoreCase(recordValue) == true || value == null && recordValue == null;
                 if (isEqual) {
                   break;
                 }
@@ -641,24 +641,29 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
           }
           when 'like', 'not like' {
             isEqual = false;
-            if (storedValue == null) {
+            if (recordValue == null) {
               return false;
             }
-            storedValue = storedValue.toLowerCase();
-            String val = this.values[0].toLowerCase();
+            recordValue = recordValue.toLowerCase();
+            String evalValue = this.values[0].toLowerCase();
 
-            if (val.contains('%')) {
+            if (evalValue.contains('%')) {
               // % as a wildcard can be read as either:
               // "any character till the next match sequence, or no character till the next match"
-              isEqual = storedValue.replaceAll(val.replace('%', '(.+|)'), '') == '';
+              String replaced = recordValue.replaceAll(evalValue.replace('%', '(.+|)'), '');
+              String evaluationWithoutWildcard = evalValue.replace('%', '');
+              isEqual =
+                replaced == '' ||
+                evalValue.endsWith('%') && recordValue.startsWith(evaluationWithoutWildcard) ||
+                evalValue.startsWith('%') && recordValue.endsWith(evaluationWithoutWildcard);
             } else {
-              isEqual = storedValue.equals(val);
+              isEqual = recordValue.equals(evalValue);
             }
 
             isEqual = criteria == 'like' ? isEqual : isEqual == false;
           }
           when '>', '>=', '<', '<=' {
-            if (storedValue == null) {
+            if (recordValue == null) {
               isEqual = false;
             } else {
               isEqual = this.getGreaterOrLessThan(this.values[0], originalValue);
@@ -669,7 +674,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
             for (String value : this.values) {
               List<String> splitValues = value?.split(';') ?? new List<String>();
               for (String splitValue : splitValues) {
-                isEqual = storedValue?.containsIgnoreCase(splitValue) == true;
+                isEqual = recordValue?.containsIgnoreCase(splitValue) == true;
                 if (isEqual == false) {
                   break;
                 }

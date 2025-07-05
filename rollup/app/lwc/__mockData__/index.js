@@ -15,6 +15,18 @@ const mockRollupMetadata = {
       CalcItem__r: { QualifiedApiName: 'Something we expect to be removed' },
       SplitConcatDelimiterOnCalcItem__c: '',
       RollupOrderBys__r: []
+    },
+    {
+      CalcItem__c: 'Contact',
+      LookupFieldOnCalcItem__c: 'AccountId',
+      LookupFieldOnLookupObject__c: 'Id',
+      LookupObject__c: 'Account',
+      RollupFieldOnCalcItem__c: 'Id',
+      RollupFieldOnLookupObject__c: 'AnnualRevenue',
+      RollupOperation__c: 'COUNT',
+      CalcItem__r: { QualifiedApiName: 'Something we expect to be removed' },
+      SplitConcatDelimiterOnCalcItem__c: '',
+      RollupOrderBys__r: []
     }
   ]
 };

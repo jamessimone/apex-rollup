@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.7.19",
+  "version": "1.7.20",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -34,7 +34,8 @@
   ],
   "scripts": {
     "assign:perms": "sf org assign permset -n See_Rollup_App",
-    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30 && sf data import tree --files ./config/data/CurrencyTypes.json",
+    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30 && npm run install:currency:data",
+    "create:local:org": "npm run create:org && npm run install:nebula:logger",
     "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
     "create:package:namespaced": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; New-Namespaced-Package }\"",
     "create:package:nebula:adapter": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"Apex Rollup - Nebula Logger\"' -ReadmePath \"./plugins/NebulaLogger/README.md\" }\"",
@@ -44,6 +45,8 @@
     "delete:org": "sf org delete scratch --no-prompt --target-org apex-rollup-scratch-org",
     "get:project:json": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Update-SFDX-Project-JSON }\"",
     "husky:pre-commit": "lint-staged",
+    "install:currency:data": "sf data import tree --files ./config/data/CurrencyTypes.json",
+    "install:nebula:logger": "sf package install -p 04t5Y0000015oRNQAY -w 10 -r",
     "lint:verify": "sf code-analyzer run --rule-selector eslint",
     "prepare": "husky",
     "prettier": "prettier",
@@ -51,6 +54,6 @@
     "scan:pmd": "sf code-analyzer run -r pmd:1 -r pmd:2 -r pmd:3 --workspace rollup/core/**/*.cls --workspace plugins --workspace extra-tests",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
-    "test:lwc": "sfdx-lwc-jest --coverage --skipApiVersionCheck"
+    "test:lwc": "sfdx-lwc-jest --coverage"
   }
 }
