@@ -141,6 +141,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     const FAKE_RECORD_ID = '00100000000001';
     const matchingMetadata = metadata[Object.keys(metadata)[0]];
     delete matchingMetadata[0].CalcItem__r;
+    delete matchingMetadata[1].CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
     document.body.appendChild(parentRecalcEl);
@@ -156,8 +157,10 @@ describe('recalc parent rollup from flexipage tests', () => {
 
     // once recalc has finished ...
     // we need to validate that what was sent includes our custom rollup invocation point
-    matchingMetadata[0].CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
-    matchingMetadata[0].RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
+    matchingMetadata.forEach(meta => {
+      meta.CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
+      meta.RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
+    });
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(matchingMetadata),
@@ -187,7 +190,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     matchingMetadata[0].RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
-      serializedMetadata: JSON.stringify(matchingMetadata),
+      serializedMetadata: JSON.stringify([matchingMetadata[0]]),
       invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
     });
   });
@@ -211,6 +214,7 @@ describe('recalc parent rollup from flexipage tests', () => {
 
     const FAKE_RECORD_ID = '00100000000001';
     const matchingMetadata = namespaceMeta[Object.keys(metadata)[0]];
+
     delete matchingMetadata[0].please__CalcItem__r;
     parentRecalcEl.objectApiName = matchingMetadata[0].please__LookupObject__c;
     parentRecalcEl.recordId = FAKE_RECORD_ID;
@@ -224,7 +228,7 @@ describe('recalc parent rollup from flexipage tests', () => {
     matchingMetadata[0].please__RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
     expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
-      serializedMetadata: JSON.stringify(matchingMetadata),
+      serializedMetadata: JSON.stringify([matchingMetadata[0]]),
       invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
     });
   });

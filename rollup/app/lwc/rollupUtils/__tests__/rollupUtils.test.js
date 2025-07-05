@@ -16,6 +16,7 @@ describe('utils tests', () => {
     const returnedMetadata = await getRollupMetadata();
 
     delete mockMetadata.Contact[0].CalcItem__r;
+    delete mockMetadata.Contact[1].CalcItem__r;
     expect(returnedMetadata).toEqual(mockMetadata);
   });
 
