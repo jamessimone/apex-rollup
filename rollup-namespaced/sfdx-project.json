@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes issue with invalid field names false positive errors when using rollups started from parent in conjunction with Rollup__mdt-based Flow rollups",
-            "versionNumber": "1.2.17.0",
+            "versionName": "Fixes issue with where clauses that end with colon-delimited date literals",
+            "versionNumber": "1.2.18.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -34,6 +34,7 @@
         "apex-rollup-namespaced@1.2.14": "04tKf000000sy43IAA",
         "apex-rollup-namespaced@1.2.15": "04tKf000000sy4DIAQ",
         "apex-rollup-namespaced@1.2.16": "04tKf000000sy4cIAA",
-        "apex-rollup-namespaced@1.2.17": "04tKf000000sy9iIAA"
+        "apex-rollup-namespaced@1.2.17": "04tKf000000sy9iIAA",
+        "apex-rollup-namespaced@1.2.18": "04tKf000000syACIAY"
     }
 }
