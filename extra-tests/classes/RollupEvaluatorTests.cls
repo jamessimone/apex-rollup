@@ -1299,6 +1299,28 @@ private class RollupEvaluatorTests {
     System.assertEquals(true, eval.matches(new ContactPointConsent(Name = '0-Current')));
   }
 
+  @IsTest
+  static void whereClauseThatEndsWithColonDelimitedDateLiteralShouldWorkSpaces() {
+    String whereClause = 'ActivityDate >= TODAY AND ActivityDate <= NEXT_N_DAYS: 30';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
+
+    System.assertEquals(true, eval.matches(new Task(ActivityDate = System.today())));
+    System.assertEquals(true, eval.matches(new Task(ActivityDate = System.today().addDays(30))));
+    System.assertEquals(false, eval.matches(new Task(ActivityDate = System.today().addDays(31))));
+  }
+
+  @IsTest
+  static void whereClauseThatEndsWithColonDelimitedDateLiteralShouldWorkNoSpaces() {
+    String whereClause = 'ActivityDate >= TODAY AND ActivityDate <= NEXT_N_DAYS:30';
+
+    RollupEvaluator.WhereFieldEvaluator eval = new RollupEvaluator.WhereFieldEvaluator(whereClause, Task.SObjectType);
+
+    System.assertEquals(true, eval.matches(new Task(ActivityDate = System.today())));
+    System.assertEquals(true, eval.matches(new Task(ActivityDate = System.today().addDays(30))));
+    System.assertEquals(false, eval.matches(new Task(ActivityDate = System.today().addDays(31))));
+  }
+
   private static String getSoqlCompliantDatetime(Datetime dt) {
     return dt.format('yyyy-MM-dd\'T\'HH:mm:ssZ');
   }

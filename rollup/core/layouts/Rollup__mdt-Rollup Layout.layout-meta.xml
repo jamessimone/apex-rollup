@@ -196,6 +196,10 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>UltimateParentLookupText__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>ConcatDelimiter__c</field>
             </layoutItems>
             <layoutItems>
