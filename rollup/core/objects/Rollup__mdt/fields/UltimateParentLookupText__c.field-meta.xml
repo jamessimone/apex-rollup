@@ -3,7 +3,7 @@
     <fullName>UltimateParentLookupText__c</fullName>
     <description>Text alternative for Ultimate Parent Lookup field for optimized CMDT queries</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>Text alternative for Ultimate Parent Lookup field for optimized CMDT queries. Only this OR the lookup field should be set</inlineHelpText>
     <label>Ultimate Parent Lookup (Text)</label>
     <length>255</length>

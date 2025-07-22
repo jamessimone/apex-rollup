@@ -280,6 +280,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (this.rollups.isEmpty() == false || this instanceof RollupFullRecalcProcessor) {
         rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
       }
+      if (rollupProcessId == 'no-op') {
+        logMessage = 'No matching rollups to process';
+      }
     }
     if (logMessage != null) {
       this.logger.log(logMessage, System.LoggingLevel.INFO);
