@@ -69,12 +69,12 @@
             "package": "Apex Rollup - Extra Code Coverage",
             "versionDescription": "This plugin adds code coverage for Apex Rollup if you need additional code coverage for the base package",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.26.0",
+            "versionNumber": "0.0.27.0",
             "default": false,
             "scopeProfiles": true,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.7.13"
+                    "package": "apex-rollup@1.7.22"
                 }
             ]
         },
@@ -91,9 +91,8 @@
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",
         "Apex Rollup - Custom Logger@0.0.12-0": "04t6g000008SjqIAAS",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
-        "Apex Rollup - Extra Code Coverage@0.0.24": "04t6g000008ObgCAAS",
-        "Apex Rollup - Extra Code Coverage@0.0.25": "04t6g000008OfSiAAK",
         "Apex Rollup - Extra Code Coverage@0.0.26": "04tKf000000sxvyIAA",
+        "Apex Rollup - Extra Code Coverage@0.0.27": "04tKf000000syAMIAY",
         "Apex Rollup - Nebula Logger": "0Ho6g000000Gn8PCAS",
         "Apex Rollup - Nebula Logger@0.0.7-0": "04t6g000008b0O7AAI",
         "Apex Rollup - Nebula Logger@0.0.8-0": "04t6g000007zM6tAAE",
@@ -103,12 +102,10 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.15": "04tKf000000sy3ZIAQ",
-        "apex-rollup@1.7.16": "04tKf000000sy3oIAA",
-        "apex-rollup@1.7.17": "04tKf000000sy3yIAA",
         "apex-rollup@1.7.18": "04tKf000000sy48IAA",
         "apex-rollup@1.7.19": "04tKf000000sy4SIAQ",
         "apex-rollup@1.7.20": "04tKf000000sy9dIAA",
-        "apex-rollup@1.7.21": "04tKf000000syA7IAI"
+        "apex-rollup@1.7.21": "04tKf000000syA7IAI",
+        "apex-rollup@1.7.22": "04tKf000000syAHIAY"
     }
 }
