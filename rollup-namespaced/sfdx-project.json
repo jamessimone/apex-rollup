@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes issue with where clauses that end with colon-delimited date literals",
-            "versionNumber": "1.2.18.0",
+            "versionName": "Trims down RollupRepository query and adds additional logging for no-op scenarios and finalizer start/finish",
+            "versionNumber": "1.2.19.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -35,6 +35,7 @@
         "apex-rollup-namespaced@1.2.15": "04tKf000000sy4DIAQ",
         "apex-rollup-namespaced@1.2.16": "04tKf000000sy4cIAA",
         "apex-rollup-namespaced@1.2.17": "04tKf000000sy9iIAA",
-        "apex-rollup-namespaced@1.2.18": "04tKf000000syACIAY"
+        "apex-rollup-namespaced@1.2.18": "04tKf000000syACIAY",
+        "apex-rollup-namespaced@1.2.19": "04tKf000000syAWIAY"
     }
 }
