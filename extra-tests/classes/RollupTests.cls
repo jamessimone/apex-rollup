@@ -3082,7 +3082,7 @@ private class RollupTests {
       )
       .runCalc();
 
-    Assert.areEqual('no-op', rollupResponse);
+    Assert.areEqual('No matching rollups to process', rollupResponse);
   }
 
   @IsTest

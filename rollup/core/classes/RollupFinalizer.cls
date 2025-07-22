@@ -37,6 +37,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
         this.recurseThroughConductors();
       }
     }
+    RollupLogger.Instance.log('finalizer finished', System.LoggingLevel.INFO);
   }
 
   public void addCaboose(RollupAsyncProcessor caboose) {

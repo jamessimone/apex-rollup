@@ -98,7 +98,6 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       '(SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r)',
       'RollupGrouping__r.Id',
       'RollupGrouping__r.RollupOperation__c',
-      Rollup__mdt.CalcItem__c.toString(),
       Rollup__mdt.CalcItemText__c.toString(),
       Rollup__mdt.CalcItemWhereClause__c.toString(),
       Rollup__mdt.ChangedFieldsOnCalcItem__c.toString(),
@@ -117,17 +116,13 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       Rollup__mdt.IsRollupStartedFromParent__c.toString(),
       Rollup__mdt.IsTableFormatted__c.toString(),
       Rollup__mdt.LimitAmount__c.toString(),
-      Rollup__mdt.LookupFieldOnCalcItem__c.toString(),
       Rollup__mdt.LookupFieldOnCalcItemText__c.toString(),
-      Rollup__mdt.LookupFieldOnLookupObject__c.toString(),
       Rollup__mdt.LookupFieldOnLookupObjectText__c.toString(),
-      Rollup__mdt.LookupObject__c.toString(),
       Rollup__mdt.LookupObjectText__c.toString(),
       Rollup__mdt.MasterLabel.toString(),
       Rollup__mdt.OneToManyGrandparentFields__c.toString(),
       Rollup__mdt.OrderByFirstLast__c.toString(),
       Rollup__mdt.RollupControl__c.toString(),
-      Rollup__mdt.RollupFieldOnCalcItem__c.toString(),
       Rollup__mdt.RollupFieldOnCalcItemText__c.toString(),
       Rollup__mdt.RollupFieldOnLookupObject__c.toString(),
       Rollup__mdt.RollupFieldOnLookupObjectText__c.toString(),
@@ -136,18 +131,17 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       Rollup__mdt.SharingMode__c.toString(),
       Rollup__mdt.ShouldRunWithoutCustomSettingEnabled__c.toString(),
       Rollup__mdt.SplitConcatDelimiterOnCalcItem__c.toString(),
-      Rollup__mdt.UltimateParentLookup__c.toString(),
       Rollup__mdt.UltimateParentLookupText__c.toString()
     };
 
     if (Rollup.getDefaultControl()?.ShouldOptimizeCMDTQueries__c != true) {
       selectFields.addAll(
         new List<String>{
-          'LookupObject__r.QualifiedApiName',
           'CalcItem__r.QualifiedApiName',
-          'RollupFieldOnCalcItem__r.QualifiedApiName',
           'LookupFieldOnCalcItem__r.QualifiedApiName',
           'LookupFieldOnLookupObject__r.QualifiedApiName',
+          'LookupObject__r.QualifiedApiName',
+          'RollupFieldOnCalcItem__r.QualifiedApiName',
           'RollupFieldOnLookupObject__r.QualifiedApiName',
           'UltimateParentLookup__r.QualifiedApiName'
         }
@@ -162,9 +156,9 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     // do the transforms for standard query
     for (Rollup__mdt meta : matchingMetadata) {
       meta.CalcItem__c = meta.CalcItemText__c ?? meta.CalcItem__r.QualifiedApiName;
-      meta.LookupObject__c = meta.LookupObjectText__c ?? meta.LookupObject__r.QualifiedApiName;
       meta.LookupFieldOnCalcItem__c = meta.LookupFieldOnCalcItemText__c ?? meta.LookupFieldOnCalcItem__r.QualifiedApiName;
       meta.LookupFieldOnLookupObject__c = meta.LookupFieldOnLookupObjectText__c ?? meta.LookupFieldOnLookupObject__r.QualifiedApiName;
+      meta.LookupObject__c = meta.LookupObjectText__c ?? meta.LookupObject__r.QualifiedApiName;
       meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItemText__c ?? meta.RollupFieldOnCalcItem__r.QualifiedApiName;
       meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObjectText__c ?? meta.RollupFieldOnLookupObject__r.QualifiedApiName;
       meta.UltimateParentLookup__c = meta.UltimateParentLookupText__c ?? meta.UltimateParentLookup__r.QualifiedApiName;
