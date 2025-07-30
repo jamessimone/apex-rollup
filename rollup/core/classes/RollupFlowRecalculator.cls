@@ -1,6 +1,6 @@
-public without sharing class RollupFlowRecalculator {
+global without sharing class RollupFlowRecalculator {
   @InvocableMethod(category='Rollups' label='Full Recalc Comma-Separated Parent API Names')
-  public static List<Rollup.FlowOutput> performFullRecalcRollups(List<RollupFlowFullRecalcDispatcher.FlowInput> inputs) {
+  global static List<Rollup.FlowOutput> performFullRecalcRollups(List<RollupFlowFullRecalcDispatcher.FlowInput> inputs) {
     return new RollupFlowFullRecalcDispatcher().process(inputs, new ParentNamePreprocessor());
   }
 
