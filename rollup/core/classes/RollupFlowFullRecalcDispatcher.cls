@@ -14,7 +14,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
   }
 
   @InvocableMethod(category='Rollups' label='Full Recalc Comma-Separated Rollup DeveloperNames')
-  public static List<Rollup.FlowOutput> performFullRecalcRollups(List<FlowInput> inputs) {
+  global static List<Rollup.FlowOutput> performFullRecalcRollups(List<FlowInput> inputs) {
     return new RollupFlowFullRecalcDispatcher().process(inputs, new DeveloperNamePreprocessor());
   }
 
