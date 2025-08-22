@@ -186,6 +186,7 @@ public without sharing class RollupRelationshipFieldFinder {
     }
   }
 
+  @SuppressWarnings('PMD.AvoidBooleanMethodParameters')
   public RollupRelationshipFieldFinder setIsFullRecalc(Boolean isFullRecalc) {
     this.isFullRecalc = isFullRecalc;
     return this;

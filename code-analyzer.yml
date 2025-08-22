@@ -1126,7 +1126,7 @@ engines:
     # If null and auto_discover_eslint_config is true, then Code Analyzer will attempt to discover/apply it automatically.
     # Currently only legacy ESLInt config files are supported.
     # See https://eslint.org/docs/v8.x/use/configure/configuration-files to learn more.
-    eslint_config_file: '.eslintrc.json'
+    eslint_config_file: 'eslint.config.mjs'
 
     # Your project's ".eslintignore" file. May be an absolute path or a path relative to the config_root.
     # If null and auto_discover_eslint_config is true, then Code Analyzer will attempt to discover/apply it automatically.

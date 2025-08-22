@@ -19,6 +19,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
   }
 
   public List<Rollup.FlowOutput> process(List<FlowInput> inputs, FlowFullRecalcPreprocessor preprocessor) {
+    RollupLogger.Instance.log('Full recalc flow started with inputs', inputs, System.LoggingLevel.INFO);
     Set<String> targetNames = new Set<String>();
     Set<String> potentialParentIds = new Set<String>();
     for (FlowInput input : inputs) {

@@ -146,7 +146,7 @@ public without sharing abstract class RollupDateLiteral {
     return Datetime.newInstance(relativeDate, relativeTime);
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   private static FiscalInfo getFiscalInfo() {
     FiscalInfo fiscalInfo = new FiscalInfo();
     // using DateLiterals **in** RollupDateLiteral? Is this irony?

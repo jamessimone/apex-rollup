@@ -43,6 +43,7 @@ public without sharing class RollupLimits {
     public final Boolean hasExceededDMLRowLimit;
     public final Boolean hasExceededCPUTimeLimit;
 
+    @SuppressWarnings('PMD.AvoidBooleanMethodParameters')
     public Tester(RollupControl__mdt control, Boolean isRunningAsync) {
       this.control = control;
       this.isRunningAsync = isRunningAsync;

@@ -115,7 +115,7 @@ global without sharing virtual class RollupLogger implements ILogger {
     return appended;
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   private static ILogger getRollupLogger() {
     List<RollupPlugin__mdt> plugins = PLUGIN.getInstances();
     for (Integer index = plugins.size() - 1; index >= 0; index--) {

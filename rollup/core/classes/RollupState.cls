@@ -187,7 +187,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     return System.enqueueJob(this);
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   public void execute(System.QueueableContext qc) {
     System.attachFinalizer(this);
     List<RollupState__c> matchingState = [
@@ -205,7 +205,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   private List<RollupState__c> loadOrRetrieveCachedState(String jobId, Set<String> relatedRecordKeys) {
     String cacheKey = String.join(relatedRecordKeys, '');
     List<RollupState__c> states = CACHED_STATES.get(cacheKey);
@@ -249,7 +249,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     return states;
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation, PMD.AvoidDeeplyNestedIfStmts')
+  @SuppressWarnings('PMD.ApexCRUDViolation,PMD.AvoidDeeplyNestedIfStmts')
   private void populateRelatedRecordStates(String jobId) {
     RollupState__c currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
     List<RollupState__c> statesToInsert = new List<RollupState__c>{ currentStateToInsert };

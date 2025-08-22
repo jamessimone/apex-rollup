@@ -597,6 +597,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return batch(processors, localInvokePoint);
   }
 
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
     String jobStatus = [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
