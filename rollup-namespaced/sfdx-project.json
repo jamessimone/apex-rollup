@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Updates Flow full recalc actions to global visibility",
-            "versionNumber": "1.2.20.0",
+            "versionName": "Restores ability to schedule rollups with a query starting from a parent object",
+            "versionNumber": "1.2.21.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -37,6 +37,7 @@
         "apex-rollup-namespaced@1.2.17": "04tKf000000sy9iIAA",
         "apex-rollup-namespaced@1.2.18": "04tKf000000syACIAY",
         "apex-rollup-namespaced@1.2.19": "04tKf000000syAWIAY",
-        "apex-rollup-namespaced@1.2.20": "04tKf000000syAlIAI"
+        "apex-rollup-namespaced@1.2.20": "04tKf000000syAlIAI",
+        "apex-rollup-namespaced@1.2.21": "04tKf000000syBZIAY"
     }
 }
