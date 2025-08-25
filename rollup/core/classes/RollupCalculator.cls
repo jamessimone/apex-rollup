@@ -1,4 +1,6 @@
-@SuppressWarnings('PMD.EmptyStatementBlock,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
+@SuppressWarnings(
+  'PMD.AvoidBooleanMethodParameters,PMD.EmptyStatementBlock,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields'
+)
 public without sharing abstract class RollupCalculator {
   private Boolean isCDCUpdate = false;
   private Boolean isFirstTimeThrough = true;

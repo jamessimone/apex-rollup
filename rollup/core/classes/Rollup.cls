@@ -597,6 +597,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return batch(processors, localInvokePoint);
   }
 
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
     String jobStatus = [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
@@ -2729,7 +2730,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
       Op rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
-      if (rollupMetadata.RollupGrouping__r.Id != null && rollupMetadata.CalcItem__c != null && rollupMetadata.CalcItem__c != sObjectType.toString()) {
+      if (
+        rollupMetadata.RollupGrouping__r.Id != null && rollupMetadata.CalcItem__c != null && rollupMetadata.CalcItem__c != sObjectType.toString() ||
+        rollupMetadata.IsRollupStartedFromParent__c && String.valueOf(sObjectType) == rollupMetadata.LookupObject__c
+      ) {
         Schema.DescribeSObjectResult childDescribe = init.getDescribeFromName(rollupMetadata.CalcItem__c);
         sObjectType = childDescribe.getSObjectType();
         calcItemFields = childDescribe.fields.getMap();

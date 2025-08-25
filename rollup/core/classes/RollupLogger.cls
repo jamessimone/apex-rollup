@@ -2,7 +2,7 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.7.23';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.7.24';
   private static final System.LoggingLevel FALLBACK_LOGGING_LEVEL = System.LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
@@ -115,7 +115,7 @@ global without sharing virtual class RollupLogger implements ILogger {
     return appended;
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   private static ILogger getRollupLogger() {
     List<RollupPlugin__mdt> plugins = PLUGIN.getInstances();
     for (Integer index = plugins.size() - 1; index >= 0; index--) {

@@ -270,7 +270,7 @@ global without sharing virtual class RollupSObjectUpdater {
   }
 
   private without sharing class DefaultUpdater implements IUpdater {
-    @SuppressWarnings('PMD.ApexCrudViolation')
+    @SuppressWarnings('PMD.ApexCRUDViolation')
     public void performUpdate(List<SObject> recordsToUpdate, Database.DMLOptions options) {
       List<Database.SaveResult> results = Database.update(recordsToUpdate, options);
       for (Integer index = 0; index < results.size(); index++) {
@@ -287,7 +287,7 @@ global without sharing virtual class RollupSObjectUpdater {
     }
   }
 
-  @SuppressWarnings('PMD.ApexCrudViolation')
+  @SuppressWarnings('PMD.ApexCRUDViolation')
   global without sharing class PreAndPostUpdater implements IPrePostUpdater {
     public void preUpdate(List<SObject> records, Database.DMLOptions options) {
       RollupSettings__c settings = RollupSettings__c.getInstance();

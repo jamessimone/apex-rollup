@@ -9,7 +9,7 @@ public without sharing abstract class RollupEvaluator implements Rollup.Evaluato
   private static String stubRequestId;
 
   private static final Map<String, WhereFieldEvaluator> CACHED_WHERE_EVALS = new Map<String, WhereFieldEvaluator>();
-  @SuppressWarnings('PMd.FieldNamingConventions')
+  @SuppressWarnings('PMD.FieldNamingConventions')
   private static Map<String, Boolean> CACHED_WHERE_DECISIONS = new Map<String, Boolean>();
 
   @SuppressWarnings('PMD.PropertyNamingConventions')

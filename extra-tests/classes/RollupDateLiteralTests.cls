@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.NcssTypeCount, PMD.ApexUnitTestClassShouldHaveAsserts')
+@SuppressWarnings('PMD.NcssTypeCount,PMD.ApexUnitTestClassShouldHaveAsserts')
 @IsTest
 private class RollupDateLiteralTests {
   private static final Integer HOUR_IN_DAY = 8;
