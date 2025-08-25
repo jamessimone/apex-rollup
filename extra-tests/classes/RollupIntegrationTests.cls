@@ -1992,6 +1992,29 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   }
 
   @IsTest
+  static void scheduleShouldSupportRollupFromParent() {
+    String goodQuery = 'SELECT Id FROM Account';
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Email',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        CalcItem__c = 'Contact',
+        IsRollupStartedFromParent__c = true,
+        Label = 'Gets printed out in error message if this fails'
+      )
+    };
+
+    String jobId = Rollup.schedule(goodQuery, '0 0 0 * * ?', goodQuery, 'Contact', null);
+
+    Assert.isNotNull(jobId);
+  }
+
+  @IsTest
   static void usesFullBatchRecalculatorForLargerQueries() {
     List<Account> accounts = [SELECT Id FROM Account];
     RollupAsyncProcessor.stubParentRecords = accounts;
