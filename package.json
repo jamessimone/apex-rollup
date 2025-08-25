@@ -50,7 +50,8 @@
     "lint:verify": "sf code-analyzer run --rule-selector eslint --workspace rollup",
     "prepare": "husky",
     "prettier": "prettier",
-    "scan": "sf code-analyzer run -r pmd:ApexRollupRules -r pmd:1 -r pmd:2 -r pmd:3 -r eslint --workspace rollup/**/*.cls --workspace plugins --workspace extra-tests",
+    "scan": "npm run lint:verify && npm run scan:pmd",
+    "scan:pmd": "sf code-analyzer run -r pmd:ApexRollupRules -r pmd:1 -r pmd:2 -r pmd:3 --workspace rollup/**/*.cls --workspace plugins --workspace extra-tests",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",
     "test:lwc": "sfdx-lwc-jest --coverage"
