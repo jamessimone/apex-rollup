@@ -399,7 +399,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  public without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
+  global without sharing virtual class QueueableProcessor extends RollupAsyncProcessor implements System.Queueable {
     protected QueueableProcessor(InvocationPoint rollupInvokePoint) {
       super(rollupInvokePoint);
     }

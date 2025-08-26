@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Restores ability to schedule rollups with a query starting from a parent object",
-            "versionNumber": "1.7.24.0",
+            "versionName": "Fixes managed packaging known issue a028c00000qQ7V6AAK",
+            "versionNumber": "1.7.25.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.7.21": "04tKf000000syA7IAI",
         "apex-rollup@1.7.22": "04tKf000000syARIAY",
         "apex-rollup@1.7.23": "04tKf000000syAgIAI",
-        "apex-rollup@1.7.24": "04tKf000000syBUIAY"
+        "apex-rollup@1.7.24": "04tKf000000syBUIAY",
+        "apex-rollup@1.7.25": "04tKf000000syBeIAI"
     }
 }
