@@ -72,9 +72,7 @@ jobs:
           java-version: '17'
 
       - name: Install & run SFDX Scanner
-        run: |
-          npx sf plugins install code-analyzer
-          npm run scan
+        run: npm run scan
 
       # Authenticate using JWT flow
       - name: 'Auth to dev hub'
@@ -119,7 +117,9 @@ jobs:
       - name: 'Package & Promote'
         shell: pwsh
         if: ${{ env.SHOULD_CREATE_AND_PROMOTE == '1' && github.actor == github.event.repository.owner.login && (github.base_ref == 'main' || github.ref == 'refs/heads/main') }}
-        run: '. ./scripts/build-and-promote-package.ps1'
+        run: |
+          echo y | npx sf plugins install @jongpie/sfdx-bummer-plugin
+          . ./scripts/build-and-promote-package.ps1
         env:
           SHOULD_CREATE_AND_PROMOTE: ${{ secrets.SHOULD_CREATE_AND_PROMOTE }}
 

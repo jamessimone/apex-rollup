@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes managed packaging known issue a028c00000qQ7V6AAK",
-            "versionNumber": "1.7.25.0",
+            "versionName": "Updates finalizer code paths to avoid re-queueing more than once during a full recalc",
+            "versionNumber": "1.7.26.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,11 +102,9 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.20": "04tKf000000sy9dIAA",
-        "apex-rollup@1.7.21": "04tKf000000syA7IAI",
-        "apex-rollup@1.7.22": "04tKf000000syARIAY",
         "apex-rollup@1.7.23": "04tKf000000syAgIAI",
         "apex-rollup@1.7.24": "04tKf000000syBUIAY",
-        "apex-rollup@1.7.25": "04tKf000000syBeIAI"
+        "apex-rollup@1.7.25": "04tKf000000syBeIAI",
+        "apex-rollup@1.7.26": "04tKf000000syC8IAI"
     }
 }
