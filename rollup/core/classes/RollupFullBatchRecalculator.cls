@@ -131,6 +131,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     public override void handleSuccess() {
       if (this.conductor.retriever?.shouldContinue() ?? false) {
         this.conductor.startAsyncWork();
+        this.hasAlreadyStartedConductor = true;
       } else {
         this.conductor.finish();
       }

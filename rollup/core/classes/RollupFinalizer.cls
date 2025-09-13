@@ -1,7 +1,9 @@
 public without sharing virtual class RollupFinalizer implements Finalizer {
   @TestVisible
   private static Boolean wasExceptionLogged = false;
+
   protected final List<RollupAsyncProcessor> cabooses = new List<RollupAsyncProcessor>();
+  protected Boolean hasAlreadyStartedConductor = false;
 
   // Avoids issues with serializing Exceptions in Apex by flattening the finalizer context data structure
   private class FinalizerContextLoggable implements RollupLogger.ToStringObject {
@@ -27,6 +29,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   }
 
   public virtual void execute(FinalizerContext fc) {
+    this.hasAlreadyStartedConductor = false;
     RollupLogger.Instance.log('Beginning finalizer with cabooses: ' + this.cabooses.size(), System.LoggingLevel.INFO);
     switch on fc?.getResult() {
       when UNHANDLED_EXCEPTION {
@@ -58,10 +61,11 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   }
 
   private void recurseThroughConductors() {
-    if (this.cabooses.isEmpty() == false) {
+    if (this.cabooses.isEmpty() == false && this.hasAlreadyStartedConductor == false) {
       RollupAsyncProcessor conductor = this.cabooses.remove(0);
       RollupLogger.Instance.log('Starting up new conductor', conductor, System.LoggingLevel.INFO);
       String potentialProcessId = conductor.runCalc();
+      this.hasAlreadyStartedConductor = potentialProcessId != conductor.getNoProcessId();
       if (potentialProcessId == conductor.getNoProcessId() && this.cabooses.isEmpty() == false) {
         this.recurseThroughConductors();
       }
