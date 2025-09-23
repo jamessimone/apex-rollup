@@ -77,6 +77,10 @@
                 <behavior>Edit</behavior>
                 <field>MaxRollupRetries__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>ShouldUseJSONSerializationStrategy__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>

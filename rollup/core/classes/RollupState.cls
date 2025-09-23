@@ -12,6 +12,8 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   private static Integer maxBodyLength = 131072;
   @TestVisible
   private static Integer maxRelatedKeysLength = 255;
+  @TestVisible
+  private static SerializationStrategy serializationStrategy = new DataweaveSerializationStrategy();
 
   @SuppressWarnings('PMD.PropertyNamingConventions')
   private static final Map<String, RollupState> KEY_TO_STATE {
@@ -29,6 +31,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       return CACHED_STATES;
     }
     set;
+  }
+
+  public void setSerializationStrategy(SerializationStrategy serializationStrategy) {
+    RollupState.serializationStrategy = serializationStrategy;
   }
 
   public RollupState getState(String key, Rollup__mdt meta, Type initializingType) {
@@ -64,6 +70,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     throw new IllegalArgumentException('Should not make it here');
   }
 
+  public virtual void setup(Map<String, Object> untypedState) {
+    throw new System.SerializationException('Should not make it here');
+  }
+
   public class AverageInfo extends RollupState {
     public Decimal denominator = 0;
     public Decimal numerator = 0;
@@ -89,6 +99,14 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'typeName' => AverageInfo.class.getName()
       };
     }
+
+    public override void setup(Map<String, Object> untypedState) {
+      this.denominator = (Decimal) untypedState.get('denominator');
+      this.distinctNumerators.addAll((List<Object>) untypedState.get('distinctNumerators'));
+      this.key = (String) untypedState.get('key');
+      this.keyLength = (Integer) untypedState.get('keyLength');
+      this.numerator = (Decimal) untypedState.get('numerator');
+    }
   }
 
   public class MostInfo extends GenericInfo {
@@ -112,6 +130,11 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
         'value' => this.value
       };
     }
+
+    public override void setup(Map<String, Object> untypedState) {
+      super.setup(untypedState);
+      this.largestPointCounter = (Integer) untypedState.get('largestPointCounter');
+    }
   }
 
   public class SObjectInfo extends RollupState {
@@ -127,12 +150,20 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'item' => this.item.getPopulatedFieldsAsMap(),
+        'item' => RollupState.serializationStrategy.getType() == JSONSerializationStrategy.class
+          ? (Object) this.item
+          : (Object) this.item.getPopulatedFieldsAsMap(),
         'itemType' => '' + this.item.getSObjectType(),
         'key' => this.key,
         'keyLength' => this.keyLength,
         'typeName' => SObjectInfo.class.getName()
       };
+    }
+
+    public override void setup(Map<String, Object> untypedState) {
+      this.item = (SObject) JSON.deserialize(JSON.serialize(untypedState.get('item')), SObject.class);
+      this.key = (String) untypedState.get('key');
+      this.keyLength = this.key.length();
     }
   }
 
@@ -157,6 +188,12 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     public virtual override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{ 'key' => this.key, 'keyLength' => this.keyLength, 'typeName' => GenericInfo.class.getName(), 'value' => this.value };
     }
+
+    public virtual override void setup(Map<String, Object> untypedState) {
+      this.value = untypedState.get('value');
+      this.key = (String) untypedState.get('key');
+      this.keyLength = this.key.length();
+    }
   }
 
   public void loadState(String jobId, Set<String> relatedRecordKeys) {
@@ -164,9 +201,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
     for (RollupState__c state : matchingState) {
       if (this.statefulPreviouslyRetrievedStateIds.contains(state.Id) == false && state.Body0__c != null) {
-        List<Object> localUncastStates = (List<Object>) new DataWeaveScriptResource.jsonToRollupState()
-          .execute(new Map<String, Object>{ 'records' => '[' + state.Body0__c + ']' })
-          .getValue();
+        List<Object> localUncastStates = RollupState.serializationStrategy.deserializeToState(state.Body0__c);
         for (Object uncastState : localUncastStates) {
           RollupState castState = (RollupState) uncastState;
           KEY_TO_STATE.put(castState.key, castState);
@@ -409,5 +444,43 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
   private static String getMetadataKey(Rollup__mdt meta) {
     return meta.DeveloperName ?? (meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c + meta.LookupFieldOnLookupObject__c);
+  }
+
+  public abstract class SerializationStrategy {
+    public abstract System.Type getType();
+
+    public List<Object> deserializeToState(String json) {
+      return this.deserialize('[' + json + ']');
+    }
+
+    protected abstract List<Object> deserialize(String input);
+  }
+
+  public class DataweaveSerializationStrategy extends SerializationStrategy {
+    public override System.Type getType() {
+      return DataweaveSerializationStrategy.class;
+    }
+
+    protected override List<Object> deserialize(String input) {
+      return (List<Object>) new DataWeaveScriptResource.jsonToRollupState().execute(new Map<String, Object>{ 'records' => input }).getValue();
+    }
+  }
+
+  public class JSONSerializationStrategy extends SerializationStrategy {
+    public override System.Type getType() {
+      return JSONSerializationStrategy.class;
+    }
+
+    protected override List<Object> deserialize(String input) {
+      List<Object> untypedStates = (List<Object>) JSON.deserializeUntyped(input);
+      List<Object> states = new List<Object>();
+      for (Object untypedState : untypedStates) {
+        Map<String, Object> untypedStateMap = (Map<String, Object>) untypedState;
+        RollupState state = (RollupState) Type.forName('' + untypedStateMap.get('typeName')).newInstance();
+        state.setup(untypedStateMap);
+        states.add(state);
+      }
+      return states;
+    }
   }
 }

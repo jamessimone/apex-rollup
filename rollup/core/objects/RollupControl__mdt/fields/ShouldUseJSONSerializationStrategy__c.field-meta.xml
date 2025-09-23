@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ShouldUseJSONSerializationStrategy__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >Dataweave deserialization is used by default, but this flag can be toggled in orgs that cannot support another active Dataweave script or otherwise need to experiment with how Rollup State is retrieved</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText
+  >Dataweave deserialization is used by default, but this flag can be toggled in orgs that cannot support another active Dataweave script or otherwise need to experiment with how Rollup State is retrieved</inlineHelpText>
+    <label>Should Use JSON Serialization Strategy?</label>
+    <type>Checkbox</type>
+</CustomField>

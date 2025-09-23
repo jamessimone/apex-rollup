@@ -26,6 +26,9 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   ) {
     super(RollupQueryBuilder.Current.getAllRowSafeQuery(calcItemType, queryString), invokePoint, rollupMetas, calcItemType, recordIds, postProcessor);
     this.rollupControl.BatchChunkSize__c = this.rollupControl.BatchChunkSize__c ?? DEFAULT_CHUNK_SIZE;
+    if (this.rollupControl.ShouldUseJSONSerializationStrategy__c == true) {
+      this.state.setSerializationStrategy(new RollupState.JSONSerializationStrategy());
+    }
   }
 
   public override RollupState getState() {
