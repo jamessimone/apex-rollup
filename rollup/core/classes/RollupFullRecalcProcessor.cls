@@ -83,6 +83,7 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         conductor.storeUniqueParentFields(meta);
       }
       for (RollupFullRecalcProcessor caboose : this.cabooses) {
+        conductor.finalizer = conductor.finalizer ?? this.finalizer;
         conductor.finalizer.addCaboose(caboose);
       }
       if (this.isBatch()) {
