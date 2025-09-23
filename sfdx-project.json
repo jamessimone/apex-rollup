@@ -6,7 +6,7 @@
             "path": "rollup",
             "scopeProfiles": true,
             "versionName": "Updates finalizer code paths to avoid re-queueing more than once during a full recalc",
-            "versionNumber": "1.7.26.0",
+            "versionNumber": "1.7.27.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -105,6 +105,7 @@
         "apex-rollup@1.7.23": "04tKf000000syAgIAI",
         "apex-rollup@1.7.24": "04tKf000000syBUIAY",
         "apex-rollup@1.7.25": "04tKf000000syBeIAI",
-        "apex-rollup@1.7.26": "04tKf000000syC8IAI"
+        "apex-rollup@1.7.26": "04tKf000000syC8IAI",
+        "apex-rollup@1.7.27": "04tKf000000syCSIAY"
     }
 }
