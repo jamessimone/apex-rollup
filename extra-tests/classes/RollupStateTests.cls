@@ -63,6 +63,61 @@ private class RollupStateTests {
       RollupState.GenericInfo.class
     ));
     Assert.areEqual(info.value, updatedInfo.value);
+    Assert.areEqual(RollupState.DataweaveSerializationStrategy.class, RollupState.serializationStrategy.getType());
+  }
+
+  @IsTest
+  static void usesJSONSerializationStrategy() {
+    RollupState state = new RollupState();
+    state.setSerializationStrategy(new RollupState.JSONSerializationStrategy());
+    Id stubAccountId = RollupTestUtils.createId(Account.SObjectType);
+    RollupState.GenericInfo info = (RollupState.GenericInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'SUM'),
+      RollupState.GenericInfo.class
+    );
+    info.value = 5;
+    RollupState.AverageInfo averageInfo = (RollupState.AverageInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'CONCAT'),
+      RollupState.AverageInfo.class
+    );
+    averageInfo.increment(10);
+    RollupState.SObjectInfo sObjectInfo = (RollupState.SObjectInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'FIRST'),
+      RollupState.SObjectInfo.class
+    );
+    sObjectInfo.setItem(new Account(AnnualRevenue = 1000));
+    String secondStubId = RollupTestUtils.createId(Contact.SObjectType);
+    RollupState.MostInfo mostInfo = (RollupState.MostInfo) state.getState(
+      secondStubId,
+      new Rollup__mdt(RollupOperation__c = 'MOST'),
+      RollupState.MostInfo.class
+    );
+    mostInfo.setValues(5, 'some string');
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    state.commitState(stubJobId);
+
+    state.loadState(stubJobId, new Set<String>{ stubAccountId });
+
+    info = (RollupState.GenericInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'SUM'), RollupState.GenericInfo.class);
+    Assert.areEqual(5, info.value);
+    RollupState.AverageInfo updatedAverageInfo = (RollupState.AverageInfo) state.getState(
+      stubAccountId,
+      new Rollup__mdt(RollupOperation__c = 'CONCAT'),
+      RollupState.AverageInfo.class
+    );
+    Assert.areEqual(averageInfo.distinctNumerators.size(), updatedAverageInfo.distinctNumerators.size());
+    Assert.areEqual(averageInfo.distinctNumerators.contains(10.00), updatedAverageInfo.distinctNumerators.contains(10.00));
+    Assert.areEqual(averageInfo.numerator, updatedAverageInfo.numerator);
+    Assert.areEqual(averageInfo.denominator, updatedAverageInfo.denominator);
+    sObjectInfo = (RollupState.SObjectInfo) state.getState(stubAccountId, new Rollup__mdt(RollupOperation__c = 'FIRST'), RollupState.SObjectInfo.class);
+    Assert.areEqual(1000, sObjectInfo.item?.get('AnnualRevenue'));
+    mostInfo = (RollupState.MostInfo) state.getState(secondStubId, new Rollup__mdt(RollupOperation__c = 'MOST'), RollupState.MostInfo.class);
+    Assert.areEqual(5, mostInfo.largestPointCounter);
+    Assert.areEqual('some string', mostInfo.value);
+    Assert.areEqual(RollupState.JSONSerializationStrategy.class, RollupState.serializationStrategy.getType());
   }
 
   @IsTest

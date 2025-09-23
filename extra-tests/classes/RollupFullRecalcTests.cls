@@ -1951,6 +1951,23 @@ private class RollupFullRecalcTests {
   }
 
   @IsTest
+  static void shouldUseJSONSerializationStrategyWhenEnabled() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldUseJSONSerializationStrategy__c = true);
+
+    RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
+      'SELECT Id, PreferenceRank, ParentId, Name FROM ContactPointAddress ORDER BY ParentId, Name',
+      Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
+      new List<Rollup__mdt>(),
+      ContactPointAddress.SObjectType,
+      new Set<String>(),
+      null
+    );
+    fullRecalc.getState();
+
+    Assert.areEqual(RollupState.JSONSerializationStrategy.class, RollupState.serializationStrategy.getType());
+  }
+
+  @IsTest
   static void shouldFullRecalcWithInWhereClauses() {
     RollupParentResetProcessor.maxQueryRows = 0;
     Account acc = [SELECT Id FROM Account];

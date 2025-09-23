@@ -5,7 +5,7 @@
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
             "versionName": "Updates finalizer code paths to avoid re-queueing more than once during a full recalc",
-            "versionNumber": "1.2.23.0",
+            "versionNumber": "1.2.24.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -40,6 +40,7 @@
         "apex-rollup-namespaced@1.2.20": "04tKf000000syAlIAI",
         "apex-rollup-namespaced@1.2.21": "04tKf000000syBZIAY",
         "apex-rollup-namespaced@1.2.22": "04tKf000000syBjIAI",
-        "apex-rollup-namespaced@1.2.23": "04tKf000000syCDIAY"
+        "apex-rollup-namespaced@1.2.23": "04tKf000000syCDIAY",
+        "apex-rollup-namespaced@1.2.24": "04tKf000000syCXIAY"
     }
 }

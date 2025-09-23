@@ -29,6 +29,9 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
   }
 
   public override RollupState getState() {
+    if (this.rollupControl.ShouldUseJSONSerializationStrategy__c == true) {
+      this.state.setSerializationStrategy(new RollupState.JSONSerializationStrategy());
+    }
     return this.state;
   }
 
