@@ -1954,7 +1954,7 @@ private class RollupFullRecalcTests {
   static void shouldUseJSONSerializationStrategyWhenEnabled() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldUseJSONSerializationStrategy__c = true);
 
-    new RollupFullBatchRecalculator(
+    RollupFullBatchRecalculator fullRecalc = new RollupFullBatchRecalculator(
       'SELECT Id, PreferenceRank, ParentId, Name FROM ContactPointAddress ORDER BY ParentId, Name',
       Rollup.InvocationPoint.FROM_FULL_RECALC_LWC,
       new List<Rollup__mdt>(),
@@ -1962,6 +1962,7 @@ private class RollupFullRecalcTests {
       new Set<String>(),
       null
     );
+    fullRecalc.getState();
 
     Assert.areEqual(RollupState.JSONSerializationStrategy.class, RollupState.serializationStrategy.getType());
   }
