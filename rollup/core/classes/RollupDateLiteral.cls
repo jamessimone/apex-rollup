@@ -149,20 +149,31 @@ public without sharing abstract class RollupDateLiteral {
   @SuppressWarnings('PMD.ApexCRUDViolation')
   private static FiscalInfo getFiscalInfo() {
     FiscalInfo fiscalInfo = new FiscalInfo();
-    // using DateLiterals **in** RollupDateLiteral? Is this irony?
-    List<Period> fiscalPeriods = [
-      SELECT StartDate, EndDate, Type
-      FROM Period
-      WHERE (Type = 'Quarter' AND EndDate = THIS_FISCAL_QUARTER) OR (Type = 'Year' AND EndDate >= THIS_FISCAL_YEAR AND EndDate <= THIS_FISCAL_YEAR)
-    ];
-    for (Period fiscalPeriod : fiscalPeriods) {
-      if (fiscalPeriod.Type == 'Year') {
-        fiscalInfo.FiscalYearStartDate = fiscalPeriod.StartDate;
-        fiscalInfo.FiscalYearEndDate = fiscalPeriod.EndDate;
-      } else if (fiscalPeriod.Type == 'Quarter') {
-        fiscalInfo.CurrentQuarterStartDate = fiscalPeriod.StartDate;
-        fiscalInfo.CurrentQuarterEndDate = fiscalPeriod.EndDate;
+    List<SObject> fiscalPeriods = new List<SObject>();
+    try {
+      fiscalPeriods = Database.query(
+        'SELECT StartDate, EndDate, Type' +
+          '\nFROM Period' +
+          '\nWHERE (Type = \'Quarter\' AND EndDate = THIS_FISCAL_QUARTER) OR (Type = \'Year\' AND EndDate >= THIS_FISCAL_YEAR AND EndDate <= THIS_FISCAL_YEAR)'
+      );
+    } catch (Exception ex) {
+      RollupLogger.Instance.log('Falling back to fiscal defaults due to error performing fiscal info query: ' + ex.getMessage(), System.LoggingLevel.WARN);
+    }
+    for (SObject fiscalPeriod : fiscalPeriods) {
+      String type = (String) fiscalPeriod.get('Type');
+      if (type == 'Year') {
+        fiscalInfo.FiscalYearStartDate = (Date) fiscalPeriod.get('StartDate');
+        fiscalInfo.FiscalYearEndDate = (Date) fiscalPeriod.get('EndDate');
+      } else if (type == 'Quarter') {
+        fiscalInfo.CurrentQuarterStartDate = (Date) fiscalPeriod.get('StartDate');
+        fiscalInfo.CurrentQuarterEndDate = (Date) fiscalPeriod.get('EndDate');
       }
+    }
+    if (fiscalInfo.FiscalYearStartDate == null) {
+      fiscalInfo.FiscalYearStartDate = Date.newInstance(1, 1, System.today().year());
+      fiscalInfo.FiscalYearEndDate = Date.newInstance(12, 31, System.today().year());
+      fiscalInfo.CurrentQuarterStartDate = Date.newInstance(getCurrentQuarterStartMonth(), 1, System.today().year());
+      fiscalInfo.CurrentQuarterEndDate = getNextQuarterStart().addDays(-1);
     }
     return fiscalInfo;
   }
