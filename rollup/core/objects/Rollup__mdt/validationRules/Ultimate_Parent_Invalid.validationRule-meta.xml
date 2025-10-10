@@ -2,16 +2,20 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Ultimate_Parent_Invalid</fullName>
     <active>true</active>
-    <description>You can only use RollUpToUltimateParent__c and UltimateParentLookup__c together</description>
+    <description>You can only use RollUpToUltimateParent__c and UltimateParentLookup(Text)__c together</description>
     <errorConditionFormula>OR(
   AND(
     NOT(RollupToUltimateParent__c),
-    NOT(ISBLANK(UltimateParentLookup__c))
+    OR(
+      NOT(ISBLANK(UltimateParentLookup__c)),
+      NOT(ISBLANK(UltimateParentLookupText__c))
+    )
   ),
   AND(
+    RollupToUltimateParent__c,
     ISBLANK(UltimateParentLookup__c),
-    RollupToUltimateParent__c
+    ISBLANK(UltimateParentLookupText__c)
   )
 )</errorConditionFormula>
-    <errorMessage>You can only use RollUpToUltimateParent__c and UltimateParentLookup__c together!</errorMessage>
+    <errorMessage>You can only use RollUpToUltimateParent__c and UltimateParentLookup(Text)__c together!</errorMessage>
 </ValidationRule>
