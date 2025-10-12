@@ -647,7 +647,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         if (this.childToUnexpectedFullRecalc.containsKey(rollup.calcItemType)) {
           this.childToUnexpectedFullRecalc.get(rollup.calcItemType).addMetadata(rollup.metadata);
         } else {
-          this.logger.log(this.getTypeName() + ': Populating unexpected full recalc for ' + outstandingItemCount + ' items', System.LoggingLevel.INFO);
+          this.forceLogWarning(this.getTypeName() + ': populating unexpected full recalc for ' + outstandingItemCount + ' items', null);
           RollupFullRecalcProcessor fullBatchProcessor = new RollupFullBatchRecalculator(
             query.substringBeforeLast('\nLIMIT'),
             InvocationPoint.FROM_FULL_RECALC_APEX,

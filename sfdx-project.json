@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes an issue reported by internal colleague when orgs do not have all fiscal info set up",
-            "versionNumber": "1.7.28.0",
+            "versionName": "Force log warnings for unexpected full recalcs, and fixes an issue where accessing Ultimate Parent Lookup unexpectedly threw errors",
+            "versionNumber": "1.7.29.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

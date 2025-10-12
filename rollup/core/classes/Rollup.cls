@@ -474,6 +474,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return isFullRecalcOp(getBaseOperationName(op.name()));
   }
 
+  protected void forceLogWarning(String logMessage, Object logObject) {
+    logEvenWhenDisabled(this.rollupControl, logMessage, logObject);
+  }
+
   /**
    * global facing RollupAsyncProcessor calculation section
    * - Trigger operations
@@ -1884,17 +1888,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     RollupLimits.Tester limitTester = new RollupLimits.Tester(control, isContextAsync());
     Boolean hasExceededLimits = limitTester.hasExceededLimits() && isDeferralAllowed;
     if (limitTester.hasExceededLimits() && isDeferralAllowed) {
-      Boolean isLoggingCurrentlyDisabled = control?.IsRollupLoggingEnabled__c == false;
-      if (isLoggingCurrentlyDisabled) {
-        control.IsRollupLoggingEnabled__c = true;
-        RollupLogger.Instance.updateRollupControl(control);
-      }
-      RollupLogger.Instance.log('exceeded limits:', limitTester, System.LoggingLevel.WARN);
-      if (isLoggingCurrentlyDisabled) {
-        RollupLogger.Instance.log('disabling logging again', System.LoggingLevel.INFO);
-        control.isRollupLoggingEnabled__c = false;
-        RollupLogger.Instance.updateRollupControl(control);
-      }
+      logEvenWhenDisabled(control, 'exceeded limits:', limitTester);
     }
     return hasExceededLimits;
   }
@@ -1902,6 +1896,20 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   public static String getBaseOperationName(String fullOpName) {
     Set<String> operationsWithUnderscores = new Set<String>{ Op.COUNT_DISTINCT.name(), Op.CONCAT_DISTINCT.name() };
     return operationsWithUnderscores.contains(fullOpName) == false && fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
+  }
+
+  private static void logEvenWhenDisabled(RollupControl__mdt control, String logMessage, Object logObject) {
+    Boolean isLoggingCurrentlyDisabled = control?.IsRollupLoggingEnabled__c == false;
+    if (isLoggingCurrentlyDisabled) {
+      control.IsRollupLoggingEnabled__c = true;
+      RollupLogger.Instance.updateRollupControl(control);
+    }
+    RollupLogger.Instance.log(logMessage, logObject, System.LoggingLevel.WARN);
+    if (isLoggingCurrentlyDisabled) {
+      RollupLogger.Instance.log('disabling logging again', System.LoggingLevel.INFO);
+      control.isRollupLoggingEnabled__c = false;
+      RollupLogger.Instance.updateRollupControl(control);
+    }
   }
 
   private static Rollup__mdt transformFlowInputToRollupMetadata(FlowInput flowInput, String rollupContext, SObjectType sObjectType) {
