@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.7.28",
+  "version": "1.7.29",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "assign:perms": "sf org assign permset -n See_Rollup_App",
-    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30 && npm run install:currency:data",
+    "create:org": "sf org create scratch --definition-file config/project-scratch-def.json --alias apex-rollup-scratch-org --set-default --duration-days 30 --wait 30 && npm run install:currency:data",
     "create:local:org": "npm run create:org && npm run install:nebula:logger",
     "create:package:rollup": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; Generate -PackageName '\"apex-rollup\"' -ReadmePath \"./README.md\" }\"",
     "create:package:namespaced": "pwsh -Command \"&{ . ./scripts/generatePackage.ps1; New-Namespaced-Package }\"",
