@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Force log warnings for unexpected full recalcs, and fixes an issue where accessing Ultimate Parent Lookup unexpectedly threw errors",
-            "versionNumber": "1.2.26.0",
+            "versionName": "Even better finalizer state tracking for full recalcs with multiple conductors",
+            "versionNumber": "1.2.27.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -43,6 +43,7 @@
         "apex-rollup-namespaced@1.2.23": "04tKf000000syCDIAY",
         "apex-rollup-namespaced@1.2.24": "04tKf000000syCXIAY",
         "apex-rollup-namespaced@1.2.25": "04tKf000000syCrIAI",
-        "apex-rollup-namespaced@1.2.26": "04tKf000000syDGIAY"
+        "apex-rollup-namespaced@1.2.26": "04tKf000000syDGIAY",
+        "apex-rollup-namespaced@1.2.27": "04tKf000000syDkIAI"
     }
 }
