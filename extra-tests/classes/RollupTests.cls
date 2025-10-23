@@ -504,7 +504,8 @@ private class RollupTests {
         RollupOperation__c = 'COUNT',
         CalcItem__c = 'ContactPointAddress',
         FullRecalculationDefaultNumberValue__c = 0,
-        CalcItemWhereClause__c = 'PreferenceRank != ' + cpa.PreferenceRank
+        CalcItemWhereClause__c = 'PreferenceRank != ' + cpa.PreferenceRank,
+        IsFullRecordSet__c = true
       )
     };
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -574,7 +575,8 @@ private class RollupTests {
         RollupOperation__c = 'SUM',
         CalcItem__c = 'ContactPointAddress',
         FullRecalculationDefaultNumberValue__c = 0,
-        CalcItemWhereClause__c = 'PreferenceRank != 100'
+        CalcItemWhereClause__c = 'PreferenceRank != 100',
+        IsFullRecordSet__c = true
       )
     };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -2662,7 +2664,7 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(2, mock.Records.size(), mock.Records);
-    System.assertEquals(0, acc.AnnualRevenue);
+    System.assertEquals(null, acc.AnnualRevenue, 'Account with non-matching child should not have updated');
     System.assertEquals(0, oldAcc.AnnualRevenue);
     System.assertEquals(50, acc.NumberOfEmployees);
     System.assertEquals(0, oldAcc.NumberOfEmployees);

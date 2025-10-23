@@ -3097,8 +3097,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         results.matchingItemIds.add(item.Id);
       } else if (metadata.IsFullRecordSet__c == true) {
         results.matchingItemIds.add(item.Id);
-      } else if (metadata.FullRecalculationDefaultNumberValue__c != null || metadata.FullRecalculationDefaultStringValue__c != null) {
-        results.matchingItemIds.add(item.Id);
       }
     }
     return results;
