@@ -65,8 +65,9 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
       RollupAsyncProcessor conductor = this.cabooses.remove(0);
       RollupLogger.Instance.log('Starting up new conductor', conductor, System.LoggingLevel.INFO);
       String potentialProcessId = conductor.runCalc();
-      this.hasAlreadyStartedConductor = potentialProcessId != conductor.getNoProcessId();
-      if (potentialProcessId == conductor.getNoProcessId() && this.cabooses.isEmpty() == false) {
+      Boolean hasStartedAsync = potentialProcessId != conductor.getNoProcessId();
+      this.hasAlreadyStartedConductor = this.hasAlreadyStartedConductor || hasStartedAsync;
+      if (hasStartedAsync == false && this.hasAlreadyStartedConductor == false && this.cabooses.isEmpty() == false) {
         this.recurseThroughConductors();
       }
     }
