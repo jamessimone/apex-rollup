@@ -362,8 +362,9 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class NextWeekLiteral extends RollupDateLiteral {
     public NextWeekLiteral() {
-      this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addDays(6).date(), END_TIME);
+      Date reference = System.today().toStartOfWeek();
+      this.ref = getRelativeDatetime(reference.addDays(7), START_TIME);
+      this.bound = getRelativeDatetime(reference.addDays(13), END_TIME);
     }
   }
 
