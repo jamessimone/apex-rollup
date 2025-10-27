@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Even better finalizer state tracking for full recalcs with multiple conductors",
-            "versionNumber": "1.7.30.0",
+            "versionName": "Fixes DST issue with NEXT_WEEK date literal",
+            "versionNumber": "1.7.31.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -109,6 +109,7 @@
         "apex-rollup@1.7.27": "04tKf000000syCSIAY",
         "apex-rollup@1.7.28": "04tKf000000syCmIAI",
         "apex-rollup@1.7.29": "04tKf000000syDBIAY",
-        "apex-rollup@1.7.30": "04tKf000000syDfIAI"
+        "apex-rollup@1.7.30": "04tKf000000syDfIAI",
+        "apex-rollup@1.7.31": "04tKf000000syDpIAI"
     }
 }
