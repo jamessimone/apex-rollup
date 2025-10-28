@@ -95,7 +95,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     List<Rollup__mdt> matchingMetadata;
 
     List<String> selectFields = new List<String>{
-      '(SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, SortOrder__c FROM RollupOrderBys__r)',
+      '(SELECT Id, DeveloperName, FieldName__c, NullSortOrder__c, Ranking__c, ShouldOverridePicklistOrdering__c, SortOrder__c FROM RollupOrderBys__r)',
       'RollupGrouping__r.Id',
       'RollupGrouping__r.RollupOperation__c',
       Rollup__mdt.CalcItemText__c.toString(),
@@ -160,9 +160,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       meta.LookupObject__c = meta.LookupObjectText__c ?? meta.LookupObject__r.QualifiedApiName;
       meta.RollupFieldOnCalcItem__c = meta.RollupFieldOnCalcItemText__c ?? meta.RollupFieldOnCalcItem__r.QualifiedApiName;
       meta.RollupFieldOnLookupObject__c = meta.RollupFieldOnLookupObjectText__c ?? meta.RollupFieldOnLookupObject__r.QualifiedApiName;
-      meta.UltimateParentLookup__c = meta.RollupToUltimateParent__c
-        ? meta.UltimateParentLookupText__c ?? meta.UltimateParentLookup__r.QualifiedApiName
-        : null;
+      meta.UltimateParentLookup__c = meta.RollupToUltimateParent__c ? meta.UltimateParentLookupText__c ?? meta.UltimateParentLookup__r.QualifiedApiName : null;
 
       meta.GroupByRowEndDelimiter__c = meta.GroupByRowEndDelimiter__c?.unescapeJava();
       meta.GroupByRowStartDelimiter__c = meta.GroupByRowStartDelimiter__c?.unescapeJava();

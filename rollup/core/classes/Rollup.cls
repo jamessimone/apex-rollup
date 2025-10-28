@@ -191,6 +191,23 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
+  private static final String ORDER_BY_RELATIONSHIP_NAME {
+    get {
+      if (ORDER_BY_RELATIONSHIP_NAME == null) {
+        List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.FULL)
+          .getChildRelationships();
+        for (Schema.ChildRelationship relationship : potentiallyMatchingRelationships) {
+          if (relationship.getChildSObject() == RollupOrderBy__mdt.SObjectType) {
+            ORDER_BY_RELATIONSHIP_NAME = relationship.getRelationshipName();
+            break;
+          }
+        }
+      }
+      return ORDER_BY_RELATIONSHIP_NAME;
+    }
+    set;
+  }
+
   public enum Op {
     ALL,
     AVERAGE,
@@ -1836,15 +1853,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     meta.OrderByFirstLast__c = null;
     String serializedMeta = JSON.serialize(meta).removeEnd('}');
-
-    String orderByRelationshipName;
-    List<Schema.ChildRelationship> potentiallyMatchingRelationships = Rollup__mdt.SObjectType.getDescribe(SObjectDescribeOptions.FULL).getChildRelationships();
-    for (Schema.ChildRelationship relationship : potentiallyMatchingRelationships) {
-      if (relationship.getChildSObject() == RollupOrderBy__mdt.SObjectType) {
-        orderByRelationshipName = relationship.getRelationshipName();
-      }
-    }
-    String childrenJson = '"' + orderByRelationshipName + '" : ' + JSON.serialize(new ChildrenSObject(children));
+    String childrenJson = '"' + ORDER_BY_RELATIONSHIP_NAME + '" : ' + JSON.serialize(new ChildrenSObject(children));
     serializedMeta += ',' + childrenJson + '}';
 
     return (Rollup__mdt) JSON.deserialize(serializedMeta, Rollup__mdt.class);
