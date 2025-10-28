@@ -71,6 +71,30 @@ private class RollupRepositoryTests {
     Assert.areEqual('d', orderBys.get(3).DeveloperName);
   }
 
+  @IsTest
+  static void allOrderByFieldsAreQueried() {
+    List<Rollup__mdt> rollupMetadata = RollupRepository.getRollupMetadata();
+
+    List<Schema.SObjectField> orderByFields = RollupOrderBy__mdt.SObjectType.getDescribe().fields.getMap().values();
+    Set<Schema.SObjectField> customFields = new Set<Schema.SObjectField>();
+    for (Schema.SObjectField fieldToken : orderByFields) {
+      if (fieldToken.getDescribe().isCustom() && fieldToken.getDescribe().getRelationshipName() == null) {
+        customFields.add(fieldToken);
+      }
+    }
+
+    Boolean hasIteratedOnFields = false;
+    for (Rollup__mdt meta : rollupMetadata) {
+      for (RollupOrderBy__mdt orderBy : meta.RollupOrderBys__r) {
+        for (Schema.SObjectField fieldToken : customFields) {
+          Assert.isTrue(orderBy.isSet(fieldToken), 'Custom field should have been queried: ' + fieldToken);
+          hasIteratedOnFields = true;
+        }
+      }
+    }
+    Assert.isTrue(hasIteratedOnFields);
+  }
+
   /**
    * Serialization proves that we don't get: `System.JSONException: Type unsupported in JSON: common.apex.methods.AccessLevelEnum`
    */

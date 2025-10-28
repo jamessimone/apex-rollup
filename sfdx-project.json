@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes DST issue with NEXT_WEEK date literal",
-            "versionNumber": "1.7.31.0",
+            "versionName": "Ensure RollupOrderBy__mdt.ShouldOverridePicklistOrdering__c is always queried!",
+            "versionNumber": "1.7.32.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,14 +102,11 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.23": "04tKf000000syAgIAI",
-        "apex-rollup@1.7.24": "04tKf000000syBUIAY",
-        "apex-rollup@1.7.25": "04tKf000000syBeIAI",
-        "apex-rollup@1.7.26": "04tKf000000syC8IAI",
         "apex-rollup@1.7.27": "04tKf000000syCSIAY",
         "apex-rollup@1.7.28": "04tKf000000syCmIAI",
         "apex-rollup@1.7.29": "04tKf000000syDBIAY",
         "apex-rollup@1.7.30": "04tKf000000syDfIAI",
-        "apex-rollup@1.7.31": "04tKf000000syDpIAI"
+        "apex-rollup@1.7.31": "04tKf000000syDpIAI",
+        "apex-rollup@1.7.32": "04tKf000000syDzIAI"
     }
 }

@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes DST issue with NEXT_WEEK date literal",
-            "versionNumber": "1.2.28.0",
+            "versionName": "Ensure RollupOrderBy__mdt.ShouldOverridePicklistOrdering__c is always queried!",
+            "versionNumber": "1.2.29.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -45,6 +45,7 @@
         "apex-rollup-namespaced@1.2.25": "04tKf000000syCrIAI",
         "apex-rollup-namespaced@1.2.26": "04tKf000000syDGIAY",
         "apex-rollup-namespaced@1.2.27": "04tKf000000syDkIAI",
-        "apex-rollup-namespaced@1.2.28": "04tKf000000syDuIAI"
+        "apex-rollup-namespaced@1.2.28": "04tKf000000syDuIAI",
+        "apex-rollup-namespaced@1.2.29": "04tKf000000syE4IAI"
     }
 }
