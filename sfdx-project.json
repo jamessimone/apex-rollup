@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Ensure RollupOrderBy__mdt.ShouldOverridePicklistOrdering__c is always queried!",
-            "versionNumber": "1.7.32.0",
+            "versionName": "TODO",
+            "versionNumber": "1.7.33.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
