@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "TODO",
+            "versionName": "Use new Invocable Action Extensions to clean up and organize the Rollup flow invocable action menus",
             "versionNumber": "1.7.33.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -85,7 +85,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "64.0",
+    "sourceApiVersion": "65.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.11-0": "04t6g000008SirvAAC",

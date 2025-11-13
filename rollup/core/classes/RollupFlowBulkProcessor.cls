@@ -130,6 +130,7 @@ global without sharing class RollupFlowBulkProcessor {
             input.rollupSObjectName = meta.LookupObject__c;
             input.rollupControlId = meta.RollupControl__c;
             input.rollupGrouping = meta.RollupGrouping__r;
+            input.splitConcatDelimiterOnCalcItem = meta.SplitConcatDelimiterOnCalcItem__c;
             // everything else is supplied from the invocable
             input.deferProcessing = flowInput.deferProcessing ?? true;
             input.oldRecordsToRollup = flowInput.oldRecordsToRollup;
