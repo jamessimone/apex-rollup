@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Ensure RollupOrderBy__mdt.ShouldOverridePicklistOrdering__c is always queried!",
-            "versionNumber": "1.2.29.0",
+            "versionName": "Use new Invocable Action Extensions to clean up and organize the Rollup flow invocable action menus",
+            "versionNumber": "1.2.30.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
