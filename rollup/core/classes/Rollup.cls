@@ -1,25 +1,4 @@
-/**
- * @description Primary entry point and orchestrator for Apex Rollup operations. This class provides a declarative
- * framework for performing real-time rollup calculations in Salesforce, supporting both synchronous and asynchronous
- * execution patterns. The library eliminates the need for declarative lookup rollup summary fields and their
- * limitations (cross-object constraints, delete tracking, complex filtering).
- *
- * Key capabilities:
- * - Supports all standard rollup operations (SUM, COUNT, AVG, MIN, MAX, CONCAT, FIRST, LAST, MOST)
- * - Executes from multiple invocation points: Apex triggers, Flow, LWC, Schedulable, and CDC triggers
- * - Handles governor limit management through automatic batching and async processing
- * - Supports grandparent rollups, hierarchical rollups, and multi-currency organizations
- * - Provides CMDT-driven configuration via Rollup__mdt custom metadata
- *
- * The class uses the "without sharing" modifier intentionally to ensure rollup calculations can access
- * all necessary records regardless of the running user's permissions, as rollup values should reflect
- * the true aggregate state of data.
- *
- * @see RollupAsyncProcessor For async execution handling
- * @see RollupCalculator For rollup calculation logic
- * @see RollupRepository For data access patterns
- * @group Apex Rollup
- */
+
 @SuppressWarnings(
   'PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.PropertyNamingConventions,PMD.TooManyFields'
 )
@@ -230,14 +209,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
-  /**
-   * @description Defines all supported rollup operation types. Base operations (SUM, COUNT, etc.) are used for INSERT
-   * operations. Prefixed variants (UPDATE_, DELETE_) indicate the trigger context and enable context-aware
-   * calculation logic. For example, DELETE_SUM recalculates by subtracting deleted values, while UPDATE_SUM
-   * handles the delta between old and new values. Special operations like MOST find the most frequently
-   * occurring value, while FIRST/LAST retrieve values based on ordering criteria. ALL, NONE, and SOME
-   * are boolean aggregates that evaluate whether child records meet specified conditions.
-   */
+  
   public enum Op {
     ALL,
     AVERAGE,
@@ -275,24 +247,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     UPDATE_SUM
   }
 
-  /**
-   * @description Container for filter evaluation results during rollup processing. Holds the set of record IDs
-   * that passed filter criteria and the Evaluator instance used for in-memory filtering. This separation allows
-   * the library to optimize performance by combining database-level WHERE clause filtering with additional
-   * in-memory evaluation when complex criteria cannot be expressed in SOQL.
-   */
+  
   public class FilterResults {
     public final Set<Id> matchingItemIds = new Set<Id>();
     public Evaluator eval { get; set; }
   }
 
-  /**
-   * @description Internal wrapper that aggregates rollup configuration and query optimization data during processing.
-   * Consolidates metadata from multiple Rollup__mdt records operating on the same child SObject type to enable
-   * query bulkification. Tracks intermediate parent records for reparenting scenarios and collects WHERE clauses
-   * from individual rollup configurations to build optimized combined queries. The concatenateWhereClauses method
-   * merges multiple filter conditions with OR logic, falling back to in-memory filtering when any clause is null.
-   */
+  
   private class RollupMetadata {
     public final Map<Schema.SObjectType, Set<Id>> typeToOldIntermediateParents = new Map<Schema.SObjectType, Set<Id>>();
     public final Set<String> recordIds = new Set<String>();
@@ -303,11 +264,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     public String whereClause = '';
     public Integer recordCount = 0;
 
-    /**
-     * @description Combines multiple WHERE clauses from different rollup configurations into a single OR-joined clause.
-     * Returns null if any clause is blank, signaling that in-memory filtering must be used instead.
-     * @return The combined WHERE clause string, or null if in-memory filtering is required
-     */
+    
     public String concatenateWhereClauses() {
       if (this.possibleWhereClauses.isEmpty()) {
         return null;
@@ -327,47 +284,30 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
   }
 
-  /**
-   * @description Mutable container for child records (calc items) being processed in a rollup operation.
-   * Provides efficient lookup by record ID and supports dynamic modification during processing.
-   * The hasQueriedForAdditionalItems flag tracks whether supplementary queries have been executed
-   * to retrieve additional fields needed for rollup calculations. The clear operation is idempotent
-   * to prevent accidental data loss during multi-pass processing scenarios.
-   */
+  
   public class CalcItemBag {
     private Map<String, SObject> idToCalcItem = new Map<String, SObject>();
     private Boolean hasBeenCleared = false;
     public Boolean hasQueriedForAdditionalItems = false;
 
-    /**
-     * @description Initializes the bag with a collection of calc items, indexing each by its record ID.
-     * @param calcItems The child records to include in this bag
-     */
+    
     public CalcItemBag(List<SObject> calcItems) {
       for (SObject calcItem : calcItems) {
         this.add(calcItem);
       }
     }
 
-    /**
-     * @description Returns all record IDs currently in the bag for iteration or query building.
-     * @return Set of record ID strings
-     */
+    
     public Set<String> getAllIds() {
       return this.idToCalcItem.keySet();
     }
 
-    /**
-     * @description Returns all calc items currently in the bag.
-     * @return List of SObject records
-     */
+    
     public List<SObject> getAll() {
       return this.idToCalcItem.values();
     }
 
-    /**
-     * @description Empties the bag. Idempotent - subsequent calls have no effect to prevent accidental data loss.
-     */
+    
     public void clear() {
       if (this.hasBeenCleared == false) {
         this.idToCalcItem = new Map<String, SObject>();
@@ -375,51 +315,24 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
     }
 
-    /**
-     * @description Adds a single calc item to the bag, indexed by its record ID.
-     * @param calcItem The child record to add
-     */
+    
     public void add(SObject calcItem) {
       this.idToCalcItem.put(calcItem.Id, calcItem);
     }
 
-    /**
-     * @description Removes a calc item from the bag by its record ID.
-     * @param key The record ID string to remove
-     */
+    
     public void removeKey(String key) {
       this.idToCalcItem.remove(key);
     }
   }
 
-  /**
-   * @description Functional interface enabling custom in-memory filtering logic for rollup calculations.
-   * Implement this interface to provide complex filtering criteria that cannot be expressed as SOQL WHERE clauses,
-   * such as cross-object comparisons, runtime calculations, or external service lookups. The matches method
-   * receives each potential calc item and returns true if it should be included in the rollup calculation.
-   *
-   * @example
-   * Rollup.Evaluator complexFilter = new Rollup.Evaluator() {
-   *   public Boolean matches(Object calcItem) {
-   *     Opportunity opp = (Opportunity) calcItem;
-   *     return opp.Amount > 10000 && opp.CloseDate > Date.today().addDays(-30);
-   *   }
-   * };
-   */
+  
   global interface Evaluator {
-    /**
-     * @description Determines whether a calc item should be included in the rollup calculation.
-     * @param calcItem The child record to evaluate, passed as Object to support generic processing
-     * @return true if the record should be included in the rollup, false to exclude it
-     */
+    
     Boolean matches(Object calcItem);
   }
 
-  /**
-   * @description Identifies the source context from which a rollup operation was initiated. Used to apply
-   * context-specific processing logic, logging, and error handling. Different invocation points have different
-   * governor limit profiles and execution characteristics that the library must account for.
-   */
+  
   global enum InvocationPoint {
     FROM_APEX,
     FROM_INVOCABLE,
@@ -430,20 +343,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     FROM_SINGULAR_PARENT_RECALC_LWC
   }
 
-  /**
-   * @description Default constructor required for framework extensibility. Empty by design as subclasses
-   * initialize their own state through overloaded constructors.
-   */
+  
   @SuppressWarnings('PMD.EmptyStatementBlock')
   protected Rollup() {
   }
 
-  /**
-   * @description Creates a rollup conductor instance that orchestrates the execution of multiple rollup operations.
-   * Initializes with default control settings and marks as a no-op until child rollups are added. Conductors
-   * coordinate batching, async processing, and governor limit management across related rollup operations.
-   * @param invokePoint The context from which this rollup was initiated
-   */
+  
   protected Rollup(InvocationPoint invokePoint) {
     this.invokePoint = invokePoint;
     this.rollupControl = CACHED_DEFAULT;
@@ -453,25 +358,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     this.isNoOp = true;
   }
 
-  /**
-   * @description Creates a rollup instance with specific child records for processing. Used when rollup
-   * operations need to work with a known set of records rather than querying dynamically.
-   * @param invokePoint The context from which this rollup was initiated
-   * @param calcItems The child records whose values will be aggregated
-   * @param oldCalcItems Map of previous record versions for update/delete context delta calculations
-   */
+  
   protected Rollup(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     this(invokePoint);
     this.calcItems = calcItems;
     this.oldCalcItems = oldCalcItems;
   }
 
-  /**
-   * @description Generates a string representation of this rollup instance for logging and debugging.
-   * Only produces output when logging is enabled in RollupControl__mdt to avoid unnecessary string
-   * concatenation overhead in production. Output includes invocation context, metadata, and calc item counts.
-   * @return Formatted string with rollup state details, or empty string if logging is disabled
-   */
+  
   public override String toString() {
     String baseString = '';
     if (this.rollupControl?.IsRollupLoggingEnabled__c == true) {
@@ -483,26 +377,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return baseString.removeEnd('\n');
   }
 
-  /**
-   * @description Executes the rollup calculation. Base implementation returns 'no-op' for conductor instances
-   * that have no child rollups. Subclasses override to perform actual calculations, batch processing, or
-   * async job enqueueing. Returns a job ID for async operations or 'no-op'/'sync' for synchronous paths.
-   * @return Job ID string for async execution, or status indicator for sync/no-op scenarios
-   */
+  
   global virtual String runCalc() {
     this.logger.log('no-op!', this.getTypeName(), System.LoggingLevel.INFO);
     return 'no-op';
   }
 
-  /**
-   * @description Adds a LIMIT clause to rollup queries, restricting the number of child records considered.
-   * Use for FIRST/LAST operations or when only a subset of matching records should contribute to the rollup.
-   * Automatically sets IsFullRecordSet to true to ensure proper query execution. Fluent interface returns
-   * this instance for method chaining.
-   * @param limitAmount Maximum number of records to include in the rollup calculation
-   * @param calcItemRollupField The field being rolled up, used to match the correct rollup metadata
-   * @return This Rollup instance for method chaining
-   */
+  
   global virtual Rollup addLimit(Integer limitAmount, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
       this.addLimitToMetadata(roll.metadata, limitAmount, calcItemRollupField);
@@ -510,14 +391,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return this;
   }
 
-  /**
-   * @description Adds ORDER BY criteria to control record sorting for FIRST, LAST, and CONCAT operations.
-   * Multiple order by entries are applied in ranking order. Essential for deterministic results when
-   * selecting the first or last value from a set of child records. Fluent interface returns this instance.
-   * @param orderBys List of RollupOrderBy__mdt records defining sort criteria and direction
-   * @param calcItemRollupField The field being rolled up, used to match the correct rollup metadata
-   * @return This Rollup instance for method chaining
-   */
+  
   global virtual Rollup addOrderBys(List<RollupOrderBy__mdt> orderBys, Schema.SObjectField calcItemRollupField) {
     for (Rollup roll : this.rollups) {
       roll.metadata = this.addOrderBys(roll.metadata, orderBys, calcItemRollupField);
@@ -525,13 +399,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return this;
   }
 
-  /**
-   * @description Applies field values from a template metadata record to all rollup metadata in this instance.
-   * Enables runtime modification of rollup behavior without creating new CMDT records. Useful for applying
-   * common settings like concat delimiters, where clauses, or currency field mappings dynamically.
-   * @param template Rollup__mdt record with fields to copy to existing metadata
-   * @return This Rollup instance for method chaining
-   */
+  
   global virtual Rollup modifyMetadata(Rollup__mdt template) {
     List<Rollup__mdt> metasToModify = new List<Rollup__mdt>{ this.metadata };
     for (Rollup roll : this.rollups) {
@@ -660,12 +528,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
    * - LWC-based full recalculation calls
    */
 
-  /**
-   * @description Data transfer object exposing namespace-aware metadata field references for LWC components.
-   * Handles the complexity of managed package namespaces by dynamically detecting the current namespace
-   * and providing properly prefixed object and field API names. Essential for building namespace-agnostic
-   * LWC components that work in both managed and unmanaged package contexts.
-   */
+  
   public class NamespaceInfo {
     @AuraEnabled
     public final String safeObjectName = Rollup__mdt.SObjectType.toString();
@@ -675,22 +538,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     public final String namespace = Rollup.class.getName() == 'Rollup' ? '' : Rollup.class.getName().substringBefore('.Rollup') + '__';
   }
 
-  /**
-   * @description Returns namespace information for LWC components to construct proper field references.
-   * Cached to minimize repeated string operations across multiple component instances.
-   * @return NamespaceInfo instance with namespace prefix and safe object/field names
-   */
+  
   @AuraEnabled(Cacheable=true)
   public static NamespaceInfo getNamespaceInfo() {
     return new NamespaceInfo();
   }
 
-  /**
-   * @description Retrieves all Rollup__mdt records organized by their CalcItem__c (child object) value.
-   * Used by LWC components to display available rollup configurations and enable user selection
-   * for full recalculation operations. Cached for performance as CMDT rarely changes.
-   * @return Map keyed by CalcItem__c API name with lists of related Rollup__mdt records
-   */
+  
   @AuraEnabled(Cacheable=true)
   global static Map<String, List<Rollup__mdt>> getRollupMetadataByCalcItem() {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = new Map<String, List<Rollup__mdt>>();
@@ -706,28 +560,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return calcItemToMetadata;
   }
 
-  /**
-   * @description Initiates a full recalculation for multiple rollup configurations. Delegates to the
-   * serialized version to preserve RollupOrderBys__r child relationships that are stripped when passing
-   * CMDT records directly between frontend and backend. Maintains backward compatibility.
-   * @param metadata List of Rollup__mdt records to recalculate
-   * @param invokePointName String representation of InvocationPoint enum value
-   * @return Batch job ID for tracking the recalculation progress
-   */
+  
   @AuraEnabled
   global static String performBulkFullRecalc(List<Rollup__mdt> metadata, String invokePointName) {
     return performSerializedBulkFullRecalc(JSON.serialize(metadata), invokePointName);
   }
 
-  /**
-   * @description Core implementation for bulk full recalculation operations. Accepts serialized metadata
-   * to preserve child relationships (RollupOrderBys__r) that would otherwise be lost in LWC/Apex data transfer.
-   * Validates inputs, optimizes query building by grouping rollups by child object type, and initiates
-   * batch processing for large data volumes.
-   * @param serializedMetadata JSON-serialized List<Rollup__mdt> records
-   * @param invokePointName String representation of InvocationPoint enum value
-   * @return Batch job ID for tracking the recalculation progress
-   */
+  
   @AuraEnabled
   global static String performSerializedBulkFullRecalc(String serializedMetadata, String invokePointName) {
     InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
@@ -738,7 +577,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     updateLoggingControl(matchingMetadata);
-    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, System.LoggingLevel.INFO);
+    RollupLogger.Instance.logDiagnostic('bulk full recalc called with data:', matchingMetadata, System.LoggingLevel.INFO);
 
     String delimiter = ' ||| ';
     String possibleParentId;
@@ -802,13 +641,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return batch(processors, localInvokePoint);
   }
 
-  /**
-   * @description Retrieves the current status of an asynchronous rollup batch job. Accounts for multi-batch
-   * scenarios where RollupState__c records indicate ongoing processing even after the initial batch completes.
-   * Used by LWC polling to provide accurate progress feedback to users during full recalculation operations.
-   * @param jobId The AsyncApexJob Id returned from a full recalculation request
-   * @return Job status string: 'Processing', 'Completed', 'Failed', etc.
-   */
+  
   @SuppressWarnings('PMD.ApexCRUDViolation')
   @AuraEnabled
   global static String getBatchRollupStatus(String jobId) {
@@ -819,35 +652,19 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return jobStatus;
   }
 
-  /**
-   * @description Performs full recalculation for a single rollup configuration passed as serialized JSON.
-   * Preserves RollupOrderBys__r child relationships that are stripped when passing CMDT records directly
-   * between LWC frontend and Apex backend. Wraps metadata in array format for bulk processing compatibility.
-   * @param metadata JSON-serialized Rollup__mdt record
-   * @return Batch job ID for tracking the recalculation progress
-   */
+  
   @AuraEnabled
   global static String performSerializedFullRecalculation(String metadata) {
     return performSerializedBulkFullRecalc('[' + metadata + ']', InvocationPoint.FROM_FULL_RECALC_LWC.name());
   }
 
-  /**
-   * @description Convenience method for single-rollup full recalculation from LWC. Accepts a Rollup__mdt
-   * record directly and delegates to serialized processing to preserve child relationships.
-   * @param meta The Rollup__mdt record to recalculate
-   * @return Batch job ID for tracking the recalculation progress
-   */
+  
   @AuraEnabled
   global static String performFullRecalculation(Rollup__mdt meta) {
     return performSerializedFullRecalculation(JSON.serialize(meta));
   }
 
-  /**
-   * @description Input data structure for the Flow invocable action. Defines all configurable parameters
-   * for rollup operations initiated from Flow Builder. Required fields establish the source/target relationship
-   * while optional fields enable advanced features like filtering, ordering, grouping, and hierarchy rollups.
-   * Each property includes InvocableVariable metadata for Flow Builder UI integration.
-   */
+  
   global class FlowInput {
     @InvocableVariable(label='Child Object Calc Field' description='The API Name of the field on each of the records passed in to rollup.' required=true)
     global String rollupFieldOnCalcItem;
@@ -989,32 +806,21 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
   }
 
-  /**
-   * @description Output data structure for the Flow invocable action. Provides success/failure status
-   * and descriptive message for Flow error handling and user feedback. Initialized with success state
-   * by default since most operations succeed; properties are updated on error conditions.
-   */
+  
   global class FlowOutput {
     @InvocableVariable(label='Is Success' description='Was rollup enqueued successfully?')
     global Boolean isSuccess;
     @InvocableVariable(label='Status Message' description='"SUCCESS" (or more info) when isSuccess is true, otherwise the encountered error message')
     global String message;
 
-    /**
-     * @description Default constructor initializes to success state. Errors override these defaults.
-     */
+    
     global FlowOutput() {
       this.isSuccess = true;
       this.Message = 'SUCCESS';
     }
   }
 
-  /**
-   * @description Internal wrapper that consolidates FlowInput processing state. Groups multiple FlowInput
-   * records with identical metadata to enable proper bulkification, since Flow can send multiple inputs
-   * with the same rollup configuration but different calc items. Tracks rollup context for proper
-   * operation type resolution and aggregates child records for batch processing.
-   */
+  
   private class FlowInputWrapper {
     private final FlowInput flowInput;
     private final String rollupContext;
@@ -1032,14 +838,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
   }
 
-  /**
-   * @description Primary invocable action entry point for Flow Builder rollup operations. Handles bulkification
-   * of Flow inputs (which Flow executes poorly), validates required parameters, constructs rollup metadata
-   * from input parameters, and initiates async or sync processing based on configuration. Returns detailed
-   * status for each input to enable Flow-based error handling and user notification.
-   * @param flowInputs List of FlowInput records from Flow Builder, one per rollup operation
-   * @return List of FlowOutput records with success/failure status for each input
-   */
+  
   @InvocableMethod(
     category='Rollups'
     label='Perform rollup on records'
@@ -1061,7 +860,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       }
 
       flowInput.rollupOperation = flowInput.rollupOperation.toUpperCase();
-      RollupLogger.Instance.log('processing invocable data:', flowInput, System.LoggingLevel.INFO);
+      RollupLogger.Instance.logDiagnostic('processing invocable data:', flowInput, System.LoggingLevel.INFO);
 
       if (flowInput.shouldOverrideNoOp() && flowInput.recordsToRollup?.isEmpty() != false) {
         flowInput.recordsToRollup = new List<SObject>();
@@ -1159,7 +958,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
             roll.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
           }
         }
-        RollupLogger.Instance.log(logMessage + ':', rollupConductor, System.LoggingLevel.INFO);
+        RollupLogger.Instance.logDiagnostic(logMessage + ':', rollupConductor, System.LoggingLevel.INFO);
       }
     }
 
@@ -1175,17 +974,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return flowOutputs;
   }
 
-  /**
-   * @description Schedules a rollup operation for recurring execution using a cron expression. Automatically
-   * determines whether to use direct query execution (for smaller datasets) or batch processing (for larger
-   * datasets exceeding MaxQueryRows__c). The query is reformatted to ensure consistent parsing.
-   * @param jobName Human-readable name for the scheduled job (appears in Setup > Scheduled Jobs)
-   * @param cronExp Standard cron expression defining execution schedule (e.g., '0 0 * * * ?' for hourly)
-   * @param query SOQL query selecting child records to include in the rollup
-   * @param rollupObjectName API name of the child object for large dataset batch processing
-   * @param eval Optional Evaluator for in-memory filtering of query results
-   * @return Scheduled job ID for job management and monitoring
-   */
+  
   global static Id schedule(String jobName, String cronExp, String query, String rollupObjectName, Evaluator eval) {
     Rollup rollToSchedule;
     query = query.toUpperCase();
@@ -1221,47 +1010,22 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return System.schedule(jobName + ' for ' + rollToSchedule.getTypeName(), cronExp, scheduledRollup);
   }
 
-  /**
-   * @description Combines two rollup operations into a single batched execution for efficiency.
-   * Reduces async job consumption by processing multiple rollups in one transaction.
-   * @param rollup First rollup operation to include
-   * @param secondRollup Second rollup operation to include
-   */
+  
   global static void batch(Rollup rollup, Rollup secondRollup) {
     batch(new List<Rollup>{ rollup, secondRollup });
   }
 
-  /**
-   * @description Combines three rollup operations into a single batched execution for efficiency.
-   * @param rollup First rollup operation to include
-   * @param secondRollup Second rollup operation to include
-   * @param thirdRollup Third rollup operation to include
-   */
+  
   global static void batch(Rollup rollup, Rollup secondRollup, Rollup thirdRollup) {
     batch(new List<Rollup>{ rollup, secondRollup, thirdRollup });
   }
 
-  /**
-   * @description Executes multiple rollup operations together, optimizing for governor limits and async job usage.
-   * Combines compatible rollups into single DML operations and manages async processing automatically.
-   * @param rollups List of rollup operations to execute together
-   * @return Job ID if async processing initiated, or status string for sync execution
-   */
+  
   global static String batch(List<Rollup> rollups) {
     return batch(rollups, InvocationPoint.FROM_APEX);
   }
 
-  /**
-   * @description Creates an AVERAGE rollup operation from Apex code. Calculates the arithmetic mean
-   * of child record field values and stores the result on the parent record. Handles null values
-   * and maintains precision appropriate for the target field type.
-   * @param averageFieldOnCalcItem The field on child records containing values to average
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param averageFieldOnOperationObject The field on parent where the average result is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup averageFromApex(
     SObjectField averageFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1320,17 +1084,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a COUNT_DISTINCT rollup operation from Apex code. Counts unique non-null values
-   * in the specified child field, excluding duplicates. Useful for scenarios like counting unique products
-   * ordered or distinct statuses across related records.
-   * @param countDistinctFieldOnCalcItem The field on child records whose unique values will be counted
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param countDistinctFieldOnOperationObject The field on parent where the count result is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup countDistinctFromApex(
     SObjectField countDistinctFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1389,17 +1143,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a CONCAT_DISTINCT rollup operation from Apex code. Concatenates unique text values
-   * from child records into a single delimited string on the parent, removing duplicates. Useful for
-   * aggregating unique tags, categories, or names across related records.
-   * @param concatFieldOnCalcItem The text field on child records to concatenate
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param concatFieldOnOperationObject The text field on parent where concatenated result is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup concatDistinctFromApex(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1481,17 +1225,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a CONCAT rollup operation from Apex code. Concatenates all text values from child
-   * records into a single delimited string on the parent, including duplicates. Use CONCAT_DISTINCT to
-   * exclude duplicates. Default delimiter is comma; configure via RollupControl__mdt or modifyMetadata.
-   * @param concatFieldOnCalcItem The text field on child records to concatenate
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param concatFieldOnOperationObject The text field on parent where concatenated result is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup concatFromApex(
     SObjectField concatFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1573,17 +1307,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a COUNT rollup operation from Apex code. Counts all child records related to each
-   * parent, including duplicates. The countFieldOnCalcItem parameter is used primarily for filtering purposes;
-   * all matching records are counted regardless of the field value. Use COUNT_DISTINCT to count unique values.
-   * @param countFieldOnCalcItem The field on child records (used for filtering; all records are counted)
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param countFieldOnOperationObject The numeric field on parent where the count result is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup countFromApex(
     SObjectField countFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1634,18 +1358,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a FIRST rollup operation from Apex code. Retrieves the field value from the first
-   * child record when sorted by the orderByFirstLast field. Essential for scenarios like finding the earliest
-   * activity date or the first item in a sequence. Requires an order by field to define "first".
-   * @param firstFieldOnCalcItem The field on child records whose value will be retrieved
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param firstFieldOnOpObject The field on parent where the first value is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @param orderByFirstLast The field API name used to sort records and determine "first"
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup firstFromApex(
     SObjectField firstFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1732,18 +1445,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a LAST rollup operation from Apex code. Retrieves the field value from the last
-   * child record when sorted by the orderByFirstLast field. Essential for scenarios like finding the most
-   * recent activity date or the latest item in a sequence. Requires an order by field to define "last".
-   * @param lastFieldOnCalcItem The field on child records whose value will be retrieved
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param lastFieldOnOpObject The field on parent where the last value is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @param orderByFirstLast The field API name used to sort records and determine "last"
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup lastFromApex(
     SObjectField lastFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1830,16 +1532,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a MAX rollup operation from Apex code. Finds the maximum value among all child
-   * records and stores it on the parent. Works with numeric, date, datetime, and text fields (alphabetically).
-   * @param maxFieldOnCalcItem The field on child records to find the maximum value from
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param maxFieldOnOperationObject The field on parent where the maximum value is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup maxFromApex(
     SObjectField maxFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1890,16 +1583,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a MIN rollup operation from Apex code. Finds the minimum value among all child
-   * records and stores it on the parent. Works with numeric, date, datetime, and text fields (alphabetically).
-   * @param minFieldOnCalcItem The field on child records to find the minimum value from
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param minFieldOnOperationObject The field on parent where the minimum value is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup minFromApex(
     SObjectField minFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -1950,17 +1634,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a SUM rollup operation from Apex code. Calculates the total sum of all child
-   * record field values and stores the result on the parent. Handles null values (treated as zero)
-   * and maintains precision appropriate for the target field type.
-   * @param sumFieldOnCalcItem The numeric field on child records to sum
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param sumFieldOnOpOject The numeric field on parent where the sum result is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup sumFromApex(
     SObjectField sumFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -2011,17 +1685,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Creates a MOST rollup operation from Apex code. Finds the most frequently occurring value
-   * among child records and stores it on the parent. Useful for scenarios like finding the most common
-   * status, category, or tag across related records. In case of ties, returns one of the tied values.
-   * @param mostFieldOnCalcItem The field on child records to analyze for frequency
-   * @param lookupFieldOnCalcItem The lookup field on child records pointing to parent
-   * @param lookupFieldOnOperationObject The field on parent used to match child lookup values
-   * @param mostFieldOnOperationObject The field on parent where the most frequent value is stored
-   * @param lookupSobjectType The SObjectType of the parent object
-   * @return Configured Rollup instance ready for execution via runCalc() or batch()
-   */
+  
   global static Rollup mostFromApex(
     SObjectField mostFieldOnCalcItem,
     SObjectField lookupFieldOnCalcItem,
@@ -2052,13 +1716,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
-  /**
-   * @description Entry point for Change Data Capture (CDC) trigger-based rollup execution. Processes CDC
-   * event records to determine the affected SObject type and trigger operation, then queries for current
-   * record state and initiates rollup calculations. CDC provides async, reliable event delivery for
-   * scenarios requiring eventual consistency rather than immediate updates. Always runs synchronously
-   * since CDC triggers already execute in an async context.
-   */
+  
   global static void runFromCDCTrigger() {
     isCDC = true;
     // CDC always uses Trigger.new
@@ -2123,17 +1781,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     rollupToReturn.runCalc();
   }
 
-  /**
-   * @description Primary entry point for trigger-based rollup execution using CMDT configuration. Call this
-   * method from your after insert/update or before delete trigger to process rollups based on Rollup__mdt
-   * records matching the trigger's SObject type. Automatically determines trigger context and applies
-   * appropriate rollup operations. This is the recommended approach for most trigger-based implementations.
-   *
-   * @example
-   * trigger AccountTrigger on Account (after insert, after update, before delete) {
-   *   Rollup.runFromTrigger();
-   * }
-   */
+  
   global static void runFromTrigger() {
     List<SObject> triggerRecords = getTriggerRecords();
     List<Rollup__mdt> matchingMetadata = getRollupMetadataBySObject(triggerRecords.getSObjectType());
@@ -2142,14 +1790,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
   }
 
-  /**
-   * @description Alternative entry point for programmatic rollup execution from Apex code outside triggers.
-   * Simulates trigger context with provided records and operation type, then delegates to runFromTrigger.
-   * Use when you need to process rollups outside actual trigger execution, such as in batch jobs or
-   * scheduled operations.
-   * @param calcItems The records whose values will be rolled up
-   * @param rollupContext The trigger operation context to simulate (AFTER_INSERT, AFTER_UPDATE, BEFORE_DELETE, AFTER_UNDELETE)
-   */
+  
   global static void runFromApex(List<SObject> calcItems, System.TriggerOperation rollupContext) {
     shouldRun = shouldRun ?? true;
     records = calcItems;
@@ -2162,29 +1803,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     apexContext = null;
   }
 
-  /**
-   * @description Alternative entry point providing old record values for update context rollups. Enables
-   * proper delta calculations when processing updates outside actual trigger execution.
-   * @param children The current version of records to roll up
-   * @param oldChildrenMap Map of previous record versions keyed by Id
-   * @param rollupContext The trigger operation context to simulate
-   */
+  
   global static void runFromApex(List<SObject> children, Map<Id, SObject> oldChildrenMap, System.TriggerOperation rollupContext) {
     oldChildrenMap = oldChildrenMap;
     runFromApex(children, rollupContext);
     oldChildrenMap = null;
   }
 
-  /**
-   * @description Advanced entry point providing full control over rollup execution. Accepts specific metadata
-   * records and an optional Evaluator for custom filtering. Returns the configured Rollup conductor for
-   * further customization or batching before execution. Used internally and for advanced programmatic scenarios.
-   * @param localMetas List of Rollup__mdt records defining the rollup operations
-   * @param eval Optional Evaluator for additional in-memory filtering
-   * @param calcItems The child records to process
-   * @param oldCalcItems Map of previous record versions for update/delete context
-   * @return Configured Rollup conductor instance ready for execution or additional configuration
-   */
+  
   global static Rollup runFromApex(List<Rollup__mdt> localMetas, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     Rollup rollupConductor = RollupAsyncProcessor.getConductor(InvocationPoint.FROM_APEX, calcItems, oldCalcItems);
     if (shouldRunFromTrigger() == false || localMetas.isEmpty()) {
@@ -2254,11 +1880,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
   }
 
-  /**
-   * @return `Rollup__mdt` the metadata with the `List<RollupOrderBy__mdt>` RollupOrderBys__r relationship set
-   * <br>
-   * Credit for this method (with some tweaking) goes to: https://github.com/tsalb
-   */
+  
   global static Rollup__mdt appendOrderByMetadata(Rollup__mdt meta, List<RollupOrderBy__mdt> children) {
     if (children?.isEmpty() != false) {
       return meta;
@@ -2674,7 +2296,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         fullRecalc.isNoOp = wrappedMeta.recordCount == 0;
       }
       fullRecalc.queryCount = wrappedMeta.recordCount;
-      RollupLogger.Instance.log('full recalc prepared:', fullRecalc, System.LoggingLevel.INFO);
+      RollupLogger.Instance.logDiagnostic('full recalc prepared:', fullRecalc, System.LoggingLevel.INFO);
       fullRecalcRollups.add(fullRecalc);
       CACHED_FULL_RECALCS.add(fullRecalc);
     }

@@ -1,23 +1,3 @@
-/**
- * @description Core async processing engine for Rollup operations. Extends the base Rollup class to provide
- * asynchronous execution via the Batchable interface, enabling processing of large data volumes within governor
- * limits. This class orchestrates the actual rollup calculations by coordinating between parent record retrieval,
- * child record aggregation, and final DML updates.
- *
- * The class implements multiple patterns:
- * - Conductor pattern: Outer processors that coordinate multiple inner rollup operations
- * - Inner rollup pattern: Individual processors focused on specific field/operation combinations
- * - Comparable interface: Enables sorting of rollup operations for optimal processing order
- *
- * Processing order is optimized to handle DELETE operations before INSERT/UPDATE, ensuring accurate
- * rollup values when records are both deleted and created in the same transaction. The class also
- * handles timeout scenarios gracefully by deferring remaining work to continuation jobs.
- *
- * @see Rollup For the base class and public API
- * @see RollupCalculator For the actual calculation logic
- * @see RollupFinalizer For post-processing cleanup
- * @group Apex Rollup
- */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
 global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, Database.RaisesPlatformEvents, System.Comparable {
   private final Evaluator eval;
@@ -54,29 +34,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private static Integer additionalCalcItemCount;
   private static Boolean hasAlreadyAsyncEnqueued = false;
 
-  /**
-   * @description Categorizes how calc items are grouped for processing - either as a dictionary (Map) for
-   * efficient key-based lookups, or as an iterable (List) for sequential processing.
-   */
   private enum CollectionType {
     DICTIONARY,
     ITERABLE
   }
 
-  /**
-   * @description Categorizes the type of parent record update being performed to enable appropriate
-   * processing paths for standard lookups, group-by rollups, and reparenting scenarios.
-   */
   private enum ParentUpdateType {
     LOOKUP,
     GROUPING,
     REPARENTED
   }
 
-  /**
-   * @description Defines the granularity of timeout checking - at the individual rollup level or
-   * at the parent record level - to balance between processing efficiency and timeout avoidance.
-   */
   private enum TimeoutCheckLevel {
     AT_ROLLUP,
     AT_PARENT
@@ -123,34 +91,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
-  /**
-   * @description Factory method to create a conductor processor that orchestrates multiple inner rollups.
-   * Conductors manage the overall execution flow, batching, and async job coordination.
-   * @param invokePoint The context from which the rollup was initiated
-   * @param calcItems The child records to process
-   * @param oldCalcItems Map of previous record versions for delta calculations
-   * @return A new QueueableProcessor configured as a conductor
-   */
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     return new QueueableProcessor(invokePoint, calcItems, oldCalcItems);
   }
 
-  /**
-   * @description Factory method to create an inner processor for a specific rollup operation. Inner processors
-   * are responsible for individual field/operation combinations and are coordinated by a conductor.
-   * @param filterResults Pre-computed filter results containing matching record IDs and evaluator
-   * @param opFieldOnCalcItem The field on child records being rolled up
-   * @param lookupFieldOnCalcItem The lookup field on child records
-   * @param lookupFieldOnLookupObject The matching field on parent records
-   * @param opFieldOnLookupObject The target field on parent records for the rollup result
-   * @param lookupObj The parent SObjectType
-   * @param calcItem The child SObjectType
-   * @param operation The rollup operation to perform
-   * @param rollupInvokePoint The invocation context
-   * @param rollupControl Control settings for this rollup
-   * @param metadata The Rollup__mdt configuration record
-   * @return A new QueueableProcessor configured as an inner rollup
-   */
   public static RollupAsyncProcessor getProcessor(
     FilterResults filterResults,
     SObjectField opFieldOnCalcItem,
@@ -179,30 +123,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     );
   }
 
-  /**
-   * @description Conductor constructors create "outer" rollups that orchestrate the processing for inner rollups.
-   * These rollups manage lazy-loaded properties, batching, and coordination of multiple operations.
-   * @param invokePoint The context from which the rollup was initiated
-   */
   public RollupAsyncProcessor(InvocationPoint invokePoint) {
     super(invokePoint);
   }
 
-  /**
-   * @description Creates a conductor with specific child records for processing.
-   * @param invokePoint The context from which the rollup was initiated
-   * @param calcItems The child records to process
-   * @param oldCalcItems Map of previous record versions for delta calculations
-   */
   public RollupAsyncProcessor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     super(invokePoint, calcItems, oldCalcItems);
   }
 
-  /**
-   * @description Copy constructor that creates a new conductor from an existing processor's state.
-   * Used when processing needs to be transferred or continued in a new context.
-   * @param innerRollup The source processor to copy state from
-   */
   public RollupAsyncProcessor(RollupAsyncProcessor innerRollup) {
     super(innerRollup.invokePoint, innerRollup.calcItems, innerRollup.oldCalcItems);
 
@@ -216,10 +144,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.lookupItems = innerRollup.lookupItems;
   }
 
-  /**
-   * @description Inner rollup constructor for processors focused solely on calculations. Creates a processor
-   * configured for a specific field/operation combination with pre-filtered results.
-   */
   public RollupAsyncProcessor(
     FilterResults filterResults,
     SObjectField opFieldOnCalcItem,
@@ -254,14 +178,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.isNoOp = this.matchingCalcItemIds?.isEmpty() == true && this.metadata?.IsFullRecordSet__c == false;
   }
 
-  /**
-   * @description Implements Comparable to sort rollup operations for optimal processing order. INSERT operations
-   * are processed first, followed by UPDATEs, then DELETEs. This ordering ensures accurate rollup values when
-   * the same transaction contains both inserts and deletes for records with the same parent. Also respects
-   * the shouldSortToFront flag for operations that need priority processing.
-   * @param otherRollup The other rollup processor to compare against
-   * @return Negative if this should sort before other, positive if after, zero if equal
-   */
   public Integer compareTo(Object otherRollup) {
     Integer numberToReturn = 0;
     if ((otherRollup instanceof RollupAsyncProcessor) == false) {
@@ -296,14 +212,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return numberToReturn;
   }
 
-  /**
-   * @description Initializes the batch processing by preparing the query locator. Batches can fetch either
-   * lookup items (parent records) or calc items (child records) depending on the processing mode.
-   * Note: populateObjectFields must be called in both start and execute because Database.Stateful
-   * cannot be combined with Queueable interface.
-   * @param context The batch context provided by the platform
-   * @return QueryLocator for the records to process in batch chunks
-   */
   public Database.QueryLocator start(Database.BatchableContext context) {
     this.jobId = this.jobId ?? context?.getJobId();
     RollupRepository repo = this.preStart();
@@ -311,12 +219,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return repo.getLocator();
   }
 
-  /**
-   * @description Processes a batch chunk of records. Delegates to innerBatchExecute for the actual rollup
-   * calculations and handles post-processing cleanup via executeFinish.
-   * @param context The batch context provided by the platform
-   * @param scope The records to process in this batch chunk
-   */
   public virtual void execute(Database.BatchableContext context, List<SObject> scope) {
     this.logger.log('starting batch chunk', this, System.LoggingLevel.INFO);
 
@@ -327,11 +229,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.executeFinish();
   }
 
-  /**
-   * @description Completes batch processing by invoking any registered full recalc processor cleanup
-   * and persisting log entries. Skipped if the batch timed out to allow continuation processing.
-   * @param context The batch context provided by the platform
-   */
   public virtual void finish(Database.BatchableContext context) {
     if (this.isTimingOut == false) {
       this.fullRecalcProcessor?.finish();
@@ -341,13 +238,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.logger.save();
   }
 
-  /**
-   * @description Core execution method that initiates rollup processing. Determines whether to execute
-   * synchronously or asynchronously based on control settings and governor limit analysis. Handles special
-   * cases like aborted runs, already-async contexts, and limit-exceeding scenarios by deferring work
-   * appropriately. Returns a job ID for async execution or status indicators for sync/no-op paths.
-   * @return Job ID string for async execution, 'sync' for synchronous completion, or 'no-op' if skipped
-   */
   public virtual override String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     // they also can be added to syncRollups if we're already async
@@ -712,8 +602,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     Integer outstandingItemCount = 0;
     List<SObject> additionalCalcItems = new List<SObject>();
 
-    /**
-     * Below follows one of the most complicated pieces of logic in the entire codebase
+    /* Below follows one of the most complicated pieces of logic in the entire codebase
      * with respect to limits, we need to retrieve any missing children for all parents
      * and defer our calculation(s) till such a time as all other adjacent children have been fetched
      */

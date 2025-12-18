@@ -1,30 +1,8 @@
-/**
- * @description Singleton utility class responsible for dynamically constructing SOQL queries for rollup operations.
- * Handles complex query requirements including polymorphic field resolution (TYPEOF clauses), multi-currency
- * field inclusion, WHERE clause sanitization, and special handling for Activity objects (Task/Event) which
- * require ALL ROWS to include archived records.
- *
- * Key capabilities:
- * - Dynamic field selection with automatic multi-currency field injection
- * - Polymorphic field handling for Owner and other name-pointing fields using TYPEOF
- * - WHERE clause sanitization to prevent injection and handle edge cases
- * - Activity object special handling for archived row access
- * - Query caching for repeated WHERE clause patterns
- *
- * Uses singleton pattern via the Current static property for consistent query construction across the application.
- *
- * @see RollupRepository For query execution
- * @see RollupCurrencyInfo For multi-currency handling
- * @group Apex Rollup
- */
 @SuppressWarnings('PMD.ExcessiveParameterList,PMD.PropertyNamingConventions')
 public without sharing class RollupQueryBuilder {
-  /** @description Singleton instance for consistent query construction */
   @SuppressWarnings('PMD.FieldNamingConventions')
   public static final RollupQueryBuilder Current = new RollupQueryBuilder();
-  /** @description SOQL keyword for including soft-deleted and archived records */
   public static final String ALL_ROWS = 'ALL ROWS';
-  /** @description Standard bind variable name used in generated queries */
   public static final String BIND_VAR = 'objIds';
 
   private static final String VERBOTEN_ENDINGS = 'or and ()';
@@ -41,17 +19,6 @@ public without sharing class RollupQueryBuilder {
   private RollupQueryBuilder() {
   }
 
-  /**
-   * @description Constructs a complete SOQL query string for fetching rollup-related records. Handles field
-   * deduplication, multi-currency field injection, polymorphic field TYPEOF conversion, and WHERE clause
-   * sanitization. The returned query uses a bind variable (objIds) for the lookup field filter.
-   * @param sObjectType The SObject type to query
-   * @param fieldNames List of field API names to include in SELECT (modified in place for multi-currency)
-   * @param lookupFieldOnLookupObject The field to filter on (e.g., 'AccountId')
-   * @param equality The comparison operator (e.g., 'IN', '=', '!=')
-   * @param optionalWhereClause Additional WHERE criteria from Rollup__mdt configuration
-   * @return SOQL query string with 'objIds' as the expected bind variable
-   */
   public String getQuery(SObjectType sObjectType, List<String> fieldNames, String lookupFieldOnLookupObject, String equality, String optionalWhereClause) {
     Set<String> lowerCaseFieldNames = new Set<String>();
     for (String fieldName : fieldNames) {
@@ -99,26 +66,10 @@ public without sharing class RollupQueryBuilder {
     return baseQuery;
   }
 
-  /**
-   * @description Overload without optional WHERE clause for simpler query construction.
-   * @param sObjectType The SObject type to query
-   * @param fieldNames List of field API names to include in SELECT
-   * @param lookupFieldOnLookupObject The field to filter on
-   * @param equality The comparison operator
-   * @return SOQL query string with 'objIds' as the expected bind variable
-   */
   public String getQuery(SObjectType sObjectType, List<String> fieldNames, String lookupFieldOnLookupObject, String equality) {
     return this.getQuery(sObjectType, fieldNames, lookupFieldOnLookupObject, equality, null);
   }
 
-  /**
-   * @description Ensures Task and Event queries include the ALL ROWS clause to access archived activities.
-   * Activities have special archival behavior where older records are moved to archive storage but remain
-   * queryable only with ALL ROWS. This method ensures correct positioning of the clause at query end.
-   * @param sObjectType The SObject type being queried
-   * @param query The query to potentially modify
-   * @return The query with ALL ROWS appended for activity objects, unchanged for others
-   */
   public String getAllRowSafeQuery(Schema.SObjectType sObjectType, String query) {
     Boolean mightNeedReplacement = sObjectType == Task.SObjectType || sObjectType == Event.SObjectType;
     if (mightNeedReplacement && query.endsWith(ALL_ROWS) == false) {

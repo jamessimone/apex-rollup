@@ -1,22 +1,3 @@
-/**
- * @description Extensible logging framework for Rollup operations. Provides hierarchical log level control,
- * automatic version tagging, and plugin-based extensibility for custom logging implementations. The default
- * implementation writes to System.debug; custom implementations can persist logs to custom objects, external
- * services, or integrate with logging frameworks like Nebula Logger.
- *
- * Key features:
- * - Configurable log levels via RollupPluginParameter__mdt (LoggingDebugLevel)
- * - Plugin architecture supporting multiple simultaneous loggers via CompositeLogger
- * - Automatic stacktrace capture for debugging
- * - Graceful handling of various object types in log messages
- * - Version number injection for troubleshooting production issues
- *
- * Extend this class and register via RollupPlugin__mdt to implement custom logging behavior.
- *
- * @see RollupPlugin For plugin registration
- * @see RollupCustomObjectLogger For custom object persistence example
- * @group Apex Rollup
- */
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.CognitiveComplexity')
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
@@ -25,24 +6,22 @@ global without sharing virtual class RollupLogger implements ILogger {
   private static final System.LoggingLevel FALLBACK_LOGGING_LEVEL = System.LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
+  global enum LoggingVerbosity {
+    NONE,
+    DIAGNOSTIC,
+    DEBUG
+  }
+
   private final System.LoggingLevel currentLoggingLevel;
 
-  /**
-   * @description Default constructor initializes logging level from configuration.
-   */
   protected RollupLogger() {
     this.currentLoggingLevel = this.getLogLevel();
   }
 
-  /**
-   * @description Allows test classes to inject custom logger implementations.
-   * @param logger The ILogger implementation to use
-   */
   public static void setLogger(ILogger logger) {
     Instance = logger;
   }
 
-  /** @description Singleton logger instance, lazily initialized from plugins */
   @SuppressWarnings('PMD.PropertyNamingConventions')
   public static ILogger Instance {
     get {
@@ -52,65 +31,43 @@ global without sharing virtual class RollupLogger implements ILogger {
     private set;
   }
 
-  /**
-   * @description Marker interface for objects that implement meaningful toString() behavior.
-   * Objects implementing this interface have their toString() called directly rather than JSON serialization.
-   */
   global interface ToStringObject {
   }
 
-  /**
-   * @description Core logging interface that all Rollup logger implementations must support.
-   * Enables pluggable logging backends while maintaining a consistent API across the application.
-   */
   global interface ILogger {
-    /** @description Logs a message at the specified level */
     void log(String logString, System.LoggingLevel logLevel);
-    /** @description Logs a message with an associated object for context */
     void log(String logString, Object logObject, System.LoggingLevel logLevel);
-    /** @description Persists accumulated log entries (for implementations that buffer) */
+    void logDiagnostic(String logString, System.LoggingLevel logLevel);
+    void logDiagnostic(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
-    /** @description Updates logging configuration from control metadata */
     ILogger updateRollupControl(RollupControl__mdt control);
   }
 
-  /**
-   * @description Convenience method for logging without an associated object.
-   * @param logString The message to log
-   * @param logLevel The severity level for this log entry
-   */
   public void log(String logString, System.LoggingLevel logLevel) {
     this.log(logString, null, logLevel);
   }
 
-  /**
-   * @description Primary logging method that filters by configured log level before writing.
-   * Only writes if the message level is >= the configured threshold.
-   * @param logString The message to log
-   * @param logObject Optional context object (Exception, SObject, or any serializable object)
-   * @param logLevel The severity level for this log entry
-   */
   global virtual void log(String logString, Object logObject, System.LoggingLevel logLevel) {
     if (logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
       this.innerLog(logString, logObject, logLevel);
     }
   }
 
-  /**
-   * @description Persists any buffered log entries. Default implementation is a no-op since System.debug
-   * writes immediately. Override in subclasses that buffer logs for batch persistence.
-   */
+  public void logDiagnostic(String logString, System.LoggingLevel logLevel) {
+    this.logDiagnostic(logString, null, logLevel);
+  }
+
+  global virtual void logDiagnostic(String logString, Object logObject, System.LoggingLevel logLevel) {
+    if (logLevel.ordinal() >= this.currentLoggingLevel.ordinal()) {
+      this.innerLog(logString, logObject, logLevel);
+    }
+  }
+
   @SuppressWarnings('PMD.EmptyStatementBlock')
   global virtual void save() {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
-  /**
-   * @description Updates logger configuration from control metadata. Default implementation returns this
-   * unchanged; override if your logger needs control-specific settings.
-   * @param control The RollupControl__mdt record with logging configuration
-   * @return This logger instance for method chaining
-   */
   public ILogger updateRollupControl(RollupControl__mdt control) {
     return this;
   }
@@ -238,20 +195,50 @@ global without sharing virtual class RollupLogger implements ILogger {
     }
 
     public void log(String logString, Object logObject, System.LoggingLevel logLevel) {
-      if (this.control.IsRollupLoggingEnabled__c == false && this.hasDisabledMessageBeenLogged == false) {
+      LoggingVerbosity verbosity = this.getEffectiveVerbosity();
+      if (verbosity == LoggingVerbosity.NONE && this.hasDisabledMessageBeenLogged == false) {
         this.hasDisabledMessageBeenLogged = true;
-        this.control.IsRollupLoggingEnabled__c = true;
-        this.log('logging isn\'t enabled, further log messages paused unless otherwise re-activated', System.LoggingLevel.INFO);
-        this.control.IsRollupLoggingEnabled__c = false;
-      } else if (this.control.IsRollupLoggingEnabled__c) {
-        for (ILogger logger : this.loggers) {
-          logger.log(logString, logObject, logLevel);
-        }
+        this.innerLog('logging isn\'t enabled, further log messages paused unless otherwise re-activated', null, System.LoggingLevel.INFO);
+      } else if (verbosity == LoggingVerbosity.DEBUG) {
+        this.innerLog(logString, logObject, logLevel);
+      }
+      // If verbosity is DIAGNOSTIC, debug-level messages are suppressed
+    }
+
+    public void logDiagnostic(String logString, System.LoggingLevel logLevel) {
+      this.logDiagnostic(logString, null, logLevel);
+    }
+
+    public void logDiagnostic(String logString, Object logObject, System.LoggingLevel logLevel) {
+      LoggingVerbosity verbosity = this.getEffectiveVerbosity();
+      if (verbosity == LoggingVerbosity.DIAGNOSTIC || verbosity == LoggingVerbosity.DEBUG) {
+        this.innerLog(logString, logObject, logLevel);
       }
     }
 
+    private void innerLog(String logString, Object logObject, System.LoggingLevel logLevel) {
+      for (ILogger logger : this.loggers) {
+        logger.log(logString, logObject, logLevel);
+      }
+    }
+
+    private LoggingVerbosity getEffectiveVerbosity() {
+      String loggingLevel = this.control.RollupLoggingLevel__c;
+      if (String.isNotBlank(loggingLevel)) {
+        if (loggingLevel == RollupMetaPicklists.LoggingLevel.Debug) {
+          return LoggingVerbosity.DEBUG;
+        } else if (loggingLevel == RollupMetaPicklists.LoggingLevel.Diagnostic) {
+          return LoggingVerbosity.DIAGNOSTIC;
+        }
+        return LoggingVerbosity.NONE;
+      }
+      // Backward compatibility: use IsRollupLoggingEnabled__c when RollupLoggingLevel__c is not set
+      return this.control.IsRollupLoggingEnabled__c == true ? LoggingVerbosity.DEBUG : LoggingVerbosity.NONE;
+    }
+
     public void save() {
-      if (this.control.IsRollupLoggingEnabled__c != false) {
+      LoggingVerbosity verbosity = this.getEffectiveVerbosity();
+      if (verbosity != LoggingVerbosity.NONE) {
         for (ILogger logger : this.loggers) {
           logger.save();
         }
@@ -259,12 +246,18 @@ global without sharing virtual class RollupLogger implements ILogger {
     }
 
     public CombinedLogger updateRollupControl(RollupControl__mdt control) {
-      String updateMessage = 'updating control record';
-      if (control.IsRollupLoggingEnabled__c == true && this.control.IsRollupLoggingEnabled__c != true) {
-        updateMessage = 'logging is now re-enabled, ' + updateMessage;
-      }
+      LoggingVerbosity oldVerbosity = this.getEffectiveVerbosity();
       this.control = control;
-      this.log(updateMessage, control, System.LoggingLevel.INFO);
+      LoggingVerbosity newVerbosity = this.getEffectiveVerbosity();
+
+      String updateMessage = 'updating control record';
+      if (newVerbosity != LoggingVerbosity.NONE && oldVerbosity == LoggingVerbosity.NONE) {
+        updateMessage = 'logging is now re-enabled at ' + newVerbosity.name() + ' level, ' + updateMessage;
+        this.hasDisabledMessageBeenLogged = false;
+      } else if (newVerbosity != oldVerbosity) {
+        updateMessage = 'logging level changed from ' + oldVerbosity.name() + ' to ' + newVerbosity.name() + ', ' + updateMessage;
+      }
+      this.logDiagnostic(updateMessage, control, System.LoggingLevel.INFO);
       return this;
     }
   }

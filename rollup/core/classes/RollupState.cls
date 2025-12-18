@@ -1,48 +1,17 @@
-/**
- * @description State management system for batch rollup operations that avoids Database.Stateful limitations.
- * Persists intermediate calculation state to the RollupState__c custom object between batch executions,
- * enabling stateful rollup processing without the serialization overhead and governor limit impacts of
- * Database.Stateful. Supports multiple state types (AverageInfo, MostInfo, GenericInfo, SObjectInfo)
- * for different rollup operation requirements.
- *
- * Key design decisions:
- * - Custom object storage avoids Database.Stateful's serialization limits and heap issues
- * - DataWeave-based deserialization for efficient JSON-to-Apex conversion
- * - Chunked state storage across multiple RelatedRecordKeys fields to handle large rollup sets
- * - Automatic cleanup via Queueable/Finalizer pattern after rollup completion
- *
- * The state lifecycle:
- * 1. loadState() - Retrieves prior state from RollupState__c at batch start
- * 2. getState()/setState() - Accesses and updates in-memory state during processing
- * 3. commitState() - Persists state to RollupState__c between batch chunks
- * 4. cleanup() - Deletes all RollupState__c records after rollup completion
- *
- * @see RollupAsyncProcessor For batch processing integration
- * @see RollupCalculator For state consumption during calculations
- * @group Apex Rollup
- */
 public without sharing virtual class RollupState implements System.Queueable, System.Finalizer, RollupLogger.ToStringObject {
-  /** @description Composite key combining record Id and metadata key */
   protected transient String key;
-  /** @description Length of the original record key (before metadata key appended) */
   protected transient Integer keyLength;
-  /** @description The parent record Id this state relates to */
   protected transient String recordId;
-  /** @description Fully qualified type name for deserialization */
   protected transient String typeName;
-  /** @description Job Ids for state cleanup tracking */
   protected final Set<String> jobIds = new Set<String>();
 
   private Long commitCount = 1;
   private Set<Id> statefulPreviouslyRetrievedStateIds = new Set<Id>();
 
-  /** @description Maximum characters for Body0__c long text area field */
   @TestVisible
   private static Integer maxBodyLength = 131072;
-  /** @description Maximum characters for each RelatedRecordKeys field (255 char text) */
   @TestVisible
   private static Integer maxRelatedKeysLength = 255;
-  /** @description Strategy for serializing/deserializing state (DataWeave or JSON) */
   @TestVisible
   private static SerializationStrategy serializationStrategy = new DataweaveSerializationStrategy();
 
@@ -64,24 +33,10 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     set;
   }
 
-  /**
-   * @description Configures the serialization strategy for state persistence. DataWeave is preferred
-   * for performance; JSON is available as a fallback.
-   * @param serializationStrategy The serialization implementation to use
-   */
   public void setSerializationStrategy(SerializationStrategy serializationStrategy) {
     RollupState.serializationStrategy = serializationStrategy;
   }
 
-  /**
-   * @description Retrieves or creates state for a specific record key and rollup metadata combination.
-   * The key is typically a parent record Id; combined with metadata, it creates a unique identifier
-   * for each rollup operation's state per parent record.
-   * @param key The parent record Id or other unique identifier
-   * @param meta The Rollup__mdt configuration for this operation
-   * @param initializingType The RollupState subclass to instantiate if no state exists
-   * @return Existing or newly created state instance for this key/metadata combination
-   */
   public RollupState getState(String key, Rollup__mdt meta, Type initializingType) {
     String trueKey = (key + getMetadataKey(meta));
     RollupState possibleState = KEY_TO_STATE.get(trueKey);
@@ -96,13 +51,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     return possibleState;
   }
 
-  /**
-   * @description Stores state in the in-memory cache. Called internally by getState() and during
-   * state restoration from persisted records.
-   * @param key The composite key for state lookup
-   * @param keyLength Length of the record key portion (for RelatedRecordKeys field population)
-   * @param state The state instance to cache
-   */
   public void setState(String key, Integer keyLength, RollupState state) {
     state.commitCount = this.commitCount;
     state.key = key;
@@ -126,24 +74,11 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     throw new System.SerializationException('Should not make it here');
   }
 
-  /**
-   * @description State container for AVERAGE and COUNT_DISTINCT operations. Tracks running totals
-   * (numerator/denominator) and distinct values across batch boundaries. The average is computed
-   * as numerator/denominator at rollup completion.
-   */
   public class AverageInfo extends RollupState {
-    /** @description Running sum of values for average calculation */
     public Decimal denominator = 0;
-    /** @description Count of records processed for average calculation */
     public Decimal numerator = 0;
-    /** @description Set of unique values encountered for COUNT_DISTINCT operations */
     public Set<Object> distinctNumerators = new Set<Object>();
 
-    /**
-     * @description Adds a value to the running calculation. Increments both the sum and count,
-     * and tracks the value for distinct counting.
-     * @param value The numeric value to include in the calculation
-     */
     public void increment(Decimal value) {
       this.numerator += value;
       this.denominator++;
@@ -174,19 +109,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  /**
-   * @description State container for MOST (mode) operations. Tracks the value that appears most frequently
-   * and its occurrence count. Used to find the most common value in a set of records.
-   */
   public class MostInfo extends GenericInfo {
-    /** @description Count of occurrences for the current winning value */
     public Integer largestPointCounter = -1;
 
-    /**
-     * @description Updates the winning value and its count when a new value exceeds the current leader.
-     * @param newWinner The occurrence count of the new winning value
-     * @param val The new winning value
-     */
     public void setValues(Integer newWinner, Object val) {
       this.largestPointCounter = newWinner;
       this.value = val;
@@ -212,18 +137,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  /**
-   * @description State container for FIRST/LAST operations that need to track the full SObject record.
-   * Used when the rollup field comes from a related record and the entire record context must be preserved.
-   */
   public class SObjectInfo extends RollupState {
-    /** @description The SObject record being tracked */
     public SObject item;
 
-    /**
-     * @description Sets the tracked SObject record.
-     * @param item The SObject to track
-     */
     public void setItem(SObject item) {
       this.item = item;
     }
@@ -251,7 +167,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  /**
+  /*
    * In theory, GenericInfo is overkill for what it does - any rollup operation that can be reduced to a single value
    * COULD simply take whatever the current value on the parent record is as the source of truth. That being said, the
    * prior implementation with `Database.Stateful` shamefully split the logic between `RollupAsyncProcessor` and `RollupState`
@@ -280,13 +196,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  /**
-   * @description Loads previously persisted state from RollupState__c records into memory. Called at the
-   * start of each batch execution to restore state from prior batches. Deserializes the JSON body and
-   * populates the in-memory state cache. Tracks loaded record Ids to prevent duplicate processing.
-   * @param jobId The async job Id for state isolation between concurrent rollups
-   * @param relatedRecordKeys Set of parent record Ids to filter state retrieval
-   */
   public void loadState(String jobId, Set<String> relatedRecordKeys) {
     this.jobIds.add(jobId);
     List<RollupState__c> matchingState = this.loadOrRetrieveCachedState(jobId, relatedRecordKeys);
@@ -302,27 +211,14 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  /**
-   * @description Persists the current in-memory state to RollupState__c records. Called at the end of
-   * each batch execution to save intermediate results for the next batch. Handles chunking across
-   * multiple records when state exceeds field size limits.
-   * @param jobId The async job Id for state association
-   */
   public void commitState(String jobId) {
     this.jobIds.add(jobId);
     this.populateRelatedRecordStates(jobId);
   }
 
-  /**
-   * @description Initiates asynchronous cleanup of all RollupState__c records for the given job Ids.
-   * Called after rollup completion to remove temporary state storage. Uses Queueable with Finalizer
-   * to handle large volumes of state records.
-   * @param jobIds Set of job Ids whose state records should be deleted
-   * @return The Queueable job Id for the cleanup operation
-   */
   public String cleanup(Set<String> jobIds) {
     this.jobIds.addAll(jobIds);
-    RollupLogger.Instance.log('about to clean up rollup state', this.jobIds, System.LoggingLevel.INFO);
+    RollupLogger.Instance.logDiagnostic('about to clean up rollup state', this.jobIds, System.LoggingLevel.INFO);
     return System.enqueueJob(this);
   }
 
@@ -476,7 +372,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
 
     Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
-    RollupLogger.Instance.log(
+    RollupLogger.Instance.logDiagnostic(
       'Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')',
       System.LoggingLevel.DEBUG
     );
@@ -550,24 +446,9 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     return meta.DeveloperName ?? (meta.RollupOperation__c + meta.LookupObject__c + meta.RollupFieldOnLookupObject__c + meta.LookupFieldOnLookupObject__c);
   }
 
-  /**
-   * @description Abstract base class for state serialization strategies. Supports multiple serialization
-   * approaches (DataWeave, JSON) to balance performance and compatibility. DataWeave is preferred for
-   * its superior performance but requires the DataWeave feature to be enabled.
-   */
   public abstract class SerializationStrategy {
-    /**
-     * @description Returns the implementing class type for runtime type checking.
-     * @return The Class type of this strategy implementation
-     */
     public abstract System.Type getType();
 
-    /**
-     * @description Deserializes a JSON string into a list of RollupState objects.
-     * Wraps the input in array brackets for consistent parsing.
-     * @param json The serialized state JSON from Body0__c field
-     * @return List of deserialized RollupState objects
-     */
     public List<Object> deserializeToState(String json) {
       return this.deserialize('[' + json + ']');
     }
@@ -575,11 +456,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     protected abstract List<Object> deserialize(String input);
   }
 
-  /**
-   * @description DataWeave-based serialization strategy offering superior performance for state
-   * deserialization. Uses a compiled DataWeave script to efficiently convert JSON to Apex objects.
-   * This is the preferred strategy when DataWeave is available in the org.
-   */
   public class DataweaveSerializationStrategy extends SerializationStrategy {
     public override System.Type getType() {
       return DataweaveSerializationStrategy.class;
@@ -590,11 +466,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  /**
-   * @description JSON-based serialization strategy as a fallback when DataWeave is unavailable.
-   * Uses standard Apex JSON deserialization with dynamic type instantiation based on the
-   * typeName field stored in each state object.
-   */
   public class JSONSerializationStrategy extends SerializationStrategy {
     public override System.Type getType() {
       return JSONSerializationStrategy.class;

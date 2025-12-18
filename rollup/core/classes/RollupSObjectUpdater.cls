@@ -69,7 +69,7 @@ global without sharing virtual class RollupSObjectUpdater {
     // typically I wouldn't advocate for the use of a guard clause here since an empty list
     // getting updated is a no-op, but the addition of the logging item is annoying ...
     if (recordsToUpdate.isEmpty() == false) {
-      RollupLogger.Instance.log('updating ' + recordsToUpdate.size() + ' records', System.LoggingLevel.INFO);
+      RollupLogger.Instance.logDiagnostic('updating ' + recordsToUpdate.size() + ' records', System.LoggingLevel.INFO);
       recordsToUpdate.sort(SORTER);
       Database.DMLOptions dmlOptions = new Database.DMLOptions();
       dmlOptions.AllowFieldTruncation = true;
@@ -262,9 +262,9 @@ global without sharing virtual class RollupSObjectUpdater {
     }
 
     protected override void performWork() {
-      RollupLogger.Instance.log('Deferred async saving starting for parent records', new Map<Id, SObject>(this.calcItems).keySet(), System.LoggingLevel.INFO);
+      RollupLogger.Instance.logDiagnostic('Deferred async saving starting for parent records', new Map<Id, SObject>(this.calcItems).keySet(), System.LoggingLevel.INFO);
       this.saver.doUpdate(this.calcItems);
-      RollupLogger.Instance.log('Saving finished', System.LoggingLevel.INFO);
+      RollupLogger.Instance.logDiagnostic('Saving finished', System.LoggingLevel.INFO);
       RollupLogger.Instance.save();
     }
   }

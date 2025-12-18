@@ -38,6 +38,14 @@ public virtual without sharing class RollupMetaPicklists {
     private set;
   }
 
+  public static final LoggingLevel LoggingLevel {
+    get {
+      LoggingLevel = LoggingLevel ?? new LoggingLevel();
+      return LoggingLevel;
+    }
+    private set;
+  }
+
   private RollupMetaPicklists(Schema.SObjectField fieldToken) {
     this.validValues = new Set<String>();
 
@@ -145,6 +153,36 @@ public virtual without sharing class RollupMetaPicklists {
       get {
         this.UserLevel = this.UserLevel ?? this.validate('User');
         return this.UserLevel;
+      }
+      private set;
+    }
+  }
+
+  public class LoggingLevel extends RollupMetaPicklists {
+    public LoggingLevel() {
+      super(RollupControl__mdt.RollupLoggingLevel__c);
+    }
+
+    public final String None {
+      get {
+        this.None = this.None ?? this.validate('None');
+        return this.None;
+      }
+      private set;
+    }
+
+    public final String Diagnostic {
+      get {
+        this.Diagnostic = this.Diagnostic ?? this.validate('Diagnostic');
+        return this.Diagnostic;
+      }
+      private set;
+    }
+
+    public final String Debug {
+      get {
+        this.Debug = this.Debug ?? this.validate('Debug');
+        return this.Debug;
       }
       private set;
     }

@@ -1,24 +1,3 @@
-/**
- * @description Abstract base class implementing the calculation engine for all rollup operations. Each rollup
- * operation type (SUM, COUNT, AVG, MIN, MAX, CONCAT, FIRST, LAST, MOST) is implemented by a concrete subclass
- * that overrides the appropriate handler methods. The Factory inner class uses the Strategy pattern to select
- * the correct calculator based on the operation type and target field data type.
- *
- * Key responsibilities:
- * - Winnowing: Filtering calc items based on WHERE clauses and evaluators
- * - Value transformation: Converting and aggregating field values
- * - Multi-currency handling: Converting values to parent record currency
- * - State management: Maintaining calculation state across batch boundaries
- * - Full recalculation detection: Identifying when incremental rollup is insufficient
- *
- * Subclasses implement specific calculation logic by overriding handler methods like handleSumOrCount(),
- * handleMin(), handleMax(), etc. The template method pattern in rollupResults() dispatches to the correct
- * handler based on the operation type.
- *
- * @see RollupAsyncProcessor For the orchestration of calculator invocation
- * @see RollupState For state persistence across async boundaries
- * @group Apex Rollup
- */
 @SuppressWarnings(
   'PMD.AvoidBooleanMethodParameters,PMD.EmptyStatementBlock,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields'
 )
@@ -69,23 +48,7 @@ public without sharing abstract class RollupCalculator {
     set;
   }
 
-  /**
-   * @description Factory class implementing the Strategy pattern for calculator instantiation. Selects the
-   * appropriate calculator subclass based on operation type and target field data type. This centralized
-   * factory enables adding new calculator types without modifying calling code.
-   */
   public virtual class Factory {
-    /**
-     * @description Creates the appropriate calculator instance for the given operation and field types.
-     * Uses a decision tree: first checks for group-by rollups, then operation type, then field data type.
-     * @param op The rollup operation to perform
-     * @param opFieldOnCalcItem The source field on child records
-     * @param opFieldOnLookupObject The target field on parent records
-     * @param metadata The rollup configuration metadata
-     * @param lookupKeyField The field linking child to parent records
-     * @return The appropriate calculator subclass instance
-     * @throws IllegalArgumentException If no calculator is defined for the field/operation combination
-     */
     public virtual RollupCalculator getCalculator(
       Rollup.Op op,
       SObjectfield opFieldOnCalcItem,
@@ -170,13 +133,6 @@ public without sharing abstract class RollupCalculator {
     this.repo = new RollupRepository(RollupMetaPicklists.getAccessLevel(this.metadata));
   }
 
-  /**
-   * @description Initializes calculator state for processing a specific parent record's rollup. Sets the
-   * return value to either the prior value (for incremental updates) or the configured default, and builds
-   * the WHERE clause fragment for querying related child records.
-   * @param lookupRecordKey The parent record identifier (typically Id as string)
-   * @param priorVal The existing rollup value on the parent record, or null for initial calculation
-   */
   public virtual void setDefaultValues(String lookupRecordKey, Object priorVal) {
     this.shouldShortCircuit = false;
     this.lookupRecordKey = lookupRecordKey;
@@ -190,11 +146,6 @@ public without sharing abstract class RollupCalculator {
     this.childrenIds = new Set<Id>();
   }
 
-  /**
-   * @description Returns the calculated rollup value after all processing is complete. If state tracking
-   * is enabled, persists the value to state for potential continuation processing.
-   * @return The calculated rollup value in the appropriate data type for the target field
-   */
   public virtual Object getReturnValue() {
     if (this.state != null && this.hasCustomStateCalculation == false) {
       RollupState.GenericInfo possibleInfo = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.GenericInfo.class);
@@ -203,48 +154,24 @@ public without sharing abstract class RollupCalculator {
     return this.returnVal;
   }
 
-  /**
-   * @description Marks this calculation as originating from a CDC trigger for special handling.
-   * @param isCDCUpdate true if processing Change Data Capture events
-   */
   public void setCDCUpdate(Boolean isCDCUpdate) {
     this.isCDCUpdate = isCDCUpdate;
   }
 
-  /**
-   * @description Assigns a custom evaluator for in-memory filtering of calc items.
-   * @param eval The evaluator implementing custom matching logic
-   */
   public void setEvaluator(Rollup.Evaluator eval) {
     this.eval = eval;
   }
 
-  /**
-   * @description Marks this calculation as part of a full recalculation operation, disabling
-   * incremental delta logic.
-   * @param isFullRecalc true if performing full recalculation
-   */
   public void setFullRecalc(Boolean isFullRecalc) {
     this.isFullRecalc = isFullRecalc;
   }
 
-  /**
-   * @description Extracts currency ISO code from the parent record for multi-currency conversions.
-   * @param parentRecord The parent record that may contain CurrencyIsoCode
-   */
   public void setMultiCurrencyInfo(SObject parentRecord) {
     if (parentRecord.getPopulatedFieldsAsMap().containsKey(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME)) {
       this.parentIsoCode = (String) parentRecord.get(RollupCurrencyInfo.CURRENCY_ISO_CODE_FIELD_NAME);
     }
   }
 
-  /**
-   * @description Main entry point for executing a rollup calculation. Filters calc items through the
-   * winnowing process, then dispatches to the appropriate handler method based on operation type.
-   * Sets up state for potential full recalculation if incremental processing proves insufficient.
-   * @param calcItems The child records to include in the rollup
-   * @param oldCalcItems Map of previous versions for update/delete context delta calculations
-   */
   public virtual void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
     this.calcItems = calcItems;
     this.oldCalcItems = oldCalcItems;
@@ -253,63 +180,39 @@ public without sharing abstract class RollupCalculator {
     this.rollupResults(this.winnowItems(calcItems, oldCalcItems));
   }
 
-  /**
-   * @description Assigns state tracker for calculations that span multiple async boundaries.
-   * @param state The state management instance
-   */
   public void setState(RollupState state) {
     this.state = state;
   }
 
   // Handler methods - no-ops by default; subclasses override for applicable rollup types
 
-  /** @description Handler for COUNT_DISTINCT operations on insert context */
   public virtual void handleCountDistinct(WinnowResult result) {
   }
-  /** @description Handler for COUNT_DISTINCT operations on update context */
   public virtual void handleUpdateCountDistinct(WinnowResult result) {
   }
-  /** @description Handler for SUM and COUNT operations on insert context */
   public virtual void handleSumOrCount(WinnowResult result) {
   }
-  /** @description Handler for SUM and COUNT operations on update context */
   public virtual void handleUpdateSumOrCount(WinnowResult result) {
   }
-  /** @description Handler for SUM and COUNT operations on delete context */
   public virtual void handleDeleteSumOrCount(WinnowResult result) {
   }
-  /** @description Handler for MIN operations */
   public virtual void handleMin(WinnowResult result) {
   }
-  /** @description Handler for MAX operations */
   public virtual void handleMax(WinnowResult result) {
   }
-  /** @description Handler for MIN/MAX operations on update/delete context */
   public virtual void handleUpdateMinOrMax(WinnowResult result) {
   }
-  /** @description Handler for CONCAT operations on insert context */
   public virtual void handleConcat(WinnowResult result) {
   }
-  /** @description Handler for CONCAT operations on update context */
   public virtual void handleUpdateConcat(WinnowResult result) {
   }
-  /** @description Handler for CONCAT operations on delete context */
   public virtual void handleDeleteConcat(WinnowResult result) {
   }
-  /** @description Handler invoked when short-circuit conditions are met */
   protected virtual void handleShortCircuit(WinnowResult result) {
   }
-  /** @description Finalizes the return value after all results are processed */
   protected virtual void setReturnValue() {
   }
 
-  /**
-   * @description Template method that iterates through winnowed results and dispatches to the appropriate
-   * handler based on operation type. Implements short-circuit optimization for operations like MIN/MAX where
-   * a full recalculation may be needed mid-processing. Handles CDC updates specially since items are already
-   * updated. Triggers full recalculation if no matching items are found after winnowing.
-   * @param results The filtered calc items ready for aggregation
-   */
   protected virtual void rollupResults(List<WinnowResult> results) {
     this.shouldTriggerFullRecalc = this.shouldTriggerFullRecalc ?? false;
     for (Integer index = 0; index < results.size(); index++) {
@@ -373,7 +276,7 @@ public without sharing abstract class RollupCalculator {
       }
 
       if (this.shouldShortCircuit && this.isFirstTimeThrough) {
-        /**
+        /*
          * an example of short circuiting - halfway through the list during a MIN operation,
          * Rollup encounters a calcItem whose previous value equals the current min, but the new value
          * is greater than the min. This triggers a full recalc, since it is at once both possible

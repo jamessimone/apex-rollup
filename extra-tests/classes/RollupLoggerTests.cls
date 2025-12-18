@@ -88,6 +88,15 @@ private class RollupLoggerTests {
       localLogObject = logObject;
       localLogLevel = logLevel;
     }
+    public void logDiagnostic(String logString, System.LoggingLevel logLevel) {
+      locallogString = logString;
+      localLogLevel = logLevel;
+    }
+    public void logDiagnostic(String logString, Object logObject, System.LoggingLevel logLevel) {
+      locallogString = logString;
+      localLogObject = logObject;
+      localLogLevel = logLevel;
+    }
     public void save() {
       wasSaved = true;
     }
@@ -101,5 +110,75 @@ private class RollupLoggerTests {
       locallogString = logString;
       localLogLevel = logLevel;
     }
+  }
+
+  @IsTest
+  static void diagnosticLevelLogsWhenSetToDiagnostic() {
+    Rollup.defaultControl = new RollupControl__mdt(RollupLoggingLevel__c = 'Diagnostic');
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
+    locallogString = null;
+    String diagnosticMessage = 'diagnostic test message';
+
+    Test.startTest();
+    RollupLogger.Instance.logDiagnostic(diagnosticMessage, System.LoggingLevel.INFO);
+    Test.stopTest();
+
+    Assert.areEqual(diagnosticMessage, locallogString, 'Diagnostic messages should log when level is Diagnostic');
+  }
+
+  @IsTest
+  static void debugLevelDoesNotLogWhenSetToDiagnostic() {
+    Rollup.defaultControl = new RollupControl__mdt(RollupLoggingLevel__c = 'Diagnostic');
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
+    locallogString = null;
+
+    Test.startTest();
+    RollupLogger.Instance.log('debug message', System.LoggingLevel.DEBUG);
+    Test.stopTest();
+
+    Assert.isNull(locallogString, 'Debug messages should not log when level is Diagnostic');
+  }
+
+  @IsTest
+  static void bothLevelsLogWhenSetToDebug() {
+    Rollup.defaultControl = new RollupControl__mdt(RollupLoggingLevel__c = 'Debug');
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
+    locallogString = null;
+
+    Test.startTest();
+    RollupLogger.Instance.log('debug message', System.LoggingLevel.DEBUG);
+    Assert.areEqual('debug message', locallogString, 'Debug messages should log when level is Debug');
+
+    RollupLogger.Instance.logDiagnostic('diagnostic message', System.LoggingLevel.INFO);
+    Test.stopTest();
+
+    Assert.areEqual('diagnostic message', locallogString, 'Diagnostic messages should also log when level is Debug');
+  }
+
+  @IsTest
+  static void nothingLogsWhenSetToNone() {
+    Rollup.defaultControl = new RollupControl__mdt(RollupLoggingLevel__c = 'None');
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
+    locallogString = null;
+
+    Test.startTest();
+    RollupLogger.Instance.log('debug message', System.LoggingLevel.DEBUG);
+    RollupLogger.Instance.logDiagnostic('diagnostic message', System.LoggingLevel.INFO);
+    Test.stopTest();
+
+    Assert.areEqual('logging isn\'t enabled, further log messages paused unless otherwise re-activated', locallogString, 'Only disabled message should appear when level is None');
+  }
+
+  @IsTest
+  static void backwardCompatibilityWithIsRollupLoggingEnabled() {
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, RollupLoggingLevel__c = null);
+    RollupPlugin.pluginMocks = new List<RollupPlugin__mdt>{ new RollupPlugin__mdt(DeveloperName = ExampleLogger.class.getName()) };
+    locallogString = null;
+
+    Test.startTest();
+    RollupLogger.Instance.log('test message', System.LoggingLevel.DEBUG);
+    Test.stopTest();
+
+    Assert.areEqual('test message', locallogString, 'Legacy IsRollupLoggingEnabled__c = true should enable debug-level logging');
   }
 }
