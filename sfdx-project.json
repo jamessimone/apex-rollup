@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Use new Invocable Action Extensions to clean up and organize the Rollup flow invocable action menus",
-            "versionNumber": "1.7.33.0",
+            "versionName": "Fix obscure DataWeave error by ensuring all Datetime strings are parsed correctly",
+            "versionNumber": "1.7.34.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {

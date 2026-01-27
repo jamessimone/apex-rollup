@@ -67,6 +67,30 @@ private class RollupStateTests {
   }
 
   @IsTest
+  static void worksWithObscureDataTypes() {
+    RollupState state = new RollupState();
+    String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
+    Rollup__mdt metaKey = new Rollup__mdt(RollupOperation__c = 'FIRST');
+    RollupState.SObjectInfo sObjectInfo = (RollupState.SObjectInfo) state.getState(stubAccountId, metaKey, RollupState.SObjectInfo.class);
+    String nonUtcDatetimeParsed = '2023-10-09T20:18:57.000+0000';
+    String emailMessageString = JSON.serialize(new Map<String, Object>{ 'MessageDate' => nonUtcDatetimeParsed });
+    SObject fakeEmailMessage = (SObject) JSON.deserialize(emailMessageString, Schema.EmailMessage.class);
+
+    sObjectInfo.setItem(fakeEmailMessage);
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+
+    state.commitState(stubJobId);
+    state.loadState(stubJobId, new Set<String>{ stubAccountId });
+    sObjectInfo = (RollupState.SObjectInfo) state.getState(stubAccountId, metaKey, RollupState.SObjectInfo.class);
+
+    Datetime actualMessageDate = (Datetime) sObjectInfo.item.get('MessageDate');
+    // we have to manually add the UTC offset here - this would normally be appended by DataWeave, but in tests it seems impossible to actually fudge the situation
+    // which sometimes occurs, which is a UTC Datetime string being passed without the ending "Z". In those cases, the DataWeave script itself will attempt to self-recover
+    // by appending the Z
+    Assert.areEqual(nonUtcDatetimeParsed, actualMessageDate.format('YYYY-MM-dd') + 'T' + actualMessageDate.addHours(4).format('HH:mm:ss') + '.000+0000');
+  }
+
+  @IsTest
   static void usesJSONSerializationStrategy() {
     RollupState state = new RollupState();
     state.setSerializationStrategy(new RollupState.JSONSerializationStrategy());
