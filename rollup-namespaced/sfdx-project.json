@@ -18,7 +18,7 @@
     ],
     "namespace": "please",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "62.0",
+    "sourceApiVersion": "65.0",
     "packageAliases": {
         "apex-rollup-namespaced": "0Ho6g000000PBMjCAO",
         "apex-rollup-namespaced@1.2.4": "04t6g000008OfqYAAS",
