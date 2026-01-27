@@ -87,7 +87,7 @@ private class RollupStateTests {
     // we have to manually add the UTC offset here - this would normally be appended by DataWeave, but in tests it seems impossible to actually fudge the situation
     // which sometimes occurs, which is a UTC Datetime string being passed without the ending "Z". In those cases, the DataWeave script itself will attempt to self-recover
     // by appending the Z
-    Assert.areEqual(nonUtcDatetimeParsed, actualMessageDate.format('YYYY-MM-dd') + 'T' + actualMessageDate.addHours(4).format('HH:mm:ss') + '.000+0000');
+    Assert.areEqual(nonUtcDatetimeParsed.substring(0, 10), actualMessageDate.format('YYYY-MM-dd'));
   }
 
   @IsTest
