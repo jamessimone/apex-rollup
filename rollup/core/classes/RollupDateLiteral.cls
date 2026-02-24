@@ -49,10 +49,10 @@ public without sharing abstract class RollupDateLiteral {
   protected Datetime ref;
   protected Datetime bound;
 
-  private static final Map<String, Type> KEY_TO_DATE_LITERAL {
+  private static final Map<String, Object> KEY_TO_DATE_LITERAL {
     get {
       KEY_TO_DATE_LITERAL = KEY_TO_DATE_LITERAL ??
-        new Map<String, Type>{
+        new Map<String, Object>{
           'YESTERDAY' => YesterdayLiteral.class,
           'TODAY' => TodayLiteral.class,
           'TOMORROW' => TomorrowLiteral.class,
@@ -136,9 +136,17 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey, String possibleDynamicValue) {
-    Type literalType = KEY_TO_DATE_LITERAL.get(dictionaryKey);
-    RollupDateLiteral literal = (RollupDateLiteral) literalType.newInstance();
-    literal.setDynamicValue(possibleDynamicValue);
+    Object literalType = KEY_TO_DATE_LITERAL.get(dictionaryKey);
+    RollupDateLiteral literal;
+    if (literalType instanceof Type) {
+      literal = (RollupDateLiteral) ((Type) literalType).newInstance();
+      literal.setDynamicValue(possibleDynamicValue);
+      if (literal.shouldCache()) {
+        KEY_TO_DATE_LITERAL.put(dictionaryKey, literal);
+      }
+    } else if (literalType instanceof RollupDateLiteral) {
+      literal = (RollupDateLiteral) literalType;
+    }
     return literal;
   }
 
@@ -264,6 +272,10 @@ public without sharing abstract class RollupDateLiteral {
 
   public virtual override String toString() {
     return 'ref: ' + this.ref + ' | bound: ' + this.bound;
+  }
+
+  protected virtual Boolean shouldCache() {
+    return false;
   }
 
   protected virtual Boolean isEqualTo(Object val) {
@@ -404,8 +416,8 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class Last90DaysLiteral extends RollupDateLiteral {
     public Last90DaysLiteral() {
-      this.bound = getRelativeDatetime(START_OF_TODAY.dateGmt(), END_TIME);
-      this.ref = getRelativeDatetime(this.bound.addDays(-91).dateGmt(), START_TIME);
+      this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME);
+      this.ref = getRelativeDatetime(this.bound.addDays(-90).date(), START_TIME);
     }
   }
 
@@ -415,7 +427,7 @@ public without sharing abstract class RollupDateLiteral {
   private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
       this.ref = START_OF_TODAY.addDays(1);
-      this.bound = getRelativeDatetime(this.ref.addDays(89).dateGmt(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addDays(89).date(), END_TIME);
     }
   }
 
@@ -426,8 +438,8 @@ public without sharing abstract class RollupDateLiteral {
   private class LastNDaysLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = getRelativeDatetime(START_OF_TODAY.dateGmt(), END_TIME); // includes all of today
-      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-(dateRange + 1)).dateGmt(), END_TIME);
+      this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME); // includes all of today
+      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-(dateRange + 1)).date(), END_TIME);
     }
   }
 
@@ -437,8 +449,9 @@ public without sharing abstract class RollupDateLiteral {
   private class NDaysAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-dateRange).dateGmt(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.dateGmt(), END_TIME);
+      Date nDaysAgo = START_OF_TODAY.addDays(-dateRange).date();
+      this.ref = getRelativeDatetime(nDaysAgo, START_TIME);
+      this.bound = getRelativeDatetime(nDaysAgo, END_TIME);
     }
   }
 
@@ -482,7 +495,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(System.today().toStartOfWeek().addDays(7), START_TIME);
-      this.bound = getRelativeDateTime(this.ref.date().addDays(7 * dateRange).addDays(-1), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.date().addDays(7 * dateRange).addDays(-1), END_TIME);
     }
   }
 
@@ -516,7 +529,8 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(System.today().toStartOfMonth().addMonths(1), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(dateRange).dateGmt().toStartOfMonth(), END_TIME));
+      Date lastDayOfRange = this.ref.date().addMonths(dateRange).addDays(-1);
+      this.bound = getRelativeDatetime(lastDayOfRange, END_TIME);
     }
   }
 
@@ -526,7 +540,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class LastQuarterLiteral extends RollupDateLiteral {
     public LastQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getLastQuarterStart(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(4).date().toStartOfMonth().addDays(-1), END_TIME));
     }
 
     protected virtual Date getLastQuarterStart() {
@@ -554,7 +568,7 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class NextQuarterLiteral extends RollupDateLiteral {
     public NextQuarterLiteral() {
       this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME));
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -569,11 +583,15 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.bound = offsetToFirstDay(getRelativeDatetime(this.getLastQuarterStart(), END_TIME));
-      this.ref = offsetToFirstDay(getRelativeDateTime(this.bound.addMonths(-3 * quarterRange).dateGmt(), START_TIME));
+      this.ref = offsetToFirstDay(getRelativeDateTime(this.bound.addMonths(-3 * quarterRange).date(), START_TIME));
     }
 
     protected virtual Date getLastQuarterStart() {
       return Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1);
+    }
+
+    protected override Boolean shouldCache() {
+      return true;
     }
   }
 
@@ -584,7 +602,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).date(), END_TIME));
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME));
     }
   }
 
@@ -595,7 +613,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(quarterRange * 3).date(), END_TIME));
+      this.bound = getRelativeDatetime(this.ref.date().addMonths(quarterRange * 3).addDays(-1), END_TIME);
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -720,7 +738,7 @@ public without sharing abstract class RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
       this.ref = getRelativeDatetime(FISCAL_INFO.CurrentQuarterStartDate.addMonths(-3 * quarterRange), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addMonths(3).dateGmt().addDays(-1), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.addMonths(3).date().addDays(-1), END_TIME);
     }
   }
 
@@ -823,12 +841,9 @@ public without sharing abstract class RollupDateLiteral {
       return this.bound > this.getComparisonNumber(castVal);
     }
     private Datetime getTimezoneAdjustedDatetime(Object val) {
-      if (val instanceof Date) {
+      this.wasDate = val instanceof Date;
+      if (this.wasDate) {
         val = Datetime.newInstanceGmt((Date) val, END_TIME);
-        this.wasDate = true;
-      } else {
-        this.wasDate = false;
-        val = Datetime.newInstance(((Datetime) val).getTime());
       }
       return (Datetime) val;
     }
@@ -861,6 +876,9 @@ public without sharing abstract class RollupDateLiteral {
   private class DayInWeekFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
       Date startOfWeek = val.dateGmt().toStartOfWeek();
+      if (((Datetime) startOfWeek).format('u') == '7') {
+        startOfWeek = startOfWeek.addDays(1);
+      }
       Integer daysBetween = startOfWeek.daysBetween(val.dateGmt());
       return daysBetween + 1;
     }
@@ -957,7 +975,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private class WeekInMonthFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
-      return getWeekNumber(val.dayGmt());
+      return getWeekNumber(val.day());
     }
   }
 

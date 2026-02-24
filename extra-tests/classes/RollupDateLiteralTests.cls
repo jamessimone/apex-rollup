@@ -33,17 +33,30 @@ private class RollupDateLiteralTests {
     );
     insert cpcs;
 
-    insert new User(
-      LastName = 'Australia User',
-      Username = '' + System.now().getTime() + '@RollupDateLiteralTests.org',
-      Email = 'australiauser@rollup.org',
-      EmailEncodingKey = 'ISO-8859-1',
-      Alias = 'aususer',
-      TimeZoneSidKey = 'Australia/Sydney',
-      LocaleSidKey = 'en_US',
-      LanguageLocaleKey = 'en_US',
-      ProfileId = UserInfo.getProfileId()
-    );
+    insert new List<User>{
+      new User(
+        LastName = 'Australia User',
+        Username = 'Australia' + System.now().getTime() + '@RollupDateLiteralTests.org',
+        Email = 'australiauser@rollup.org',
+        EmailEncodingKey = 'ISO-8859-1',
+        Alias = 'aususer',
+        TimeZoneSidKey = 'Australia/Sydney',
+        LocaleSidKey = 'en_US',
+        LanguageLocaleKey = 'en_US',
+        ProfileId = UserInfo.getProfileId()
+      ),
+      new User(
+        LastName = 'Berlin User',
+        Username = 'Berlin' + System.now().getTime() + '@RollupDateLiteralTests.org',
+        Email = 'berlinuser@rollup.org',
+        EmailEncodingKey = 'ISO-8859-1',
+        Alias = 'berlusr',
+        TimeZoneSidKey = 'Europe/Berlin',
+        LocaleSidKey = 'de_DE',
+        LanguageLocaleKey = 'de',
+        ProfileId = UserInfo.getProfileId()
+      )
+    };
   }
 
   @IsTest
@@ -153,8 +166,25 @@ private class RollupDateLiteralTests {
     return cpcs.isEmpty() ? null : cpcs.get(0);
   }
 
+  static void runFunctionTest(List<User> users, String literal, String val) {
+    for (User u : users) {
+      System.runAs(u) {
+        runFunctionTest(literal, val);
+      }
+    }
+  }
+
   static void runFunctionTest(String functionLiteral, String val) {
     runTestForLiteral(RollupDateLiteral.getFunction(functionLiteral, val), functionLiteral + '(CaptureDate) = ' + val);
+  }
+
+  static void runTestForLiteral(List<User> users, String literal) {
+    for (User u : users) {
+      RollupLogger.Instance.log('Running test for user', u, System.LoggingLevel.DEBUG);
+      System.runAs(u) {
+        runTestForLiteral(literal);
+      }
+    }
   }
 
   static void runTestForLiteral(String dateLiteral) {
@@ -192,7 +222,19 @@ private class RollupDateLiteralTests {
 
   static User australiaUser {
     get {
-      return [SELECT Id FROM User WHERE LastName = 'Australia User'];
+      return [SELECT Id, Name FROM User WHERE LastName = 'Australia User'];
+    }
+  }
+
+  static User berlinUser {
+    get {
+      return [SELECT Id, Name FROM User WHERE LastName = 'Berlin User'];
+    }
+  }
+
+  static User currentUser {
+    get {
+      return new User(Id = UserInfo.getUserId(), AboutMe = UserInfo.getName());
     }
   }
 
@@ -265,21 +307,24 @@ private class RollupDateLiteralTests {
   @IsTest
   static void shouldWorkForLast90Days() {
     runTestForLiteral('LAST_90_DAYS');
+    System.runAs(berlinUser) {
+      runTestForLiteral('LAST_90_DAYS');
+    }
   }
 
   @IsTest
   static void shouldWorkForNext90Days() {
-    runTestForLiteral('NEXT_90_DAYS');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_90_DAYS');
   }
 
   @IsTest
   static void shouldWorkForLastNDays() {
-    runTestForLiteral('LAST_N_DAYS:5');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'LAST_N_DAYS:5');
   }
 
   @IsTest
   static void shouldWorkForNDaysAgo() {
-    runTestForLiteral('N_DAYS_AGO:5');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'N_DAYS_AGO:5');
   }
 
   @IsTest
@@ -314,12 +359,12 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForNextNMonths() {
-    runTestForLiteral('NEXT_N_MONTHS:2');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_MONTHS:2');
   }
 
   @IsTest
   static void shouldWorkForLastQuarter() {
-    runTestForLiteral('LAST_QUARTER');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'LAST_QUARTER');
   }
 
   @IsTest
@@ -329,17 +374,18 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForNextQuarter() {
-    runTestForLiteral('NEXT_QUARTER');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_QUARTER');
   }
 
   @IsTest
   static void shouldWorkForLastNQuarters() {
-    runTestForLiteral('LAST_N_QUARTERS: 2');
+    // TODO get this working for berlinUser
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'LAST_N_QUARTERS: 2');
   }
 
   @IsTest
   static void shouldWorkForNQuartersAgo() {
-    runTestForLiteral('N_QUARTERS_AGO:7');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'N_QUARTERS_AGO:7');
   }
 
   @IsTest
@@ -381,7 +427,7 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForLastFiscalQuarter() {
-    runTestForLiteral('LAST_FISCAL_QUARTER');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'LAST_FISCAL_QUARTER');
   }
 
   @IsTest
@@ -391,29 +437,30 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForNextFiscalQuarter() {
-    runTestForLiteral('NEXT_FISCAL_QUARTER');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_FISCAL_QUARTER');
   }
 
   @IsTest
   static void shouldWorkForLastNFiscalQuarters() {
-    runTestForLiteral('LAST_N_FISCAL_QUARTERS: 7');
+    // TODO get this working for berlinUser
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'LAST_N_FISCAL_QUARTERS: 7');
   }
 
   @IsTest
   static void shouldWorkForNFiscalQuartersAgo() {
-    runTestForLiteral('N_FISCAL_QUARTERS_AGO: 2');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'N_FISCAL_QUARTERS_AGO: 2');
   }
 
   @IsTest
   static void shouldWorkForNextNFiscalQuarters() {
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 1');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 2');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 3');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 4');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 5');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 6');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 7');
-    runTestForLiteral('NEXT_N_FISCAL_QUARTERS: 8');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 1');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 2');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 3');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 4');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 5');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 6');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 7');
+    runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_N_FISCAL_QUARTERS: 8');
   }
 
   @IsTest
@@ -463,7 +510,7 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForDayInWeekFunction() {
-    runFunctionTest('DAY_IN_WEEK', '2');
+    runFunctionTest(new List<User>{ currentUser, berlinUser }, 'DAY_IN_WEEK', '2');
   }
 
   @IsTest
@@ -516,74 +563,78 @@ private class RollupDateLiteralTests {
   static void shouldWorkForWeekInMonthFunction() {
     // This test doesn't fit the paradigm necessary in "runFunctionTest"
     // for example, there's no possible value for a WEEK_IN_MONTH(CaptureDate) < 1
-    Datetime comparisonDate = Datetime.newInstance(2020, 1, 1);
-    Datetime oneWeekBefore = comparisonDate.addDays(-7);
-    Datetime oneWeekAfter = comparisonDate.addDays(7);
-    RollupDateLiteral weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '1');
+    for (User u : new List<User>{ currentUser, berlinUser }) {
+      System.runAs(u) {
+        Datetime comparisonDate = Datetime.newInstance(2020, 1, 1);
+        Datetime oneWeekBefore = comparisonDate.addDays(-7);
+        Datetime oneWeekAfter = comparisonDate.addDays(7);
+        RollupDateLiteral weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '1');
 
-    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
-    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
-    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
-    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+        System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth + '\n' + u);
+        System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+        System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+        System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
 
-    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
-    // deviation - last week of the last month exceeds the first week of this month
-    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '>'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
+        // deviation - last week of the last month exceeds the first week of this month
+        System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '>'));
 
-    comparisonDate = Datetime.newInstance(2020, 1, 8);
-    oneWeekBefore = comparisonDate.addDays(-7);
-    oneWeekAfter = comparisonDate.addDays(7);
-    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '2');
+        comparisonDate = Datetime.newInstance(2020, 1, 8);
+        oneWeekBefore = comparisonDate.addDays(-7);
+        oneWeekAfter = comparisonDate.addDays(7);
+        weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '2');
 
-    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
-    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
-    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
-    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+        System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+        System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+        System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+        System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
 
-    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
-    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
 
-    comparisonDate = Datetime.newInstance(2020, 1, 15);
-    oneWeekBefore = comparisonDate.addDays(-7);
-    oneWeekAfter = comparisonDate.addDays(7);
-    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '3');
+        comparisonDate = Datetime.newInstance(2020, 1, 15);
+        oneWeekBefore = comparisonDate.addDays(-7);
+        oneWeekAfter = comparisonDate.addDays(7);
+        weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '3');
 
-    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
-    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
-    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
-    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+        System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+        System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+        System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+        System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
 
-    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
-    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '>'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
 
-    // ensure february is handled correctly
-    comparisonDate = Datetime.newInstance(2020, 2, 28);
-    oneWeekBefore = comparisonDate.addDays(-7);
-    oneWeekAfter = comparisonDate.addDays(7);
-    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '4');
+        // ensure february is handled correctly
+        comparisonDate = Datetime.newInstance(2020, 2, 28);
+        oneWeekBefore = comparisonDate.addDays(-7);
+        oneWeekAfter = comparisonDate.addDays(7);
+        weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '4');
 
-    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
-    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
-    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
-    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+        System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+        System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+        System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+        System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
 
-    // deviation - week after is now week one of the next month
-    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
-    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+        // deviation - week after is now week one of the next month
+        System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
 
-    comparisonDate = Datetime.newInstance(2020, 12, 29);
-    oneWeekBefore = comparisonDate.addDays(-7);
-    oneWeekAfter = comparisonDate.addDays(7);
-    weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '5');
+        comparisonDate = Datetime.newInstance(2020, 12, 29);
+        oneWeekBefore = comparisonDate.addDays(-7);
+        oneWeekAfter = comparisonDate.addDays(7);
+        weekInMonth = RollupDateLiteral.getFunction('WEEK_IN_MONTH(CreatedDate)', '5');
 
-    System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
-    System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
-    System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
-    System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
+        System.assertEquals(true, weekInMonth.matches(comparisonDate, '='), weekInMonth);
+        System.assertEquals(false, weekInMonth.matches(oneWeekBefore, '='));
+        System.assertEquals(false, weekInMonth.matches(oneWeekAfter, '='));
+        System.assertEquals(false, weekInMonth.matches(comparisonDate, '!='));
 
-    // deviation - week after is now week one of the next month
-    System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
-    System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+        // deviation - week after is now week one of the next month
+        System.assertEquals(true, weekInMonth.matches(oneWeekAfter, '<'));
+        System.assertEquals(true, weekInMonth.matches(oneWeekBefore, '<'));
+      }
+    }
   }
 
   @IsTest
