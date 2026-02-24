@@ -150,9 +150,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
 
     public override Map<String, Object> getUntypedState() {
       return new Map<String, Object>{
-        'item' => RollupState.serializationStrategy.getType() == JSONSerializationStrategy.class
-          ? (Object) this.item
-          : (Object) this.item.getPopulatedFieldsAsMap(),
+        'item' => RollupState.serializationStrategy.getType() == JSONSerializationStrategy.class ? (Object) this.item : (Object) this.getFieldValues(),
         'itemType' => '' + this.item.getSObjectType(),
         'key' => this.key,
         'keyLength' => this.keyLength,
@@ -164,6 +162,17 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       this.item = (SObject) JSON.deserialize(JSON.serialize(untypedState.get('item')), SObject.class);
       this.key = (String) untypedState.get('key');
       this.keyLength = this.key.length();
+    }
+
+    private Map<String, Object> getFieldValues() {
+      Map<String, Object> populatedFields = new Map<String, Object>(this.item.getPopulatedFieldsAsMap());
+      Map<String, Schema.SObjectField> fields = this.item.getSObjectType().getDescribe().fields.getMap();
+      for (String fieldName : populatedFields.keySet()) {
+        if (fields.containsKey(fieldName) == false) {
+          populatedFields.remove(fieldName);
+        }
+      }
+      return populatedFields;
     }
   }
 

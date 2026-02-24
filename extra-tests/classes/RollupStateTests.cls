@@ -91,6 +91,23 @@ private class RollupStateTests {
   }
 
   @IsTest
+  static void worksWithParentTypes() {
+    RollupState state = new RollupState();
+    String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
+    Rollup__mdt metaKey = new Rollup__mdt(RollupOperation__c = 'FIRST');
+    RollupState.SObjectInfo sObjectInfo = (RollupState.SObjectInfo) state.getState(stubAccountId, metaKey, RollupState.SObjectInfo.class);
+    SObject recordTypeAccount = new Account(Id = stubAccountId, Owner = new User(Id = RollupTestUtils.createId(Schema.User.SObjectType)));
+    sObjectInfo.setItem(recordTypeAccount);
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+
+    state.commitState(stubJobId);
+    state.loadState(stubJobId, new Set<String>{ stubAccountId });
+
+    sObjectInfo = (RollupState.SObjectInfo) state.getState(stubAccountId, metaKey, RollupState.SObjectInfo.class);
+    Assert.areEqual(stubAccountId, sObjectInfo.item.Id);
+  }
+
+  @IsTest
   static void usesJSONSerializationStrategy() {
     RollupState state = new RollupState();
     state.setSerializationStrategy(new RollupState.JSONSerializationStrategy());
