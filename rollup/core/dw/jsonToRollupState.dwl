@@ -10,7 +10,7 @@ var getCompliantSObject = (item) -> item mapObject ((value, key) ->
                     // I don't want to simply assume that any text that matches this pattern is a date, even though it's probably safe to do so
                     // so the orElse serves as a fallback to preserve the original value
                     else if (value matches /\d\d\d\d-\d\d-\d\d/ ) { (key): try(() -> value as Date) orElse value }
-                    else { (key)  : value }
+                    else { (key) : value }
                 )
 ---
 // String coercion used to avoid errors like:
