@@ -873,14 +873,37 @@ public without sharing abstract class RollupDateLiteral {
     }
   }
 
+  /**
+   * _Most_ date literals are user locale-based, but this one is fixed according to the docs
+   */
   private class DayInWeekFunctionLiteral extends FunctionLiteral {
     protected override Integer getComparisonNumber(Datetime val) {
-      Date startOfWeek = val.dateGmt().toStartOfWeek();
-      if (((Datetime) startOfWeek).format('u') == '7') {
-        startOfWeek = startOfWeek.addDays(1);
+      String dayInWeekName = getRelativeDatetime(val.dateGmt(), END_TIME).format('E');
+      Integer offset = 0;
+      switch on dayInWeekName {
+        when 'Sun' {
+          offset = 0;
+        }
+        when 'Mon' {
+          offset = 1;
+        }
+        when 'Tue' {
+          offset = 2;
+        }
+        when 'Wed' {
+          offset = 3;
+        }
+        when 'Thu' {
+          offset = 4;
+        }
+        when 'Fri' {
+          offset = 5;
+        }
+        when 'Sat' {
+          offset = 6;
+        }
       }
-      Integer daysBetween = startOfWeek.daysBetween(val.dateGmt());
-      return daysBetween + 1;
+      return offset + 1;
     }
   }
 

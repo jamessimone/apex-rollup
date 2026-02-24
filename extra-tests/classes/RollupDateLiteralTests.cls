@@ -511,7 +511,6 @@ private class RollupDateLiteralTests {
 
   @IsTest
   static void shouldWorkForDayInWeekFunction() {
-    // TODO fix for berlinUser
     runFunctionTest(new List<User>{ currentUser }, 'DAY_IN_WEEK', '2');
   }
 
@@ -667,7 +666,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(false, weekInYear.matches(comparisonDate, '!='));
   }
 
-  @IsTest
+  // @IsTest
   static void printsLocalesWithDifferingWeekStarts() {
     // from https://help.salesforce.com/s/articleView?id=xcloud.admin_supported_locales.htm&type=5
     // I had to run this in two parts because System.runAs() performs a DML statement each time
