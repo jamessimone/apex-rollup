@@ -43,7 +43,7 @@
     "husky:pre-commit": "lint-staged",
     "install:currency:data": "sf data import tree --files ./config/data/CurrencyTypes.json",
     "install:nebula:logger": "sf package install -p 04t5Y0000015oRNQAY -w 10 -r",
-    "lint:verify": "sf code-analyzer run --rule-selector eslint --workspace rollup",
+    "lint:verify": "npx @salesforce-ux/slds-linter@latest lint && sf code-analyzer run --rule-selector eslint --workspace rollup",
     "prepare": "husky",
     "prettier": "prettier",
     "scan": "npm run lint:verify && npm run scan:pmd",
