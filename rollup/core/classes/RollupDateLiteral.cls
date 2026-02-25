@@ -28,7 +28,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private static Time END_TIME {
     get {
-      return Time.newInstance(23, 59, 59, 59);
+      return Time.newInstance(23, 59, 59, 999);
     }
   }
 
@@ -49,10 +49,10 @@ public without sharing abstract class RollupDateLiteral {
   protected Datetime ref;
   protected Datetime bound;
 
-  private static final Map<String, Object> KEY_TO_DATE_LITERAL {
+  private static final Map<String, Type> KEY_TO_DATE_LITERAL {
     get {
       KEY_TO_DATE_LITERAL = KEY_TO_DATE_LITERAL ??
-        new Map<String, Object>{
+        new Map<String, Type>{
           'YESTERDAY' => YesterdayLiteral.class,
           'TODAY' => TodayLiteral.class,
           'TOMORROW' => TomorrowLiteral.class,
@@ -117,6 +117,169 @@ public without sharing abstract class RollupDateLiteral {
     set;
   }
 
+  private static final Set<String> LOCALES_WITH_START_TIME_BOUNDARY {
+    get {
+      LOCALES_WITH_START_TIME_BOUNDARY = LOCALES_WITH_START_TIME_BOUNDARY ??
+        new Set<String>{
+          'zh_MY',
+          'yo_BJ',
+          'vi_VN',
+          'uz_LATN_UZ',
+          'uk_UA',
+          'tr_TR',
+          'tg_TJ',
+          'ta_LK',
+          'sv_SE',
+          'sr_RS',
+          'sr_CS',
+          'sr_BA',
+          'sq_AL',
+          'so_SO',
+          'so_DJ',
+          'sl_SI',
+          'sk_SK',
+          'sh_ME',
+          'sh_CS',
+          'sh_BA',
+          'ru_UA',
+          'ru_RU',
+          'ru_PL',
+          'ru_MD',
+          'ru_LT',
+          'ru_KZ',
+          'ru_KG',
+          'ru_BY',
+          'ru_AM',
+          'ro_RO',
+          'ro_MD',
+          'rn_BI',
+          'rm_CH',
+          'pt_ST',
+          'pt_CV',
+          'pt_AO',
+          'ps_AF',
+          'pl_PL',
+          'no_NO',
+          'nl_SR',
+          'nl_NL',
+          'nl_BE',
+          'nl_AW',
+          'ms_MY',
+          'ms_BN',
+          'mk_MK',
+          'mi_NZ',
+          'lv_LV',
+          'lu_CD',
+          'lt_LT',
+          'lb_LU',
+          'ky_KG',
+          'kl_GL',
+          'kk_KZ',
+          'ka_GE',
+          'it_IT',
+          'it_CH',
+          'is_IS',
+          'hy_AM',
+          'hu_HU',
+          'ht_HT',
+          'hr_HR',
+          'ga_IE',
+          'fr_WF',
+          'fr_MR',
+          'fr_MC',
+          'fr_MA',
+          'fr_LU',
+          'fr_KM',
+          'fr_HT',
+          'fr_GN',
+          'fr_FR',
+          'fr_CH',
+          'fr_BE',
+          'fi_FI',
+          'eu_ES',
+          'et_EE',
+          'es_UY',
+          'es_ES',
+          'es_EC',
+          'es_CR',
+          'es_CL',
+          'es_BO',
+          'es_AR',
+          'en_VU',
+          'en_UG',
+          'en_TZ',
+          'en_TO',
+          'en_SZ',
+          'en_SX',
+          'en_SL',
+          'en_SH',
+          'en_SC',
+          'en_SB',
+          'en_RW',
+          'en_PG',
+          'en_NZ',
+          'en_NL',
+          'en_NG',
+          'en_NA',
+          'en_MY',
+          'en_MW',
+          'en_MU',
+          'en_MG',
+          'en_LR',
+          'en_KY',
+          'en_IT',
+          'en_IN',
+          'en_IE',
+          'en_GY',
+          'en_GM',
+          'en_GI',
+          'en_GH',
+          'en_GB',
+          'en_FK',
+          'en_FJ',
+          'en_ER',
+          'en_DE',
+          'en_CY',
+          'en_CM',
+          'en_BM',
+          'en_BE',
+          'en_BB',
+          'en_AU',
+          'en_AE',
+          'el_GR',
+          'el_CY',
+          'de_LU',
+          'de_DE',
+          'de_CH',
+          'de_BE',
+          'de_AT',
+          'da_DK',
+          'cy_GB',
+          'cs_CZ',
+          'ca_ES',
+          'bs_BA',
+          'bg_BG',
+          'be_BY',
+          'az_AZ',
+          'ar_TN',
+          'ar_QA',
+          'ar_OM',
+          'ar_MA',
+          'ar_LY',
+          'ar_LB',
+          'ar_KW',
+          'ar_JO',
+          'ar_IQ',
+          'ar_EG',
+          'ar_DZ',
+          'ar_BH',
+          'ar_AE'
+        };
+      return LOCALES_WITH_START_TIME_BOUNDARY;
+    }
+    set;
+  }
+
   public static Boolean isSoqlDateFunction(String val) {
     return DATE_FUNCTION_PATTERN.matcher(val).matches();
   }
@@ -136,17 +299,9 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   private static RollupDateLiteral getLazyLoadedLiteral(String dictionaryKey, String possibleDynamicValue) {
-    Object literalType = KEY_TO_DATE_LITERAL.get(dictionaryKey);
-    RollupDateLiteral literal;
-    if (literalType instanceof Type) {
-      literal = (RollupDateLiteral) ((Type) literalType).newInstance();
-      literal.setDynamicValue(possibleDynamicValue);
-      if (literal.shouldCache()) {
-        KEY_TO_DATE_LITERAL.put(dictionaryKey, literal);
-      }
-    } else if (literalType instanceof RollupDateLiteral) {
-      literal = (RollupDateLiteral) literalType;
-    }
+    Type literalType = KEY_TO_DATE_LITERAL.get(dictionaryKey);
+    RollupDateLiteral literal = (RollupDateLiteral) literalType.newInstance();
+    literal.setDynamicValue(possibleDynamicValue);
     return literal;
   }
 
@@ -272,10 +427,6 @@ public without sharing abstract class RollupDateLiteral {
 
   public virtual override String toString() {
     return 'ref: ' + this.ref + ' | bound: ' + this.bound;
-  }
-
-  protected virtual Boolean shouldCache() {
-    return false;
   }
 
   protected virtual Boolean isEqualTo(Object val) {
@@ -582,16 +733,14 @@ public without sharing abstract class RollupDateLiteral {
   private virtual class LastNQuartersLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.getLastQuarterStart(), END_TIME));
+      Time possibleEndTime = LOCALES_WITH_START_TIME_BOUNDARY.contains(UserInfo.getLocale()) ? START_TIME : END_TIME;
+
+      this.bound = offsetToFirstDay(getRelativeDatetime(this.getLastQuarterStart(), possibleEndTime));
       this.ref = offsetToFirstDay(getRelativeDateTime(this.bound.addMonths(-3 * quarterRange).date(), START_TIME));
     }
 
     protected virtual Date getLastQuarterStart() {
       return Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1);
-    }
-
-    protected override Boolean shouldCache() {
-      return true;
     }
   }
 
@@ -1007,7 +1156,7 @@ public without sharing abstract class RollupDateLiteral {
   }
 
   private static Datetime offsetToFirstDay(Datetime ref) {
-    if (ref.dayGmt() != 1 && ref.day() == 1) {
+    if (ref.dayGmt() == 2 && ref.day() == 1) {
       ref = ref.addDays(-1);
     }
     return ref;
