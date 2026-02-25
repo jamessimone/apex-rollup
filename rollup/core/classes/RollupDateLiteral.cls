@@ -1,4 +1,4 @@
-@SuppressWarnings('PMD.FieldDeclarationsShouldBeAtStart,PMD.PropertyNamingConventions')
+@SuppressWarnings('PMD.ExcessiveClassLength,PMD.FieldDeclarationsShouldBeAtStart,PMD.PropertyNamingConventions')
 public without sharing abstract class RollupDateLiteral {
   private static final Pattern RELATIVE_LITERAL_PATTERN {
     get {

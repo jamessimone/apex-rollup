@@ -177,6 +177,7 @@ private class RollupDateLiteralTests {
     return cpcs.isEmpty() ? null : cpcs.get(0);
   }
 
+  @SuppressWarnings('PMD.OperationWithLimitsInLoop')
   static void runFunctionTest(List<User> users, String literal, String val) {
     for (User u : users) {
       RollupLogger.Instance.log('Running ' + literal + ' test for user', u, System.LoggingLevel.DEBUG);
@@ -190,6 +191,7 @@ private class RollupDateLiteralTests {
     runTestForLiteral(RollupDateLiteral.getFunction(functionLiteral, val), functionLiteral + '(CaptureDate) = ' + val);
   }
 
+  @SuppressWarnings('PMD.OperationWithLimitsInLoop')
   static void runTestForLiteral(List<User> users, String literal) {
     for (User u : users) {
       RollupLogger.Instance.log('Running ' + literal + ' test for user', u, System.LoggingLevel.DEBUG);
@@ -575,6 +577,7 @@ private class RollupDateLiteralTests {
     System.assertEquals(true, hourInDay.matches(oneHourBefore, '<'));
   }
 
+  @SuppressWarnings('PMD.OperationWithLimitsInLoop')
   @IsTest
   static void shouldWorkForWeekInMonthFunction() {
     // This test doesn't fit the paradigm necessary in "runFunctionTest"

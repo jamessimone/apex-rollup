@@ -185,6 +185,7 @@ private class CustomMetadataDrivenTests {
     System.assertEquals(2, parent.NumberField__c);
   }
 
+  @SuppressWarnings('PMD.AvoidFutureAnnotation')
   @Future
   static void insertRollupChildrenAsync(Id parentId, String firstTextField, Integer firstNumberField) {
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
