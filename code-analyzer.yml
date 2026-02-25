@@ -994,6 +994,12 @@ rules:
         - Recommended
         - Design
         - Apex
+    'NcssCount':
+      severity: 4
+      tags:
+        - Recommended
+        - Design
+        - Apex
     'NcssMethodCount':
       severity: 4
       tags:
