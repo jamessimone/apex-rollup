@@ -1542,8 +1542,8 @@ private class RollupTests {
     Account acc = [SELECT Id FROM Account];
 
     List<Lead> leads = new List<Lead>{
-      new Lead(Company = 'Max Picklist on insert one', LeadSource = picklistVals[0].getValue(), LastName = 'Max Picklist on insert one'),
-      new Lead(Company = 'Max Picklist on insert two', LeadSource = picklistVals[1].getValue(), LastName = 'Max Picklist on insert two')
+      new Lead(LeadSource = picklistVals[0].getValue(), FirstName = acc.Id, LastName = 'Max Picklist on insert one'),
+      new Lead(LeadSource = picklistVals[1].getValue(), FirstName = acc.Id, LastName = 'Max Picklist on insert two')
     };
     insert leads; // not the best, either, but we need to be able to use SOQL below
 
@@ -1551,7 +1551,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(Lead.LeadSource, Lead.Company, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(Lead.LeadSource, Lead.FirstName, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     AggregateResult res = [SELECT Max(LeadSource) maxSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
@@ -1573,8 +1573,8 @@ private class RollupTests {
     Account acc = [SELECT Id FROM Account];
 
     List<Lead> leads = new List<Lead>{
-      new Lead(Company = 'Min Picklist on insert one', LeadSource = picklistVals[0].getValue(), LastName = 'Min Picklist on insert one'),
-      new Lead(Company = 'Min Picklist on insert two', LeadSource = picklistVals[1].getValue(), LastName = 'Min Picklist on insert two')
+      new Lead(LeadSource = picklistVals[0].getValue(), FirstName = acc.Id, LastName = 'Min Picklist on insert one'),
+      new Lead(LeadSource = picklistVals[1].getValue(), FirstName = acc.Id, LastName = 'Min Picklist on insert two')
     };
     insert leads;
 
@@ -1582,7 +1582,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(Lead.LeadSource, Lead.Company, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.minFromApex(Lead.LeadSource, Lead.FirstName, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     AggregateResult res = [SELECT MIN(LeadSource) minSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
