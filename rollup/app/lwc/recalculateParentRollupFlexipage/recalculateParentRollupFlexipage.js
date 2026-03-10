@@ -34,6 +34,7 @@ export default class RecalculateParentRollupFlexipage extends LightningElement {
   @wire(getRecord, { recordId: '$recordId', fields: [], optionalFields: '$alternativeField' })
   wiredRecord({ data }) {
     if (data && this.alternativeParentFieldName) {
+      // eslint-disable-next-line @lwc/lwc/no-api-reassignments
       this.recordId = data.fields[this.alternativeParentFieldName]?.value ?? this.recordId;
       this._setup();
     }

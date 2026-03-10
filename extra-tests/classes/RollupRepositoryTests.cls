@@ -99,6 +99,7 @@ private class RollupRepositoryTests {
   /**
    * Serialization proves that we don't get: `System.JSONException: Type unsupported in JSON: common.apex.methods.AccessLevelEnum`
    */
+  @SuppressWarnings('PMD.AvoidFutureAnnotation')
   @Future
   private static void serializedRun(String serializedRepo) {
     RollupRepository repo = (RollupRepository) JSON.deserialize(serializedRepo, RollupRepository.class);

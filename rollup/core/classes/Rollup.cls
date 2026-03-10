@@ -1768,9 +1768,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   global static void runFromApex(List<SObject> children, Map<Id, SObject> oldChildrenMap, System.TriggerOperation rollupContext) {
-    oldChildrenMap = oldChildrenMap;
+    oldRecordsMap = oldChildrenMap;
     runFromApex(children, rollupContext);
-    oldChildrenMap = null;
+    oldRecordsMap = null;
   }
 
   global static Rollup runFromApex(List<Rollup__mdt> localMetas, Evaluator eval, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
