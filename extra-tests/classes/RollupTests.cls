@@ -1593,7 +1593,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinPicklistStringsOnInsert() {
-    List<PicklistEntry> picklistVals = Lead.LeadSource.getDescribe().getPicklistValues();
+    List<PicklistEntry> picklistVals = Opportunity.StageName.getDescribe().getPicklistValues();
 
     if (picklistVals.size() < 2) {
       return; // sorry
