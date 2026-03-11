@@ -86,6 +86,7 @@ export default class RollupOrderBy extends LightningElement {
     if (hasRankingAlreadyBeenUsed) {
       this._currentRecord[this.ranking.apiName] = flattenedRankings.includes(this.currentOrderBySize) ? this.currentOrderBySize + 1 : this.currentOrderBySize;
     }
+    // eslint-disable-next-line @lwc/lwc/no-api-reassignments
     this.orderBys = [...this.orderBys, this._currentRecord].sort((first, second) => {
       let sortIndex = 0;
       if (first[this.ranking.apiName] < second[this.ranking.apiName]) {

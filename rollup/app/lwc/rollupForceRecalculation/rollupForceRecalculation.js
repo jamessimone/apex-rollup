@@ -124,6 +124,7 @@ export default class RollupForceRecalculation extends LightningElement {
 
   handleToggle() {
     this.rollupOperation = null;
+    // eslint-disable-next-line @lwc/lwc/no-api-reassignments
     this.isCMDTRecalc = !this.isCMDTRecalc;
     this.error = '';
   }
