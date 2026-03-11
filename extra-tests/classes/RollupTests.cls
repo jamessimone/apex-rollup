@@ -1645,7 +1645,7 @@ private class RollupTests {
     );
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(
-      minLeadSource,
+      minStage,
       updatedAcc.AccountNumber,
       'MIN BEFORE_INSERT should take the minimum picklist string'
     );
