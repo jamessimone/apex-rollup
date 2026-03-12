@@ -333,9 +333,10 @@ public without sharing abstract class RollupDateLiteral {
       }
     }
     if (fiscalInfo.FiscalYearStartDate == null) {
-      fiscalInfo.FiscalYearStartDate = Date.newInstance(1, 1, System.today().year());
-      fiscalInfo.FiscalYearEndDate = Date.newInstance(12, 31, System.today().year());
-      fiscalInfo.CurrentQuarterStartDate = Date.newInstance(getCurrentQuarterStartMonth(), 1, System.today().year());
+      Integer year = System.today().year();
+      fiscalInfo.FiscalYearStartDate = Date.newInstance(year, 1, 1);
+      fiscalInfo.FiscalYearEndDate = Date.newInstance(year, 12, 31);
+      fiscalInfo.CurrentQuarterStartDate = Date.newInstance(year, getCurrentQuarterStartMonth(), 1);
       fiscalInfo.CurrentQuarterEndDate = getNextQuarterStart().addDays(-1);
     }
     return fiscalInfo;
@@ -589,8 +590,8 @@ public without sharing abstract class RollupDateLiteral {
   private class LastNDaysLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME); // includes all of today
-      this.ref = getRelativeDatetime(START_OF_TODAY.addDays(-(dateRange + 1)).date(), END_TIME);
+      this.bound = getRelativeDatetime(System.today(), END_TIME); // includes all of today
+      this.ref = getRelativeDatetime(System.today().addDays(-(dateRange + 1)), END_TIME);
     }
   }
 
@@ -600,7 +601,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NDaysAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      Date nDaysAgo = START_OF_TODAY.addDays(-dateRange).date();
+      Date nDaysAgo = System.today().addDays(-dateRange);
       this.ref = getRelativeDatetime(nDaysAgo, START_TIME);
       this.bound = getRelativeDatetime(nDaysAgo, END_TIME);
     }

@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.7.35",
+  "version": "1.7.36",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -43,11 +43,11 @@
     "husky:pre-commit": "lint-staged",
     "install:currency:data": "sf data import tree --files ./config/data/CurrencyTypes.json",
     "install:nebula:logger": "sf package install -p 04t5Y0000015oRNQAY -w 10 -r",
-    "lint:verify": "npx @salesforce-ux/slds-linter@latest lint && sf code-analyzer run --rule-selector eslint:(1,2,3) --workspace rollup",
+    "lint:verify": "npx @salesforce-ux/slds-linter@latest lint && sf code-analyzer run -r eslint:1 -r eslint:2 -r eslint:3 --workspace rollup",
     "prepare": "husky",
     "prettier": "prettier",
     "scan": "npm run lint:verify && npm run scan:pmd",
-    "scan:pmd": "sf code-analyzer run -r pmd:(1,2,3) --workspace rollup/**/*.cls --workspace plugins --workspace extra-tests",
+    "scan:pmd": "sf code-analyzer run -r pmd:1 -r pmd:2 -r pmd:3 --workspace rollup/**/*.cls --workspace plugins --workspace extra-tests",
     "scan:graph": "sf code-analyzer run -r sfge --workspace rollup/**/*.cls",
     "test": "npm run test:apex && npm run test:lwc",
     "test:apex": "sh ./scripts/runLocalTests.sh",

@@ -1533,7 +1533,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxOnPicklistStringsOnInsert() {
-    List<PicklistEntry> picklistVals = Lead.LeadSource.getDescribe().getPicklistValues();
+    List<PicklistEntry> picklistVals = Opportunity.StageName.getDescribe().getPicklistValues();
 
     if (picklistVals.size() < 2) {
       return; // sorry
@@ -1541,30 +1541,59 @@ private class RollupTests {
 
     Account acc = [SELECT Id FROM Account];
 
-    List<Lead> leads = new List<Lead>{
-      new Lead(Company = acc.Id, LeadSource = picklistVals[0].getValue(), LastName = 'Max Picklist on insert one'),
-      new Lead(Company = acc.Id, LeadSource = picklistVals[1].getValue(), LastName = 'Max Picklist on insert two')
+    List<Opportunity> opportunities = new List<Opportunity>{
+      new Opportunity(
+        Name = 'Max Picklist on insert one',
+        StageName = picklistVals[0].getValue(),
+        AccountId = acc.Id,
+        CloseDate = Date.today()
+      ),
+      new Opportunity(
+        Name = 'Max Picklist on insert two',
+        StageName = picklistVals[1].getValue(),
+        AccountId = acc.Id,
+        CloseDate = Date.today()
+      )
     };
-    insert leads; // not the best, either, but we need to be able to use SOQL below
+    insert opportunities; // not the best, either, but we need to be able to use SOQL below
 
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(leads);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(opportunities);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(Lead.LeadSource, Lead.Company, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.maxFromApex(
+        Opportunity.StageName,
+        Opportunity.AccountId,
+        Account.Id,
+        Account.AccountNumber,
+        Account.SObjectType
+      )
+      .runCalc();
     Test.stopTest();
 
-    AggregateResult res = [SELECT Max(LeadSource) maxSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
-    String maxLeadSource = (String) res.get('maxSource');
+    AggregateResult res = [
+      SELECT Max(StageName) maxStage
+      FROM Opportunity
+      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet()
+    ][0];
+    String maxStage = (String) res.get('maxStage');
 
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_INSERT PICKLIST STRING');
+    System.assertEquals(
+      1,
+      mock.Records.size(),
+      'Records should have been populated MAX BEFORE_INSERT PICKLIST STRING'
+    );
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(maxLeadSource, updatedAcc.AccountNumber, 'MAX BEFORE_INSERT should take the maximum picklist string');
+    System.assertEquals(
+      maxStage,
+      updatedAcc.AccountNumber,
+      'MAX BEFORE_INSERT should take the maximum picklist string'
+    );
   }
 
   @IsTest
   static void shouldMinPicklistStringsOnInsert() {
-    List<PicklistEntry> picklistVals = Lead.LeadSource.getDescribe().getPicklistValues();
+    List<PicklistEntry> picklistVals = Opportunity.StageName.getDescribe().getPicklistValues();
 
     if (picklistVals.size() < 2) {
       return; // sorry
@@ -1572,27 +1601,55 @@ private class RollupTests {
 
     Account acc = [SELECT Id FROM Account];
 
-    List<Lead> leads = new List<Lead>{
-      new Lead(Company = acc.Id, LeadSource = picklistVals[0].getValue(), LastName = 'Min Picklist on insert one'),
-      new Lead(Company = acc.Id, LeadSource = picklistVals[1].getValue(), LastName = 'Min Picklist on insert two')
+    List<Opportunity> opportunities = new List<Opportunity>{
+      new Opportunity(
+        Name = 'Min Picklist on insert one',
+        StageName = picklistVals[0].getValue(),
+        AccountId = acc.Id,
+        CloseDate = Date.today()
+      ),
+      new Opportunity(
+        Name = 'Min Picklist on insert two',
+        StageName = picklistVals[1].getValue(),
+        AccountId = acc.Id,
+        CloseDate = Date.today()
+      )
     };
-    insert leads;
+    insert opportunities;
 
-    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(leads);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(opportunities);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(Lead.LeadSource, Lead.Company, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Rollup.minFromApex(
+        Opportunity.StageName,
+        Opportunity.AccountId,
+        Account.Id,
+        Account.AccountNumber,
+        Account.SObjectType
+      )
+      .runCalc();
     Test.stopTest();
 
-    AggregateResult res = [SELECT MIN(LeadSource) minSource FROM Lead WHERE Id = :new Map<Id, Lead>(leads).keySet()][0];
-    String minLeadSource = (String) res.get('minSource');
+    AggregateResult res = [
+      SELECT MIN(StageName) minStage
+      FROM Opportunity
+      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet()
+    ][0];
+    String minStage = (String) res.get('minStage');
 
-    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING');
+    System.assertEquals(
+      1,
+      mock.Records.size(),
+      'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING'
+    );
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(minLeadSource, updatedAcc.AccountNumber, 'MIN BEFORE_INSERT should take the minimum picklist string');
+    System.assertEquals(
+      minStage,
+      updatedAcc.AccountNumber,
+      'MIN BEFORE_INSERT should take the minimum picklist string'
+    );
   }
-
   @IsTest
   static void shouldAverageOnInsert() {
     // average is a special case; even on insert, we have to also check for pre-existing records existing
