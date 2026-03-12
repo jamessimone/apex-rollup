@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixyear/month/date fallbacks when an org does not have FiscalInfo loaded for date literals",
+            "versionName": "Fixyear/month/date fallbacks when an org does not have FiscalInfo loaded for date literals, additional DST updates",
             "versionNumber": "1.7.36.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -69,12 +69,12 @@
             "package": "Apex Rollup - Extra Code Coverage",
             "versionDescription": "This plugin adds code coverage for Apex Rollup if you need additional code coverage for the base package",
             "versionName": "Updating code coverage",
-            "versionNumber": "0.0.27.0",
+            "versionNumber": "0.0.28.0",
             "default": false,
             "scopeProfiles": true,
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.7.22"
+                    "package": "apex-rollup@1.7.36"
                 }
             ]
         },
@@ -103,6 +103,8 @@
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.7.33": "04tKf000000syETIAY",
         "apex-rollup@1.7.34": "04tKf000000syGFIAY",
-        "apex-rollup@1.7.35": "04tg70000001HziAAE"
+        "apex-rollup@1.7.35": "04tg70000001HziAAE",
+        "apex-rollup@1.7.36": "04tg70000002W2DAAU",
+        "Apex Rollup - Extra Code Coverage@0.0.28": "04tg70000002W8fAAE"
     }
 }
