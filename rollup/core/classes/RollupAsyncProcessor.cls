@@ -1361,11 +1361,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         // this guard clause prevents a full recalculation from taking place unnecessarily if a reparenting operation
         // has already been setup to adjust the lookup item's rollup field
         if (oldLookupItems.containsKey(key) == false) {
-          Object priorValToUse = roll.isFullRecalc &&
-            hasNotAlreadyBeenReset &&
-            this.rollupControl.ShouldSkipResettingParentFields__c == false
-            ? defaultVal
-            : priorVal;
+          Object priorValToUse = roll.isFullRecalc && hasNotAlreadyBeenReset ? defaultVal : priorVal;
+          if (this.rollupControl.ShouldSkipResettingParentFields__c && this.fullRecalcProcessor != null) {
+            priorValToUse = priorVal;
+          }
           calc = this.getCalculator(rollupOp, calc, roll, bag, lookupRecord, priorValToUse, key, roll.lookupFieldOnCalcItem);
           this.conditionallyPerformUpdate(priorVal, calc, lookupRecord, roll, recordsToUpdate, ParentUpdateType.LOOKUP, localCalcItems);
         }

@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixyear/month/date fallbacks when an org does not have FiscalInfo loaded for date literals, additional DST updates",
-            "versionNumber": "1.7.36.0",
+            "versionName": "Fixes #745 by ensuring COUNT-based rollups reset properly during full recalculations",
+            "versionNumber": "1.7.37.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -105,6 +105,7 @@
         "apex-rollup@1.7.34": "04tKf000000syGFIAY",
         "apex-rollup@1.7.35": "04tg70000001HziAAE",
         "apex-rollup@1.7.36": "04tg70000002WDVAA2",
-        "Apex Rollup - Extra Code Coverage@0.0.28": "04tg70000002W8fAAE"
+        "Apex Rollup - Extra Code Coverage@0.0.28": "04tg70000002W8fAAE",
+        "apex-rollup@1.7.37": "04tg700000037wDAAQ"
     }
 }
