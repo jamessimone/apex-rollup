@@ -339,6 +339,45 @@ private class RollupTests {
   }
 
   @IsTest
+  static void countFullRecordSetRespectsPreexistingValueWithoutDoubleCounting() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc.AnnualRevenue = 2;
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
+
+    insert new List<ContactPointAddress>{
+      new ContactPointAddress(PreferenceRank = 50, Name = 'one', ParentId = acc.Id),
+      new ContactPointAddress(PreferenceRank = 50, Name = 'two', ParentId = acc.Id)
+    };
+
+    ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 50, ParentId = acc.Id);
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ShouldSkipResettingParentFields__c = true);
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+    Rollup.records = new List<ContactPointAddress>{ cpa };
+    Rollup.shouldRun = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        CalcItemWhereClause__c = 'PreferenceRank = 50',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupFieldOnLookupObject__c = 'Id',
+        LookupObject__c = 'Account',
+        IsFullRecordSet__c = true,
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Account should have been updated');
+    System.assertEquals(3, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void countFullRecordSetProperlyFetchesAllMatchingChildren() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     acc.AnnualRevenue = 2;
@@ -1542,18 +1581,8 @@ private class RollupTests {
     Account acc = [SELECT Id FROM Account];
 
     List<Opportunity> opportunities = new List<Opportunity>{
-      new Opportunity(
-        Name = 'Max Picklist on insert one',
-        StageName = picklistVals[0].getValue(),
-        AccountId = acc.Id,
-        CloseDate = Date.today()
-      ),
-      new Opportunity(
-        Name = 'Max Picklist on insert two',
-        StageName = picklistVals[1].getValue(),
-        AccountId = acc.Id,
-        CloseDate = Date.today()
-      )
+      new Opportunity(Name = 'Max Picklist on insert one', StageName = picklistVals[0].getValue(), AccountId = acc.Id, CloseDate = Date.today()),
+      new Opportunity(Name = 'Max Picklist on insert two', StageName = picklistVals[1].getValue(), AccountId = acc.Id, CloseDate = Date.today())
     };
     insert opportunities; // not the best, either, but we need to be able to use SOQL below
 
@@ -1561,14 +1590,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.maxFromApex(
-        Opportunity.StageName,
-        Opportunity.AccountId,
-        Account.Id,
-        Account.AccountNumber,
-        Account.SObjectType
-      )
-      .runCalc();
+    Rollup.maxFromApex(Opportunity.StageName, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     AggregateResult res = [
@@ -1578,17 +1600,9 @@ private class RollupTests {
     ][0];
     String maxStage = (String) res.get('maxStage');
 
-    System.assertEquals(
-      1,
-      mock.Records.size(),
-      'Records should have been populated MAX BEFORE_INSERT PICKLIST STRING'
-    );
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_INSERT PICKLIST STRING');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(
-      maxStage,
-      updatedAcc.AccountNumber,
-      'MAX BEFORE_INSERT should take the maximum picklist string'
-    );
+    System.assertEquals(maxStage, updatedAcc.AccountNumber, 'MAX BEFORE_INSERT should take the maximum picklist string');
   }
 
   @IsTest
@@ -1602,18 +1616,8 @@ private class RollupTests {
     Account acc = [SELECT Id FROM Account];
 
     List<Opportunity> opportunities = new List<Opportunity>{
-      new Opportunity(
-        Name = 'Min Picklist on insert one',
-        StageName = picklistVals[0].getValue(),
-        AccountId = acc.Id,
-        CloseDate = Date.today()
-      ),
-      new Opportunity(
-        Name = 'Min Picklist on insert two',
-        StageName = picklistVals[1].getValue(),
-        AccountId = acc.Id,
-        CloseDate = Date.today()
-      )
+      new Opportunity(Name = 'Min Picklist on insert one', StageName = picklistVals[0].getValue(), AccountId = acc.Id, CloseDate = Date.today()),
+      new Opportunity(Name = 'Min Picklist on insert two', StageName = picklistVals[1].getValue(), AccountId = acc.Id, CloseDate = Date.today())
     };
     insert opportunities;
 
@@ -1621,14 +1625,7 @@ private class RollupTests {
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
 
     Test.startTest();
-    Rollup.minFromApex(
-        Opportunity.StageName,
-        Opportunity.AccountId,
-        Account.Id,
-        Account.AccountNumber,
-        Account.SObjectType
-      )
-      .runCalc();
+    Rollup.minFromApex(Opportunity.StageName, Opportunity.AccountId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
     Test.stopTest();
 
     AggregateResult res = [
@@ -1638,17 +1635,9 @@ private class RollupTests {
     ][0];
     String minStage = (String) res.get('minStage');
 
-    System.assertEquals(
-      1,
-      mock.Records.size(),
-      'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING'
-    );
+    System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING');
     Account updatedAcc = (Account) mock.Records[0];
-    System.assertEquals(
-      minStage,
-      updatedAcc.AccountNumber,
-      'MIN BEFORE_INSERT should take the minimum picklist string'
-    );
+    System.assertEquals(minStage, updatedAcc.AccountNumber, 'MIN BEFORE_INSERT should take the minimum picklist string');
   }
   @IsTest
   static void shouldAverageOnInsert() {
