@@ -1342,6 +1342,10 @@ engines:
     # May be provided as the name of a command that exists on the path, or an absolute file path location.
     # If unspecified, or specified as null, then an attempt will be made to automatically discover a Python command from your environment.
     python_command: null
+  sfge:
+    disable_engine: false
+    java_max_heap_size: '15360MB'
+
 # ======================================================================
 # END OF CODE ANALYZER CONFIGURATION
 # ======================================================================

@@ -64,6 +64,7 @@ public without sharing class RollupLimits {
       return this.hasExceededOverallLimits;
     }
 
+    // Code-analyzer-suppress(sfge)
     public Decimal getRemainingQueryRows() {
       Integer queryRowsUsed = stubbedQueryRows ?? Limits.getQueryRows();
       Decimal maxQueryRows = this.control.MaxQueryRows__c != null &&
@@ -72,6 +73,7 @@ public without sharing class RollupLimits {
         : LIMIT_QUERY_ROWS;
       return maxQueryRows - queryRowsUsed;
     }
+    // Code-analyzer-unsuppress(sfge)
 
     public Boolean hasExceededOrgAsyncLimit() {
       return HAS_EXCEEDED_ORG_ASYNC_JOB_LIMIT;
