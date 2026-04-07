@@ -1313,6 +1313,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     return totalCountOfRecords;
   }
 
+  @SuppressWarnings('PMD.AvoidDeeplyNestedIfStmts')
   private List<SObject> getUpdatedLookupItemsByRollup(RollupAsyncProcessor roll, Map<String, CalcItemBag> calcItemsByLookupField, List<SObject> lookupItems) {
     Map<String, SObject> recordsToUpdate = new Map<String, SObject>();
     this.retrieveAdditionalCalcItems(calcItemsByLookupField, roll);

@@ -71,8 +71,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install & run SFDX Scanner
-        run: npm run scan
+      - name: Run Code Analyzer
+        run: |
+          mkdir coverage || true
+          npm run scan
 
       # Authenticate using JWT flow
       - name: 'Auth to dev hub'

@@ -620,6 +620,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
   @SuppressWarnings('PMD.ApexCRUDViolation')
   @AuraEnabled
+  // Code-analyzer-suppress(sfge)
   global static String getBatchRollupStatus(String jobId) {
     String jobStatus = [SELECT Status FROM AsyncApexJob WHERE Id = :jobId LIMIT 1]?.Status;
     if ([SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId LIMIT 1] > 0) {
@@ -627,6 +628,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     return jobStatus;
   }
+  // Code-analyzer-unsuppress(sfge)
 
   /**
    * Sending metadata from the frontend LWCs omits
@@ -910,7 +912,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         }
       }
 
-      for (Schema.SObjectType typeKey : (typeToWinnowedRollups?.keyset() ?? new Set<Schema.SObjectType>())) {
+      // workaround for sfge / apex-jorje issue with null coalesce at the moment
+      Set<Schema.SObjectType> keysToProcess = typeToWinnowedRollups != null ? typeToWinnowedRollups.keyset() : new Set<Schema.SObjectType>();
+      for (Schema.SObjectType typeKey : keysToProcess) {
         CACHED_ROLLUPS.addAll(typeToWinnowedRollups.get(typeKey));
       }
 
@@ -1674,6 +1678,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     );
   }
 
+  // Code-analyzer-suppress(sfge)
   global static void runFromCDCTrigger() {
     isCDC = true;
     // CDC always uses Trigger.new
@@ -1737,6 +1742,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     rollupToReturn.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
     rollupToReturn.runCalc();
   }
+  // Code-analyzer-unsuppress(sfge)
 
   global static void runFromTrigger() {
     List<SObject> triggerRecords = getTriggerRecords();
