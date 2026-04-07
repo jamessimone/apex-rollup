@@ -71,7 +71,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install & run SFDX Scanner
+      - name: Run Code Analyzer
         run: npm run scan
 
       # Authenticate using JWT flow
