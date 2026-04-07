@@ -4,15 +4,8 @@ const violationOutputFilePaths = ['coverage/pmd-violations.json', 'coverage/lint
 
 violationOutputFilePaths.forEach(path => {
   if (fs.existsSync(path)) {
-    let violations = {
-      violationCounts: { total: 0 }
-    };
-    try {
-      const fileContents = Buffer.from(fs.readFileSync(path));
-      violations = JSON.parse(fileContents.toString());
-    } catch (ex) {
-      console.warn('Error reading file contents:', ex);
-    }
+    const fileContents = Buffer.from(fs.readFileSync(path));
+    const parsedFileContents = JSON.parse(fileContents.toString());
     if (parsedFileContents.violationCounts.total > 0) {
       throw Error(JSON.stringify(parsedFileContents, null, 2));
     }
