@@ -72,7 +72,9 @@ jobs:
           java-version: '17'
 
       - name: Run Code Analyzer
-        run: npm run scan
+        run: |
+          mkdir coverage || true
+          npm run scan
 
       # Authenticate using JWT flow
       - name: 'Auth to dev hub'
