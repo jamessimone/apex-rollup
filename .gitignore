@@ -1,24 +1,30 @@
-.env
-node_modules/
-.vim-force.com/
-yarn.lock
-.sfdx/
-.localdevserver/
-debug.log
-DEVHUB_SFDX_URL.txt
-PACKAGING_SFDX_URL.txt
-tests/apex
-**/main/default/
-coverage/
-plugins/ExtraCodeCoverage
-.sf/
-rollup-namespaced/source
-sfge-*.log.gz
-#PMD
-.pmdCache
-#OSX
-.DS_Store
+# Environment
 .config
+.env
 .vscode
 config/data/act-pr-event.json
+debug.log
+DEVHUB_SFDX_URL.txt
+node_modules/
+PACKAGING_SFDX_URL.txt
+plugins/ExtraCodeCoverage
+rollup-namespaced/source
+yarn.lock
+
+# Salesforce
+.localdevserver/
+.sf/
+.sfdx/
 .sflogsub
+.vim-force.com/
+**/jsconfig.json
+**/main/default/
+coverage/
+tests/apex
+
+# Code Analyzer
+.pmdCache
+sfge-*.log.gz
+
+# OSX
+.DS_Store
