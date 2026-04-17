@@ -12,17 +12,34 @@ $loggerClassPath = "./rollup/core/classes/RollupLogger.cls"
 $shouldGitAddLoggerClass = $true;
 
 function Invoke-Extra-Code-Coverage-Prep() {
-  $extraCodeCoveragePath = "./plugins/ExtraCodeCoverage"
+  $extraCodeCoveragePath = "./plugins/ExtraCodeCoverage/classes"
   if (Test-Path $extraCodeCoveragePath) {
-    Write-Host "Dir exists"
-  } else {
-    Write-Host "Making ExtraCodeCoverage dir"
-    mkdir ./plugins/ExtraCodeCoverage
+    Write-Host "Dir exists, deleting"
+    rm $extraCodeCoveragePath -Recurse
   }
 
-  Write-Host "Copying rollup tests to gitignored $extraCodeCoveragePath directory"
+  Write-Host "Recreating ExtraCodeCoverage classes dir"
+  mkdir $extraCodeCoveragePath
 
-  $fileNames = "RollupTestUtils","RollupTests","RollupEvaluatorTests","RollupFlowTests","RollupRelationshipFieldFinderTests","RollupLoggerTests","RollupQueryBuilderTests","RollupRecursionItemTests"
+  Write-Host "Copying rollup tests to git ignored $extraCodeCoveragePath directory"
+
+  $fileNames = @(
+    "RollupCalcItemSorterTests"
+    "RollupCalculatorTests"
+    "RollupDateLiteralTests"
+    "RollupEvaluatorTests"
+    "RollupFinalizerTests"
+    "RollupFlowBulkProcessorTests"
+    "RollupFlowTests"
+    "RollupLimitsTest"
+    "RollupLoggerTests"
+    "RollupParentResetProcessorTests"
+    "RollupQueryBuilderTests"
+    "RollupRecursionItemTests"
+    "RollupRelationshipFieldFinderTests"
+    "RollupTests"
+    "RollupTestUtils"
+  )
   foreach ($fileName in $fileNames) {
     Copy-Item "extra-tests/classes/$fileName.cls" $extraCodeCoveragePath
     Copy-Item "extra-tests/classes/$fileName.cls-meta.xml" $extraCodeCoveragePath
