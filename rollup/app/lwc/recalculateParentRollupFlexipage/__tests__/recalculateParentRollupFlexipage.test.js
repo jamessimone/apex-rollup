@@ -2,7 +2,7 @@ import { createElement } from '@lwc/engine-dom';
 import { getRecord } from 'lightning/uiRecordApi';
 
 import getNamespaceInfo from '@salesforce/apex/Rollup.getNamespaceInfo';
-import performSerializedBulkFullRecalc from '@salesforce/apex/Rollup.performSerializedBulkFullRecalc';
+import performBulkFullRecalcWithParentIds from '@salesforce/apex/Rollup.performBulkFullRecalcWithParentIds';
 import getRollupMetadataByCalcItem from '@salesforce/apex/Rollup.getRollupMetadataByCalcItem';
 
 import RecalculateParentRollupFlexipage from 'c/recalculateParentRollupFlexipage';
@@ -38,7 +38,7 @@ jest.mock(
 );
 
 jest.mock(
-  '@salesforce/apex/Rollup.performSerializedBulkFullRecalc',
+  '@salesforce/apex/Rollup.performBulkFullRecalcWithParentIds',
   () => {
     return {
       default: jest.fn()
@@ -60,7 +60,7 @@ describe('recalc parent rollup from flexipage tests', () => {
   beforeEach(() => {
     metadata = JSON.parse(JSON.stringify(mockMetadata));
     getRollupMetadataByCalcItem.mockResolvedValue(metadata);
-    performSerializedBulkFullRecalc.mockReset();
+    performBulkFullRecalcWithParentIds.mockReset();
     getNamespaceInfo.mockResolvedValue({ ...mockNamespaceInfo });
   });
   afterEach(() => {
@@ -113,7 +113,7 @@ describe('recalc parent rollup from flexipage tests', () => {
 
   it('should fail gracefully if server fails to process', async () => {
     const messageToLog = 'ERROR!!';
-    performSerializedBulkFullRecalc.mockRejectedValue(messageToLog);
+    performBulkFullRecalcWithParentIds.mockRejectedValue(messageToLog);
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
@@ -155,20 +155,18 @@ describe('recalc parent rollup from flexipage tests', () => {
       });
     await flushPromises();
 
-    // once recalc has finished ...
-    // we need to validate that what was sent includes our custom rollup invocation point
     matchingMetadata.forEach(meta => {
-      meta.CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
       meta.RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     });
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
-    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+    expect(performBulkFullRecalcWithParentIds.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify(matchingMetadata),
-      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC',
+      parentIds: [FAKE_RECORD_ID]
     });
   });
 
-  it('should properly massage delimited parent Id string for grandparent rollups', async () => {
+  it('should properly pass parent Id for grandparent rollups', async () => {
     const parentRecalcEl = createElement('c-recalculate-parent-rollup-flexipage', {
       is: RecalculateParentRollupFlexipage
     });
@@ -186,12 +184,12 @@ describe('recalc parent rollup from flexipage tests', () => {
     });
     await flushPromises();
 
-    matchingMetadata[0].CalcItemWhereClause__c = " ||| RollupParent__r.RollupGrandparent__r.Id = '" + FAKE_RECORD_ID + "'";
     matchingMetadata[0].RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
-    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+    expect(performBulkFullRecalcWithParentIds.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify([matchingMetadata[0]]),
-      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC',
+      parentIds: [FAKE_RECORD_ID]
     });
   });
 
@@ -224,12 +222,12 @@ describe('recalc parent rollup from flexipage tests', () => {
     parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
     await flushPromises('wait for click event to call controller');
 
-    matchingMetadata[0].please__CalcItemWhereClause__c = " ||| AccountId = '" + FAKE_RECORD_ID + "'";
     matchingMetadata[0].please__RollupOrderBys__r = { totalSize: 0, done: true, records: [] };
     expect(parentRecalcEl.shadowRoot.querySelector('lightning-spinner')).toBeFalsy();
-    expect(performSerializedBulkFullRecalc.mock.calls[0][0]).toEqual({
+    expect(performBulkFullRecalcWithParentIds.mock.calls[0][0]).toEqual({
       serializedMetadata: JSON.stringify([matchingMetadata[0]]),
-      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC'
+      invokePointName: 'FROM_SINGULAR_PARENT_RECALC_LWC',
+      parentIds: [FAKE_RECORD_ID]
     });
   });
 
@@ -257,7 +255,6 @@ describe('recalc parent rollup from flexipage tests', () => {
     parentRecalcEl.shadowRoot.querySelector('lightning-button').click();
     await flushPromises('wait for click event to call controller');
 
-    const parsedMetadata = JSON.parse(performSerializedBulkFullRecalc.mock.calls[0][0].serializedMetadata);
-    expect(parsedMetadata[0].CalcItemWhereClause__c.indexOf('fakeId2')).toBeGreaterThan(-1);
+    expect(performBulkFullRecalcWithParentIds.mock.calls[0][0].parentIds).toEqual(['fakeId2']);
   });
 });

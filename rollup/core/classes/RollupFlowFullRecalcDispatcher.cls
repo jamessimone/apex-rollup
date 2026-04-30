@@ -4,7 +4,7 @@ global without sharing class RollupFlowFullRecalcDispatcher {
     @InvocableVariable(label='Comma-separated list of API Names you want to run' required=true)
     global String rollupDeveloperNames;
 
-    @InvocableVariable(label='Optional parent Id')
+    @InvocableVariable(label='Optional parent Id - supports comma-separated list of Ids')
     global String optionalParentId;
   }
 
@@ -21,34 +21,25 @@ global without sharing class RollupFlowFullRecalcDispatcher {
   public List<Rollup.FlowOutput> process(List<FlowInput> inputs, FlowFullRecalcPreprocessor preprocessor) {
     RollupLogger.Instance.log('Full recalc flow started with inputs', inputs, System.LoggingLevel.INFO);
     Set<String> targetNames = new Set<String>();
-    Set<String> potentialParentIds = new Set<String>();
+    Set<String> optionalParentIds = new Set<String>();
     for (FlowInput input : inputs) {
       if (String.isBlank(input.rollupDeveloperNames)) {
         throw new IllegalArgumentException(preprocessor.getExceptionMessage());
       }
-      potentialParentIds.add(input.optionalParentId);
+      populateParentIds(optionalParentIds, input.optionalParentId);
       List<String> splitListOfApiNames = input.rollupDeveloperNames.stripHtmlTags().split(',');
       for (String apiName : splitListOfApiNames) {
         targetNames.add(apiName.trim());
       }
     }
-    potentialParentIds.remove(null);
-    List<String> uniqueParentIds = new List<String>(potentialParentIds);
+    optionalParentIds.remove(null);
+    optionalParentIds.remove('');
 
     List<Rollup__mdt> localRollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
     List<Rollup__mdt> selectedRollupMetadata = new List<Rollup__mdt>();
     for (Rollup__mdt rollup : localRollupMetadata) {
       if (targetNames.contains('' + rollup.get(preprocessor.getTarget().toString()))) {
         selectedRollupMetadata.add(rollup);
-        if (uniqueParentIds.isEmpty() == false) {
-          rollup.CalcItemWhereClause__c =
-            (rollup.CalcItemWhereClause__c ?? '') +
-            ' ||| ' +
-            rollup.LookupFieldOnCalcItem__c +
-            ' = \'' +
-            uniqueParentIds.remove(0) +
-            '\'';
-        }
       }
     }
 
@@ -57,13 +48,24 @@ global without sharing class RollupFlowFullRecalcDispatcher {
     flowOutput.message = 'No matching metadata, did not start bulk full recalc';
     flowOutputs.add(flowOutput);
     if (selectedRollupMetadata.isEmpty() == false) {
-      String enqueuedJobId = Rollup.performBulkFullRecalc(selectedRollupMetadata, Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name());
+      String enqueuedJobId = Rollup.performBulkFullRecalcWithParentIds(
+        JSON.serialize(selectedRollupMetadata),
+        Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name(),
+        new List<String>(optionalParentIds)
+      );
       flowOutput.message = 'Job enqueued with Id: ' + enqueuedJobId;
     }
     while (flowOutputs.size() > inputs.size()) {
       flowOutputs.remove(0);
     }
     return flowOutputs;
+  }
+
+  private static void populateParentIds(Set<String> potentialParentIds, String possibleParentIds) {
+    List<String> splitIds = possibleParentIds?.split(',') ?? new List<String>();
+    for (String splitId : splitIds) {
+      potentialParentIds.add(splitId.trim());
+    }
   }
 
   private class DeveloperNamePreprocessor implements FlowFullRecalcPreprocessor {

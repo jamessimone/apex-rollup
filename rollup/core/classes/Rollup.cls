@@ -327,6 +327,18 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     FROM_SINGULAR_PARENT_RECALC_LWC
   }
 
+  private class FullRecalcInfo {
+    public final List<Rollup__mdt> matchingMetadata;
+    public final InvocationPoint invokePoint;
+    public final Set<String> parentIds;
+
+    public FullRecalcInfo(List<Rollup__mdt> matchingMetadata, InvocationPoint invokePoint, Set<String> parentIds) {
+      this.matchingMetadata = matchingMetadata;
+      this.invokePoint = invokePoint;
+      this.parentIds = parentIds;
+    }
+  }
+
   @SuppressWarnings('PMD.EmptyStatementBlock')
   protected Rollup() {
   }
@@ -541,11 +553,20 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
    */
   @AuraEnabled
   global static String performBulkFullRecalc(List<Rollup__mdt> metadata, String invokePointName) {
-    return performSerializedBulkFullRecalc(JSON.serialize(metadata), invokePointName);
+    return performBulkFullRecalcInternal(JSON.serialize(metadata), invokePointName, new Set<String>());
   }
 
   @AuraEnabled
   global static String performSerializedBulkFullRecalc(String serializedMetadata, String invokePointName) {
+    return performBulkFullRecalcInternal(serializedMetadata, invokePointName, new Set<String>());
+  }
+
+  @AuraEnabled
+  global static String performBulkFullRecalcWithParentIds(String serializedMetadata, String invokePointName, List<String> parentIds) {
+    return performBulkFullRecalcInternal(serializedMetadata, invokePointName, new Set<String>(parentIds ?? new List<String>()));
+  }
+
+  private static String performBulkFullRecalcInternal(String serializedMetadata, String invokePointName, Set<String> parentIds) {
     InvocationPoint localInvokePoint = InvocationPoint.valueOf(invokePointName);
     switch on localInvokePoint {
       when FROM_FULL_RECALC_LWC, FROM_SINGULAR_PARENT_RECALC_LWC, FROM_FULL_RECALC_FLOW {
@@ -554,16 +575,13 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     }
     List<Rollup__mdt> matchingMetadata = (List<Rollup__mdt>) JSON.deserialize(serializedMetadata, List<Rollup__mdt>.class);
     updateLoggingControl(matchingMetadata);
-    RollupLogger.Instance.log('bulk full recalc called with data:', matchingMetadata, System.LoggingLevel.INFO);
-
-    String delimiter = ' ||| ';
-    String possibleParentId;
+    RollupLogger.Instance.log(
+      'bulk full recalc called with data:',
+      new FullRecalcInfo(matchingMetadata, localInvokePoint, parentIds),
+      System.LoggingLevel.INFO
+    );
 
     Map<SObjectType, RollupMetadata> childToMetaWrapper = new Map<SObjectType, RollupMetadata>();
-    Set<InvocationPoint> singularParentInvokes = new Set<InvocationPoint>{
-      InvocationPoint.FROM_FULL_RECALC_FLOW,
-      InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC
-    };
     for (Rollup__mdt matchingMeta : matchingMetadata) {
       FlowInput validationRuleWrapper = new FlowInput();
       validationRuleWrapper.rollupOperation = matchingMeta.RollupOperation__c.toUpperCase();
@@ -572,35 +590,23 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       validationRuleWrapper.fullRecalculationDefaultNumberValue = matchingMeta.FullRecalculationDefaultNumberValue__c;
       enforceValidationRules(validationRuleWrapper);
 
-      Boolean couldHaveSingularRecalcDelimiter = singularParentInvokes.contains(localInvokePoint) && possibleParentId == null;
-      if (couldHaveSingularRecalcDelimiter) {
-        Integer delimiterIndex = matchingMeta.CalcItemWhereClause__c?.indexOf(delimiter) ?? -1;
-        if (delimiterIndex > -1) {
-          possibleParentId = matchingMeta.CalcItemWhereClause__c.substring(delimiterIndex + delimiter.length(), matchingMeta.CalcItemWhereClause__c.length())
-            .substringAfter(' = ')
-            .remove('\'');
-        }
-      }
-      if (possibleParentId != null) {
+      if (parentIds.isEmpty() == false) {
         String lookupFieldName = String.isNotBlank(matchingMeta.GrandparentRelationshipFieldPath__c)
           ? matchingMeta.GrandparentRelationshipFieldPath__c.substringBeforeLast('.') + '.' + matchingMeta.LookupFieldOnLookupObject__c
           : matchingMeta.LookupFieldOnCalcItem__c;
-        matchingMeta.CalcItemWhereClause__c = matchingMeta.CalcItemWhereClause__c?.substringBeforeLast(delimiter) ?? '';
-        matchingMeta.CalcItemWhereClause__c +=
-          (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? ' AND ' : '') +
-          lookupFieldName +
-          ' = ' +
-          '\'' +
-          possibleParentId +
-          '\'';
+        String joinedParentIds = '';
+        for (String parentId : parentIds) {
+          joinedParentIds += '\'' + parentId + '\',';
+        }
+        String parentIdFilter = lookupFieldName + ' IN (' + joinedParentIds.removeEnd(',') + ')';
+        matchingMeta.CalcItemWhereClause__c =
+          (String.isNotBlank(matchingMeta.CalcItemWhereClause__c) ? matchingMeta.CalcItemWhereClause__c + ' AND ' : '') + parentIdFilter;
       }
 
       SObjectType childType = RollupFieldInitializer.Current.getDescribeFromName(matchingMeta.CalcItem__c).getSObjectType();
       RollupMetadata wrappedMeta = getWrappedMeta(childType, childToMetaWrapper, matchingMeta, matchingMeta.CalcItemWhereClause__c);
-      // duplicate check to the above, but since the CalcItemWhereClause__c is modified in the original guard clause
-      // we need to wait till after that guard clause to initialize wrappedMeta
-      if (possibleParentId != null) {
-        wrappedMeta.recordIds.add(possibleParentId);
+      if (parentIds.isEmpty() == false) {
+        wrappedMeta.recordIds.addAll(parentIds);
       }
       wrappedMeta.possibleWhereClauses.add(matchingMeta.CalcItemWhereClause__c);
       appendQueryCount(wrappedMeta, matchingMeta, matchingMeta.CalcItemWhereClause__c, childType);

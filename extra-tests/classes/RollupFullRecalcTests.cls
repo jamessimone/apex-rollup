@@ -745,14 +745,18 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank + ' ||| ParentId = \'' + acc.Id + '\''
+        CalcItemWhereClause__c = 'PreferenceRank = ' + cpas[0].PreferenceRank
       )
     };
 
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     // specifically don't wrap in start/stopTest to prove it ran sync
-    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(
+      JSON.serialize(calcItemToMetadata.get('ContactPointAddress')),
+      Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(),
+      new List<String>{ acc.Id }
+    );
 
     acc = [SELECT AnnualRevenue FROM Account];
     System.assertEquals(6, acc.AnnualRevenue);
@@ -777,8 +781,7 @@ private class RollupFullRecalcTests {
           LookupObject__c = 'Account',
           LookupFieldOnLookupObject__c = 'Id',
           RollupFieldOnLookupObject__c = 'Name',
-          RollupOperation__c = 'LAST',
-          CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+          RollupOperation__c = 'LAST'
         ),
         new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
       )
@@ -787,7 +790,11 @@ private class RollupFullRecalcTests {
     Map<String, List<Rollup__mdt>> calcItemToMetadata = Rollup.getRollupMetadataByCalcItem();
 
     // specifically don't wrap in start/stopTest to prove it ran sync
-    Rollup.performBulkFullRecalc(calcItemToMetadata.get('ContactPointAddress'), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(
+      JSON.serialize(calcItemToMetadata.get('ContactPointAddress')),
+      Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(),
+      new List<String>{ acc.Id }
+    );
 
     acc = [SELECT Name FROM Account];
     System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
@@ -814,8 +821,7 @@ private class RollupFullRecalcTests {
           LookupObject__c = 'Account',
           LookupFieldOnLookupObject__c = 'Id',
           RollupFieldOnLookupObject__c = 'Name',
-          RollupOperation__c = 'LAST',
-          CalcItemWhereClause__c = ' ||| ParentId = \'' + acc.Id + '\''
+          RollupOperation__c = 'LAST'
         ),
         new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(FieldName__c = 'PreferenceRank') }
       ),
@@ -831,7 +837,7 @@ private class RollupFullRecalcTests {
     };
 
     // no start/stopTest since singular parent recalc entry point _should_ run sync
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(), new List<String>{ acc.Id });
     acc = [SELECT Name, AccountNumber FROM Account];
     System.assertEquals(cpas[0].Name, acc.Name, 'Last should have been selected based on order field');
     System.assertEquals('Task rollup', acc.AccountNumber);
@@ -852,11 +858,11 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AccountNumber',
         RollupOperation__c = 'CONCAT',
-        CalcItemWhereClause__c = '(NOT Subject LIKE \'Email\') ||| WhatId = \'' + acc.Id + '\''
+        CalcItemWhereClause__c = '(NOT Subject LIKE \'Email\')'
       )
     };
 
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(), new List<String>{ acc.Id });
     acc = [SELECT AccountNumber FROM Account];
     System.assertEquals('Task rollup', acc.AccountNumber);
   }
@@ -1179,7 +1185,7 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AccountNumber',
         RollupOperation__c = 'CONCAT',
-        CalcItemWhereClause__c = 'Subject = \'' + appliesToFirst.Subject + '\' ||| WhatId = \'' + acc.Id + '\''
+        CalcItemWhereClause__c = 'Subject = \'' + appliesToFirst.Subject + '\''
       ),
       new Rollup__mdt(
         CalcItem__c = 'Task',
@@ -1193,7 +1199,7 @@ private class RollupFullRecalcTests {
       )
     };
 
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(), new List<String>{ acc.Id });
 
     acc = [SELECT AccountNumber, Name FROM Account WHERE Id = :acc.Id];
 
@@ -1225,20 +1231,17 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = RollupGrandparent__c.Id.toString(),
         RollupFieldOnLookupObject__c = RollupGrandparent__c.AmountFromChildren__c.toString(),
         RollupOperation__c = 'SUM',
-        CalcItemWhereClause__c = ' ||| ' +
-          RollupTestUtils.getRelationshipPath(
-            new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.Id }
-          ) +
-          ' = \'' +
-          grandparent.Id +
-          '\'',
         GrandparentRelationshipFieldPath__c = RollupTestUtils.getRelationshipPath(
           new List<Schema.SObjectField>{ RollupChild__c.RollupParent__c, RollupParent__c.RollupGrandparent__c, RollupGrandparent__c.AmountFromChildren__c }
         )
       )
     };
 
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(
+      JSON.serialize(metas),
+      Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(),
+      new List<String>{ grandparent.Id }
+    );
 
     grandparent = [SELECT AmountFromChildren__c FROM RollupGrandparent__c WHERE Id = :grandparent.Id];
     System.assertEquals(3, grandparent.AmountFromChildren__c);
@@ -1477,7 +1480,7 @@ private class RollupFullRecalcTests {
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
     update acc;
-    Account accDoesNotGetReset = new Account(Name = 'Should Not Get Reset Annual Revenue', AnnualRevenue = 4);
+    Account accDoesNotGetReset = new Account(Name = 'Should Not Get Reset Annual Revenue', AnnualRevenue = 4, AccountNumber = 'someOtherString');
     insert accDoesNotGetReset;
 
     insert new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 0, Name = 'Should not match');
@@ -1491,7 +1494,7 @@ private class RollupFullRecalcTests {
         LookupFieldOnLookupObject__c = 'Id',
         RollupFieldOnLookupObject__c = 'AnnualRevenue',
         RollupOperation__c = 'LAST',
-        CalcItemWhereClause__c = 'PreferenceRank > 0 ||| ParentId = \'' + acc.Id + '\''
+        CalcItemWhereClause__c = 'PreferenceRank > 0'
       ),
       new Rollup__mdt(
         CalcItem__c = 'Task',
@@ -1504,13 +1507,14 @@ private class RollupFullRecalcTests {
       )
     };
 
-    Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name());
+    Rollup.performBulkFullRecalcWithParentIds(JSON.serialize(metas), Rollup.InvocationPoint.FROM_SINGULAR_PARENT_RECALC_LWC.name(), new List<String>{ acc.Id });
     acc = [SELECT AccountNumber, AnnualRevenue FROM Account WHERE Id = :acc.Id];
     System.assertEquals(null, acc.AnnualRevenue, 'AnnualRevenue should have been reset');
     // seems like some standard fields default to null when you save an empty string to them, even if they have no default value 🙄
     System.assertEquals(null, acc.AccountNumber, 'AccountNumber should have been reset');
-    accDoesNotGetReset = [SELECT AnnualRevenue FROM Account WHERE Id = :accDoesNotGetReset.Id];
-    System.assertNotEquals(null, accDoesNotGetReset.AnnualRevenue);
+    Account hopefullyNotUpdated = [SELECT AnnualRevenue, AccountNumber FROM Account WHERE Id = :accDoesNotGetReset.Id];
+    System.assertEquals(accDoesNotGetReset.AnnualRevenue, hopefullyNotUpdated.AnnualRevenue);
+    System.assertEquals(accDoesNotGetReset.AccountNumber, hopefullyNotUpdated.AccountNumber);
   }
 
   @IsTest
@@ -1586,7 +1590,6 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldResetParentValuesWithoutMatchingChildrenFromBulkRouteOverQueryLimit() {
     RollupParentResetProcessor.maxQueryRows = 0;
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, IsRollupLoggingEnabled__c = true);
     Account acc = [SELECT Id FROM Account];
     acc.AccountNumber = 'someString';
     acc.AnnualRevenue = 5;
