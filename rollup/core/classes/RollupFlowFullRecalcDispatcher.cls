@@ -6,6 +6,8 @@ global without sharing class RollupFlowFullRecalcDispatcher {
 
     @InvocableVariable(label='Optional parent Id - supports comma-separated list of Ids')
     global String optionalParentId;
+    @InvocableVariable(label='Optional parent Id collection')
+    global List<String> optionalParentIds;
   }
 
   public interface FlowFullRecalcPreprocessor {
@@ -27,6 +29,9 @@ global without sharing class RollupFlowFullRecalcDispatcher {
         throw new IllegalArgumentException(preprocessor.getExceptionMessage());
       }
       populateParentIds(optionalParentIds, input.optionalParentId);
+      if (input.optionalParentIds != null) {
+        optionalParentIds.addAll(input.optionalParentIds);
+      }
       List<String> splitListOfApiNames = input.rollupDeveloperNames.stripHtmlTags().split(',');
       for (String apiName : splitListOfApiNames) {
         targetNames.add(apiName.trim());
