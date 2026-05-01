@@ -94,6 +94,9 @@ private class RollupLoggerTests {
     public ExampleLogger updateRollupControl(RollupControl__mdt control) {
       return this;
     }
+    public ExampleLogger setExistingStack() {
+      return this;
+    }
   }
 
   public class ControlUpdatingLogger extends RollupLogger {

@@ -330,6 +330,119 @@ private class RollupFlowFullRecalcDispatcherTests {
     System.assertEquals(6, acc.NumberOfEmployees);
   }
 
+  @IsTest
+  static void supportsMultipleParentIdsInCommaSeparatedList() {
+    Account acc = [SELECT Id FROM Account];
+    Account second = new Account(Name = 'Second Parent', AnnualRevenue = 5);
+    Account excluded = new Account(Name = 'Should Not Update', AnnualRevenue = 99);
+    insert new List<Account>{ second, excluded };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        FullRecalculationDefaultNumberValue__c = 0,
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      )
+    };
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = getFlowInputs(Rollup.rollupMetadata);
+    flowInputs[0].optionalParentId = acc.Id + ', ' + second.Id;
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id].AnnualRevenue);
+    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id].AnnualRevenue, 'Excluded account should not have been updated');
+  }
+
+  @IsTest
+  static void supportsMultipleParentIdsInList() {
+    Account acc = [SELECT Id FROM Account];
+    Account second = new Account(Name = 'Second Parent', AnnualRevenue = 5);
+    Account excluded = new Account(Name = 'Should Not Update', AnnualRevenue = 99);
+    insert new List<Account>{ second, excluded };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        FullRecalculationDefaultNumberValue__c = 0,
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      )
+    };
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = getFlowInputs(Rollup.rollupMetadata);
+    flowInputs[0].optionalParentIds = new List<String>{ acc.Id, second.Id };
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id].AnnualRevenue);
+    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id].AnnualRevenue, 'Excluded account should not have been updated');
+  }
+
+  @IsTest
+  static void supportsMultipleParentIdsAcrossMultipleCmdtMetadata() {
+    Account acc = [SELECT Id FROM Account];
+    Account second = new Account(Name = 'Second Parent');
+    insert second;
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'cmdt1',
+        CalcItem__c = 'ContactPointAddress',
+        FullRecalculationDefaultNumberValue__c = 0,
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM',
+        CalcItemWhereClause__c = 'PreferenceRank = 1'
+      ),
+      new Rollup__mdt(
+        DeveloperName = 'cmdt2',
+        CalcItem__c = 'ContactPointAddress',
+        FullRecalculationDefaultNumberValue__c = 0,
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+    List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = getFlowInputs(Rollup.rollupMetadata);
+    flowInputs[0].optionalParentId = acc.Id + ',' + second.Id;
+
+    Test.startTest();
+    RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
+    Test.stopTest();
+
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
+    Assert.areEqual(6, [SELECT NumberOfEmployees FROM Account WHERE Id = :acc.Id].NumberOfEmployees);
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id].AnnualRevenue);
+    Assert.areEqual(0, [SELECT NumberOfEmployees FROM Account WHERE Id = :second.Id].NumberOfEmployees);
+  }
+
   private static List<RollupFlowFullRecalcDispatcher.FlowInput> getFlowInputs(List<Rollup__mdt> metas) {
     List<RollupFlowFullRecalcDispatcher.FlowInput> flowInputs = new List<RollupFlowFullRecalcDispatcher.FlowInput>();
     RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();

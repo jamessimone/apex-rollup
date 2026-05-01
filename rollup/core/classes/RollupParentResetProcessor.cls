@@ -19,6 +19,9 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       super(processor.invokePoint);
       this.processor = processor;
       this.finalizer = processor.finalizer;
+      if (this.rollupControl.ShouldRunAs__c != RollupMetaPicklists.ShouldRunAs.Synchronous) {
+        this.logger.setExistingStack();
+      }
     }
 
     public override String getTypeName() {
@@ -26,11 +29,14 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     }
 
     protected override void performWork() {
-      for (RollupAsyncProcessor roll : this.processor.rollups) {
+      for (Integer reverseIndex = this.processor.rollups.size() - 1; reverseIndex >= 0; reverseIndex--) {
+        RollupAsyncProcessor roll = this.processor.rollups[reverseIndex];
         if (roll instanceof RollupFullRecalcProcessor) {
           this.finalizer.addCaboose((RollupFullRecalcProcessor) roll);
+          this.processor.rollups.remove(reverseIndex);
         }
       }
+
       if (this.processor.countOfItems > maxQueryRows) {
         Database.executeBatch(this.processor, this.processor.rollupControl.BatchChunkSize__c.intValue());
       } else {
@@ -61,8 +67,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     String processId = this.getNoProcessId();
     if (isValidRun == false || this.rollupControl.ShouldSkipResettingParentFields__c == true || this.countOfItems <= 0) {
       this.logger.log('Parent reset processor no-op', System.LoggingLevel.INFO);
-      String possibleProcessId = this.arrangeCabooses();
-      return possibleProcessId ?? processId;
+      return this.arrangeCabooses() ?? processId;
     }
     Boolean isOverLimit = this.countOfItems > maxQueryRows;
     Integer previouslyQueuedJobs = Limits.getQueueableJobs();
@@ -117,7 +122,9 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   }
 
   protected override String startAsyncWork() {
-    return this.rollupControl.ShouldSkipResettingParentFields__c ? this.getNoProcessId() : System.enqueueJob(new QueueableResetProcessor(this));
+    return this.rollupControl.ShouldSkipResettingParentFields__c || this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous
+      ? this.getNoProcessId()
+      : System.enqueueJob(new QueueableResetProcessor(this));
   }
 
   protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
@@ -130,7 +137,6 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
   private void runSync() {
     List<SObject> parentItems = this.preStart().get();
     this.execute(null, parentItems);
-    this.finish(null);
   }
 
   private static String getRefinedQueryString(String localQueryString, List<Rollup__mdt> matchingMeta, InvocationPoint invokePoint) {

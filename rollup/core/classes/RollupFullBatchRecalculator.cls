@@ -56,6 +56,7 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
 
   @SuppressWarnings('PMD.ApexCRUDViolation')
   protected virtual override String startAsyncWork() {
+    this.logger.setExistingStack();
     if (this.finalizer != null) {
       while (this.cabooses.isEmpty() == false) {
         this.finalizer.addCaboose(this.cabooses.remove(0));

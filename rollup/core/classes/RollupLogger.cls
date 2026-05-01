@@ -2,11 +2,12 @@
 global without sharing virtual class RollupLogger implements ILogger {
   @TestVisible
   // this gets updated via the pipeline as the version number gets incremented
-  private static final String CURRENT_VERSION_NUMBER = 'v1.7.38';
+  private static final String CURRENT_VERSION_NUMBER = 'v1.7.39';
   private static final System.LoggingLevel FALLBACK_LOGGING_LEVEL = System.LoggingLevel.DEBUG;
   private static final RollupPlugin PLUGIN = new RollupPlugin();
 
   private final System.LoggingLevel currentLoggingLevel;
+  private String existingStack;
 
   protected RollupLogger() {
     this.currentLoggingLevel = this.getLogLevel();
@@ -33,6 +34,7 @@ global without sharing virtual class RollupLogger implements ILogger {
     void log(String logString, Object logObject, System.LoggingLevel logLevel);
     void save();
     ILogger updateRollupControl(RollupControl__mdt control);
+    ILogger setExistingStack();
   }
 
   public void log(String logString, System.LoggingLevel logLevel) {
@@ -50,6 +52,11 @@ global without sharing virtual class RollupLogger implements ILogger {
     // this is a no-op by default; sub-classes can opt in if they need to perform DML
   }
 
+  global ILogger setExistingStack() {
+    this.existingStack = this.existingStack ?? this.getExistingStack();
+    return this;
+  }
+
   public ILogger updateRollupControl(RollupControl__mdt control) {
     return this;
   }
@@ -65,13 +72,8 @@ global without sharing virtual class RollupLogger implements ILogger {
     if (String.isNotBlank(appended)) {
       messages.add(appended);
     }
-    // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
-    // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
-    List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
-    while (innerStacktraces.isEmpty() == false && innerStacktraces.get(0).contains(RollupLogger.class.getName())) {
-      innerStacktraces.remove(0);
-    }
-    messages.add(String.join(innerStacktraces, '\n'));
+
+    messages.add(this.getExistingStack());
     System.debug(logLevel, this.getBaseLoggingMessage() + String.join(messages, '\n') + '\n');
   }
 
@@ -113,6 +115,27 @@ global without sharing virtual class RollupLogger implements ILogger {
       appended = JSON.serializePretty(logObject, true);
     }
     return appended;
+  }
+
+  private String getExistingStack() {
+    // not all Rollup-generated exceptions come with stacktraces - this is a known issue, where using "new DMLException().getStackTraceString()"
+    // works to re-create the stacktrace for all of the calling code. we'll prune away any mentions to this class to keep the log size down
+    List<String> innerStacktraces = new DMLException().getStackTraceString().split('\n');
+    for (Integer reverseIndex = innerStacktraces.size() - 1; reverseIndex >= 0; reverseIndex--) {
+      String possibleSplitToRemove = innerStacktraces[reverseIndex];
+      if (
+        possibleSplitToRemove == 'External entry point' ||
+        possibleSplitToRemove.contains(RollupLogger.class.getName()) ||
+        possibleSplitToRemove.contains('<init>')
+      ) {
+        innerStacktraces.remove(reverseIndex);
+      }
+    }
+    if (String.isNotBlank(this.existingStack)) {
+      innerStacktraces.add(this.existingStack);
+    }
+
+    return String.join(innerStacktraces, '\n');
   }
 
   @SuppressWarnings('PMD.ApexCRUDViolation')
@@ -204,6 +227,13 @@ global without sharing virtual class RollupLogger implements ILogger {
       }
       this.control = control;
       this.log(updateMessage, control, System.LoggingLevel.INFO);
+      return this;
+    }
+
+    public CombinedLogger setExistingStack() {
+      for (ILogger innerLogger : this.loggers) {
+        innerLogger.setExistingStack();
+      }
       return this;
     }
   }

@@ -1,11 +1,11 @@
 # Extra Code Coverage
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tg70000002W8fAAE">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tg70000006DqbAAE">
   <img alt="Deploy to Salesforce"
        src="../../media/deploy-package-to-prod.png">
 </a>
 
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tg70000002W8fAAE">
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tg70000006DqbAAE">
   <img alt="Deploy to Salesforce Sandbox"
        src="../../media/deploy-package-to-sandbox.png">
 </a>

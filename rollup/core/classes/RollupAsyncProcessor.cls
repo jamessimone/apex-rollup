@@ -16,6 +16,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean wasConvertedToFullRecalculation = false;
   private Boolean isFromBatchExecute = false;
   private Map<String, CalcItemBag> groupedLookupToCalcItems;
+  private String registeredStack;
 
   protected Id jobId;
   protected Boolean isTimingOut = false;
@@ -449,6 +450,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
 
     protected virtual override String startAsyncWork() {
+      this.logger.setExistingStack();
       if (this.finalizer != null && System.isQueueable() && (System.Limits.getQueueableJobs() == 1 || hasAlreadyAsyncEnqueued)) {
         this.finalizer.addCaboose(this);
         return this.getNoProcessId();
@@ -511,6 +513,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected String startBatchProcessor() {
     String processId;
+    this.logger.setExistingStack();
     if (this.isFromBatchExecute) {
       processId = new QueueableProcessor(this).startAsyncWork();
     } else {

@@ -1,6 +1,6 @@
 {
   "name": "apex-rollup",
-  "version": "1.7.38",
+  "version": "1.7.39",
   "description": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
   "repository": {
     "type": "git",
@@ -50,7 +50,7 @@
     "scan:pmd": "sf code-analyzer run -r pmd:1 -r pmd:2 -r pmd:3 --workspace rollup/**/*.cls --workspace plugins --workspace extra-tests --output-file coverage/pmd-violations.json && node scripts/validateScanCommand.js",
     "scan:graph": "sf code-analyzer run -r sfge --workspace rollup/**/*.cls",
     "test": "npm run test:apex && npm run test:lwc",
-    "test:apex": "sh ./scripts/runLocalTests.sh",
+    "test:apex": "sf apex run test -s ApexRollupTestSuite --concise -w 15",
     "test:lwc": "sfdx-lwc-jest --coverage"
   }
 }
