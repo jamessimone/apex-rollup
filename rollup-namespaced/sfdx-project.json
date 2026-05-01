@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Fixes #745 by ensuring COUNT-based rollups reset properly during full recalculations",
-            "versionNumber": "1.2.34.0",
+            "versionName": "Adds the ability to perform full recalculations for more than one parent",
+            "versionNumber": "1.2.35.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -51,6 +51,7 @@
         "apex-rollup-namespaced@1.2.31": "04tg70000001INtAAM",
         "apex-rollup-namespaced@1.2.32": "04tg70000002WJxAAM",
         "apex-rollup-namespaced@1.2.33": "04tg7000000384HAAQ",
-        "apex-rollup-namespaced@1.2.34": "04tg70000005BndAAE"
+        "apex-rollup-namespaced@1.2.34": "04tg70000005BndAAE",
+        "apex-rollup-namespaced@1.2.35": "04tg70000007ht3AAA"
     }
 }
