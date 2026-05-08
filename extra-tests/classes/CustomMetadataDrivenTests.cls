@@ -2,8 +2,8 @@
 private class CustomMetadataDrivenTests {
   @TestSetup
   static void setup() {
-    upsert new RollupSettings__c(IsEnabled__c = true);
-    insert new RollupParent__c(Name = CustomMetadataDrivenTests.class.getName());
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
+    insert as system new RollupParent__c(Name = CustomMetadataDrivenTests.class.getName());
   }
 
   @IsTest
@@ -12,16 +12,16 @@ private class CustomMetadataDrivenTests {
       return;
     }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
-    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c WITH SYSTEM_MODE];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 2);
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parent.Id, NumberField__c = 2);
 
     Test.startTest();
-    insert new List<RollupChild__c>{ childOne, childTwo };
+    insert as system new List<RollupChild__c>{ childOne, childTwo };
     Test.stopTest();
 
-    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c WITH SYSTEM_MODE];
 
     System.assertEquals(childOne.TextField__c, parent.TextField__c);
     System.assertEquals(childOne.NumberField__c, parent.NumberField__c);
@@ -33,18 +33,18 @@ private class CustomMetadataDrivenTests {
       return;
     }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
-    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c WITH SYSTEM_MODE];
     // uses FIRST (with NumberField__c, TextField__c as the Order By fields), MAX for the NumberField__c
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 1);
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parent.Id, NumberField__c = 2);
-    insert new List<RollupChild__c>{ childOne, childTwo };
+    insert as system new List<RollupChild__c>{ childOne, childTwo };
 
     childOne.TextField__c = 'c';
     childOne.NumberField__c = 0;
     // Rollup.RollupIntegrationChildRollupNumber uses RollupControl.Integration_Sync, so the NumberField__c update should happen BEFORE
     // going async
-    update childOne;
-    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    update as system childOne;
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c WITH SYSTEM_MODE];
     System.assertEquals(childTwo.NumberField__c, parent.NumberField__c);
     System.assertEquals(null, parent.TextField__c, 'Should not have a value yet since this rollup occurs async');
 
@@ -53,7 +53,7 @@ private class CustomMetadataDrivenTests {
     Test.stopTest();
 
     // re-assert on both fields being correct now, just to be sure
-    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c WITH SYSTEM_MODE];
     System.assertEquals(childTwo.NumberField__c, parent.NumberField__c);
     System.assertEquals(childOne.TextField__c, parent.TextField__c);
   }
@@ -64,19 +64,19 @@ private class CustomMetadataDrivenTests {
       return;
     }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
-    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c WITH SYSTEM_MODE];
     // uses FIRST with TextField__c as the Order By field, MAX for the NumberField__c
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', TextField__c = 'a', RollupParent__c = parent.Id, NumberField__c = 1);
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parent.Id, NumberField__c = 2);
-    insert new List<RollupChild__c>{ childOne, childTwo };
+    insert as system new List<RollupChild__c>{ childOne, childTwo };
 
     Test.startTest();
     childOne.TextField__c = 'c';
-    update childOne;
-    delete childTwo; // and for my next trick ...
+    update as system childOne;
+    delete as system childTwo; // and for my next trick ...
     Test.stopTest();
 
-    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c WITH SYSTEM_MODE];
 
     System.assertEquals(childOne.TextField__c, parent.TextField__c);
     System.assertEquals(childOne.NumberField__c, parent.NumberField__c);
@@ -89,22 +89,22 @@ private class CustomMetadataDrivenTests {
     }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
     // DateField__c rollup relies on NumberField > 0
-    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c WITH SYSTEM_MODE];
     RollupChild__c childOne = new RollupChild__c(Name = 'Child one', DateField__c = System.today().addDays(3), RollupParent__c = parent.Id, NumberField__c = 0);
 
     Test.startTest();
 
-    insert childOne;
+    insert as system childOne;
     childOne.DateField__c = childOne.DateField__c.addDays(-1);
-    update childOne;
+    update as system childOne;
 
     // begin recursive update, but with a Child Object Where Clause field change
     childOne.NumberField__c = 1;
-    update childOne;
+    update as system childOne;
 
     Test.stopTest();
 
-    parent = [SELECT DateField__c FROM RollupParent__c WHERE Id = :parent.Id];
+    parent = [SELECT DateField__c FROM RollupParent__c WHERE Id = :parent.Id WITH SYSTEM_MODE];
     System.assertEquals(childOne.DateField__c, parent.DateField__c);
   }
 
@@ -120,18 +120,18 @@ private class CustomMetadataDrivenTests {
       ReplaceCalcItemsAsyncWhenOverCount__c = 2
     );
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Parent');
-    insert parentApp;
+    insert as system parentApp;
 
     Test.startTest();
     Application__c app = new Application__c(Picklist__c = 'Standard', ParentApplication__c = parentApp.Id);
-    insert app;
+    insert as system app;
     Test.stopTest();
 
-    parentApp = [SELECT Name FROM ParentApplication__c];
+    parentApp = [SELECT Name FROM ParentApplication__c WITH SYSTEM_MODE];
     System.assertEquals(app.Picklist__c, parentApp.Name);
 
     app.Picklist__c = 'Something with and in the name';
-    update app;
+    update as system app;
 
     System.assert(true, 'Should make it here (validate update works with Trigger.oldMap)');
   }
@@ -144,27 +144,27 @@ private class CustomMetadataDrivenTests {
     // relies on extra-tests\customMetadata\Rollup.AmountFromChildrenToGrandparent.md-meta.xml
     RollupGrandparent__c grandparentOne = new RollupGrandparent__c(AmountfromChildren__c = 0);
     RollupGrandparent__c grandparentTwo = new RollupGrandparent__c(AmountfromChildren__c = 0);
-    insert new List<RollupGrandparent__c>{ grandparentOne, grandparentTwo };
+    insert as system new List<RollupGrandparent__c>{ grandparentOne, grandparentTwo };
 
     RollupParent__c parentOne = new RollupParent__c(RollupGrandparent__c = grandparentOne.Id);
     RollupParent__c parentTwo = new RollupParent__c(RollupGrandparent__c = grandparentTwo.Id);
-    insert new List<RollupParent__c>{ parentOne, parentTwo };
+    insert as system new List<RollupParent__c>{ parentOne, parentTwo };
 
     RollupChild__c child = new RollupChild__c(RollupParent__c = parentOne.Id, NumberField__c = 5.00);
-    insert child;
+    insert as system child;
 
     Test.startTest();
     child.RollupParent__c = parentTwo.Id;
-    update child;
+    update as system child;
     Test.stopTest();
 
-    child = [SELECT NumberField__c, RollupParent__r.RollupGrandparent__c FROM RollupChild__c WHERE Id = :child.Id];
+    child = [SELECT NumberField__c, RollupParent__r.RollupGrandparent__c FROM RollupChild__c WHERE Id = :child.Id WITH SYSTEM_MODE];
     System.assertEquals(grandparentTwo.Id, child.RollupParent__r.RollupGrandparent__c);
 
-    grandparentOne = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentOne.Id];
+    grandparentOne = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentOne.Id WITH SYSTEM_MODE];
     System.assertEquals(null, grandparentOne.AmountfromChildren__c);
 
-    grandparentTwo = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentTwo.Id];
+    grandparentTwo = [SELECT AmountfromChildren__c FROM RollupGrandParent__c WHERE Id = :grandparentTwo.Id WITH SYSTEM_MODE];
     System.assertEquals(child.NumberField__c, grandparentTwo.AmountfromChildren__c);
   }
 
@@ -174,13 +174,13 @@ private class CustomMetadataDrivenTests {
       return;
     }
     // uses a combination of Rollup__mdt found in extra-tests/customMetadata AND extra-tests/triggers/RollupChildTrigger.trigger
-    RollupParent__c parent = [SELECT Id FROM RollupParent__c];
+    RollupParent__c parent = [SELECT Id FROM RollupParent__c WITH SYSTEM_MODE];
 
     Test.startTest();
     insertRollupChildrenAsync(parent.Id, 'a', 1);
     Test.stopTest();
 
-    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c];
+    parent = [SELECT Id, TextField__c, NumberField__c FROM RollupParent__c WITH SYSTEM_MODE];
     System.assertEquals('a', parent.TextField__c);
     System.assertEquals(2, parent.NumberField__c);
   }
@@ -196,6 +196,6 @@ private class CustomMetadataDrivenTests {
       NumberField__c = firstNumberField
     );
     RollupChild__c childTwo = new RollupChild__c(Name = 'Child two', TextField__c = 'b', RollupParent__c = parentId, NumberField__c = 2);
-    insert new List<RollupChild__c>{ childOne, childTwo };
+    insert as system new List<RollupChild__c>{ childOne, childTwo };
   }
 }

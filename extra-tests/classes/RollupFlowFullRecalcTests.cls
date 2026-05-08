@@ -3,27 +3,27 @@ private class RollupFlowFullRecalcTests {
   @TestSetup
   static void setup() {
     Account acc = new Account(Name = RollupFlowFullRecalcTests.class.getName());
-    insert acc;
+    insert as system acc;
 
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
   }
 
   @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyFlow() {
     Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
-    insert childAccount;
+    insert as system childAccount;
     ParentApplication__c parentApp = new ParentApplication__c(Account__c = childAccount.Id, Name = 'Link to child account');
     ParentApplication__c secondParentApp = new ParentApplication__c(Account__c = acc.Id, Name = 'Linked directly to parent account');
-    insert new List<ParentApplication__c>{ parentApp, secondParentApp };
+    insert as system new List<ParentApplication__c>{ parentApp, secondParentApp };
 
     // ensure that both a top-level child item linked only to the ultimate parent and one linked to the hierarchy child is included
     List<Application__c> apps = new List<Application__c>{
       new Application__c(Engagement_Score__c = 1000, ParentApplication__c = parentApp.Id, Name = 'Linked to Child Parent App'),
       new Application__c(Engagement_Score__c = 1000, ParentApplication__c = secondParentApp.Id, Name = 'Linked to Direct Parent App')
     };
-    insert apps;
+    insert as system apps;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(apps, 'REFRESH', 'SUM');
     flowInputs[0].ultimateParentLookup = 'ParentId';
@@ -42,7 +42,7 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(2000, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
   }
 
@@ -50,12 +50,12 @@ private class RollupFlowFullRecalcTests {
   static void shouldBulkifyBatchFullRecalcsProperly() {
     RollupAsyncProcessor.additionalCalcItemCount = 1;
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 1, IsRollupLoggingEnabled__c = true);
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     // ensure another matching item exists outside of the passed in list
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
-    insert cpas;
+    insert as system cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     Rollup.FlowInput secondFlowInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'CONCAT')[0];
@@ -73,19 +73,19 @@ private class RollupFlowFullRecalcTests {
       System.assertEquals(true, flowOutput.isSuccess);
     }
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue, AccountNumber FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue, AccountNumber FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
     System.assertEquals('One, Two', updatedAcc.AccountNumber);
   }
 
   @IsTest
   static void shouldBulkifyQueueableFullRecalcsProperly() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     // ensure another matching item exists outside of the passed in list
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
-    insert cpas;
+    insert as system cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     Rollup.FlowInput secondFlowInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'CONCAT')[0];
@@ -103,25 +103,25 @@ private class RollupFlowFullRecalcTests {
       System.assertEquals(true, flowOutput.isSuccess);
     }
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue, AccountNumber FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue, AccountNumber FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
     System.assertEquals('One, Two', updatedAcc.AccountNumber);
   }
 
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildrenWithReparenting() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account reparentedAccount = new Account(Name = 'Reparented Refresh', AnnualRevenue = 1000);
-    insert reparentedAccount;
+    insert as system reparentedAccount;
 
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = reparentedAccount.AnnualRevenue.intValue(), ParentId = reparentedAccount.Id, Name = 'Two')
     };
-    insert cpas;
+    insert as system cpas;
 
-    reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id];
+    reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id WITH SYSTEM_MODE];
     System.assertEquals(cpas[0].PreferenceRank, reparentedAccount.AnnualRevenue, 'Reparenting test set up under wrong conditions!');
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
@@ -129,23 +129,23 @@ private class RollupFlowFullRecalcTests {
     flowInputs[0].oldRecordsToRollup = new List<ContactPointAddress>{ clonedCpa };
     cpas[0].ParentId = acc.Id;
     flowInputs[0].recordsToRollup = cpas;
-    update cpas;
+    update as system cpas;
 
     Test.startTest();
     Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(1500, acc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
-    reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id];
+    reparentedAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :reparentedAccount.Id WITH SYSTEM_MODE];
     System.assertEquals(null, reparentedAccount.AnnualRevenue, 'Reparenting with REFRESH should run decrement logic on old parent');
   }
 
   @IsTest
   static void shouldPerformFullRecalcFromFlowParent() {
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
 
-    insert new List<ContactPointAddress>{
+    insert as system new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 500, ParentId = accs[0].Id, Name = 'One'),
       new ContactPointAddress(PreferenceRank = 1000, ParentId = accs[0].Id, Name = 'Two')
     };
@@ -162,7 +162,7 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully recalc');
   }
 
@@ -174,7 +174,7 @@ private class RollupFlowFullRecalcTests {
     );
     acc.AnnualRevenue = 1500;
     acc.Description = 'This is the value that should be persisted';
-    update acc;
+    update as system acc;
     // simulate un-related, in-flight update
     acc.Description = 'Something else';
 
@@ -190,7 +190,7 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue, Description FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue, Description FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow started from parent should fully clear');
     System.assertEquals('This is the value that should be persisted', updatedAcc.Description, 'Unrelated field should not be cleared');
   }
@@ -199,7 +199,7 @@ private class RollupFlowFullRecalcTests {
   static void clearsParentValuesWhenNoUpdateMatches() {
     Account acc = (Account) RollupTestUtils.queryRecord(Schema.Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     acc.AnnualRevenue = 1500;
-    update acc;
+    update as system acc;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(new List<Account>{ acc }, 'UPSERT', 'SUM');
     flowInputs[0].isRollupStartedFromParent = true;
@@ -214,15 +214,15 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'SUM from flow started from parent should fully clear');
   }
 
   @IsTest
   static void properlyPerformsFullRecalcsOnUpdateFromParent() {
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
 
-    insert new List<ContactPointAddress>{
+    insert as system new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 500, ParentId = accs[0].Id, Name = 'One'),
       new ContactPointAddress(PreferenceRank = 1000, ParentId = accs[0].Id, Name = 'Two')
     };
@@ -240,15 +240,15 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT UPDATE from flow started from parent should fully recalc');
   }
 
   @IsTest
   static void shouldFilterOnParentFieldsProperlyWhenInvokedFromParent() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under wrong conditions');
-    insert new Contact(LastName = 'Parent field test', AccountId = acc.Id);
+    insert as system new Contact(LastName = 'Parent field test', AccountId = acc.Id);
 
     List<Account> accs = new List<Account>{ acc };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(accs);
@@ -277,9 +277,9 @@ private class RollupFlowFullRecalcTests {
 
   @IsTest
   static void shouldAllowRollupFromParentByInvocable() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'rollup from parent invocable', PreferenceRank = -50);
-    insert cpa;
+    insert as system cpa;
 
     List<Account> accs = new List<Account>{ acc };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(accs);
@@ -303,11 +303,11 @@ private class RollupFlowFullRecalcTests {
 
   @IsTest
   static void multipleIsFullRecordSetsProperlyClearParentFieldsOnce() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, Name = 'child one', PreferenceRank = 50);
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, Name = 'child two', PreferenceRank = 50);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ one, two };
-    insert cpas;
+    insert as system cpas;
     cpas.remove(1);
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'INSERT', 'SUM');
@@ -328,7 +328,7 @@ private class RollupFlowFullRecalcTests {
     Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(one.PreferenceRank + two.PreferenceRank, acc.AnnualRevenue);
     System.assertEquals(2, acc.NumberOfEmployees);
   }
@@ -336,10 +336,10 @@ private class RollupFlowFullRecalcTests {
   @IsTest
   static void shouldPerformFullRecalcFromFlowChildren() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account secondParent = new Account(Name = 'Second', AnnualRevenue = 5);
-    insert secondParent;
-    insert new List<ContactPointAddress>{
+    insert as system secondParent;
+    insert as system new List<ContactPointAddress>{
       // ensure another matching item exists outside of the passed in list
       new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One'),
       // ensure that the PreferenceRank associated with the second parent specifically does NOT match
@@ -349,7 +349,7 @@ private class RollupFlowFullRecalcTests {
     };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'First child') };
-    insert cpas;
+    insert as system cpas;
     Rollup.shouldRefreshCachedControl = true;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
@@ -368,25 +368,25 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
-    Account updatedSecondParent = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :secondParent.Id];
+    Account updatedSecondParent = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :secondParent.Id WITH SYSTEM_MODE];
     System.assertEquals(secondParent.AnnualRevenue, updatedSecondParent.AnnualRevenue, 'Out of scope parent values should not have been affected');
   }
 
   @IsTest
   static void shouldRefreshMultipleBatchFullRecalcs() {
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 0, IsRollupLoggingEnabled__c = true, MaxRollupRetries__c = 3);
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Individual secondParent = new Individual(LastName = 'Second');
-    insert secondParent;
+    insert as system secondParent;
     List<ContactPointAddress> childrenToInsert = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'A1'),
       new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'A2'),
       new ContactPointAddress(PreferenceRank = 250, ParentId = secondParent.Id, Name = 'B1'),
       new ContactPointAddress(PreferenceRank = 250, ParentId = secondParent.Id, Name = 'B2')
     };
-    insert childrenToInsert;
+    insert as system childrenToInsert;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ childrenToInsert[0], childrenToInsert[2] };
 
@@ -405,20 +405,20 @@ private class RollupFlowFullRecalcTests {
     Rollup.processStoredFlowRollups();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(1000, updatedAcc.AnnualRevenue);
-    Individual updatedSecondParent = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :secondParent.Id];
+    Individual updatedSecondParent = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :secondParent.Id WITH SYSTEM_MODE];
     System.assertEquals(500, updatedSecondParent.ConsumerCreditScore);
   }
 
   @IsTest
   static void shouldCorrectlyFilterParentFieldsFromFlowChildren() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     // ensure another matching item exists outside of the passed in list
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
-    insert cpas;
+    insert as system cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     flowInputs[0].calcItemWhereClause = 'Parent.Name = \'' + acc.Name + '\'';
@@ -431,22 +431,22 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'Child object where clause with parent filtering should work for REFRESH');
   }
 
   @IsTest
   static void shouldDecrementProperlyOnRefreshUpdateWithParentFilterFields() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     Account second = new Account(Name = 'Second', AnnualRevenue = 1000);
-    insert second;
+    insert as system second;
     // ensure another matching item exists outside of the passed in list
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = acc.Id, Name = 'One');
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = second.AnnualRevenue.intValue(), ParentId = second.Id, Name = 'Two')
     };
-    insert cpas;
+    insert as system cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     flowInputs[0].calcItemWhereClause = 'Parent.Name = \'' + acc.Name + '\'';
@@ -462,22 +462,22 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(500, updatedAcc.AnnualRevenue, 'Child object where clause with parent filtering should work for REFRESH');
-    Account secondUpdatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :second.Id];
+    Account secondUpdatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE];
     System.assertEquals(null, secondUpdatedAcc.AnnualRevenue, 'Amount should have decremented on update!');
   }
 
   @IsTest
   static void shouldPerformFullRecalcWithHierarchy() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
-    insert childAccount;
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = childAccount.Id, Name = 'One');
+    insert as system childAccount;
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = childAccount.Id, Name = 'One');
 
     // ensure that a top-level child item linked only to the ultimate parent is included
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
-    insert cpas;
+    insert as system cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     flowInputs[0].ultimateParentLookup = 'ParentId';
@@ -491,20 +491,20 @@ private class RollupFlowFullRecalcTests {
     System.assertEquals('SUCCESS', flowOutputs[0].message);
     System.assertEquals(true, flowOutputs[0].isSuccess);
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH from flow should fully recalc');
   }
 
   @IsTest
   static void multipleHierarchyRollupsSuccessfullyFullRecalc() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account childAccount = new Account(Name = 'Hierarchy child', ParentId = acc.Id);
-    insert childAccount;
-    insert new ContactPointAddress(PreferenceRank = 500, ParentId = childAccount.Id, Name = 'One');
+    insert as system childAccount;
+    insert as system new ContactPointAddress(PreferenceRank = 500, ParentId = childAccount.Id, Name = 'One');
 
     // ensure that a top-level child item linked only to the ultimate parent is included
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 1000, ParentId = acc.Id, Name = 'Two') };
-    insert cpas;
+    insert as system cpas;
 
     List<Rollup.FlowInput> flowInputs = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'SUM');
     Rollup.FlowInput secondInput = RollupTestUtils.prepareFlowTest(cpas, 'REFRESH', 'CONCAT_DISTINCT')[0];
@@ -521,7 +521,7 @@ private class RollupFlowFullRecalcTests {
     Rollup.performRollup(flowInputs);
     Test.stopTest();
 
-    Account updatedAcc = [SELECT Id, AnnualRevenue, Name FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Id, AnnualRevenue, Name FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(1500, updatedAcc.AnnualRevenue, 'SUM REFRESH hierarchy from flow should fully recalc');
     System.assertEquals('One, Two', updatedAcc.Name, 'CONCAT_DISTINCT REFRESH hierarchy from flow should full recalc');
   }
@@ -534,17 +534,17 @@ private class RollupFlowFullRecalcTests {
       new Account(Name = 'Parent 3'),
       new Account(Name = 'Parent 4')
     };
-    insert accounts;
+    insert as system accounts;
     Individual bParentOne = new Individual(LastName = 'B1', ConsumerCreditScore = 3, ConvictionsCount = 2);
     Individual bParentTwo = new Individual(LastName = 'B2', ConsumerCreditScore = 7, ConvictionsCount = 2);
-    insert new List<Individual>{ bParentOne, bParentTwo };
+    insert as system new List<Individual>{ bParentOne, bParentTwo };
     List<ContactPointAddress> childrenToInsert = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 1, ParentId = accounts[0].Id, Name = bParentOne.Id),
       new ContactPointAddress(PreferenceRank = 2, ParentId = accounts[1].Id, Name = bParentOne.Id),
       new ContactPointAddress(PreferenceRank = 3, ParentId = accounts[2].Id, Name = bParentTwo.Id),
       new ContactPointAddress(PreferenceRank = 4, ParentId = accounts[3].Id, Name = bParentTwo.Id)
     };
-    insert childrenToInsert;
+    insert as system childrenToInsert;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ childrenToInsert[0], childrenToInsert[2] };
 
@@ -574,13 +574,13 @@ private class RollupFlowFullRecalcTests {
       accounts[2].Id => childrenToInsert[2].PreferenceRank,
       accounts[3].Id => childrenToInsert[3].PreferenceRank
     };
-    for (Account updatedAcc : [SELECT Id, Name, AnnualRevenue FROM Account WHERE Id = :accounts]) {
+    for (Account updatedAcc : [SELECT Id, Name, AnnualRevenue FROM Account WHERE Id = :accounts WITH SYSTEM_MODE]) {
       System.assertEquals(accountToExpectedAmount.get(updatedAcc.Id), updatedAcc.AnnualRevenue, updatedAcc);
     }
-    bParentOne = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentOne.Id];
+    bParentOne = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentOne.Id WITH SYSTEM_MODE];
     System.assertEquals(3, bParentOne.ConsumerCreditScore);
     System.assertEquals(2, bParentOne.ConvictionsCount);
-    bParentTwo = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentTwo.Id];
+    bParentTwo = [SELECT Id, ConsumerCreditScore, ConvictionsCount FROM Individual WHERE Id = :bParentTwo.Id WITH SYSTEM_MODE];
     System.assertEquals(7, bParentTwo.ConsumerCreditScore);
     System.assertEquals(2, bParentTwo.ConvictionsCount);
   }

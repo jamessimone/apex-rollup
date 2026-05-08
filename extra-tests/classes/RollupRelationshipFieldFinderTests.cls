@@ -7,15 +7,15 @@ private class RollupRelationshipFieldFinderTests {
 
   @TestSetup
   static void setup() {
-    insert new Account(Name = RollupRelationshipFieldFinderTests.class.getName());
+    insert as system new Account(Name = RollupRelationshipFieldFinderTests.class.getName());
   }
 
   @IsTest
   static void shouldFindParentRelationshipBetweenStandardObjects() {
-    Account parent = [SELECT Id FROM Account];
+    Account parent = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child cpa');
-    insert cpa;
+    insert as system cpa;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -48,10 +48,10 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldFindGrandparentRelationshipBetweenStandardObjects() {
-    Account parent = [SELECT Id FROM Account];
+    Account parent = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = parent.Id, Name = 'Child looking up to account');
-    insert cpa;
+    insert as system cpa;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -63,14 +63,14 @@ private class RollupRelationshipFieldFinderTests {
     );
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(new List<ContactPointAddress>{ cpa });
 
-    parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT OwnerId FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE];
     User expectedUser = (User) RollupTestUtils.queryRecord(parent.OwnerId);
     System.assertEquals(expectedUser, traversal.retrieveParents(cpa.Id)[0], 'User should have been retrieved correctly!');
   }
 
   @IsTest
   static void shouldBailEarlyIfQueryCountExceedsControlCount() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Child cpa');
     control.MaxNumberOfQueries__c = 1;
@@ -91,10 +91,10 @@ private class RollupRelationshipFieldFinderTests {
   @IsTest
   static void skipsIntermediateRelationshipFetchesForFullRecalc() {
     // same as above except this one should succeed since everything should be fetched in one go
-    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account];
+    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account WITH SYSTEM_MODE];
 
     Contact con = new Contact(AccountId = acc.Id, LastName = 'Child con');
-    insert con;
+    insert as system con;
     control.MaxNumberOfQueries__c = 1;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
@@ -115,13 +115,13 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void fullRecalcDoesNotBlowUpOnParentFields() {
-    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account];
+    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account WITH SYSTEM_MODE];
 
     Contact con = new Contact(AccountId = acc.Id, LastName = 'Child con');
     Contact nonParentedContact = new Contact(LastName = 'Non parent');
     List<Contact> contacts = new List<Contact>{ con, nonParentedContact };
-    insert contacts;
-    contacts = [SELECT Id FROM Contact WHERE Id = :contacts];
+    insert as system contacts;
+    contacts = [SELECT Id FROM Contact WHERE Id = :contacts WITH SYSTEM_MODE];
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -141,10 +141,10 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void fullRecalcDoesNotBlowUpOnDynamicParentFields() {
-    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account];
+    Account acc = [SELECT Id, OwnerId, Owner.Name FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress child = new ContactPointAddress(ParentId = acc.Id, Name = 'Child');
-    insert child;
+    insert as system child;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -166,10 +166,10 @@ private class RollupRelationshipFieldFinderTests {
   static void shouldNotReportFalsePositiveIfUltimateParentStaysTheSame() {
     Account intermediateOne = new Account(Name = 'Intermediate 1');
     Account intermediateTwo = new Account(Name = 'Intermediate 2');
-    insert new List<Account>{ intermediateOne, intermediateTwo };
+    insert as system new List<Account>{ intermediateOne, intermediateTwo };
 
     Set<Id> accountIds = new Set<Id>{ intermediateOne.Id, intermediateTwo.Id };
-    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account WHERE Id = :accountIds];
+    List<Account> updatedAccounts = [SELECT Id, OwnerId, Name FROM Account WHERE Id = :accountIds WITH SYSTEM_MODE];
     if (updatedAccounts.size() == 2) {
       // don't run the rest of the test if the org has some kind of ownership assignment going on that would invalidate
       // the results
@@ -185,7 +185,7 @@ private class RollupRelationshipFieldFinderTests {
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = intermediateTwo.Id, Name = 'Child reparented');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
-    insert cpas;
+    insert as system cpas;
 
     Map<Id, SObject> oldCpas = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = intermediateOne.Id) };
 
@@ -217,11 +217,11 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldReportReparentingCorrectlyForNulls() {
-    Account intermediateOne = [SELECT Id FROM Account];
+    Account intermediateOne = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = intermediateOne.Id, Name = 'Child reparented');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa };
-    insert cpas;
+    insert as system cpas;
 
     Map<Id, SObject> oldOpps = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, ParentId = null) };
 
@@ -239,7 +239,7 @@ private class RollupRelationshipFieldFinderTests {
 
     oldOpps.put(cpa.Id, new ContactPointAddress(Id = cpa.Id, ParentId = intermediateOne.Id));
     cpa.ParentId = null;
-    update cpa;
+    update as system cpa;
 
     finder = new RollupRelationshipFieldFinder(
       control,
@@ -254,14 +254,14 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldReportReparentingCorrectlyForImmediateParent() {
-    Account parentOne = [SELECT Id FROM Account];
+    Account parentOne = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account parentTwo = new Account(Name = 'Parent2');
-    insert parentTwo;
+    insert as system parentTwo;
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'Child1');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentOne.Id, Name = 'Child2');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
-    insert cpas;
+    insert as system cpas;
 
     Map<Id, SObject> oldCpas = new Map<Id, SObject>{ cpaOne.Id => cpaOne, cpaTwo.Id => new ContactPointAddress(ParentId = parentTwo.Id) };
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
@@ -280,12 +280,12 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldTrackMultipleParents() {
-    Account parentOne = [SELECT Id FROM Account];
+    Account parentOne = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentOne.Id, Name = 'SecondParentedChild');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
-    insert cpas;
+    insert as system cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -307,13 +307,13 @@ private class RollupRelationshipFieldFinderTests {
     Account parentOne = new Account(Name = 'match', AccountNumber = '1');
     Account parentTwo = new Account(Name = 'non-match');
     Account parentThree = new Account(Name = 'another match');
-    insert new List<Account>{ parentOne, parentTwo, parentThree };
+    insert as system new List<Account>{ parentOne, parentTwo, parentThree };
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentOne.Id, Name = 'FirstParentedChild');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = parentTwo.Id, Name = 'SecondParentedChild');
     ContactPointAddress cpaThree = new ContactPointAddress(ParentId = parentThree.Id, Name = 'ThirdParentedChild');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo, cpaThree };
-    insert cpas;
+    insert as system cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -347,28 +347,28 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldTraverseAllTheWayUpWhenMetadataFlagIsEnabled() {
-    Account parentOne = [SELECT Id FROM Account];
+    Account parentOne = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account parentTwo = new Account(Name = 'child parent', ParentId = parentOne.Id);
     // also start another chain of relationships
     Account secondParent = new Account(Name = 'second child parent', ParentId = parentOne.Id);
-    insert new List<Account>{ parentTwo, secondParent };
+    insert as system new List<Account>{ parentTwo, secondParent };
 
     Account grandChild = new Account(Name = 'grandchild', ParentId = secondParent.Id);
-    insert grandChild;
+    insert as system grandChild;
 
     Account greatGrandchild = new Account(Name = 'great-grandchild', ParentId = grandChild.Id);
-    insert greatGrandchild;
+    insert as system greatGrandchild;
 
     Account greatGreatGrandchild = new Account(Name = 'great great grandchild', ParentId = greatGrandchild.Id);
-    insert greatGreatGrandchild;
+    insert as system greatGreatGrandchild;
 
     Account greatGreatGreatGrandchild = new Account(Name = 'great great great!', ParentId = greatGreatGrandchild.Id);
-    insert greatGreatGreatGrandchild;
+    insert as system greatGreatGreatGrandchild;
 
     ContactPointAddress cpaOne = new ContactPointAddress(ParentId = parentTwo.Id, Name = 'FirstParentedChild');
     ContactPointAddress cpaTwo = new ContactPointAddress(ParentId = greatGreatGreatGrandchild.Id, Name = 'Second parented child');
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpaOne, cpaTwo };
-    insert cpas;
+    insert as system cpas;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -392,13 +392,13 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldWorkWithHierarchiesWhereLookupFieldDiffersFromHierarchy() {
-    Account hierarchyParent = [SELECT Id FROM Account];
+    Account hierarchyParent = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account parent = new Account(Name = 'child parent', ParentId = hierarchyParent.Id);
-    insert parent;
+    insert as system parent;
 
     Contact con = new Contact(LastName = 'hierarchy child', AccountId = parent.Id);
     List<Contact> cons = new List<Contact>{ con };
-    insert cons;
+    insert as system cons;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -410,14 +410,14 @@ private class RollupRelationshipFieldFinderTests {
     );
 
     RollupRelationshipFieldFinder.Traversal traversal = finder.getParents(cons);
-    Account expectedAcc = [SELECT Id FROM Account WHERE Id = :hierarchyParent.Id];
+    Account expectedAcc = [SELECT Id FROM Account WHERE Id = :hierarchyParent.Id WITH SYSTEM_MODE];
     Account retrievedAcc = (Account) traversal.retrieveParents(con.Id)[0];
     System.assertEquals(expectedAcc.Id, retrievedAcc.Id, 'Should correctly retrieve hierarchy');
   }
 
   @IsTest
   static void regressionTopLevelHierarchyDoesNotThrowException() {
-    Account hierarchyParent = [SELECT Id, ParentId FROM Account];
+    Account hierarchyParent = [SELECT Id, ParentId FROM Account WITH SYSTEM_MODE];
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
       new Rollup__mdt(RollupToUltimateParent__c = true, UltimateParentLookup__c = 'ParentId', LookupFieldOnCalcItem__c = 'ParentId'),
@@ -435,9 +435,9 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void shouldSkipUltimateParentFieldInGrandparentFieldPathWhenHierarchyGrandparentRollup() {
-    Account hierarchyParent = [SELECT Id, ParentId FROM Account];
+    Account hierarchyParent = [SELECT Id, ParentId FROM Account WITH SYSTEM_MODE];
     Contact hierarchyGrandchild = new Contact(LastName = 'Hierarchy grandchild', AccountId = hierarchyParent.Id);
-    insert hierarchyGrandchild;
+    insert as system hierarchyGrandchild;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -461,13 +461,13 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void supportsJunctionObjectForIntermediateRelationship() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Individual firstParent = new Individual(LastName = 'One');
     Individual secondParent = new Individual(LastName = 'Two');
-    insert new List<SObject>{ firstParent, secondParent };
+    insert as system new List<SObject>{ firstParent, secondParent };
     Contact firstChild = new Contact(AccountId = acc.Id, LastName = 'Child One', IndividualId = firstParent.Id);
     Contact secondChild = new Contact(AccountId = acc.Id, LastName = 'Child Two', IndividualId = secondParent.Id);
-    insert new List<SObject>{ firstChild, secondChild };
+    insert as system new List<SObject>{ firstChild, secondChild };
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -505,13 +505,13 @@ private class RollupRelationshipFieldFinderTests {
       return;
     }
 
-    Account hierarchyParent = [SELECT Id, ParentId FROM Account];
+    Account hierarchyParent = [SELECT Id, ParentId FROM Account WITH SYSTEM_MODE];
     Account hierarchyGrandparent = new Account(Name = 'Hierarchy grandparent');
-    insert hierarchyGrandparent;
+    insert as system hierarchyGrandparent;
     hierarchyParent.ParentId = hierarchyGrandparent.Id;
-    update hierarchyParent;
+    update as system hierarchyParent;
     Contact hierarchyGrandchild = new Contact(LastName = 'Hierarchy grandchild', AccountId = hierarchyParent.Id);
-    insert hierarchyGrandchild;
+    insert as system hierarchyGrandchild;
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -543,13 +543,13 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void fullRecordSetProperlyRetrievesAllGrandchildren() {
-    Account acc = [SELECT OwnerId FROM Account];
+    Account acc = [SELECT OwnerId FROM Account WITH SYSTEM_MODE];
     Account secondAccount = new Account(Name = 'Second Parent', OwnerId = acc.OwnerId);
-    insert secondAccount;
+    insert as system secondAccount;
 
     Opportunity opp = new Opportunity(Name = 'Does match', AccountId = acc.Id, CloseDate = System.today(), StageName = 'One');
     Opportunity secondOpp = new Opportunity(Name = 'Does match', AccountId = secondAccount.Id, CloseDate = System.today(), StageName = 'Two');
-    insert new List<Opportunity>{ opp, secondOpp };
+    insert as system new List<Opportunity>{ opp, secondOpp };
 
     RollupRelationshipFieldFinder finder = new RollupRelationshipFieldFinder(
       control,
@@ -579,13 +579,13 @@ private class RollupRelationshipFieldFinderTests {
 
   @IsTest
   static void correctlyReferencesOneToManyAdjacentRecords() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account secondAccount = new Account(Name = 'Two', AnnualRevenue = 50);
     Individual firstParent = new Individual(LastName = 'One');
-    insert new List<SObject>{ firstParent, secondAccount };
+    insert as system new List<SObject>{ firstParent, secondAccount };
     Contact firstChild = new Contact(AccountId = acc.Id, LastName = 'Child One', IndividualId = firstParent.Id);
     Contact secondChild = new Contact(AccountId = secondAccount.Id, LastName = 'Child Two', IndividualId = firstParent.Id);
-    insert new List<SObject>{ firstChild, secondChild };
+    insert as system new List<SObject>{ firstChild, secondChild };
 
     RollupRelationshipFieldFinder.Traversal traversal = new RollupRelationshipFieldFinder(
         control,

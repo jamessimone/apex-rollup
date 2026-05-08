@@ -2,7 +2,7 @@
 private class RollupParentResetProcessorTests {
   @TestSetup
   static void setup() {
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
   }
 
   @IsTest
@@ -119,7 +119,7 @@ private class RollupParentResetProcessorTests {
 
   @IsTest
   static void usesOverrideValueWhenApplicable() {
-    insert new List<SObject>{ new Account(Name = 'Account With Null'), new Contact(LastName = 'Contact With Null') };
+    insert as system new List<SObject>{ new Account(Name = 'Account With Null'), new Contact(LastName = 'Contact With Null') };
     RollupParentResetProcessor processor = new RollupParentResetProcessor(
       new List<Rollup__mdt>{
         new Rollup__mdt(
@@ -143,7 +143,7 @@ private class RollupParentResetProcessorTests {
 
     processor.runCalc();
 
-    Account resetAccount = [SELECT AnnualRevenue, AccountNumber FROM Account];
+    Account resetAccount = [SELECT AnnualRevenue, AccountNumber FROM Account WITH SYSTEM_MODE];
     System.assertEquals(0, resetAccount.AnnualRevenue);
     System.assertEquals('a', resetAccount.AccountNumber);
   }
@@ -166,17 +166,17 @@ private class RollupParentResetProcessorTests {
     Rollup.batch(new List<Rollup>{ processor });
     Test.stopTest();
 
-    System.assertEquals(0, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupParentResetProcessor.class.getName()]);
+    System.assertEquals(0, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupParentResetProcessor.class.getName() WITH SYSTEM_MODE]);
   }
 
   @IsTest
   static void shouldNotResetWhenParentAlreadyMatchesDuringFullRecalc() {
     Decimal originalValue = 3;
     Account acc = new Account(AnnualRevenue = originalValue, Name = 'Should Not Reset');
-    insert acc;
+    insert as system acc;
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Amount = 100, Name = 'Will Not Match', CloseDate = System.today().addDays(2), StageName = 'A');
-    insert new List<Opportunity>{
+    insert as system new List<Opportunity>{
       new Opportunity(AccountId = acc.Id, Amount = originalValue - 1, Name = 'First Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
       new Opportunity(AccountId = acc.Id, Amount = originalValue - 2, Name = 'Second Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
       opp
@@ -202,13 +202,13 @@ private class RollupParentResetProcessorTests {
 
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(originalValue, updatedAcc.AnnualRevenue);
   }
 
   @IsTest
   static void skipsMetadataForDifferentResetParents() {
-    insert new Account(AnnualRevenue = 5, Name = 'Should reset');
+    insert as system new Account(AnnualRevenue = 5, Name = 'Should reset');
     RollupParentResetProcessor processor = new RollupParentResetProcessor(
       new List<Rollup__mdt>{
         new Rollup__mdt(RollupFieldOnLookupObject__c = 'AnnualRevenue', LookupObject__c = 'Account', LookupFieldOnLookupObject__c = 'Id'),
@@ -222,6 +222,6 @@ private class RollupParentResetProcessorTests {
 
     processor.runCalc();
 
-    Assert.areEqual(null, [SELECT AnnualRevenue FROM Account].AnnualRevenue);
+    Assert.areEqual(null, [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE].AnnualRevenue);
   }
 }

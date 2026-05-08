@@ -4,10 +4,10 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   static void setup() {
     Rollup.onlyUseMockMetadata = true;
     Account acc = new Account(Name = RollupIntegrationTests.class.getName(), Phone = '9999999999');
-    insert acc;
+    insert as system acc;
 
     acc.AccountIdText__c = acc.Id;
-    update acc;
+    update as system acc;
 
     Opportunity opp = new Opportunity(
       Name = 'Rollup Integration',
@@ -19,13 +19,13 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     );
     RollupCurrencyInfo.setCurrencyIsoCode(opp, 'USD');
 
-    insert opp;
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    insert as system opp;
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
   }
 
   @IsTest
   static void shouldWorkUsingCustomFieldWithCmdt() {
-    Account prior = [SELECT Id, AnnualRevenue FROM Account];
+    Account prior = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, prior.AnnualRevenue, 'Test has started under the wrong conditions!');
     Rollup.records = new List<Opportunity>{
       (Opportunity) RollupTestUtils.queryRecord(Opportunity.SObjectType, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.AccountIdText__c })
@@ -50,13 +50,13 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1, acc.AnnualRevenue, 'Custom metadata mapping failed!');
   }
 
   @IsTest
   static void shouldSupportFormulaFieldsOnChildObjectsOnFullRecordSet() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     Opportunity opp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -87,7 +87,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = [SELECT Id, AnnualRevenue FROM Account];
+    acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(0, acc.AnnualRevenue, 'Formula field failed to be used correctly!');
   }
 
@@ -97,7 +97,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       return;
     }
     Application__c app = new Application__c(Name = 'RollupIntegrationTests App');
-    insert app;
+    insert as system app;
 
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{
       new ApplicationLog__c(Id = RollupTestUtils.createId(ApplicationLog__c.SObjectType), Application__c = app.Id, Object__c = 'Lead'),
@@ -114,7 +114,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    app = [SELECT Objects__c FROM Application__c WHERE Id = :app.Id];
+    app = [SELECT Objects__c FROM Application__c WHERE Id = :app.Id WITH SYSTEM_MODE];
     System.assertEquals('Account, Lead', app.Objects__c);
   }
 
@@ -122,7 +122,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   static void shouldProperlyAverageWithSpecialFieldNamesAndFilteredItems() {
     Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Hi');
-    insert parentApp;
+    insert as system parentApp;
 
     String baseId = Application__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getKeyPrefix() + '0'.repeat(11);
     List<Application__c> applications = new List<Application__c>{
@@ -164,7 +164,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
     Test.stopTest();
 
-    ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c];
+    ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c WITH SYSTEM_MODE];
     System.assertEquals(45 / 3, updatedParent.Engagement_Rollup__c, 'Average should be calculated based off of matching items');
   }
 
@@ -172,7 +172,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   static void shouldSupportCustomObjectsWhenRollupTriggeredFromParent() {
     Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     ParentApplication__c parentApp = new ParentApplication__c(Name = 'Custom Object Parent App');
-    insert parentApp;
+    insert as system parentApp;
 
     List<Application__c> apps = new List<Application__c>{
       new Application__c(Something_With_Underscores__c = 'We have and in the name', ParentApplication__c = parentApp.Id, Engagement_Score__c = 40),
@@ -181,7 +181,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       new Application__c(Something_With_Underscores__c = 'Backslashes/Too', ParentApplication__c = parentApp.Id, Engagement_Score__c = 5),
       new Application__c(Something_With_Underscores__c = 'Something & Something Else', ParentApplication__c = parentApp.Id, Engagement_Score__c = 10)
     };
-    insert apps;
+    insert as system apps;
 
     Rollup.FlowInput input = new Rollup.FlowInput();
     input.lookupFieldOnCalcItem = Application__c.ParentApplication__c.toString();
@@ -199,7 +199,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
     Test.stopTest();
 
-    ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c];
+    ParentApplication__c updatedParent = [SELECT Engagement_Rollup__c FROM ParentApplication__c WITH SYSTEM_MODE];
     System.assertEquals(125, updatedParent.Engagement_Rollup__c, 'Custom fields should work when rollup started from parent!');
   }
 
@@ -213,20 +213,20 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     RollupCurrencyInfo.setCurrencyIsoCode(greatGrandparent, 'USD');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     RollupCurrencyInfo.setCurrencyIsoCode(secondGreatGrandparent, 'USD');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+    insert as system new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = greatGrandparent.Id);
     ParentApplication__c nonMatchingGrandParent = new ParentApplication__c(Name = 'Non-matching grandparent');
-    insert new List<ParentApplication__c>{ grandParent, nonMatchingGrandParent };
+    insert as system new List<ParentApplication__c>{ grandParent, nonMatchingGrandParent };
 
     Application__c parent = new Application__c(Name = 'Parent', ParentApplication__c = grandParent.Id);
     Application__c nonMatchingParent = new Application__c(Name = 'Non matching parent', ParentApplication__c = nonMatchingGrandParent.Id);
-    insert new List<Application__c>{ parent, nonMatchingParent };
+    insert as system new List<Application__c>{ parent, nonMatchingParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = parent.Id, Name = 'Test Rollup Grandchildren');
     ApplicationLog__c nonMatchingChild = new ApplicationLog__c(Name = 'Non matching child', Application__c = nonMatchingParent.Id);
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, nonMatchingChild };
-    insert appLogs;
+    insert as system appLogs;
 
     Set<String> childrenFieldsToSelect = new Set<String>{ String.valueOf(ApplicationLog__c.Id), String.valueOf(ApplicationLog__c.Name) };
     Set<String> parentFieldsToSelect = new Set<String>{ 'Id', 'Name' };
@@ -255,7 +255,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     // ok, and can we access the great-grandparent if the lookup field is populated?
     nonMatchingGrandParent.Account__c = secondGreatGrandparent.Id;
-    update nonMatchingGrandParent;
+    update as system nonMatchingGrandParent;
 
     // this also validates that the internal state of the finder is resilient; that it can be called more than once
     traversal = finder.getParents(appLogs);
@@ -269,7 +269,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       return;
     }
     Application__c app = new Application__c(Name = 'No grandparent app');
-    insert app;
+    insert as system app;
 
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{
       new ApplicationLog__c(Application__c = app.Id, Object__c = 'Lead'),
@@ -306,11 +306,11 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   static void fullRecalculationStartsProperlyOnUpdateWhenOverQueryLimit() {
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 2, MaxRollupRetries__c = 1);
     Rollup.onlyUseMockMetadata = true;
-    Account acc = [SELECT Id FROM Account];
-    Opportunity priorOpp = [SELECT Amount, StageName FROM Opportunity];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
+    Opportunity priorOpp = [SELECT Amount, StageName FROM Opportunity WITH SYSTEM_MODE];
     Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Prospecting', Amount = 5, Name = 'One');
     Opportunity secondOpp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Something', Amount = 5, Name = 'Two');
-    insert new List<Opportunity>{ opp, secondOpp };
+    insert as system new List<Opportunity>{ opp, secondOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -343,7 +343,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAccount = [SELECT Id, AnnualRevenue, Description FROM Account WHERE Id = :acc.Id];
+    Account updatedAccount = [SELECT Id, AnnualRevenue, Description FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(priorOpp.Amount + opp.Amount + secondOpp.Amount, updatedAccount.AnnualRevenue, 'SUM should have fully rolled up');
     System.assertEquals(
       opp.StageName + ', ' + secondOpp.StageName + ', ' + priorOpp.StageName,
@@ -355,16 +355,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   @IsTest
   static void performsRollupWhenIntermediateOneToManyChildrenUpdated() {
     Rollup.onlyUseMockMetadata = true;
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 47;
-    update acc;
+    update as system acc;
     Account initialParent = new Account(Name = 'Initial', AnnualRevenue = acc.AnnualRevenue);
-    insert initialParent;
+    insert as system initialParent;
 
     Individual indy = new Individual(LastName = 'Indy');
-    insert indy;
+    insert as system indy;
     Contact con = new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id);
-    insert con;
+    insert as system con;
 
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -400,7 +400,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Individual updatedIndy = [SELECT Id, ConsumerCreditScore, InfluencerRating FROM Individual WHERE Id = :indy.Id];
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore, InfluencerRating FROM Individual WHERE Id = :indy.Id WITH SYSTEM_MODE];
     System.assertEquals(
       acc.AnnualRevenue,
       updatedIndy.ConsumerCreditScore,
@@ -434,29 +434,29 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+    insert as system new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = secondGreatGrandparent.Id);
     ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = greatGrandparent.Id);
     List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
-    insert parentApps;
+    insert as system parentApps;
 
     Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
     Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
+    insert as system new List<Application__c>{ parent, secondParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
-    insert new List<ApplicationLog__c>{ child, secondChild };
+    insert as system new List<ApplicationLog__c>{ child, secondChild };
 
     Test.startTest();
     parentApps[0].Account__c = greatGrandparent.Id;
     parentApps[1].Account__c = secondGreatGrandparent.Id;
-    update parentApps;
+    update as system parentApps;
     Test.stopTest();
 
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id WITH SYSTEM_MODE];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id WITH SYSTEM_MODE];
 
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - apex');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - apex');
@@ -487,28 +487,28 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+    insert as system new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = secondGreatGrandparent.Id);
     ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = greatGrandparent.Id);
     List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
-    insert parentApps;
+    insert as system parentApps;
 
     Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
     Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
+    insert as system new List<Application__c>{ parent, secondParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'child one');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'child two', Application__c = parent.Id);
-    insert new List<ApplicationLog__c>{ child, secondChild };
+    insert as system new List<ApplicationLog__c>{ child, secondChild };
 
     Test.startTest();
-    delete parentApps;
+    delete as system parentApps;
     undelete parentApps;
     Test.stopTest();
 
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id WITH SYSTEM_MODE];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id WITH SYSTEM_MODE];
 
     System.assertEquals(secondChild.Name, updatedGreatGrandparentTwo.Name);
     System.assertEquals(child.Name, updatedGreatGrandparent.Name);
@@ -525,20 +525,20 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Account greatGrandparent = new Account(Name = 'Great-grandparent');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent');
     List<Account> greatGrandparents = new List<Account>{ greatGrandparent, secondGreatGrandparent };
-    insert greatGrandparents;
+    insert as system greatGrandparents;
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent', Account__c = secondGreatGrandparent.Id);
     ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent', Account__c = greatGrandparent.Id);
     List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
-    insert parentApps;
+    insert as system parentApps;
 
     Application__c parent = new Application__c(Name = 'Parent-level', ParentApplication__c = grandParent.Id);
     Application__c secondParent = new Application__c(Name = 'Second parent-level', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
+    insert as system new List<Application__c>{ parent, secondParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux', Application__c = parent.Id);
-    insert new List<ApplicationLog__c>{ child, secondChild };
+    insert as system new List<ApplicationLog__c>{ child, secondChild };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -559,7 +559,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Test.startTest();
     parentApps[0].Name = 'Grandparent rename';
     parentApps[1].Name = 'Second grandparent rename';
-    update parentApps;
+    update as system parentApps;
     Test.stopTest();
 
     System.assertEquals('Great-grandparent', greatGrandparent.Name, 'Great grandparent name should not have been updated');
@@ -574,20 +574,20 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account greatGrandparent = new Account(Name = 'Great-grandparent Flow');
     Account secondGreatGrandparent = new Account(Name = 'Second great-grandparent Flow');
-    insert new List<Account>{ greatGrandparent, secondGreatGrandparent };
+    insert as system new List<Account>{ greatGrandparent, secondGreatGrandparent };
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent Flow', Account__c = greatGrandparent.Id);
     ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Second grandparent Flow', Account__c = secondGreatGrandparent.Id);
     List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
-    insert parentApps;
+    insert as system parentApps;
 
     Application__c parent = new Application__c(Name = 'Parent-level Flow', ParentApplication__c = grandParent.Id);
     Application__c secondParent = new Application__c(Name = 'Second parent-level Flow', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
+    insert as system new List<Application__c>{ parent, secondParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Test Rollup Grandchildren Reparenting Flow');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Reparenting deux Flow', Application__c = parent.Id);
-    insert new List<ApplicationLog__c>{ child, secondChild };
+    insert as system new List<ApplicationLog__c>{ child, secondChild };
 
     Rollup.shouldRun = true;
     Rollup.FlowInput input = new Rollup.FlowInput();
@@ -613,8 +613,8 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.performRollup(new List<Rollup.FlowInput>{ input });
     Test.stopTest();
 
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
-    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id];
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id WITH SYSTEM_MODE];
+    Account updatedGreatGrandparentTwo = [SELECT Name FROM Account WHERE Id = :secondGreatGrandparent.Id WITH SYSTEM_MODE];
 
     System.assertEquals(secondChild.Name, updatedGreatGrandparent.Name, 'Grandparent record should have retriggered greatgrandparent rollup! - flow');
     System.assertEquals(child.Name, updatedGreatGrandparentTwo.Name, 'Grandparent record should have retriggered greatgrandparent rollup again! - flow');
@@ -627,21 +627,21 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     }
     Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account greatGrandparent = new Account(Name = 'Great-grandparent NonFiltered');
-    insert greatGrandparent;
+    insert as system greatGrandparent;
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent NonFiltered', Account__c = greatGrandparent.Id);
     ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Should be filtered grandparent', Account__c = greatGrandparent.Id);
-    insert new List<ParentApplication__c>{ grandParent, secondGrandparent };
+    insert as system new List<ParentApplication__c>{ grandParent, secondGrandparent };
 
     Application__c parent = new Application__c(Name = 'Parent-level NonFiltered', ParentApplication__c = grandParent.Id);
     Application__c secondParent = new Application__c(Name = 'Second parent-level filtered', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
+    insert as system new List<Application__c>{ parent, secondParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Should not be appended since application should be filtered');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'Should correctly be appended', Application__c = parent.Id);
     ApplicationLog__c nonMatchChild = new ApplicationLog__c(Name = 'nonmatch', Application__c = parent.Id);
     List<ApplicationLog__c> appLogs = new List<ApplicationLog__c>{ child, secondChild, nonMatchChild };
-    insert appLogs;
+    insert as system appLogs;
 
     Rollup.records = appLogs;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -677,7 +677,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id];
+    Account updatedGreatGrandparent = [SELECT Name FROM Account WHERE Id = :greatGrandparent.Id WITH SYSTEM_MODE];
     System.assertEquals(greatGrandparent.Name, updatedGreatGrandparent.Name, 'Great-grandparent name should not have been appended based on exclusions');
   }
 
@@ -705,26 +705,26 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     };
 
     Account greatGrandparent = new Account(Name = 'Great-grandparent 1');
-    insert greatGrandparent;
+    insert as system greatGrandparent;
 
     ParentApplication__c grandParent = new ParentApplication__c(Name = 'Grandparent 1', Account__c = greatGrandparent.Id);
     ParentApplication__c secondGrandparent = new ParentApplication__c(Name = 'Grandparent 2', Account__c = greatGrandparent.Id);
     List<ParentApplication__c> parentApps = new List<ParentApplication__c>{ grandParent, secondGrandparent };
-    insert parentApps;
+    insert as system parentApps;
 
     Application__c parent = new Application__c(Name = 'Parent 1', ParentApplication__c = grandParent.Id);
     Application__c secondParent = new Application__c(Name = 'Parent 2', ParentApplication__c = secondGrandparent.Id);
-    insert new List<Application__c>{ parent, secondParent };
+    insert as system new List<Application__c>{ parent, secondParent };
 
     ApplicationLog__c child = new ApplicationLog__c(Application__c = secondParent.Id, Name = 'Will Still Exist');
     ApplicationLog__c secondChild = new ApplicationLog__c(Name = 'To be deleted', Application__c = parent.Id);
-    insert new List<ApplicationLog__c>{ child, secondChild };
+    insert as system new List<ApplicationLog__c>{ child, secondChild };
 
     Test.startTest();
-    delete secondChild;
+    delete as system secondChild;
     Test.stopTest();
 
-    greatGrandparent = [SELECT AnnualRevenue FROM Account WHERE Id = :greatGrandparent.Id];
+    greatGrandparent = [SELECT AnnualRevenue FROM Account WHERE Id = :greatGrandparent.Id WITH SYSTEM_MODE];
     Assert.areEqual(1, greatGrandparent.AnnualRevenue, 'Should still count non-deleted great-grandchild');
   }
 
@@ -732,15 +732,15 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   static void shouldProperlyFilterPolymorphicWhatFields() {
     Account acc = new Account(Name = 'Matching type');
     Case cas = new Case();
-    insert new List<SObject>{ acc, cas };
+    insert as system new List<SObject>{ acc, cas };
 
     Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp', AccountId = acc.Id);
-    insert opp;
+    insert as system opp;
 
     Task matchingTask = new Task(ActivityDate = System.today(), WhatId = opp.Id, Subject = 'Match');
     Task nonMatchingTask = new Task(ActivityDate = System.today(), WhatId = cas.Id, Subject = 'Non match');
     List<Task> tasks = new List<Task>{ matchingTask, nonMatchingTask };
-    insert tasks;
+    insert as system tasks;
 
     // things like What.Type aren't included by default in updates made within Triggers/Flows
     // specifically NOT requerying here validates that Rollup can handle a polymorphic where clause
@@ -765,22 +765,22 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(matchingTask.Subject, updatedAcc.Name, 'Only matching task subject should have been appended via What.Type');
   }
 
   @IsTest
   static void shouldWorkEvenIfPolymorphicFieldsAreIncluded() {
     Account acc = new Account(Name = 'Matching type');
-    insert acc;
+    insert as system acc;
 
     Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'Prospecting', Name = 'parent opp', AccountId = acc.Id);
-    insert opp;
+    insert as system opp;
 
     Task matchingTask = new Task(ActivityDate = System.today(), WhatId = opp.Id, Subject = 'Match');
-    insert matchingTask;
+    insert as system matchingTask;
 
-    Rollup.records = [SELECT Id, Subject, What.Type, WhatId FROM Task];
+    Rollup.records = [SELECT Id, Subject, What.Type, WhatId FROM Task WITH SYSTEM_MODE];
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
         CalcItem__c = 'Task',
@@ -801,7 +801,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id];
+    Account updatedAcc = [SELECT Name FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(matchingTask.Subject, updatedAcc.Name, 'Only matching task subject should have been appended via Who.Type requerying');
   }
 
@@ -809,12 +809,12 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   static void shouldProperlyFilterPolymorphicWhoFields() {
     Contact con = new Contact(LastName = 'Polly', Email = 'polly@morhpism.com');
     Lead lead = new Lead(LastName = 'Morphism', Email = 'morphism@polly.com', Company = 'PollyMorphism');
-    insert new List<SObject>{ con, lead };
+    insert as system new List<SObject>{ con, lead };
 
     Task matchingTask = new Task(ActivityDate = System.today(), WhoId = lead.Id, Subject = 'Match');
     Task nonMatchingTask = new Task(ActivityDate = System.today(), WhoId = con.Id, Subject = 'Not a Match');
     List<Task> tasks = new List<Task>{ matchingTask, nonMatchingTask };
-    insert tasks;
+    insert as system tasks;
 
     Rollup.records = tasks;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -836,15 +836,15 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :lead.Id];
+    Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :lead.Id WITH SYSTEM_MODE];
     System.assertEquals(matchingTask.Subject, updatedLead.LastName, 'Only matching task should have been appended via Who.Type');
   }
 
   @IsTest
   static void shouldProperlyFilterPolymorphicOwnerFields() {
-    User currentUser = [SELECT Id, Name FROM User WHERE Id = :UserInfo.getUserId()];
+    User currentUser = [SELECT Id, Name FROM User WHERE Id = :UserInfo.getUserId() WITH SYSTEM_MODE];
     Lead matchingLead = new Lead(Company = 'Matching polymorphic', LastName = 'Polly', OwnerId = currentUser.Id);
-    insert matchingLead;
+    insert as system matchingLead;
 
     Event nonMatchingEvent = new Event(
       ActivityDateTime = System.now(),
@@ -854,7 +854,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       DurationInMinutes = 30
     );
     List<Event> events = new List<Event>{ nonMatchingEvent };
-    insert events;
+    insert as system events;
 
     Rollup.records = events;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -876,15 +876,15 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :matchingLead.Id];
+    Lead updatedLead = [SELECT LastName FROM Lead WHERE Id = :matchingLead.Id WITH SYSTEM_MODE];
     System.assertEquals(matchingLead.LastName, updatedLead.LastName, 'Lead last name should not have been updated');
   }
 
   @IsTest
   static void shouldProperlyFilterParentFields() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     Account matchingAccount = new Account(Name = 'Matching');
-    insert matchingAccount;
+    insert as system matchingAccount;
 
     List<SObject> opps = new List<Opportunity>{
       new Opportunity(Name = 'Non Match 0', AccountId = acc.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
@@ -893,7 +893,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       new Opportunity(Name = 'Match 1', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today()),
       new Opportunity(Name = 'Match 2', AccountId = matchingAccount.Id, Amount = 500, StageName = 'hi', CloseDate = System.today())
     };
-    insert opps;
+    insert as system opps;
 
     Rollup.records = opps;
     Rollup.shouldRun = true;
@@ -916,9 +916,9 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(null, acc.AnnualRevenue, 'Calc item where clause should have prevented account from being updated');
-    matchingAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :matchingAccount.Id];
+    matchingAccount = [SELECT Id, AnnualRevenue FROM Account WHERE Id = :matchingAccount.Id WITH SYSTEM_MODE];
     System.assertEquals(1500, matchingAccount.AnnualRevenue);
   }
 
@@ -986,11 +986,11 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldCorrectlyRollupFromTriggerOnMerge() {
-    Account parent = [SELECT Id, Name FROM Account];
+    Account parent = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
 
     // you can only merge contacts / accounts / leads / cases
     Account parentToMerge = new Account(Name = 'Second parent');
-    insert parentToMerge;
+    insert as system parentToMerge;
 
     List<SObject> rollupChildren = new List<SObject>{
       new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
@@ -1001,7 +1001,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     // we don't even need the parent account's rollup fields to be pre-set to anything
     // we need to validate that post merge, each rollup has been recalculated correctly
-    insert rollupChildren;
+    insert as system rollupChildren;
 
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1051,7 +1051,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Database.merge(parent, parentToMerge.Id, true);
     Test.stopTest();
 
-    parent = [SELECT Id, Description, AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT Id, Description, AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE];
     System.assertEquals(2, parent.AnnualRevenue, 'Merge should have triggered rollup');
     System.assertEquals(rollupChildren[0].get('Name') + ', ' + rollupChildren[1].get('Name'), parent.Description, 'Second rollup should also have run');
     System.assertEquals(expectedAmount, parent.NumberOfEmployees, 'opp rollup shold have run');
@@ -1059,7 +1059,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldNotBlowUpIfSomeMergeMetadataHasNoMatchingRecords() {
-    Account parent = [SELECT Id, Name FROM Account];
+    Account parent = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
 
     // this test relies on AccountTrigger.trigger having AFTER DELETE set up
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -1097,7 +1097,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     // you can only merge contacts / accounts / leads / cases
     Account parentToMerge = new Account(Name = 'Second parent');
-    insert parentToMerge;
+    insert as system parentToMerge;
 
     List<ContactPointAddress> rollupChildren = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'Child one', ParentId = parent.Id, PreferenceRank = 1),
@@ -1106,20 +1106,20 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     // we don't even need the parent account's annual revenue to be set; rather
     // we need to validate that post merge, the rollup is recalculated correctly
-    insert rollupChildren;
+    insert as system rollupChildren;
 
     Test.startTest();
     Database.merge(parent, parentToMerge.Id, true);
     Test.stopTest();
 
-    parent = [SELECT Id, Description, AnnualRevenue FROM Account WHERE Id = :parent.Id];
+    parent = [SELECT Id, Description, AnnualRevenue FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE];
     System.assertEquals(2, parent.AnnualRevenue, 'Merge should have triggered rollup');
     System.assertEquals(rollupChildren[0].Name + ', ' + rollupChildren[1].Name, parent.Description, 'Second rollup should also have run');
   }
 
   @IsTest
   static void shouldNotCrashForFalseMergePositive() {
-    Account acc = [SELECT Id, Name, Description, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, Name, Description, AnnualRevenue FROM Account WITH SYSTEM_MODE];
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -1154,7 +1154,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     };
 
     Test.startTest();
-    delete acc;
+    delete as system acc;
     Test.stopTest();
 
     System.assert(true, 'Should make it here');
@@ -1162,12 +1162,12 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldConcatDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'test update';
-    update acc;
+    update as system acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = acc.AccountNumber);
-    insert cpa;
+    insert as system cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = 'something else') };
@@ -1191,19 +1191,19 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AccountNumber FROM Account];
+    Account updatedAcc = [SELECT AccountNumber FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, updatedAcc.AccountNumber, 'CONCAT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest
   static void shouldRetrieveAllCalcItemsOnUpdateConcatDistinct() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'test update';
-    update acc;
+    update as system acc;
 
     ContactPointAddress firstCpa = new ContactPointAddress(ParentId = acc.Id, Name = acc.AccountNumber);
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'something else');
-    insert new List<ContactPointAddress>{ firstCpa, cpa };
+    insert as system new List<ContactPointAddress>{ firstCpa, cpa };
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = acc.AccountNumber) };
@@ -1226,7 +1226,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AccountNumber FROM Account];
+    Account updatedAcc = [SELECT AccountNumber FROM Account WITH SYSTEM_MODE];
     System.assertEquals(
       cpa.Name + ', ' + acc.AccountNumber,
       updatedAcc.AccountNumber,
@@ -1236,10 +1236,10 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldProperlyQueryNotLikeCountDistinct() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT not like');
-    insert new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
+    insert as system new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>();
@@ -1263,16 +1263,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT should work with NOT LIKE');
   }
 
   @IsTest
   static void shouldNotIncludeNullForCountDistinct() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account WITH SYSTEM_MODE];
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT null PreferenceRank');
-    insert cpa;
+    insert as system cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>();
@@ -1295,7 +1295,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT should ignore nulls');
 
     Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
@@ -1304,18 +1304,18 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(PreferenceRank = 10, Id = cpa.Id, ParentId = acc.Id) };
     Rollup.runFromTrigger();
 
-    updatedAcc = [SELECT AnnualRevenue FROM Account];
+    updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT on update should ignore nulls');
   }
 
   @IsTest
   static void shouldNotIncludePriorValueForCountDistinctId() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 5;
-    update acc;
+    update as system acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update');
-    insert new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
+    insert as system new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>();
@@ -1338,18 +1338,18 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_INSERT should not overcount items');
   }
 
   @IsTest
   static void shouldNotDoubleCountOldParentValueOnUpdate() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
-    update acc;
+    update as system acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'something else');
-    insert cpa;
+    insert as system cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, Name = acc.Name) };
@@ -1372,18 +1372,18 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
   @IsTest
   static void shouldClearParentValueIfNothingMatchesCountDistinct() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 5;
-    update acc;
+    update as system acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update');
-    insert new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
+    insert as system new List<ContactPointAddress>{ cpa, new ContactPointAddress(ParentId = acc.Id, Name = 'Some other thing') };
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>();
@@ -1406,18 +1406,18 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(2, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_INSERT should not overcount items');
   }
 
   @IsTest
   static void shouldCountDistinctOnUpdateEvenIfNewItemDoesNotMatch() {
-    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, Name, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
-    update acc;
+    update as system acc;
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'Testing CPA COUNT_DISTINCT update', PreferenceRank = 0);
-    insert cpa;
+    insert as system cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.oldRecordsMap = new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(Id = cpa.Id, PreferenceRank = 1) };
@@ -1441,7 +1441,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    Account updatedAcc = [SELECT AnnualRevenue FROM Account];
+    Account updatedAcc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(null, updatedAcc.AnnualRevenue, 'COUNT_DISTINCT AFTER_UPDATE should clear when updated item does not match and no other items');
   }
 
@@ -1451,18 +1451,18 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.shouldFlattenAsyncProcesses = true;
     Rollup.onlyUseMockMetadata = true;
     RollupLimits.stubAsyncTimeoutInterval = 1;
-    Account ultimateParent = [SELECT Id FROM Account];
+    Account ultimateParent = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     Account penultimateChildOne = new Account(Name = 'Penultimate Child 1', ParentId = ultimateParent.Id);
     Account penultimateChildTwo = new Account(Name = 'Penultimate Child 2', ParentId = ultimateParent.Id);
-    insert new List<Account>{ penultimateChildOne, penultimateChildTwo };
+    insert as system new List<Account>{ penultimateChildOne, penultimateChildTwo };
 
     Account ultimateChildOne = new Account(Name = 'Ultimate child 1', ParentId = penultimateChildOne.Id, AnnualRevenue = 3);
     Account ultimateChildTwo = new Account(Name = 'Ultimate child 2', ParentId = penultimateChildOne.Id, AnnualRevenue = 2);
     Account ultimateChildThree = new Account(Name = 'Ultimate child 3', ParentId = penultimateChildTwo.Id, AnnualRevenue = 5);
     Account ultimateChildFour = new Account(Name = 'Ultimate child 4', ParentId = penultimateChildTwo.Id, AnnualRevenue = 5);
     List<Account> accounts = new List<Account>{ ultimateChildOne, ultimateChildTwo, ultimateChildThree, ultimateChildFour };
-    insert accounts;
+    insert as system accounts;
 
     Rollup.records = accounts;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1483,23 +1483,23 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     // don't wrap in start/stopTest to prove this is all capable of running sync
     Rollup.runFromTrigger();
 
-    penultimateChildOne = [SELECT AnnualRevenue FROM Account WHERE Id = :penultimateChildOne.Id];
+    penultimateChildOne = [SELECT AnnualRevenue FROM Account WHERE Id = :penultimateChildOne.Id WITH SYSTEM_MODE];
     Assert.areEqual(5, penultimateChildOne.AnnualRevenue);
-    penultimateChildTwo = [SELECT AnnualRevenue FROM Account WHERE Id = :penultimateChildTwo.Id];
+    penultimateChildTwo = [SELECT AnnualRevenue FROM Account WHERE Id = :penultimateChildTwo.Id WITH SYSTEM_MODE];
     Assert.areEqual(10, penultimateChildTwo.AnnualRevenue);
-    ultimateParent = [SELECT AnnualRevenue FROM Account WHERE Id = :ultimateParent.Id];
+    ultimateParent = [SELECT AnnualRevenue FROM Account WHERE Id = :ultimateParent.Id WITH SYSTEM_MODE];
     Assert.areEqual(15, ultimateParent.AnnualRevenue);
   }
 
   @IsTest
   static void shouldRunSyncWhenFlaggedOnRollupLimit() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'oneCpa'),
       new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'twoCpa')
     };
-    insert cpas;
+    insert as system cpas;
 
     Rollup.records = cpas;
     Rollup.shouldRun = true;
@@ -1509,21 +1509,21 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     // specifically do NOT wrap in Test.startTest() / Test.stopTest() - we need to ensure this happened synchronously
     Rollup.countFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(2, acc.AnnualRevenue, 'COUNT AFTER_INSERT should add when field is populated sync calc');
   }
 
   @IsTest
   static void shouldPartiallyDeferRollupCalculationWhenOverLimits() {
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
     Account secondParent = new Account(Name = 'Second parent');
-    insert secondParent;
+    insert as system secondParent;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One', PreferenceRank = 1),
       new ContactPointAddress(ParentId = secondParent.Id, Name = 'Two', PreferenceRank = 1)
     };
-    insert cpas;
+    insert as system cpas;
 
     // start as synchronous rollup to allow for one deferral
     Rollup.defaultControl = new RollupControl__mdt(
@@ -1555,9 +1555,9 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     // validate that queueable ran in addition to sync job
     System.assertEquals(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class)]
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class) WITH SYSTEM_MODE]
     );
-    List<Account> updatedAccounts = [SELECT AnnualRevenue FROM Account];
+    List<Account> updatedAccounts = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(2, updatedAccounts.size(), 'Both parent items should have been updated!');
 
     for (Account updatedAcc : updatedAccounts) {
@@ -1567,16 +1567,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldNotBlowUpWhenDeferralLeadsToMultipleSObjectsBeingPresent() {
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
 
     Individual indy = new Individual(LastName = 'Indy');
-    insert indy;
+    insert as system indy;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One', PreferenceRank = 1),
       new ContactPointAddress(ParentId = indy.Id, Name = 'Two', PreferenceRank = 1)
     };
-    insert cpas;
+    insert as system cpas;
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxNumberOfQueries__c = 7,
@@ -1620,8 +1620,8 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
-    indy = [SELECT LastName, ChildrenCount FROM Individual];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
+    indy = [SELECT LastName, ChildrenCount FROM Individual WITH SYSTEM_MODE];
     System.assertEquals(1, acc.AnnualRevenue, 'Annual revenue should have been averaged properly');
     System.assertEquals(1, indy.ChildrenCount, 'Children count should have been counted correctly');
     System.assertEquals('Two', indy.LastName, 'LastName should have been concat properly');
@@ -1629,7 +1629,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldRunDirectlyFromApex() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 5),
@@ -1652,13 +1652,13 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.runFromApex(cpas, TriggerOperation.AFTER_INSERT);
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(15, acc.AnnualRevenue);
   }
 
   @IsTest
   static void shouldRunWithOldRecordsDirectlyFromApex() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), ParentId = acc.Id, PreferenceRank = 5),
@@ -1688,15 +1688,15 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     );
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(15, acc.AnnualRevenue);
   }
 
   @IsTest
   static void shouldDeferUpdateWhenMaxParentRowsLessThanCurrentUpdateRows() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'MaxParentRows');
-    insert cpa;
+    insert as system cpa;
 
     Rollup.records = new List<ContactPointAddress>{ cpa };
     Rollup.shouldRun = true;
@@ -1707,16 +1707,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType).runCalc();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(50, acc.AnnualRevenue, 'Account should have been updated since the mock is not used async');
   }
 
   @IsTest
   static void limitsCorrectlyOnInsert() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
-    insert new List<ContactPointAddress>{ cpa, two };
+    insert as system new List<ContactPointAddress>{ cpa, two };
 
     Rollup.records = new List<ContactPointAddress>{ two };
     Rollup.shouldRun = true;
@@ -1729,16 +1729,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       .runCalc();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
   }
 
   @IsTest
   static void limitsCorrectlyOnUpdate() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'A');
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'B');
-    insert new List<ContactPointAddress>{ cpa, two };
+    insert as system new List<ContactPointAddress>{ cpa, two };
 
     Rollup.records = new List<ContactPointAddress>{ two };
     Rollup.shouldRun = true;
@@ -1752,16 +1752,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       .runCalc();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
   }
 
   @IsTest
   static void limitsCorrectlyOnDelete() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
-    insert new List<ContactPointAddress>{ cpa, two };
+    insert as system new List<ContactPointAddress>{ cpa, two };
 
     Rollup.records = new List<ContactPointAddress>{ two };
     Rollup.shouldRun = true;
@@ -1773,17 +1773,17 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       .runCalc();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account];
+    acc = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(cpa.PreferenceRank, acc.AnnualRevenue, 'First inserted cpa amount should have been used');
   }
 
   @IsTest
   static void distinctCorrectlyQueriesAdditionalChildren() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'One');
     ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 1, Name = 'Two');
     ContactPointAddress three = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 2, Name = 'Three');
-    insert new List<ContactPointAddress>{ one, two, three };
+    insert as system new List<ContactPointAddress>{ one, two, three };
 
     Rollup.records = new List<ContactPointAddress>{ one };
     Rollup.shouldRun = true;
@@ -1795,16 +1795,16 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       .runCalc();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     Assert.areEqual(3, acc.AnnualRevenue);
   }
 
   @IsTest
   static void allowsMultipleRollupsToOperateOnSameParentFieldWithRollupGrouping() {
-    Account acc = [SELECT Id, Phone, OwnerId FROM Account];
+    Account acc = [SELECT Id, Phone, OwnerId FROM Account WITH SYSTEM_MODE];
     Assert.areEqual('9999999999', acc.Phone, 'Test has started under the wrong conditions!');
     String winningPhone = '5555555555';
-    insert new List<Contact>{
+    insert as system new List<Contact>{
       new Contact(LastName = 'Second child object', Phone = winningPhone, OwnerId = acc.OwnerId),
       new Contact(LastName = 'Losing child', Phone = '333', OwnerId = acc.OwnerId)
     };
@@ -1836,17 +1836,17 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
     Test.startTest();
     acc.Phone = '0';
-    update acc;
+    update as system acc;
     Test.stopTest();
 
-    User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId];
+    User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId WITH SYSTEM_MODE];
     Assert.isNotNull(updatedUser.AboutMe);
     Assert.areEqual(winningPhone, updatedUser.AboutMe);
   }
 
   @IsTest
   static void shouldThrowExceptionWhenTryingToOperateOnDisallowedFieldTypes() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Rollup.records = new List<Task>{ new Task(ActivityDate = System.today(), WhatId = acc.Id) };
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     Rollup.shouldRun = true;
@@ -1896,7 +1896,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   @IsTest
   static void shouldFilterNonMatchingRollupsOutOfBatch() {
     Contact con = new Contact(FirstName = 'Something', LastName = 'Required');
-    insert con;
+    insert as system con;
 
     Rollup.FilterResults results = new Rollup.FilterResults();
     results.matchingItemIds.add(con.Id);
@@ -1932,9 +1932,9 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldWorkMultipleOrInWhereClause() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
 
-    insert new List<Opportunity>{
+    insert as system new List<Opportunity>{
       new Opportunity(StageName = 'b', CloseDate = System.today(), AccountId = acc.Id, Name = 'a', Amount = 2),
       new Opportunity(StageName = 'a', CloseDate = System.today(), AccountId = acc.Id, Name = 'b', Amount = 2),
       new Opportunity(StageName = 'c', CloseDate = System.today().addDays(-2), AccountId = acc.Id, Name = 'c', Amount = 2),
@@ -1955,7 +1955,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.performFullRecalculation(mdt);
     Test.stopTest();
 
-    acc = [SELECT SicDesc FROM Account];
+    acc = [SELECT SicDesc FROM Account WITH SYSTEM_MODE];
     System.assertEquals('b', acc.SicDesc);
     // Validate that job ran as queueable - that the where clause was formatted correctly, in other words
     System.assertEquals(
@@ -1963,8 +1963,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
-      ]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
     );
   }
 
@@ -2016,7 +2015,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void usesFullBatchRecalculatorForLargerQueries() {
-    List<Account> accounts = [SELECT Id FROM Account];
+    List<Account> accounts = [SELECT Id FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = accounts;
     Rollup.defaultControl = new RollupControl__mdt(MaxQueryRows__c = 0);
     Rollup.onlyUseMockMetadata = true;
@@ -2031,19 +2030,19 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
         CalcItem__c = 'Contact'
       )
     };
-    insert new Contact(AccountId = accounts[0].Id, LastName = 'Does Not Reset');
+    insert as system new Contact(AccountId = accounts[0].Id, LastName = 'Does Not Reset');
 
     String jobId = Rollup.schedule('Does not Reset ' + System.now(), '0 0 0 * * ?', 'SELECT Id, AccountId FROM Contact', 'Account', null);
 
-    CronTrigger job = [SELECT CronJobDetail.Name FROM CronTrigger WHERE Id = :jobId];
+    CronTrigger job = [SELECT CronJobDetail.Name FROM CronTrigger WHERE Id = :jobId WITH SYSTEM_MODE];
     Assert.isTrue(job.CronJobDetail.Name.contains(RollupFullBatchRecalculator.class.getName()));
   }
 
   @IsTest
   static void doesNotResetParentRecordValuesForLargeScheduledQueries() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
-    update acc;
+    update as system acc;
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2057,7 +2056,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
         CalcItem__c = 'Contact'
       )
     };
-    insert new Contact(AccountId = acc.Id, LastName = 'Does Not Reset');
+    insert as system new Contact(AccountId = acc.Id, LastName = 'Does Not Reset');
 
     Test.startTest();
     new RollupFullBatchRecalculator.NonResettingBulkFullRecalc(
@@ -2080,7 +2079,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       .runCalc();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id LIMIT 1];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE LIMIT 1];
     Assert.areEqual(2, acc.AnnualRevenue);
   }
 
@@ -2090,11 +2089,11 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Database.executeBatch(new RollupIntegrationTests());
     Test.stopTest();
 
-    Assert.areEqual(1, [SELECT AnnualRevenue FROM Account].AnnualRevenue);
+    Assert.areEqual(1, [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE].AnnualRevenue);
   }
 
   public List<SObject> start(Database.BatchableContext bc) {
-    return [SELECT Id FROM Organization LIMIT 1];
+    return [SELECT Id FROM Organization WITH SYSTEM_MODE LIMIT 1];
   }
 
   public void execute(Database.BatchableContext bc, List<SObject> records) {
@@ -2116,8 +2115,8 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
         CalcItem__c = 'ContactPointAddress'
       )
     };
-    ContactPointAddress con = new ContactPointAddress(ParentId = [SELECT Id FROM Account LIMIT 1].Id, Name = 'Child');
-    insert con;
+    ContactPointAddress con = new ContactPointAddress(ParentId = [SELECT Id FROM Account WITH SYSTEM_MODE LIMIT 1].Id, Name = 'Child');
+    insert as system con;
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
     rollup.records = new List<ContactPointAddress>{ con };
     rollup.shouldRun = true;

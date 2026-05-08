@@ -724,7 +724,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global String groupByRowEndDelimiter;
     @InvocableVariable(label='Group By Row Start Delimiter' description='The text value to prefix grouped field rows with')
     global String groupByRowStartDelimiter;
-    @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
+    @InvocableVariable(
+      label='One To Many Grandparent Fields (Comma separated list)'
+      description='When using this field, provide a comma-separated list that contains the junction object name and the field name that provides the lookup to the next record in your "grandparent" rollup.'
+    )
     global String oneToManyGrandparentFields;
     @InvocableVariable(
       label='Is Distinct'
@@ -764,7 +767,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global transient List<SObject> oldRecordsToRollup = new List<SObject>();
     @InvocableVariable(
       label='Parent Record Id for Empty Children Collections'
-      description='Runs rollup calculations even if no matching children when passed. Must also fill out Child Object Type When Rollup Started From Parent property'
+      description='Runs rollup calculations even if no matching children when passed. Must also fill out Child Object Type when Rollup Started From Parent property is set to true'
     )
     global Id parentRecordIdForEmptyChildrenCollections;
     @InvocableVariable(

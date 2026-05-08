@@ -8,7 +8,7 @@ private class RollupDateLiteralTests {
     Datetime localEnd = Datetime.newInstance(localStart.date(), Time.newInstance(23, 59, 59, 59));
     Datetime sentinelEnd = Datetime.newInstance(Date.newInstance(System.today().year() + 3, 1, 1), localStart.time());
     ContactPointAddress cpaParent = new ContactPointAddress(Name = 'Parent');
-    insert cpaParent;
+    insert as system cpaParent;
 
     List<ContactPointConsent> cpcs = new List<ContactPointConsent>();
     while (localEnd < sentinelEnd) {
@@ -31,9 +31,9 @@ private class RollupDateLiteralTests {
         ContactPointId = cpaParent.Id
       )
     );
-    insert cpcs;
+    insert as system cpcs;
 
-    insert new List<User>{
+    insert as system new List<User>{
       new User(
         LastName = 'Australia User',
         Username = 'Australia' + System.now().getTime() + '@RollupDateLiteralTests.org',
@@ -236,13 +236,13 @@ private class RollupDateLiteralTests {
 
   static User australiaUser {
     get {
-      return [SELECT Id, Name FROM User WHERE LastName = 'Australia User'];
+      return [SELECT Id, Name FROM User WHERE LastName = 'Australia User' WITH SYSTEM_MODE];
     }
   }
 
   static User berlinUser {
     get {
-      return [SELECT Id, Name FROM User WHERE LastName = 'Berlin User'];
+      return [SELECT Id, Name FROM User WHERE LastName = 'Berlin User' WITH SYSTEM_MODE];
     }
   }
 
@@ -254,7 +254,7 @@ private class RollupDateLiteralTests {
 
   static User indiaUser {
     get {
-      return [SELECT Id, Name FROM User WHERE LastName = 'India User'];
+      return [SELECT Id, Name FROM User WHERE LastName = 'India User' WITH SYSTEM_MODE];
     }
   }
 

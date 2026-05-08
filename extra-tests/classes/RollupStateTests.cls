@@ -43,8 +43,7 @@ private class RollupStateTests {
     RollupState__c insertedState = [
       SELECT Id, Body0__c
       FROM RollupState__c
-      WHERE RelatedRecordKeys0__c LIKE :relatedRecordKeys
-    ];
+      WHERE RelatedRecordKeys0__c LIKE :relatedRecordKeys WITH SYSTEM_MODE];
     Assert.isNotNull(insertedState.Body0__c, 'Serialized representation of generic state should be present');
 
     state.loadState(stubJobId, new Set<String>{ stubAccountId, secondStubId });
@@ -183,7 +182,7 @@ private class RollupStateTests {
       RelatedRecordKeys0__c = stubAccountId,
       Body0__c = JSON.serialize(averageInfo.getUntypedState())
     );
-    insert new List<RollupState__c>{
+    insert as system new List<RollupState__c>{
       existingAverageState,
       new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys0__c = stubAccountId, Body0__c = JSON.serialize(info.getUntypedState()))
     };
@@ -202,7 +201,7 @@ private class RollupStateTests {
 
     Boolean hasCorrectAverageInfo = false;
     Boolean hasCorrectGenericInfo = false;
-    for (RollupState__c createdState : [SELECT Body0__c FROM RollupState__c]) {
+    for (RollupState__c createdState : [SELECT Body0__c FROM RollupState__c WITH SYSTEM_MODE]) {
       hasCorrectAverageInfo = hasCorrectAverageInfo || createdState.Body0__c.contains(JSON.serialize(averageInfo.getUntypedState()));
       hasCorrectGenericInfo = hasCorrectGenericInfo || createdState.Body0__c.contains(JSON.serialize(info.getUntypedState()));
     }
@@ -233,8 +232,7 @@ private class RollupStateTests {
 
     List<RollupState__c> committedStates = [
       SELECT Body0__c, RelatedRecordKeys0__c
-      FROM RollupState__c
-    ];
+      FROM RollupState__c WITH SYSTEM_MODE];
 
     Assert.areEqual(3, committedStates.size());
     Boolean body0Filled = false;
@@ -334,8 +332,7 @@ private class RollupStateTests {
         RelatedRecordKeys9__c,
         RelatedRecordKeys10__c
       FROM RollupState__c
-      WHERE RelatedJobId__c = :stubJobId
-    ];
+      WHERE RelatedJobId__c = :stubJobId WITH SYSTEM_MODE];
     // ensure that loadState can be called with the full spread of keys
     state.loadState(stubJobId, fullKeys);
 
@@ -378,20 +375,20 @@ private class RollupStateTests {
   @IsTest
   static void clearsStateProperly() {
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
-    insert new RollupState__c(RelatedJobId__c = stubJobId);
+    insert as system new RollupState__c(RelatedJobId__c = stubJobId);
 
     Test.startTest();
     new RollupState().cleanup(new Set<String>{ stubJobId });
     Test.stopTest();
 
-    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c]);
+    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c WITH SYSTEM_MODE]);
   }
 
   @IsTest
   static void onlyLoadsStateForRelatedRecords() {
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);
-    insert new List<RollupState__c>{
+    insert as system new List<RollupState__c>{
       new RollupState__c(RelatedJobId__c = stubJobId),
       new RollupState__c(RelatedJobId__c = stubJobId, RelatedRecordKeys0__c = stubAccountId)
     };
@@ -449,8 +446,7 @@ private class RollupStateTests {
         RelatedRecordKeys8__c,
         RelatedRecordKeys9__c,
         RelatedRecordKeys10__c
-      FROM RollupState__c
-    ];
+      FROM RollupState__c WITH SYSTEM_MODE];
     Assert.areEqual(2, committedStates.size());
     for (RollupState__c committedState : committedStates) {
       if (committedState.RelatedRecordKeys3__c == null) {

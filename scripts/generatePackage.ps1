@@ -33,6 +33,7 @@ function Invoke-Extra-Code-Coverage-Prep() {
     "RollupFlowTests"
     "RollupLimitsTest"
     "RollupLoggerTests"
+    "RollupOperationFlowPicklistProviderTest"
     "RollupParentResetProcessorTests"
     "RollupQueryBuilderTests"
     "RollupRecursionItemTests"

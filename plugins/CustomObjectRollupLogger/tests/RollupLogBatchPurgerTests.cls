@@ -7,10 +7,10 @@ private class RollupLogBatchPurgerTests {
     RollupLog__c log = new RollupLog__c(TransactionId__c = 'something');
     RollupLog__c logWithoutChildren = new RollupLog__c(TransactionId__c = 'something-else');
     List<RollupLog__c> logs = new List<RollupLog__c>{ log, logWithoutChildren };
-    insert logs;
+    insert as system logs;
 
     RollupLogEntry__c entry = new RollupLogEntry__c(LoggingLevel__c = System.LoggingLevel.DEBUG.name(), RollupLog__c = log.Id);
-    insert entry;
+    insert as system entry;
     // UTC time can lead to some weird Datetime issues with adding simply a single day
     // Let's go with 2 to make things completely solid
     Test.setCreatedDate(entry.Id, System.now().addDays(-(Integer.valueOf(daysRetained.Value__c) + 2)));
@@ -19,9 +19,9 @@ private class RollupLogBatchPurgerTests {
     Database.executeBatch(new RollupLogBatchPurger());
     Test.stopTest();
 
-    List<RollupLogEntry__c> existingEntries = [SELECT Id FROM RollupLogEntry__c WHERE Id = :entry.Id];
+    List<RollupLogEntry__c> existingEntries = [SELECT Id FROM RollupLogEntry__c WHERE Id = :entry.Id WITH SYSTEM_MODE];
     System.assertEquals(0, existingEntries.size(), 'Entry should have been deleted');
-    List<RollupLog__c> existingLogs = [SELECT Id, TransactionId__c FROM RollupLog__c WHERE Id = :logs];
+    List<RollupLog__c> existingLogs = [SELECT Id, TransactionId__c FROM RollupLog__c WHERE Id = :logs WITH SYSTEM_MODE];
     System.assertEquals(0, existingLogs.size(), 'Logs should have been deleted: ' + existingLogs);
   }
 
@@ -29,7 +29,7 @@ private class RollupLogBatchPurgerTests {
   static void shouldScheduleSuccessfully() {
     Id scheduleId = RollupLogBatchPurger.schedule('Test purge log schedule ' + System.now().getTime(), '0 0 0 * * ?');
 
-    CronTrigger scheduledJob = [SELECT Id FROM CronTrigger WHERE Id = :scheduleId];
+    CronTrigger scheduledJob = [SELECT Id FROM CronTrigger WHERE Id = :scheduleId WITH SYSTEM_MODE];
     System.assertNotEquals(null, scheduledJob);
   }
 }

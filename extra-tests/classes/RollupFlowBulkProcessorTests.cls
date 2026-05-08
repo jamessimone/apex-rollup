@@ -2,9 +2,9 @@
 private class RollupFlowBulkProcessorTests {
   @TestSetup
   static void setup() {
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
     Account acc = new Account(Name = RollupFlowBulkProcessorTests.class.getName());
-    insert acc;
+    insert as system acc;
   }
 
   @IsTest
@@ -67,7 +67,7 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void shouldAddToRollupsForIntermediateGrandparentReparenting() {
-    Account oldGrandparent = [SELECT Id FROM Account];
+    Account oldGrandparent = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -84,12 +84,12 @@ private class RollupFlowBulkProcessorTests {
     };
     Account newGrandparent = new Account(Name = 'New Grandparent');
     ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent', ParentId = oldGrandparent.Id);
-    insert new List<SObject>{ parent, newGrandparent };
+    insert as system new List<SObject>{ parent, newGrandparent };
     ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello', ContactPointPhoneId = parent.Id);
-    insert grandchild;
+    insert as system grandchild;
     ContactPointPhone updatedParent = parent.clone(true);
     updatedParent.ParentId = newGrandparent.Id;
-    update updatedParent;
+    update as system updatedParent;
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ updatedParent };
@@ -105,9 +105,9 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void shouldClearOldParentForIntermediateReparenting() {
-    Account oldGrandparent = [SELECT Id, Name FROM Account];
+    Account oldGrandparent = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     oldGrandparent.Site = oldGrandparent.Name;
-    update oldGrandparent;
+    update as system oldGrandparent;
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -124,12 +124,12 @@ private class RollupFlowBulkProcessorTests {
     Account newGrandparent = new Account(Name = 'New Grandparent Again');
     newGrandparent.Site = newGrandparent.Name;
     ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent Again', ParentId = oldGrandparent.Id);
-    insert new List<SObject>{ parent, newGrandparent };
+    insert as system new List<SObject>{ parent, newGrandparent };
     ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello Again', ContactPointPhoneId = parent.Id);
-    insert grandchild;
+    insert as system grandchild;
     ContactPointPhone updatedParent = parent.clone(true);
     updatedParent.ParentId = newGrandparent.Id;
-    update updatedParent;
+    update as system updatedParent;
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ updatedParent };
@@ -141,17 +141,17 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    newGrandparent = [SELECT Site FROM Account WHERE Id = :newGrandparent.Id];
+    newGrandparent = [SELECT Site FROM Account WHERE Id = :newGrandparent.Id WITH SYSTEM_MODE];
     System.assertEquals(grandchild.Name, newGrandparent.Site);
-    oldGrandparent = [SELECT Site FROM Account WHERE Id = :oldGrandparent.Id];
+    oldGrandparent = [SELECT Site FROM Account WHERE Id = :oldGrandparent.Id WITH SYSTEM_MODE];
     System.assertEquals(null, oldGrandparent.Site, 'Old grandparent value should have been cleared');
   }
 
   @IsTest
   static void shouldClearGrandparentForIntermediateParentDeletion() {
-    Account oldGrandparent = [SELECT Id, Name FROM Account];
+    Account oldGrandparent = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     oldGrandparent.Site = oldGrandparent.Name;
-    update oldGrandparent;
+    update as system oldGrandparent;
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -166,11 +166,11 @@ private class RollupFlowBulkProcessorTests {
       )
     };
     ContactPointPhone parent = new ContactPointPhone(TelephoneNumber = 'Parent Again', ParentId = oldGrandparent.Id);
-    insert parent;
+    insert as system parent;
     ContactPointAddress grandchild = new ContactPointAddress(Name = 'Hello Again', ContactPointPhoneId = parent.Id);
-    insert grandchild;
+    insert as system grandchild;
 
-    delete parent;
+    delete as system parent;
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ parent };
@@ -181,13 +181,13 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    oldGrandparent = [SELECT Site FROM Account WHERE Id = :oldGrandparent.Id];
+    oldGrandparent = [SELECT Site FROM Account WHERE Id = :oldGrandparent.Id WITH SYSTEM_MODE];
     System.assertEquals(null, oldGrandparent.Site, 'Old grandparent value should have been cleared');
   }
 
   @IsTest
   static void shouldProcessDeferredFlowRollups() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -212,14 +212,14 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkSaver.processDeferredRollups();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(5, acc.AnnualRevenue);
     System.assertEquals(0, Rollup.CACHED_ROLLUPS.size(), 'Flow rollup buffer should have been flushed!');
   }
 
   @IsTest
   static void shouldSyncRunFlowWhenToggled() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -243,13 +243,13 @@ private class RollupFlowBulkProcessorTests {
     // since it should run sync, we don't wrap in start/stopTest
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(5, acc.AnnualRevenue);
   }
 
   @IsTest
   static void shouldSkipRunWhenContextPartOfListedExclusions() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true, OnlyRunInFlowContexts__c = 'UPDATE, UPSERT, REFRESH');
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -273,15 +273,15 @@ private class RollupFlowBulkProcessorTests {
     // since it should run sync, we don't wrap in start/stopTest
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(null, acc.AnnualRevenue);
   }
 
   @IsTest
   static void syncUpdatesWithReparentingRunProperly() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 5;
-    update acc;
+    update as system acc;
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     Opportunity opp = new Opportunity(Amount = acc.AnnualRevenue.intValue(), AccountId = null, Id = RollupTestUtils.createId(Opportunity.SObjectType));
@@ -309,14 +309,14 @@ private class RollupFlowBulkProcessorTests {
     // since it should run sync, we don't wrap in start/stopTest
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     // reparenting should purely subtract from account ...
     System.assertEquals(null, acc.AnnualRevenue);
   }
 
   @IsTest
   static void shouldPassOrderBysThroughSuccessfully() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Rollup.defaultControl = new RollupControl__mdt(IsRollupLoggingEnabled__c = true);
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
@@ -345,7 +345,7 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkSaver.processDeferredRollups();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     System.assertEquals(4, acc.AnnualRevenue);
   }
 
@@ -424,7 +424,7 @@ private class RollupFlowBulkProcessorTests {
         GrandparentRelationshipFieldPath__c = 'Account.Owner.AboutMe'
       )
     };
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{ new Opportunity(Name = 'Hi', AccountId = acc.Id, Id = RollupTestUtils.createId(Opportunity.SObjectType)) };
     input.rollupContext = 'INSERT';
@@ -434,7 +434,7 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId];
+    User updatedUser = [SELECT AboutMe FROM User WHERE Id = :acc.OwnerId WITH SYSTEM_MODE];
     Assert.areEqual('Hi', updatedUser.AboutMe);
   }
 
@@ -466,7 +466,7 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void shouldNotThrowValidationErrorsForUpdatesWithMultipleCmdtRecords() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     input.recordsToRollup = new List<SObject>{
@@ -502,7 +502,7 @@ private class RollupFlowBulkProcessorTests {
     List<Rollup.FlowOutput> flowOutputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
     System.assertEquals(2, acc.NumberOfEmployees, 'Account number of employees should have counted properly');
     System.assertEquals(1, flowOutputs.size(), 'Output size should be the same as input size');
@@ -513,8 +513,8 @@ private class RollupFlowBulkProcessorTests {
     // prior to the introduction of RollupAsyncProcessor.hashedRollups
     // this test was throwing a silent error that has now been fixed
     Rollup.onlyUseMockMetadata = true;
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
-    insert new List<SObject>{
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
+    insert as system new List<SObject>{
       new Opportunity(Amount = 5, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today(), Name = 'Amount 1'),
       new Opportunity(Amount = 5, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today(), Name = 'Amount 2')
     };
@@ -549,15 +549,15 @@ private class RollupFlowBulkProcessorTests {
     Test.stopTest();
 
     System.assertEquals(null, ex, 'Exception should not be thrown when child object info can be inferred from CMDT');
-    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have summed properly');
   }
 
   @IsTest
   static void rollupOrderBysAreHandledProperlyForParentRollups() {
     Rollup.onlyUseMockMetadata = true;
-    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account];
-    insert new List<SObject>{
+    List<Account> accs = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
+    insert as system new List<SObject>{
       new Opportunity(Amount = 5, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today().addDays(5), Name = 'Amount 1'),
       new Opportunity(Amount = 10, AccountId = accs[0].Id, StageName = 'A', CloseDate = System.today(), Name = 'Amount 2')
     };
@@ -594,7 +594,7 @@ private class RollupFlowBulkProcessorTests {
     Test.stopTest();
 
     System.assertEquals(null, ex, 'Exception should not be thrown when child object info can be inferred from CMDT');
-    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(10, acc.AnnualRevenue, 'Account annual revenue should have ordered properly');
   }
 
@@ -616,12 +616,12 @@ private class RollupFlowBulkProcessorTests {
     Rollup.onlyUseMockMetadata = true;
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue, Account.MasterRecordId });
     acc.AnnualRevenue = 67;
-    update acc;
+    update as system acc;
     Account secondChild = new Account(Name = 'new actual min', AnnualRevenue = 43);
     Individual indy = new Individual(LastName = 'Indy');
 
-    insert new List<SObject>{ secondChild, indy };
-    insert new List<Contact>{
+    insert as system new List<SObject>{ secondChild, indy };
+    insert as system new List<Contact>{
       new Contact(LastName = 'One To Many Child', AccountId = acc.Id, IndividualId = indy.Id),
       new Contact(LastName = 'Second one to many', AccountId = secondChild.Id, IndividualId = indy.Id)
     };
@@ -636,7 +636,7 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id];
+    Individual updatedIndy = [SELECT Id, ConsumerCreditScore FROM Individual WHERE Id = :indy.Id WITH SYSTEM_MODE];
     System.assertEquals(secondChild.AnnualRevenue, updatedIndy.ConsumerCreditScore);
   }
 
@@ -700,12 +700,12 @@ private class RollupFlowBulkProcessorTests {
 
   @IsTest
   static void worksWithMixOfParentAndChildRollups() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account secondAccount = new Account(Name = 'Second');
-    insert secondAccount;
+    insert as system secondAccount;
     Opportunity opp = new Opportunity(AccountId = acc.Id, Amount = 1, CloseDate = System.today(), Name = 'Test Opportunity', StageName = 'a');
-    insert opp;
-    insert new List<Task>{ new Task(WhatId = opp.Id, Subject = 'Test Task') };
+    insert as system opp;
+    insert as system new List<Task>{ new Task(WhatId = opp.Id, Subject = 'Test Task') };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -746,7 +746,7 @@ private class RollupFlowBulkProcessorTests {
     RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     Assert.areEqual(1, acc.AnnualRevenue);
   }
 }

@@ -5,7 +5,7 @@ private class RollupCalculatorTests {
 
   @TestSetup
   static void setup() {
-    insert new Account(Name = RollupCalculatorTests.class.getName());
+    insert as system new Account(Name = RollupCalculatorTests.class.getName());
   }
 
   /** FIRST / LAST operations */
@@ -350,7 +350,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldCorrectlyAverageForTasks() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     Task one = new Task(WhatId = acc.Id, Subject = 'One', CallDurationInSeconds = 3, Id = RollupTestUtils.createId(Task.SObjectType));
     Task two = new Task(WhatId = acc.Id, CallDurationInSeconds = 5, Subject = 'Two', Id = RollupTestUtils.createId(Task.SObjectType));
@@ -488,8 +488,8 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldNotCountNullsForCountDistinctDelete() {
-    Account acc = [SELECT Id FROM Account];
-    insert new Opportunity(CloseDate = System.today(), StageName = 'Hi', AccountId = acc.Id, Name = 'null amount');
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
+    insert as system new Opportunity(CloseDate = System.today(), StageName = 'Hi', AccountId = acc.Id, Name = 'null amount');
     RollupCalculator calc = getCalculator(
       0,
       Rollup.Op.DELETE_COUNT_DISTINCT,
@@ -508,8 +508,8 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldNotDoubleCountDistinctForDeletions() {
-    Account acc = [SELECT Id FROM Account];
-    insert new Contact(LastName = 'Count Distinct', AccountId = acc.Id);
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
+    insert as system new Contact(LastName = 'Count Distinct', AccountId = acc.Id);
 
     RollupCalculator calc = getCalculator(
       3,
@@ -530,9 +530,9 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldProperlyRemoveCountDistinctOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
-    insert opp;
+    insert as system opp;
 
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
@@ -721,7 +721,7 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void mostRespectsStateValues() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Integer priorVal = 50;
     RollupState outerState = new RollupState();
     Rollup__mdt metaKey = new Rollup__mdt();
@@ -817,9 +817,9 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldProperlyRemoveSumOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
-    insert opp;
+    insert as system opp;
 
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
@@ -1117,10 +1117,10 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldProperlyRemoveConcatDistinctOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     String toRemove = 'CDC';
     String extantString = 'GISS';
-    insert new Opportunity(Name = extantString, CloseDate = System.today(), StageName = 'A', AccountId = acc.Id);
+    insert as system new Opportunity(Name = extantString, CloseDate = System.today(), StageName = 'A', AccountId = acc.Id);
     RollupCalculator calc = getCalculator(
       toRemove + ', ' + extantString,
       Rollup.Op.UPDATE_CONCAT_DISTINCT,
@@ -1141,9 +1141,9 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldNotRemoveValuesOnConcatDistinctDeleteIfItemDoesNotMatch() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
-    insert new Opportunity(AccountId = acc.Id, StageName = 'hi', CloseDate = System.today(), Name = 'Delete');
+    insert as system new Opportunity(AccountId = acc.Id, StageName = 'hi', CloseDate = System.today(), Name = 'Delete');
 
     RollupCalculator calc = getCalculator(
       'CDC, Delete',
@@ -1546,7 +1546,7 @@ private class RollupCalculatorTests {
     );
 
     ContactPointAddress cpa = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(12, 12, 12, 12), Name = 'Min time');
-    insert cpa;
+    insert as system cpa;
 
     calc.performRollup(new List<ContactPointAddress>{ cpa }, new Map<Id, SObject>{ cpa.Id => new ContactPointAddress(BestTimeToContactEndTime = max) });
 
@@ -1578,11 +1578,11 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldProperlyUpdateMinOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
     Opportunity newMin = opp.clone();
     newMin.Amount = 3;
-    insert new List<Opportunity>{ opp, newMin };
+    insert as system new List<Opportunity>{ opp, newMin };
 
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
@@ -1598,11 +1598,11 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldProperlyUpdateMaxOnUpdateIfOldItemMatchesAndNewOneDoesNot() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Opportunity opp = new Opportunity(AccountId = acc.Id, CloseDate = System.today(), StageName = 'Hi', Name = 'Count Distinct', Amount = 5);
     Opportunity newMax = opp.clone();
     newMax.Amount = 7;
-    insert new List<Opportunity>{ opp, newMax };
+    insert as system new List<Opportunity>{ opp, newMax };
 
     Opportunity newerOpp = opp.clone(true, true);
     newerOpp.Amount = 0;
@@ -1620,9 +1620,9 @@ private class RollupCalculatorTests {
 
   @IsTest
   static void shouldNotThrowExceptionWhenFilteringOnUnfilterableFields() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Case cas = new Case(AccountId = acc.Id, Description = 'Something', Subject = 'Hello');
-    insert cas;
+    insert as system cas;
 
     Rollup__mdt meta = new Rollup__mdt(CalcItem__c = 'Case', LookupObject__c = 'Account', CalcItemWhereClause__c = 'Description != \'Something\'');
     RollupCalculator calc = getCalculator('', Rollup.Op.CONCAT_DISTINCT, Case.Description, Account.Description, meta, acc.Id, Account.Id);

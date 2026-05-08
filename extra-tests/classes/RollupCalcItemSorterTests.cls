@@ -117,7 +117,7 @@ private class RollupCalcItemSorterTests {
   @IsTest
   static void shouldSortParentFields() {
     Account acc = new Account(Name = 'Parent');
-    insert acc;
+    insert as system acc;
 
     Opportunity opp = new Opportunity(Account = acc, Amount = 1);
     Opportunity second = new Opportunity(Account = acc, Amount = 2);

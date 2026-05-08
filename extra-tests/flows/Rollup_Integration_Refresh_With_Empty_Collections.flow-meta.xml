@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Rollup_ContactPointConsent_Record</name>
         <label>Rollup ContactPointConsent Record</label>
-        <locationX>176</locationX>
-        <locationY>134</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>RollupFlowBulkProcessor</actionName>
         <actionType>apex</actionType>
         <dataTypeMappings>
@@ -42,9 +42,9 @@
         </inputParameters>
         <nameSegment>RollupFlowBulkProcessor</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
-        <versionSegment>1</versionSegment>
     </actionCalls>
-    <apiVersion>64.0</apiVersion>
+    <apiVersion>67.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <environments>Default</environments>
     <interviewLabel>Rollup Integration - Refresh With Empty Collections {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Rollup Integration - Refresh With Empty Collections</label>
@@ -68,13 +68,13 @@
     </processMetadataValues>
     <processType>AutoLaunchedFlow</processType>
     <start>
-        <locationX>50</locationX>
+        <locationX>0</locationX>
         <locationY>0</locationY>
         <connector>
             <targetReference>Rollup_ContactPointConsent_Record</targetReference>
         </connector>
     </start>
-    <status>Obsolete</status>
+    <status>Draft</status>
     <variables>
         <name>parentRecordIdForEmptyChildrenCollections</name>
         <dataType>String</dataType>

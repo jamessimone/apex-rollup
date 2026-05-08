@@ -13,11 +13,11 @@ private class RollupTests {
   static void setup() {
     // in the event that rollups are running in the org, we want to avoid triggering any operations while performing setup DML
     Account acc = new Account(Name = 'RollupTests');
-    insert acc;
+    insert as system acc;
     Contract con = new Contract(Name = 'Datetime tests', AccountId = acc.Id);
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'RollupTestsCpa');
-    insert new List<SObject>{ con, cpa };
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    insert as system new List<SObject>{ con, cpa };
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
   }
 
   @SuppressWarnings('PMD.ExcessiveParameterList')
@@ -62,9 +62,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldNotRunWhenCustomSettingDisabled() {
-    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
+    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c WITH SYSTEM_MODE];
     existingSetting.IsEnabled__c = false;
-    update existingSetting;
+    update as system existingSetting;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -78,9 +78,9 @@ private class RollupTests {
 
   @IsTest
   static void ignoresCustomSettingWhenSpecificallyFlagged() {
-    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c];
+    RollupSettings__c existingSetting = [SELECT Id, IsEnabled__c FROM RollupSettings__c WITH SYSTEM_MODE];
     existingSetting.IsEnabled__c = false;
-    update existingSetting;
+    update as system existingSetting;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 50) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -232,9 +232,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCountDistinctFromTriggerOnInsert() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
-    insert new ContactPointAddress(Name = 'Test Count Distinct Insert', ParentId = acc.Id);
+    insert as system new ContactPointAddress(Name = 'Test Count Distinct Insert', ParentId = acc.Id);
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(
       new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Test Count Distinct Insert Two', ParentId = acc.Id) }
@@ -251,9 +251,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCountDistinctFromTriggerOnUpdate() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
-    insert new ContactPointAddress(Name = 'Test Count Distinct Insert One', ParentId = acc.Id);
+    insert as system new ContactPointAddress(Name = 'Test Count Distinct Insert One', ParentId = acc.Id);
 
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Test Count Distinct Insert Two', ParentId = acc.Id);
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
@@ -271,7 +271,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldCountDistinctFromTriggerOnDelete() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -303,7 +303,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldDecrementCountFromTriggerAfterUpdateIfValueIsRemoved() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -322,7 +322,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldKeepCountUnchangedFromTriggerAfterUpdateEvenIfValueChanges() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -340,11 +340,11 @@ private class RollupTests {
 
   @IsTest
   static void countFullRecordSetRespectsPreexistingValueWithoutDoubleCounting() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 2;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
-    insert new List<ContactPointAddress>{
+    insert as system new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 50, Name = 'one', ParentId = acc.Id),
       new ContactPointAddress(PreferenceRank = 50, Name = 'two', ParentId = acc.Id)
     };
@@ -379,11 +379,11 @@ private class RollupTests {
 
   @IsTest
   static void countFullRecordSetProperlyFetchesAllMatchingChildren() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 2;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
-    insert new List<ContactPointAddress>{
+    insert as system new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 50, Name = 'one', ParentId = acc.Id),
       new ContactPointAddress(PreferenceRank = 50, Name = 'two', ParentId = acc.Id)
     };
@@ -418,7 +418,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldDecrementCountFromTriggerBeforeDeleteIfValueIsRemoved() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Decimal originalValue = 9;
     acc.AnnualRevenue = originalValue;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
@@ -526,7 +526,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldOverrideNumberBasedDefaultBasedOnMetadataCount() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Decimal originalValue = 1;
     acc.AnnualRevenue = originalValue;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
@@ -560,13 +560,13 @@ private class RollupTests {
 
   @IsTest
   static void shouldNotDoubleCountOnDecrementForMatches() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Decimal originalValue = 3;
     acc.AnnualRevenue = originalValue;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     Opportunity opp = new Opportunity(AccountId = acc.Id, Amount = 100, Name = 'Will Not Match', CloseDate = System.today().addDays(2), StageName = 'A');
-    insert new List<Opportunity>{
+    insert as system new List<Opportunity>{
       new Opportunity(AccountId = acc.Id, Amount = 1, Name = 'First Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
       new Opportunity(AccountId = acc.Id, Amount = 2, Name = 'Second Match', CloseDate = System.today().addDays(-2), StageName = 'A'),
       opp
@@ -732,7 +732,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldResetRollupValueWhenNoItemsMatchAndToggleIsSupplied() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 50;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -765,7 +765,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldResetRollupValueWhenIsFullRecordSetAndUpdatedItemNoLongerMatches() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 50;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -934,14 +934,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMax() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 250;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'testCpa');
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
-    insert originalCpas;
+    insert as system originalCpas;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = 150;
@@ -959,14 +959,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMax() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 250;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'testCpa');
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
-    insert originalCpas;
+    insert as system originalCpas;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = 150;
@@ -986,7 +986,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMaxAndNoOtherSObjectsExist() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 250;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -1022,14 +1022,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 250;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 250, ParentId = acc.Id, Name = 'testCpa');
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
-    insert originalCpas;
+    insert as system originalCpas;
 
     Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>(originalCpas);
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(originalCpas);
@@ -1085,14 +1085,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinNumbersSuccessfullyAfterUpdateWhenUpdatedItemIsNoLongerMin() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 150;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 150, ParentId = acc.Id, Name = 'testCpa');
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
-    insert originalCpas;
+    insert as system originalCpas;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = 200;
@@ -1110,14 +1110,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMin() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 150;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), ParentId = acc.Id, Name = 'testCpa');
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
-    insert originalCpas;
+    insert as system originalCpas;
 
     ContactPointAddress updatedCpa = cpa.clone(true, true);
     updatedCpa.PreferenceRank = secondCpa.PreferenceRank + 50; // the amount isn't important - that it's now more than the second CPA PreferenceRank is
@@ -1137,7 +1137,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldTakeIntoAccountInMemorySObjectsWhenUpdatedItemIsNoLongerMinAndNoOtherSObjectsExist() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 150;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -1173,14 +1173,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinNumbersSuccessfullyOnDeleteWhenDeletedItemIsNoLongerMax() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 150;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 150, ParentId = acc.Id, Name = 'testCpa');
     ContactPointAddress secondCpa = new ContactPointAddress(PreferenceRank = 175, ParentId = acc.Id, Name = 'testCpaTwo');
     List<ContactPointAddress> originalCpas = new List<ContactPointAddress>{ cpa, secondCpa };
-    insert originalCpas;
+    insert as system originalCpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
     Rollup.oldRecordsMap = new Map<Id, SObject>(Rollup.records);
@@ -1197,7 +1197,7 @@ private class RollupTests {
   @IsTest
   static void shouldConcatOnUpdate() {
     // AFTER_INSERT test is handled in the "shouldBatchThreeOperations" method
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'first test string';
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -1219,14 +1219,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldConcatOnDelete() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'beginning test string something';
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress notDeleted = new ContactPointAddress(ParentId = acc.Id, Name = 'beginning');
     ContactPointAddress alsoNotDeleted = new ContactPointAddress(ParentId = acc.Id, Name = 'something');
     ContactPointAddress deletedCpa = new ContactPointAddress(ParentId = acc.Id, Name = 'test string');
-    insert new List<ContactPointAddress>{ notDeleted, alsoNotDeleted, deletedCpa };
+    insert as system new List<ContactPointAddress>{ notDeleted, alsoNotDeleted, deletedCpa };
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ deletedCpa });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -1245,7 +1245,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldSortConcatStringWithCustomOptions() {
-    Account acc = [SELECT Id, Name, AccountNumber FROM Account];
+    Account acc = [SELECT Id, Name, AccountNumber FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, Name = 'a', PreferenceRank = 1);
@@ -1310,7 +1310,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldConcatDistinctOnUpdate() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'first test string';
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -1339,7 +1339,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldConcatDistinctOnUpdateWhereOnlyNewItemIsAdded() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'first test string again';
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -1366,7 +1366,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldProperlyShortCircuitOnConcatDistinctDeleteWhenDistinctValueStillPresentOnOtherItem() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     String originalAccountName = acc.Name;
     String somethingElse = 'Something else';
     acc.Name = acc.Name + ', ' + somethingElse;
@@ -1376,7 +1376,7 @@ private class RollupTests {
     ContactPointAddress toDelete = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 1);
     ContactPointAddress toDeleteTwo = new ContactPointAddress(Name = somethingElse, ParentId = acc.Id, PreferenceRank = 2);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ cpa, toDelete, toDeleteTwo };
-    insert cpas;
+    insert as system cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ toDelete, toDeleteTwo });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -1391,7 +1391,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldRemoveTextOnConcatDistinctDelete() {
-    Account acc = [SELECT Id, Name, Description FROM Account];
+    Account acc = [SELECT Id, Name, Description FROM Account WITH SYSTEM_MODE];
     String originalAccountName = acc.Name;
     String somethingElse = 'Something else';
     acc.Name = acc.Name + ', ' + somethingElse;
@@ -1400,7 +1400,7 @@ private class RollupTests {
     ContactPointAddress originalName = new ContactPointAddress(Name = originalAccountName, ParentId = acc.Id, PreferenceRank = 0);
     ContactPointAddress somethingElseName = new ContactPointAddress(Name = somethingElse, ParentId = acc.Id, PreferenceRank = 1);
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ originalName, somethingElseName };
-    insert cpas;
+    insert as system cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ somethingElseName });
     Rollup.oldRecordsMap = new Map<Id, SObject>{ somethingElseName.Id => somethingElseName };
@@ -1524,7 +1524,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinOnStringsBeforeDelete() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'A';
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -1544,14 +1544,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxOnStringsBeforeDelete() {
-    Account acc = [SELECT Id, AccountNumber FROM Account];
+    Account acc = [SELECT Id, AccountNumber FROM Account WITH SYSTEM_MODE];
     acc.AccountNumber = 'A';
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(Name = 'Z', ParentId = acc.Id);
-    insert cpa;
+    insert as system cpa;
     // ensure that if any automation has changed the name, we keep track of it
-    cpa = [SELECT Name FROM ContactPointAddress WHERE Id = :cpa.Id];
+    cpa = [SELECT Name FROM ContactPointAddress WHERE Id = :cpa.Id WITH SYSTEM_MODE];
 
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'A', Id = RollupTestUtils.createId(ContactPointAddress.SObjectType))
@@ -1578,13 +1578,13 @@ private class RollupTests {
       return; // sorry
     }
 
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     List<Opportunity> opportunities = new List<Opportunity>{
       new Opportunity(Name = 'Max Picklist on insert one', StageName = picklistVals[0].getValue(), AccountId = acc.Id, CloseDate = Date.today()),
       new Opportunity(Name = 'Max Picklist on insert two', StageName = picklistVals[1].getValue(), AccountId = acc.Id, CloseDate = Date.today())
     };
-    insert opportunities; // not the best, either, but we need to be able to use SOQL below
+    insert as system opportunities; // not the best, either, but we need to be able to use SOQL below
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(opportunities);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1596,8 +1596,7 @@ private class RollupTests {
     AggregateResult res = [
       SELECT Max(StageName) maxStage
       FROM Opportunity
-      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet()
-    ][0];
+      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet() WITH SYSTEM_MODE][0];
     String maxStage = (String) res.get('maxStage');
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_INSERT PICKLIST STRING');
@@ -1613,13 +1612,13 @@ private class RollupTests {
       return; // sorry
     }
 
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     List<Opportunity> opportunities = new List<Opportunity>{
       new Opportunity(Name = 'Min Picklist on insert one', StageName = picklistVals[0].getValue(), AccountId = acc.Id, CloseDate = Date.today()),
       new Opportunity(Name = 'Min Picklist on insert two', StageName = picklistVals[1].getValue(), AccountId = acc.Id, CloseDate = Date.today())
     };
-    insert opportunities;
+    insert as system opportunities;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(opportunities);
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1631,8 +1630,7 @@ private class RollupTests {
     AggregateResult res = [
       SELECT MIN(StageName) minStage
       FROM Opportunity
-      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet()
-    ][0];
+      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet() WITH SYSTEM_MODE][0];
     String minStage = (String) res.get('minStage');
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING');
@@ -1642,12 +1640,12 @@ private class RollupTests {
   @IsTest
   static void shouldAverageOnInsert() {
     // average is a special case; even on insert, we have to also check for pre-existing records existing
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 100;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress testCpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Pre-existing', ParentId = acc.Id);
-    insert testCpa;
+    insert as system testCpa;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 200000, ParentId = acc.Id),
@@ -1670,12 +1668,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldAverageOnUpdate() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 100;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress testCpa = new ContactPointAddress(PreferenceRank = acc.AnnualRevenue.intValue(), Name = 'Pre-existing', ParentId = acc.Id);
-    insert testCpa;
+    insert as system testCpa;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(PreferenceRank = 200000, ParentId = acc.Id),
@@ -1702,13 +1700,13 @@ private class RollupTests {
 
   @IsTest
   static void shouldAverageOnDelete() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 200;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress testCpaOne = new ContactPointAddress(PreferenceRank = 100, Name = 'Pre-existing one', ParentId = acc.Id);
     ContactPointAddress testCpaTwo = new ContactPointAddress(PreferenceRank = 300, Name = 'Pre-existing two', ParentId = acc.Id);
-    insert new List<ContactPointAddress>{ testCpaOne, testCpaTwo };
+    insert as system new List<ContactPointAddress>{ testCpaOne, testCpaTwo };
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{ testCpaTwo };
 
@@ -1954,11 +1952,11 @@ private class RollupTests {
   @IsTest
   static void shouldMinDateOnUpdate() {
     Contact con = new Contact(LastName = 'Min date on insert test', BirthDate = System.today());
-    insert con;
+    insert as system con;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ con };
 
     Task taskOne = new Task(Subject = 'Test One', ActivityDate = con.BirthDate.addDays(-50), WhoId = con.Id);
-    insert taskOne;
+    insert as system taskOne;
 
     Task taskTwo = new Task(Subject = 'Test Two', ActivityDate = con.BirthDate.addDays(5), Id = RollupTestUtils.createId(Task.SObjectType), WhoId = con.Id);
 
@@ -2058,14 +2056,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMaxDatetimeOnDelete() {
-    Contract con = [SELECT Id FROM Contract];
+    Contract con = [SELECT Id FROM Contract WITH SYSTEM_MODE];
     // it's important that this test and the one below it don't have time instances with more than second granularity, since Apex can't retrieve those values
     con.ActivatedDate = Datetime.newInstance(System.today(), Time.newInstance(0, 0, 0, 0));
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ con };
 
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate, WhatId = con.Id, Id = RollupTestUtils.createId(Event.SObjectType));
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(50), WhatId = con.Id, DurationInMinutes = 50);
-    insert eventTwo;
+    insert as system eventTwo;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<Event>{ eventOne });
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -2081,14 +2079,14 @@ private class RollupTests {
 
   @IsTest
   static void shouldMinDatetimeOnDelete() {
-    Contract con = [SELECT Id FROM Contract];
+    Contract con = [SELECT Id FROM Contract WITH SYSTEM_MODE];
     // it's important that this test and the one above it don't have time instances with more than second granularity, since Apex can't retrieve those values
     con.ActivatedDate = Datetime.newInstance(System.today(), Time.newInstance(0, 0, 0, 0));
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ con };
 
     Event eventOne = new Event(ActivityDateTime = con.ActivatedDate);
     Event eventTwo = new Event(ActivityDateTime = con.ActivatedDate.addDays(-50), DurationInMinutes = 50, WhatId = con.Id);
-    insert eventTwo;
+    insert as system eventTwo;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.getWhatIdMock(new List<Event>{ eventOne }, con.Id);
     Rollup.apexContext = TriggerOperation.BEFORE_DELETE;
@@ -2250,7 +2248,7 @@ private class RollupTests {
       Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
     );
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(6, 6, 6, 6), Name = cpe.EmailDomain);
-    insert cp2;
+    insert as system cp2;
 
     List<ContactPointAddress> addresses = new List<ContactPointAddress>{ cp1 };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cp1 });
@@ -2280,7 +2278,7 @@ private class RollupTests {
       EmailDomain = 'Lookupfield',
       EmailAddress = 'testrollup' + System.now().getTime() + '@email.com'
     );
-    insert cpe;
+    insert as system cpe;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ cpe };
 
     ContactPointAddress cp1 = new ContactPointAddress(
@@ -2289,7 +2287,7 @@ private class RollupTests {
       Id = RollupTestUtils.createId(ContactPointAddress.SObjectType)
     );
     ContactPointAddress cp2 = new ContactPointAddress(BestTimeToContactEndTime = Time.newInstance(4, 4, 4, 4), Name = cpe.EmailDomain);
-    insert cp2;
+    insert as system cp2;
 
     List<ContactPointAddress> addresses = new List<ContactPointAddress>{ cp1 };
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cp1 });
@@ -2316,7 +2314,7 @@ private class RollupTests {
 
   @IsTest
   static void usesMostCommonValue() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
     ContactPointAddress commonOne = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
     ContactPointAddress commonTwo = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
@@ -2334,11 +2332,11 @@ private class RollupTests {
 
   @IsTest
   static void mostReparentsCorrectly() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Account secondParent = new Account(Name = 'Reparented');
-    insert secondParent;
+    insert as system secondParent;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, secondParent };
-    insert new ContactPointAddress(Name = 'remaining value on second parent', PreferenceRank = 200, ParentId = secondParent.Id);
+    insert as system new ContactPointAddress(Name = 'remaining value on second parent', PreferenceRank = 200, ParentId = secondParent.Id);
     ContactPointAddress commonOne = new ContactPointAddress(PreferenceRank = 100, Name = 'one', ParentId = acc.Id);
 
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
@@ -2364,10 +2362,10 @@ private class RollupTests {
     // differ in two subtle ways: not all the fields are populated (just the changed ones), and the reference info
     // is supplied on a separate object, the ChangeEventHeader
     // Unfortunately, these two "tiny" differences means a lot of other code needs to be tested
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc', ParentId = acc.Id);
-    insert cpa;
+    insert as system cpa;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'CREATE';
@@ -2402,10 +2400,10 @@ private class RollupTests {
 
   @IsTest
   static void shouldWorkForChangeDataEventCaptureTriggersOnUpdate() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc update', ParentId = acc.Id);
-    insert cpa;
+    insert as system cpa;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'UPDATE';
@@ -2413,9 +2411,7 @@ private class RollupTests {
     header.recordIds = new List<Id>{ cpa.Id };
     header.entityName = 'ContactPointAddress';
 
-    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent();
-    ev.ChangeEventHeader = header;
-    ev.PreferenceRank = 500;
+    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent(ChangeEventHeader = header, PreferenceRank = 500);
 
     RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
     Rollup.DML = mock;
@@ -2444,13 +2440,13 @@ private class RollupTests {
 
   @IsTest
   static void shouldWorkForChangeDataCaptureTriggersOnDelete() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Decimal originalAnnualRevenue = 10000;
     acc.AnnualRevenue = originalAnnualRevenue;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     ContactPointAddress cpa = new ContactPointAddress(PreferenceRank = 500, Name = 'test cdc update', ParentId = acc.Id);
-    insert cpa;
+    insert as system cpa;
 
     EventBus.ChangeEventHeader header = new EventBus.ChangeEventHeader();
     header.changeType = 'DELETE';
@@ -2458,9 +2454,7 @@ private class RollupTests {
     header.recordIds = new List<Id>{ cpa.Id };
     header.entityName = 'ContactPointAddress';
 
-    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent();
-    ev.ChangeEventHeader = header;
-    ev.PreferenceRank = cpa.PreferenceRank;
+    ContactPointAddressChangeEvent ev = new ContactPointAddressChangeEvent(ChangeEventHeader = header, PreferenceRank = cpa.PreferenceRank);
 
     RollupTestUtils.DMLMock mock = new RollupTestUtils.DMLMock();
     Rollup.DML = mock;
@@ -2503,7 +2497,7 @@ private class RollupTests {
     Account updatedAcc = (Account) mock.Records[0];
     System.assertEquals(1, updatedAcc.AnnualRevenue, 'COUNT AFTER_INSERT should add when field is populated');
     // validate that job ran as batch
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' WITH SYSTEM_MODE].Status);
   }
 
   /** Rollup Control metadata tests */
@@ -2547,7 +2541,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
     Account acc = (Account) mock.Records[0];
     System.assertEquals(1, acc.AnnualRevenue);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker'].Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' WITH SYSTEM_MODE].Status);
   }
 
   @IsTest
@@ -2563,7 +2557,7 @@ private class RollupTests {
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
     Account acc = (Account) mock.Records[0];
     System.assertEquals(1, acc.AnnualRevenue);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' LIMIT 1]?.Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'BatchApexWorker' WITH SYSTEM_MODE LIMIT 1]?.Status);
   }
 
   @IsTest
@@ -2577,15 +2571,15 @@ private class RollupTests {
     Test.stopTest();
 
     System.assertEquals(1, mock.Records.size(), 'Rollup run should have run');
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' WITH SYSTEM_MODE LIMIT 1]?.Status);
   }
 
   @IsTest
   static void shouldCorrectlyReparentWhenBothParentsArePartOfRollup() {
     // Happy path - all items in memory
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 300, Name = 'AnotherRollupTest');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
@@ -2614,9 +2608,9 @@ private class RollupTests {
   @IsTest
   static void shouldCorrectlyReparentWhenOnlyNewParentIsPartOfRollup() {
     // Unhappy path - query for related rows
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 25, Name = 'AnotherRollupTest');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
@@ -2638,9 +2632,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCorrectlyReparentWhenOldItemMatchesAndNewOneDoesNot() {
-    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 50, Name = 'Old Parent');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     ContactPointAddress cpa = new ContactPointAddress(
@@ -2676,9 +2670,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldNotDecrementForReparentingWhereItemDoesNotMatch() {
-    Account acc = [SELECT Id, AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 0, NumberOfEmployees = 50, Name = 'AnotherRollupTest');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     ContactPointAddress cpa = new ContactPointAddress(
@@ -2719,10 +2713,10 @@ private class RollupTests {
   @IsTest
   static void shouldReparentSameObjectRollups() {
     Rollup.onlyUseMockmetadata = true;
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
     Account clearedParent = new Account(AnnualRevenue = 25, Name = 'clear parent same object');
-    insert clearedParent;
+    insert as system clearedParent;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, clearedParent };
 
     Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
@@ -2753,9 +2747,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCorrectlyReparentForStrings() {
-    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue, Name FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(Name = 'Something');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
@@ -2783,9 +2777,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCorrectlyReparentForStringsCountDistinct() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     List<ContactPointAddress> testCpas = new List<ContactPointAddress>{
@@ -2815,9 +2809,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCorrectlyReparentForStringCount() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     // the first two items will be false positives; records whose values haven't changed over the course of the update
@@ -2850,9 +2844,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldCorrectlyReparentForAverage() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Account oldAcc = new Account(AnnualRevenue = 50, Name = 'AnotherRollupTest');
-    insert oldAcc;
+    insert as system oldAcc;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc, oldAcc };
 
     ContactPointAddress cpa = new ContactPointAddress(Id = RollupTestUtils.createId(ContactPointAddress.SObjectType), PreferenceRank = 50, ParentId = acc.Id);
@@ -2903,18 +2897,18 @@ private class RollupTests {
     Account acc = (Account) mock.Records.get(0);
     System.assertEquals(1, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' LIMIT 1]?.Status, [SELECT Status, JobType FROM AsyncApexJob]);
+    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' WITH SYSTEM_MODE LIMIT 1]?.Status, [SELECT Status, JobType FROM AsyncApexJob WITH SYSTEM_MODE]);
   }
 
   /** Grandparent rollups */
   @IsTest
   static void shouldAllowGrandparentRollups() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
       new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert cpas;
+    insert as system cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2942,12 +2936,12 @@ private class RollupTests {
 
   @IsTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrieved() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
       new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert cpas;
+    insert as system cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -2973,18 +2967,18 @@ private class RollupTests {
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
     System.assertEquals(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class)]
+      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class) WITH SYSTEM_MODE]
     );
   }
 
   @IsTest
   static void shouldDeferGrandparentRollupSafelyTillAllParentRecordsAreRetrievedWithBatch() {
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(ParentId = acc.Id, Name = 'One'),
       new ContactPointAddress(ParentId = acc.Id, Name = 'Two')
     };
-    insert cpas;
+    insert as system cpas;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(cpas);
     Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 0, MaxNumberOfQueries__c = 2, MaxRollupRetries__c = 100);
@@ -3015,9 +3009,9 @@ private class RollupTests {
 
   @IsTest
   static void shouldRollupEntireHierarchyWhenEnabled() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     Account childAcc = new Account(ParentId = acc.Id, Name = 'Hierarchy Rollup');
-    insert childAcc;
+    insert as system childAcc;
 
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ new ContactPointAddress(ParentId = childAcc.Id, Name = 'One') });
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -3093,7 +3087,7 @@ private class RollupTests {
 
   @IsTest
   static void doesNotPersistPossiblyStaleFieldsWhenTheyAreNotUpdated() {
-    Account acc = [SELECT Id, AnnualRevenue FROM Account];
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     acc.NumberOfEmployees = 1;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -3135,13 +3129,13 @@ private class RollupTests {
 
   @IsTest
   static void rollupGroupingOperationOccursIndependentlyOfDownstreamRollups() {
-    Account acc = [SELECT Id, Phone FROM Account];
+    Account acc = [SELECT Id, Phone FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 2; // should match count of contacts, below, to begin with
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
     Opportunity opp = new Opportunity(CloseDate = System.today(), Amount = 3, AccountId = acc.Id, StageName = '1', Name = 'Winning Record');
-    insert opp;
-    insert new List<SObject>{ new Contact(LastName = '1', AccountId = acc.Id), new Contact(LastName = '2', AccountId = acc.Id) };
+    insert as system opp;
+    insert as system new List<SObject>{ new Contact(LastName = '1', AccountId = acc.Id), new Contact(LastName = '2', AccountId = acc.Id) };
     Rollup.onlyUseMockMetadata = true;
     RollupGrouping__mdt parentGrouping = new RollupGrouping__mdt(Id = RollupTestUtils.createId(RollupGrouping__mdt.SObjectType), RollupOperation__c = 'MAX');
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -3175,13 +3169,13 @@ private class RollupTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     Assert.areEqual(opp.Amount, acc.AnnualRevenue);
   }
 
   @IsTest
   static void includesWhereClausesWorkOnUpdateMultipleChildren() {
-    Account acc = [SELECT Id, Phone FROM Account];
+    Account acc = [SELECT Id, Phone FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 2;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 
@@ -3220,7 +3214,7 @@ private class RollupTests {
 
   @IsTest
   static void includesWhereClausesWorkOnUpdateWithOnlyOneMatch() {
-    Account acc = [SELECT Id, Phone FROM Account];
+    Account acc = [SELECT Id, Phone FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 1;
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
 

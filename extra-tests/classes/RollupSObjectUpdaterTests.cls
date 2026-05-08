@@ -77,7 +77,7 @@ public class RollupSObjectUpdaterTests {
     Account three = new Account(Name = 'Three');
     Individual four = new Individual(LastName = 'Four');
     List<SObject> records = new List<SObject>{ one, two, three, four };
-    insert records;
+    insert as system records;
 
     new RollupSObjectUpdater().doUpdate(records);
 
@@ -100,13 +100,13 @@ public class RollupSObjectUpdaterTests {
   @IsTest
   static void onlyUpdatesRecordsWithRollupChanges() {
     Account acc = new Account(Name = 'Should Not Be Updated');
-    insert acc;
-    acc = [SELECT Id, LastModifiedDate FROM Account];
+    insert as system acc;
+    acc = [SELECT Id, LastModifiedDate FROM Account WITH SYSTEM_MODE];
     waitSeconds(1);
 
-    new RollupSObjectUpdater().doUpdate([SELECT Id FROM Account WHERE Id = :acc.Id]);
+    new RollupSObjectUpdater().doUpdate([SELECT Id FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE]);
 
-    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account];
+    Account updatedAccount = [SELECT Id, LastModifiedDate FROM Account WITH SYSTEM_MODE];
     System.assertEquals(acc, updatedAccount, 'Last modified date should not have updated if only Id was passed');
   }
 
@@ -125,7 +125,7 @@ public class RollupSObjectUpdaterTests {
 
   @IsTest
   static void updatesSettingsWhenPreAndPostUpdaterIsUsed() {
-    upsert new RollupSettings__c();
+    upsert as system new RollupSettings__c();
     RollupSettings__c initial = RollupSettings__c.getInstance();
 
     waitSeconds(1);
