@@ -15,6 +15,7 @@ private class RollupCustomObjectLoggerTests {
     List<RollupLog__c> rollupLogs = [
       SELECT Id, NumberOfLogEntries__c, TransactionId__c, ErrorWouldHaveBeenThrown__c, (SELECT Message__c, LoggingLevel__c FROM RollupLogEntry__r)
       FROM RollupLog__c
+      WITH SYSTEM_MODE
     ];
     System.assertEquals(1, rollupLogs.size(), 'Parent-level rollup log should have been created');
     RollupLog__c firstEntry = rollupLogs[0];
@@ -43,7 +44,7 @@ private class RollupCustomObjectLoggerTests {
     rollupCustomLogger.save();
     Test.stopTest();
 
-    List<RollupLogEntry__c> logEntries = [SELECT Message__c FROM RollupLogEntry__c];
+    List<RollupLogEntry__c> logEntries = [SELECT Message__c FROM RollupLogEntry__c WITH SYSTEM_MODE];
     System.assertEquals(1, logEntries.size(), 'Message should have been created successfully!');
     System.assertEquals(maximumLength, logEntries[0].Message__c.length());
   }
@@ -61,7 +62,7 @@ private class RollupCustomObjectLoggerTests {
     rollupCustomLogger.save();
     Test.stopTest();
 
-    System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c], 'Log should not have been created because FINE is below DEBUG in LoggingLevel');
+    System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c WITH SYSTEM_MODE], 'Log should not have been created because FINE is below DEBUG in LoggingLevel');
   }
 
   @IsTest
@@ -76,6 +77,6 @@ private class RollupCustomObjectLoggerTests {
     RollupLogger.Instance.save();
     Test.stopTest();
 
-    System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c]);
+    System.assertEquals(0, [SELECT COUNT() FROM RollupLog__c WITH SYSTEM_MODE]);
   }
 }

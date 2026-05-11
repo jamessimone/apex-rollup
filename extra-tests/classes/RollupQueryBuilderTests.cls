@@ -157,7 +157,7 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(Task.SObjectType, new List<String>{ 'Id' }, 'Id', '=', bigWhere);
 
     Set<Id> recordIds = new Set<Id>();
-    List<Task> tasks = Database.query(queryString);
+    List<Task> tasks = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
 
     System.assertEquals(true, tasks.isEmpty(), 'Should have made it here and query should have been run');
   }
