@@ -2,13 +2,13 @@
 private class RollupOperationFlowPicklistProviderTest {
   @IsTest
   static void returnsCorrectDefault() {
-    Assert.areEqual(Rollup.Op.COUNT.name(), new RollupOperationFlowPicklistProvider().getDefaultValue().getValue());
+    Assert.areEqual(RollupOperation.COUNT.name(), new RollupOperationFlowPicklistProvider().getDefaultValue().getValue());
   }
 
   @IsTest
   static void returnsRollupOperationsAsValues() {
     Set<String> expected = new Set<String>();
-    for (Rollup.Op operation : Rollup.Op.values()) {
+    for (RollupOperation operation : RollupOperation.values()) {
       if (operation.name().contains('UPDATE') == false && operation.name().contains('DELETE') == false) {
         expected.add(operation.name());
       }

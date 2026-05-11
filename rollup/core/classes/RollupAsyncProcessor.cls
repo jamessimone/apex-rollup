@@ -1,7 +1,7 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier,PMD.ExcessiveClassLength,PMD.ExcessiveParameterList,PMD.NcssTypeCount,PMD.TooManyFields')
 global virtual without sharing class RollupAsyncProcessor extends Rollup implements Database.Batchable<SObject>, Database.RaisesPlatformEvents, System.Comparable {
   private final Evaluator eval;
-  private final Op op;
+  private final RollupOperation op;
   private final SObjectField lookupFieldOnCalcItem;
   private final SObjectField lookupFieldOnLookupObject;
   private final SObjectField opFieldOnCalcItem;
@@ -104,7 +104,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     SObjectField opFieldOnLookupObject,
     SObjectType lookupObj,
     SObjectType calcItem,
-    Op operation,
+    RollupOperation operation,
     InvocationPoint rollupInvokePoint,
     RollupControl__mdt rollupControl,
     Rollup__mdt metadata
@@ -158,7 +158,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     SObjectField opFieldOnLookupObject,
     SObjectType lookupObj,
     SObjectType calcItemType,
-    Op op,
+    RollupOperation op,
     InvocationPoint invokePoint,
     RollupControl__mdt rollupControl,
     Rollup__mdt rollupMetadata
@@ -417,7 +417,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       SObjectField opFieldOnLookupObject,
       SObjectType lookupObj,
       SObjectType calcItem,
-      Op operation,
+      RollupOperation operation,
       InvocationPoint rollupInvokePoint,
       RollupControl__mdt rollupControl,
       Rollup__mdt metadata
@@ -1333,7 +1333,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
     Map<String, List<SObject>> oldLookupItems = new Map<String, List<SObject>>();
     RollupCalculator calc;
-    Op rollupOp = roll.op;
+    RollupOperation rollupOp = roll.op;
     if (roll.isFullRecalc && roll.op.name().contains('DELETE')) {
       rollupOp = this.getOpMap().get(roll.op.name().substringAfter('_'));
     }
@@ -1432,7 +1432,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   }
 
   private RollupCalculator getCalculator(
-    Op operation,
+    RollupOperation operation,
     RollupCalculator rollupCalc,
     RollupAsyncProcessor roll,
     CalcItemBag bag,
@@ -1464,7 +1464,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return;
     }
     RollupCalculator calc;
-    Op deleteOp = this.getOpMap().get('DELETE_' + Rollup.getBaseOperationName(roll.op.name()));
+    RollupOperation deleteOp = this.getOpMap().get('DELETE_' + Rollup.getBaseOperationName(roll.op.name()));
     FilterResults results = new FilterResults();
     results.eval = roll.eval;
     Rollup__mdt clonedMeta = roll.metadata.clone();
@@ -1534,14 +1534,21 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.logger.log(logKey + ' record after rolling up:', lookupRecord, System.LoggingLevel.DEBUG);
   }
 
-  private void performGroupedRollup(RollupCalculator calc, Op op, SObject lookupRecord, String key, Map<String, SObject> recordsToUpdate, Object defaultVal) {
+  private void performGroupedRollup(
+    RollupCalculator calc,
+    RollupOperation op,
+    SObject lookupRecord,
+    String key,
+    Map<String, SObject> recordsToUpdate,
+    Object defaultVal
+  ) {
     if (this.isGrouped() == false) {
       return;
     }
 
     Object priorCalcValue = calc.getReturnValue();
     List<Object> values = new List<Object>{ priorCalcValue };
-    Op groupedOp = op;
+    RollupOperation groupedOp = op;
     for (RollupAsyncProcessor groupedRollup : this.rollups) {
       groupedOp = this.getOpMap().get(groupedRollup.metadata.RollupGrouping__r.RollupOperation__c) ?? op;
       this.logger.log('starting grouped rollup for:', groupedRollup.metadata, System.LoggingLevel.DEBUG);

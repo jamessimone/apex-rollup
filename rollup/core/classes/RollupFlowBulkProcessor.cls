@@ -2,16 +2,19 @@
 global without sharing class RollupFlowBulkProcessor {
   @SuppressWarnings('PMD.TooManyFields')
   global class FlowInput {
-    @InvocableVariable(label='Records to rollup')
+    @InvocableVariable(label='Records to rollup' description='Records to rollup to parent/related item(s)')
     global List<SObject> recordsToRollup;
-    @InvocableVariable(label='Prior records to rollup')
+    @InvocableVariable(label='Prior records to rollup' description='The old version of the records for update/upsert')
     global List<SObject> oldRecordsToRollup = new List<SObject>();
-    @InvocableVariable(label='Rollup Context' required=true)
+    @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
     global String rollupContext;
     // Shared between this and Rollup.FlowInput
-    @InvocableVariable(label='Defer processing?')
+    @InvocableVariable(label='Defer processing?' description='When set to true, the "Process Deferred Rollups" action must also be called' defaultValue='false')
     global Boolean deferProcessing;
-    @InvocableVariable(label='Child Object Type When Rollup Started From Parent')
+    @InvocableVariable(
+      label='Child Object Type When Rollup Started From Parent'
+      description='If "Is Rollup Started From Parent" is true, you must include the API name for the child in this field'
+    )
     global String calcItemTypeWhenRollupStartedFromParent;
     // Optional properties that can override the CMDT values
     @InvocableVariable(
@@ -19,7 +22,7 @@ global without sharing class RollupFlowBulkProcessor {
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
-    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
+    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma, except for multi-select picklist fields (which default to semi-colon)')
     global String concatDelimiter;
 
     @InvocableVariable(
@@ -35,7 +38,10 @@ global without sharing class RollupFlowBulkProcessor {
 
     @InvocableVariable(label='Grandparent Relationship Field Path' description='Used for grand(or greater)parent rollups')
     global String grandparentRelationshipFieldPath;
-    @InvocableVariable(label='One To Many Grandparent Fields (Comma separated list)')
+    @InvocableVariable(
+      label='One To Many Grandparent Fields (Comma separated list)'
+      description='When using this field, provide a comma-separated list that contains the junction object name and the field name that provides the lookup to the next record in your "grandparent" rollup.'
+    )
     global String oneToManyGrandparentFields;
     @InvocableVariable(
       label='Is Full Record Set'
@@ -44,9 +50,15 @@ global without sharing class RollupFlowBulkProcessor {
     global Boolean isFullRecordSet;
     @InvocableVariable(label='Is Rollup Started From Parent' description='If the calc records are the parent records, set this to true')
     global Boolean isRollupStartedFromParent;
-    @InvocableVariable(label='Order By (First/Last)')
+    @InvocableVariable(
+      label='Order By (First/Last)'
+      description='Unless you absolutely have to configure here, the recommended approach is to use Rollup Order By custom metadata records linked to your Rollup custom metadata record. Comma-separated list of fields to order by using API name and sort order (e.g Amount DESC, Name ASC). If a sort order is not specified, defaults to ASC.'
+    )
     global String orderByFirstLast;
-    @InvocableVariable(label='Limit Amount')
+    @InvocableVariable(
+      label='Limit Amount'
+      description='When provided, only N children are included, where N is the Limit Amount specified. Most commonly used in conjunction with Rollup Order By metadata and/or a WHERE clause to get the right results'
+    )
     global Decimal limitAmount;
 
     @InvocableVariable(
@@ -69,7 +81,11 @@ global without sharing class RollupFlowBulkProcessor {
     global String ultimateParentLookup;
   }
 
-  @InvocableMethod(category='Rollups' label='Perform Rollup__mdt-based rollup')
+  @InvocableMethod(
+    category='Rollups'
+    label='Perform Rollup CMDT-based rollup'
+    description='Uses Rollup custom metadata records to load rollups. By default, you must also include the "Process Deferred Rollups" action to actually start the rollups configured in this action, unless you override the Is Deferred flag to false'
+  )
   global static List<Rollup.FlowOutput> addRollup(List<FlowInput> flowInputs) {
     List<Rollup.FlowOutput> outputs = new List<Rollup.FlowOutput>();
     List<Rollup.FlowInput> validInputs = new List<Rollup.FlowInput>();

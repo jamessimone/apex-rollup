@@ -932,7 +932,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.toString(),
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
@@ -947,7 +947,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = Opportunity.AmountFormula__c.toString(),
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
@@ -1555,7 +1555,12 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
     // validate that queueable ran in addition to sync job
     System.assertEquals(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class) WITH SYSTEM_MODE]
+      [
+        SELECT COUNT()
+        FROM AsyncApexJob
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
     List<Account> updatedAccounts = [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE];
     System.assertEquals(2, updatedAccounts.size(), 'Both parent items should have been updated!');
@@ -1908,7 +1913,7 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       Contact.FirstName,
       Campaign.SObjectType,
       Contact.SObjectType,
-      Rollup.Op.CONCAT,
+      RollupOperation.CONCAT,
       Rollup.InvocationPoint.FROM_APEX,
       RollupControl__mdt.getInstance(Rollup.CONTROL_ORG_DEFAULTS).clone(),
       new Rollup__mdt(
@@ -1963,7 +1968,9 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
   }
 

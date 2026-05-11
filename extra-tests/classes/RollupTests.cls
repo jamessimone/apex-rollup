@@ -1,12 +1,12 @@
 @SuppressWarnings('PMD.NcssTypeCount')
 @IsTest
 private class RollupTests {
-  static Rollup.Op testOp;
+  static RollupOperation testOp;
   static SObjectField testOpFieldOnCalcItem;
   static SObjectField testOpFieldOnLookupObject;
   static Rollup__mdt testMetadata;
   static SObjectField testLookupKeyField;
-  static Rollup.Op rollupOp;
+  static RollupOperation rollupOp;
   static Boolean calcMockWasCalled = false;
 
   @TestSetup
@@ -23,7 +23,7 @@ private class RollupTests {
   @SuppressWarnings('PMD.ExcessiveParameterList')
   private class FactoryMock extends RollupCalculator.Factory {
     public override RollupCalculator getCalculator(
-      Rollup.Op op,
+      RollupOperation op,
       SObjectfield opFieldOnCalcItem,
       SObjectField opFieldOnLookupObject,
       Rollup__mdt metadata,
@@ -1596,7 +1596,9 @@ private class RollupTests {
     AggregateResult res = [
       SELECT Max(StageName) maxStage
       FROM Opportunity
-      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet() WITH SYSTEM_MODE][0];
+      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet()
+      WITH SYSTEM_MODE
+    ][0];
     String maxStage = (String) res.get('maxStage');
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MAX BEFORE_INSERT PICKLIST STRING');
@@ -1630,7 +1632,9 @@ private class RollupTests {
     AggregateResult res = [
       SELECT MIN(StageName) minStage
       FROM Opportunity
-      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet() WITH SYSTEM_MODE][0];
+      WHERE Id = :new Map<Id, Opportunity>(opportunities).keySet()
+      WITH SYSTEM_MODE
+    ][0];
     String minStage = (String) res.get('minStage');
 
     System.assertEquals(1, mock.Records.size(), 'Records should have been populated MIN BEFORE_INSERT PICKLIST STRING');
@@ -1724,7 +1728,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldRollupForFirst() {
-    rollupOp = Rollup.Op.FIRST;
+    rollupOp = RollupOperation.FIRST;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today()) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1746,7 +1750,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldRollupForLast() {
-    rollupOp = Rollup.Op.LAST;
+    rollupOp = RollupOperation.LAST;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5, ActiveFromDate = System.today()) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1767,7 +1771,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForAverage() {
-    rollupOp = Rollup.Op.AVERAGE;
+    rollupOp = RollupOperation.AVERAGE;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1782,7 +1786,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForCountDistinct() {
-    rollupOp = Rollup.Op.COUNT_DISTINCT;
+    rollupOp = RollupOperation.COUNT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1797,7 +1801,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForConcatDistinct() {
-    rollupOp = Rollup.Op.CONCAT_DISTINCT;
+    rollupOp = RollupOperation.CONCAT_DISTINCT;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Hi', PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1812,7 +1816,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForConcat() {
-    rollupOp = Rollup.Op.CONCAT;
+    rollupOp = RollupOperation.CONCAT;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.DMLMock mock = RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(Name = 'Hi', PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1827,7 +1831,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForCount() {
-    rollupOp = Rollup.Op.COUNT;
+    rollupOp = RollupOperation.COUNT;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1841,7 +1845,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForFirst() {
-    rollupOp = Rollup.Op.FIRST;
+    rollupOp = RollupOperation.FIRST;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1864,7 +1868,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForLast() {
-    rollupOp = Rollup.Op.LAST;
+    rollupOp = RollupOperation.LAST;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -1879,7 +1883,7 @@ private class RollupTests {
 
   @IsTest
   static void shouldPassRecalcValueForMin() {
-    rollupOp = Rollup.Op.MIN;
+    rollupOp = RollupOperation.MIN;
     RollupCalculator.Factory = new FactoryMock();
     RollupTestUtils.loadAccountIdMock(new List<ContactPointAddress>{ new ContactPointAddress(PreferenceRank = 5) });
     Rollup.apexContext = TriggerOperation.AFTER_INSERT;
@@ -2897,7 +2901,11 @@ private class RollupTests {
     Account acc = (Account) mock.Records.get(0);
     System.assertEquals(1, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
-    System.assertEquals('Completed', [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' WITH SYSTEM_MODE LIMIT 1]?.Status, [SELECT Status, JobType FROM AsyncApexJob WITH SYSTEM_MODE]);
+    System.assertEquals(
+      'Completed',
+      [SELECT Status FROM AsyncApexJob WHERE JobType = 'Queueable' WITH SYSTEM_MODE LIMIT 1]?.Status,
+      [SELECT Status, JobType FROM AsyncApexJob WITH SYSTEM_MODE]
+    );
   }
 
   /** Grandparent rollups */
@@ -2967,7 +2975,12 @@ private class RollupTests {
     System.assertEquals(cpas[0].Name + ', ' + cpas[1].Name, updatedUser.AboutMe, 'Grandparent rollup should have worked!');
     System.assertEquals(
       1,
-      [SELECT COUNT() FROM AsyncApexJob WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class) WITH SYSTEM_MODE]
+      [
+        SELECT COUNT()
+        FROM AsyncApexJob
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupAsyncProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
   }
 

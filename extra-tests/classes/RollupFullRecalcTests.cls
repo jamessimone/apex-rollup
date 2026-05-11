@@ -44,7 +44,7 @@ private class RollupFullRecalcTests {
       Account.Name,
       Account.SObjectType,
       Contact.SObjectType,
-      Rollup.Op.SUM,
+      RollupOperation.SUM,
       Rollup.InvocationPoint.FROM_APEX,
       null,
       null
@@ -717,7 +717,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
   }
 
@@ -907,7 +909,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
   }
 
@@ -958,7 +962,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE LIMIT 1
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
+        WITH SYSTEM_MODE
+        LIMIT 1
       ]
     );
   }
@@ -1005,7 +1011,9 @@ private class RollupFullRecalcTests {
     List<AsyncApexJob> jobs = [
       SELECT Status
       FROM AsyncApexJob
-      WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE];
+      WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
+      WITH SYSTEM_MODE
+    ];
     System.assertEquals(false, jobs.isEmpty());
     for (AsyncApexJob job : jobs) {
       System.assertEquals('Completed', job.Status);
@@ -1631,7 +1639,9 @@ private class RollupFullRecalcTests {
       [
         SELECT Status
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupParentResetProcessor.class) WITH SYSTEM_MODE LIMIT 1
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupParentResetProcessor.class)
+        WITH SYSTEM_MODE
+        LIMIT 1
       ]
       ?.Status
     );
@@ -1999,7 +2009,9 @@ private class RollupFullRecalcTests {
   @IsTest
   static void shouldAddStateRecordAtStartOfFullRecalc() {
     Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
-    insert as system new List<Opportunity>{ new Opportunity(StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Name = 'fullRecalc', Amount = 1) };
+    insert as system new List<Opportunity>{
+      new Opportunity(StageName = 'fullRecalc', CloseDate = System.today(), AccountId = acc.Id, Name = 'fullRecalc', Amount = 1)
+    };
 
     Rollup.defaultControl = new RollupControl__mdt(
       MaxLookupRowsBeforeBatching__c = 0,
@@ -2023,7 +2035,10 @@ private class RollupFullRecalcTests {
     // purposefully do not use start/stopTest to ensure job does not finish running
     String jobId = Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
 
-    Assert.areEqual(1, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE]);
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE]
+    );
     Assert.areEqual(1, [SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :jobId WITH SYSTEM_MODE], 'Must populate rollup state');
   }
 
@@ -2427,7 +2442,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE],
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
+        WITH SYSTEM_MODE
+      ],
       'Exactly two batch full recalcs should have run'
     );
     parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id WITH SYSTEM_MODE];
@@ -2438,7 +2455,11 @@ private class RollupFullRecalcTests {
     Assert.areEqual(null, parentTwo.AnnualRevenue);
     Assert.areEqual('Concat, Two', parentTwo.Description);
     Assert.areEqual(10, parentTwo.NumberOfEmployees);
-    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c WITH SYSTEM_MODE], '' + [SELECT COUNT(Id), RelatedJobId__c FROM RollupState__c WITH SYSTEM_MODE GROUP BY RelatedJobId__c]);
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM RollupState__c WITH SYSTEM_MODE],
+      '' + [SELECT COUNT(Id), RelatedJobId__c FROM RollupState__c WITH SYSTEM_MODE GROUP BY RelatedJobId__c]
+    );
   }
 
   @IsTest
@@ -2509,7 +2530,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE],
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
+        WITH SYSTEM_MODE
+      ],
       'Exactly two batch full recalcs should have run'
     );
     parentOne = [SELECT AnnualRevenue, Description, NumberOfEmployees FROM Account WHERE Id = :parentOne.Id WITH SYSTEM_MODE];
@@ -2585,7 +2608,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class) WITH SYSTEM_MODE],
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupFullBatchRecalculator.class)
+        WITH SYSTEM_MODE
+      ],
       'Test requires RollupFullBatchRecalculator to have been used'
     );
     parent = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE];
@@ -2639,7 +2664,9 @@ private class RollupFullRecalcTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE],
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+        WITH SYSTEM_MODE
+      ],
       JSON.serializePretty([SELECT JobType, ApexClass.Name FROM AsyncApexJob WITH SYSTEM_MODE])
     );
     parent = [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE];

@@ -167,11 +167,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     set;
   }
 
-  private static final Map<String, Op> OP_NAME_TO_OP {
+  private static final Map<String, RollupOperation> OP_NAME_TO_OP {
     get {
       if (OP_NAME_TO_OP == null) {
-        OP_NAME_TO_OP = new Map<String, Op>();
-        for (Op op : Op.values()) {
+        OP_NAME_TO_OP = new Map<String, RollupOperation>();
+        for (RollupOperation op : RollupOperation.values()) {
           OP_NAME_TO_OP.put(op.name(), op);
         }
       }
@@ -206,43 +206,6 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       return ORDER_BY_RELATIONSHIP_NAME;
     }
     set;
-  }
-
-  public enum Op {
-    ALL,
-    AVERAGE,
-    CONCAT_DISTINCT,
-    CONCAT,
-    COUNT_DISTINCT,
-    COUNT,
-    DELETE_AVERAGE,
-    DELETE_CONCAT_DISTINCT,
-    DELETE_CONCAT,
-    DELETE_COUNT_DISTINCT,
-    DELETE_COUNT,
-    DELETE_FIRST,
-    DELETE_LAST,
-    DELETE_MAX,
-    DELETE_MIN,
-    DELETE_SUM,
-    FIRST,
-    LAST,
-    MAX,
-    MIN,
-    MOST,
-    NONE,
-    SOME,
-    SUM,
-    UPDATE_AVERAGE,
-    UPDATE_CONCAT_DISTINCT,
-    UPDATE_CONCAT,
-    UPDATE_COUNT_DISTINCT,
-    UPDATE_COUNT,
-    UPDATE_FIRST,
-    UPDATE_LAST,
-    UPDATE_MAX,
-    UPDATE_MIN,
-    UPDATE_SUM
   }
 
   public class FilterResults {
@@ -433,7 +396,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     return CACHED_APEX_OPERATIONS;
   }
 
-  protected Map<String, Op> getOpMap() {
+  protected Map<String, RollupOperation> getOpMap() {
     return OP_NAME_TO_OP;
   }
 
@@ -499,7 +462,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     Rollup.oldRecordsMap = null;
   }
 
-  protected Boolean isEmptyReparentingOp(Op op) {
+  protected Boolean isEmptyReparentingOp(RollupOperation op) {
     return isFullRecalcOp(getBaseOperationName(op.name()));
   }
 
@@ -683,9 +646,12 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     global String rollupContext;
 
     // optional fields shared with RollupFlowBulkProcessor.FlowInput
-    @InvocableVariable(label='Defer processing' defaultValue='false')
+    @InvocableVariable(label='Defer processing' description='When set to true, the "Process Deferred Rollups" action must also be called' defaultValue='false')
     global Boolean deferProcessing = false;
-    @InvocableVariable(label='Child Object Type When Rollup Started From Parent')
+    @InvocableVariable(
+      label='Child Object Type When Rollup Started From Parent'
+      description='If "Is Rollup Started From Parent" is true, you must include the API name for the child in this field'
+    )
     global String calcItemTypeWhenRollupStartedFromParent;
     // rest of optional fields
     @InvocableVariable(
@@ -693,11 +659,11 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       description='Provide a comma-separated list of field API Names to consider prior to using records in the rollup'
     )
     global String calcItemChangedFields;
-    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma')
+    @InvocableVariable(label='Concat Delimiter' description='Defaults to comma, except for multi-select picklist fields (which default to semi-colon)')
     global String concatDelimiter;
     @InvocableVariable(
       label='Concat Delimiter Split Should Apply On Child Object'
-      description='the text values on the Child Object\'s field being rolled up can also be split if this field is enabled and set to {!$GlobalConstant.True}'
+      description='The text values on the Child Object\'s field being rolled up can also be split if this field is enabled and set to {!$GlobalConstant.True}'
     )
     global Boolean splitConcatDelimiterOnCalcItem;
     @InvocableVariable(
@@ -753,9 +719,15 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       description='If rolling up to a group by text field and you want a table, set this to true'
     )
     global Boolean isTableFormatted = false;
-    @InvocableVariable(label='Order By (First/Last)')
+    @InvocableVariable(
+      label='Order By (First/Last)'
+      description='Comma-separated list of fields to order by using API name and sort order (e.g Amount DESC, Name ASC). If a sort order is not specified, defaults to ASC'
+    )
     global String orderByFirstLast;
-    @InvocableVariable(label='Limit Amount')
+    @InvocableVariable(
+      label='Limit Amount'
+      description='When provided, only N children are included, where N is the Limit Amount specified. Most commonly used in conjunction with Rollup Order By metadata and/or a WHERE clause to get the right results'
+    )
     global Decimal limitAmount;
 
     // these are listed with the optional properties because otherwise Flow builders always have to check for null after using a Get Records
@@ -1059,7 +1031,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       sumFieldOnOpOject,
       lookupSobjectType,
-      Op.AVERAGE,
+      RollupOperation.AVERAGE,
       defaultRecalculationValue,
       eval
     );
@@ -1117,7 +1089,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       countDistinctFieldOnOperationObject,
       lookupSobjectType,
-      Op.COUNT_DISTINCT,
+      RollupOperation.COUNT_DISTINCT,
       defaultRecalculationValue,
       eval
     );
@@ -1197,7 +1169,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       concatFieldOnOperationObject,
       lookupSobjectType,
-      Op.CONCAT_DISTINCT,
+      RollupOperation.CONCAT_DISTINCT,
       defaultRecalculationValue,
       orderBys,
       eval
@@ -1278,7 +1250,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       concatFieldOnOperationObject,
       lookupSobjectType,
-      Op.CONCAT,
+      RollupOperation.CONCAT,
       defaultRecalculationValue,
       orderBys,
       eval
@@ -1329,7 +1301,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       sumFieldOnOpOject,
       lookupSobjectType,
-      Op.COUNT,
+      RollupOperation.COUNT,
       defaultRecalculationValue,
       eval
     );
@@ -1414,7 +1386,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       firstFieldOnOpObject,
       lookupSobjectType,
-      Op.FIRST,
+      RollupOperation.FIRST,
       defaultRecalculationValue,
       orderByMetas,
       eval
@@ -1500,7 +1472,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       lastFieldOnOpObject,
       lookupSobjectType,
-      Op.LAST,
+      RollupOperation.LAST,
       defaultRecalculationValue,
       orderByMetas,
       eval
@@ -1551,7 +1523,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       maxFieldOnOperationObject,
       lookupSobjectType,
-      Op.MAX,
+      RollupOperation.MAX,
       defaultRecalculationValue,
       eval
     );
@@ -1601,7 +1573,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       minFieldOnOpOject,
       lookupSobjectType,
-      Op.MIN,
+      RollupOperation.MIN,
       defaultRecalculationValue,
       eval
     );
@@ -1651,7 +1623,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       sumFieldOnOpOject,
       lookupSobjectType,
-      Op.SUM,
+      RollupOperation.SUM,
       defaultRecalculationValue,
       eval
     );
@@ -1681,7 +1653,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       lookupFieldOnOperationObject,
       mostFieldOnOperationObject,
       lookupSobjectType,
-      Op.MOST,
+      RollupOperation.MOST,
       null,
       eval
     );
@@ -1918,7 +1890,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
   }
 
   public static String getBaseOperationName(String fullOpName) {
-    Set<String> operationsWithUnderscores = new Set<String>{ Op.COUNT_DISTINCT.name(), Op.CONCAT_DISTINCT.name() };
+    Set<String> operationsWithUnderscores = new Set<String>{ RollupOperation.COUNT_DISTINCT.name(), RollupOperation.CONCAT_DISTINCT.name() };
     return operationsWithUnderscores.contains(fullOpName) == false && fullOpName.contains('_') ? fullOpName.substringAfter('_') : fullOpName;
   }
 
@@ -1999,7 +1971,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     SObjectField lookupFieldOnOperationObject,
     SObjectField operationFieldOnOperationObject,
     SObjectType lookupSObjectType,
-    Op rollupOperation,
+    RollupOperation rollupOperation,
     Object defaultRecalculationValue,
     Evaluator eval
   ) {
@@ -2022,7 +1994,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     SObjectField lookupFieldOnOperationObject,
     SObjectField operationFieldOnOperationObject,
     SObjectType lookupSObjectType,
-    Op rollupOperation,
+    RollupOperation rollupOperation,
     Object defaultRecalculationValue,
     List<RollupOrderBy__mdt> orderByMetas,
     Evaluator eval
@@ -2444,7 +2416,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       errorMessage = 'Only one override - the default string value or number value - can be supplied for each rollup';
     } else if (flowInput.groupByRowStartDelimiter != null && flowInput.groupByFields == null) {
       errorMessage = 'You must set group by fields when supplying a group by delimiter';
-    } else if (flowInput.rollupOperation.contains(Op.CONCAT.name()) == false) {
+    } else if (flowInput.rollupOperation.contains(RollupOperation.CONCAT.name()) == false) {
       if (String.isNotBlank(flowInput.concatDelimiter) && flowInput.groupByFields == null) {
         errorMessage = 'Concat delimiter should only be supplied for CONCAT-based rollups. ';
       }
@@ -2761,7 +2733,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     updateLoggingControl(rollupOperations);
 
     for (Rollup__mdt rollupMetadata : rollupOperations) {
-      Op rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
+      RollupOperation rollupOp = OP_NAME_TO_OP.get(rollupMetadata.RollupOperation__c.toUpperCase());
       if (
         rollupMetadata.RollupGrouping__r.Id != null && rollupMetadata.CalcItem__c != null && rollupMetadata.CalcItem__c != sObjectType.toString() ||
         rollupMetadata.IsRollupStartedFromParent__c && String.valueOf(sObjectType) == rollupMetadata.LookupObject__c
@@ -2851,7 +2823,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
         replacementOrderBys.add(orderBy);
       }
     } else if (
-      meta.RollupOrderBys__r.isEmpty() && (rollupOpName.contains(Op.FIRST.name()) || rollupOpName.contains(Op.LAST.name())) || meta.LimitAmount__c != null
+      meta.RollupOrderBys__r.isEmpty() && (rollupOpName.contains(RollupOperation.FIRST.name()) || rollupOpName.contains(RollupOperation.LAST.name())) ||
+      meta.LimitAmount__c != null
     ) {
       replacementOrderBys = new List<RollupOrderBy__mdt>{ new RollupOrderBy__mdt(Ranking__c = 0, FieldName__c = meta.RollupFieldOnCalcItem__c) };
     }
@@ -3008,7 +2981,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     SObjectField rollupFieldOnOpObject,
     SObjectType lookupSObjectType,
     SObjectType calcItemSObjectType,
-    Op rollupOp,
+    RollupOperation rollupOp,
     FilterResults filterResults,
     Rollup rollupConductor,
     RollupControl__mdt rollupControl,

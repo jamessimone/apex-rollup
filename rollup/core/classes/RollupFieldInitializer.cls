@@ -135,7 +135,7 @@ public virtual class RollupFieldInitializer {
       return this.isMultiSelectPicklist;
     }
 
-    public Boolean isTrueFor(String picklistVal, String comparisonValue, Rollup.Op operation) {
+    public Boolean isTrueFor(String picklistVal, String comparisonValue, RollupOperation operation) {
       if (this.isPicklist == false) {
         return false;
       }
@@ -148,7 +148,7 @@ public virtual class RollupFieldInitializer {
       return isMin ? rank < comparisonRank : rank > comparisonRank;
     }
 
-    public Integer getRank(String picklistVal, Rollup.Op operation) {
+    public Integer getRank(String picklistVal, RollupOperation operation) {
       return this.picklistToRank?.containsKey(picklistVal) == true ? this.picklistToRank.get(picklistVal) : this.getSentinelValue(operation);
     }
 
@@ -156,11 +156,11 @@ public virtual class RollupFieldInitializer {
       picklistValues.sort(new PicklistSorter(this));
     }
 
-    private Boolean isMin(Rollup.Op operation) {
-      return operation.name().contains(Rollup.Op.MIN.name());
+    private Boolean isMin(RollupOperation operation) {
+      return operation.name().contains(RollupOperation.MIN.name());
     }
 
-    private Integer getSentinelValue(Rollup.Op operation) {
+    private Integer getSentinelValue(RollupOperation operation) {
       return this.isMin(operation) ? this.maximumIntegerValue : this.minimumIntegerValue;
     }
   }
@@ -181,8 +181,8 @@ public virtual class RollupFieldInitializer {
 
     public Integer compare(String firstVal, String secondVal) {
       Integer sortValue = 0;
-      Integer firstRank = this.picklistController.getRank(firstVal, Rollup.Op.FIRST);
-      Integer secondRank = this.picklistController.getRank(secondVal, Rollup.Op.FIRST);
+      Integer firstRank = this.picklistController.getRank(firstVal, RollupOperation.FIRST);
+      Integer secondRank = this.picklistController.getRank(secondVal, RollupOperation.FIRST);
       if (firstRank == this.picklistController.minimumIntegerValue || secondRank == this.picklistController.minimumIntegerValue) {
         // fall back to standard sorting if sentinel value is returned
         sortValue = this.stringSorter.compare(firstVal, secondVal);
