@@ -642,7 +642,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
 
     @InvocableVariable(label='Rollup Operation' description='SUM, COUNT, COUNT_DISTINCT, MAX, MIN, AVG, CONCAT, CONCAT_DISTINCT, FIRST, LAST' required=true)
     global String rollupOperation;
-    @InvocableVariable(label='Rollup Operation Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
+    @InvocableVariable(label='Rollup Operation Context' description='INSERT, UPDATE, UPSERT, DELETE, or REFRESH' required=true)
     global String rollupContext;
 
     // optional fields shared with RollupFlowBulkProcessor.FlowInput

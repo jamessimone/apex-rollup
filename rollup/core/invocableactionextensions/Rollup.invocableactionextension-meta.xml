@@ -88,7 +88,7 @@
         <attributes>
             <key>ProvidedValuesList</key>
             <dataType>String</dataType>
-            <value>INSERT, UPDATE, UPSERT, DELETE</value>
+            <value>INSERT, UPDATE, UPSERT, DELETE, REFRESH</value>
         </attributes>
     </targets>
     <targets>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Add_matching_description_to_Site</name>
@@ -64,12 +64,14 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>CONCAT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>REFRESH</stringValue>
             </value>
         </inputParameters>
@@ -80,6 +82,7 @@
             </value>
         </inputParameters>
         <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
@@ -91,6 +94,7 @@
         <actionType>apex</actionType>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <nameSegment>RollupFlowBulkSaver</nameSegment>
+        <offset>0</offset>
     </actionCalls>
     <actionCalls>
         <name>Count_Cases</name>
@@ -162,16 +166,19 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>COUNT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>UPSERT</stringValue>
             </value>
         </inputParameters>
         <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
@@ -194,9 +201,9 @@
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <inputParameters>
-            <name>rollupFieldOnCalcItem</name>
+            <name>deferProcessing</name>
             <value>
-                <stringValue>Description</stringValue>
+                <booleanValue>true</booleanValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -206,9 +213,9 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>deferProcessing</name>
+            <name>lookupFieldOnOpObject</name>
             <value>
-                <booleanValue>true</booleanValue>
+                <stringValue>Id</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -224,9 +231,16 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupSObjectName</name>
+            <name>rollupContext</name>
             <value>
-                <stringValue>Account</stringValue>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
+                <stringValue>UPSERT</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>rollupFieldOnCalcItem</name>
+            <value>
+                <stringValue>Description</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -236,24 +250,20 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>lookupFieldOnOpObject</name>
-            <value>
-                <stringValue>Id</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>CONCAT_DISTINCT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupContext</name>
+            <name>rollupSObjectName</name>
             <value>
-                <stringValue>UPSERT</stringValue>
+                <stringValue>Account</stringValue>
             </value>
         </inputParameters>
         <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
@@ -326,16 +336,19 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>LAST</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>UPSERT</stringValue>
             </value>
         </inputParameters>
         <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <apiVersion>67.0</apiVersion>
