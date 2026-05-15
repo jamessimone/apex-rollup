@@ -37,7 +37,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
       }
       when else {
         this.handleSuccess();
-        this.recurseThroughConductors();
+        this.processCabooses();
       }
     }
     RollupLogger.Instance.log('finalizer finished', System.LoggingLevel.INFO);
@@ -60,16 +60,13 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
     }
   }
 
-  private void recurseThroughConductors() {
-    if (this.cabooses.isEmpty() == false && this.hasAlreadyStartedConductor == false) {
+  private void processCabooses() {
+    while (this.cabooses.isEmpty() == false && this.hasAlreadyStartedConductor == false) {
       RollupAsyncProcessor conductor = this.cabooses.remove(0);
       RollupLogger.Instance.log('Starting up new conductor', conductor, System.LoggingLevel.INFO);
       String potentialProcessId = conductor.runCalc();
       Boolean hasStartedAsync = potentialProcessId != conductor.getNoProcessId();
       this.hasAlreadyStartedConductor = this.hasAlreadyStartedConductor || hasStartedAsync;
-      if (hasStartedAsync == false && this.hasAlreadyStartedConductor == false && this.cabooses.isEmpty() == false) {
-        this.recurseThroughConductors();
-      }
     }
   }
 }

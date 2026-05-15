@@ -105,7 +105,7 @@ public class RollupTestUtils {
     }
     String whereClause = recordId == null ? '' : '\nWHERE Id = :recordId';
     String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + fromObject + whereClause;
-    return Database.query(recordQuery);
+    return Database.query(recordQuery, System.AccessLevel.SYSTEM_MODE);
   }
 
   public static String getNamespaceSafeClassName(Type intendedClass) {

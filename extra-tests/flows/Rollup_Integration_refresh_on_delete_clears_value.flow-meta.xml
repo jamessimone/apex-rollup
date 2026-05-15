@@ -54,9 +54,9 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <inputConfiguratorMode>Resource</inputConfiguratorMode>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>COUNT</stringValue>
             </value>
         </inputParameters>
