@@ -989,7 +989,10 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
           }
           lookupFieldToCalcItems.put(key, bag);
         }
-        bag.add(calcItem);
+
+        if (hasBlankKey == false) {
+          bag.add(calcItem);
+        }
 
         // if the lookup key differs from what it was on the old child object,
         // include that value as well so that we can fix reparented records' rollup values

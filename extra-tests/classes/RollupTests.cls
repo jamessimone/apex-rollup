@@ -2814,6 +2814,28 @@ private class RollupTests {
   }
 
   @IsTest
+  static void shouldClearConcatDistinctOnDetachToNull() {
+    Account oldAcc = [SELECT Id, AccountNumber FROM Account];
+    oldAcc.AccountNumber = 'A';
+    RollupAsyncProcessor.stubParentRecords = new List<SObject>{ oldAcc };
+
+    ContactPointAddress cpa = new ContactPointAddress(Name = 'A', ParentId = null, Id = RollupTestUtils.createId(ContactPointAddress.SObjectType));
+
+    RollupTestUtils.DMLMock mock = RollupTestUtils.loadMock(new List<ContactPointAddress>{ cpa });
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+
+    // child's old state: was attached to oldAcc
+    Rollup.oldRecordsMap = new Map<Id, ContactPointAddress>{ cpa.Id => new ContactPointAddress(ParentId = oldAcc.Id, Name = 'A', Id = cpa.Id) };
+
+    Test.startTest();
+    Rollup.concatDistinctFromApex(ContactPointAddress.Name, ContactPointAddress.ParentId, Account.Id, Account.AccountNumber, Account.SObjectType).runCalc();
+    Test.stopTest();
+
+    System.assertEquals(1, mock.Records.size(), 'Old parent should have been updated after detach: ' + mock.Records);
+    System.assertEquals('', oldAcc.AccountNumber, 'CONCAT_DISTINCT should be null on old parent after child detaches to null');
+  }
+
+  @IsTest
   static void shouldCorrectlyReparentForStringCount() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account];
     Account oldAcc = new Account(AnnualRevenue = 1, Name = 'Something');

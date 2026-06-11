@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Adds the ability to perform full recalculations for more than one parent",
-            "versionNumber": "1.7.39.0",
+            "versionName": "Fixes https://github.com/jamessimone/apex-rollup/issues/766 by ensuring recalculations occur when a parent lookup is cleared",
+            "versionNumber": "1.7.40.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -101,10 +101,6 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.33": "04tKf000000syETIAY",
-        "apex-rollup@1.7.34": "04tKf000000syGFIAY",
-        "apex-rollup@1.7.35": "04tg70000001HziAAE",
-        "apex-rollup@1.7.36": "04tg70000002WDVAA2",
         "apex-rollup@1.7.37": "04tg700000037wDAAQ",
         "apex-rollup@1.7.38": "04tg70000005Bm1AAE",
         "apex-rollup@1.7.39": "04tg70000007hmbAAA"
