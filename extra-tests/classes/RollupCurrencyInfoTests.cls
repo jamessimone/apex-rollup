@@ -98,7 +98,7 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.mockBasicCurrencies = new List<RollupCurrencyInfo>{ mockUsdInfo, mockEurInfo };
 
     Opportunity opp = new Opportunity(Amount = 50, StageName = 'formula', CloseDate = System.today(), Name = 'Hi');
-    insert opp;
+    insert as system opp;
     Schema.SObjectfield currencyFormulaToken = Opportunity.AmountFormula__c;
     opp = (Opportunity) RollupTestUtils.queryRecord(opp.Id, new List<Schema.SObjectField>{ currencyFormulaToken, Opportunity.CloseDate });
 
@@ -140,7 +140,7 @@ private class RollupCurrencyInfoTests {
       new Opportunity(Amount = 100, StageName = 'dated currency', CloseDate = eurPeriodOne.StartDate.addDays(2), Name = 'One'),
       new Opportunity(Amount = 100, StageName = 'dated currency', CloseDate = eurPeriodTwo.StartDate.addDays(2), Name = 'Two')
     };
-    insert opps;
+    insert as system opps;
     List<Schema.SObjectField> queryFields = new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate };
     Opportunity firstOpp = (Opportunity) RollupTestUtils.queryRecord(opps[0].Id, queryFields);
     Opportunity secondOpp = (Opportunity) RollupTestUtils.queryRecord(opps[1].Id, queryFields);
@@ -235,7 +235,7 @@ private class RollupCurrencyInfoTests {
     RollupCurrencyInfo.mockDatedCurrencies = new List<RollupCurrencyInfo>{ eurPeriodOne };
     Opportunity opp = new Opportunity(StageName = 'a', CloseDate = eurPeriodOne.StartDate.addDays(2), Name = 'One', Amount = 10);
     Opportunity secondOpp = new Opportunity(StageName = 'b', CloseDate = eurPeriodOne.StartDate.addYears(-7), Name = 'Two', Amount = 10);
-    insert new List<Opportunity>{ opp, secondOpp };
+    insert as system new List<Opportunity>{ opp, secondOpp };
     opp = (Opportunity) RollupTestUtils.queryRecord(opp.Id, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate });
     secondOpp = (Opportunity) RollupTestUtils.queryRecord(secondOpp.Id, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate });
 
@@ -290,7 +290,7 @@ private class RollupCurrencyInfoTests {
     Opportunity secondOpp = new Opportunity(StageName = 'b', CloseDate = eurPeriodTwo.StartDate.addDays(1), Name = 'Two', Amount = 10);
     Opportunity thirdOpp = new Opportunity(StageName = 'c', CloseDate = eurPeriodThree.StartDate.addDays(1), Name = 'Three', Amount = 10);
     Opportunity fourthOpp = new Opportunity(StageName = 'd', CloseDate = eurPeriodFour.StartDate.addDays(1), Name = 'Four', Amount = 10);
-    insert new List<Opportunity>{ opp, secondOpp, thirdOpp, fourthOpp };
+    insert as system new List<Opportunity>{ opp, secondOpp, thirdOpp, fourthOpp };
     opp = (Opportunity) RollupTestUtils.queryRecord(opp.Id, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate });
     secondOpp = (Opportunity) RollupTestUtils.queryRecord(secondOpp.Id, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate });
     thirdOpp = (Opportunity) RollupTestUtils.queryRecord(thirdOpp.Id, new List<Schema.SObjectField>{ Opportunity.Amount, Opportunity.CloseDate });

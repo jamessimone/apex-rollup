@@ -3,7 +3,7 @@ private class RollupMultiCurrencyTests {
   @TestSetup
   static void setup() {
     Account acc = new Account(Name = RollupMultiCurrencyTests.class.getName());
-    insert acc;
+    insert as system acc;
 
     Opportunity opp = new Opportunity(
       Name = 'Rollup Multicurrency',
@@ -15,8 +15,8 @@ private class RollupMultiCurrencyTests {
     );
     RollupCurrencyInfo.setCurrencyIsoCode(opp, 'USD');
 
-    insert opp;
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    insert as system opp;
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
   }
 
   @IsTest
@@ -39,7 +39,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -52,7 +52,7 @@ private class RollupMultiCurrencyTests {
     Opportunity jpyOpp = eurOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.Amount = 100;
-    insert new List<Opportunity>{ eurOpp, jpyOpp };
+    insert as system new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -86,7 +86,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -99,7 +99,7 @@ private class RollupMultiCurrencyTests {
     Opportunity jpyOpp = eurOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.Amount = 100;
-    insert new List<Opportunity>{ eurOpp, jpyOpp };
+    insert as system new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -134,7 +134,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -147,7 +147,7 @@ private class RollupMultiCurrencyTests {
     Opportunity jpyOpp = eurOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.Amount = 100;
-    insert new List<Opportunity>{ eurOpp, jpyOpp };
+    insert as system new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -183,7 +183,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -196,7 +196,7 @@ private class RollupMultiCurrencyTests {
     Opportunity jpyOpp = eurOpp.clone(false, true);
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.Amount = 100;
-    insert new List<Opportunity>{ eurOpp, jpyOpp };
+    insert as system new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -219,7 +219,7 @@ private class RollupMultiCurrencyTests {
 
     List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
       ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
-      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity GROUP BY Id];
+      : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity WITH SYSTEM_MODE GROUP BY Id];
     Decimal convertedAmountSum = 0;
     for (SObject opp : opportunities) {
       convertedAmountSum += (Decimal) opp.get('ConvertedAmount');
@@ -244,7 +244,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -259,7 +259,7 @@ private class RollupMultiCurrencyTests {
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.StageName = 'Z';
     jpyOpp.Amount = 100;
-    insert new List<Opportunity>{ eurOpp, jpyOpp };
+    insert as system new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt meta = Rollup.appendOrderByMetadata(
@@ -283,7 +283,7 @@ private class RollupMultiCurrencyTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = [SELECT Id, Name FROM Account];
+    acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     System.assertEquals('A', acc.Name, 'Should have taken first based on multi-currency Amount!');
   }
 
@@ -296,7 +296,7 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(null, acc.AnnualRevenue, 'Test has started under the wrong conditions!');
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -311,7 +311,7 @@ private class RollupMultiCurrencyTests {
     RollupCurrencyInfo.setCurrencyIsoCode(jpyOpp, 'JPY');
     jpyOpp.Amount = 100;
     jpyOpp.StageName = 'Z';
-    insert new List<Opportunity>{ eurOpp, jpyOpp };
+    insert as system new List<Opportunity>{ eurOpp, jpyOpp };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt meta = Rollup.appendOrderByMetadata(
@@ -335,7 +335,7 @@ private class RollupMultiCurrencyTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    acc = [SELECT Id, Name FROM Account];
+    acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
     System.assertEquals('Z', acc.Name, 'Should have taken last based on multi-currency Amount!');
   }
 
@@ -344,18 +344,18 @@ private class RollupMultiCurrencyTests {
     if (hasCurrencyInfo('EUR') == false || hasCurrencyInfo('JPY') == false) {
       return;
     }
-    delete [SELECT Id FROM Opportunity];
+    delete as system [SELECT Id FROM Opportunity WITH SYSTEM_MODE];
 
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     acc.AnnualRevenue = 100;
-    update acc;
+    update as system acc;
     System.assertEquals('USD', getCurrencyIsoCode(acc), 'Test has started under the wrong conditions!');
 
     Opportunity eurOpp = new Opportunity(Name = 'First Parent', StageName = 'a', CloseDate = System.today(), AccountId = acc.Id);
     RollupCurrencyInfo.setCurrencyIsoCode(eurOpp, 'EUR');
     Contract contract = new Contract(AccountId = acc.Id, Name = 'Second Parent');
     RollupCurrencyInfo.setCurrencyIsoCode(contract, 'JPY');
-    insert new List<SObject>{ eurOpp, contract };
+    insert as system new List<SObject>{ eurOpp, contract };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt firstParent = new Rollup__mdt(
@@ -385,8 +385,8 @@ private class RollupMultiCurrencyTests {
     Rollup.runFromTrigger();
     Test.stopTest();
 
-    contract = [SELECT ContractTerm FROM Contract WHERE Id = :contract.Id];
-    eurOpp = [SELECT Amount FROM Opportunity WHERE Id = :eurOpp.Id];
+    contract = [SELECT ContractTerm FROM Contract WHERE Id = :contract.Id WITH SYSTEM_MODE];
+    eurOpp = [SELECT Amount FROM Opportunity WHERE Id = :eurOpp.Id WITH SYSTEM_MODE];
     System.assertNotEquals(null, contract.ContractTerm, 'Rollup should have occurred');
     System.assertNotEquals(contract.ContractTerm, eurOpp.Amount);
   }
@@ -398,7 +398,7 @@ private class RollupMultiCurrencyTests {
     }
     Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.AnnualRevenue });
     RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
-    update acc;
+    update as system acc;
 
     Opportunity usdOpp = (Opportunity) RollupTestUtils.queryRecord(
       Opportunity.SObjectType,
@@ -415,7 +415,7 @@ private class RollupMultiCurrencyTests {
     three.StageName = 'Z';
     RollupCurrencyInfo.setCurrencyIsoCode(three, 'JPY');
     List<Opportunity> opps = new List<Opportunity>{ two, three };
-    insert opps;
+    insert as system opps;
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt sumRollup = new Rollup__mdt(

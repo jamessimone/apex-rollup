@@ -10,7 +10,9 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
   @SuppressWarnings('PMD.UnusedLocalVariable')
   public Database.QueryLocator start(Database.BatchableContext bc) {
     Date daysBeforeOffset = System.today().addDays(-RollupLogControl.Offset);
-    return Database.getQueryLocator([SELECT Id, RollupLog__c FROM RollupLogEntry__c WHERE CreatedDate <= :daysBeforeOffset ORDER BY RollupLog__c]);
+    return Database.getQueryLocator(
+      [SELECT Id, RollupLog__c FROM RollupLogEntry__c WHERE CreatedDate <= :daysBeforeOffset WITH SYSTEM_MODE ORDER BY RollupLog__c]
+    );
   }
 
   public void execute(Database.BatchableContext bc, List<RollupLogEntry__c> logEntries) {
@@ -44,7 +46,7 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
       orphanedLogsQuery = orphanedLogsQuery.replace('Count()', 'Id');
       this.hasDeletedOrphanedLogs = true;
       RollupLogger.Instance.log('Deleting orphaned logs ...', System.LoggingLevel.DEBUG);
-      delete Database.query(orphanedLogsQuery);
+      delete as system Database.query(orphanedLogsQuery, System.AccessLevel.SYSTEM_MODE);
     }
     RollupLogger.Instance.save();
   }

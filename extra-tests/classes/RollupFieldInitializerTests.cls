@@ -71,12 +71,12 @@ private class RollupFieldInitializerTests {
 
     String firstValue = picklistEntries[0].getValue();
     String secondValue = picklistEntries[1].getValue();
-    System.assertEquals(true, picklistController.isTrueFor(firstValue, secondValue, Rollup.Op.MIN));
-    System.assertEquals(true, picklistController.isTrueFor(secondValue, firstValue, Rollup.Op.MAX));
-    System.assertEquals(true, picklistController.isTrueFor('b', 'a', Rollup.Op.MAX));
+    System.assertEquals(true, picklistController.isTrueFor(firstValue, secondValue, RollupOperation.MIN));
+    System.assertEquals(true, picklistController.isTrueFor(secondValue, firstValue, RollupOperation.MAX));
+    System.assertEquals(true, picklistController.isTrueFor('b', 'a', RollupOperation.MAX));
 
-    System.assertEquals(picklistController.maximumIntegerValue, picklistController.getRank('a', Rollup.Op.MIN));
-    System.assertEquals(picklistController.minimumIntegerValue, picklistController.getRank('a', Rollup.Op.MAX));
+    System.assertEquals(picklistController.maximumIntegerValue, picklistController.getRank('a', RollupOperation.MIN));
+    System.assertEquals(picklistController.minimumIntegerValue, picklistController.getRank('a', RollupOperation.MAX));
   }
 
   @IsTest
@@ -84,7 +84,7 @@ private class RollupFieldInitializerTests {
     RollupFieldInitializer.PicklistController picklistController = new RollupFieldInitializer.PicklistController(Account.Name.getDescribe());
 
     System.assertEquals('', picklistController.getDefaultValue(Account.Name));
-    System.assertEquals(false, picklistController.isTrueFor('one', 'two', Rollup.Op.MAX));
+    System.assertEquals(false, picklistController.isTrueFor('one', 'two', RollupOperation.MAX));
   }
 
   @IsTest

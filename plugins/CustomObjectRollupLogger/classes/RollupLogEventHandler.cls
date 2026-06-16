@@ -12,7 +12,7 @@ public without sharing class RollupLogEventHandler {
       transactionIdToLogs.put(logEvent.TransactionId__c, rollupLog);
     }
 
-    upsert transactionIdToLogs.values() RollupLog__c.TransactionId__c;
+    upsert as system transactionIdToLogs.values() RollupLog__c.TransactionId__c;
 
     List<RollupLogEntry__c> logEntries = new List<RollupLogEntry__c>();
     for (RollupLogEvent__e logEvent : logEvents) {
@@ -23,6 +23,6 @@ public without sharing class RollupLogEventHandler {
       );
       logEntries.add(rollupLogEntry);
     }
-    insert logEntries;
+    insert as system logEntries;
   }
 }

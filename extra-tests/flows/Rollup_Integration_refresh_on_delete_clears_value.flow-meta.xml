@@ -3,8 +3,8 @@
     <actionCalls>
         <name>Perform_Rollup</name>
         <label>Perform Rollup</label>
-        <locationX>176</locationX>
-        <locationY>395</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <dataTypeMappings>
@@ -37,6 +37,7 @@
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>DELETE</stringValue>
             </value>
         </inputParameters>
@@ -55,6 +56,7 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>COUNT</stringValue>
             </value>
         </inputParameters>
@@ -66,14 +68,14 @@
         </inputParameters>
         <nameSegment>Rollup</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
-        <versionSegment>1</versionSegment>
     </actionCalls>
-    <apiVersion>64.0</apiVersion>
+    <apiVersion>67.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
         <name>Add_deleted_record_to_collection</name>
         <label>Add deleted record to collection</label>
-        <locationX>176</locationX>
-        <locationY>287</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <assignmentItems>
             <assignToReference>RecordsToRollup</assignToReference>
             <operator>Add</operator>
@@ -108,7 +110,7 @@
     </processMetadataValues>
     <processType>AutoLaunchedFlow</processType>
     <start>
-        <locationX>50</locationX>
+        <locationX>0</locationX>
         <locationY>0</locationY>
         <connector>
             <targetReference>Add_deleted_record_to_collection</targetReference>

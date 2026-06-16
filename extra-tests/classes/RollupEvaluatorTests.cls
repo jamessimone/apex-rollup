@@ -590,7 +590,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(
       ChangedFieldsOnCalcItem__c = 'StageName',
       CalcItemWhereClause__c = 'Amount > 20',
-      RollupOperation__c = Rollup.Op.SUM.name()
+      RollupOperation__c = RollupOperation.SUM.name()
     );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
@@ -612,7 +612,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(
       LookupFieldOnCalcItem__c = 'AccountId',
       CalcItemWhereClause__c = 'Amount > 20',
-      RollupOperation__c = Rollup.Op.SUM.name()
+      RollupOperation__c = RollupOperation.SUM.name()
     );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(null, rollupMetadata, new Map<Id, SObject>{ oldOpp.Id => oldOpp }, Opportunity.SObjectType);
@@ -625,7 +625,7 @@ private class RollupEvaluatorTests {
     Opportunity oldOpp = opp.clone(true, true);
     oldOpp.AccountId = '0013g000000000000Z';
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId', RollupOperation__c = Rollup.Op.SUM.name());
+    Rollup__mdt rollupMetadata = new Rollup__mdt(LookupFieldOnCalcItem__c = 'AccountId', RollupOperation__c = RollupOperation.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
@@ -644,7 +644,7 @@ private class RollupEvaluatorTests {
 
     Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', Amount = 15);
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'Amount', RollupOperation__c = Rollup.Op.SUM.name());
+    Rollup__mdt rollupMetadata = new Rollup__mdt(ChangedFieldsOnCalcItem__c = 'Amount', RollupOperation__c = RollupOperation.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
@@ -666,7 +666,7 @@ private class RollupEvaluatorTests {
 
     Opportunity secondOpp = new Opportunity(Id = '0066g000000000000Z', Amount = 15);
 
-    Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20', RollupOperation__c = Rollup.Op.SUM.name());
+    Rollup__mdt rollupMetadata = new Rollup__mdt(CalcItemWhereClause__c = 'Amount > 20', RollupOperation__c = RollupOperation.SUM.name());
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       new RollupEvaluator.AlwaysTrueEvaluator(),
@@ -690,7 +690,7 @@ private class RollupEvaluatorTests {
     Rollup__mdt rollupMetadata = new Rollup__mdt(
       ChangedFieldsOnCalcItem__c = 'StageName',
       CalcItemWhereClause__c = 'Amount > 20',
-      RollupOperation__c = Rollup.Op.SUM.name()
+      RollupOperation__c = RollupOperation.SUM.name()
     );
 
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
@@ -749,7 +749,7 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = 'Amount',
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
@@ -767,7 +767,7 @@ private class RollupEvaluatorTests {
     eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = 'Amount',
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
@@ -783,7 +783,7 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = 'Amount',
         LookupFieldOnCalcItem__c = 'AccountId',
         GrandparentRelationshipFieldPath__c = 'Some.Field.Path'
@@ -798,7 +798,7 @@ private class RollupEvaluatorTests {
     eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = 'Amount',
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
@@ -814,7 +814,7 @@ private class RollupEvaluatorTests {
     Rollup.Evaluator eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = 'Amount',
         LookupFieldOnCalcItem__c = 'AccountId',
         RollupToUltimateParent__c = true
@@ -829,7 +829,7 @@ private class RollupEvaluatorTests {
     eval = RollupEvaluator.getEvaluator(
       null,
       new Rollup__mdt(
-        RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+        RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
         RollupFieldOnCalcItem__c = 'Amount',
         LookupFieldOnCalcItem__c = 'AccountId'
       ),
@@ -847,7 +847,7 @@ private class RollupEvaluatorTests {
     oldOpp.StageName = 'Old Name';
 
     Rollup__mdt rollupMetadata = new Rollup__mdt(
-      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
       ChangedFieldsOnCalcItem__c = 'StageName',
       CalcItemWhereClause__c = 'Amount > 20',
       RollupFieldOnCalcItem__c = 'Amount',
@@ -876,7 +876,7 @@ private class RollupEvaluatorTests {
     oldOpp.StageName = 'Old Name';
 
     Rollup__mdt rollupMetadata = new Rollup__mdt(
-      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
       ChangedFieldsOnCalcItem__c = 'StageName',
       RollupFieldOnCalcItem__c = 'Amount',
       LookupFieldOnCalcItem__c = 'AccountId'
@@ -908,7 +908,7 @@ private class RollupEvaluatorTests {
     Opportunity nonMatchingOpp = new Opportunity(Id = '0066g000000000000Y', Amount = 15, AccountId = '0016g000000000000X');
 
     Rollup__mdt rollupMetadata = new Rollup__mdt(
-      RollupOperation__c = Rollup.Op.UPDATE_CONCAT_DISTINCT.name(),
+      RollupOperation__c = RollupOperation.UPDATE_CONCAT_DISTINCT.name(),
       CalcItemWhereClause__c = 'Amount > 20',
       RollupFieldOnCalcItem__c = 'Amount',
       LookupFieldOnCalcItem__c = 'AccountId'

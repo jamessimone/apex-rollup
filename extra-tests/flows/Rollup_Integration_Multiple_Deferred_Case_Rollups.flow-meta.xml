@@ -3,8 +3,8 @@
     <actionCalls>
         <name>Add_matching_description_to_Site</name>
         <label>Add matching description to Site</label>
-        <locationX>176</locationX>
-        <locationY>815</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -64,12 +64,14 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>CONCAT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>REFRESH</stringValue>
             </value>
         </inputParameters>
@@ -79,22 +81,26 @@
                 <stringValue>Description = &apos;Name Match&apos; AND Subject = &apos;Refresh Test&apos;</stringValue>
             </value>
         </inputParameters>
+        <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
         <name>Commit_deferred_rollups</name>
         <label>Commit deferred rollups</label>
-        <locationX>176</locationX>
-        <locationY>935</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>RollupFlowBulkSaver</actionName>
         <actionType>apex</actionType>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <nameSegment>RollupFlowBulkSaver</nameSegment>
+        <offset>0</offset>
     </actionCalls>
     <actionCalls>
         <name>Count_Cases</name>
         <label>Count Cases</label>
-        <locationX>176</locationX>
-        <locationY>695</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -160,22 +166,26 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>COUNT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>UPSERT</stringValue>
             </value>
         </inputParameters>
+        <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
         <name>Rollup_Case_Description_To_Account_Description</name>
         <label>Concat Case Description To Account Description</label>
-        <locationX>176</locationX>
-        <locationY>455</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -191,9 +201,9 @@
         </dataTypeMappings>
         <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <inputParameters>
-            <name>rollupFieldOnCalcItem</name>
+            <name>deferProcessing</name>
             <value>
-                <stringValue>Description</stringValue>
+                <booleanValue>true</booleanValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -203,9 +213,9 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>deferProcessing</name>
+            <name>lookupFieldOnOpObject</name>
             <value>
-                <booleanValue>true</booleanValue>
+                <stringValue>Id</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -221,9 +231,16 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupSObjectName</name>
+            <name>rollupContext</name>
             <value>
-                <stringValue>Account</stringValue>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
+                <stringValue>UPSERT</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>rollupFieldOnCalcItem</name>
+            <value>
+                <stringValue>Description</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -233,30 +250,27 @@
             </value>
         </inputParameters>
         <inputParameters>
-            <name>lookupFieldOnOpObject</name>
-            <value>
-                <stringValue>Id</stringValue>
-            </value>
-        </inputParameters>
-        <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>CONCAT_DISTINCT</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
-            <name>rollupContext</name>
+            <name>rollupSObjectName</name>
             <value>
-                <stringValue>UPSERT</stringValue>
+                <stringValue>Account</stringValue>
             </value>
         </inputParameters>
+        <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <actionCalls>
         <name>Rollup_Last_Name</name>
         <label>Rollup Last Name</label>
-        <locationX>176</locationX>
-        <locationY>575</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <actionName>Rollup</actionName>
         <actionType>apex</actionType>
         <connector>
@@ -322,23 +336,28 @@
         <inputParameters>
             <name>rollupOperation</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>LAST</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>rollupContext</name>
             <value>
+                <inputConfiguratorMode>Resource</inputConfiguratorMode>
                 <stringValue>UPSERT</stringValue>
             </value>
         </inputParameters>
+        <nameSegment>Rollup</nameSegment>
+        <offset>0</offset>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>64.0</apiVersion>
+    <apiVersion>67.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
         <name>Add_case_and_prior_case_to_collections</name>
         <label>Add case and prior case to collections</label>
-        <locationX>176</locationX>
-        <locationY>335</locationY>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
         <assignmentItems>
             <assignToReference>Cases</assignToReference>
             <operator>Add</operator>
@@ -381,7 +400,7 @@
     </processMetadataValues>
     <processType>AutoLaunchedFlow</processType>
     <start>
-        <locationX>50</locationX>
+        <locationX>0</locationX>
         <locationY>0</locationY>
         <connector>
             <targetReference>Add_case_and_prior_case_to_collections</targetReference>

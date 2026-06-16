@@ -4,16 +4,16 @@ private class RollupCalcItemReplacerTests {
   @TestSetup
   static void setup() {
     Rollup.defaultControl = new RollupControl__mdt(ShouldAbortRun__c = true);
-    insert new Account(Name = RollupCalcItemReplacerTests.class.getName(), AnnualRevenue = ACC_ANNUAL_REVENUE);
+    insert as system new Account(Name = RollupCalcItemReplacerTests.class.getName(), AnnualRevenue = ACC_ANNUAL_REVENUE);
   }
 
   @IsTest
   static void shouldNotTryToQueryRelationshipFieldsWhenTheyAlreadyExistOnPassedInRecords() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
 
     Contact con = new Contact(LastName = 'Lookup to Account', AccountId = acc.Id);
-    insert con;
-    con = [SELECT Id, Account.Name FROM Contact];
+    insert as system con;
+    con = [SELECT Id, Account.Name FROM Contact WITH SYSTEM_MODE];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
@@ -30,11 +30,11 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void shouldSafelyRequeryRelationshipFields() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
 
     Contact con = new Contact(LastName = 'Lookup to Account', AccountId = acc.Id);
-    insert con;
-    con = [SELECT Id, LastName, Account.Id FROM Contact];
+    insert as system con;
+    con = [SELECT Id, LastName, Account.Id FROM Contact WITH SYSTEM_MODE];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
@@ -56,10 +56,10 @@ private class RollupCalcItemReplacerTests {
   static void shouldWorkWithNonReparentableItems() {
     Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test non reparent', Name = 'opp', Amount = 5);
     Contact con = new Contact(LastName = 'Con');
-    insert new List<SObject>{ opp, con };
+    insert as system new List<SObject>{ opp, con };
 
     OpportunityContactRole oppConRole = new OpportunityContactRole(OpportunityId = opp.Id, ContactId = con.Id);
-    insert oppConRole;
+    insert as system oppConRole;
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
@@ -75,14 +75,14 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void shouldNotQueryRelationshipFieldsFromAnotherObject() {
-    Account parentAccount = [SELECT Id FROM Account];
+    Account parentAccount = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account acc = new Account(ParentId = parentAccount.Id, Name = 'Child account');
     Opportunity opp = new Opportunity(CloseDate = System.today(), StageName = 'test non reparent', Name = 'opp', Amount = 5);
     Contact con = new Contact(LastName = 'Con');
-    insert new List<SObject>{ opp, con, acc };
+    insert as system new List<SObject>{ opp, con, acc };
 
     OpportunityContactRole oppConRole = new OpportunityContactRole(OpportunityId = opp.Id, ContactId = con.Id);
-    insert oppConRole;
+    insert as system oppConRole;
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
@@ -103,11 +103,11 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void shouldRetrieveQueryFieldsPartOfOrderBy() {
-    Account acc = [SELECT Id, Name FROM Account];
+    Account acc = [SELECT Id, Name FROM Account WITH SYSTEM_MODE];
 
     Contact con = new Contact(LastName = 'Ordered by Account Name', AccountId = acc.Id);
-    insert con;
-    con = [SELECT Id, LastName, Account.Id FROM Contact];
+    insert as system con;
+    con = [SELECT Id, LastName, Account.Id FROM Contact WITH SYSTEM_MODE];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
@@ -123,7 +123,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void addsMissingBaseFieldsToCalcItems() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 2)
@@ -138,7 +138,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void skipsNonUpdateableFields() {
-    Account acc = [SELECT Id, CreatedDate FROM Account];
+    Account acc = [SELECT Id, CreatedDate FROM Account WITH SYSTEM_MODE];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 1)
@@ -165,7 +165,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void worksWithParantheticalNotClauses() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
 
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 2)
@@ -180,7 +180,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void exclusiveWhereClauseWithMultipleMetadataRecordsDoesNotBlowUpList() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
     );
@@ -198,7 +198,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void doesNotUseAndForMultipleParentWhereClauses() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
     );
@@ -217,7 +217,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void doesNotReplaceForCustomTypeFields() {
-    List<Account> accounts = [SELECT Id FROM Account];
+    List<Account> accounts = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Integer currentQueryCount = Limits.getQueries();
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
@@ -233,7 +233,7 @@ private class RollupCalcItemReplacerTests {
 
   @IsTest
   static void doesNotReplaceForCustomTypeFieldsWithPrecedingCharacters() {
-    List<Account> accounts = [SELECT Id, AType__c FROM Account];
+    List<Account> accounts = [SELECT Id, AType__c FROM Account WITH SYSTEM_MODE];
     Integer currentQueryCount = Limits.getQueries();
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(
       new RollupControl__mdt(IsRollupLoggingEnabled__c = true, ReplaceCalcItemsAsyncWhenOverCount__c = 3)
@@ -250,11 +250,11 @@ private class RollupCalcItemReplacerTests {
   @IsTest
   static void shouldNotFailWhenParentClauseHasNonPolymorphicType() {
     Opportunity opp = new Opportunity(Type = 'hi', Name = 'someName', CloseDate = System.today(), StageName = 'Closed Won');
-    insert opp;
+    insert as system opp;
     Contact con = new Contact(LastName = 'someName');
-    insert con;
+    insert as system con;
     OpportunityContactRole oppConRole = new OpportunityContactRole(OpportunityId = opp.Id, ContactId = con.Id);
-    insert oppConRole;
+    insert as system oppConRole;
 
     String whereClause = 'Opportunity.Type != \'someName\' AND Opportunity.Name = \'someName\'';
     RollupCalcItemReplacer replacer = new RollupCalcItemReplacer(

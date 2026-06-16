@@ -19,6 +19,7 @@
     <testClassName>RollupLimitsTest</testClassName>
     <testClassName>RollupLoggerTests</testClassName>
     <testClassName>RollupMultiCurrencyTests</testClassName>
+    <testClassName>RollupOperationFlowPicklistProvider</testClassName>
     <testClassName>RollupParentResetProcessorTests</testClassName>
     <testClassName>RollupQueryBuilderTests</testClassName>
     <testClassName>RollupRecursionItemTests</testClassName>

@@ -1,6 +1,10 @@
 @SuppressWarnings('PMD.AvoidGlobalModifier')
 global without sharing class RollupFlowRecalculator {
-  @InvocableMethod(category='Rollups' label='Full Recalc Comma-Separated Parent API Names')
+  @InvocableMethod(
+    category='Rollups'
+    label='Full Recalc Comma-Separated Parent API Names'
+    description='Run full recalculations for all rollups whose parent matches the parent(s) API names provided'
+  )
   global static List<Rollup.FlowOutput> performFullRecalcRollups(List<RollupFlowFullRecalcDispatcher.FlowInput> inputs) {
     return new RollupFlowFullRecalcDispatcher().process(inputs, new ParentNamePreprocessor());
   }

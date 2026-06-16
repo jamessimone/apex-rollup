@@ -26,6 +26,11 @@
             <dataType>Integer</dataType>
             <value>90</value>
         </attributes>
+        <attributes>
+            <key>ProvidedValuesList</key>
+            <dataType>String</dataType>
+            <value>INSERT, UPDATE, UPSERT, DELETE</value>
+        </attributes>
     </targets>
     <targets>
         <targetType>ActionParameter</targetType>

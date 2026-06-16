@@ -3,7 +3,7 @@ private class RollupFlowFullRecalcDispatcherTests {
   @TestSetup
   static void setup() {
     Account acc = new Account(Name = RollupFlowFullRecalcDispatcherTests.class.getName());
-    insert acc;
+    insert as system acc;
 
     List<ContactPointAddress> cpas = new List<ContactPointAddress>{
       new ContactPointAddress(Name = 'oneCMDT', ParentId = acc.Id, PreferenceRank = 1),
@@ -13,9 +13,9 @@ private class RollupFlowFullRecalcDispatcherTests {
       new ContactPointAddress(Name = 'fiveCMDT', ParentId = acc.Id, PreferenceRank = 1),
       new ContactPointAddress(Name = 'sixCMDT', ParentId = acc.Id, PreferenceRank = 1)
     };
-    insert cpas;
+    insert as system cpas;
 
-    upsert new RollupSettings__c(IsEnabled__c = true);
+    upsert as system new RollupSettings__c(IsEnabled__c = true);
   }
 
   @IsTest
@@ -66,7 +66,7 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(getFlowInputs(Rollup.rollupMetadata));
     Test.stopTest();
 
-    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
     System.assertEquals(
@@ -74,8 +74,7 @@ private class RollupFlowFullRecalcDispatcherTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
-      ]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
     );
   }
 
@@ -113,7 +112,7 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowRecalculator.performFullRecalcRollups(new List<RollupFlowFullRecalcDispatcher.FlowInput>{ input });
     Test.stopTest();
 
-    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(1, acc.NumberOfEmployees);
     System.assertEquals(
@@ -121,14 +120,13 @@ private class RollupFlowFullRecalcDispatcherTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
-      ]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
     );
   }
 
   @IsTest
   static void supportsMultipleChildrenGrandparentTypesAtOnce() {
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
 
     Rollup.onlyUseMockMetadata = true;
     Rollup__mdt cpaMeta = new Rollup__mdt(
@@ -156,7 +154,7 @@ private class RollupFlowFullRecalcDispatcherTests {
     );
     Rollup.rollupMetadata = new List<Rollup__mdt>{ cpaMeta, taskMeta };
 
-    insert new List<Task>{
+    insert as system new List<Task>{
       new Task(WhatId = acc.Id, CallDurationInSeconds = 5, Subject = 'Winner', ActivityDate = System.today()),
       new Task(WhatId = acc.Id, CallDurationInSeconds = 6, Subject = 'Not Min', ActivityDate = System.today())
     };
@@ -169,7 +167,7 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    User user = [SELECT Latitude, Longitude FROM User WHERE Id = :acc.OwnerId];
+    User user = [SELECT Latitude, Longitude FROM User WHERE Id = :acc.OwnerId WITH SYSTEM_MODE];
     System.assertEquals(6, user.Longitude);
     System.assertEquals(5, user.Latitude);
   }
@@ -208,16 +206,16 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(6, acc.NumberOfEmployees);
   }
 
   @IsTest
   static void supportsIndividualParentFullRecalc() {
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
     Account excluded = new Account(Name = 'Individual That Should Not Be Reset', AnnualRevenue = 5);
-    insert excluded;
+    insert as system excluded;
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
@@ -239,13 +237,13 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
-    Assert.areEqual(5, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id].AnnualRevenue);
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(5, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue);
   }
 
   @IsTest
   static void supportsIndividualParentFullRecalcWithNoOpParentResetProcessor() {
-    Account acc = [SELECT Id, OwnerId FROM Account];
+    Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       // intentionally include a no-op parent reset processor first
@@ -289,7 +287,7 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id];
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
     Assert.areEqual(6, acc.AnnualRevenue);
     Assert.areEqual(1, acc.NumberOfEmployees);
   }
@@ -325,17 +323,17 @@ private class RollupFlowFullRecalcDispatcherTests {
     new Flow.Interview.Rollup_Integration_Comma_Separated_Full_Recalc(new Map<String, Object>{ 'rollupNames' => 'cmdt1, cmdt2' }).start();
     Test.stopTest();
 
-    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account];
+    Account acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WITH SYSTEM_MODE];
     System.assertEquals(6, acc.AnnualRevenue);
     System.assertEquals(6, acc.NumberOfEmployees);
   }
 
   @IsTest
   static void supportsMultipleParentIdsInCommaSeparatedList() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account second = new Account(Name = 'Second Parent', AnnualRevenue = 5);
     Account excluded = new Account(Name = 'Should Not Update', AnnualRevenue = 99);
-    insert new List<Account>{ second, excluded };
+    insert as system new List<Account>{ second, excluded };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -359,17 +357,17 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
-    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id].AnnualRevenue);
-    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id].AnnualRevenue, 'Excluded account should not have been updated');
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue, 'Excluded account should not have been updated');
   }
 
   @IsTest
   static void supportsMultipleParentIdsInList() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account second = new Account(Name = 'Second Parent', AnnualRevenue = 5);
     Account excluded = new Account(Name = 'Should Not Update', AnnualRevenue = 99);
-    insert new List<Account>{ second, excluded };
+    insert as system new List<Account>{ second, excluded };
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -393,16 +391,16 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
-    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id].AnnualRevenue);
-    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id].AnnualRevenue, 'Excluded account should not have been updated');
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue, 'Excluded account should not have been updated');
   }
 
   @IsTest
   static void supportsMultipleParentIdsAcrossMultipleCmdtMetadata() {
-    Account acc = [SELECT Id FROM Account];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account second = new Account(Name = 'Second Parent');
-    insert second;
+    insert as system second;
 
     Rollup.onlyUseMockMetadata = true;
     Rollup.rollupMetadata = new List<Rollup__mdt>{
@@ -437,10 +435,10 @@ private class RollupFlowFullRecalcDispatcherTests {
     RollupFlowFullRecalcDispatcher.performFullRecalcRollups(flowInputs);
     Test.stopTest();
 
-    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id].AnnualRevenue);
-    Assert.areEqual(6, [SELECT NumberOfEmployees FROM Account WHERE Id = :acc.Id].NumberOfEmployees);
-    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id].AnnualRevenue);
-    Assert.areEqual(0, [SELECT NumberOfEmployees FROM Account WHERE Id = :second.Id].NumberOfEmployees);
+    Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(6, [SELECT NumberOfEmployees FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].NumberOfEmployees);
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].AnnualRevenue);
+    Assert.areEqual(0, [SELECT NumberOfEmployees FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].NumberOfEmployees);
   }
 
   private static List<RollupFlowFullRecalcDispatcher.FlowInput> getFlowInputs(List<Rollup__mdt> metas) {

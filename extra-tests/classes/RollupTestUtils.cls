@@ -36,7 +36,7 @@ public class RollupTestUtils {
   }
 
   public static DMLMock loadAccountIdMock(List<SObject> records) {
-    Account acc = [SELECT Id FROM Account LIMIT 1];
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE LIMIT 1];
     for (SObject record : records) {
       record.put('ParentId', acc.Id);
     }
@@ -105,7 +105,7 @@ public class RollupTestUtils {
     }
     String whereClause = recordId == null ? '' : '\nWHERE Id = :recordId';
     String recordQuery = 'SELECT ' + String.join(fieldNames, ', ') + '\nFROM ' + fromObject + whereClause;
-    return Database.query(recordQuery);
+    return Database.query(recordQuery, System.AccessLevel.SYSTEM_MODE);
   }
 
   public static String getNamespaceSafeClassName(Type intendedClass) {
