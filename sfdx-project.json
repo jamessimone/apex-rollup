@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes https://github.com/jamessimone/apex-rollup/issues/766 by ensuring recalculations occur when a parent lookup is cleared",
-            "versionNumber": "1.7.40.0",
+            "versionName": "Summer 26 updates",
+            "versionNumber": "1.7.41.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -85,7 +85,7 @@
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "67.0",
+    "sourceApiVersion": "65.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.13": "04tKf000000syF7IAI",

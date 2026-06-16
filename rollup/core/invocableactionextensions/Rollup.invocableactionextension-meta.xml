@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <InvocableActionExt xmlns="http://soap.sforce.com/2006/04/metadata">
     <targets>
+        <targetType>ActionDefinition</targetType>
+        <targetName>Rollup</targetName>
+        <attributes>
+            <key>CustomHeaderLwcName</key>
+            <dataType>String</dataType>
+            <value>c:rollupDeprecatedHeader</value>
+        </attributes>
+    </targets>
+    <targets>
         <targetType>ActionParameter</targetType>
         <targetName>Rollup.FlowInput.recordsToRollup</targetName>
         <attributes>
