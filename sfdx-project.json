@@ -89,6 +89,7 @@
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.13": "04tKf000000syF7IAI",
+        "Apex Rollup - Custom Logger@0.0.14": "04tg7000000ClG5AAK",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.28": "04tg70000002W8fAAE",
         "Apex Rollup - Extra Code Coverage@0.0.29": "04tg70000006DqbAAE",
@@ -105,7 +106,6 @@
         "apex-rollup@1.7.38": "04tg70000005Bm1AAE",
         "apex-rollup@1.7.39": "04tg70000007hmbAAA",
         "apex-rollup@1.7.40": "04tg7000000CG0zAAG",
-        "apex-rollup@1.7.41": "04tg7000000CkyLAAS",
-        "Apex Rollup - Custom Logger@0.0.14": "04tg7000000ClG5AAK"
+        "apex-rollup@1.7.41": "04tg7000000CkyLAAS"
     }
 }
