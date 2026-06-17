@@ -5,6 +5,7 @@
     <testClassName>RollupCalcItemReplacerTests</testClassName>
     <testClassName>RollupCalcItemSorterTests</testClassName>
     <testClassName>RollupCalculatorTests</testClassName>
+    <testClassName>RollupContextFlowPicklistProviderTest</testClassName>
     <testClassName>RollupCurrencyInfoTests</testClassName>
     <testClassName>RollupDateLiteralTests</testClassName>
     <testClassName>RollupEvaluatorTests</testClassName>

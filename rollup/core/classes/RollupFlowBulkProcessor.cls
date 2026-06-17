@@ -6,7 +6,7 @@ global without sharing class RollupFlowBulkProcessor {
     global List<SObject> recordsToRollup;
     @InvocableVariable(label='Prior records to rollup' description='The old version of the records for update/upsert')
     global List<SObject> oldRecordsToRollup = new List<SObject>();
-    @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, or DELETE' required=true)
+    @InvocableVariable(label='Rollup Context' description='INSERT, UPDATE, UPSERT, DELETE or REFRESH' required=true)
     global String rollupContext;
     // Shared between this and Rollup.FlowInput
     @InvocableVariable(label='Defer processing?' description='When set to true, the "Process Deferred Rollups" action must also be called' defaultValue='false')

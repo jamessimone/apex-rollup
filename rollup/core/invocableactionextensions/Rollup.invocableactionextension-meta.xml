@@ -97,7 +97,7 @@
         <attributes>
             <key>ProvidedValuesList</key>
             <dataType>String</dataType>
-            <value>INSERT, UPDATE, UPSERT, DELETE, REFRESH</value>
+            <value>apex://RollupContextFlowPicklistProvider</value>
         </attributes>
     </targets>
     <targets>
