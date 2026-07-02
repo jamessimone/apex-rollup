@@ -691,8 +691,9 @@ public without sharing abstract class RollupDateLiteral {
    */
   private virtual class LastQuarterLiteral extends RollupDateLiteral {
     public LastQuarterLiteral() {
-      this.ref = getRelativeDatetime(this.getLastQuarterStart(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME));
+      Date lastQuarterStart = this.getLastQuarterStart();
+      this.ref = getRelativeDatetime(lastQuarterStart, START_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(lastQuarterStart.addMonths(3).addDays(-1), END_TIME));
     }
 
     protected virtual Date getLastQuarterStart() {
@@ -705,8 +706,9 @@ public without sharing abstract class RollupDateLiteral {
    */
   private virtual class ThisQuarterLiteral extends RollupDateLiteral {
     public ThisQuarterLiteral() {
-      this.ref = getRelativeDatetime(this.getThisQuarterStart(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME));
+      Date thisQuarterStart = this.getThisQuarterStart();
+      this.ref = getRelativeDatetime(thisQuarterStart, START_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(thisQuarterStart.addMonths(3).addDays(-1), END_TIME));
     }
 
     protected virtual Date getThisQuarterStart() {
@@ -719,8 +721,9 @@ public without sharing abstract class RollupDateLiteral {
    */
   private virtual class NextQuarterLiteral extends RollupDateLiteral {
     public NextQuarterLiteral() {
-      this.ref = getRelativeDatetime(this.getNextQuarterDate(), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME));
+      Date nextQuarterStart = this.getNextQuarterDate();
+      this.ref = getRelativeDatetime(nextQuarterStart, START_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(nextQuarterStart.addMonths(3).addDays(-1), END_TIME));
     }
 
     protected virtual Date getNextQuarterDate() {
@@ -750,8 +753,9 @@ public without sharing abstract class RollupDateLiteral {
   private class NQuartersAgoLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer quarterRange = Integer.valueOf(num);
-      this.ref = getRelativeDatetime(Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3), START_TIME);
-      this.bound = offsetToFirstDay(getRelativeDatetime(this.ref.addMonths(3).addDays(-1).date(), END_TIME));
+      Date relativeQuarterStart = Date.newInstance(System.today().year(), getCurrentQuarterStartMonth(), 1).addMonths(-quarterRange * 3);
+      this.ref = getRelativeDatetime(relativeQuarterStart, START_TIME);
+      this.bound = offsetToFirstDay(getRelativeDatetime(relativeQuarterStart.addMonths(3).addDays(-1), END_TIME));
     }
   }
 
