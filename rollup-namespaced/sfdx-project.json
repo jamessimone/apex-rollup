@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Date literal updates",
-            "versionNumber": "1.2.38.0",
+            "versionName": "Adds specific Rollup custom metadata link to deprecated Flow header component",
+            "versionNumber": "1.2.39.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -55,6 +55,7 @@
         "apex-rollup-namespaced@1.2.35": "04tg70000007ht3AAA",
         "apex-rollup-namespaced@1.2.36": "04tg7000000CG7RAAW",
         "apex-rollup-namespaced@1.2.37": "04tg7000000CmldAAC",
-        "apex-rollup-namespaced@1.2.38": "04tg7000000EP09AAG"
+        "apex-rollup-namespaced@1.2.38": "04tg7000000EP09AAG",
+        "apex-rollup-namespaced@1.2.39": "04tg7000000F77dAAC"
     }
 }
