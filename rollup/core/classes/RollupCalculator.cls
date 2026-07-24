@@ -724,7 +724,7 @@ public without sharing abstract class RollupCalculator {
     public virtual override Object getReturnValue() {
       Object superReturnVal = super.getReturnValue();
       if (superReturnVal instanceof Decimal) {
-        this.returnVal = Datetime.newInstance(((Decimal) superReturnVal).longValue());
+        this.returnVal = RollupFieldInitializer.Current.getApexCompliantDatetime(Datetime.newInstance(((Decimal) superReturnVal).longValue()));
       } else if (superReturnVal == 0) {
         this.returnVal = this.defaultVal;
       }
@@ -735,6 +735,9 @@ public without sharing abstract class RollupCalculator {
       priorVal = priorVal ?? RollupFieldInitializer.Current.defaultDateTime;
       if (priorVal instanceof Datetime) {
         priorVal = ((Datetime) priorVal).getTime();
+      } else if (priorVal instanceof String) {
+        // route date/datetime strings through the same GMT-safe parse used during rollup
+        priorVal = this.getDecimalOrDefault(priorVal);
       }
       super.setDefaultValues(lookupRecordKey, priorVal);
     }
@@ -749,7 +752,7 @@ public without sharing abstract class RollupCalculator {
         try {
           datetimeWithMs = Datetime.valueOf((String) potentialDatetimeValue);
         } catch (Exception ex) {
-          datetimeWithMs = Datetime.newInstance(Date.valueOf(potentialDatetimeValue), Time.newInstance(0, 0, 0, 0));
+          datetimeWithMs = Datetime.newInstanceGmt(Date.valueOf(potentialDatetimeValue), Time.newInstance(0, 0, 0, 0));
         }
       } else if (potentiallyUninitialized instanceof Decimal) {
         datetimeWithMs = Datetime.newInstance(((Decimal) potentiallyUninitialized).longValue());
