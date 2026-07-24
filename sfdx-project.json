@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Adds specific Rollup custom metadata link to deprecated Flow header component",
-            "versionNumber": "1.7.43.0",
+            "versionName": "TODO",
+            "versionNumber": "1.7.44.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,8 +102,6 @@
         "Apex Rollup - Rollup Callback@0.0.3-0": "04t6g000008Sis0AAC",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.40": "04tg7000000CG0zAAG",
-        "apex-rollup@1.7.41": "04tg7000000CmfBAAS",
         "apex-rollup@1.7.42": "04tg7000000EOwvAAG",
         "apex-rollup@1.7.43": "04tg7000000F761AAC"
     }

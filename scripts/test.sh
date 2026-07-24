@@ -24,7 +24,7 @@ sf config set target-org james@sheandjim.com target-dev-hub james@sheandjim.com
 scratchOrgAllotment=$(sf org list limits 2>/dev/null --json | jq -r '.result[] | select (.name=="DailyScratchOrgs").remaining')
 
 echo "Total remaining scratch orgs for the day: $scratchOrgAllotment"
-testInvocation='sf apex run test --code-coverage --output-dir ./tests/apex --result-format human --wait 20'
+testInvocation='sf apex run test --suite-names ApexRollupTestSuite --code-coverage --output-dir ./tests/apex --result-format human --wait 20'
 echo "Test command to use: $testInvocation"
 
 if [ $scratchOrgAllotment -gt 0 ]; then
