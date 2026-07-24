@@ -16,10 +16,8 @@ public virtual class RollupFieldInitializer {
   }
 
   public Datetime getApexCompliantDatetime(Datetime dt) {
-    // normalize to GMT components but preserve ms; SOQL drops ms on retrieval but rollup calc may carry them (Time fields)
-    Datetime normalized = Datetime.newInstanceGmt(dt.yearGmt(), dt.monthGmt(), dt.dayGmt(), dt.hourGmt(), dt.minuteGmt(), dt.secondGmt());
-    Long msRemainder = Math.mod(dt.getTime(), 1000);
-    return msRemainder == 0 ? normalized : Datetime.newInstance(normalized.getTime() + msRemainder);
+    // one of the worst things about SOQL is that Datetimes retrieved have the millisecond values truncated
+    return Datetime.newInstanceGmt(dt.yearGmt(), dt.monthGmt(), dt.dayGmt(), dt.hourGmt(), dt.minuteGmt(), dt.secondGmt());
   }
 
   public virtual Object getDefaultValue(Schema.SObjectField field) {
