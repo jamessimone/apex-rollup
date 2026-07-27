@@ -735,6 +735,9 @@ public without sharing abstract class RollupCalculator {
       priorVal = priorVal ?? RollupFieldInitializer.Current.defaultDateTime;
       if (priorVal instanceof Datetime) {
         priorVal = ((Datetime) priorVal).getTime();
+      } else if (priorVal instanceof String) {
+        // route date/datetime strings through the same GMT-safe parse used during rollup
+        priorVal = this.getDecimalOrDefault(priorVal);
       }
       super.setDefaultValues(lookupRecordKey, priorVal);
     }
@@ -749,7 +752,7 @@ public without sharing abstract class RollupCalculator {
         try {
           datetimeWithMs = Datetime.valueOf((String) potentialDatetimeValue);
         } catch (Exception ex) {
-          datetimeWithMs = Datetime.newInstance(Date.valueOf(potentialDatetimeValue), Time.newInstance(0, 0, 0, 0));
+          datetimeWithMs = Datetime.newInstanceGmt(Date.valueOf(potentialDatetimeValue), Time.newInstance(0, 0, 0, 0));
         }
       } else if (potentiallyUninitialized instanceof Decimal) {
         datetimeWithMs = Datetime.newInstance(((Decimal) potentiallyUninitialized).longValue());
