@@ -724,11 +724,7 @@ public without sharing abstract class RollupCalculator {
     public virtual override Object getReturnValue() {
       Object superReturnVal = super.getReturnValue();
       if (superReturnVal instanceof Decimal) {
-        // normalize to GMT via getApexCompliantDatetime, then restore ms for Time-field precision
-        Long epochMs = ((Decimal) superReturnVal).longValue();
-        Datetime normalized = RollupFieldInitializer.Current.getApexCompliantDatetime(Datetime.newInstance(epochMs));
-        Long msRemainder = Math.mod(epochMs, 1000);
-        this.returnVal = msRemainder == 0 ? normalized : Datetime.newInstance(normalized.getTime() + msRemainder);
+        this.returnVal = Datetime.newInstance(((Decimal) superReturnVal).longValue());
       } else if (superReturnVal == 0) {
         this.returnVal = this.defaultVal;
       }
