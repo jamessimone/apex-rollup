@@ -21,8 +21,8 @@
                     "package": "apex-rollup@1.7.41"
                 }
             ],
-            "versionNumber": "0.0.14.0",
-            "versionName": "Summer 26 updates",
+            "versionNumber": "0.0.15.0",
+            "versionName": "Summer 26 updates - redux",
             "versionDescription": "Security updates for Summer 26 now that Apex runs in user context by default",
             "default": false,
             "unpackagedMetadata": {
@@ -88,8 +88,8 @@
     "sourceApiVersion": "65.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
-        "Apex Rollup - Custom Logger@0.0.13": "04tKf000000syF7IAI",
         "Apex Rollup - Custom Logger@0.0.14": "04tg7000000ClG5AAK",
+        "Apex Rollup - Custom Logger@0.0.15": "04tg7000000GZLBAA4",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.29": "04tg70000006DqbAAE",
         "Apex Rollup - Extra Code Coverage@0.0.30": "04tg7000000EOqTAAW",

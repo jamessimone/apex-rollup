@@ -42,7 +42,7 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
     RollupLogger.Instance.log('RollupLogBatchPurger finishing up after having deleted ' + this.recordCount + ' rollup logs', System.LoggingLevel.DEBUG);
 
     String orphanedLogsQuery = 'SELECT Count() FROM RollupLog__c WHERE NumberOfLogEntries__c = 0 AND IsDeleted = false';
-    if (Database.countQuery(orphanedLogsQuery) > 0 && this.hasDeletedOrphanedLogs == false) {
+    if (Database.countQuery(orphanedLogsQuery, System.AccessLevel.SYSTEM_MODE) > 0 && this.hasDeletedOrphanedLogs == false) {
       orphanedLogsQuery = orphanedLogsQuery.replace('Count()', 'Id');
       this.hasDeletedOrphanedLogs = true;
       RollupLogger.Instance.log('Deleting orphaned logs ...', System.LoggingLevel.DEBUG);
