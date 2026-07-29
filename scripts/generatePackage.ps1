@@ -11,43 +11,6 @@ $sfdxProjectJson = Get-SFDX-Project-JSON
 $loggerClassPath = "./rollup/core/classes/RollupLogger.cls"
 $shouldGitAddLoggerClass = $true;
 
-function Invoke-Extra-Code-Coverage-Prep() {
-  $extraCodeCoveragePath = "./plugins/ExtraCodeCoverage/classes"
-  if (Test-Path $extraCodeCoveragePath) {
-    Write-Host "Dir exists, deleting"
-    rm $extraCodeCoveragePath -Recurse
-  }
-
-  Write-Host "Recreating ExtraCodeCoverage classes dir"
-  mkdir $extraCodeCoveragePath
-
-  Write-Host "Copying rollup tests to git ignored $extraCodeCoveragePath directory"
-
-  $fileNames = @(
-    "RollupCalcItemSorterTests"
-    "RollupCalculatorTests"
-    "RollupContextFlowPicklistProviderTest"
-    "RollupDateLiteralTests"
-    "RollupEvaluatorTests"
-    "RollupFinalizerTests"
-    "RollupFlowBulkProcessorTests"
-    "RollupFlowTests"
-    "RollupLimitsTest"
-    "RollupLoggerTests"
-    "RollupOperationFlowPicklistProviderTest"
-    "RollupParentResetProcessorTests"
-    "RollupQueryBuilderTests"
-    "RollupRecursionItemTests"
-    "RollupRelationshipFieldFinderTests"
-    "RollupTests"
-    "RollupTestUtils"
-  )
-  foreach ($fileName in $fileNames) {
-    Copy-Item "extra-tests/classes/$fileName.cls" $extraCodeCoveragePath
-    Copy-Item "extra-tests/classes/$fileName.cls-meta.xml" $extraCodeCoveragePath
-  }
-}
-
 function Update-Package-Install-Links {
   param (
     $filePath,
@@ -151,10 +114,6 @@ function Generate() {
   )
 
   Write-Host "Starting for $packageName" -ForegroundColor Yellow
-
-  if ("Apex Rollup - Extra Code Coverage" -eq $packageName) {
-    Invoke-Extra-Code-Coverage-Prep
-  }
 
   $currentPackage = Get-Package-Directory $packageName
   Get-Next-Package-Version $currentPackage $packageName
