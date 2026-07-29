@@ -4,6 +4,7 @@
     <testClassName>RollupCalculatorTests</testClassName>
     <testClassName>RollupContextFlowPicklistProviderTest</testClassName>
     <testClassName>RollupDateLiteralTests</testClassName>
+    <testClassName>RollupDatetimeTimezoneTests</testClassName>
     <testClassName>RollupEvaluatorTests</testClassName>
     <testClassName>RollupFinalizerTests</testClassName>
     <testClassName>RollupFlowBulkProcessorTests</testClassName>

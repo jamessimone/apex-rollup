@@ -1,6 +1,6 @@
 @IsTest
 private class RollupDatetimeTimezoneTests {
-  // Without the GMT normalization in getReturnValue/getDecimalOrDefault, these assertions
+  // Without proper GMT normalization in RollupCalculator, these assertions
   // would fail for any user not in UTC because Datetime.newInstance(Long) and
   // Datetime.newInstance(Date, Time) interpret args in the running user's local timezone.
 
@@ -60,10 +60,7 @@ private class RollupDatetimeTimezoneTests {
       calc.setDefaultValues(RollupTestUtils.createId(Account.SObjectType), dateString);
 
       // Feed a later Datetime so the MIN stays on our date-string value
-      Event evt = new Event(
-        ActivityDateTime = Datetime.newInstanceGmt(2025, 1, 1, 0, 0, 0),
-        Id = RollupTestUtils.createId(Event.SObjectType)
-      );
+      Event evt = new Event(ActivityDateTime = Datetime.newInstanceGmt(2025, 1, 1, 0, 0, 0), Id = RollupTestUtils.createId(Event.SObjectType));
       calc.performRollup(new List<SObject>{ evt }, new Map<Id, SObject>());
 
       Datetime result = (Datetime) calc.getReturnValue();
