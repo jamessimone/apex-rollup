@@ -4,7 +4,7 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": null,
+            "versionName": "Bundle basic tests into base package",
             "versionNumber": "1.2.40.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
@@ -57,6 +57,6 @@
         "apex-rollup-namespaced@1.2.37": "04tg7000000CmldAAC",
         "apex-rollup-namespaced@1.2.38": "04tg7000000EP09AAG",
         "apex-rollup-namespaced@1.2.39": "04tg7000000F77dAAC",
-        "apex-rollup-namespaced@1.2.40": "04tg7000000GdF7AAK"
+        "apex-rollup-namespaced@1.2.40": "04tg7000000GdLZAA0"
     }
 }
