@@ -1011,8 +1011,6 @@ global interface IPrePostUpdater {
 }
 ```
 
-- If you need to generate additional test code coverage for `apex-rollup` (which might be necessary in a highly declarative org), you can install the [Extra Code Coverage plugin](plugins/ExtraCodeCoverage), which automatically gets updated any time I make changes to tests here.
-
 - To customize how updates are made to the parent-level records in Rollup, create a `Rollup Plugin` custom metadata record with the name field set to `RollupCustomUpdater`. Create an Apex class with the same name and implement the `IUpdater` interface from `RollupSObjectUpdater`:
 
 ```java
