@@ -182,6 +182,12 @@
                 name="CalcItemWhereClause__c"
                 onchange={handleChange}
               ></lightning-textarea>
+              <lightning-textarea
+                class="slds-col slds-form-element slds-form-element_horizontal"
+                label="SOQL Where Clause To Exclude Parent Records (Optional)"
+                name="ParentObjectWhereClause__c"
+                onchange={handleChange}
+              ></lightning-textarea>
               <lightning-helptext content="If including a SOQL where clause, do not start with 'WHERE'- this is added automatically"></lightning-helptext>
             </div>
           </template>

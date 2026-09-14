@@ -122,6 +122,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       Rollup__mdt.MasterLabel.toString(),
       Rollup__mdt.OneToManyGrandparentFields__c.toString(),
       Rollup__mdt.OrderByFirstLast__c.toString(),
+      Rollup__mdt.ParentObjectWhereClause__c.toString(),
       Rollup__mdt.RollupControl__c.toString(),
       Rollup__mdt.RollupFieldOnCalcItemText__c.toString(),
       Rollup__mdt.RollupFieldOnLookupObjectText__c.toString(),

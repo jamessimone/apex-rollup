@@ -153,6 +153,10 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>ParentObjectWhereClause__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>FullRecalculationDefaultNumberValue__c</field>
             </layoutItems>
             <layoutItems>

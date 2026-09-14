@@ -1698,6 +1698,30 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   }
 
   @IsTest
+  static void ignoresParentRecordsFromParentWhereClause() {
+    Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
+    acc.AnnualRevenue = 150;
+    update as system acc;
+
+    ContactPointAddress one = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'One');
+    ContactPointAddress two = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 25, Name = 'Two');
+    insert as system new List<ContactPointAddress>{ one, two };
+
+    Rollup.records = new List<ContactPointAddress>{ one, two };
+    Rollup.shouldRun = true;
+    Rollup.apexContext = TriggerOperation.AFTER_INSERT;
+
+    Test.startTest();
+    Rollup.sumFromApex(ContactPointAddress.PreferenceRank, ContactPointAddress.ParentId, Account.Id, Account.AnnualRevenue, Account.SObjectType)
+      .modifyMetadata(new Rollup__mdt(ParentObjectWhereClause__c = 'Id != \'' + acc.Id + '\''))
+      .runCalc();
+    Test.stopTest();
+
+    acc = [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
+    System.assertEquals(150, acc.AnnualRevenue);
+  }
+
+  @IsTest
   static void shouldDeferUpdateWhenMaxParentRowsLessThanCurrentUpdateRows() {
     Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     ContactPointAddress cpa = new ContactPointAddress(ParentId = acc.Id, PreferenceRank = 50, Name = 'MaxParentRows');
