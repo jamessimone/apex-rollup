@@ -541,7 +541,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         new RollupRepository(roll.runAsMode)
           .setQuery(
             RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(roll.lookupFieldOnLookupObject), '=') +
-            (this.isSingleRecordSyncUpdate(roll) ? '\nFOR UPDATE' : '')
+              (String.isNotBlank(roll.metadata?.ParentObjectWhereClause__c) ? '\nAND (' + roll.metadata.ParentObjectWhereClause__c + ')' : '') +
+              (this.isSingleRecordSyncUpdate(roll) ? '\nFOR UPDATE' : '')
           )
           .setArg(lookupKeys)
           .get();

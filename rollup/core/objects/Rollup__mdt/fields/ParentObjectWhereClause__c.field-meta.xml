@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ParentObjectWhereClause__c</fullName>
+    <description
+  >These conditions filter out parent records that would otherwise qualify WITHOUT resetting their (previously calculated) rollup values</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText
+  >These conditions filter out parent records that would otherwise qualify WITHOUT resetting their (previously calculated) rollup values</inlineHelpText>
+    <label>Parent Object Where Clause</label>
+    <length>32768</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
