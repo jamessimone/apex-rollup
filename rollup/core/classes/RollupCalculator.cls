@@ -403,6 +403,13 @@ public without sharing abstract class RollupCalculator {
   }
 
   protected virtual Object calculateNewAggregateValue(RollupOperation op, Iterable<Object> objIds) {
+    if (this.isMultiCurrencyRollup) {
+      // aggregate functions on currency fields return values in the org's corporate currency,
+      // whatever the parent's currency is - recalculate in memory so each calc item gets converted to the parent's currency.
+      // the calculator is reused across parents, so the recursion guard has to be reset for each of them
+      this.isRecursiveRecalc = false;
+      return this.performBaseCalculation(op, objIds);
+    }
     String operationName = Rollup.getBaseOperationName(op.name());
     String alias = operationName.toLowerCase() + 'Field';
     List<SObject> aggregate = this.tryQuery(this.calcItemSObjectType, new Set<String>{ operationName + '(' + this.opFieldOnCalcItem + ')' + alias }, objIds);
