@@ -174,6 +174,12 @@ function New-Namespaced-Package {
   $sfdxProjectJson.packageDirectories[0].versionName = $versionName
   Update-SFDX-Project-JSON-With-Content $sfdxProjectJson
 
+  # CustomHeaderLwcName must use the package namespace instead of the default c: prefix
+  $namespace = $sfdxProjectJson.namespace
+  $invocableExtensionPath = "rollup-namespaced/source/rollup/core/invocableactionextensions/Rollup.invocableactionextension-meta.xml"
+  Write-Host "Updating CustomHeaderLwcName in $invocableExtensionPath to ${namespace}:rollupDeprecatedHeader" -ForegroundColor Yellow
+  ((Get-Content -Path $invocableExtensionPath -Raw) -replace 'c:rollupDeprecatedHeader', ($namespace + ':rollupDeprecatedHeader')) | Set-Content -Path $invocableExtensionPath -NoNewline
+
   # now that the version name's been copied over, we're good to generate
   try {
     Generate $namespacedPackageName "rollup-namespaced/README.md" $false
