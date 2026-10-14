@@ -454,6 +454,57 @@ private class RollupMultiCurrencyTests {
     System.assertEquals(acc.SumAmountRollupSummary__c.setScale(2), acc.AnnualRevenue?.setScale(2), 'Multi-currency SUM rollup not calculated correctly!');
   }
 
+  @IsTest
+  static void updatingNonMatchingChildKeepsParentAmountInParentCurrency() {
+    if (hasCurrencyInfo('EUR') == false) {
+      return;
+    }
+    Account acc = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<Schema.SObjectField>{ Account.Name, Account.AnnualRevenue });
+    RollupCurrencyInfo.setCurrencyIsoCode(acc, 'EUR');
+    update as system acc;
+
+    Opportunity matchingOpp = new Opportunity(Name = 'Matching', StageName = 'Matching', CloseDate = System.today(), Amount = 100, AccountId = acc.Id);
+    RollupCurrencyInfo.setCurrencyIsoCode(matchingOpp, 'EUR');
+    Opportunity nonMatchingOpp = matchingOpp.clone(false, true);
+    nonMatchingOpp.Name = 'Non matching';
+    nonMatchingOpp.StageName = 'Non matching';
+    nonMatchingOpp.Amount = 50;
+    insert as system new List<Opportunity>{ matchingOpp, nonMatchingOpp };
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Opportunity',
+        // a parent-level field in the where clause means the updated calc item isn't filtered out upfront;
+        // since it doesn't match, the parent's value is recalculated from all of the other children instead
+        CalcItemWhereClause__c = 'StageName = \'Matching\' AND Account.Name = \'' + acc.Name + '\'',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        LookupObject__c = 'Account',
+        RollupFieldOnCalcItem__c = 'Amount',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM'
+      )
+    };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.records = new List<Opportunity>{ nonMatchingOpp };
+    Rollup.oldRecordsMap = new Map<Id, SObject>{
+      nonMatchingOpp.Id => new Opportunity(Id = nonMatchingOpp.Id, AccountId = acc.Id, Amount = 40, StageName = 'Non matching')
+    };
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+
+    acc = (Account) RollupTestUtils.queryRecord(acc.Id, new List<Schema.SObjectField>{ Account.AnnualRevenue });
+    Assert.areEqual(
+      matchingOpp.Amount.setScale(2),
+      acc.AnnualRevenue?.setScale(2),
+      'Recalculated SUM should be expressed in the parent currency, not the corporate one'
+    );
+  }
+
   private static Boolean hasCurrencyInfo(String currencyCode) {
     return RollupCurrencyInfo.getCurrencyInfo(currencyCode).IsoCode != null;
   }
