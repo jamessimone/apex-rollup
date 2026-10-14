@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Adds ability to filter out parent records in a slightly different way",
-            "versionNumber": "1.7.45.0",
+            "versionName": "Ensure proper CRUD for RollupState__c during full recalculations starting from Flow",
+            "versionNumber": "1.7.46.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
