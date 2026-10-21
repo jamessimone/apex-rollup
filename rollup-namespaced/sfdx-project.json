@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "Ensure proper CRUD for RollupState__c during full recalculations starting from Flow",
-            "versionNumber": "1.2.43.0",
+            "versionName": "Winter 27 release",
+            "versionNumber": "1.2.44.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -34,6 +34,7 @@
         "apex-rollup-namespaced@1.2.40": "04tg7000000GdLZAA0",
         "apex-rollup-namespaced@1.2.41": "04tg7000000Ooy9AAC",
         "apex-rollup-namespaced@1.2.42": "04tg7000000WWCrAAO",
-        "apex-rollup-namespaced@1.2.43": "04tg7000000XWFdAAO"
+        "apex-rollup-namespaced@1.2.43": "04tg7000000XWFdAAO",
+        "apex-rollup-namespaced@1.2.44": "04tg7000000ZbPhAAK"
     }
 }
