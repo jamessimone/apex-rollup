@@ -385,6 +385,34 @@ private class RollupStateTests {
   }
 
   @IsTest
+  static void clearsStateViaCleanerCaboose() {
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    insert as system new RollupState__c(RelatedJobId__c = stubJobId);
+
+    Test.startTest();
+    RollupAsyncProcessor cleaner = new RollupState().getCleaner(new Set<String>{ stubJobId });
+    Assert.areNotEqual(cleaner.getNoProcessId(), cleaner.runCalc(), 'Cleaner should enqueue the state cleanup');
+    Test.stopTest();
+
+    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c WITH SYSTEM_MODE]);
+  }
+
+  @IsTest
+  static void doesNotThrowWhenNoQueueableJobsRemain() {
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    insert as system new RollupState__c(RelatedJobId__c = stubJobId);
+
+    Test.startTest();
+    for (Integer index = 0; index < Limits.getLimitQueueableJobs(); index++) {
+      System.enqueueJob(new RollupState());
+    }
+    String processId = new RollupState().cleanup(new Set<String>{ stubJobId });
+    Test.stopTest();
+
+    Assert.isNull(processId, 'Should skip enqueueing instead of throwing');
+  }
+
+  @IsTest
   static void onlyLoadsStateForRelatedRecords() {
     Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
     String stubAccountId = RollupTestUtils.createId(Account.SObjectType);

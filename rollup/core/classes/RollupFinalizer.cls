@@ -3,6 +3,7 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   private static Boolean wasExceptionLogged = false;
 
   protected final List<RollupAsyncProcessor> cabooses = new List<RollupAsyncProcessor>();
+  private RollupAsyncProcessor trailingCaboose;
   protected Boolean hasAlreadyStartedConductor = false;
 
   // Avoids issues with serializing Exceptions in Apex by flattening the finalizer context data structure
@@ -47,6 +48,10 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
     this.cabooses.add(caboose);
   }
 
+  public void setTrailingCaboose(RollupAsyncProcessor caboose) {
+    this.trailingCaboose = caboose;
+  }
+
   @SuppressWarnings('PMD.EmptyStatementBlock')
   protected virtual void handleSuccess() {
   }
@@ -61,8 +66,14 @@ public without sharing virtual class RollupFinalizer implements Finalizer {
   }
 
   private void processCabooses() {
-    while (this.cabooses.isEmpty() == false && this.hasAlreadyStartedConductor == false) {
-      RollupAsyncProcessor conductor = this.cabooses.remove(0);
+    while ((this.cabooses.isEmpty() == false || this.trailingCaboose != null) && this.hasAlreadyStartedConductor == false) {
+      RollupAsyncProcessor conductor;
+      if (this.cabooses.isEmpty() == false) {
+        conductor = this.cabooses.remove(0);
+      } else {
+        conductor = this.trailingCaboose;
+        this.trailingCaboose = null;
+      }
       RollupLogger.Instance.log('Starting up new conductor', conductor, System.LoggingLevel.INFO);
       String potentialProcessId = conductor.runCalc();
       Boolean hasStartedAsync = potentialProcessId != conductor.getNoProcessId();
