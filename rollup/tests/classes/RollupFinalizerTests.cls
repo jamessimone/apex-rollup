@@ -1,5 +1,7 @@
 @IsTest
 private class RollupFinalizerTests {
+  private static final List<String> TRACKING_PROCESSOR_RUN_ORDER = new List<String>();
+
   public virtual class ExampleFinalizerContext implements System.FinalizerContext {
     public Id getAsyncApexJobId() {
       return RollupTestUtils.createId(AsyncApexJob.SObjectType);
@@ -24,11 +26,11 @@ private class RollupFinalizerTests {
     }
   }
 
-  private static final List<String> TRACKING_PROCESSOR_RUN_ORDER = new List<String>();
   private class TrackingProcessor extends RollupAsyncProcessor {
     private final String name;
     private final Boolean startsAsync;
 
+    @SuppressWarnings('PMD.AvoidBooleanMethodParameters')
     public TrackingProcessor(String name, Boolean startsAsync) {
       super((Rollup.InvocationPoint) null);
       this.name = name;
