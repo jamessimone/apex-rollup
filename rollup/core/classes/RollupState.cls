@@ -63,7 +63,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public virtual Map<String, Object> getUntypedState() {
-    throw new SerializationException('Should not make it here');
+    return new Map<String, Object>{ 'jobIds' => this.jobIds };
   }
 
   public virtual Boolean isEmpty() {
@@ -226,9 +226,51 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public String cleanup(Set<String> jobIds) {
+    if (Limits.getLimitQueueableJobs() <= Limits.getQueueableJobs()) {
+      RollupLogger.Instance.log('Unable to start up Rollup State cleanup job, orphaned records for these job Ids may exist', this, System.LoggingLevel.WARN);
+      return null;
+    }
     this.jobIds.addAll(jobIds);
     RollupLogger.Instance.log('about to clean up rollup state', this.jobIds, System.LoggingLevel.INFO);
     return System.enqueueJob(this);
+  }
+
+  /**
+   * Cleanup is deferred to the end of the finalizer train so that the delete happens in a transaction
+   * that hasn't used up DML limits, and so that it doesn't use the finalizer's only enqueue before other cabooses run
+   */
+  public RollupAsyncProcessor getCleaner(Set<String> jobIds) {
+    return new StateCleaner(this, jobIds);
+  }
+
+  private without sharing class StateCleaner extends RollupAsyncProcessor {
+    private final RollupState state;
+    private final Set<String> jobIds;
+
+    public StateCleaner(RollupState state, Set<String> jobIds) {
+      super((Rollup.InvocationPoint) null);
+      this.overridesRunCalc = true;
+      this.isNoOp = false;
+      this.state = state;
+      this.jobIds = jobIds;
+    }
+
+    protected override String getTypeName() {
+      return StateCleaner.class.getName();
+    }
+
+    public override String runCalc() {
+      return this.state.cleanup(this.jobIds) ?? this.getNoProcessId();
+    }
+
+    protected override Map<String, String> customizeToStringEntries(Map<String, String> props) {
+      props.remove('Invocation Point');
+      props.remove('Is Full Recalc');
+      props.remove('Is Conductor');
+      props.remove('Inner rollups');
+      props.put('Job Ids', String.join(new List<String>(this.jobIds), ','));
+      return props;
+    }
   }
 
   @SuppressWarnings('PMD.ApexCRUDViolation')
@@ -245,7 +287,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
   }
 
   public void execute(System.FinalizerContext fc) {
-    if ([SELECT COUNT() FROM RollupState__c WHERE Id = :this.jobIds WITH SYSTEM_MODE LIMIT 1] > 0) {
+    if ([SELECT COUNT() FROM RollupState__c WHERE RelatedJobId__c = :this.jobIds WITH SYSTEM_MODE LIMIT 1] > 0) {
       new RollupState().cleanup(this.jobIds);
     }
   }

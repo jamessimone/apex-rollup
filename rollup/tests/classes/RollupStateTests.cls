@@ -43,7 +43,9 @@ private class RollupStateTests {
     RollupState__c insertedState = [
       SELECT Id, Body0__c
       FROM RollupState__c
-      WHERE RelatedRecordKeys0__c LIKE :relatedRecordKeys WITH SYSTEM_MODE];
+      WHERE RelatedRecordKeys0__c LIKE :relatedRecordKeys
+      WITH SYSTEM_MODE
+    ];
     Assert.isNotNull(insertedState.Body0__c, 'Serialized representation of generic state should be present');
 
     state.loadState(stubJobId, new Set<String>{ stubAccountId, secondStubId });
@@ -232,7 +234,9 @@ private class RollupStateTests {
 
     List<RollupState__c> committedStates = [
       SELECT Body0__c, RelatedRecordKeys0__c
-      FROM RollupState__c WITH SYSTEM_MODE];
+      FROM RollupState__c
+      WITH SYSTEM_MODE
+    ];
 
     Assert.areEqual(3, committedStates.size());
     Boolean body0Filled = false;
@@ -332,7 +336,9 @@ private class RollupStateTests {
         RelatedRecordKeys9__c,
         RelatedRecordKeys10__c
       FROM RollupState__c
-      WHERE RelatedJobId__c = :stubJobId WITH SYSTEM_MODE];
+      WHERE RelatedJobId__c = :stubJobId
+      WITH SYSTEM_MODE
+    ];
     // ensure that loadState can be called with the full spread of keys
     state.loadState(stubJobId, fullKeys);
 
@@ -382,6 +388,35 @@ private class RollupStateTests {
     Test.stopTest();
 
     Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c WITH SYSTEM_MODE]);
+  }
+
+  @IsTest
+  static void clearsStateViaCleanerCaboose() {
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    insert as system new RollupState__c(RelatedJobId__c = stubJobId);
+
+    Test.startTest();
+    RollupAsyncProcessor cleaner = new RollupState().getCleaner(new Set<String>{ stubJobId });
+    Assert.areNotEqual(cleaner.getNoProcessId(), cleaner.runCalc(), 'Cleaner should enqueue the state cleanup');
+    Test.stopTest();
+
+    Assert.areEqual(0, [SELECT COUNT() FROM RollupState__c WITH SYSTEM_MODE]);
+  }
+
+  @SuppressWarnings('PMD.OperationWithLimitsInLoop')
+  @IsTest
+  static void doesNotThrowWhenNoQueueableJobsRemain() {
+    Id stubJobId = RollupTestUtils.createId(AsyncApexJob.SObjectType);
+    insert as system new RollupState__c(RelatedJobId__c = stubJobId);
+
+    Test.startTest();
+    for (Integer index = 0; index < Limits.getLimitQueueableJobs(); index++) {
+      System.enqueueJob(new RollupState());
+    }
+    String processId = new RollupState().cleanup(new Set<String>{ stubJobId });
+    Test.stopTest();
+
+    Assert.isNull(processId, 'Should skip enqueueing instead of throwing');
   }
 
   @IsTest
@@ -446,7 +481,9 @@ private class RollupStateTests {
         RelatedRecordKeys8__c,
         RelatedRecordKeys9__c,
         RelatedRecordKeys10__c
-      FROM RollupState__c WITH SYSTEM_MODE];
+      FROM RollupState__c
+      WITH SYSTEM_MODE
+    ];
     Assert.areEqual(2, committedStates.size());
     for (RollupState__c committedState : committedStates) {
       if (committedState.RelatedRecordKeys3__c == null) {

@@ -69,7 +69,7 @@
         <nameSegment>Rollup</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>67.0</apiVersion>
+    <apiVersion>68.0</apiVersion>
     <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
         <name>Add_deleted_record_to_collection</name>

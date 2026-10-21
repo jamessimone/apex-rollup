@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <actionCalls>
         <name>Recalc_Rollups</name>
@@ -17,7 +17,7 @@
         <nameSegment>RollupFlowFullRecalcDispatcher</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>67.0</apiVersion>
+    <apiVersion>68.0</apiVersion>
     <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <environments>Default</environments>
     <interviewLabel>Rollup Integration: Comma-Separated Full Recalc {!$Flow.CurrentDateTime}</interviewLabel>

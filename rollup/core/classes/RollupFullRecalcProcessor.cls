@@ -96,12 +96,24 @@ global abstract without sharing class RollupFullRecalcProcessor extends RollupAs
         this.logger.log('Post processor added as caboose', this.postProcessor, System.LoggingLevel.INFO);
         this.finalizer.addCaboose(this.postProcessor);
       }
-      this.getState()?.cleanup(this.jobIds);
+      this.cleanupState();
     }
     if (this.hasProcessedParentRecords == false) {
       List<SObject> parentRecords = new List<SObject>();
       this.processParentFieldsToReset(parentRecords);
       this.getDML().doUpdate(parentRecords);
+    }
+  }
+
+  private void cleanupState() {
+    RollupState state = this.getState();
+    if (state == null) {
+      return;
+    }
+    if (this.finalizer != null) {
+      this.finalizer.setTrailingCaboose(state.getCleaner(this.jobIds));
+    } else {
+      state.cleanup(this.jobIds);
     }
   }
 
