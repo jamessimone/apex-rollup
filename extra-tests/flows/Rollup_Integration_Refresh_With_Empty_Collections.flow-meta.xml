@@ -44,7 +44,7 @@
         <nameSegment>RollupFlowBulkProcessor</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
-    <apiVersion>67.0</apiVersion>
+    <apiVersion>68.0</apiVersion>
     <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <environments>Default</environments>
     <interviewLabel>Rollup Integration - Refresh With Empty Collections {!$Flow.CurrentDateTime}</interviewLabel>
