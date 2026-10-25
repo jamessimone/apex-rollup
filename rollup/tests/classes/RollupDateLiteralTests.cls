@@ -335,9 +335,10 @@ private class RollupDateLiteralTests {
   @IsTest
   static void last_90_days_includes_first_day_across_berlin_dst_end() {
     System.runAs(berlinUser) {
+      RollupDateLiteral.setNow(Datetime.newInstanceGmt(2026, 10, 25, 12, 0, 0));
       // Berlin leaves daylight saving time on October 25, 2026. Subtracting
       // 90 elapsed days from that day's end lands on July 28, not July 27.
-      RollupDateLiteral literal = new RollupDateLiteral.Last90DaysLiteral(Date.newInstance(2026, 10, 25));
+      RollupDateLiteral literal = RollupDateLiteral.get('LAST_90_DAYS');
       Datetime firstInstant = Datetime.newInstanceGmt(2026, 7, 26, 22, 0, 0);
       Datetime lastInstant = Datetime.newInstanceGmt(Date.newInstance(2026, 10, 25), Time.newInstance(22, 59, 59, 999));
 
