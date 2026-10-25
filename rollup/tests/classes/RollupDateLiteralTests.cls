@@ -333,6 +333,24 @@ private class RollupDateLiteralTests {
   }
 
   @IsTest
+  static void last_90_days_includes_first_day_across_berlin_dst_end() {
+    System.runAs(berlinUser) {
+      RollupDateLiteral.setNow(Datetime.newInstanceGmt(2026, 10, 25, 12, 0, 0));
+      // Berlin leaves daylight saving time on October 25, 2026. Subtracting
+      // 90 elapsed days from that day's end lands on July 28, not July 27.
+      RollupDateLiteral literal = RollupDateLiteral.get('LAST_90_DAYS');
+      Datetime firstInstant = Datetime.newInstanceGmt(2026, 7, 26, 22, 0, 0);
+      Datetime lastInstant = Datetime.newInstanceGmt(Date.newInstance(2026, 10, 25), Time.newInstance(22, 59, 59, 999));
+
+      System.assertEquals(true, literal.matches(firstInstant, '='), 'Include midnight on July 27 in Berlin');
+      System.assertEquals(true, literal.matches(Datetime.newInstanceGmt(2026, 7, 27, 7, 59, 59), '='), 'Include the first day of the range');
+      System.assertEquals(false, literal.matches(firstInstant.addSeconds(-1), '='), 'Exclude the instant before the range');
+      System.assertEquals(true, literal.matches(lastInstant, '='), 'Include the end of October 25 in Berlin');
+      System.assertEquals(false, literal.matches(lastInstant.addSeconds(1), '='), 'Exclude the instant after the range');
+    }
+  }
+
+  @IsTest
   static void shouldWorkForNext90Days() {
     runTestForLiteral(new List<User>{ currentUser, berlinUser }, 'NEXT_90_DAYS');
   }
