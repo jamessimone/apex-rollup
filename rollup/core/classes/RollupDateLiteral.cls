@@ -566,10 +566,15 @@ public without sharing abstract class RollupDateLiteral {
    * Starts with the current day and continues for the past 90 days.
    * This includes the current day, not just previous days. So it includes 91 days in total.
    */
+  @TestVisible
   private class Last90DaysLiteral extends RollupDateLiteral {
     public Last90DaysLiteral() {
-      this.bound = getRelativeDatetime(START_OF_TODAY.date(), END_TIME);
-      this.ref = getRelativeDatetime(this.bound.addDays(-90).date(), START_TIME);
+      this(START_OF_TODAY.date());
+    }
+
+    public Last90DaysLiteral(Date referenceDate) {
+      this.bound = getRelativeDatetime(referenceDate, END_TIME);
+      this.ref = getRelativeDatetime(this.bound.date().addDays(-90), START_TIME);
     }
   }
 
