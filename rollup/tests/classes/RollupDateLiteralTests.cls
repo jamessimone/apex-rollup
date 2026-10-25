@@ -165,15 +165,15 @@ private class RollupDateLiteralTests {
         throw new IllegalArgumentException('Equality not supported: ' + equality);
       }
     }
-    String query =
-      'SELECT CaptureDate' +
-      '\nFROM ContactPointConsent' +
-      '\nWHERE ' +
-      dateLiteral.replace('=', equality) +
-      '\nORDER BY CaptureDate ' +
-      orderBy +
-      '\nLIMIT 1';
-    List<ContactPointConsent> cpcs = Database.query(query);
+    String query = '''
+      SELECT CaptureDate
+      FROM ContactPointConsent
+      WHERE ${whereClause}
+      ORDER BY CaptureDate ${orderByDirection}
+      LIMIT 1
+      '''
+      .template(new Map<String, Object>{ 'whereClause' => dateLiteral.replace('=', equality), 'orderByDirection' => orderBy });
+    List<ContactPointConsent> cpcs = new RollupRepository().setQuery(query).get();
     return cpcs.isEmpty() ? null : cpcs.get(0);
   }
 
@@ -206,7 +206,9 @@ private class RollupDateLiteralTests {
   }
 
   static void runTestForLiteral(RollupDateLiteral literalUnderTest, String stringLiteral) {
-    List<ContactPointConsent> matchingCpcs = Database.query('SELECT CaptureDate FROM ContactPointConsent WHERE ' + stringLiteral + ' ORDER BY CaptureDate');
+    List<ContactPointConsent> matchingCpcs = new RollupRepository()
+      .setQuery('SELECT CaptureDate FROM ContactPointConsent WHERE ' + stringLiteral + ' ORDER BY CaptureDate')
+      .get();
     ContactPointConsent sentinelPreviousCpc = getSentinelCpc(stringLiteral, '<');
     ContactPointConsent sentinelPostCpc = getSentinelCpc(stringLiteral, '>');
 
@@ -329,6 +331,24 @@ private class RollupDateLiteralTests {
     runTestForLiteral('LAST_90_DAYS');
     System.runAs(berlinUser) {
       runTestForLiteral('LAST_90_DAYS');
+    }
+  }
+
+  @IsTest
+  static void regressionLast90daysIncludesFirstDayAcrossBerlinDstEnd() {
+    System.runAs(berlinUser) {
+      RollupDateLiteral.setNow(Datetime.newInstanceGmt(2026, 10, 25, 12, 0, 0));
+      // Berlin leaves daylight saving time on October 25, 2026. Subtracting
+      // 90 elapsed days from that day's end lands on July 28, not July 27.
+      RollupDateLiteral literal = RollupDateLiteral.get('LAST_90_DAYS');
+      Datetime firstInstant = Datetime.newInstanceGmt(2026, 7, 26, 22, 0, 0);
+      Datetime lastInstant = Datetime.newInstanceGmt(Date.newInstance(2026, 10, 25), Time.newInstance(22, 59, 59, 999));
+
+      Assert.areEqual(true, literal.matches(firstInstant, '='), 'Include midnight on July 27 in Berlin');
+      Assert.areEqual(true, literal.matches(Datetime.newInstanceGmt(2026, 7, 27, 7, 59, 59), '='), 'Include the first day of the range');
+      Assert.areEqual(false, literal.matches(firstInstant.addSeconds(-1), '='), 'Exclude the instant before the range');
+      Assert.areEqual(true, literal.matches(lastInstant, '='), 'Include the end of October 25 in Berlin');
+      Assert.areEqual(false, literal.matches(lastInstant.addSeconds(1), '='), 'Exclude the instant after the range');
     }
   }
 

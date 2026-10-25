@@ -1327,6 +1327,6 @@ private class RollupEvaluatorTests {
 
   private static void validateQuery(Schema.SObjectType target, String whereClause) {
     // sanity check - is the where clause valid?
-    Database.query('SELECT Id FROM ' + target + ' WHERE ' + whereClause);
+    new RollupRepository().setQuery('SELECT Id FROM ' + target + ' WHERE ' + whereClause).get();
   }
 }

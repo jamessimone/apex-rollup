@@ -5,16 +5,6 @@ const path = require('path');
 const resolvePath = fileName => path.resolve(__dirname + '/' + fileName);
 const resolvePaths = paths => paths.map(fileName => resolvePath(fileName));
 
-const EXTRA_CODE_COVERAGE_PATHS = resolvePaths([
-  'extra-tests/classes/RollupTestUtils.cls',
-  'extra-tests/classes/RollupTests.cls',
-  'extra-tests/classes/RollupEvaluatorTests.cls',
-  'extra-tests/classes/RollupRelationshipFieldFinderTests.cls',
-  'extra-tests/classes/RollupLoggerTests.cls',
-  'extra-tests/classes/RollupQueryBuilderTests.cls',
-  'extra-tests/classes/RollupRecursionItemTests.cls',
-  'extra-tests/classes/RollupParentResetProcessorTests.cls'
-]);
 const CUSTOM_LOGGER_PATHS = resolvePaths([
   'plugins/CustomObjectRollupLogger/classes/RollupCustomObjectLogger.cls',
   'plugins/CustomObjectRollupLogger/classes/RollupLogBatchPurger.cls',
@@ -31,7 +21,6 @@ const NEBULA_LOGGER_ADAPTER_PATHS = resolvePaths([
 const CALLBACK_PATHS = resolvePaths(['plugins/RollupCallback/classes/RollupDispatch.cls', 'plugins/RollupCallback/tests/RollupDispatchTests.cls']);
 
 let shouldRunSfdxScanner = false;
-let shouldRunExtraCodeCoveragePackageCreation = false;
 let shouldRunNebulaLoggerPackageCreation = false;
 let shouldRunCustomLoggerPackageCreation = false;
 let shouldRunCallbackPackageCreation = false;
@@ -45,9 +34,6 @@ module.exports = {
       }
 
       const resolvedPath = path.resolve(filename);
-      if (EXTRA_CODE_COVERAGE_PATHS.includes(resolvedPath)) {
-        shouldRunExtraCodeCoveragePackageCreation = true;
-      }
       if (NEBULA_LOGGER_ADAPTER_PATHS.includes(resolvedPath)) {
         shouldRunNebulaLoggerPackageCreation = true;
       }
@@ -62,9 +48,6 @@ module.exports = {
 
     if (shouldRunSfdxScanner) {
       commands.push('npm run scan');
-    }
-    if (shouldRunExtraCodeCoveragePackageCreation) {
-      commands.push('npm run create:package:code-coverage');
     }
     if (shouldRunNebulaLoggerPackageCreation) {
       commands.push('npm run create:package:nebula:adapter');

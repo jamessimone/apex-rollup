@@ -218,7 +218,7 @@ private class RollupMultiCurrencyTests {
     Test.stopTest();
 
     List<SObject> opportunities = UserInfo.isMultiCurrencyOrganization()
-      ? Database.query('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity')
+      ? new RollupRepository().setQuery('SELECT Id, convertCurrency(Amount) ConvertedAmount FROM Opportunity').get()
       : [SELECT MAX(Amount) ConvertedAmount, Id FROM Opportunity WITH SYSTEM_MODE GROUP BY Id];
     Decimal convertedAmountSum = 0;
     for (SObject opp : opportunities) {
