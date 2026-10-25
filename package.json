@@ -10,13 +10,13 @@
   "license": "MIT",
   "devDependencies": {
     "@prettier/plugin-xml": "3.4.2",
-    "@salesforce/cli": "2.129.8",
+    "@salesforce/cli": "2.155.7",
     "@salesforce/eslint-config-lwc": "4.1.2",
     "@salesforce/sfdx-lwc-jest": "7.9.0",
     "husky": "9.1.7",
-    "lint-staged": "16.4.0",
-    "prettier": "3.8.1",
-    "prettier-plugin-apex": "2.2.6"
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-apex": "2.3.0"
   },
   "keywords": [
     "salesforce",
