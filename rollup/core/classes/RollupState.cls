@@ -283,7 +283,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       WITH SYSTEM_MODE
       LIMIT :Limits.getLimitDmlRows() - Limits.getDmlRows()
     ];
-    Database.delete(matchingState, false, System.AccessLevel.SYSTEM_MODE);
+    new RollupRepository().tryDelete(matchingState);
   }
 
   public void execute(System.FinalizerContext fc) {
@@ -292,7 +292,6 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     }
   }
 
-  @SuppressWarnings('PMD.ApexCRUDViolation')
   private List<RollupState__c> loadOrRetrieveCachedState(String jobId, Set<String> relatedRecordKeys) {
     String cacheKey = String.join(relatedRecordKeys, '');
     List<RollupState__c> states = CACHED_STATES.get(cacheKey);
@@ -326,7 +325,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       ORDER BY CreatedDate DESC
     ];
     CACHED_STATES.put(cacheKey, states);
-    Database.delete(states, false, System.AccessLevel.SYSTEM_MODE);
+    new RollupRepository().tryDelete(states);
     try {
       if (states.isEmpty() == false) {
         Database.emptyRecycleBin(states);
@@ -337,7 +336,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
     return states;
   }
 
-  @SuppressWarnings('PMD.ApexCRUDViolation,PMD.AvoidDeeplyNestedIfStmts')
+  @SuppressWarnings('PMD.AvoidDeeplyNestedIfStmts')
   private void populateRelatedRecordStates(String jobId) {
     RollupState__c currentStateToInsert = new RollupState__c(RelatedJobId__c = jobId);
     List<RollupState__c> statesToInsert = new List<RollupState__c>{ currentStateToInsert };
@@ -424,7 +423,7 @@ public without sharing virtual class RollupState implements System.Queueable, Sy
       }
     }
 
-    Database.insert(statesToInsert, System.AccessLevel.SYSTEM_MODE);
+    new RollupRepository().tryInsert(statesToInsert);
     RollupLogger.Instance.log(
       'Finished inserting ' + statesToInsert.size() + ' states (for batch number: ' + this.commitCount + ')',
       System.LoggingLevel.DEBUG

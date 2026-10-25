@@ -165,15 +165,15 @@ private class RollupDateLiteralTests {
         throw new IllegalArgumentException('Equality not supported: ' + equality);
       }
     }
-    String query =
-      'SELECT CaptureDate' +
-      '\nFROM ContactPointConsent' +
-      '\nWHERE ' +
-      dateLiteral.replace('=', equality) +
-      '\nORDER BY CaptureDate ' +
-      orderBy +
-      '\nLIMIT 1';
-    List<ContactPointConsent> cpcs = Database.query(query, System.AccessLevel.SYSTEM_MODE);
+    String query = '''
+      SELECT CaptureDate
+      FROM ContactPointConsent
+      WHERE ${whereClause}
+      ORDER BY CaptureDate ${orderByDirection}
+      LIMIT 1
+      '''
+      .template(new Map<String, Object>{ 'whereClause' => dateLiteral.replace('=', equality), 'orderByDirection' => orderBy });
+    List<ContactPointConsent> cpcs = new RollupRepository().setQuery(query).get();
     return cpcs.isEmpty() ? null : cpcs.get(0);
   }
 
@@ -206,10 +206,9 @@ private class RollupDateLiteralTests {
   }
 
   static void runTestForLiteral(RollupDateLiteral literalUnderTest, String stringLiteral) {
-    List<ContactPointConsent> matchingCpcs = Database.query(
-      'SELECT CaptureDate FROM ContactPointConsent WHERE ' + stringLiteral + ' ORDER BY CaptureDate',
-      System.AccessLevel.SYSTEM_MODE
-    );
+    List<ContactPointConsent> matchingCpcs = new RollupRepository()
+      .setQuery('SELECT CaptureDate FROM ContactPointConsent WHERE ' + stringLiteral + ' ORDER BY CaptureDate')
+      .get();
     ContactPointConsent sentinelPreviousCpc = getSentinelCpc(stringLiteral, '<');
     ContactPointConsent sentinelPostCpc = getSentinelCpc(stringLiteral, '>');
 

@@ -18,7 +18,7 @@
             "path": "plugins\\CustomObjectRollupLogger",
             "dependencies": [
                 {
-                    "package": "apex-rollup@1.7.47"
+                    "package": "apex-rollup@1.7.48"
                 }
             ],
             "versionNumber": "0.0.16.0",
@@ -90,7 +90,7 @@
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
         "Apex Rollup - Custom Logger@0.0.15": "04tg7000000GZLBAA4",
-        "Apex Rollup - Custom Logger@0.0.16": "04tg7000000aT57AAE",
+        "Apex Rollup - Custom Logger@0.0.16": "04tg7000000aTMrAAM",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.30": "04tg7000000EOqTAAW",
         "Apex Rollup - Extra Code Coverage@0.0.32": "04tg7000000GZTFAA4",
@@ -104,6 +104,7 @@
         "apex-rollup": "0Ho6g000000TNcOCAW",
         "apex-rollup@1.7.45": "04tg7000000OowXAAS",
         "apex-rollup@1.7.46": "04tg7000000XVt3AAG",
-        "apex-rollup@1.7.47": "04tg7000000ZbMTAA0"
+        "apex-rollup@1.7.47": "04tg7000000ZbMTAA0",
+        "apex-rollup@1.7.48": "04tg7000000aTI1AAM"
     }
 }

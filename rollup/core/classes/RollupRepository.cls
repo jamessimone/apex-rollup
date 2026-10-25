@@ -30,9 +30,12 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     USER
   }
 
+  public RollupRepository() {
+    this(RunAsMode.SYSTEM_LEVEL);
+  }
+
   public RollupRepository(RunAsMode localRunAsMode) {
     this.localRunAsMode = localRunAsMode;
-    this.accessLevel = this.transformPermissionLevel(localRunAsMode);
   }
 
   public RollupRepository setQuery(String query) {
@@ -84,6 +87,16 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
     this.createQueryLog('Returned amount: ' + countAmount);
     this.args.query = originalQuery;
     return countAmount;
+  }
+
+  public List<Database.SaveResult> tryInsert(List<SObject> records) {
+    this.createQueryLog('Beginning insert for ' + records.size() + ' record(s)');
+    return Database.insert(records, false, this.accessLevel);
+  }
+
+  public List<Database.DeleteResult> tryDelete(List<SObject> records) {
+    this.createQueryLog('Beginning delete for ' + records.size() + ' record(s)');
+    return Database.delete(records, false, this.accessLevel);
   }
 
   public override String toString() {
@@ -148,7 +161,7 @@ public without sharing class RollupRepository implements RollupLogger.ToStringOb
       );
     }
 
-    matchingMetadata = new RollupRepository(RollupRepository.RunAsMode.SYSTEM_LEVEL)
+    matchingMetadata = new RollupRepository()
       .setQuery('SELECT ' + String.join(selectFields, ',\n') + '\nFROM Rollup__mdt\nWHERE RollupControl__r.ShouldAbortRun__c = FALSE AND IsDisabled__c = FALSE')
       .setShouldLog(false)
       .get();

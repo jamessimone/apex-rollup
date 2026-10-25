@@ -325,11 +325,16 @@ public without sharing abstract class RollupDateLiteral {
     FiscalInfo fiscalInfo = new FiscalInfo();
     List<SObject> fiscalPeriods = new List<SObject>();
     try {
-      fiscalPeriods = Database.query(
-        'SELECT StartDate, EndDate, Type' +
-          '\nFROM Period' +
-          '\nWHERE (Type = \'Quarter\' AND EndDate = THIS_FISCAL_QUARTER) OR (Type = \'Year\' AND EndDate >= THIS_FISCAL_YEAR AND EndDate <= THIS_FISCAL_YEAR)'
-      );
+      fiscalPeriods = new RollupRepository()
+        .setQuery(
+          '''
+        SELECT StartDate, EndDate, Type
+        FROM Period
+        WHERE (Type = 'Quarter' AND EndDate = THIS_FISCAL_QUARTER) OR (Type = 'Year' AND EndDate >= THIS_FISCAL_YEAR AND EndDate <= THIS_FISCAL_YEAR)
+      '''
+            .trim()
+        )
+        .get();
     } catch (Exception ex) {
       RollupLogger.Instance.log('Falling back to fiscal defaults due to error performing fiscal info query: ' + ex.getMessage(), System.LoggingLevel.WARN);
     }
