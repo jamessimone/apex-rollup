@@ -11,7 +11,8 @@ global without sharing class RollupLogBatchPurger implements Database.Batchable<
   public Database.QueryLocator start(Database.BatchableContext bc) {
     Date daysBeforeOffset = System.today().addDays(-RollupLogControl.Offset);
     return Database.getQueryLocator(
-      [SELECT Id, RollupLog__c FROM RollupLogEntry__c WHERE CreatedDate <= :daysBeforeOffset WITH SYSTEM_MODE ORDER BY RollupLog__c]
+      [SELECT Id, RollupLog__c FROM RollupLogEntry__c WHERE CreatedDate <= :daysBeforeOffset ORDER BY RollupLog__c],
+      System.AccessLevel.SYSTEM_MODE
     );
   }
 
