@@ -8,7 +8,7 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(Task.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
 
     // validate the query
-    List<SObject> records = Database.query(queryString);
+    List<SObject> records = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
 
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
     System.assertEquals(Task.SObjectType, records.getSObjectType());
@@ -19,7 +19,7 @@ private class RollupQueryBuilderTests {
     String queryString = RollupQueryBuilder.Current.getQuery(Event.SObjectType, new List<String>{ 'Id' }, 'WhatId', '=');
 
     Set<String> objIds = new Set<String>();
-    List<SObject> records = Database.query(queryString);
+    List<SObject> records = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
 
     System.assertEquals(true, queryString.contains('AND IsDeleted = false ALL ROWS'));
     System.assertEquals(Event.SObjectType, records.getSObjectType());
@@ -34,7 +34,7 @@ private class RollupQueryBuilderTests {
       '='
     );
 
-    List<SObject> records = Database.query(queryString);
+    List<SObject> records = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
 
     System.assertEquals(true, queryString.contains('Id'));
     System.assertEquals(true, queryString.contains('AccountId'));
@@ -45,7 +45,7 @@ private class RollupQueryBuilderTests {
   static void shouldNotBlowUpIfPassedInFieldsAreNullOrBlank() {
     String queryString = RollupQueryBuilder.Current.getQuery(Opportunity.SObjectType, new List<String>{ '', null, ' ', 'Id' }, 'AccountId', '=');
 
-    List<SObject> records = Database.query(queryString);
+    List<SObject> records = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
 
     System.assertEquals(true, queryString.contains('Id'));
     System.assertEquals(Opportunity.SObjectType, records.getSObjectType());
@@ -71,7 +71,7 @@ private class RollupQueryBuilderTests {
     Set<String> recordIds = new Set<String>();
     Set<String> objIds = recordIds;
     // confirm query works
-    List<SObject> records = Database.query(queryString);
+    List<SObject> records = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
     System.assertEquals(Event.SObjectType, records.getSObjectType());
   }
 
@@ -90,7 +90,7 @@ private class RollupQueryBuilderTests {
     Set<String> recordIds = new Set<String>();
     Set<String> objIds = recordIds;
     // confirm query works
-    List<SObject> records = Database.query(queryString);
+    List<SObject> records = Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
     System.assertEquals(Event.SObjectType, records.getSObjectType());
   }
 
@@ -116,7 +116,7 @@ private class RollupQueryBuilderTests {
 
     System.assertEquals(true, queryString.endsWith(RollupQueryBuilder.ALL_ROWS));
     // validate query can be run
-    Database.query(queryString);
+    Database.query(queryString, System.AccessLevel.SYSTEM_MODE);
   }
 
   @IsTest

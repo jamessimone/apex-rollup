@@ -173,7 +173,7 @@ private class RollupDateLiteralTests {
       '\nORDER BY CaptureDate ' +
       orderBy +
       '\nLIMIT 1';
-    List<ContactPointConsent> cpcs = Database.query(query);
+    List<ContactPointConsent> cpcs = Database.query(query, System.AccessLevel.SYSTEM_MODE);
     return cpcs.isEmpty() ? null : cpcs.get(0);
   }
 
@@ -206,7 +206,10 @@ private class RollupDateLiteralTests {
   }
 
   static void runTestForLiteral(RollupDateLiteral literalUnderTest, String stringLiteral) {
-    List<ContactPointConsent> matchingCpcs = Database.query('SELECT CaptureDate FROM ContactPointConsent WHERE ' + stringLiteral + ' ORDER BY CaptureDate');
+    List<ContactPointConsent> matchingCpcs = Database.query(
+      'SELECT CaptureDate FROM ContactPointConsent WHERE ' + stringLiteral + ' ORDER BY CaptureDate',
+      System.AccessLevel.SYSTEM_MODE
+    );
     ContactPointConsent sentinelPreviousCpc = getSentinelCpc(stringLiteral, '<');
     ContactPointConsent sentinelPostCpc = getSentinelCpc(stringLiteral, '>');
 
