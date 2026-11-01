@@ -509,7 +509,7 @@ public without sharing abstract class RollupDateLiteral {
 
   private class TomorrowLiteral extends RollupDateLiteral {
     public TomorrowLiteral() {
-      this.ref = START_OF_TODAY.addDays(1);
+      this.ref = getRelativeDatetime(getToday().addDays(1), START_TIME);
       this.bound = getRelativeDatetime(this.ref.date(), END_TIME);
     }
   }
@@ -532,7 +532,7 @@ public without sharing abstract class RollupDateLiteral {
   private class ThisWeekLiteral extends RollupDateLiteral {
     public ThisWeekLiteral() {
       this.ref = getRelativeDatetime(getToday().toStartOfWeek(), START_TIME);
-      this.bound = getRelativeDatetime(this.ref.addDays(6).date(), END_TIME);
+      this.bound = getRelativeDatetime(this.ref.date().addDays(6), END_TIME);
     }
   }
 
@@ -594,7 +594,7 @@ public without sharing abstract class RollupDateLiteral {
    */
   private class Next90DaysLiteral extends RollupDateLiteral {
     public Next90DaysLiteral() {
-      this.ref = START_OF_TODAY.addDays(1);
+      this.ref = getRelativeDatetime(getToday().addDays(1), START_TIME);
       this.bound = getRelativeDatetime(START_OF_TODAY.date().addDays(90), END_TIME);
     }
   }
@@ -630,7 +630,7 @@ public without sharing abstract class RollupDateLiteral {
   private class NextNDaysLiteral extends RollupDateLiteral {
     protected override void setDynamicValue(String num) {
       Integer dateRange = Integer.valueOf(num);
-      this.ref = START_OF_TODAY.addDays(1); // excludes today
+      this.ref = getRelativeDatetime(getToday().addDays(1), START_TIME); // excludes today
       this.bound = getRelativeDatetime(START_OF_TODAY.date().addDays(dateRange), END_TIME);
     }
   }
