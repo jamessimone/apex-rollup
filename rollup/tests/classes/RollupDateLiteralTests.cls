@@ -370,7 +370,7 @@ private class RollupDateLiteralTests {
   }
 
   @IsTest
-  static void next_day_ranges_start_at_midnight_after_los_angeles_dst_end() {
+  static void nextDayRangesStartAtMidnightAfterLosAngelesDstEnd() {
     System.runAs(losAngelesUser) {
       // Los Angeles leaves daylight saving time on November 1, 2026, so that
       // day lasts 25 hours. Adding 24 elapsed hours to its start lands on 11 PM
@@ -396,7 +396,7 @@ private class RollupDateLiteralTests {
   }
 
   @IsTest
-  static void next_day_ranges_start_at_midnight_after_los_angeles_dst_start() {
+  static void nextDayRangesStartAtMidnightAfterLosAngelesDstStart() {
     System.runAs(losAngelesUser) {
       // Los Angeles enters daylight saving time on March 8, 2026, so that day
       // lasts 23 hours. Adding 24 elapsed hours to its start lands on 1 AM on
