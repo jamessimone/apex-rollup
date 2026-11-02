@@ -1,6 +1,8 @@
 public without sharing virtual class RollupDeferredFullRecalcProcessor extends RollupFullRecalcProcessor {
   private static final Map<String, List<SObject>> QUERY_TO_CALC_ITEMS = new Map<String, List<SObject>>();
 
+  private Boolean hasDelegatedRollups = false;
+
   @SuppressWarnings('PMD.ExcessiveParameterList')
   public RollupDeferredFullRecalcProcessor(
     List<Rollup__mdt> matchingMeta,
@@ -14,6 +16,11 @@ public without sharing virtual class RollupDeferredFullRecalcProcessor extends R
   }
 
   protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
+    // once delegated, any unfinished rollups are re-run as deferred rollups - re-delegating would double count them
+    if (this.hasDelegatedRollups) {
+      return new List<RollupAsyncProcessor>();
+    }
+    this.hasDelegatedRollups = true;
     return this.getDelegatedFullRecalcRollups(this.getCalcItems());
   }
 

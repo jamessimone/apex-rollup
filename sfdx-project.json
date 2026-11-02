@@ -5,7 +5,7 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "RollupDateLiteral additional boundary DST bugfixes by @cwarden",
+            "versionName": "RollupDateLiteral additional boundary DST bugfixes by @cwarden, Too many queueables jobs added to the queue fixes",
             "versionNumber": "1.7.49.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
