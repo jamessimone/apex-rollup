@@ -9,6 +9,7 @@ node_modules/
 PACKAGING_SFDX_URL.txt
 rollup-namespaced/source
 yarn.lock
+*.log
 
 # Salesforce
 .localdevserver/
