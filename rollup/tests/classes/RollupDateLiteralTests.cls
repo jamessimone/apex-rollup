@@ -66,6 +66,17 @@ private class RollupDateLiteralTests {
         LocaleSidKey = 'en_IN',
         LanguageLocaleKey = 'en_US',
         ProfileId = UserInfo.getProfileId()
+      ),
+      new User(
+        LastName = 'Los Angeles User',
+        Username = 'LosAngeles' + System.now().getTime() + '@RollupDateLiteralTests.org',
+        Email = 'losangelesuser@rollup.org',
+        EmailEncodingKey = 'ISO-8859-1',
+        Alias = 'lauser',
+        TimeZoneSidKey = 'America/Los_Angeles',
+        LocaleSidKey = 'en_US',
+        LanguageLocaleKey = 'en_US',
+        ProfileId = UserInfo.getProfileId()
       )
     };
   }
@@ -248,6 +259,12 @@ private class RollupDateLiteralTests {
     }
   }
 
+  static User losAngelesUser {
+    get {
+      return [SELECT Id, Name FROM User WHERE LastName = 'Los Angeles User' WITH SYSTEM_MODE];
+    }
+  }
+
   static User currentUser {
     get {
       return new User(Id = UserInfo.getUserId(), AboutMe = UserInfo.getName());
@@ -350,6 +367,59 @@ private class RollupDateLiteralTests {
       Assert.areEqual(true, literal.matches(lastInstant, '='), 'Include the end of October 25 in Berlin');
       Assert.areEqual(false, literal.matches(lastInstant.addSeconds(1), '='), 'Exclude the instant after the range');
     }
+  }
+
+  @IsTest
+  static void nextDayRangesStartAtMidnightAfterLosAngelesDstEnd() {
+    System.runAs(losAngelesUser) {
+      // Los Angeles leaves daylight saving time on November 1, 2026, so that
+      // day lasts 25 hours. Adding 24 elapsed hours to its start lands on 11 PM
+      // the same day, not on midnight of November 2.
+      RollupDateLiteral.setNow(Datetime.newInstanceGmt(2026, 11, 1, 20, 0, 0));
+      Datetime tomorrowStart = Datetime.newInstanceGmt(2026, 11, 2, 8, 0, 0);
+      Datetime tomorrowEnd = Datetime.newInstanceGmt(Date.newInstance(2026, 11, 3), Time.newInstance(7, 59, 59, 999));
+
+      assertRange(RollupDateLiteral.get('TOMORROW'), tomorrowStart, tomorrowEnd);
+      assertRange(RollupDateLiteral.get('NEXT_N_DAYS:1'), tomorrowStart, tomorrowEnd);
+      assertRange(
+        RollupDateLiteral.get('NEXT_90_DAYS'),
+        tomorrowStart,
+        Datetime.newInstanceGmt(Date.newInstance(2027, 1, 31), Time.newInstance(7, 59, 59, 999))
+      );
+      // The week starts on Sunday, November 1, and ends on Saturday, November 7.
+      assertRange(
+        RollupDateLiteral.get('THIS_WEEK'),
+        Datetime.newInstanceGmt(2026, 11, 1, 7, 0, 0),
+        Datetime.newInstanceGmt(Date.newInstance(2026, 11, 8), Time.newInstance(7, 59, 59, 999))
+      );
+    }
+  }
+
+  @IsTest
+  static void nextDayRangesStartAtMidnightAfterLosAngelesDstStart() {
+    System.runAs(losAngelesUser) {
+      // Los Angeles enters daylight saving time on March 8, 2026, so that day
+      // lasts 23 hours. Adding 24 elapsed hours to its start lands on 1 AM on
+      // March 9, not on midnight.
+      RollupDateLiteral.setNow(Datetime.newInstanceGmt(2026, 3, 8, 19, 0, 0));
+      Datetime tomorrowStart = Datetime.newInstanceGmt(2026, 3, 9, 7, 0, 0);
+      Datetime tomorrowEnd = Datetime.newInstanceGmt(Date.newInstance(2026, 3, 10), Time.newInstance(6, 59, 59, 999));
+
+      assertRange(RollupDateLiteral.get('TOMORROW'), tomorrowStart, tomorrowEnd);
+      assertRange(RollupDateLiteral.get('NEXT_N_DAYS:1'), tomorrowStart, tomorrowEnd);
+      assertRange(
+        RollupDateLiteral.get('NEXT_90_DAYS'),
+        tomorrowStart,
+        Datetime.newInstanceGmt(Date.newInstance(2026, 6, 7), Time.newInstance(6, 59, 59, 999))
+      );
+    }
+  }
+
+  static void assertRange(RollupDateLiteral literal, Datetime firstInstant, Datetime lastInstant) {
+    System.assertEquals(true, literal.matches(firstInstant, '='), 'Include the start of the range: ' + literal);
+    System.assertEquals(false, literal.matches(firstInstant.addSeconds(-1), '='), 'Exclude the instant before the range: ' + literal);
+    System.assertEquals(true, literal.matches(lastInstant, '='), 'Include the end of the range: ' + literal);
+    System.assertEquals(false, literal.matches(lastInstant.addSeconds(1), '='), 'Exclude the instant after the range: ' + literal);
   }
 
   @IsTest

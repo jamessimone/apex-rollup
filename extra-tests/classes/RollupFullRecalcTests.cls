@@ -1,5 +1,5 @@
 @IsTest
-private class RollupFullRecalcTests {
+private class RollupFullRecalcTests implements Database.Batchable<SObject> {
   @TestSetup
   static void setup() {
     Account acc = new Account(Name = RollupFullRecalcTests.class.getName());
@@ -2733,5 +2733,134 @@ private class RollupFullRecalcTests {
 
     Assert.areEqual(25, [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE].AnnualRevenue);
     Assert.areEqual(25, [SELECT ConsumerCreditScore FROM Individual WHERE Id = :indy.Id WITH SYSTEM_MODE].ConsumerCreditScore);
+  }
+
+  @IsTest
+  static void doesNotEnqueueTwiceWhenDeferredFromBatchFinish() {
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
+    insert as system new ContactPointAddress(Name = 'deferred from finish', ParentId = acc.Id, PreferenceRank = 5);
+    insert as system new Task(Subject = 'deferred from finish', WhatId = acc.Id);
+
+    Test.startTest();
+    // only outer classes can implement Database.Batchable
+    // so for better or worse that means we use this whole test class
+    // as the Batchable instance
+    Database.executeBatch(new RollupFullRecalcTests());
+    Test.stopTest();
+
+    List<AsyncApexJob> jobs = [SELECT JobType, Status, ExtendedStatus, NumberOfErrors, ApexClass.Name FROM AsyncApexJob WITH SYSTEM_MODE];
+    // One for the batch job, one for the Queueable that starts up from finish()
+    Assert.areEqual(2, jobs.size());
+    for (AsyncApexJob job : jobs) {
+      Assert.isNull(job.ExtendedStatus, JSON.serializePretty(jobs));
+      Assert.areEqual('Completed', job.Status);
+    }
+    acc = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
+    Assert.areEqual(5, acc.AnnualRevenue);
+    Assert.areEqual(1, acc.NumberOfEmployees);
+  }
+
+  @IsTest
+  static void sharesParentQueryAcrossRollupsToSameParent() {
+    Rollup.shouldFlattenAsyncProcesses = true;
+    RollupLimits.stubAsyncTimeoutInterval = 1;
+    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 50, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable);
+    Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
+    // parents without calc items aren't tracked as updated, so without sharing the parent query each rollup re-queries them
+    Account childlessAcc = new Account(Name = 'Childless');
+    insert as system childlessAcc;
+    insert as system new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'a', ParentId = acc.Id, PreferenceRank = 2),
+      new ContactPointAddress(Name = 'b', ParentId = acc.Id, PreferenceRank = 3)
+    };
+    insert as system new List<Task>{ new Task(Subject = 'a', WhatId = acc.Id), new Task(Subject = 'b', WhatId = acc.Id) };
+    // multiple calc item types cause the parent Ids to be passed to each rollup
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'Name',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'Description',
+        RollupOperation__c = 'CONCAT'
+      )
+    };
+
+    // specifically don't wrap in start/stopTest to prove it ran sync
+    Integer queriesBefore = Limits.getQueries();
+    Rollup.performBulkFullRecalcWithParentIds(
+      JSON.serialize(metas),
+      Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name(),
+      new List<String>{ acc.Id, childlessAcc.Id }
+    );
+    Integer queriesUsed = Limits.getQueries() - queriesBefore;
+
+    acc = [SELECT AnnualRevenue, NumberOfEmployees, Description FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE];
+    Assert.areEqual(5, acc.AnnualRevenue);
+    Assert.areEqual(2, acc.NumberOfEmployees);
+    Assert.areEqual('a, b', acc.Description);
+    Integer expectedQueries = 5 + (RollupCurrencyInfo.isMultiCurrency() ? 1 : 0);
+    Assert.areEqual(expectedQueries, queriesUsed, 'All three rollups to Account should have shared one parent query');
+  }
+
+  public List<SObject> start(Database.BatchableContext bc) {
+    return [SELECT Id FROM Account WITH SYSTEM_MODE];
+  }
+
+  @SuppressWarnings('PMD.EmptyStatementBlock')
+  public void execute(Database.BatchableContext bc, List<SObject> records) {
+  }
+
+  public void finish(Database.BatchableContext bc) {
+    Id parentId = [SELECT Id FROM Account WITH SYSTEM_MODE].Id;
+    Rollup.defaultControl = new RollupControl__mdt(
+      IsRollupLoggingEnabled__c = true,
+      MaxLookupRowsBeforeBatching__c = 50,
+      // allows for the COUNT() query per rollup so the sync run can start,
+      // but forces the rollups to be deferred once they begin querying for calc items
+      MaxNumberOfQueries__c = Limits.getQueries() + 2,
+      MaxRollupRetries__c = 10,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable
+    );
+    List<Rollup__mdt> metas = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'ContactPointAddress',
+        RollupFieldOnCalcItem__c = 'PreferenceRank',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'SUM'
+      ),
+      new Rollup__mdt(
+        CalcItem__c = 'Task',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'WhatId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'COUNT'
+      )
+    };
+    Rollup.performBulkFullRecalcWithParentIds(JSON.serialize(metas), Rollup.InvocationPoint.FROM_FULL_RECALC_FLOW.name(), new List<String>{ parentId });
   }
 }

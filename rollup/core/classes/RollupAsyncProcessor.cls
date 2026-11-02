@@ -17,6 +17,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   private Boolean isFromBatchExecute = false;
   private Map<String, CalcItemBag> groupedLookupToCalcItems;
   private String registeredStack;
+  private transient Map<String, LookupItemCache> queryToLookupItemCache;
 
   protected Id jobId;
   protected Boolean isTimingOut = false;
@@ -90,6 +91,49 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       return CACHED_CALC_ITEM_BAGS;
     }
     set;
+  }
+
+  private class LookupItemCache {
+    private final Schema.SObjectField lookupFieldOnLookupObject;
+    private final Map<String, Map<Id, SObject>> keyToLookupItems = new Map<String, Map<Id, SObject>>();
+
+    public LookupItemCache(Schema.SObjectField lookupFieldOnLookupObject) {
+      this.lookupFieldOnLookupObject = lookupFieldOnLookupObject;
+    }
+
+    public Set<String> getUncachedKeys(Set<String> lookupKeys) {
+      Set<String> uncachedKeys = new Set<String>(lookupKeys);
+      uncachedKeys.removeAll(this.keyToLookupItems.keySet());
+      return uncachedKeys;
+    }
+
+    public LookupItemCache add(List<SObject> lookupItems) {
+      for (SObject lookupItem : lookupItems) {
+        String key = String.valueOf(lookupItem.get(this.lookupFieldOnLookupObject));
+        Map<Id, SObject> idToLookupItem = this.keyToLookupItems.get(key);
+        if (idToLookupItem == null) {
+          idToLookupItem = new Map<Id, SObject>();
+          this.keyToLookupItems.put(key, idToLookupItem);
+        }
+        idToLookupItem.put(lookupItem.Id, lookupItem);
+      }
+      return this;
+    }
+
+    public List<SObject> get(Set<String> lookupKeys, List<SObject> queriedItems) {
+      Map<Id, SObject> flattenedIdToLookupItems = new Map<Id, SObject>(queriedItems);
+      for (String key : lookupKeys) {
+        Map<Id, SObject> potentialMatches = this.keyToLookupItems.get(key);
+        if (potentialMatches != null) {
+          flattenedIdToLookupItems.putAll(potentialMatches);
+        }
+      }
+      return flattenedIdToLookupItems.values();
+    }
+
+    private Map<Id, SObject> getIdToLookupItem(String key) {
+      return this.keyToLookupItems.get(key) ?? new Map<Id, SObject>();
+    }
   }
 
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
@@ -278,7 +322,8 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
         this.process(syncRollups);
         this.logger.log('finished sync rollups', System.LoggingLevel.INFO);
       }
-      if (this.rollups.isEmpty() == false || this instanceof RollupFullRecalcProcessor) {
+      // full recalc processors have already been run (and any deferred rollups started) if they were processed synchronously
+      if (this.rollups.isEmpty() == false || (this instanceof RollupFullRecalcProcessor && this.isProcessed == false)) {
         rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
       }
       if (rollupProcessId == 'no-op') {
@@ -537,15 +582,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       // lookup items are retrieved en masse in the "start" method for standard (not full recalc) Batch rollups, and are cached in the "execute" method
       lookupItemsToAssign = this.lookupItems;
     } else {
-      lookupItemsToAssign = roll.traversal?.getAllParents() ??
-        new RollupRepository(roll.runAsMode)
-          .setQuery(
-            RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(roll.lookupFieldOnLookupObject), '=') +
-              (String.isNotBlank(roll.metadata?.ParentObjectWhereClause__c) ? '\nAND (' + roll.metadata.ParentObjectWhereClause__c + ')' : '') +
-              (this.isSingleRecordSyncUpdate(roll) ? '\nFOR UPDATE' : '')
-          )
-          .setArg(lookupKeys)
-          .get();
+      lookupItemsToAssign = roll.traversal?.getAllParents() ?? this.queryLookupItems(lookupKeys, roll, uniqueQueryFieldNames);
 
       List<SObject> recordsToReset = new List<SObject>();
       for (SObject lookupItem : lookupItemsToAssign) {
@@ -563,6 +600,26 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
     this.queryCount = (this.queryCount ?? 0) + lookupItemsToAssign.size();
     return lookupItemsToAssign;
+  }
+
+  private List<SObject> queryLookupItems(Set<String> lookupKeys, RollupAsyncProcessor roll, Set<String> uniqueQueryFieldNames) {
+    Boolean isForUpdate = this.isSingleRecordSyncUpdate(roll);
+    String query =
+      RollupQueryBuilder.Current.getQuery(roll.lookupObj, new List<String>(uniqueQueryFieldNames), String.valueOf(roll.lookupFieldOnLookupObject), '=') +
+      (String.isNotBlank(roll.metadata?.ParentObjectWhereClause__c) ? '\nAND (' + roll.metadata.ParentObjectWhereClause__c + ')' : '') +
+      (isForUpdate ? '\nFOR UPDATE' : '');
+    RollupRepository repo = new RollupRepository(roll.runAsMode).setQuery(query);
+    if (isForUpdate || this.queryToLookupItemCache == null) {
+      return repo.setArg(lookupKeys).get();
+    }
+
+    // rollups to the same parent object within the same process() call share one parent query until the cache is updated
+    String cacheKey = roll.runAsMode + query;
+    LookupItemCache cache = this.queryToLookupItemCache.get(cacheKey) ?? new LookupItemCache(roll.lookupFieldOnLookupObject);
+    this.queryToLookupItemCache.put(cacheKey, cache);
+    Set<String> uncachedKeys = cache.getUncachedKeys(lookupKeys);
+    List<SObject> queriedItems = uncachedKeys.isEmpty() ? new List<SObject>() : repo.setArg(uncachedKeys).get();
+    return cache.add(queriedItems).get(lookupKeys, queriedItems);
   }
 
   protected void retrieveAdditionalCalcItems(Map<String, CalcItemBag> lookupToCalcItems, RollupAsyncProcessor rollup) {
@@ -690,6 +747,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
 
   protected void process(List<RollupAsyncProcessor> rollups) {
     this.isProcessed = true;
+    this.queryToLookupItemCache = new Map<String, LookupItemCache>();
     this.handleMultipleDMLRollupsEnqueuedInTheSameTransaction(rollups);
     this.preProcessRollups(rollups);
     this.populateObjectFields(rollups, false);
@@ -1584,6 +1642,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     this.uniqueParentFields.clear();
     this.cleanupStaticVars();
     this.getCachedApexOperations().clear();
+    this.queryToLookupItemCache = null;
   }
 
   private void executeFinish() {
