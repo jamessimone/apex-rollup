@@ -2072,7 +2072,11 @@ private class RollupFullRecalcTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldNotRequeryForAverageItemsInFullRecalc() {
-    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous, MaxLookupRowsBeforeBatching__c = 2);
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      MaxLookupRowsBeforeBatching__c = 2,
+      MaxRollupRetries__c = 0
+    );
     Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account second = new Account(Name = 'Second');
     insert as system second;
@@ -2109,8 +2113,7 @@ private class RollupFullRecalcTests implements Database.Batchable<SObject> {
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
-    // only one of the records will have been updated since the query limit will have led to an
-    // unprocessable deferral (since tests can't re-queue/batch)
+    // Allow the initial full batch launch, without allowing retries to hide repeated child queries.
     second = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE];
     System.assertEquals(4.00, second.AnnualRevenue);
     System.assertEquals(2.00, second.NumberOfEmployees);
@@ -2118,7 +2121,11 @@ private class RollupFullRecalcTests implements Database.Batchable<SObject> {
 
   @IsTest
   static void shouldNotRequeryInFullRecalcForFirstLast() {
-    Rollup.defaultControl = new RollupControl__mdt(MaxLookupRowsBeforeBatching__c = 2, ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxLookupRowsBeforeBatching__c = 2,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      MaxRollupRetries__c = 0
+    );
     Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];
     Account second = new Account(Name = 'Second');
     insert as system second;
@@ -2155,8 +2162,7 @@ private class RollupFullRecalcTests implements Database.Batchable<SObject> {
     Rollup.performBulkFullRecalc(metas, Rollup.InvocationPoint.FROM_FULL_RECALC_LWC.name());
     Test.stopTest();
 
-    // only one of the records will have been updated since the query limit will have led to an
-    // unprocessable deferral (since tests can't re-queue/batch)
+    // Allow the initial full batch launch, without allowing retries to hide repeated child queries.
     second = [SELECT AnnualRevenue, NumberOfEmployees FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE];
     System.assertEquals(3.00, second.AnnualRevenue);
     System.assertEquals(2.00, second.NumberOfEmployees);

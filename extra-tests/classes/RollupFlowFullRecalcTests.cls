@@ -9,6 +9,71 @@ private class RollupFlowFullRecalcTests {
   }
 
   @IsTest
+  static void shouldEnqueueSynchronousFullBatchRecalcOnlyOnce() {
+    List<ContactPointAddress> children = createSynchronousFullBatchRecalcChildren();
+
+    Test.startTest();
+    runSynchronousFullBatchRecalc(children);
+    Assert.areEqual(1, Limits.getQueueableJobs(), 'A synchronous full batch recalculation must only be deferred once');
+    Test.stopTest();
+
+    Assert.areEqual(1500, [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE].AnnualRevenue);
+  }
+
+  @IsTest
+  static void shouldDeferSynchronousFullBatchRecalcFromQueueable() {
+    List<ContactPointAddress> children = createSynchronousFullBatchRecalcChildren();
+
+    Test.startTest();
+    AsyncOptions options = new AsyncOptions();
+    options.MaximumQueueableStackDepth = 5;
+    Id jobId = System.enqueueJob(new SynchronousFullBatchRecalcJob(children), options);
+    Test.stopTest();
+
+    AsyncApexJob job = [SELECT Status, NumberOfErrors FROM AsyncApexJob WHERE Id = :jobId WITH SYSTEM_MODE];
+    Assert.areEqual('Completed', job.Status);
+    Assert.areEqual(0, job.NumberOfErrors);
+    Assert.areEqual(1500, [SELECT AnnualRevenue FROM Account WITH SYSTEM_MODE].AnnualRevenue);
+  }
+
+  private static List<ContactPointAddress> createSynchronousFullBatchRecalcChildren() {
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.defaultControl = new RollupControl__mdt(
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous,
+      MaxLookupRowsBeforeBatching__c = 1,
+      MaxRollupRetries__c = 20,
+      IsRollupLoggingEnabled__c = true
+    );
+    Id parentId = [SELECT Id FROM Account WITH SYSTEM_MODE].Id;
+    List<ContactPointAddress> children = new List<ContactPointAddress>{
+      new ContactPointAddress(Name = 'Sync full batch one', ParentId = parentId, PreferenceRank = 500),
+      new ContactPointAddress(Name = 'Sync full batch two', ParentId = parentId, PreferenceRank = 1000)
+    };
+    insert as system children;
+    return children;
+  }
+
+  private static void runSynchronousFullBatchRecalc(List<ContactPointAddress> children) {
+    List<Rollup.FlowOutput> outputs = Rollup.performRollup(RollupTestUtils.prepareFlowTest(children, 'REFRESH', 'SUM'));
+    Assert.areEqual(1, outputs.size());
+    Assert.isTrue(outputs[0].isSuccess, outputs[0].message);
+  }
+
+  private class SynchronousFullBatchRecalcJob implements System.Queueable {
+    private final List<ContactPointAddress> children;
+
+    public SynchronousFullBatchRecalcJob(List<ContactPointAddress> children) {
+      this.children = children;
+    }
+
+    public void execute(QueueableContext context) {
+      runSynchronousFullBatchRecalc(this.children);
+      // in theory, this would be an uncatchable throw anyway, but it never hurts to be too sure...
+      Assert.areEqual(1, Limits.getQueueableJobs());
+    }
+  }
+
+  @IsTest
   static void shouldPerformFullRecalcWithGrandparentHierarchyFlow() {
     Rollup.onlyUseMockMetadata = true; // necessary for namespaced package generation
     Account acc = [SELECT Id FROM Account WITH SYSTEM_MODE];

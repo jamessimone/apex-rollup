@@ -43,13 +43,6 @@ public without sharing virtual class RollupFullBatchRecalculator extends RollupF
     return true;
   }
 
-  protected override List<RollupAsyncProcessor> transformFullRecalcRollups() {
-    if (this.isProcessed == false && this.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous && System.isBatch() == false) {
-      this.startAsyncWork();
-    }
-    return new List<RollupAsyncProcessor>();
-  }
-
   protected virtual override String getTypeName() {
     return RollupFullBatchRecalculator.class.getName();
   }
