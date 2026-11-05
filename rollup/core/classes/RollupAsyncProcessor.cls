@@ -130,10 +130,6 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       }
       return flattenedIdToLookupItems.values();
     }
-
-    private Map<Id, SObject> getIdToLookupItem(String key) {
-      return this.keyToLookupItems.get(key) ?? new Map<Id, SObject>();
-    }
   }
 
   public static RollupAsyncProcessor getConductor(InvocationPoint invokePoint, List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
