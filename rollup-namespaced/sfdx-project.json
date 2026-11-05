@@ -4,8 +4,8 @@
             "default": true,
             "package": "apex-rollup-namespaced",
             "path": "rollup-namespaced/source/rollup",
-            "versionName": "RollupDateLiteral additional boundary DST bugfixes by @cwarden, Too many queueables jobs added to the queue fixes",
-            "versionNumber": "1.2.46.0",
+            "versionName": "Flow full recalc bugfix to also address ANOTHER too many queueable jobs added issue with synchronously configured rollups",
+            "versionNumber": "1.2.47.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -37,6 +37,7 @@
         "apex-rollup-namespaced@1.2.43": "04tg7000000XWFdAAO",
         "apex-rollup-namespaced@1.2.44": "04tg7000000ZbPhAAK",
         "apex-rollup-namespaced@1.2.45": "04tg7000000aTebAAE",
-        "apex-rollup-namespaced@1.2.46": "04tg7000000cPJxAAM"
+        "apex-rollup-namespaced@1.2.46": "04tg7000000cPJxAAM",
+        "apex-rollup-namespaced@1.2.47": "04tg7000000dOSHAA2"
     }
 }
