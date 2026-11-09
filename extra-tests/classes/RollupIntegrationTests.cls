@@ -1571,6 +1571,91 @@ private class RollupIntegrationTests implements Database.Batchable<SObject> {
   }
 
   @IsTest
+  static void shouldNotEnqueueTwiceWhenFutureRollupDefersAfterParentTrigger() {
+    Rollup.onlyUseMockMetadata = true;
+    Account grandparent = new Account(Name = 'Future deferral grandparent', NumberOfEmployees = 1);
+    insert as system grandparent;
+    List<Account> parents = new List<Account>{
+      new Account(Name = 'Future deferral parent one', ParentId = grandparent.Id, NumberOfEmployees = 1),
+      new Account(Name = 'Future deferral parent two', ParentId = grandparent.Id, NumberOfEmployees = 1)
+    };
+    insert as system parents;
+    List<Account> children = new List<Account>{
+      new Account(Name = 'Future deferral child one', ParentId = parents[0].Id, NumberOfEmployees = 1),
+      new Account(Name = 'Future deferral child two', ParentId = parents[1].Id, NumberOfEmployees = 1)
+    };
+    insert as system children;
+
+    Test.startTest();
+    updateChildrenFromFuture(new Map<Id, Account>(children).keySet());
+    Test.stopTest();
+
+    Assert.areEqual(2, [SELECT COUNT() FROM Account WHERE Id IN :children AND NumberOfEmployees = 0 WITH SYSTEM_MODE]);
+  }
+
+  @Future
+  private static void updateChildrenFromFuture(Set<Id> childIds) {
+    Assert.isTrue(System.isFuture(), 'Test has started under the wrong conditions');
+    Assert.areEqual(1, Limits.getLimitQueueableJobs());
+    List<Account> children = [SELECT Id, NumberOfEmployees FROM Account WHERE Id = :childIds WITH SYSTEM_MODE];
+    for (Account child : children) {
+      child.NumberOfEmployees = 0;
+    }
+
+    // We have to wait till we get into the Future transaction before setting the rest of the overrides
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.defaultControl = new RollupControl__mdt(
+      MaxNumberOfQueries__c = Limits.getQueries() + 1,
+      // 1 for the outer rollup, one for the nested rollup.
+      MaxRollupRetries__c = 2,
+      ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable,
+      ShouldRunSingleRecordsSynchronously__c = false,
+      IsRollupLoggingEnabled__c = true
+    );
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        CalcItem__c = 'Account',
+        RollupFieldOnCalcItem__c = 'NumberOfEmployees',
+        LookupFieldOnCalcItem__c = 'ParentId',
+        LookupObject__c = 'Account',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberOfEmployees',
+        RollupOperation__c = 'MAX'
+      )
+    };
+    FutureDeferralUpdater updater = new FutureDeferralUpdater(Rollup.defaultControl);
+    Rollup.DML = updater;
+
+    update as system children;
+
+    Assert.isTrue(updater.hasUpdatedParent, 'The future transaction must update one parent before deferring.');
+    Assert.areEqual(1, Limits.getQueueableJobs(), 'The nested parent trigger should consume the only queueable slot.');
+  }
+
+  private class FutureDeferralUpdater extends RollupSObjectUpdater {
+    private final RollupControl__mdt control;
+    private Boolean hasUpdatedParent = false;
+
+    private FutureDeferralUpdater(RollupControl__mdt control) {
+      this.control = control;
+    }
+
+    public override void doUpdate(List<SObject> recordsToUpdate) {
+      if (recordsToUpdate.isEmpty() == false && this.hasUpdatedParent == false) {
+        this.hasUpdatedParent = true;
+        Assert.isTrue(System.isFuture(), 'The first parent update must happen synchronously inside the future method.');
+        Assert.areEqual(1, recordsToUpdate.size(), 'Only one parent should be calculated before the outer rollup defers.');
+        Assert.isTrue(new RollupLimits.Tester(this.control, true).hasExceededQueryNumberLimit, 'The query threshold must be exceeded before parent DML.');
+        Assert.areEqual(0, Limits.getQueueableJobs(), 'The nested trigger must enqueue the first job.');
+        super.doUpdate(recordsToUpdate);
+        Assert.areEqual(1, Limits.getQueueableJobs(), 'The nested rollup must consume the only queueable slot before outer deferral.');
+      } else {
+        super.doUpdate(recordsToUpdate);
+      }
+    }
+  }
+
+  @IsTest
   static void shouldNotBlowUpWhenDeferralLeadsToMultipleSObjectsBeingPresent() {
     Account acc = [SELECT Id, OwnerId FROM Account WITH SYSTEM_MODE];
 

@@ -68,6 +68,14 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     set;
   }
 
+  private final List<RollupAsyncProcessor> syncRollups {
+    get {
+      this.syncRollups = this.syncRollups ?? new List<RollupAsyncProcessor>();
+      return this.syncRollups;
+    }
+    set;
+  }
+
   private final List<RollupAsyncProcessor> deferredRollups {
     get {
       this.deferredRollups = this.deferredRollups ?? new List<RollupAsyncProcessor>();
@@ -293,8 +301,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
   public virtual override String runCalc() {
     // side effect in the below method - rollups can be removed from this.rollups if a control record ShouldAbortRun__c == true
     // they also can be added to syncRollups if we're already async
-    List<RollupAsyncProcessor> syncRollups = new List<RollupAsyncProcessor>();
-    Boolean shouldRunWithoutCustomSetting = this.ingestRollupControlData(syncRollups);
+    Boolean shouldRunWithoutCustomSetting = this.ingestRollupControlData();
 
     Boolean isBasicNoOp = this.rollups.isEmpty() && syncRollups.isEmpty() && this.isFullRecalc == false;
     if (this.isNoOp) {
@@ -312,14 +319,17 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     } else if (RollupSettings__c.getInstance().IsEnabled__c == false && shouldRunWithoutCustomSetting == false) {
       logMessage = RollupSettings__c.SObjectType.toString() + '.' + RollupSettings__c.IsEnabled__c + ' is false, exiting early';
     } else {
-      if (syncRollups.isEmpty() == false) {
+      if (this.syncRollups.isEmpty() == false) {
         rollupProcessId = this.getNoProcessId();
         this.logger.log('about to process sync rollups', System.LoggingLevel.INFO);
-        this.process(syncRollups);
+        this.process(this.syncRollups);
         this.logger.log('finished sync rollups', System.LoggingLevel.INFO);
+        this.syncRollups.clear();
       }
-      // full recalc processors have already been run (and any deferred rollups started) if they were processed synchronously
-      if (this.rollups.isEmpty() == false || (this instanceof RollupFullRecalcProcessor && this.isProcessed == false)) {
+      if (
+        // full recalc processors have already been run (and any deferred rollups started) if they were processed synchronously
+        this.rollups.isEmpty() == false || (this instanceof RollupFullRecalcProcessor && this.isProcessed == false)
+      ) {
         rollupProcessId = this.getAsyncRollup()?.beginAsyncRollup();
       }
       if (rollupProcessId == 'no-op') {
@@ -405,6 +415,9 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       roll = this;
     } else if (this.rollups.size() == 1 && this.rollups[0] instanceof RollupFullRecalcProcessor) {
       roll = this.rollups[0];
+    } else if (System.isFuture() && canEnqueue == false) {
+      this.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
+      roll = this;
     } else if (System.isBatch() == false && (shouldRunAsBatch || canEnqueue == false)) {
       // safe to batch because the QueryLocator will only return one type of SObject
       // we have to re-initialize the rollup because it's the Queueable inner class
@@ -495,8 +508,16 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       if (this.finalizer != null && System.isQueueable() && (System.Limits.getQueueableJobs() == 1 || hasAlreadyAsyncEnqueued)) {
         this.finalizer.addCaboose(this);
         return this.getNoProcessId();
+      } else if (this.getCanEnqueue() == false) {
+        // try to run sync
+        this.rollupControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous;
+        this.syncRollups.addAll(this.rollups);
+        this.rollups.clear();
+        // take care of some pre-emptive book-keeping to prevent a recursion nightmare in runCalc()
+        this.isProcessed = true;
+        return this.runCalc();
       }
-      hasAlreadyAsyncEnqueued = hasAlreadyAsyncEnqueued || System.isBatch() || System.isQueueable() || System.isFuture();
+      hasAlreadyAsyncEnqueued = hasAlreadyAsyncEnqueued || this.isAsync();
       return System.enqueueJob(this);
     }
 
@@ -1251,7 +1272,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
     }
   }
 
-  private Boolean ingestRollupControlData(List<RollupAsyncProcessor> syncRollups) {
+  private Boolean ingestRollupControlData() {
     Boolean isRunningAsync = this.getIsRunningAsync();
     Boolean shouldRollupsRunWithoutCustomSetting = false;
     RollupLimits.Tester limitTester = new RollupLimits.Tester(this.rollupControl, isRunningAsync);
@@ -1263,7 +1284,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       Boolean shouldRunSyncDeferred = this.getShouldRunSyncDeferred(rollup);
       Boolean couldRunSync =
         rollup.rollupControl.ShouldRunAs__c == RollupMetaPicklists.ShouldRunAs.Synchronous ||
-        (isRunningAsync && this.getIsTimingOut(rollup.rollupControl, TimeoutCheckLevel.AT_ROLLUP) == false) ||
+        (isRunningAsync && limitTester.hasExceededLimits() == false) ||
         this.isSingleRecordSyncUpdate(rollup);
 
       if (limitTester.hasExceededOrgAsyncLimit()) {
@@ -1279,7 +1300,7 @@ global virtual without sharing class RollupAsyncProcessor extends Rollup impleme
       } else if (couldRunSync && shouldRunSyncDeferred == false) {
         this.calcItemReplacer?.resetShouldRunAs(RollupMetaPicklists.ShouldRunAs.Synchronous);
         this.rollups.remove(index);
-        syncRollups.add(rollup);
+        this.syncRollups.add(rollup);
       } else if (couldRunSync && shouldRunSyncDeferred) {
         this.rollups.remove(index);
         this.getCachedRollups().add(rollup);

@@ -470,6 +470,10 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     logEvenWhenDisabled(this.rollupControl, logMessage, logObject);
   }
 
+  protected Boolean isAsync() {
+    return isContextAsync();
+  }
+
   /**
    * global facing RollupAsyncProcessor calculation section
    * - Trigger operations

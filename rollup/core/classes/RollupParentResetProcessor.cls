@@ -38,7 +38,7 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
       }
 
       if (this.processor.countOfItems > maxQueryRows) {
-        Database.executeBatch(this.processor, this.processor.rollupControl.BatchChunkSize__c.intValue());
+        this.processor.startBatchProcessor();
       } else {
         this.processor.runSync();
       }
