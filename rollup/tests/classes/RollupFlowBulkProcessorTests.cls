@@ -15,6 +15,19 @@ private class RollupFlowBulkProcessorTests {
   }
 
   @IsTest
+  static void returnsOutputWhenNoMetadataMatches() {
+    Rollup.onlyUseMockMetadata = true;
+    RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
+    input.recordsToRollup = new List<SObject>{ new Contact() };
+    input.rollupContext = 'INSERT';
+
+    List<Rollup.FlowOutput> outputs = RollupFlowBulkProcessor.addRollup(new List<RollupFlowBulkProcessor.FlowInput>{ input });
+
+    System.assertEquals(1, outputs.size(), 'Flow requires one output per input');
+    System.assertEquals('No matching rollup metadata', outputs[0].message);
+  }
+
+  @IsTest
   static void skipsAddingRollupForNoOps() {
     RollupFlowBulkProcessor.FlowInput input = new RollupFlowBulkProcessor.FlowInput();
     // this contact should be filtered out due to not having an AccountId filled out

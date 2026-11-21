@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Prevent too many queueables from being started up within @Future annotated methods",
-            "versionNumber": "1.7.51.0",
+            "versionName": "Return a Flow output for inputs without matching rollup metadata",
+            "versionNumber": "1.7.52.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -106,6 +106,7 @@
         "apex-rollup@1.7.48": "04tg7000000aTTJAA2",
         "apex-rollup@1.7.49": "04tg7000000cPILAA2",
         "apex-rollup@1.7.50": "04tg7000000dOLpAAM",
-        "apex-rollup@1.7.51": "04tg7000000dzA5AAI"
+        "apex-rollup@1.7.51": "04tg7000000dzA5AAI",
+        "apex-rollup@1.7.52": "04tg7000000lXN7AAM"
     }
 }
