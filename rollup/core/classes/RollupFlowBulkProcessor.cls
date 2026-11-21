@@ -95,6 +95,7 @@ global without sharing class RollupFlowBulkProcessor {
         output.message = 'No records';
         outputs.add(output);
       } else {
+        Integer priorValidInputCount = validInputs.size();
         List<Rollup__mdt> rollupMetadata = Rollup.getMetadataFromCache(Rollup__mdt.SObjectType);
         // for some reason, lists passed from Flow to Apex report their SObjectType as null. womp.
         Schema.SObjectType sObjectType = flowInput.recordsToRollup?.get(0).getSObjectType();
@@ -155,6 +156,11 @@ global without sharing class RollupFlowBulkProcessor {
             input.shouldRunSync = flowInput.shouldRunSync ?? false;
             input.developerName = meta.DeveloperName;
           }
+        }
+        // Flow requires one output per input, so inputs without matching metadata still need one
+        if (validInputs.size() == priorValidInputCount) {
+          output.message = 'No matching rollup metadata';
+          outputs.add(output);
         }
       }
     }
