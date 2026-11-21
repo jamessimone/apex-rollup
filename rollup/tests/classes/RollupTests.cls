@@ -3164,6 +3164,8 @@ private class RollupTests {
 
   @IsTest
   static void rollupGroupingOperationOccursIndependentlyOfDownstreamRollups() {
+    // set before the inserts below so subscriber org rollups (CMDT) that fire on them don't run against the stubbed parent
+    Rollup.onlyUseMockMetadata = true;
     Account acc = [SELECT Id, Phone FROM Account WITH SYSTEM_MODE];
     acc.AnnualRevenue = 2; // should match count of contacts, below, to begin with
     RollupAsyncProcessor.stubParentRecords = new List<SObject>{ acc };
@@ -3171,7 +3173,6 @@ private class RollupTests {
     Opportunity opp = new Opportunity(CloseDate = System.today(), Amount = 3, AccountId = acc.Id, StageName = '1', Name = 'Winning Record');
     insert as system opp;
     insert as system new List<SObject>{ new Contact(LastName = '1', AccountId = acc.Id), new Contact(LastName = '2', AccountId = acc.Id) };
-    Rollup.onlyUseMockMetadata = true;
     RollupGrouping__mdt parentGrouping = new RollupGrouping__mdt(Id = RollupTestUtils.createId(RollupGrouping__mdt.SObjectType), RollupOperation__c = 'MAX');
     Rollup.rollupMetadata = new List<Rollup__mdt>{
       new Rollup__mdt(
