@@ -74,7 +74,9 @@ private class RollupFlowFullRecalcDispatcherTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
   }
 
@@ -120,7 +122,9 @@ private class RollupFlowFullRecalcDispatcherTests {
       [
         SELECT COUNT()
         FROM AsyncApexJob
-        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class) WITH SYSTEM_MODE]
+        WHERE JobType = 'Queueable' AND ApexClass.Name = :RollupTestUtils.getNamespaceSafeClassName(RollupDeferredFullRecalcProcessor.class)
+        WITH SYSTEM_MODE
+      ]
     );
   }
 
@@ -359,7 +363,11 @@ private class RollupFlowFullRecalcDispatcherTests {
 
     Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].AnnualRevenue);
     Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].AnnualRevenue);
-    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue, 'Excluded account should not have been updated');
+    Assert.areEqual(
+      99,
+      [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue,
+      'Excluded account should not have been updated'
+    );
   }
 
   @IsTest
@@ -393,7 +401,11 @@ private class RollupFlowFullRecalcDispatcherTests {
 
     Assert.areEqual(6, [SELECT AnnualRevenue FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].AnnualRevenue);
     Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].AnnualRevenue);
-    Assert.areEqual(99, [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue, 'Excluded account should not have been updated');
+    Assert.areEqual(
+      99,
+      [SELECT AnnualRevenue FROM Account WHERE Id = :excluded.Id WITH SYSTEM_MODE].AnnualRevenue,
+      'Excluded account should not have been updated'
+    );
   }
 
   @IsTest
@@ -439,6 +451,63 @@ private class RollupFlowFullRecalcDispatcherTests {
     Assert.areEqual(6, [SELECT NumberOfEmployees FROM Account WHERE Id = :acc.Id WITH SYSTEM_MODE].NumberOfEmployees);
     Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].AnnualRevenue);
     Assert.areEqual(0, [SELECT NumberOfEmployees FROM Account WHERE Id = :second.Id WITH SYSTEM_MODE].NumberOfEmployees);
+  }
+
+  @IsTest
+  static void shouldClearCampaignCountWithNoChildren() {
+    verifyEmptyCampaignCountReset(false, null);
+    Assert.isTrue(true, 'Should make it here');
+  }
+
+  @IsTest
+  static void shouldResetCampaignCountToConfiguredDefaultWithNoMatches() {
+    verifyEmptyCampaignCountReset(true, 0);
+    Assert.isTrue(true, 'Should make it here');
+  }
+
+  private static void verifyEmptyCampaignCountReset(Boolean hasExcludedChild, Decimal defaultValue) {
+    Campaign campaign = new Campaign(Name = 'Empty campaign count', NumberSent = 12);
+    Campaign excluded = new Campaign(Name = 'Campaign outside recalculation', NumberSent = 34);
+    insert as system new List<Campaign>{ campaign, excluded };
+    if (hasExcludedChild) {
+      Contact contact = new Contact(LastName = 'Excluded campaign member');
+      insert as system contact;
+      // sets HasResponded to true
+      insert as system new CampaignMember(CampaignId = campaign.Id, ContactId = contact.Id);
+    }
+
+    Rollup.onlyUseMockMetadata = true;
+    Rollup.defaultControl = Rollup.getDefaultControl();
+    Rollup.defaultControl.ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Queueable;
+    Rollup.defaultControl.ShouldSkipResettingParentFields__c = false;
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        DeveloperName = 'Campaign_Member_Count',
+        CalcItem__c = 'CampaignMember',
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupFieldOnCalcItem__c = 'CampaignId',
+        LookupObject__c = 'Campaign',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'NumberSent',
+        RollupOperation__c = 'COUNT',
+        CalcItemWhereClause__c = 'HasResponded = true',
+        FullRecalculationDefaultNumberValue__c = defaultValue
+      )
+    };
+    RollupFlowFullRecalcDispatcher.FlowInput input = new RollupFlowFullRecalcDispatcher.FlowInput();
+    input.rollupDeveloperNames = 'Campaign';
+    input.optionalParentId = campaign.Id;
+
+    Test.startTest();
+    RollupFlowRecalculator.performFullRecalcRollups(new List<RollupFlowFullRecalcDispatcher.FlowInput>{ input });
+    Test.stopTest();
+
+    Assert.areEqual(
+      defaultValue,
+      [SELECT NumberSent FROM Campaign WHERE Id = :campaign.Id WITH SYSTEM_MODE].NumberSent,
+      'Recalculating a campaign with no matching members must clear the stale count'
+    );
+    Assert.areEqual(34, [SELECT NumberSent FROM Campaign WHERE Id = :excluded.Id WITH SYSTEM_MODE].NumberSent, 'Only the requested parent should be reset');
   }
 
   private static List<RollupFlowFullRecalcDispatcher.FlowInput> getFlowInputs(List<Rollup__mdt> metas) {

@@ -89,6 +89,11 @@ public without sharing class RollupParentResetProcessor extends RollupFullBatchR
     return processId;
   }
 
+  protected override String beginAsyncRollup() {
+    // crucially, this adds the parent Ids to this.objIds
+    return this.runCalc();
+  }
+
   protected override void innerBatchExecute(List<SObject> parentItems) {
     if (parentItems.isEmpty()) {
       return;
