@@ -606,6 +606,65 @@ private class RollupFullRecalcTests implements Database.Batchable<SObject> {
 
   /** Parent-initiated rollups */
   @IsTest
+  static void shouldResetParentStartedRollupWhenThereAreNoChildren() {
+    Account parent = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<SObjectField>{ Account.AnnualRevenue });
+    parent.AnnualRevenue = 5;
+    update as system parent;
+
+    runParentStartedAssetCount(parent);
+
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE].AnnualRevenue);
+  }
+
+  @IsTest
+  static void shouldResetParentStartedRollupEvenWhenParentResetsAreDisabled() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldSkipResettingParentFields__c = true);
+    Account parent = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<SObjectField>{ Account.AnnualRevenue });
+    parent.AnnualRevenue = 1;
+    update as system parent;
+
+    runParentStartedAssetCount(parent);
+
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE].AnnualRevenue);
+  }
+
+  @IsTest
+  static void shouldResetSynchronousParentStartedRollupWhenThereAreNoChildren() {
+    Rollup.defaultControl = new RollupControl__mdt(ShouldRunAs__c = RollupMetaPicklists.ShouldRunAs.Synchronous);
+    Account parent = (Account) RollupTestUtils.queryRecord(Account.SObjectType, new List<SObjectField>{ Account.AnnualRevenue });
+    parent.AnnualRevenue = 1;
+    update as system parent;
+
+    runParentStartedAssetCount(parent);
+
+    Assert.areEqual(0, [SELECT AnnualRevenue FROM Account WHERE Id = :parent.Id WITH SYSTEM_MODE].AnnualRevenue);
+  }
+
+  private static void runParentStartedAssetCount(Account parent) {
+    Rollup.rollupMetadata = new List<Rollup__mdt>{
+      new Rollup__mdt(
+        RollupFieldOnCalcItem__c = 'Id',
+        LookupObject__c = 'Account',
+        LookupFieldOnCalcItem__c = 'AccountId',
+        LookupFieldOnLookupObject__c = 'Id',
+        RollupFieldOnLookupObject__c = 'AnnualRevenue',
+        RollupOperation__c = 'COUNT',
+        FullRecalculationDefaultNumberValue__c = 0,
+        CalcItem__c = 'Asset',
+        IsRollupStartedFromParent__c = true
+      )
+    };
+    Rollup.records = new List<Account>{ parent };
+    Rollup.oldRecordsMap = new Map<Id, Account>{ parent.Id => parent };
+    Rollup.apexContext = TriggerOperation.AFTER_UPDATE;
+    Rollup.shouldRun = true;
+
+    Test.startTest();
+    Rollup.runFromTrigger();
+    Test.stopTest();
+  }
+
+  @IsTest
   static void shouldAllowRollupToBeInitiatedFromTheParent() {
     Account acc = [SELECT Id, AnnualRevenue FROM Account WITH SYSTEM_MODE];
     Asset asset = new Asset(AccountId = acc.Id, Name = 'Rollup initiated from parent', Quantity = 500);

@@ -220,6 +220,7 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     public final List<Rollup__mdt> metadata = new List<Rollup__mdt>();
     public final List<SObject> parentRecordsToReset = new List<SObject>();
     public final Set<String> possibleWhereClauses = new Set<String>();
+    public final Set<String> countedQueries = new Set<String>();
     public String whereClause = '';
     public Integer recordCount = 0;
 
@@ -2264,6 +2265,9 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
     if (metaWrapper.recordCount != RollupRepository.SENTINEL_COUNT_VALUE) {
       String query = RollupQueryBuilder.Current.getQuery(childType, new List<String>(), meta.LookupFieldOnLookupObject__c, '!=', whereClause);
       String hashedQuery = query + meta.LookupObject__c + metaWrapper.recordIds;
+      if (metaWrapper.countedQueries.add(hashedQuery) == false) {
+        return;
+      }
       Integer currentCount = CACHED_COUNT_QUERIES.get(hashedQuery);
       if (currentCount == null) {
         currentCount = new RollupRepository(RollupMetaPicklists.getAccessLevel(meta))
@@ -2272,8 +2276,8 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
           .setArg('recordIds', metaWrapper.recordIds)
           .getCount();
         CACHED_COUNT_QUERIES.put(hashedQuery, currentCount);
-        metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
       }
+      metaWrapper.recordCount = currentCount == RollupRepository.SENTINEL_COUNT_VALUE ? currentCount : metaWrapper.recordCount + currentCount;
     }
   }
 
@@ -2310,7 +2314,14 @@ global without sharing virtual class Rollup implements RollupLogger.ToStringObje
       invokePoint
     );
     Boolean shouldQueue = wrappedMeta.recordCount != RollupRepository.SENTINEL_COUNT_VALUE && wrappedMeta.recordCount < control.MaxLookupRowsBeforeBatching__c;
-    if (wrappedMeta.recordCount == 0 && wrappedMeta.metadata.isEmpty() == false && isFullRecalcApp && control.ShouldSkipResettingParentFields__c == false) {
+    if (
+      wrappedMeta.recordCount == 0 &&
+      wrappedMeta.metadata.isEmpty() == false &&
+      (isFullRecalcApp && control.ShouldSkipResettingParentFields__c == false || wrappedMeta.parentRecordsToReset.isEmpty() == false)
+    ) {
+      if (wrappedMeta.parentRecordsToReset.isEmpty() == false && control.ShouldSkipResettingParentFields__c) {
+        control.ShouldSkipResettingParentFields__c = false;
+      }
       return parentResetProcessor;
     } else if (
       (invokePoint != InvocationPoint.FROM_FULL_RECALC_LWC &&
