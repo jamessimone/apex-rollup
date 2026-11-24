@@ -21,9 +21,9 @@
                     "package": "apex-rollup@1.7.48"
                 }
             ],
-            "versionNumber": "0.0.16.0",
-            "versionName": "Winter '27 release",
-            "versionDescription": "Security updates for Summer 26 now that Apex runs in user context by default",
+            "versionNumber": "0.0.17.0",
+            "versionName": "Winter '27 release addendum",
+            "versionDescription": "Platform event permission updates now that Apex runs in user context by default",
             "default": false,
             "unpackagedMetadata": {
                 "path": "plugins/CustomObjectRollupLogger/tests"
@@ -89,8 +89,8 @@
     "sourceApiVersion": "68.0",
     "packageAliases": {
         "Apex Rollup - Custom Logger": "0Ho6g000000Gn8ZCAS",
-        "Apex Rollup - Custom Logger@0.0.15": "04tg7000000GZLBAA4",
         "Apex Rollup - Custom Logger@0.0.16": "04tg7000000aTMrAAM",
+        "Apex Rollup - Custom Logger@0.0.17": "04tg7000000m3BhAAI",
         "Apex Rollup - Extra Code Coverage": "0Ho6g000000GnCWCA0",
         "Apex Rollup - Extra Code Coverage@0.0.30": "04tg7000000EOqTAAW",
         "Apex Rollup - Extra Code Coverage@0.0.32": "04tg7000000GZTFAA4",
@@ -102,9 +102,6 @@
         "Apex Rollup - Rollup Callback@0.0.4": "04tg7000000aT0HAAU",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.47": "04tg7000000ZbMTAA0",
-        "apex-rollup@1.7.48": "04tg7000000aTTJAA2",
-        "apex-rollup@1.7.49": "04tg7000000cPILAA2",
         "apex-rollup@1.7.50": "04tg7000000dOLpAAM",
         "apex-rollup@1.7.51": "04tg7000000dzA5AAI",
         "apex-rollup@1.7.52": "04tg7000000lXN7AAM",

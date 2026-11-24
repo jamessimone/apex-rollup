@@ -7,7 +7,7 @@ public class RollupCustomObjectLogger extends RollupLogger {
   }
 
   public override void save() {
-    EventBus.publish(this.rollupLogEvents);
+    EventBus.publishWithAccessLevel(this.rollupLogEvents, System.AccessLevel.SYSTEM_MODE);
     this.rollupLogEvents.clear();
   }
 
