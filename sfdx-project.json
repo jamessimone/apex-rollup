@@ -5,8 +5,8 @@
             "package": "apex-rollup",
             "path": "rollup",
             "scopeProfiles": true,
-            "versionName": "Fixes a NPE caused when Is Rollup Started From Parent is true and there are no matching children",
-            "versionNumber": "1.7.53.0",
+            "versionName": "Fixes COUNT-based rollups that have parents fall between full recalc chunks",
+            "versionNumber": "1.7.54.0",
             "versionDescription": "Fast, configurable, elastically scaling custom rollup solution. Apex Invocable action, one-liner Apex trigger/CMDT-driven logic, and scheduled Apex-ready.",
             "releaseNotesUrl": "https://github.com/jamessimone/apex-rollup/releases/latest",
             "unpackagedMetadata": {
@@ -102,7 +102,6 @@
         "Apex Rollup - Rollup Callback@0.0.4": "04tg7000000aT0HAAU",
         "Nebula Logger - Core@4.14.4-optionally-auto-call-lightning-logger-lwc": "04t5Y0000015oRNQAY",
         "apex-rollup": "0Ho6g000000TNcOCAW",
-        "apex-rollup@1.7.50": "04tg7000000dOLpAAM",
         "apex-rollup@1.7.51": "04tg7000000dzA5AAI",
         "apex-rollup@1.7.52": "04tg7000000lXN7AAM",
         "apex-rollup@1.7.53": "04tg7000000leYHAAY"
