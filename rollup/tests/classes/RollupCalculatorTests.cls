@@ -902,21 +902,88 @@ private class RollupCalculatorTests {
   @IsTest
   static void correctlyAppliesStatefulSums() {
     Rollup__mdt metaKey = new Rollup__mdt();
-    String accountKey = '0011g00003VDGbF002';
-    Integer value = 1;
+    String accountKey = RollupTestUtils.createId(Account.SObjectType);
+    Integer priorSum = 2;
     RollupCalculator calc = getCalculator(null, RollupOperation.SUM, Opportunity.Amount, Account.AnnualRevenue, metaKey, accountKey, Opportunity.AccountId);
     RollupState outerState = new RollupState();
     RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
-    info.value = value;
+    info.value = priorSum;
     calc.setState(outerState);
 
-    Opportunity one = new Opportunity(Id = '0066g00003VDGbF001', Amount = 5, AccountId = accountKey);
-    Opportunity two = new Opportunity(Id = '0066g00003VDGbF002', Amount = 5, AccountId = accountKey);
+    Opportunity one = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), Amount = 5, AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), Amount = 5, AccountId = accountKey);
 
     calc.performRollup(new List<Opportunity>{ one, two }, new Map<Id, SObject>());
 
-    System.assertEquals(one.Amount + two.Amount + value, calc.getReturnValue());
-    System.assertEquals(one.Amount + two.Amount + value, info.value);
+    System.assertEquals(one.Amount + two.Amount + priorSum, calc.getReturnValue());
+    System.assertEquals(one.Amount + two.Amount + priorSum, info.value);
+  }
+
+  @IsTest
+  static void correctlyAppliesStatefulCounts() {
+    Rollup__mdt metaKey = new Rollup__mdt();
+    String accountKey = RollupTestUtils.createId(Account.SObjectType);
+    // the running count carried over from earlier chunks of a full recalculation
+    Integer priorCount = 439;
+    RollupCalculator calc = getCalculator(null, RollupOperation.COUNT, Opportunity.Id, Account.NumberOfEmployees, metaKey, accountKey, Opportunity.AccountId);
+    RollupState outerState = new RollupState();
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = priorCount;
+    calc.setState(outerState);
+
+    Opportunity one = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = accountKey);
+
+    calc.performRollup(new List<Opportunity>{ one, two }, new Map<Id, SObject>());
+
+    System.assertEquals(priorCount + 2, calc.getReturnValue());
+    System.assertEquals(priorCount + 2, info.value, 'The next chunk should include the combined count');
+    System.assertEquals(priorCount + 2, calc.getReturnValue(), 'No double counting here');
+
+    calc.setDefaultValues(accountKey, null);
+    calc.performRollup(new List<Opportunity>{ one }, new Map<Id, SObject>());
+
+    System.assertEquals(priorCount + 3, calc.getReturnValue(), 'The next chunk should include the prior chunk count');
+    System.assertEquals(priorCount + 3, info.value);
+  }
+
+  @IsTest
+  static void correctlyAppliesStatefulCountDistincts() {
+    Rollup__mdt metaKey = new Rollup__mdt();
+    String accountKey = RollupTestUtils.createId(Account.SObjectType);
+    // the running count carried over from earlier chunks of a full recalculation
+    Integer priorCount = 439;
+    RollupCalculator calc = getCalculator(
+      null,
+      RollupOperation.COUNT_DISTINCT,
+      Opportunity.Id,
+      Account.NumberOfEmployees,
+      metaKey,
+      accountKey,
+      Opportunity.AccountId
+    );
+    RollupState outerState = new RollupState();
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = priorCount;
+    calc.setState(outerState);
+
+    Opportunity one = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = accountKey);
+
+    calc.performRollup(new List<Opportunity>{ one, two }, new Map<Id, SObject>());
+
+    System.assertEquals(priorCount + 2, calc.getReturnValue());
+    System.assertEquals(priorCount + 2, info.value, 'The next chunk should include the combined distinct count');
+    System.assertEquals(priorCount + 2, calc.getReturnValue(), 'No double count distinct here');
+
+    calc.setDefaultValues(accountKey, null);
+    calc.performRollup(
+      new List<Opportunity>{ new Opportunity(Id = RollupTestUtils.createId(Opportunity.SObjectType), AccountId = accountKey) },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals(priorCount + 3, calc.getReturnValue(), 'The next chunk should include the prior distinct count');
+    System.assertEquals(priorCount + 3, info.value);
   }
 
   @IsTest
@@ -2221,6 +2288,31 @@ private class RollupCalculatorTests {
       rowStartDelimiter +
       'Z, A, 50.0';
     System.assertEquals(expectedGroupByString, calc.getReturnValue());
+  }
+
+  @IsTest
+  static void keepsGroupedCountsIndependent() {
+    RollupCalculator calc = getCalculator(
+      null,
+      RollupOperation.COUNT,
+      Opportunity.Amount,
+      Account.Description,
+      new Rollup__mdt(CalcItem__c = 'Opportunity', GroupByFields__c = 'StageName'),
+      RollupTestUtils.createId(Account.SObjectType),
+      Opportunity.AccountId
+    );
+
+    calc.performRollup(
+      new List<Opportunity>{
+        new Opportunity(StageName = 'A', Amount = 5),
+        new Opportunity(StageName = 'A', Amount = 5),
+        new Opportunity(StageName = 'A', Amount = 7),
+        new Opportunity(StageName = 'B', Amount = 9)
+      },
+      new Map<Id, SObject>()
+    );
+
+    System.assertEquals('• A, 3\n• B, 1', calc.getReturnValue(), 'Each group must calculate its own count');
   }
 
   @IsTest

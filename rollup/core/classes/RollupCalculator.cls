@@ -476,8 +476,26 @@ public without sharing abstract class RollupCalculator {
     }
   }
 
+  private class CountState {
+    private final RollupState.GenericInfo info;
+    private final Decimal priorCount;
+
+    public CountState(RollupState state, String lookupRecordKey, Rollup__mdt metadata) {
+      this.info = (RollupState.GenericInfo) state?.getState(lookupRecordKey, metadata, RollupState.GenericInfo.class);
+      // Snapshot once so that we never double count
+      this.priorCount = (Decimal) this.info?.value ?? 0;
+    }
+
+    public Object getValue(Object value) {
+      Object combinedValue = this.priorCount == 0 ? value : ((Decimal) value ?? 0) + this.priorCount;
+      this.info?.setValue(combinedValue);
+      return combinedValue;
+    }
+  }
+
   private without sharing class CountDistinctRollupCalculator extends RollupCalculator {
     private Boolean isIdCount;
+    private CountState countState;
     public CountDistinctRollupCalculator(
       RollupOperation op,
       SObjectfield opFieldOnCalcItem,
@@ -486,6 +504,16 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      this.hasCustomStateCalculation = true;
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.countState = new CountState(this.state, this.lookupRecordKey, this.metadata);
+      super.performRollup(calcItems, oldCalcItems);
+    }
+
+    public override Object getReturnValue() {
+      return this.countState?.getValue(this.returnVal) ?? this.returnVal;
     }
 
     public override void setDefaultValues(String lookupRecordKey, Object priorVal) {
@@ -844,6 +872,8 @@ public without sharing abstract class RollupCalculator {
   }
 
   private without sharing class CountRollupCalculator extends DecimalRollupCalculator {
+    private CountState countState;
+
     public CountRollupCalculator(
       RollupOperation op,
       SObjectfield opFieldOnCalcItem,
@@ -852,15 +882,24 @@ public without sharing abstract class RollupCalculator {
       SObjectField lookupKeyField
     ) {
       super(op, opFieldOnCalcItem, opFieldOnLookupObject, metadata, lookupKeyField);
+      this.hasCustomStateCalculation = true;
+    }
+
+    public override void performRollup(List<SObject> calcItems, Map<Id, SObject> oldCalcItems) {
+      this.countState = new CountState(this.state, this.lookupRecordKey, this.metadata);
+      super.performRollup(calcItems, oldCalcItems);
     }
 
     public override Object getReturnValue() {
       this.setReturnValue();
+      Object value = this.countState?.getValue(super.getReturnValue()) ?? this.returnVal;
+      Integer potentialReturnVal = ((Decimal) value)?.intValue() ?? 0;
       // we shouldn't encourage negative counts. it's totally possible as a rollup is implemented and updates happen before
       // inserts or deletes, but it doesn't really make sense in the context of tracking
-      Integer potentialReturnVal = ((Decimal) super.getReturnValue())?.intValue();
       this.returnVal = potentialReturnVal < 0 ? 0.00 : potentialReturnVal;
-      return super.getReturnValue();
+      value = super.getReturnValue();
+      this.countState?.info?.setValue(value);
+      return value;
     }
 
     protected override Decimal getNumericValue(Object value) {
