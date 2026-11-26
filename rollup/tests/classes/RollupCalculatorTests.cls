@@ -920,6 +920,49 @@ private class RollupCalculatorTests {
   }
 
   @IsTest
+  static void correctlyAppliesStatefulCounts() {
+    Rollup__mdt metaKey = new Rollup__mdt();
+    String accountKey = '0011g00003VDGbF002';
+    // the running count carried over from earlier chunks of a full recalculation
+    Integer priorCount = 439;
+    RollupCalculator calc = getCalculator(null, RollupOperation.COUNT, Opportunity.Id, Account.NumberOfEmployees, metaKey, accountKey, Opportunity.AccountId);
+    RollupState outerState = new RollupState();
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = priorCount;
+    calc.setState(outerState);
+
+    Opportunity one = new Opportunity(Id = '0066g00003VDGbF001', AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = '0066g00003VDGbF002', AccountId = accountKey);
+
+    calc.performRollup(new List<Opportunity>{ one, two }, new Map<Id, SObject>());
+
+    System.assertEquals(priorCount + 2, calc.getReturnValue(), 'prior chunk count should be carried forward, not counted as a single item');
+    System.assertEquals(priorCount + 2, info.value);
+  }
+
+  @IsTest
+  static void correctlyAppliesStatefulCountsDuringFullRecalc() {
+    Rollup__mdt metaKey = new Rollup__mdt();
+    String accountKey = '0011g00003VDGbF002';
+    Integer priorCount = 439;
+    RollupCalculator calc = getCalculator(null, RollupOperation.COUNT, Opportunity.Id, Account.NumberOfEmployees, metaKey, accountKey, Opportunity.AccountId);
+    RollupState outerState = new RollupState();
+    RollupState.GenericInfo info = (RollupState.GenericInfo) outerState.getState(accountKey, metaKey, RollupState.GenericInfo.class);
+    info.value = priorCount;
+    calc.setState(outerState);
+    calc.setFullRecalc(true);
+
+    Opportunity one = new Opportunity(Id = '0066g00003VDGbF001', AccountId = accountKey);
+    Opportunity two = new Opportunity(Id = '0066g00003VDGbF002', AccountId = accountKey);
+    Opportunity three = new Opportunity(Id = '0066g00003VDGbF003', AccountId = accountKey);
+
+    calc.performRollup(new List<Opportunity>{ one, two, three }, new Map<Id, SObject>());
+
+    System.assertEquals(priorCount + 3, calc.getReturnValue());
+    System.assertEquals(priorCount + 3, info.value);
+  }
+
+  @IsTest
   static void doesNotResetParentValueWhenOnlyStatefulSumMatches() {
     Rollup__mdt metaKey = new Rollup__mdt();
     String accountKey = '0011g00003VDGbF002';

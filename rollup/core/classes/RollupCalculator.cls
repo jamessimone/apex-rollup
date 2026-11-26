@@ -312,6 +312,8 @@ public without sharing abstract class RollupCalculator {
     private Boolean matchesCurrent = false;
     private Boolean matchesOld = true;
     private Boolean isReparented = false;
+    // true for the running value carried over from prior chunks of a full recalculation
+    private Boolean isPriorState = false;
     private final SObject item;
 
     public WinnowResult(SObject item, Schema.SObjectField token) {
@@ -395,7 +397,9 @@ public without sharing abstract class RollupCalculator {
     if (this.state != null && this.hasCustomStateCalculation == false) {
       RollupState.GenericInfo info = (RollupState.GenericInfo) this.state.getState(this.lookupRecordKey, this.metadata, RollupState.GenericInfo.class);
       if (info?.value != null) {
-        winnowedItems.add(new WinnowResult(info.value));
+        WinnowResult priorStateResult = new WinnowResult(info.value);
+        priorStateResult.isPriorState = true;
+        winnowedItems.add(priorStateResult);
       }
     }
 
@@ -648,7 +652,17 @@ public without sharing abstract class RollupCalculator {
     }
 
     public override void handleSumOrCount(WinnowResult result) {
+      // the value carried over from prior chunks is already a subtotal - COUNT's getNumericValue
+      // would otherwise score it as a single item
+      if (result.isPriorState) {
+        this.returnDecimal += this.getPriorStateValue(result);
+        return;
+      }
       this.returnDecimal += this.getNumericValue(result.currentValue);
+    }
+
+    protected Decimal getPriorStateValue(WinnowResult result) {
+      return result.currentValue == null ? 0.00 : Decimal.valueOf(String.valueOf(result.currentValue));
     }
 
     public override void handleUpdateSumOrCount(WinnowResult result) {
@@ -868,6 +882,10 @@ public without sharing abstract class RollupCalculator {
     }
 
     protected override Decimal getNumericChangedValue(WinnowResult result) {
+      // the value carried over from prior chunks of a full recalculation is a subtotal, not one item
+      if (result.isPriorState) {
+        return this.getPriorStateValue(result);
+      }
       // for a reparenting, the item counts towards the new record on an update
       if (result.isReparented) {
         return result.matchesCurrent ? 1.00 : 0.00;
